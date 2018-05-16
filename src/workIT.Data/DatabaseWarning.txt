@@ -1,0 +1,3 @@
+﻿2018-02-19
+The App.config refers to credFinder, not the other possible databases. 
+So any database changes must be applied to the credFinder database, before doing an update from database!!!

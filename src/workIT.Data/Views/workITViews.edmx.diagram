@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="fe98d90777bb43e293c76761b513e046" Name="Diagram1">
+        <EntityTypeShape EntityType="workITViewModels.Codes_Currency" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="workITViewModels.NAIC" Width="1.5" PointX="2.75" PointY="4.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="workITViewModels.NAICS_NaicsGroup" Width="1.5" PointX="4.75" PointY="4.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="workITViewModels.ONET_SOC" Width="1.5" PointX="9.125" PointY="0.625" IsExpanded="true" />
+        <EntityTypeShape EntityType="workITViewModels.ONET_SOC_JobFamily" Width="1.5" PointX="6.75" PointY="4.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="workITViewModels.CIPCode2010" Width="2.125" PointX="7.5" PointY="7.5" />
+        <EntityTypeShape EntityType="workITViewModels.CIPCode2010_JobFamily" Width="2.125" PointX="10.875" PointY="7.625" />
+        <EntityTypeShape EntityType="workITViewModels.Codes_Countries" Width="2.125" PointX="11.5" PointY="0.5" />
+        <EntityTypeShape EntityType="workITViewModels.Codes_Language" Width="2.125" PointX="4.875" PointY="9.5" />
+        <EntityTypeShape EntityType="workITViewModels.Activity_Summary" Width="1.5" PointX="10.375" PointY="10.75" />
+        <EntityTypeShape EntityType="workITViewModels.EntityProperty_Summary" Width="1.5" PointX="12.375" PointY="10.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_Subjects" Width="1.5" PointX="3.375" PointY="13.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_Reference_Summary" Width="1.75" PointX="5.375" PointY="13.75" />
+        <EntityTypeShape EntityType="workITViewModels.Credential_Assets" Width="1.5" PointX="7.375" PointY="13.75" />
+        <EntityTypeShape EntityType="workITViewModels.Assessment_Summary" Width="2.375" PointX="14.375" PointY="0.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_LearningOpportunity_IsPartOfSummary" Width="1.5" PointX="14.375" PointY="12.75" />
+        <EntityTypeShape EntityType="workITViewModels.CostProfile_SummaryForSearch" Width="1.5" PointX="16.375" PointY="5.75" />
+        <EntityTypeShape EntityType="workITViewModels.Agent_Summary" Width="1.5" PointX="9.375" PointY="16.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_Relationship_AgentSummary" Width="1.5" PointX="16.375" PointY="10.75" />
+        <EntityTypeShape EntityType="workITViewModels.Credential_Assets_AgentRelationship_Totals" Width="1.5" PointX="11.375" PointY="16.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_AgentRelationshipIdCSV" Width="1.5" PointX="13.375" PointY="16.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkItemSummary" Width="3.375" PointX="18.375" PointY="0.75" />
+        <EntityTypeShape EntityType="workITViewModels.EntityCompetencyFramework_Items_Summary" Width="1.5" PointX="0.75" PointY="18.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" Width="1.5" PointX="3.375" PointY="18.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" Width="3.5" PointX="5.375" PointY="18.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Summary" Width="1.5" PointX="18.375" PointY="6.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Totals" Width="1.5" PointX="18.375" PointY="11.75" />
+        <EntityTypeShape EntityType="workITViewModels.SiteTotalsSummary" Width="1.5" PointX="5.375" PointY="0.75" />
+        <EntityTypeShape EntityType="workITViewModels.CodesProperty_Counts_ByEntity" Width="1.5" PointX="18.375" PointY="15.75" />
+        <EntityTypeShape EntityType="workITViewModels.CodesProperty_Summary" Width="2.125" PointX="0.75" PointY="8.75" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>

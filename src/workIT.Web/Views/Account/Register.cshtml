@@ -1,0 +1,48 @@
+﻿@using WorkIT.Web.Models
+@model WorkIT.Web.Models.RegisterViewModel
+@{
+    ViewBag.Title = "Register";
+}
+
+<link href="@Url.Content( "~/Style/AccountBox" )" rel="stylesheet" type="text/css" />
+
+<h1>@ViewBag.Title</h1>
+
+<div id="accountBox" class="inlineBlockBox twoColumn">
+	<div id="newAccountBox" class="column">
+		@using ( Html.BeginForm( "Register", "Account", FormMethod.Post, new { role = "form" } ) )
+		{
+			@Html.AntiForgeryToken()
+			<h2>Create a new account:</h2>
+			@Html.ValidationSummary( "", new { @class = "error" } )
+			<div class="input">
+				<label>Email</label>@Html.TextBoxFor( m => m.Email )
+			</div>
+			<div class="input">
+				<label>First Name</label>@Html.TextBoxFor( m => m.FirstName )
+			</div>
+			<div class="input">
+				<label>Last Name</label>@Html.TextBoxFor( m => m.LastName )
+			</div>
+			<div class="input">
+				<label>Password</label>@Html.PasswordFor( m => m.Password, new { title = "Password: Enter at least one upper case letter, one lower case letter and at least one character that is neither a letter or digit. (E.g. '- $ % _ etc.')" } )
+				<div style="margin-left:150px;">Password: Enter at least one upper case letter, one lower case letter and at least one character that is neither a letter or digit. (E.g. '- $ % _ etc.').</div>
+			</div>
+			<div class="input">
+				<label>Confirm Password</label>@Html.PasswordFor( m => m.ConfirmPassword, new { title = "Confirm Password - re-enter your password." } )
+				<div style="margin-left:150px;">Confirm Password:Re-enter password.</div>
+			</div>
+			<div class="buttons">
+				<button type="submit" class="actionButton">Register</button>
+			</div>
+		}
+		<div id="helpLinks">
+			<a href="@Url.Content( "~/Account/Login" )">Login to an existing account</a>
+		</div>
+	</div>
+	<div id="thirdPartyBox" class="column">
+		<h2>Use another service to login:</h2>
+		@Html.Partial( "~/Views/Account/_ExternalLoginsListPartial.cshtml", new ExternalLoginListViewModel { ReturnUrl = ViewBag.ReturnUrl } )
+	</div>
+</div>
+@Scripts.Render( "~/bundles/jqueryval" )

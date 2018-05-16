@@ -1,0 +1,2586 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+    <Schema Namespace="workITViewModels.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Activity_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Activity_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="ActivityType" />
+            <PropertyRef Name="Activity" />
+            <PropertyRef Name="Event" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="CreatedDate" Type="datetime" />
+          <Property Name="ActivityType" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Activity" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Event" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Comment" Type="nvarchar(max)" />
+          <Property Name="TargetUserId" Type="int" />
+          <Property Name="ActionByUserId" Type="int" />
+          <Property Name="ActionByUser" Type="varchar" MaxLength="101" />
+          <Property Name="ActivityObjectId" Type="int" />
+          <Property Name="ObjectRelatedId" Type="int" />
+          <Property Name="RelatedTargetUrl" Type="varchar" MaxLength="500" />
+          <Property Name="TargetObjectId" Type="int" />
+          <Property Name="SessionId" Type="varchar" MaxLength="50" />
+          <Property Name="IPAddress" Type="varchar" MaxLength="50" />
+          <Property Name="Referrer" Type="varchar(max)" />
+          <Property Name="IsBot" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Agent_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Agent_Summary">
+          <Key>
+            <PropertyRef Name="AgentRowId" />
+            <PropertyRef Name="AgentTypeId" />
+            <PropertyRef Name="AgentType" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="Summary" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="EntityStateId" />
+            <PropertyRef Name="City" />
+            <PropertyRef Name="Region" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Email" />
+            <PropertyRef Name="SortOrder" />
+          </Key>
+          <Property Name="AgentRowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="AgentTypeId" Type="int" Nullable="false" />
+          <Property Name="AgentType" Type="varchar" MaxLength="12" Nullable="false" />
+          <Property Name="AgentRelativeId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="Summary" Type="varchar" MaxLength="316" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="City" Type="varchar" MaxLength="11" Nullable="false" />
+          <Property Name="Region" Type="varchar" MaxLength="11" Nullable="false" />
+          <Property Name="Country" Type="varchar" MaxLength="11" Nullable="false" />
+          <Property Name="Email" Type="varchar" MaxLength="1" Nullable="false" />
+          <Property Name="SortOrder" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="Description" Type="varchar(max)" />
+          <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="ImageURL" Type="varchar" MaxLength="600" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Assessment_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Assessment_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="RowId" />
+            <PropertyRef Name="RequiresCount" />
+            <PropertyRef Name="RecommendsCount" />
+            <PropertyRef Name="isRequiredForCount" />
+            <PropertyRef Name="IsRecommendedForCount" />
+            <PropertyRef Name="IsAdvancedStandingForCount" />
+            <PropertyRef Name="AdvancedStandingFromCount" />
+            <PropertyRef Name="isPreparationForCount" />
+            <PropertyRef Name="PreparationFromCount" />
+            <PropertyRef Name="ConnectionsList" />
+            <PropertyRef Name="CredentialsList" />
+            <PropertyRef Name="Org_QAAgentAndRoles" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Description" Type="varchar(max)" />
+          <Property Name="OrgId" Type="int" Nullable="false" />
+          <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="DateEffective" Type="datetime" />
+          <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="EntityStateId" Type="int" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="CredentialRegistryId" Type="nvarchar" MaxLength="50" />
+          <Property Name="cerEnvelopeUrl" Type="nvarchar" MaxLength="153" />
+          <Property Name="IdentificationCode" Type="varchar" MaxLength="50" />
+          <Property Name="availableOnlineAt" Type="varchar" MaxLength="600" />
+          <Property Name="AvailabilityListing" Type="varchar" MaxLength="600" />
+          <Property Name="AssessmentExampleUrl" Type="varchar" MaxLength="2000" />
+          <Property Name="ProcessStandards" Type="varchar" MaxLength="600" />
+          <Property Name="ScoringMethodExample" Type="varchar" MaxLength="600" />
+          <Property Name="ExternalResearch" Type="varchar" MaxLength="500" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="RequiresCount" Type="int" Nullable="false" />
+          <Property Name="RecommendsCount" Type="int" Nullable="false" />
+          <Property Name="isRequiredForCount" Type="int" Nullable="false" />
+          <Property Name="IsRecommendedForCount" Type="int" Nullable="false" />
+          <Property Name="IsAdvancedStandingForCount" Type="int" Nullable="false" />
+          <Property Name="AdvancedStandingFromCount" Type="int" Nullable="false" />
+          <Property Name="isPreparationForCount" Type="int" Nullable="false" />
+          <Property Name="PreparationFromCount" Type="int" Nullable="false" />
+          <Property Name="ConnectionsList" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="CredentialsList" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="Org_QAAgentAndRoles" Type="nvarchar(max)" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.CIPCode2010' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="CIPCode2010">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CIPFamily" Type="varchar" MaxLength="2" />
+          <Property Name="CIPCode" Type="varchar" MaxLength="10" />
+          <Property Name="Action" Type="varchar" MaxLength="50" />
+          <Property Name="TextChange" Type="varchar" MaxLength="50" />
+          <Property Name="CIPTitle" Type="varchar" MaxLength="300" />
+          <Property Name="CIPDefinition" Type="varchar" MaxLength="1000" />
+          <Property Name="CrossReferences" Type="varchar" MaxLength="500" />
+          <Property Name="Examples" Type="varchar" MaxLength="1000" />
+          <Property Name="Totals" Type="int" />
+          <Property Name="Url" Type="varchar" MaxLength="300" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.CIPCode2010.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="CIPCode2010_JobFamily">
+          <Key>
+            <PropertyRef Name="CIPFamily" />
+          </Key>
+          <Property Name="CIPFamily" Type="varchar" MaxLength="2" Nullable="false" />
+          <Property Name="CIPTitle" Type="varchar" MaxLength="300" />
+          <Property Name="CIPDefinition" Type="varchar" MaxLength="1000" />
+          <Property Name="Examples" Type="varchar" MaxLength="1000" />
+          <Property Name="Totals" Type="int" />
+          <Property Name="Url" Type="varchar" MaxLength="300" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Codes.Countries' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Codes_Countries">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="CommonName" />
+            <PropertyRef Name="FormalName" />
+            <PropertyRef Name="IsActive" />
+            <PropertyRef Name="SortOrder" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="CountryNumber" Type="int" Nullable="false" />
+          <Property Name="CommonName" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="FormalName" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Type" Type="nvarchar" MaxLength="100" />
+          <Property Name="SubType" Type="nvarchar" MaxLength="50" />
+          <Property Name="Sovereignty" Type="nvarchar" MaxLength="100" />
+          <Property Name="Capital" Type="nvarchar" MaxLength="100" />
+          <Property Name="CurrencyCode" Type="nvarchar" MaxLength="25" />
+          <Property Name="CurrencyName" Type="nvarchar" MaxLength="50" />
+          <Property Name="CommonCurrencyName" Type="nvarchar" MaxLength="50" />
+          <Property Name="TelephoneCode" Type="float" />
+          <Property Name="TwoLetterCode" Type="nvarchar" MaxLength="5" />
+          <Property Name="ThreeLetterCode" Type="nvarchar" MaxLength="5" />
+          <Property Name="IANACountryCodeTLD" Type="nvarchar" MaxLength="50" />
+          <Property Name="IsActive" Type="bit" Nullable="false" />
+          <Property Name="SortOrder" Type="int" Nullable="false" />
+          <Property Name="FlagImage" Type="varchar" MaxLength="100" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Codes.Currency' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Codes_Currency">
+          <Key>
+            <PropertyRef Name="NumericCode" />
+            <PropertyRef Name="AlphabeticCode" />
+            <PropertyRef Name="Currency" />
+          </Key>
+          <Property Name="NumericCode" Type="int" Nullable="false" />
+          <Property Name="AlphabeticCode" Type="nvarchar" MaxLength="5" Nullable="false" />
+          <Property Name="Currency" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="UnicodeDecimal" Type="varchar" MaxLength="25" />
+          <Property Name="UnicodeHex" Type="varchar" MaxLength="25" />
+          <Property Name="HtmlCodes" Type="varchar" MaxLength="50" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Codes.Language' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Codes_Language">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="LangugeCode" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="LangugeCode" Type="varchar" MaxLength="10" Nullable="false" />
+          <Property Name="Code_639_2T" Type="varchar" MaxLength="5" />
+          <Property Name="Code_639_2B" Type="varchar" MaxLength="5" />
+          <Property Name="LanguageName" Type="nvarchar" MaxLength="100" />
+          <Property Name="NativeName" Type="nvarchar" MaxLength="100" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="HasSublanguage" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.CodesProperty.Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="CodesProperty_Summary">
+          <Key>
+            <PropertyRef Name="PK" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+            <PropertyRef Name="Totals" />
+          </Key>
+          <Property Name="PK" Type="int" Nullable="false" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="Category" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="CategorySchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="CategorySchemaUrl" Type="varchar" MaxLength="200" />
+          <Property Name="CategoryIsActive" Type="bit" />
+          <Property Name="PropertyId" Type="int" />
+          <Property Name="Property" Type="varchar" MaxLength="200" />
+          <Property Name="PropertyDescription" Type="varchar" MaxLength="2000" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="PropertySchemaName" Type="varchar" MaxLength="200" />
+          <Property Name="ParentSchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="PropertySchemaUrl" Type="varchar" MaxLength="200" />
+          <Property Name="Totals" Type="int" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.CodesProperty_Counts_ByEntity' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="CodesProperty_Counts_ByEntity">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+            <PropertyRef Name="PropertyId" />
+            <PropertyRef Name="Property" />
+          </Key>
+          <Property Name="Entity" Type="varchar" MaxLength="100" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="Category" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="CategorySchema" Type="varchar" MaxLength="100" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="PropertyId" Type="int" Nullable="false" />
+          <Property Name="Property" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="2000" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="200" />
+          <Property Name="EntityPropertyCount" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.CostProfile_SummaryForSearch' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="CostProfile_SummaryForSearch">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+            
+            <PropertyRef Name="ParentName" />
+            <PropertyRef Name="Entity_CostProfileId" />
+            <PropertyRef Name="CostProfileRowId" />
+            <PropertyRef Name="CurrencySymbol" />
+            <PropertyRef Name="TotalCostItems" />
+            <PropertyRef Name="condProfParentEntityTypeId" />
+            <PropertyRef Name="condProfParentEntityBaseId" />
+            <PropertyRef Name="CostProfileName" />
+          </Key>
+          <Property Name="EntityBaseId" Type="int" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityType" Type="varchar" MaxLength="100" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="ParentName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="OwningAgentUid" Type="uniqueidentifier" />
+          <Property Name="Entity_CostProfileId" Type="int" Nullable="false" />
+          <Property Name="CostProfileName" Type="varchar" MaxLength="600" Nullable="false" />
+          <Property Name="CostProfileRowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="CostDescription" Type="varchar(max)" />
+          <Property Name="CurrencyTypeId" Type="int" />
+          <Property Name="Currency" Type="nvarchar" MaxLength="5" />
+          <Property Name="CurrencySymbol" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="TotalCostItems" Type="int" Nullable="false" />
+          <Property Name="condProfParentEntityTypeId" Type="int" Nullable="false" />
+          <Property Name="condProfParentEntityBaseId" Type="int" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Credential_Assets' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Credential_Assets">
+          <Key>
+            <PropertyRef Name="CredentialEntityId" />
+            <PropertyRef Name="CredentialId" />
+            <PropertyRef Name="AssetTypeId" />
+            <PropertyRef Name="AssetType" />
+            <PropertyRef Name="AssetId" />
+            <PropertyRef Name="AssetEntityUid" />
+            <PropertyRef Name="AssetEntityId" />
+            <PropertyRef Name="Name" />
+          </Key>
+          <Property Name="CredentialEntityId" Type="int" Nullable="false" />
+          <Property Name="CredentialId" Type="int" Nullable="false" />
+          <Property Name="AssetTypeId" Type="int" Nullable="false" />
+          <Property Name="AssetType" Type="varchar" MaxLength="19" Nullable="false" />
+          <Property Name="AssetId" Type="int" Nullable="false" />
+          <Property Name="AssetEntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="AssetEntityId" Type="int" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="300" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Credential_Assets_AgentRelationship_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Credential_Assets_AgentRelationship_Totals">
+          <Key>
+            <PropertyRef Name="CredentialEntityId" />
+            <PropertyRef Name="CredentialId" />
+            <PropertyRef Name="AssetEntityId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="AgentRelativeId" />
+          </Key>
+          <Property Name="CredentialEntityId" Type="int" Nullable="false" />
+          <Property Name="CredentialId" Type="int" Nullable="false" />
+          <Property Name="AssetEntityId" Type="int" Nullable="false" />
+          <Property Name="EntityBaseName" Type="nvarchar" MaxLength="300" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityType" Type="varchar" MaxLength="100" />
+          <Property Name="AgentUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="AgentRelativeId" Type="int" Nullable="false" />
+          <Property Name="Description" Type="varchar(max)" />
+          <Property Name="QaCount" Type="int" />
+          <Property Name="OwnerCount" Type="int" />
+          <Property Name="OfferedCount" Type="int" />
+          <Property Name="RenewedCount" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity.AgentRelationshipIdCSV' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_AgentRelationshipIdCSV">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="Roles" />
+          </Key>
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" />
+          <Property Name="EntityBaseName" Type="nvarchar" MaxLength="300" />
+          <Property Name="EntityType" Type="varchar" MaxLength="100" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="AgentRelativeId" Type="int" Nullable="false" />
+          <Property Name="AgentUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="IsInverseRole" Type="bit" />
+          <Property Name="RoleIds" Type="nvarchar(max)" />
+          <Property Name="Roles" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentUrl" Type="varchar" MaxLength="600" />
+          <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity.FrameworkCIPCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_FrameworkCIPCodeSummary">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+          </Key>
+          <Property Name="CodeGroup" Type="varchar" MaxLength="2" />
+          <Property Name="CIPCode" Type="varchar" MaxLength="10" />
+          <Property Name="Id" Type="int" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CIPTitle" Type="varchar" MaxLength="300" />
+          <Property Name="URL" Type="varchar" MaxLength="300" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity.FrameworkIndustryCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_FrameworkIndustryCodeSummary">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+            
+            
+          </Key>
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CodeGroup" Type="int" />
+          <Property Name="CodedNotation" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="200" />
+          <Property Name="TargetNode" Type="varchar" MaxLength="600" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity.FrameworkItemSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_FrameworkItemSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="PropertyCategory" />
+            <PropertyRef Name="CodeId" />
+            <PropertyRef Name="FrameworkGroupTitle2" />
+            <PropertyRef Name="FrameworkGroupTitle" />
+            <PropertyRef Name="Description" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="Entity" Type="varchar" MaxLength="100" />
+          <Property Name="Name" Type="nvarchar" MaxLength="300" />
+          <Property Name="ParentId" Type="int" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="PropertyCategory" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="CodeId" Type="int" Nullable="false" />
+          <Property Name="CodeGroup" Type="varchar" MaxLength="2" />
+          <Property Name="FrameworkCode" Type="varchar" MaxLength="50" />
+          <Property Name="FrameworkGroupTitle" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="FrameworkGroupTitle2" Type="varchar" MaxLength="1" Nullable="false" />
+          <Property Name="FrameworkGroup" Type="varchar" MaxLength="3" />
+          <Property Name="FrameworkGroup2" Type="varchar" MaxLength="2" />
+          <Property Name="Title" Type="varchar" MaxLength="200" />
+          <Property Name="Description" Type="varchar" MaxLength="1000" Nullable="false" />
+          <Property Name="Url2" Type="varchar" MaxLength="600" />
+          <Property Name="URL" Type="varchar" MaxLength="300" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_LearningOpportunity_IsPartOfSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="LearningOpportunityId" />
+            <PropertyRef Name="LearningOpportunity" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="parentLoppId" />
+            <PropertyRef Name="ParentName" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="LearningOpportunityId" Type="int" Nullable="false" />
+          <Property Name="LearningOpportunity" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="Title" Type="varchar" MaxLength="100" />
+          <Property Name="parentLoppId" Type="int" Nullable="false" />
+          <Property Name="ParentName" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="ParentDescription" Type="varchar(max)" />
+          <Property Name="ParentUrl" Type="varchar" MaxLength="600" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_Reference_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_Reference_Summary">
+          <Key>
+            <PropertyRef Name="PK" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityBaseId" />
+            <PropertyRef Name="EntityReferenceId" />
+            <PropertyRef Name="CategoryId" />
+          </Key>
+          <Property Name="PK" Type="int" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityType" Type="varchar" MaxLength="100" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" Nullable="false" />
+          <Property Name="EntityReferenceId" Type="int" Nullable="false" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="PropertyValueId" Type="int" />
+          <Property Name="Title" Type="nvarchar" MaxLength="600" />
+          <Property Name="TextValue" Type="nvarchar" MaxLength="600" />
+          <Property Name="PropertyValue" Type="varchar" MaxLength="200" />
+          <Property Name="PropertySchema" Type="varchar" MaxLength="100" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_ReferenceFramework_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_ReferenceFramework_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="PropertyCategory" />
+            <PropertyRef Name="ReferenceFrameworkId" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="PropertyCategory" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="ReferenceFrameworkId" Type="int" Nullable="false" />
+          <Property Name="CodeGroup" Type="varchar" MaxLength="5" />
+          <Property Name="CodedNotation" Type="varchar" MaxLength="50" />
+          <Property Name="Name" Type="varchar" MaxLength="200" />
+          <Property Name="TargetNode" Type="varchar" MaxLength="600" />
+          <Property Name="Description" Type="varchar(max)" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_ReferenceFramework_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_ReferenceFramework_Totals">
+          <Key>
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="ReferenceFrameworkId" />
+          </Key>
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CodeGroup" Type="varchar" MaxLength="5" />
+          <Property Name="CodedNotation" Type="varchar" MaxLength="50" />
+          <Property Name="Name" Type="varchar" MaxLength="200" />
+          <Property Name="ReferenceFrameworkId" Type="int" Nullable="false" />
+          <Property Name="TargetNode" Type="varchar" MaxLength="600" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_Relationship_AgentSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_Relationship_AgentSummary">
+          <Key>
+            <PropertyRef Name="EntityAgentRelationshipId" />
+            <PropertyRef Name="RowId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="SourceEntityUid" />
+            <PropertyRef Name="SourceEntityTypeId" />
+            <PropertyRef Name="SourceEntityBaseId" />
+            <PropertyRef Name="SourceEntityName" />
+            <PropertyRef Name="SourceEntityDescription" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+            <PropertyRef Name="ActingAgentUid" />
+            <PropertyRef Name="ActingAgentTypeId" />
+            <PropertyRef Name="ActingAgentEntityType" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="EntityStateId" />
+            <PropertyRef Name="AgentToSourceRelationship" />
+            <PropertyRef Name="SchemaTag" />
+          </Key>
+          <Property Name="EntityAgentRelationshipId" Type="int" Nullable="false" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="SourceEntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="SourceEntityTypeId" Type="int" Nullable="false" />
+          <Property Name="SourceEntityType" Type="varchar" MaxLength="100" />
+          <Property Name="SourceEntityBaseId" Type="int" Nullable="false" />
+          <Property Name="SourceEntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="SourceEntityDescription" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="SourceEntityUrl" Type="varchar" MaxLength="600" />
+          <Property Name="SourceEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
+          <Property Name="IsInverseRole" Type="bit" />
+          <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="AgentToSourceRelationship" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="RelationshipDescription" Type="varchar" MaxLength="500" />
+          <Property Name="SchemaTag" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="ReverseSchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="IsQARole" Type="bit" />
+          <Property Name="IsOwnerAgentRole" Type="bit" />
+          <Property Name="ActingAgentUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="ActingAgentTypeId" Type="int" Nullable="false" />
+          <Property Name="ActingAgentEntityType" Type="varchar" MaxLength="12" Nullable="false" />
+          <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="AgentRelativeId" Type="int" Nullable="false" />
+          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentUrl" Type="varchar" MaxLength="600" />
+          <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_Subjects' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_Subjects">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntitySubjectId" />
+            <PropertyRef Name="Source" />
+          </Key>
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="SourceEntityType" Type="varchar" MaxLength="100" />
+          <Property Name="Subject" Type="nvarchar" MaxLength="600" />
+          <Property Name="EntitySubjectId" Type="int" Nullable="false" />
+          <Property Name="Source" Type="varchar" MaxLength="8" Nullable="false" />
+          <Property Name="ReferenceBaseId" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.EntityCompetencyFramework_Items_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="EntityCompetencyFramework_Items_Summary">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="BaseId" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityCompetencyFrameworkItemId" />
+            <PropertyRef Name="EntityCompetencyId" />
+            <PropertyRef Name="FrameworkName" />
+          </Key>
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityType" Type="varchar" MaxLength="100" />
+          <Property Name="BaseId" Type="int" Nullable="false" />
+          <Property Name="EntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="EntityCompetencyFrameworkItemId" Type="int" Nullable="false" />
+          <Property Name="FrameworkName" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="FrameworkUrl" Type="varchar" MaxLength="500" />
+          <Property Name="EntityCompetencyId" Type="int" Nullable="false" />
+          <Property Name="Competency" Type="nvarchar" MaxLength="600" />
+          <Property Name="TargetNodeDescription" Type="nvarchar(max)" />
+          <Property Name="TargetNode" Type="varchar" MaxLength="600" />
+          <Property Name="CodedNotation" Type="nvarchar" MaxLength="300" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="Weight" Type="decimal" Precision="5" Scale="2" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.EntityProperty_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="EntityProperty_Summary">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="PropertyValueId" />
+            <PropertyRef Name="EntityPropertyId" />
+            <PropertyRef Name="Property" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+          </Key>
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" />
+          <Property Name="EntityBaseName" Type="nvarchar" MaxLength="300" />
+          <Property Name="Title" Type="varchar" MaxLength="100" />
+          <Property Name="PropertyValueId" Type="int" Nullable="false" />
+          <Property Name="EntityPropertyId" Type="int" Nullable="false" />
+          <Property Name="Property" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="2000" />
+          <Property Name="PropertySchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="ParentSchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="Category" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="CategoryDescription" Type="varchar" MaxLength="500" />
+          <Property Name="IsActive" Type="bit" />
+          <Property Name="IsSubType1" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.NAICS' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="NAICS">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="NaicsCode" />
+            <PropertyRef Name="NaicsTitle" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="NaicsCode" Type="varchar" MaxLength="6" Nullable="false" />
+          <Property Name="NaicsTitle" Type="varchar" MaxLength="150" Nullable="false" />
+          <Property Name="Description" Type="varchar(max)" />
+          <Property Name="CodeLength" Type="smallint" />
+          <Property Name="NaicsGroup" Type="smallint" />
+          <Property Name="NacisNumber" Type="int" />
+          <Property Name="URL" Type="varchar" MaxLength="200" />
+          <Property Name="EffectiveDate" Type="datetime" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.NAICS.NaicsGroup' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="NAICS_NaicsGroup">
+          <Key>
+            <PropertyRef Name="NaicsGroup" />
+            <PropertyRef Name="NaicsTitle" />
+          </Key>
+          <Property Name="NaicsGroup" Type="smallint" Nullable="false" />
+          <Property Name="NaicsTitle" Type="varchar" MaxLength="150" Nullable="false" />
+          <Property Name="URL" Type="varchar" MaxLength="200" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.ONET_SOC' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="ONET_SOC">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OnetSocCode" />
+            <PropertyRef Name="Title" />
+            <PropertyRef Name="Description" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="OnetSocCode" Type="char" MaxLength="10" Nullable="false" />
+          <Property Name="Title" Type="varchar" MaxLength="150" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="1000" Nullable="false" />
+          <Property Name="SOC_code" Type="varchar" MaxLength="8" />
+          <Property Name="JobFamily" Type="int" />
+          <Property Name="URL" Type="varchar" MaxLength="200" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.ONET_SOC.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="ONET_SOC_JobFamily">
+          <Key>
+            <PropertyRef Name="JobFamilyId" />
+            <PropertyRef Name="Description" />
+          </Key>
+          <Property Name="JobFamilyId" Type="int" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="SiteTotalsSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="TotalPartnerCredentials" />
+            <PropertyRef Name="TotalPendingCredentials" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="TotalOrgs" Type="int" />
+          <Property Name="TotalDirectOrgs" Type="int" />
+          <Property Name="TotalQAOrgs" Type="int" />
+          <Property Name="TotalPartnerCredentials" Type="int" Nullable="false" />
+          <Property Name="TotalEnteredCredentials" Type="int" />
+          <Property Name="TotalPendingCredentials" Type="int" Nullable="false" />
+          <Property Name="TotalDirectCredentials" Type="int" />
+          <Property Name="TotalOtherCredentials" Type="int" />
+          <Property Name="TotalCredentialsAtCurrentCtdl" Type="int" />
+          <Property Name="TotalCredentialsToBeUpdatedToCurrentCtdl" Type="int" />
+        </EntityType>
+        <EntityContainer Name="workITViewModelsStoreContainer">
+          <EntitySet Name="Activity_Summary" EntityType="Self.Activity_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Activity_Summary].[Id] AS [Id], 
+    [Activity_Summary].[CreatedDate] AS [CreatedDate], 
+    [Activity_Summary].[ActivityType] AS [ActivityType], 
+    [Activity_Summary].[Activity] AS [Activity], 
+    [Activity_Summary].[Event] AS [Event], 
+    [Activity_Summary].[Comment] AS [Comment], 
+    [Activity_Summary].[TargetUserId] AS [TargetUserId], 
+    [Activity_Summary].[ActionByUserId] AS [ActionByUserId], 
+    [Activity_Summary].[ActionByUser] AS [ActionByUser], 
+    [Activity_Summary].[ActivityObjectId] AS [ActivityObjectId], 
+    [Activity_Summary].[ObjectRelatedId] AS [ObjectRelatedId], 
+    [Activity_Summary].[RelatedTargetUrl] AS [RelatedTargetUrl], 
+    [Activity_Summary].[TargetObjectId] AS [TargetObjectId], 
+    [Activity_Summary].[SessionId] AS [SessionId], 
+    [Activity_Summary].[IPAddress] AS [IPAddress], 
+    [Activity_Summary].[Referrer] AS [Referrer], 
+    [Activity_Summary].[IsBot] AS [IsBot]
+    FROM [dbo].[Activity_Summary] AS [Activity_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Agent_Summary" EntityType="Self.Agent_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Agent_Summary].[AgentRowId] AS [AgentRowId], 
+    [Agent_Summary].[AgentTypeId] AS [AgentTypeId], 
+    [Agent_Summary].[AgentType] AS [AgentType], 
+    [Agent_Summary].[AgentRelativeId] AS [AgentRelativeId], 
+    [Agent_Summary].[AgentName] AS [AgentName], 
+    [Agent_Summary].[Summary] AS [Summary], 
+    [Agent_Summary].[CTID] AS [CTID], 
+    [Agent_Summary].[EntityStateId] AS [EntityStateId], 
+    [Agent_Summary].[City] AS [City], 
+    [Agent_Summary].[Region] AS [Region], 
+    [Agent_Summary].[Country] AS [Country], 
+    [Agent_Summary].[Email] AS [Email], 
+    [Agent_Summary].[SortOrder] AS [SortOrder], 
+    [Agent_Summary].[Description] AS [Description], 
+    [Agent_Summary].[SubjectWebpage] AS [SubjectWebpage], 
+    [Agent_Summary].[ImageURL] AS [ImageURL], 
+    [Agent_Summary].[Created] AS [Created], 
+    [Agent_Summary].[LastUpdated] AS [LastUpdated]
+    FROM [dbo].[Agent_Summary] AS [Agent_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Assessment_Summary" EntityType="Self.Assessment_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Assessment_Summary].[Id] AS [Id], 
+    [Assessment_Summary].[Name] AS [Name], 
+    [Assessment_Summary].[Description] AS [Description], 
+    [Assessment_Summary].[OrgId] AS [OrgId], 
+    [Assessment_Summary].[Organization] AS [Organization], 
+    [Assessment_Summary].[DateEffective] AS [DateEffective], 
+    [Assessment_Summary].[SubjectWebpage] AS [SubjectWebpage], 
+    [Assessment_Summary].[EntityStateId] AS [EntityStateId], 
+    [Assessment_Summary].[CTID] AS [CTID], 
+    [Assessment_Summary].[CredentialRegistryId] AS [CredentialRegistryId], 
+    [Assessment_Summary].[cerEnvelopeUrl] AS [cerEnvelopeUrl], 
+    [Assessment_Summary].[IdentificationCode] AS [IdentificationCode], 
+    [Assessment_Summary].[availableOnlineAt] AS [availableOnlineAt], 
+    [Assessment_Summary].[AvailabilityListing] AS [AvailabilityListing], 
+    [Assessment_Summary].[AssessmentExampleUrl] AS [AssessmentExampleUrl], 
+    [Assessment_Summary].[ProcessStandards] AS [ProcessStandards], 
+    [Assessment_Summary].[ScoringMethodExample] AS [ScoringMethodExample], 
+    [Assessment_Summary].[ExternalResearch] AS [ExternalResearch], 
+    [Assessment_Summary].[Created] AS [Created], 
+    [Assessment_Summary].[LastUpdated] AS [LastUpdated], 
+    [Assessment_Summary].[RowId] AS [RowId], 
+    [Assessment_Summary].[RequiresCount] AS [RequiresCount], 
+    [Assessment_Summary].[RecommendsCount] AS [RecommendsCount], 
+    [Assessment_Summary].[isRequiredForCount] AS [isRequiredForCount], 
+    [Assessment_Summary].[IsRecommendedForCount] AS [IsRecommendedForCount], 
+    [Assessment_Summary].[IsAdvancedStandingForCount] AS [IsAdvancedStandingForCount], 
+    [Assessment_Summary].[AdvancedStandingFromCount] AS [AdvancedStandingFromCount], 
+    [Assessment_Summary].[isPreparationForCount] AS [isPreparationForCount], 
+    [Assessment_Summary].[PreparationFromCount] AS [PreparationFromCount], 
+    [Assessment_Summary].[ConnectionsList] AS [ConnectionsList], 
+    [Assessment_Summary].[CredentialsList] AS [CredentialsList], 
+    [Assessment_Summary].[Org_QAAgentAndRoles] AS [Org_QAAgentAndRoles]
+    FROM [dbo].[Assessment_Summary] AS [Assessment_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="CIPCode2010" EntityType="Self.CIPCode2010" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [CIPCode2010].[Id] AS [Id], 
+    [CIPCode2010].[CIPFamily] AS [CIPFamily], 
+    [CIPCode2010].[CIPCode] AS [CIPCode], 
+    [CIPCode2010].[Action] AS [Action], 
+    [CIPCode2010].[TextChange] AS [TextChange], 
+    [CIPCode2010].[CIPTitle] AS [CIPTitle], 
+    [CIPCode2010].[CIPDefinition] AS [CIPDefinition], 
+    [CIPCode2010].[CrossReferences] AS [CrossReferences], 
+    [CIPCode2010].[Examples] AS [Examples], 
+    [CIPCode2010].[Totals] AS [Totals], 
+    [CIPCode2010].[Url] AS [Url]
+    FROM [dbo].[CIPCode2010] AS [CIPCode2010]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="CIPCode2010_JobFamily" EntityType="Self.CIPCode2010_JobFamily" store:Type="Views" store:Schema="dbo" store:Name="CIPCode2010.JobFamily">
+            <DefiningQuery>SELECT 
+    [CIPCode2010_JobFamily].[CIPFamily] AS [CIPFamily], 
+    [CIPCode2010_JobFamily].[CIPTitle] AS [CIPTitle], 
+    [CIPCode2010_JobFamily].[CIPDefinition] AS [CIPDefinition], 
+    [CIPCode2010_JobFamily].[Examples] AS [Examples], 
+    [CIPCode2010_JobFamily].[Totals] AS [Totals], 
+    [CIPCode2010_JobFamily].[Url] AS [Url]
+    FROM [dbo].[CIPCode2010.JobFamily] AS [CIPCode2010_JobFamily]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Codes_Countries" EntityType="Self.Codes_Countries" store:Type="Views" store:Schema="dbo" store:Name="Codes.Countries">
+            <DefiningQuery>SELECT 
+    [Codes_Countries].[Id] AS [Id], 
+    [Codes_Countries].[CountryNumber] AS [CountryNumber], 
+    [Codes_Countries].[CommonName] AS [CommonName], 
+    [Codes_Countries].[FormalName] AS [FormalName], 
+    [Codes_Countries].[Type] AS [Type], 
+    [Codes_Countries].[SubType] AS [SubType], 
+    [Codes_Countries].[Sovereignty] AS [Sovereignty], 
+    [Codes_Countries].[Capital] AS [Capital], 
+    [Codes_Countries].[CurrencyCode] AS [CurrencyCode], 
+    [Codes_Countries].[CurrencyName] AS [CurrencyName], 
+    [Codes_Countries].[CommonCurrencyName] AS [CommonCurrencyName], 
+    [Codes_Countries].[TelephoneCode] AS [TelephoneCode], 
+    [Codes_Countries].[TwoLetterCode] AS [TwoLetterCode], 
+    [Codes_Countries].[ThreeLetterCode] AS [ThreeLetterCode], 
+    [Codes_Countries].[IANACountryCodeTLD] AS [IANACountryCodeTLD], 
+    [Codes_Countries].[IsActive] AS [IsActive], 
+    [Codes_Countries].[SortOrder] AS [SortOrder], 
+    [Codes_Countries].[FlagImage] AS [FlagImage]
+    FROM [dbo].[Codes.Countries] AS [Codes_Countries]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Codes_Currency" EntityType="Self.Codes_Currency" store:Type="Views" store:Schema="dbo" store:Name="Codes.Currency">
+            <DefiningQuery>SELECT 
+    [Codes_Currency].[NumericCode] AS [NumericCode], 
+    [Codes_Currency].[AlphabeticCode] AS [AlphabeticCode], 
+    [Codes_Currency].[Currency] AS [Currency], 
+    [Codes_Currency].[SortOrder] AS [SortOrder], 
+    [Codes_Currency].[UnicodeDecimal] AS [UnicodeDecimal], 
+    [Codes_Currency].[UnicodeHex] AS [UnicodeHex], 
+    [Codes_Currency].[HtmlCodes] AS [HtmlCodes]
+    FROM [dbo].[Codes.Currency] AS [Codes_Currency]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Codes_Language" EntityType="Self.Codes_Language" store:Type="Views" store:Schema="dbo" store:Name="Codes.Language">
+            <DefiningQuery>SELECT 
+    [Codes_Language].[Id] AS [Id], 
+    [Codes_Language].[LangugeCode] AS [LangugeCode], 
+    [Codes_Language].[Code_639_2T] AS [Code_639_2T], 
+    [Codes_Language].[Code_639_2B] AS [Code_639_2B], 
+    [Codes_Language].[LanguageName] AS [LanguageName], 
+    [Codes_Language].[NativeName] AS [NativeName], 
+    [Codes_Language].[SortOrder] AS [SortOrder], 
+    [Codes_Language].[HasSublanguage] AS [HasSublanguage]
+    FROM [dbo].[Codes.Language] AS [Codes_Language]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="CodesProperty_Summary" EntityType="Self.CodesProperty_Summary" store:Type="Views" store:Schema="dbo" store:Name="CodesProperty.Summary">
+            <DefiningQuery>SELECT 
+    [CodesProperty_Summary].[PK] AS [PK], 
+    [CodesProperty_Summary].[CategoryId] AS [CategoryId], 
+    [CodesProperty_Summary].[Category] AS [Category], 
+    [CodesProperty_Summary].[CategorySchemaName] AS [CategorySchemaName], 
+    [CodesProperty_Summary].[CategorySchemaUrl] AS [CategorySchemaUrl], 
+    [CodesProperty_Summary].[CategoryIsActive] AS [CategoryIsActive], 
+    [CodesProperty_Summary].[PropertyId] AS [PropertyId], 
+    [CodesProperty_Summary].[Property] AS [Property], 
+    [CodesProperty_Summary].[PropertyDescription] AS [PropertyDescription], 
+    [CodesProperty_Summary].[SortOrder] AS [SortOrder], 
+    [CodesProperty_Summary].[PropertySchemaName] AS [PropertySchemaName], 
+    [CodesProperty_Summary].[ParentSchemaName] AS [ParentSchemaName], 
+    [CodesProperty_Summary].[PropertySchemaUrl] AS [PropertySchemaUrl], 
+    [CodesProperty_Summary].[Totals] AS [Totals]
+    FROM [dbo].[CodesProperty.Summary] AS [CodesProperty_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="CodesProperty_Counts_ByEntity" EntityType="Self.CodesProperty_Counts_ByEntity" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [CodesProperty_Counts_ByEntity].[Entity] AS [Entity], 
+    [CodesProperty_Counts_ByEntity].[EntityTypeId] AS [EntityTypeId], 
+    [CodesProperty_Counts_ByEntity].[CategoryId] AS [CategoryId], 
+    [CodesProperty_Counts_ByEntity].[Category] AS [Category], 
+    [CodesProperty_Counts_ByEntity].[CategorySchema] AS [CategorySchema], 
+    [CodesProperty_Counts_ByEntity].[SortOrder] AS [SortOrder], 
+    [CodesProperty_Counts_ByEntity].[PropertyId] AS [PropertyId], 
+    [CodesProperty_Counts_ByEntity].[Property] AS [Property], 
+    [CodesProperty_Counts_ByEntity].[Description] AS [Description], 
+    [CodesProperty_Counts_ByEntity].[SchemaName] AS [SchemaName], 
+    [CodesProperty_Counts_ByEntity].[EntityPropertyCount] AS [EntityPropertyCount]
+    FROM [dbo].[CodesProperty_Counts_ByEntity] AS [CodesProperty_Counts_ByEntity]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="CostProfile_SummaryForSearch" EntityType="Self.CostProfile_SummaryForSearch" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [CostProfile_SummaryForSearch].[EntityBaseId] AS [EntityBaseId], 
+    [CostProfile_SummaryForSearch].[EntityTypeId] AS [EntityTypeId], 
+    [CostProfile_SummaryForSearch].[EntityType] AS [EntityType], 
+    [CostProfile_SummaryForSearch].[EntityId] AS [EntityId], 
+    [CostProfile_SummaryForSearch].[ParentName] AS [ParentName], 
+    [CostProfile_SummaryForSearch].[OwningAgentUid] AS [OwningAgentUid], 
+    [CostProfile_SummaryForSearch].[Entity_CostProfileId] AS [Entity_CostProfileId], 
+    [CostProfile_SummaryForSearch].[CostProfileName] AS [CostProfileName], 
+    [CostProfile_SummaryForSearch].[CostProfileRowId] AS [CostProfileRowId], 
+    [CostProfile_SummaryForSearch].[CostDescription] AS [CostDescription], 
+    [CostProfile_SummaryForSearch].[CurrencyTypeId] AS [CurrencyTypeId], 
+    [CostProfile_SummaryForSearch].[Currency] AS [Currency], 
+    [CostProfile_SummaryForSearch].[CurrencySymbol] AS [CurrencySymbol], 
+    [CostProfile_SummaryForSearch].[TotalCostItems] AS [TotalCostItems], 
+    [CostProfile_SummaryForSearch].[condProfParentEntityTypeId] AS [condProfParentEntityTypeId], 
+    [CostProfile_SummaryForSearch].[condProfParentEntityBaseId] AS [condProfParentEntityBaseId]
+    FROM [dbo].[CostProfile_SummaryForSearch] AS [CostProfile_SummaryForSearch]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Credential_Assets" EntityType="Self.Credential_Assets" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Credential_Assets].[CredentialEntityId] AS [CredentialEntityId], 
+    [Credential_Assets].[CredentialId] AS [CredentialId], 
+    [Credential_Assets].[AssetTypeId] AS [AssetTypeId], 
+    [Credential_Assets].[AssetType] AS [AssetType], 
+    [Credential_Assets].[AssetId] AS [AssetId], 
+    [Credential_Assets].[AssetEntityUid] AS [AssetEntityUid], 
+    [Credential_Assets].[AssetEntityId] AS [AssetEntityId], 
+    [Credential_Assets].[Name] AS [Name]
+    FROM [dbo].[Credential_Assets] AS [Credential_Assets]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Credential_Assets_AgentRelationship_Totals" EntityType="Self.Credential_Assets_AgentRelationship_Totals" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Credential_Assets_AgentRelationship_Totals].[CredentialEntityId] AS [CredentialEntityId], 
+    [Credential_Assets_AgentRelationship_Totals].[CredentialId] AS [CredentialId], 
+    [Credential_Assets_AgentRelationship_Totals].[AssetEntityId] AS [AssetEntityId], 
+    [Credential_Assets_AgentRelationship_Totals].[EntityBaseName] AS [EntityBaseName], 
+    [Credential_Assets_AgentRelationship_Totals].[EntityTypeId] AS [EntityTypeId], 
+    [Credential_Assets_AgentRelationship_Totals].[EntityBaseId] AS [EntityBaseId], 
+    [Credential_Assets_AgentRelationship_Totals].[EntityUid] AS [EntityUid], 
+    [Credential_Assets_AgentRelationship_Totals].[EntityType] AS [EntityType], 
+    [Credential_Assets_AgentRelationship_Totals].[AgentUid] AS [AgentUid], 
+    [Credential_Assets_AgentRelationship_Totals].[AgentName] AS [AgentName], 
+    [Credential_Assets_AgentRelationship_Totals].[AgentRelativeId] AS [AgentRelativeId], 
+    [Credential_Assets_AgentRelationship_Totals].[Description] AS [Description], 
+    [Credential_Assets_AgentRelationship_Totals].[QaCount] AS [QaCount], 
+    [Credential_Assets_AgentRelationship_Totals].[OwnerCount] AS [OwnerCount], 
+    [Credential_Assets_AgentRelationship_Totals].[OfferedCount] AS [OfferedCount], 
+    [Credential_Assets_AgentRelationship_Totals].[RenewedCount] AS [RenewedCount]
+    FROM [dbo].[Credential_Assets_AgentRelationship_Totals] AS [Credential_Assets_AgentRelationship_Totals]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_AgentRelationshipIdCSV" EntityType="Self.Entity_AgentRelationshipIdCSV" store:Type="Views" store:Schema="dbo" store:Name="Entity.AgentRelationshipIdCSV">
+            <DefiningQuery>SELECT 
+    [Entity_AgentRelationshipIdCSV].[EntityId] AS [EntityId], 
+    [Entity_AgentRelationshipIdCSV].[EntityUid] AS [EntityUid], 
+    [Entity_AgentRelationshipIdCSV].[EntityBaseId] AS [EntityBaseId], 
+    [Entity_AgentRelationshipIdCSV].[EntityBaseName] AS [EntityBaseName], 
+    [Entity_AgentRelationshipIdCSV].[EntityType] AS [EntityType], 
+    [Entity_AgentRelationshipIdCSV].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_AgentRelationshipIdCSV].[AgentRelativeId] AS [AgentRelativeId], 
+    [Entity_AgentRelationshipIdCSV].[AgentUid] AS [AgentUid], 
+    [Entity_AgentRelationshipIdCSV].[AgentName] AS [AgentName], 
+    [Entity_AgentRelationshipIdCSV].[IsInverseRole] AS [IsInverseRole], 
+    [Entity_AgentRelationshipIdCSV].[RoleIds] AS [RoleIds], 
+    [Entity_AgentRelationshipIdCSV].[Roles] AS [Roles], 
+    [Entity_AgentRelationshipIdCSV].[AgentDescription] AS [AgentDescription], 
+    [Entity_AgentRelationshipIdCSV].[AgentUrl] AS [AgentUrl], 
+    [Entity_AgentRelationshipIdCSV].[AgentImageUrl] AS [AgentImageUrl]
+    FROM [dbo].[Entity.AgentRelationshipIdCSV] AS [Entity_AgentRelationshipIdCSV]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_FrameworkCIPCodeSummary" EntityType="Self.Entity_FrameworkCIPCodeSummary" store:Type="Views" store:Schema="dbo" store:Name="Entity.FrameworkCIPCodeSummary">
+            <DefiningQuery>SELECT 
+    [Entity_FrameworkCIPCodeSummary].[CodeGroup] AS [CodeGroup], 
+    [Entity_FrameworkCIPCodeSummary].[CIPCode] AS [CIPCode], 
+    [Entity_FrameworkCIPCodeSummary].[Id] AS [Id], 
+    [Entity_FrameworkCIPCodeSummary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_FrameworkCIPCodeSummary].[CIPTitle] AS [CIPTitle], 
+    [Entity_FrameworkCIPCodeSummary].[URL] AS [URL], 
+    [Entity_FrameworkCIPCodeSummary].[Totals] AS [Totals]
+    FROM [dbo].[Entity.FrameworkCIPCodeSummary] AS [Entity_FrameworkCIPCodeSummary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_FrameworkIndustryCodeSummary" EntityType="Self.Entity_FrameworkIndustryCodeSummary" store:Type="Views" store:Schema="dbo" store:Name="Entity.FrameworkIndustryCodeSummary">
+            <DefiningQuery>SELECT 
+    [Entity_FrameworkIndustryCodeSummary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_FrameworkIndustryCodeSummary].[CodeGroup] AS [CodeGroup], 
+    [Entity_FrameworkIndustryCodeSummary].[CodedNotation] AS [CodedNotation], 
+    [Entity_FrameworkIndustryCodeSummary].[Id] AS [Id], 
+    [Entity_FrameworkIndustryCodeSummary].[Name] AS [Name], 
+    [Entity_FrameworkIndustryCodeSummary].[TargetNode] AS [TargetNode], 
+    [Entity_FrameworkIndustryCodeSummary].[Totals] AS [Totals]
+    FROM [dbo].[Entity.FrameworkIndustryCodeSummary] AS [Entity_FrameworkIndustryCodeSummary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_FrameworkItemSummary" EntityType="Self.Entity_FrameworkItemSummary" store:Type="Views" store:Schema="dbo" store:Name="Entity.FrameworkItemSummary">
+            <DefiningQuery>SELECT 
+    [Entity_FrameworkItemSummary].[Id] AS [Id], 
+    [Entity_FrameworkItemSummary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_FrameworkItemSummary].[EntityId] AS [EntityId], 
+    [Entity_FrameworkItemSummary].[Entity] AS [Entity], 
+    [Entity_FrameworkItemSummary].[Name] AS [Name], 
+    [Entity_FrameworkItemSummary].[ParentId] AS [ParentId], 
+    [Entity_FrameworkItemSummary].[EntityUid] AS [EntityUid], 
+    [Entity_FrameworkItemSummary].[CategoryId] AS [CategoryId], 
+    [Entity_FrameworkItemSummary].[PropertyCategory] AS [PropertyCategory], 
+    [Entity_FrameworkItemSummary].[SchemaName] AS [SchemaName], 
+    [Entity_FrameworkItemSummary].[CodeId] AS [CodeId], 
+    [Entity_FrameworkItemSummary].[CodeGroup] AS [CodeGroup], 
+    [Entity_FrameworkItemSummary].[FrameworkCode] AS [FrameworkCode], 
+    [Entity_FrameworkItemSummary].[FrameworkGroupTitle] AS [FrameworkGroupTitle], 
+    [Entity_FrameworkItemSummary].[FrameworkGroupTitle2] AS [FrameworkGroupTitle2], 
+    [Entity_FrameworkItemSummary].[FrameworkGroup] AS [FrameworkGroup], 
+    [Entity_FrameworkItemSummary].[FrameworkGroup2] AS [FrameworkGroup2], 
+    [Entity_FrameworkItemSummary].[Title] AS [Title], 
+    [Entity_FrameworkItemSummary].[Description] AS [Description], 
+    [Entity_FrameworkItemSummary].[Url2] AS [Url2], 
+    [Entity_FrameworkItemSummary].[URL] AS [URL]
+    FROM [dbo].[Entity.FrameworkItemSummary] AS [Entity_FrameworkItemSummary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_LearningOpportunity_IsPartOfSummary" EntityType="Self.Entity_LearningOpportunity_IsPartOfSummary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_LearningOpportunity_IsPartOfSummary].[Id] AS [Id], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[EntityId] AS [EntityId], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[LearningOpportunityId] AS [LearningOpportunityId], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[LearningOpportunity] AS [LearningOpportunity], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[EntityUid] AS [EntityUid], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[Title] AS [Title], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[parentLoppId] AS [parentLoppId], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[ParentName] AS [ParentName], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[ParentDescription] AS [ParentDescription], 
+    [Entity_LearningOpportunity_IsPartOfSummary].[ParentUrl] AS [ParentUrl]
+    FROM [dbo].[Entity_LearningOpportunity_IsPartOfSummary] AS [Entity_LearningOpportunity_IsPartOfSummary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_Reference_Summary" EntityType="Self.Entity_Reference_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_Reference_Summary].[PK] AS [PK], 
+    [Entity_Reference_Summary].[EntityId] AS [EntityId], 
+    [Entity_Reference_Summary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_Reference_Summary].[EntityType] AS [EntityType], 
+    [Entity_Reference_Summary].[EntityUid] AS [EntityUid], 
+    [Entity_Reference_Summary].[EntityName] AS [EntityName], 
+    [Entity_Reference_Summary].[EntityBaseId] AS [EntityBaseId], 
+    [Entity_Reference_Summary].[EntityReferenceId] AS [EntityReferenceId], 
+    [Entity_Reference_Summary].[CategoryId] AS [CategoryId], 
+    [Entity_Reference_Summary].[PropertyValueId] AS [PropertyValueId], 
+    [Entity_Reference_Summary].[Title] AS [Title], 
+    [Entity_Reference_Summary].[TextValue] AS [TextValue], 
+    [Entity_Reference_Summary].[PropertyValue] AS [PropertyValue], 
+    [Entity_Reference_Summary].[PropertySchema] AS [PropertySchema]
+    FROM [dbo].[Entity_Reference_Summary] AS [Entity_Reference_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="Self.Entity_ReferenceFramework_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_ReferenceFramework_Summary].[Id] AS [Id], 
+    [Entity_ReferenceFramework_Summary].[EntityId] AS [EntityId], 
+    [Entity_ReferenceFramework_Summary].[EntityUid] AS [EntityUid], 
+    [Entity_ReferenceFramework_Summary].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_ReferenceFramework_Summary].[EntityBaseId] AS [EntityBaseId], 
+    [Entity_ReferenceFramework_Summary].[CategoryId] AS [CategoryId], 
+    [Entity_ReferenceFramework_Summary].[PropertyCategory] AS [PropertyCategory], 
+    [Entity_ReferenceFramework_Summary].[SchemaName] AS [SchemaName], 
+    [Entity_ReferenceFramework_Summary].[ReferenceFrameworkId] AS [ReferenceFrameworkId], 
+    [Entity_ReferenceFramework_Summary].[CodeGroup] AS [CodeGroup], 
+    [Entity_ReferenceFramework_Summary].[CodedNotation] AS [CodedNotation], 
+    [Entity_ReferenceFramework_Summary].[Name] AS [Name], 
+    [Entity_ReferenceFramework_Summary].[TargetNode] AS [TargetNode], 
+    [Entity_ReferenceFramework_Summary].[Description] AS [Description]
+    FROM [dbo].[Entity_ReferenceFramework_Summary] AS [Entity_ReferenceFramework_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_ReferenceFramework_Totals" EntityType="Self.Entity_ReferenceFramework_Totals" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_ReferenceFramework_Totals].[CategoryId] AS [CategoryId], 
+    [Entity_ReferenceFramework_Totals].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_ReferenceFramework_Totals].[CodeGroup] AS [CodeGroup], 
+    [Entity_ReferenceFramework_Totals].[CodedNotation] AS [CodedNotation], 
+    [Entity_ReferenceFramework_Totals].[Name] AS [Name], 
+    [Entity_ReferenceFramework_Totals].[ReferenceFrameworkId] AS [ReferenceFrameworkId], 
+    [Entity_ReferenceFramework_Totals].[TargetNode] AS [TargetNode], 
+    [Entity_ReferenceFramework_Totals].[Totals] AS [Totals]
+    FROM [dbo].[Entity_ReferenceFramework_Totals] AS [Entity_ReferenceFramework_Totals]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_Relationship_AgentSummary" EntityType="Self.Entity_Relationship_AgentSummary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_Relationship_AgentSummary].[EntityAgentRelationshipId] AS [EntityAgentRelationshipId], 
+    [Entity_Relationship_AgentSummary].[RowId] AS [RowId], 
+    [Entity_Relationship_AgentSummary].[EntityId] AS [EntityId], 
+    [Entity_Relationship_AgentSummary].[SourceEntityUid] AS [SourceEntityUid], 
+    [Entity_Relationship_AgentSummary].[SourceEntityTypeId] AS [SourceEntityTypeId], 
+    [Entity_Relationship_AgentSummary].[SourceEntityType] AS [SourceEntityType], 
+    [Entity_Relationship_AgentSummary].[SourceEntityBaseId] AS [SourceEntityBaseId], 
+    [Entity_Relationship_AgentSummary].[SourceEntityName] AS [SourceEntityName], 
+    [Entity_Relationship_AgentSummary].[SourceEntityDescription] AS [SourceEntityDescription], 
+    [Entity_Relationship_AgentSummary].[SourceEntityUrl] AS [SourceEntityUrl], 
+    [Entity_Relationship_AgentSummary].[SourceEntityImageUrl] AS [SourceEntityImageUrl], 
+    [Entity_Relationship_AgentSummary].[RelationshipTypeId] AS [RelationshipTypeId], 
+    [Entity_Relationship_AgentSummary].[IsInverseRole] AS [IsInverseRole], 
+    [Entity_Relationship_AgentSummary].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
+    [Entity_Relationship_AgentSummary].[AgentToSourceRelationship] AS [AgentToSourceRelationship], 
+    [Entity_Relationship_AgentSummary].[RelationshipDescription] AS [RelationshipDescription], 
+    [Entity_Relationship_AgentSummary].[SchemaTag] AS [SchemaTag], 
+    [Entity_Relationship_AgentSummary].[ReverseSchemaTag] AS [ReverseSchemaTag], 
+    [Entity_Relationship_AgentSummary].[IsQARole] AS [IsQARole], 
+    [Entity_Relationship_AgentSummary].[IsOwnerAgentRole] AS [IsOwnerAgentRole], 
+    [Entity_Relationship_AgentSummary].[ActingAgentUid] AS [ActingAgentUid], 
+    [Entity_Relationship_AgentSummary].[ActingAgentTypeId] AS [ActingAgentTypeId], 
+    [Entity_Relationship_AgentSummary].[ActingAgentEntityType] AS [ActingAgentEntityType], 
+    [Entity_Relationship_AgentSummary].[AgentName] AS [AgentName], 
+    [Entity_Relationship_AgentSummary].[AgentRelativeId] AS [AgentRelativeId], 
+    [Entity_Relationship_AgentSummary].[AgentDescription] AS [AgentDescription], 
+    [Entity_Relationship_AgentSummary].[AgentUrl] AS [AgentUrl], 
+    [Entity_Relationship_AgentSummary].[AgentImageUrl] AS [AgentImageUrl], 
+    [Entity_Relationship_AgentSummary].[CTID] AS [CTID], 
+    [Entity_Relationship_AgentSummary].[EntityStateId] AS [EntityStateId], 
+    [Entity_Relationship_AgentSummary].[Created] AS [Created], 
+    [Entity_Relationship_AgentSummary].[LastUpdated] AS [LastUpdated]
+    FROM [dbo].[Entity_Relationship_AgentSummary] AS [Entity_Relationship_AgentSummary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Entity_Subjects" EntityType="Self.Entity_Subjects" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_Subjects].[EntityId] AS [EntityId], 
+    [Entity_Subjects].[EntityUid] AS [EntityUid], 
+    [Entity_Subjects].[EntityTypeId] AS [EntityTypeId], 
+    [Entity_Subjects].[SourceEntityType] AS [SourceEntityType], 
+    [Entity_Subjects].[Subject] AS [Subject], 
+    [Entity_Subjects].[EntitySubjectId] AS [EntitySubjectId], 
+    [Entity_Subjects].[Source] AS [Source], 
+    [Entity_Subjects].[ReferenceBaseId] AS [ReferenceBaseId]
+    FROM [dbo].[Entity_Subjects] AS [Entity_Subjects]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="EntityCompetencyFramework_Items_Summary" EntityType="Self.EntityCompetencyFramework_Items_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [EntityCompetencyFramework_Items_Summary].[EntityId] AS [EntityId], 
+    [EntityCompetencyFramework_Items_Summary].[EntityType] AS [EntityType], 
+    [EntityCompetencyFramework_Items_Summary].[BaseId] AS [BaseId], 
+    [EntityCompetencyFramework_Items_Summary].[EntityName] AS [EntityName], 
+    [EntityCompetencyFramework_Items_Summary].[EntityCompetencyFrameworkItemId] AS [EntityCompetencyFrameworkItemId], 
+    [EntityCompetencyFramework_Items_Summary].[FrameworkName] AS [FrameworkName], 
+    [EntityCompetencyFramework_Items_Summary].[FrameworkUrl] AS [FrameworkUrl], 
+    [EntityCompetencyFramework_Items_Summary].[EntityCompetencyId] AS [EntityCompetencyId], 
+    [EntityCompetencyFramework_Items_Summary].[Competency] AS [Competency], 
+    [EntityCompetencyFramework_Items_Summary].[TargetNodeDescription] AS [TargetNodeDescription], 
+    [EntityCompetencyFramework_Items_Summary].[TargetNode] AS [TargetNode], 
+    [EntityCompetencyFramework_Items_Summary].[CodedNotation] AS [CodedNotation], 
+    [EntityCompetencyFramework_Items_Summary].[Created] AS [Created], 
+    [EntityCompetencyFramework_Items_Summary].[Weight] AS [Weight]
+    FROM [dbo].[EntityCompetencyFramework_Items_Summary] AS [EntityCompetencyFramework_Items_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="EntityProperty_Summary" EntityType="Self.EntityProperty_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [EntityProperty_Summary].[EntityId] AS [EntityId], 
+    [EntityProperty_Summary].[EntityUid] AS [EntityUid], 
+    [EntityProperty_Summary].[EntityTypeId] AS [EntityTypeId], 
+    [EntityProperty_Summary].[EntityBaseId] AS [EntityBaseId], 
+    [EntityProperty_Summary].[EntityBaseName] AS [EntityBaseName], 
+    [EntityProperty_Summary].[Title] AS [Title], 
+    [EntityProperty_Summary].[PropertyValueId] AS [PropertyValueId], 
+    [EntityProperty_Summary].[EntityPropertyId] AS [EntityPropertyId], 
+    [EntityProperty_Summary].[Property] AS [Property], 
+    [EntityProperty_Summary].[Description] AS [Description], 
+    [EntityProperty_Summary].[PropertySchemaName] AS [PropertySchemaName], 
+    [EntityProperty_Summary].[ParentSchemaName] AS [ParentSchemaName], 
+    [EntityProperty_Summary].[CategoryId] AS [CategoryId], 
+    [EntityProperty_Summary].[SortOrder] AS [SortOrder], 
+    [EntityProperty_Summary].[Category] AS [Category], 
+    [EntityProperty_Summary].[Created] AS [Created], 
+    [EntityProperty_Summary].[CategoryDescription] AS [CategoryDescription], 
+    [EntityProperty_Summary].[IsActive] AS [IsActive], 
+    [EntityProperty_Summary].[IsSubType1] AS [IsSubType1]
+    FROM [dbo].[EntityProperty_Summary] AS [EntityProperty_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="NAICS" EntityType="Self.NAICS" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [NAICS].[Id] AS [Id], 
+    [NAICS].[NaicsCode] AS [NaicsCode], 
+    [NAICS].[NaicsTitle] AS [NaicsTitle], 
+    [NAICS].[Description] AS [Description], 
+    [NAICS].[CodeLength] AS [CodeLength], 
+    [NAICS].[NaicsGroup] AS [NaicsGroup], 
+    [NAICS].[NacisNumber] AS [NacisNumber], 
+    [NAICS].[URL] AS [URL], 
+    [NAICS].[EffectiveDate] AS [EffectiveDate], 
+    [NAICS].[Totals] AS [Totals]
+    FROM [dbo].[NAICS] AS [NAICS]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="NAICS_NaicsGroup" EntityType="Self.NAICS_NaicsGroup" store:Type="Views" store:Schema="dbo" store:Name="NAICS.NaicsGroup">
+            <DefiningQuery>SELECT 
+    [NAICS_NaicsGroup].[NaicsGroup] AS [NaicsGroup], 
+    [NAICS_NaicsGroup].[NaicsTitle] AS [NaicsTitle], 
+    [NAICS_NaicsGroup].[URL] AS [URL], 
+    [NAICS_NaicsGroup].[Totals] AS [Totals]
+    FROM [dbo].[NAICS.NaicsGroup] AS [NAICS_NaicsGroup]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="ONET_SOC" EntityType="Self.ONET_SOC" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [ONET_SOC].[Id] AS [Id], 
+    [ONET_SOC].[OnetSocCode] AS [OnetSocCode], 
+    [ONET_SOC].[Title] AS [Title], 
+    [ONET_SOC].[Description] AS [Description], 
+    [ONET_SOC].[SOC_code] AS [SOC_code], 
+    [ONET_SOC].[JobFamily] AS [JobFamily], 
+    [ONET_SOC].[URL] AS [URL], 
+    [ONET_SOC].[Totals] AS [Totals]
+    FROM [dbo].[ONET_SOC] AS [ONET_SOC]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="ONET_SOC_JobFamily" EntityType="Self.ONET_SOC_JobFamily" store:Type="Views" store:Schema="dbo" store:Name="ONET_SOC.JobFamily">
+            <DefiningQuery>SELECT 
+    [ONET_SOC_JobFamily].[JobFamilyId] AS [JobFamilyId], 
+    [ONET_SOC_JobFamily].[Description] AS [Description], 
+    [ONET_SOC_JobFamily].[Totals] AS [Totals]
+    FROM [dbo].[ONET_SOC.JobFamily] AS [ONET_SOC_JobFamily]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="SiteTotalsSummary" EntityType="Self.SiteTotalsSummary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [SiteTotalsSummary].[Id] AS [Id], 
+    [SiteTotalsSummary].[TotalOrgs] AS [TotalOrgs], 
+    [SiteTotalsSummary].[TotalDirectOrgs] AS [TotalDirectOrgs], 
+    [SiteTotalsSummary].[TotalQAOrgs] AS [TotalQAOrgs], 
+    [SiteTotalsSummary].[TotalPartnerCredentials] AS [TotalPartnerCredentials], 
+    [SiteTotalsSummary].[TotalEnteredCredentials] AS [TotalEnteredCredentials], 
+    [SiteTotalsSummary].[TotalPendingCredentials] AS [TotalPendingCredentials], 
+    [SiteTotalsSummary].[TotalDirectCredentials] AS [TotalDirectCredentials], 
+    [SiteTotalsSummary].[TotalOtherCredentials] AS [TotalOtherCredentials], 
+    [SiteTotalsSummary].[TotalCredentialsAtCurrentCtdl] AS [TotalCredentialsAtCurrentCtdl], 
+    [SiteTotalsSummary].[TotalCredentialsToBeUpdatedToCurrentCtdl] AS [TotalCredentialsToBeUpdatedToCurrentCtdl]
+    FROM [dbo].[SiteTotalsSummary] AS [SiteTotalsSummary]</DefiningQuery>
+          </EntitySet>
+        </EntityContainer>
+      </Schema></edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="workITViewModels" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityType Name="Codes_Currency">
+          <Key>
+            <PropertyRef Name="NumericCode" />
+            <PropertyRef Name="AlphabeticCode" />
+            <PropertyRef Name="Currency" />
+          </Key>
+          <Property Name="NumericCode" Type="Int32" Nullable="false" />
+          <Property Name="AlphabeticCode" Type="String" MaxLength="5" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Currency" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="UnicodeDecimal" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
+          <Property Name="UnicodeHex" Type="String" MaxLength="25" FixedLength="false" Unicode="false" />
+          <Property Name="HtmlCodes" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="NAIC">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="NaicsCode" />
+            <PropertyRef Name="NaicsTitle" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="NaicsCode" Type="String" MaxLength="6" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="NaicsTitle" Type="String" MaxLength="150" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="CodeLength" Type="Int16" />
+          <Property Name="NaicsGroup" Type="Int16" />
+          <Property Name="NacisNumber" Type="Int32" />
+          <Property Name="URL" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="EffectiveDate" Type="DateTime" Precision="3" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="NAICS_NaicsGroup">
+          <Key>
+            <PropertyRef Name="NaicsGroup" />
+            <PropertyRef Name="NaicsTitle" />
+          </Key>
+          <Property Name="NaicsGroup" Type="Int16" Nullable="false" />
+          <Property Name="NaicsTitle" Type="String" MaxLength="150" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="URL" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="ONET_SOC">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OnetSocCode" />
+            <PropertyRef Name="Title" />
+            <PropertyRef Name="Description" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="OnetSocCode" Type="String" MaxLength="10" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="Title" Type="String" MaxLength="150" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Description" Type="String" MaxLength="1000" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="SOC_code" Type="String" MaxLength="8" FixedLength="false" Unicode="false" />
+          <Property Name="JobFamily" Type="Int32" />
+          <Property Name="URL" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="ONET_SOC_JobFamily">
+          <Key>
+            <PropertyRef Name="JobFamilyId" />
+            <PropertyRef Name="Description" />
+          </Key>
+          <Property Name="JobFamilyId" Type="Int32" Nullable="false" />
+          <Property Name="Description" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityContainer Name="workITViews" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="Codes_Currency" EntityType="Self.Codes_Currency" />
+          <EntitySet Name="NAICS" EntityType="Self.NAIC" />
+          <EntitySet Name="NAICS_NaicsGroup" EntityType="Self.NAICS_NaicsGroup" />
+          <EntitySet Name="ONET_SOC" EntityType="Self.ONET_SOC" />
+          <EntitySet Name="ONET_SOC_JobFamily" EntityType="Self.ONET_SOC_JobFamily" />
+          <EntitySet Name="CIPCode2010" EntityType="workITViewModels.CIPCode2010" />
+          <EntitySet Name="CIPCode2010_JobFamily" EntityType="workITViewModels.CIPCode2010_JobFamily" />
+          <EntitySet Name="Codes_Countries" EntityType="workITViewModels.Codes_Countries" />
+          <EntitySet Name="Codes_Language" EntityType="workITViewModels.Codes_Language" />
+          <EntitySet Name="Activity_Summary" EntityType="workITViewModels.Activity_Summary" />
+          <EntitySet Name="EntityProperty_Summary" EntityType="workITViewModels.EntityProperty_Summary" />
+          <EntitySet Name="Entity_Subjects" EntityType="workITViewModels.Entity_Subjects" />
+          <EntitySet Name="Entity_Reference_Summary" EntityType="workITViewModels.Entity_Reference_Summary" />
+          <EntitySet Name="Credential_Assets" EntityType="workITViewModels.Credential_Assets" />
+          <EntitySet Name="Assessment_Summary" EntityType="workITViewModels.Assessment_Summary" />
+          <EntitySet Name="Entity_LearningOpportunity_IsPartOfSummary" EntityType="workITViewModels.Entity_LearningOpportunity_IsPartOfSummary" />
+          <EntitySet Name="CostProfile_SummaryForSearch" EntityType="workITViewModels.CostProfile_SummaryForSearch" />
+          <EntitySet Name="Agent_Summary" EntityType="workITViewModels.Agent_Summary" />
+          <EntitySet Name="Entity_Relationship_AgentSummary" EntityType="workITViewModels.Entity_Relationship_AgentSummary" />
+          <EntitySet Name="Credential_Assets_AgentRelationship_Totals" EntityType="workITViewModels.Credential_Assets_AgentRelationship_Totals" />
+          <EntitySet Name="Entity_AgentRelationshipIdCSV" EntityType="workITViewModels.Entity_AgentRelationshipIdCSV" />
+          <EntitySet Name="Entity_FrameworkItemSummary" EntityType="workITViewModels.Entity_FrameworkItemSummary" />
+          <EntitySet Name="EntityCompetencyFramework_Items_Summary" EntityType="workITViewModels.EntityCompetencyFramework_Items_Summary" />
+          <EntitySet Name="Entity_FrameworkCIPCodeSummary" EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" />
+          <EntitySet Name="Entity_FrameworkIndustryCodeSummary" EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" />
+          <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="workITViewModels.Entity_ReferenceFramework_Summary" />
+          <EntitySet Name="Entity_ReferenceFramework_Totals" EntityType="workITViewModels.Entity_ReferenceFramework_Totals" />
+          <EntitySet Name="SiteTotalsSummaries" EntityType="workITViewModels.SiteTotalsSummary" />
+          <EntitySet Name="CodesProperty_Counts_ByEntity" EntityType="workITViewModels.CodesProperty_Counts_ByEntity" />
+          <EntitySet Name="CodesProperty_Summary" EntityType="workITViewModels.CodesProperty_Summary" />
+        </EntityContainer>
+        <EntityType Name="CIPCode2010">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CIPFamily" Type="String" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="CIPCode" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Action" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="TextChange" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CIPTitle" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="CIPDefinition" Type="String" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="CrossReferences" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Examples" Type="String" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+          <Property Name="Url" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="CIPCode2010_JobFamily">
+          <Key>
+            <PropertyRef Name="CIPFamily" />
+          </Key>
+          <Property Name="CIPFamily" Type="String" Nullable="false" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="CIPTitle" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="CIPDefinition" Type="String" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="Examples" Type="String" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+          <Property Name="Url" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Codes_Countries">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="CommonName" />
+            <PropertyRef Name="FormalName" />
+            <PropertyRef Name="IsActive" />
+            <PropertyRef Name="SortOrder" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="CountryNumber" Type="Int32" Nullable="false" />
+          <Property Name="CommonName" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="FormalName" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Type" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="SubType" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="Sovereignty" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Capital" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="CurrencyCode" Type="String" MaxLength="25" FixedLength="false" Unicode="true" />
+          <Property Name="CurrencyName" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="CommonCurrencyName" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="TelephoneCode" Type="Double" />
+          <Property Name="TwoLetterCode" Type="String" MaxLength="5" FixedLength="false" Unicode="true" />
+          <Property Name="ThreeLetterCode" Type="String" MaxLength="5" FixedLength="false" Unicode="true" />
+          <Property Name="IANACountryCodeTLD" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="IsActive" Type="Boolean" Nullable="false" />
+          <Property Name="SortOrder" Type="Int32" Nullable="false" />
+          <Property Name="FlagImage" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Codes_Language">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="LangugeCode" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="LangugeCode" Type="String" Nullable="false" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Code_639_2T" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="Code_639_2B" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="LanguageName" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="NativeName" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="HasSublanguage" Type="Boolean" />
+        </EntityType>
+        <EntityType Name="Activity_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="ActivityType" />
+            <PropertyRef Name="Activity" />
+            <PropertyRef Name="Event" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+          <Property Name="ActivityType" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Activity" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Event" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Comment" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetUserId" Type="Int32" />
+          <Property Name="ActionByUserId" Type="Int32" />
+          <Property Name="ActionByUser" Type="String" MaxLength="101" FixedLength="false" Unicode="false" />
+          <Property Name="ActivityObjectId" Type="Int32" />
+          <Property Name="ObjectRelatedId" Type="Int32" />
+          <Property Name="RelatedTargetUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="TargetObjectId" Type="Int32" />
+          <Property Name="SessionId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="IPAddress" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Referrer" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="IsBot" Type="Boolean" />
+        </EntityType>
+        <EntityType Name="EntityProperty_Summary">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="PropertyValueId" />
+            <PropertyRef Name="EntityPropertyId" />
+            <PropertyRef Name="Property" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+          </Key>
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="EntityBaseName" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="Title" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="PropertyValueId" Type="Int32" Nullable="false" />
+          <Property Name="EntityPropertyId" Type="Int32" Nullable="false" />
+          <Property Name="Property" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="PropertySchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ParentSchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="Category" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="Description" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="IsActive" Type="Boolean" />
+          <Property Name="IsSubType1" Type="Boolean" />
+          <Property Name="CategoryDescription" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Entity_Subjects">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntitySubjectId" />
+            <PropertyRef Name="Source" />
+          </Key>
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="SourceEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Subject" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="EntitySubjectId" Type="Int32" Nullable="false" />
+          <Property Name="Source" Type="String" Nullable="false" MaxLength="8" FixedLength="false" Unicode="false" />
+          <Property Name="ReferenceBaseId" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Entity_Reference_Summary">
+          <Key>
+            <PropertyRef Name="PK" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityBaseId" />
+            <PropertyRef Name="EntityReferenceId" />
+            <PropertyRef Name="CategoryId" />
+          </Key>
+          <Property Name="PK" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityBaseId" Type="Int32" Nullable="false" />
+          <Property Name="EntityReferenceId" Type="Int32" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="PropertyValueId" Type="Int32" />
+          <Property Name="Title" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="TextValue" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="PropertyValue" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="PropertySchema" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Credential_Assets">
+          <Key>
+            <PropertyRef Name="CredentialEntityId" />
+            <PropertyRef Name="CredentialId" />
+            <PropertyRef Name="AssetTypeId" />
+            <PropertyRef Name="AssetType" />
+            <PropertyRef Name="AssetId" />
+            <PropertyRef Name="AssetEntityUid" />
+            <PropertyRef Name="AssetEntityId" />
+            <PropertyRef Name="Name" />
+          </Key>
+          <Property Name="CredentialEntityId" Type="Int32" Nullable="false" />
+          <Property Name="CredentialId" Type="Int32" Nullable="false" />
+          <Property Name="AssetTypeId" Type="Int32" Nullable="false" />
+          <Property Name="AssetType" Type="String" Nullable="false" MaxLength="19" FixedLength="false" Unicode="false" />
+          <Property Name="AssetId" Type="Int32" Nullable="false" />
+          <Property Name="AssetEntityUid" Type="Guid" Nullable="false" />
+          <Property Name="AssetEntityId" Type="Int32" Nullable="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="Assessment_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="RowId" />
+            <PropertyRef Name="RequiresCount" />
+            <PropertyRef Name="RecommendsCount" />
+            <PropertyRef Name="isRequiredForCount" />
+            <PropertyRef Name="IsRecommendedForCount" />
+            <PropertyRef Name="IsAdvancedStandingForCount" />
+            <PropertyRef Name="AdvancedStandingFromCount" />
+            <PropertyRef Name="isPreparationForCount" />
+            <PropertyRef Name="PreparationFromCount" />
+            <PropertyRef Name="ConnectionsList" />
+            <PropertyRef Name="CredentialsList" />
+            <PropertyRef Name="Org_QAAgentAndRoles" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="DateEffective" Type="DateTime" Precision="3" />
+          <Property Name="IdentificationCode" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="OrgId" Type="Int32" Nullable="false" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="availableOnlineAt" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CredentialRegistryId" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="SubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="cerEnvelopeUrl" Type="String" MaxLength="153" FixedLength="false" Unicode="true" />
+          <Property Name="EntityStateId" Type="Int32" />
+          <Property Name="AvailabilityListing" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AssessmentExampleUrl" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="ProcessStandards" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="ScoringMethodExample" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="ExternalResearch" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="RequiresCount" Type="Int32" Nullable="false" />
+          <Property Name="RecommendsCount" Type="Int32" Nullable="false" />
+          <Property Name="isRequiredForCount" Type="Int32" Nullable="false" />
+          <Property Name="IsRecommendedForCount" Type="Int32" Nullable="false" />
+          <Property Name="IsAdvancedStandingForCount" Type="Int32" Nullable="false" />
+          <Property Name="AdvancedStandingFromCount" Type="Int32" Nullable="false" />
+          <Property Name="isPreparationForCount" Type="Int32" Nullable="false" />
+          <Property Name="PreparationFromCount" Type="Int32" Nullable="false" />
+          <Property Name="ConnectionsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="CredentialsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="LearningOpportunityId" />
+            <PropertyRef Name="LearningOpportunity" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="parentLoppId" />
+            <PropertyRef Name="ParentName" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="LearningOpportunityId" Type="Int32" Nullable="false" />
+          <Property Name="LearningOpportunity" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="Title" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="parentLoppId" Type="Int32" Nullable="false" />
+          <Property Name="ParentName" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ParentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="ParentUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="CostProfile_SummaryForSearch">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="ParentName" />
+            <PropertyRef Name="Entity_CostProfileId" />
+            <PropertyRef Name="CostProfileName" />
+            <PropertyRef Name="CostProfileRowId" />
+            <PropertyRef Name="CurrencySymbol" />
+            <PropertyRef Name="TotalCostItems" />
+            <PropertyRef Name="condProfParentEntityTypeId" />
+            <PropertyRef Name="condProfParentEntityBaseId" />
+          </Key>
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="ParentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="OwningAgentUid" Type="Guid" />
+          <Property Name="Entity_CostProfileId" Type="Int32" Nullable="false" />
+          <Property Name="CostProfileName" Type="String" Nullable="false" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="CostProfileRowId" Type="Guid" Nullable="false" />
+          <Property Name="CostDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="CurrencyTypeId" Type="Int32" />
+          <Property Name="Currency" Type="String" MaxLength="5" FixedLength="false" Unicode="true" />
+          <Property Name="CurrencySymbol" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="TotalCostItems" Type="Int32" Nullable="false" />
+          <Property Name="condProfParentEntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="condProfParentEntityBaseId" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Agent_Summary">
+          <Key>
+            <PropertyRef Name="AgentRowId" />
+            <PropertyRef Name="AgentTypeId" />
+            <PropertyRef Name="AgentType" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="Summary" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="City" />
+            <PropertyRef Name="Region" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Email" />
+            <PropertyRef Name="SortOrder" />
+            <PropertyRef Name="EntityStateId" />
+          </Key>
+          <Property Name="AgentRowId" Type="Guid" Nullable="false" />
+          <Property Name="AgentTypeId" Type="Int32" Nullable="false" />
+          <Property Name="AgentType" Type="String" Nullable="false" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="AgentRelativeId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Summary" Type="String" Nullable="false" MaxLength="316" FixedLength="false" Unicode="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="City" Type="String" Nullable="false" MaxLength="11" FixedLength="false" Unicode="false" />
+          <Property Name="Region" Type="String" Nullable="false" MaxLength="11" FixedLength="false" Unicode="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="11" FixedLength="false" Unicode="false" />
+          <Property Name="Email" Type="String" Nullable="false" MaxLength="1" FixedLength="false" Unicode="false" />
+          <Property Name="SortOrder" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="SubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="ImageURL" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Entity_Relationship_AgentSummary">
+          <Key>
+            <PropertyRef Name="EntityAgentRelationshipId" />
+            <PropertyRef Name="RowId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="SourceEntityUid" />
+            <PropertyRef Name="SourceEntityTypeId" />
+            <PropertyRef Name="SourceEntityBaseId" />
+            <PropertyRef Name="SourceEntityName" />
+            <PropertyRef Name="SourceEntityDescription" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+            <PropertyRef Name="AgentToSourceRelationship" />
+            <PropertyRef Name="SchemaTag" />
+            <PropertyRef Name="ActingAgentUid" />
+            <PropertyRef Name="ActingAgentTypeId" />
+            <PropertyRef Name="ActingAgentEntityType" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="EntityStateId" />
+          </Key>
+          <Property Name="EntityAgentRelationshipId" Type="Int32" Nullable="false" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="SourceEntityUid" Type="Guid" Nullable="false" />
+          <Property Name="SourceEntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="SourceEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="SourceEntityBaseId" Type="Int32" Nullable="false" />
+          <Property Name="SourceEntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="SourceEntityDescription" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="SourceEntityUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="SourceEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="RelationshipTypeId" Type="Int32" Nullable="false" />
+          <Property Name="IsInverseRole" Type="Boolean" />
+          <Property Name="SourceToAgentRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="AgentToSourceRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="RelationshipDescription" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaTag" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReverseSchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="IsQARole" Type="Boolean" />
+          <Property Name="IsOwnerAgentRole" Type="Boolean" />
+          <Property Name="ActingAgentUid" Type="Guid" Nullable="false" />
+          <Property Name="ActingAgentTypeId" Type="Int32" Nullable="false" />
+          <Property Name="ActingAgentEntityType" Type="String" Nullable="false" MaxLength="12" FixedLength="false" Unicode="false" />
+          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="AgentRelativeId" Type="Int32" Nullable="false" />
+          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Credential_Assets_AgentRelationship_Totals">
+          <Key>
+            <PropertyRef Name="CredentialEntityId" />
+            <PropertyRef Name="CredentialId" />
+            <PropertyRef Name="AssetEntityId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="AgentRelativeId" />
+          </Key>
+          <Property Name="CredentialEntityId" Type="Int32" Nullable="false" />
+          <Property Name="CredentialId" Type="Int32" Nullable="false" />
+          <Property Name="AssetEntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseName" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="AgentUid" Type="Guid" Nullable="false" />
+          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="AgentRelativeId" Type="Int32" Nullable="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="QaCount" Type="Int32" />
+          <Property Name="OwnerCount" Type="Int32" />
+          <Property Name="OfferedCount" Type="Int32" />
+          <Property Name="RenewedCount" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Entity_AgentRelationshipIdCSV">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="AgentRelativeId" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="AgentName" />
+            <PropertyRef Name="Roles" />
+          </Key>
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="EntityBaseName" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="AgentRelativeId" Type="Int32" Nullable="false" />
+          <Property Name="AgentUid" Type="Guid" Nullable="false" />
+          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="IsInverseRole" Type="Boolean" />
+          <Property Name="RoleIds" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Roles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Entity_FrameworkItemSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="PropertyCategory" />
+            <PropertyRef Name="CodeId" />
+            <PropertyRef Name="FrameworkGroupTitle" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="FrameworkGroupTitle2" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="Entity" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="ParentId" Type="Int32" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="PropertyCategory" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="CodeId" Type="Int32" Nullable="false" />
+          <Property Name="CodeGroup" Type="String" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkCode" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkGroupTitle" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkGroup" Type="String" MaxLength="3" FixedLength="false" Unicode="false" />
+          <Property Name="Title" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" Nullable="false" MaxLength="1000" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkGroupTitle2" Type="String" Nullable="false" MaxLength="1" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkGroup2" Type="String" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="Url2" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="URL" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="EntityCompetencyFramework_Items_Summary">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="BaseId" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityCompetencyFrameworkItemId" />
+            <PropertyRef Name="FrameworkName" />
+            <PropertyRef Name="EntityCompetencyId" />
+          </Key>
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="BaseId" Type="Int32" Nullable="false" />
+          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityCompetencyFrameworkItemId" Type="Int32" Nullable="false" />
+          <Property Name="FrameworkName" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="EntityCompetencyId" Type="Int32" Nullable="false" />
+          <Property Name="Competency" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNodeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="FrameworkUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="Weight" Type="Decimal" Precision="5" Scale="2" />
+        </EntityType>
+        <EntityType Name="Entity_FrameworkCIPCodeSummary">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+          </Key>
+          <Property Name="CodeGroup" Type="String" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="CIPCode" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="Id" Type="Int32" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CIPTitle" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="URL" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Entity_FrameworkIndustryCodeSummary">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+          </Key>
+          <Property Name="CodeGroup" Type="Int16" />
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="Totals" Type="Int32" />
+          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Entity_ReferenceFramework_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="PropertyCategory" />
+            <PropertyRef Name="ReferenceFrameworkId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="PropertyCategory" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ReferenceFrameworkId" Type="Int32" Nullable="false" />
+          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Entity_ReferenceFramework_Totals">
+          <Key>
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="ReferenceFrameworkId" />
+          </Key>
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReferenceFrameworkId" Type="Int32" Nullable="false" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="SiteTotalsSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="TotalPartnerCredentials" />
+            <PropertyRef Name="TotalPendingCredentials" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="TotalOrgs" Type="Int32" />
+          <Property Name="TotalDirectOrgs" Type="Int32" />
+          <Property Name="TotalQAOrgs" Type="Int32" />
+          <Property Name="TotalPartnerCredentials" Type="Int32" Nullable="false" />
+          <Property Name="TotalEnteredCredentials" Type="Int32" />
+          <Property Name="TotalPendingCredentials" Type="Int32" Nullable="false" />
+          <Property Name="TotalDirectCredentials" Type="Int32" />
+          <Property Name="TotalOtherCredentials" Type="Int32" />
+          <Property Name="TotalCredentialsAtCurrentCtdl" Type="Int32" />
+          <Property Name="TotalCredentialsToBeUpdatedToCurrentCtdl" Type="Int32" />
+        </EntityType>
+        <EntityType Name="CodesProperty_Counts_ByEntity">
+          <Key>
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+            <PropertyRef Name="PropertyId" />
+            <PropertyRef Name="Property" />
+          </Key>
+          <Property Name="Entity" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="Category" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CategorySchema" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="PropertyId" Type="Int32" Nullable="false" />
+          <Property Name="Property" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaName" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="EntityPropertyCount" Type="Int32" />
+        </EntityType>
+        <EntityType Name="CodesProperty_Summary">
+          <Key>
+            <PropertyRef Name="PK" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="Category" />
+            <PropertyRef Name="Totals" />
+          </Key>
+          <Property Name="PK" Type="Int32" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="Category" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CategorySchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="CategorySchemaUrl" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="CategoryIsActive" Type="Boolean" />
+          <Property Name="PropertyId" Type="Int32" />
+          <Property Name="Property" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="PropertyDescription" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="PropertySchemaName" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ParentSchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="PropertySchemaUrl" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" Nullable="false" />
+        </EntityType>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="workITViewModelsStoreContainer" CdmEntityContainer="workITViews">
+          <EntitySetMapping Name="Codes_Currency">
+            <EntityTypeMapping TypeName="workITViewModels.Codes_Currency">
+              <MappingFragment StoreEntitySet="Codes_Currency">
+                <ScalarProperty Name="NumericCode" ColumnName="NumericCode" />
+                <ScalarProperty Name="AlphabeticCode" ColumnName="AlphabeticCode" />
+                <ScalarProperty Name="Currency" ColumnName="Currency" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="UnicodeDecimal" ColumnName="UnicodeDecimal" />
+                <ScalarProperty Name="UnicodeHex" ColumnName="UnicodeHex" />
+                <ScalarProperty Name="HtmlCodes" ColumnName="HtmlCodes" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="NAICS">
+            <EntityTypeMapping TypeName="workITViewModels.NAIC">
+              <MappingFragment StoreEntitySet="NAICS">
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="NaicsCode" ColumnName="NaicsCode" />
+                <ScalarProperty Name="NaicsTitle" ColumnName="NaicsTitle" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="CodeLength" ColumnName="CodeLength" />
+                <ScalarProperty Name="NaicsGroup" ColumnName="NaicsGroup" />
+                <ScalarProperty Name="NacisNumber" ColumnName="NacisNumber" />
+                <ScalarProperty Name="URL" ColumnName="URL" />
+                <ScalarProperty Name="EffectiveDate" ColumnName="EffectiveDate" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="NAICS_NaicsGroup">
+            <EntityTypeMapping TypeName="workITViewModels.NAICS_NaicsGroup">
+              <MappingFragment StoreEntitySet="NAICS_NaicsGroup">
+                <ScalarProperty Name="NaicsGroup" ColumnName="NaicsGroup" />
+                <ScalarProperty Name="NaicsTitle" ColumnName="NaicsTitle" />
+                <ScalarProperty Name="URL" ColumnName="URL" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ONET_SOC">
+            <EntityTypeMapping TypeName="workITViewModels.ONET_SOC">
+              <MappingFragment StoreEntitySet="ONET_SOC">
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="OnetSocCode" ColumnName="OnetSocCode" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="SOC_code" ColumnName="SOC_code" />
+                <ScalarProperty Name="JobFamily" ColumnName="JobFamily" />
+                <ScalarProperty Name="URL" ColumnName="URL" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ONET_SOC_JobFamily">
+            <EntityTypeMapping TypeName="workITViewModels.ONET_SOC_JobFamily">
+              <MappingFragment StoreEntitySet="ONET_SOC_JobFamily">
+                <ScalarProperty Name="JobFamilyId" ColumnName="JobFamilyId" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CIPCode2010">
+            <EntityTypeMapping TypeName="workITViewModels.CIPCode2010">
+              <MappingFragment StoreEntitySet="CIPCode2010">
+                <ScalarProperty Name="Url" ColumnName="Url" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="Examples" ColumnName="Examples" />
+                <ScalarProperty Name="CrossReferences" ColumnName="CrossReferences" />
+                <ScalarProperty Name="CIPDefinition" ColumnName="CIPDefinition" />
+                <ScalarProperty Name="CIPTitle" ColumnName="CIPTitle" />
+                <ScalarProperty Name="TextChange" ColumnName="TextChange" />
+                <ScalarProperty Name="Action" ColumnName="Action" />
+                <ScalarProperty Name="CIPCode" ColumnName="CIPCode" />
+                <ScalarProperty Name="CIPFamily" ColumnName="CIPFamily" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CIPCode2010_JobFamily">
+            <EntityTypeMapping TypeName="workITViewModels.CIPCode2010_JobFamily">
+              <MappingFragment StoreEntitySet="CIPCode2010_JobFamily">
+                <ScalarProperty Name="Url" ColumnName="Url" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="Examples" ColumnName="Examples" />
+                <ScalarProperty Name="CIPDefinition" ColumnName="CIPDefinition" />
+                <ScalarProperty Name="CIPTitle" ColumnName="CIPTitle" />
+                <ScalarProperty Name="CIPFamily" ColumnName="CIPFamily" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Codes_Countries">
+            <EntityTypeMapping TypeName="workITViewModels.Codes_Countries">
+              <MappingFragment StoreEntitySet="Codes_Countries">
+                <ScalarProperty Name="FlagImage" ColumnName="FlagImage" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="IsActive" ColumnName="IsActive" />
+                <ScalarProperty Name="IANACountryCodeTLD" ColumnName="IANACountryCodeTLD" />
+                <ScalarProperty Name="ThreeLetterCode" ColumnName="ThreeLetterCode" />
+                <ScalarProperty Name="TwoLetterCode" ColumnName="TwoLetterCode" />
+                <ScalarProperty Name="TelephoneCode" ColumnName="TelephoneCode" />
+                <ScalarProperty Name="CommonCurrencyName" ColumnName="CommonCurrencyName" />
+                <ScalarProperty Name="CurrencyName" ColumnName="CurrencyName" />
+                <ScalarProperty Name="CurrencyCode" ColumnName="CurrencyCode" />
+                <ScalarProperty Name="Capital" ColumnName="Capital" />
+                <ScalarProperty Name="Sovereignty" ColumnName="Sovereignty" />
+                <ScalarProperty Name="SubType" ColumnName="SubType" />
+                <ScalarProperty Name="Type" ColumnName="Type" />
+                <ScalarProperty Name="FormalName" ColumnName="FormalName" />
+                <ScalarProperty Name="CommonName" ColumnName="CommonName" />
+                <ScalarProperty Name="CountryNumber" ColumnName="CountryNumber" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Codes_Language">
+            <EntityTypeMapping TypeName="workITViewModels.Codes_Language">
+              <MappingFragment StoreEntitySet="Codes_Language">
+                <ScalarProperty Name="HasSublanguage" ColumnName="HasSublanguage" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="NativeName" ColumnName="NativeName" />
+                <ScalarProperty Name="LanguageName" ColumnName="LanguageName" />
+                <ScalarProperty Name="Code_639_2B" ColumnName="Code_639_2B" />
+                <ScalarProperty Name="Code_639_2T" ColumnName="Code_639_2T" />
+                <ScalarProperty Name="LangugeCode" ColumnName="LangugeCode" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Activity_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Activity_Summary">
+              <MappingFragment StoreEntitySet="Activity_Summary">
+                <ScalarProperty Name="IsBot" ColumnName="IsBot" />
+                <ScalarProperty Name="Referrer" ColumnName="Referrer" />
+                <ScalarProperty Name="IPAddress" ColumnName="IPAddress" />
+                <ScalarProperty Name="SessionId" ColumnName="SessionId" />
+                <ScalarProperty Name="TargetObjectId" ColumnName="TargetObjectId" />
+                <ScalarProperty Name="RelatedTargetUrl" ColumnName="RelatedTargetUrl" />
+                <ScalarProperty Name="ObjectRelatedId" ColumnName="ObjectRelatedId" />
+                <ScalarProperty Name="ActivityObjectId" ColumnName="ActivityObjectId" />
+                <ScalarProperty Name="ActionByUser" ColumnName="ActionByUser" />
+                <ScalarProperty Name="ActionByUserId" ColumnName="ActionByUserId" />
+                <ScalarProperty Name="TargetUserId" ColumnName="TargetUserId" />
+                <ScalarProperty Name="Comment" ColumnName="Comment" />
+                <ScalarProperty Name="Event" ColumnName="Event" />
+                <ScalarProperty Name="Activity" ColumnName="Activity" />
+                <ScalarProperty Name="ActivityType" ColumnName="ActivityType" />
+                <ScalarProperty Name="CreatedDate" ColumnName="CreatedDate" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EntityProperty_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.EntityProperty_Summary">
+              <MappingFragment StoreEntitySet="EntityProperty_Summary">
+                <ScalarProperty Name="CategoryDescription" ColumnName="CategoryDescription" />
+                <ScalarProperty Name="IsSubType1" ColumnName="IsSubType1" />
+                <ScalarProperty Name="IsActive" ColumnName="IsActive" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="Category" ColumnName="Category" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="ParentSchemaName" ColumnName="ParentSchemaName" />
+                <ScalarProperty Name="PropertySchemaName" ColumnName="PropertySchemaName" />
+                <ScalarProperty Name="Property" ColumnName="Property" />
+                <ScalarProperty Name="EntityPropertyId" ColumnName="EntityPropertyId" />
+                <ScalarProperty Name="PropertyValueId" ColumnName="PropertyValueId" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="EntityBaseName" ColumnName="EntityBaseName" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_Subjects">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_Subjects">
+              <MappingFragment StoreEntitySet="Entity_Subjects">
+                <ScalarProperty Name="ReferenceBaseId" ColumnName="ReferenceBaseId" />
+                <ScalarProperty Name="Source" ColumnName="Source" />
+                <ScalarProperty Name="EntitySubjectId" ColumnName="EntitySubjectId" />
+                <ScalarProperty Name="Subject" ColumnName="Subject" />
+                <ScalarProperty Name="SourceEntityType" ColumnName="SourceEntityType" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_Reference_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_Reference_Summary">
+              <MappingFragment StoreEntitySet="Entity_Reference_Summary">
+                <ScalarProperty Name="PropertySchema" ColumnName="PropertySchema" />
+                <ScalarProperty Name="PropertyValue" ColumnName="PropertyValue" />
+                <ScalarProperty Name="TextValue" ColumnName="TextValue" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="PropertyValueId" ColumnName="PropertyValueId" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityReferenceId" ColumnName="EntityReferenceId" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="PK" ColumnName="PK" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Credential_Assets">
+            <EntityTypeMapping TypeName="workITViewModels.Credential_Assets">
+              <MappingFragment StoreEntitySet="Credential_Assets">
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="AssetEntityId" ColumnName="AssetEntityId" />
+                <ScalarProperty Name="AssetEntityUid" ColumnName="AssetEntityUid" />
+                <ScalarProperty Name="AssetId" ColumnName="AssetId" />
+                <ScalarProperty Name="AssetType" ColumnName="AssetType" />
+                <ScalarProperty Name="AssetTypeId" ColumnName="AssetTypeId" />
+                <ScalarProperty Name="CredentialId" ColumnName="CredentialId" />
+                <ScalarProperty Name="CredentialEntityId" ColumnName="CredentialEntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Assessment_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Assessment_Summary">
+              <MappingFragment StoreEntitySet="Assessment_Summary">
+                <ScalarProperty Name="Org_QAAgentAndRoles" ColumnName="Org_QAAgentAndRoles" />
+                <ScalarProperty Name="CredentialsList" ColumnName="CredentialsList" />
+                <ScalarProperty Name="ConnectionsList" ColumnName="ConnectionsList" />
+                <ScalarProperty Name="PreparationFromCount" ColumnName="PreparationFromCount" />
+                <ScalarProperty Name="isPreparationForCount" ColumnName="isPreparationForCount" />
+                <ScalarProperty Name="AdvancedStandingFromCount" ColumnName="AdvancedStandingFromCount" />
+                <ScalarProperty Name="IsAdvancedStandingForCount" ColumnName="IsAdvancedStandingForCount" />
+                <ScalarProperty Name="IsRecommendedForCount" ColumnName="IsRecommendedForCount" />
+                <ScalarProperty Name="isRequiredForCount" ColumnName="isRequiredForCount" />
+                <ScalarProperty Name="RecommendsCount" ColumnName="RecommendsCount" />
+                <ScalarProperty Name="RequiresCount" ColumnName="RequiresCount" />
+                <ScalarProperty Name="ExternalResearch" ColumnName="ExternalResearch" />
+                <ScalarProperty Name="ScoringMethodExample" ColumnName="ScoringMethodExample" />
+                <ScalarProperty Name="ProcessStandards" ColumnName="ProcessStandards" />
+                <ScalarProperty Name="AssessmentExampleUrl" ColumnName="AssessmentExampleUrl" />
+                <ScalarProperty Name="AvailabilityListing" ColumnName="AvailabilityListing" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="cerEnvelopeUrl" ColumnName="cerEnvelopeUrl" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="CredentialRegistryId" ColumnName="CredentialRegistryId" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="availableOnlineAt" ColumnName="availableOnlineAt" />
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="OrgId" ColumnName="OrgId" />
+                <ScalarProperty Name="IdentificationCode" ColumnName="IdentificationCode" />
+                <ScalarProperty Name="DateEffective" ColumnName="DateEffective" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_LearningOpportunity_IsPartOfSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_LearningOpportunity_IsPartOfSummary">
+              <MappingFragment StoreEntitySet="Entity_LearningOpportunity_IsPartOfSummary">
+                <ScalarProperty Name="ParentUrl" ColumnName="ParentUrl" />
+                <ScalarProperty Name="ParentDescription" ColumnName="ParentDescription" />
+                <ScalarProperty Name="ParentName" ColumnName="ParentName" />
+                <ScalarProperty Name="parentLoppId" ColumnName="parentLoppId" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="LearningOpportunity" ColumnName="LearningOpportunity" />
+                <ScalarProperty Name="LearningOpportunityId" ColumnName="LearningOpportunityId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CostProfile_SummaryForSearch">
+            <EntityTypeMapping TypeName="workITViewModels.CostProfile_SummaryForSearch">
+              <MappingFragment StoreEntitySet="CostProfile_SummaryForSearch">
+                <ScalarProperty Name="condProfParentEntityBaseId" ColumnName="condProfParentEntityBaseId" />
+                <ScalarProperty Name="condProfParentEntityTypeId" ColumnName="condProfParentEntityTypeId" />
+                <ScalarProperty Name="TotalCostItems" ColumnName="TotalCostItems" />
+                <ScalarProperty Name="CurrencySymbol" ColumnName="CurrencySymbol" />
+                <ScalarProperty Name="Currency" ColumnName="Currency" />
+                <ScalarProperty Name="CurrencyTypeId" ColumnName="CurrencyTypeId" />
+                <ScalarProperty Name="CostDescription" ColumnName="CostDescription" />
+                <ScalarProperty Name="CostProfileRowId" ColumnName="CostProfileRowId" />
+                <ScalarProperty Name="CostProfileName" ColumnName="CostProfileName" />
+                <ScalarProperty Name="Entity_CostProfileId" ColumnName="Entity_CostProfileId" />
+                <ScalarProperty Name="OwningAgentUid" ColumnName="OwningAgentUid" />
+                <ScalarProperty Name="ParentName" ColumnName="ParentName" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Agent_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Agent_Summary">
+              <MappingFragment StoreEntitySet="Agent_Summary">
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="ImageURL" ColumnName="ImageURL" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="Email" ColumnName="Email" />
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="Region" ColumnName="Region" />
+                <ScalarProperty Name="City" ColumnName="City" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="Summary" ColumnName="Summary" />
+                <ScalarProperty Name="AgentName" ColumnName="AgentName" />
+                <ScalarProperty Name="AgentRelativeId" ColumnName="AgentRelativeId" />
+                <ScalarProperty Name="AgentType" ColumnName="AgentType" />
+                <ScalarProperty Name="AgentTypeId" ColumnName="AgentTypeId" />
+                <ScalarProperty Name="AgentRowId" ColumnName="AgentRowId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_Relationship_AgentSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_Relationship_AgentSummary">
+              <MappingFragment StoreEntitySet="Entity_Relationship_AgentSummary">
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
+                <ScalarProperty Name="AgentUrl" ColumnName="AgentUrl" />
+                <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
+                <ScalarProperty Name="AgentRelativeId" ColumnName="AgentRelativeId" />
+                <ScalarProperty Name="AgentName" ColumnName="AgentName" />
+                <ScalarProperty Name="ActingAgentEntityType" ColumnName="ActingAgentEntityType" />
+                <ScalarProperty Name="ActingAgentTypeId" ColumnName="ActingAgentTypeId" />
+                <ScalarProperty Name="ActingAgentUid" ColumnName="ActingAgentUid" />
+                <ScalarProperty Name="IsOwnerAgentRole" ColumnName="IsOwnerAgentRole" />
+                <ScalarProperty Name="IsQARole" ColumnName="IsQARole" />
+                <ScalarProperty Name="ReverseSchemaTag" ColumnName="ReverseSchemaTag" />
+                <ScalarProperty Name="SchemaTag" ColumnName="SchemaTag" />
+                <ScalarProperty Name="RelationshipDescription" ColumnName="RelationshipDescription" />
+                <ScalarProperty Name="AgentToSourceRelationship" ColumnName="AgentToSourceRelationship" />
+                <ScalarProperty Name="SourceToAgentRelationship" ColumnName="SourceToAgentRelationship" />
+                <ScalarProperty Name="IsInverseRole" ColumnName="IsInverseRole" />
+                <ScalarProperty Name="RelationshipTypeId" ColumnName="RelationshipTypeId" />
+                <ScalarProperty Name="SourceEntityImageUrl" ColumnName="SourceEntityImageUrl" />
+                <ScalarProperty Name="SourceEntityUrl" ColumnName="SourceEntityUrl" />
+                <ScalarProperty Name="SourceEntityDescription" ColumnName="SourceEntityDescription" />
+                <ScalarProperty Name="SourceEntityName" ColumnName="SourceEntityName" />
+                <ScalarProperty Name="SourceEntityBaseId" ColumnName="SourceEntityBaseId" />
+                <ScalarProperty Name="SourceEntityType" ColumnName="SourceEntityType" />
+                <ScalarProperty Name="SourceEntityTypeId" ColumnName="SourceEntityTypeId" />
+                <ScalarProperty Name="SourceEntityUid" ColumnName="SourceEntityUid" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="EntityAgentRelationshipId" ColumnName="EntityAgentRelationshipId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Credential_Assets_AgentRelationship_Totals">
+            <EntityTypeMapping TypeName="workITViewModels.Credential_Assets_AgentRelationship_Totals">
+              <MappingFragment StoreEntitySet="Credential_Assets_AgentRelationship_Totals">
+                <ScalarProperty Name="RenewedCount" ColumnName="RenewedCount" />
+                <ScalarProperty Name="OfferedCount" ColumnName="OfferedCount" />
+                <ScalarProperty Name="OwnerCount" ColumnName="OwnerCount" />
+                <ScalarProperty Name="QaCount" ColumnName="QaCount" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="AgentRelativeId" ColumnName="AgentRelativeId" />
+                <ScalarProperty Name="AgentName" ColumnName="AgentName" />
+                <ScalarProperty Name="AgentUid" ColumnName="AgentUid" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityBaseName" ColumnName="EntityBaseName" />
+                <ScalarProperty Name="AssetEntityId" ColumnName="AssetEntityId" />
+                <ScalarProperty Name="CredentialId" ColumnName="CredentialId" />
+                <ScalarProperty Name="CredentialEntityId" ColumnName="CredentialEntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_AgentRelationshipIdCSV">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_AgentRelationshipIdCSV">
+              <MappingFragment StoreEntitySet="Entity_AgentRelationshipIdCSV">
+                <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
+                <ScalarProperty Name="AgentUrl" ColumnName="AgentUrl" />
+                <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
+                <ScalarProperty Name="Roles" ColumnName="Roles" />
+                <ScalarProperty Name="RoleIds" ColumnName="RoleIds" />
+                <ScalarProperty Name="IsInverseRole" ColumnName="IsInverseRole" />
+                <ScalarProperty Name="AgentName" ColumnName="AgentName" />
+                <ScalarProperty Name="AgentUid" ColumnName="AgentUid" />
+                <ScalarProperty Name="AgentRelativeId" ColumnName="AgentRelativeId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityBaseName" ColumnName="EntityBaseName" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_FrameworkItemSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_FrameworkItemSummary">
+              <MappingFragment StoreEntitySet="Entity_FrameworkItemSummary">
+                <ScalarProperty Name="URL" ColumnName="URL" />
+                <ScalarProperty Name="Url2" ColumnName="Url2" />
+                <ScalarProperty Name="FrameworkGroup2" ColumnName="FrameworkGroup2" />
+                <ScalarProperty Name="FrameworkGroupTitle2" ColumnName="FrameworkGroupTitle2" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="FrameworkGroup" ColumnName="FrameworkGroup" />
+                <ScalarProperty Name="FrameworkGroupTitle" ColumnName="FrameworkGroupTitle" />
+                <ScalarProperty Name="FrameworkCode" ColumnName="FrameworkCode" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+                <ScalarProperty Name="CodeId" ColumnName="CodeId" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="PropertyCategory" ColumnName="PropertyCategory" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="ParentId" ColumnName="ParentId" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="Entity" ColumnName="Entity" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EntityCompetencyFramework_Items_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.EntityCompetencyFramework_Items_Summary">
+              <MappingFragment StoreEntitySet="EntityCompetencyFramework_Items_Summary">
+                <ScalarProperty Name="Weight" ColumnName="Weight" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="FrameworkUrl" ColumnName="FrameworkUrl" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="TargetNodeDescription" ColumnName="TargetNodeDescription" />
+                <ScalarProperty Name="Competency" ColumnName="Competency" />
+                <ScalarProperty Name="EntityCompetencyId" ColumnName="EntityCompetencyId" />
+                <ScalarProperty Name="FrameworkName" ColumnName="FrameworkName" />
+                <ScalarProperty Name="EntityCompetencyFrameworkItemId" ColumnName="EntityCompetencyFrameworkItemId" />
+                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
+                <ScalarProperty Name="BaseId" ColumnName="BaseId" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_FrameworkCIPCodeSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_FrameworkCIPCodeSummary">
+              <MappingFragment StoreEntitySet="Entity_FrameworkCIPCodeSummary">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="URL" ColumnName="URL" />
+                <ScalarProperty Name="CIPTitle" ColumnName="CIPTitle" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="CIPCode" ColumnName="CIPCode" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_FrameworkIndustryCodeSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_FrameworkIndustryCodeSummary">
+              <MappingFragment StoreEntitySet="Entity_FrameworkIndustryCodeSummary">
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_ReferenceFramework_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Summary">
+              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Summary">
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+                <ScalarProperty Name="ReferenceFrameworkId" ColumnName="ReferenceFrameworkId" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="PropertyCategory" ColumnName="PropertyCategory" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_ReferenceFramework_Totals">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Totals">
+              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Totals">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="ReferenceFrameworkId" ColumnName="ReferenceFrameworkId" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SiteTotalsSummaries">
+            <EntityTypeMapping TypeName="workITViewModels.SiteTotalsSummary">
+              <MappingFragment StoreEntitySet="SiteTotalsSummary">
+                <ScalarProperty Name="TotalCredentialsToBeUpdatedToCurrentCtdl" ColumnName="TotalCredentialsToBeUpdatedToCurrentCtdl" />
+                <ScalarProperty Name="TotalCredentialsAtCurrentCtdl" ColumnName="TotalCredentialsAtCurrentCtdl" />
+                <ScalarProperty Name="TotalOtherCredentials" ColumnName="TotalOtherCredentials" />
+                <ScalarProperty Name="TotalDirectCredentials" ColumnName="TotalDirectCredentials" />
+                <ScalarProperty Name="TotalPendingCredentials" ColumnName="TotalPendingCredentials" />
+                <ScalarProperty Name="TotalEnteredCredentials" ColumnName="TotalEnteredCredentials" />
+                <ScalarProperty Name="TotalPartnerCredentials" ColumnName="TotalPartnerCredentials" />
+                <ScalarProperty Name="TotalQAOrgs" ColumnName="TotalQAOrgs" />
+                <ScalarProperty Name="TotalDirectOrgs" ColumnName="TotalDirectOrgs" />
+                <ScalarProperty Name="TotalOrgs" ColumnName="TotalOrgs" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CodesProperty_Counts_ByEntity">
+            <EntityTypeMapping TypeName="workITViewModels.CodesProperty_Counts_ByEntity">
+              <MappingFragment StoreEntitySet="CodesProperty_Counts_ByEntity">
+                <ScalarProperty Name="EntityPropertyCount" ColumnName="EntityPropertyCount" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Property" ColumnName="Property" />
+                <ScalarProperty Name="PropertyId" ColumnName="PropertyId" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="CategorySchema" ColumnName="CategorySchema" />
+                <ScalarProperty Name="Category" ColumnName="Category" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Entity" ColumnName="Entity" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CodesProperty_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.CodesProperty_Summary">
+              <MappingFragment StoreEntitySet="CodesProperty_Summary">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="PropertySchemaUrl" ColumnName="PropertySchemaUrl" />
+                <ScalarProperty Name="ParentSchemaName" ColumnName="ParentSchemaName" />
+                <ScalarProperty Name="PropertySchemaName" ColumnName="PropertySchemaName" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="PropertyDescription" ColumnName="PropertyDescription" />
+                <ScalarProperty Name="Property" ColumnName="Property" />
+                <ScalarProperty Name="PropertyId" ColumnName="PropertyId" />
+                <ScalarProperty Name="CategoryIsActive" ColumnName="CategoryIsActive" />
+                <ScalarProperty Name="CategorySchemaUrl" ColumnName="CategorySchemaUrl" />
+                <ScalarProperty Name="CategorySchemaName" ColumnName="CategorySchemaName" />
+                <ScalarProperty Name="Category" ColumnName="Category" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="PK" ColumnName="PK" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="False" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="None" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>

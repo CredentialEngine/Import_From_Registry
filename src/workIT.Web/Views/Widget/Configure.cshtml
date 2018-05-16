@@ -1,0 +1,195 @@
+﻿
+@{
+	ViewBag.Title = "Search Widget";
+	var absoluteSearchRoot = Request.Url.AbsoluteUri.Replace( Request.Url.PathAndQuery, "" ) + "/search";
+}
+
+@Html.Partial( "~/views/shared/_microsearch.cshtml" )
+
+<script type="text/javascript">
+	$(document).ready(function () {
+		setupSearches();
+		setupConfig();
+	});
+
+	function setupSearches() {
+		var findOrganizations = microsearch.initialize($("[data-search=findOrganizations]"), "findOrganizations", 5);
+		findOrganizations.Box.find(".searchFilter input[type=text]").on("keyup change", function () {
+			var query = microsearch.readFilters(findOrganizations.Box.find(".searchFilter [data-property]"));
+			query.StartPage = findOrganizations.PageNumber; //Compatibility
+			query.SearchType = "organization";
+			microsearch.doSearch(findOrganizations, query, "Search", "MainSearch", success_findOrganizations, { query: query }, true);
+		});
+	}
+	//
+
+	function setupConfig() {
+		$("[data-action=getConfiguration]").on("click", function () {
+			getConfiguration();
+		});
+	}
+	//
+
+	function success_findOrganizations(search, message, pagingFunction, passThrough) {
+		if (message.valid) {
+			var template = $("#template_searchresult_organization").html();
+			microsearch.setStatus(search.StatusBox, "Found " + message.data.TotalResults + " Results", "");
+			search.ResultsBox.html("");
+			for (var i in message.data.Results) {
+				(function (resultData) {
+					var result = microsearch.renderResult(search.ResultsBox, resultData, template, ["Box"]);
+					result.Box.find("[data-action=addOrganization]").on("click", function () {
+						addSelectedOrganization(resultData);
+					});
+				})(message.data.Results[i]);
+			}
+			var forcePaging = function (pageNumber) {
+				passThrough.query.StartPage = pageNumber;
+				pagingFunction(pageNumber);
+			}
+			microsearch.renderPaging(search, search.PagingBox, message.data.TotalResults, forcePaging);
+		}
+		else {
+			microsearch.setStatus(search.StatusBox, "Error: " + message.status, "error");
+		}
+	}
+	//
+
+	function addSelectedOrganization(resultData) {
+		var box = $(".selectedOrganizationList");
+		var template = $("#template_selectedresult_organization").html();
+		var existing = box.find("[data-RecordId='" + resultData.RecordId + "']");
+		if (existing.length == 0) {
+			var result = microsearch.renderResult(box, resultData, template, ["Box"]);
+			result.Box.find("[data-action=removeOrganization]").on("click", function () {
+				result.Box.remove();
+			});
+		}
+	}
+	//
+
+	function getConfiguration() {
+		var config = {};
+
+		//Organizations
+		config.OrganizationIds = [];
+		$(".selectedOrganizationList .organization").each(function () {
+			config.OrganizationIds.push(parseInt($(this).attr("data-RecordId")));
+		});
+
+		$(".option.booleans [data-property]").each(function () {
+			readItem($(this), config);
+		});
+
+		console.log(config);
+		$("#configurationResultURL").val("@absoluteSearchRoot" + "?widget=" + btoa(JSON.stringify(config)));
+	}
+	//
+
+	function readItem(item, data) {
+		var property = item.attr("data-property");
+		var type = item.attr("data-type");
+		switch (type) {
+			case "boolean":
+				data[property] = item.prop("checked");
+				break;
+			default: break;
+		}
+	}
+	//
+</script>
+<style type="text/css">
+	.option { background-color: #F5F5F5; padding: 5px; margin-bottom: 10px; }
+	
+	.columns { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; }
+	.columns .column { -webkit-flex: 50% 1 1; flex: 50% 1 1; max-width: calc(50% - 5px); }
+
+	.formItem label { padding: 2.5px; display: block; }
+	.formItem label:hover, .formItem label:focus { background-color: rgba(0,0,0,0.05); cursor: pointer; }
+
+	.configurationResult { display: -webkit-flex; display: flex; }
+	.configurationResult button { -webkit-flex: 1 1 200px; flex: 1 1 200px; padding: 0 10px; margin-right: 5px; }
+	.configurationResult input[type=text] { -webkit-flex: 1 1 100%; flex: 1 1 100%; }
+
+	.searchResult.organization { padding: 5px; margin-bottom: 5px; border: 1px solid #CCC; }
+	.searchResult.organization .description { max-height: 100px; overflow: hidden; }
+	.searchResult.organization .buttons { text-align: right; }
+	.searchPaging { text-align: center; padding: 5px; }
+	.searchPaging button { padding: 2.5px; margin: 0 2.5px; min-width: 50px; }
+	.searchPaging button.currentPage { background-color: #555; color: #FFF; }
+</style>
+
+<h1>Widget Configuration</h1>
+
+<div class="option organizations">
+	<h3>Only These Organizations</h3>
+	<p class="help">Limit searches to just the selected organizations, and only show credentials, assessments, and learning opportunities that are connected to them:</p>
+	<div class="columns">
+		<div class="column microsearch findOrganizations" data-search="findOrganizations">
+			<h4>Find Organizations</h4>
+			<div class="searchHeader">
+				<div class="searchFilter">
+					<div class="label">Name</div>
+					<div class="value">
+						<input type="text" data-type="text" data-property="Keywords" />
+					</div>
+				</div>
+				<div class="searchStatus"></div>
+				<div class="searchResults"></div>
+				<div class="searchPaging"></div>
+			</div>
+		</div>
+		<div class="column selectedOrganizations">
+			<h4>Selected Organizations</h4>
+			<div class="selectedOrganizationList"></div>
+		</div>
+	</div>
+</div>
+
+<div class="option booleans">
+	<h3>Search Result Display</h3>
+	<p class="help">Configure options:</p>
+	<div class="formItem">
+		<label><input type="checkbox" data-type="boolean" data-property="HideDescriptions" /> Hide Descriptions</label>
+	</div>
+	<div class="formItem">
+		<label><input type="checkbox" data-type="boolean" data-property="HideGrayButtons" /> Hide Gray Buttons</label>
+	</div>
+</div>
+
+<div class="option">
+	<h3>Configured URL</h3>
+	<p class="help">Click the "Get Configuration" button, then use the provided URL to access the widget.</p>
+	<div class="configurationResult">
+		<button class="greenButton" data-action="getConfiguration">Get Configuration</button>
+		<input id="configurationResultURL" type="text" readonly="readonly" onclick="this.select()" />
+	</div>
+</div>
+
+<div id="templates" style="display:none;">
+	
+	<script type="text/template" id="template_searchresult_organization">
+		<div class="searchResult organization canSelect" data-recordID="{RecordId}">
+			<div class="data">
+				<a class="name" target="_blank" href="@Url.Content("~/organization/"){Id}/{FriendlyName}">{Name}</a>
+				<div class="description">{Description}</div>
+			</div>
+			<div class="buttons">
+				<button class="greenButton" data-action="addOrganization">Add Organization</button>
+			</div>
+		</div>
+	</script>
+
+	<script type="text/template" id="template_selectedresult_organization">
+		<div class="searchResult organization selected" data-recordID="{RecordId}">
+			<div class="data">
+				<a class="name" target="_blank" href="@Url.Content("~/organization/"){Id}/{FriendlyName}">{Name}</a>
+				<div class="description">{Description}</div>
+			</div>
+			<div class="buttons">
+				<button class="redButton" data-action="removeOrganization">Remove Organization</button>
+			</div>
+		</div>
+	</script>
+
+</div>

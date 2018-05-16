@@ -1,0 +1,108 @@
+﻿@using Message = workIT.Utilities.ConsoleMessageHelper.ConsoleMessage;
+@using System.Web.Script.Serialization;
+@using workIT.Models.Common;
+@{
+	var serializer = new JavaScriptSerializer();
+	var items = HttpContext.Current.Items[ "ConsoleMessage" ] as List<Message> ?? new List<Message>();
+	var counter = 0;
+	foreach(var item in items)
+	{
+		item.Id = counter;
+		counter++;
+	}
+    if ( items.Count == 0 )
+    {
+        //check for a session message
+        if ( Session[ "popupMessage" ] != null )
+        {
+            SiteMessage sm = ( SiteMessage ) Session[ "popupMessage" ];
+
+            Message msg = new Message() { Title = sm.Title, FriendlyMessage = sm.Message, MessageType = sm.MessageType };
+            msg.Id = 1;
+            counter++;
+            items.Add( msg );
+            Session.Remove( "popupMessage" );
+        }
+    }
+}
+
+<div id="consoleMessageBox">
+    <script type="text/javascript">
+	    var consoleMessage = {};
+	    consoleMessage.counter = @counter;
+	    consoleMessage.messages = @Html.Raw( serializer.Serialize( items ) );
+
+	    $(document).ready(function() {
+		    consoleMessage.renderMessages();
+	    });
+
+	    consoleMessage.renderMessages = function() {
+		    var box = $("#consoleMessageList");
+		    var template = $("#consoleMessageTemplate").html();
+		    box.html("");
+
+		    for(var i in consoleMessage.messages){
+			    var message = consoleMessage.messages[i];
+			    box.append(template
+				    .replace(/{id}/g, message.Id)
+				    .replace(/{messageType}/g, message.MessageType)
+				    .replace(/{friendlyMessage}/g, message.FriendlyMessage)
+				    .replace(/{technicalMessage}/g, message.TechnicalMessage)
+			    );
+		    }
+	    }
+
+	    consoleMessage.addInfoMessage = function(friendlyMessage, technicalMessage, expiration){
+		    consoleMessage.addMessage(friendlyMessage, technicalMessage, "info", expiration)
+	    }
+	    consoleMessage.addSuccessMessage = function(friendlyMessage, technicalMessage, expiration){
+		    consoleMessage.addMessage(friendlyMessage, technicalMessage, "success", expiration)
+	    }
+	    consoleMessage.addErrorMessage = function(friendlyMessage, technicalMessage, expiration){
+		    consoleMessage.addMessage(friendlyMessage, technicalMessage, "error", expiration)
+	    }
+	    consoleMessage.addMessage = function(friendlyMessage, technicalMessage, messageType, expiration){
+		    consoleMessage.messages.push({
+			    Id: consoleMessage.counter,
+			    MessageType: messageType,
+			    FriendlyMessage: friendlyMessage,
+			    TechnicalMessage: technicalMessage
+		    });
+		    if(expiration){
+			    var target = consoleMessage.counter
+			    setTimeout(function() {
+				    $(".consoleMessage[data-id=" + target + "]").fadeOut(function() { consoleMessage.removeMessage(target); });
+			    }, expiration);
+		    }
+		    consoleMessage.counter++;
+		    consoleMessage.renderMessages();
+	    }
+	    consoleMessage.removeMessage = function(id){
+		    var replacement = [];
+		    for(var i in consoleMessage.messages){
+			    if(consoleMessage.messages[i].Id != id){
+				    replacement.push(consoleMessage.messages[i]);
+			    }
+		    }
+		    consoleMessage.messages = replacement;
+		    consoleMessage.renderMessages();
+	    }
+    </script>
+    <script type="text/template" id="consoleMessageTemplate">
+	    <div class="consoleMessage" data-type="{messageType}" data-id="{id}">
+		    <div class="consoleFriendlyMessage">{friendlyMessage}</div>
+		    <div class="consoleTechnicalMessage">{technicalMessage}</div>
+		    <input type="button" class="consoleRemoveButton redButton" value="X" onclick="consoleMessage.removeMessage({id});" />
+	    </div>
+    </script>
+    <style type="text/css">
+        #consoleMessageBox { position: fixed; top: 80px; left: 20%; right: 20%; z-index: 9999999; }
+        #consoleMessageBox .consoleMessage { border: 1px solid #CCC; padding: 10px 40px 5px 19px; position: relative; margin-bottom: 5px; min-height: 55px; border-radius: 5px; }
+	    #consoleMessageBox .consoleMessage[data-type=info] {  background-color: rgba(235,235,235,0.95); border-color: #AAA; box-shadow: 0 0 15px -2px rgba(0,0,0,0.5); color: #000; }
+	    #consoleMessageBox .consoleMessage[data-type=success] { background-color: rgba(75,175,75,0.95); border-color: #373; box-shadow: 0 0 15px -2px rgba(50,255,50,0.7); color: #FFF; }
+	    #consoleMessageBox .consoleMessage[data-type=error] { background-color: rgba(255,200,200,0.95); border-color: #C33; box-shadow: 0 0 15px -2px rgba(255,50,50,0.7); font-weight: bold; color: #D33; }
+	    #consoleMessageBox .consoleRemoveButton { position: absolute; right: 5px; top: 5px; width: 30px; height: 30px;  border-radius: 5px;}
+	    #consoleMessageBox .consoleTechnicalMessage { display: none; }
+    </style>
+    <div id="consoleMessageList"></div>
+</div>

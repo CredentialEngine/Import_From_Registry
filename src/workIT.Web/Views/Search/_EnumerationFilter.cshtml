@@ -1,0 +1,31 @@
+﻿@model workIT.Models.Search.HtmlEnumerationFilterSettings
+
+@{
+    var filterIDs = new List<int>();
+    try
+    {
+        filterIDs = Model.PreselectedFilters[ Model.CategoryId ];
+    }
+    catch { }
+}
+<div class="filter enumerationFilter filterV2 codeFilter @( string.Join( " ", Model.CssClasses ) )" data-filterLabel="@Model.FilterLabel" data-searchType="@Model.SearchType" data-filterName="@Model.FilterName" data-categoryID="@Model.CategoryId" data-filterSchema="@Model.FilterSchema">
+    @if ( !string.IsNullOrWhiteSpace( Model.Guidance ) )
+    {
+        <p class="filterGuidance">@Html.Raw( Model.Guidance )</p>
+    }
+    <div class="filterItems">
+        @foreach ( var item in Model.Enumeration.Items )
+        {
+            if ( item.Name.ToLower().IndexOf( "other" ) == -1 && item.Id != 0 )
+            {
+				<div class="filterItem" data-schemaName="@item.SchemaName">
+					<label><input type="checkbox" value="@item.Id" data-schemaName="@item.SchemaName" @( filterIDs.Contains( item.Id ) ? "checked=\"checked\"" : "" ) /><i class="fa fa-check"></i> @item.Name</label>
+					@if ( Model.ShowDescriptions )
+					{
+						<div class="filterItemDescription">@item.Description</div>
+					}
+				</div>
+            }
+        }
+    </div>
+</div>

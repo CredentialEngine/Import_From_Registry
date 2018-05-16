@@ -1,0 +1,60 @@
+﻿
+@using Microsoft.AspNet.Identity
+@using workIT.Utilities
+@{
+    var env = UtilityManager.GetAppKeyValue( "envType", "prod" );
+    var url = Request.Url.PathAndQuery.ToLower();
+
+    var suffix = "";
+    var loginUrl = "~/Account/Login?returnUrl=" + ( url.Contains( "/account" ) ? "" : url );
+    var registerUrl = "~/Account/Register";
+    if ( Request.Url.Host.ToLower().Contains( "credfinder.test.com" )
+        || Request.Url.Host.ToLower().Contains( "localhost" )
+        )
+    {
+        loginUrl = "~/Account/LoginTest?returnUrl=" + url;
+        registerUrl = "~/Account/RegisterTest";
+        suffix = "Test";
+    }
+    var user = AccountServices.GetCurrentUser();
+}
+<div id="mainSiteFooter">
+	<div class="footerColumn footerLogo">
+		<a id="mainSiteFooterLogo" href="@Url.Content( "~/home" )"><img src="@Url.Content( "~/Images/Common/poweredby.png" )" /></a>
+		<div id="footerLogoText">Learn more about the <a href="http://www.credentialengine.org/" target="_blank">Credential Engine</a></div>
+		<a id="mainSiteFooterLogin" href="@Url.Content( @loginUrl )">Login</a>
+	</div>
+	<div class="footerColumn">
+		<h2>Follow Us:</h2>
+		<a href="https://twitter.com/credengine" target="_blank"><i class="fa fa-fw fa-twitter"></i> Twitter</a>
+		<a href="https://www.facebook.com/credengine" target="_blank"><i class="fa fa-fw fa-facebook"></i> Facebook</a>
+		<a href="https://www.youtube.com/channel/UCyTpUktFYQNlLrLR4O_AcQA" target="_blank"><i class="fa fa-fw fa-youtube"></i> YouTube</a>
+		@*<a href="http://linkedin.com" target="_blank"><i class="fa fa-fw fa-linkedin"></i> LinkedIn</a>*@
+        <h2>Contact Us:</h2>
+        <a href="mailto:info@credentialengine.org" target="_blank"><i class="fa fa-fw fa-envelope"></i> Email Us</a>
+	</div>
+	<div class="footerColumn">
+        <h2>Information</h2>
+        <a href="@Url.Content( "~/Reports" )">Reports</a>
+	</div>
+	<div class="footerColumn">
+		<h2>Policies and Terms of Use:</h2>
+		<a href="http://www.credentialengine.org/About/PrivacyPolicy">Privacy Policy</a>
+		<a href="http://www.credentialengine.org/About/TermsOfUse">Terms of Use</a>
+		<a href="http://www.credentialengine.org/about/PublishersAgreement">Publishers Agreement</a>
+		<a href="http://credreg.net/registry/policy#mindata">Minimum Data Policy</a>
+		<a href="http://credreg.net/registry/policy#currency">Data Currency Policy</a>
+	</div>
+	<div class="footerColumn">
+		<h2>Websites:</h2>
+		<a target="_blank" href="http://www.credentialengine.org">Credential Engine</a>
+		<a target="_blank" href="http://credreg.net">Credential Engine Technical Planning</a>
+	</div>
+	<div class="footerColumn">
+		<h2>Supported By:</h2>
+		<a class="imageLink" href="http://www.luminafoundation.org/" target="_blank" title="Lumina Foundation"><img src="@Url.Content( "~/images/common/logo_lumina.jpg" )" /></a>
+		<a class="imageLink" href="https://www.jpmorganchase.com/corporate/Corporate-Responsibility/global-philanthropy.htm" target="_blank" title="JPMorgan Chase & Co."><img src="@Url.Content( "~/images/common/logo_jpmorgan.jpg" )" /></a>
+		<a class="imageLink" href="http://www.microsoft.com/" target="_blank" title="Microsoft"><img src="@Url.Content( "~/images/common/logo_microsoft.jpg" )" /></a>
+		<a class="imageLink" href="" target="_blank"><img src="@Url.Content( "~/images/common/logo_walmart.png" )" /></a>
+	</div>
+</div>

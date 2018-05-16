@@ -1,0 +1,25 @@
+﻿@model Dictionary<string, object>
+@{ 
+	Layout = null; //Be sure to include this in every partial
+}
+
+<div>Success!</div>
+<div>
+	<div>Properties:</div>
+	@foreach ( var item in Model )
+	{
+		<div>
+			<span>@item.Key:</span>
+			<span>
+				@try
+				{
+					@Html.Raw( item.Value )
+				}
+				catch
+				{
+					<text>Error: Unable to stringify @item.Key</text>
+				}
+			</span>
+		</div>
+	}
+</div>

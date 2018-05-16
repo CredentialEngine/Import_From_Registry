@@ -1,0 +1,25 @@
+﻿<div id="mainSiteHeader">
+    <div id="mainSiteHeaderTrim" class="rainbow"></div>
+    <div id="mainSiteHeaderLeft" class="inlineBlockBox">
+        <a class="column" id="mainSiteLogo" href="@Url.Content( "~" )" style="background-image: url('@Url.Content( "~/Images/Common/logo_stacked.png" )');" title="Site Logo"></a>
+        <div class="column" id="mainSiteTagline">Discover Credentials<br/>Powered by Credential Registry<br />Prototype Phase</div>
+    </div>
+    <div id="mainSiteHeaderRight">
+        <button id="btnMobileMenuOpen" class="whiteButton"><i class="fa fa-reorder"></i></button>
+        <div id="mainSiteMenu" class="inlineBlockBox">
+            <div id="mobileMenuHeader" style="background-image: url('@Url.Content( "~/Images/Common/cti_logo_transparent.png" )');">
+                <button id="btnMobileMenuClose" class="actionButton"><i class="fa fa-close closeButton"></i></button>
+            </div>
+
+            <div class="headerMenu column" id="headerMenuSearch">
+                <button class="headerMenuTitle"><i class="fa fa-search"></i> Search <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+                <div class="headerMenuList">
+                    <a href="@Url.Content( "~/search?searchtype=credential" )">Credentials</a>
+                    <a href="@Url.Content( "~/search?searchtype=organization" )">Organizations</a>
+                    <a href="@Url.Content( "~/search?searchtype=assessment" )">Assessments</a>
+                    <a href="@Url.Content( "~/search?searchtype=learningopportunity" )">Learning Opportunities</a>
+                </div>
+            </div>   
+        </div>
+    </div>
+</div>

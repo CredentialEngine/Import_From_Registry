@@ -1,0 +1,132 @@
+﻿<script type="text/javascript">
+	var modal = {};
+
+	//Confirm or cancel an action
+	modal.confirm = function (title, message, confirm, cancel) {
+		modal.closeAll();
+		var template = $("#modal_confirm").html();
+		var container = $("#modalContainer");
+		container.html("").fadeIn();
+
+		var box = $(template
+			.replace(/{title}/g, title)
+			.replace(/{message}/g, message)
+		).appendTo(container);
+
+		box.find("#modalBtnConfirm").on("click", function () {
+		    if (confirm) {
+		        confirm();
+		    }
+			modal.closeAll();
+		});
+		box.find("#modalBtnCancel, #modalBtnClose").on("click", function () {
+		    if (cancel) {
+		        cancel();
+		    }
+			modal.closeAll();
+		});
+	}
+	//
+
+	//Alert the user
+	modal.alert = function (title, message, accepted) {
+		modal.closeAll();
+		var template = $("#modal_alert").html();
+		var container = $("#modalContainer");
+
+		
+		container.html("");
+		var box = $(template
+			.replace(/{title}/g, title)
+			.replace(/{message}/g, message)
+		).appendTo(container);
+		container.fadeIn();
+
+		if (accepted) {
+		    box.find("#modalBtnOkay").on("click", function () {
+		        accepted();
+		    });
+		}
+		
+        /*
+	    container.html(template
+			.replace(/{title}/g, title)
+			.replace(/{message}/g, message)
+		).fadeIn();
+        */
+	}
+	//
+
+	//Prompt the user for information
+	//The items property should be either a list of strings or a list of objects with "name" and "title" properties
+	modal.prompt = function (title, message, items, confirm, cancel) {
+		var box = $("<div></div>");
+		box.append("<p>" + message + "</p>");
+		for (var i in items) {
+			if (typeof (items[i]) == "object") {
+				box.append("<div><div>" + items[i].title + "</div><input class='modalFormInput' type='text' data-name='" + items[i].name + "' /></div>");
+			}
+			else {
+				box.append("<div><div>" + items[i] + "</div><input class='modalFormInput' type='text' data-name='" + items[i] + "' /></div>");
+			}
+		}
+
+		modal.confirm(
+			title, box.html(),
+			function () {
+				var data = [];
+				var dataDirect = {};
+				$("#modalContainer .modalFormInput").each(function () {
+					var item = $(this);
+					data.push({ item: item.attr("data-name"), value: item.val() });
+					dataDirect[item.attr("data-name")] = item.val();
+				});
+				confirm(data, dataDirect);
+			},
+			function () {
+				cancel();
+			}
+		);
+	}
+	//
+
+	//Close the overlay and remove the message
+	modal.closeAll = function () {
+		$("#modalContainer").fadeOut(
+			function () { $("#modalContainer").html(""); }
+		);
+	}
+	//
+
+</script>
+<style type="text/css">
+	#modalContainer { position: fixed; top: 0; bottom: 0; right: 0; left: 0; background-color: rgba(0,0,0,0.3); display: none; transition: none; z-index: 999999; }
+	.modalWindow { background-color: #FFF; border: 1px solid #CCC; margin: 5% auto; position: relative; width: 65%; max-width: 500px; }
+	.modalTitle { font-weight: bold; padding: 5px 35px 5px 5px; min-height: 28px; font-size: 20px; background-color: #EEE; }
+	.modalMessage { padding: 5px; }
+	.modalButtons { text-align: right; padding: 5px; }
+	.modalFormInput { display: block; width: 100%; margin-bottom: 5px; }
+	#modalBtnClose { position: absolute; top: 3px; right: 5px; width: 28px; }
+</style>
+<div id="modalContainer"></div>
+<div id="modalFormContainer" style="display:none;"></div>
+<script type="text/template" id="modal_confirm">
+	<div class="modalWindow">
+		<input type="button" id="modalBtnClose" class="redButton" value="X" />
+		<div class="modalTitle">{title}</div>
+		<div class="modalMessage">{message}</div>
+		<div class="modalButtons">
+			<input type="button" id="modalBtnConfirm" class="actionButton" value="Confirm" />
+			<input type="button" id="modalBtnCancel" class="redButton" value="Cancel" />
+		</div>
+	</div>
+</script>
+<script type="text/template" id="modal_alert">
+	<div class="modalWindow">
+		<div class="modalTitle">{title}</div>
+		<div class="modalMessage">{message}</div>
+		<div class="modalButtons">
+			<input type="button" id="modalBtnOkay" onclick="modal.closeAll();" value="Okay" />
+		</div>
+	</div>
+</script>

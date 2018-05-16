@@ -1,0 +1,129 @@
+﻿@using Microsoft.AspNet.Identity
+@using workIT.Utilities
+@{
+	var env = UtilityManager.GetAppKeyValue( "envType", "prod" );
+	//add warning don't refer to wrong site
+	var credentialRegistryUrl = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+	var url = Request.Url.PathAndQuery.ToLower();
+
+	var suffix = "";
+	var loginUrl = "~/Account/Login?returnUrl=" + (url.Contains( "/account" ) ? "" : url);
+	var registerUrl = "~/Account/Register";
+	if ( Request.Url.Host.ToLower().Contains( "credfinder.test.com" )
+		|| Request.Url.Host.ToLower().Contains( "localhost" )
+		)
+	{
+		loginUrl = "~/Account/LoginTest?returnUrl=" + url;
+		registerUrl = "~/Account/RegisterTest";
+		suffix = "Test";
+	}
+	var user = AccountServices.GetCurrentUser();
+}
+<script type="text/javascript">
+	/* Initialization */
+    $(document).ready(function() {
+        if (window.location.href.indexOf("/sandbox/") > 0) {
+            $('#mainSiteHeader').css({"background-color":"bisque"});
+        } else if (window.location.href.indexOf("/ss/") > 0) {
+            $('#mainSiteHeader').css({ "background-color": "deeppink" });
+        } else if (window.location.href.indexOf("credfinder.test.com") > 0) {
+            $('#mainSiteHeader').css({ "background-color": "aquamarine" });
+        } else if (window.location.href.indexOf("//localhost") > 0) {
+            $('#mainSiteHeader').css({ "background-color": "plum" });
+        }
+    });  //ready
+</script>
+
+<div id="mainSiteHeader">
+	<div id="mainSiteHeaderTrim" class="rainbow"></div>
+	<div id="mainSiteHeaderLeft" class="inlineBlockBox">
+		<a class="column" id="mainSiteLogo" href="@Url.Content( "~" )" style="background-image: url('@Url.Content( "~/Images/Common/logo_stacked.png" )');" title="Site Logo"></a>
+		<div class="column" id="mainSiteTagline">Discover Credentials<br />Powered by Credential Registry<br />Prototype Phase</div>
+	</div>
+	<div id="mainSiteHeaderRight">
+		<button id="btnMobileMenuOpen" class="whiteButton"><i class="fa fa-reorder"></i></button>
+		<div id="mainSiteMenu" class="inlineBlockBox">
+			<div id="mobileMenuHeader" style="background-image: url('@Url.Content( "~/Images/Common/logo_stacked_white.png" )');">
+				<button id="btnMobileMenuClose" class="actionButton"><i class="fa fa-close closeButton"></i></button>
+			</div>
+
+			<div class="headerMenu column" id="headerMenuSearch">
+				<button class="headerMenuTitle"><i class="fa fa-search"></i> Search <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+				<div class="headerMenuList">
+					<a href="@Url.Content( "~/search?searchtype=credential" )">Credentials</a>
+					<a href="@Url.Content( "~/search?searchtype=organization" )">Organizations</a>
+					<a href="@Url.Content( "~/search?searchtype=assessment" )">Assessments</a>
+					<a href="@Url.Content( "~/search?searchtype=learningopportunity" )">Learning Opportunities</a>
+                    <a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
+				</div>
+			</div>
+
+
+				@if ( Request.IsAuthenticated || AccountServices.IsUserAuthenticated() )
+                {
+                    if ( AccountServices.IsUserSiteStaff() )
+                    {
+                        <div class="headerMenu column" id="headerMenuAdmin">
+                            <button class="headerMenuTitle"><i class="fa fa-plus"></i> Admin <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+                            <div class="headerMenuList">
+                                <a href="@Url.Content( "~/Reports/Index" )">Site Totals</a>
+                                <a href="@Url.Content( "~/Admin/Site/HandlePending" )">Process Elastic Pending Deletes</a>
+                                <a href="@Url.Content( "~/Import" )">Importing/Re-importing</a>
+                                <a href="@Url.Content( "~/Registry/Search" )">Registry Search</a>
+                                <a href="@Url.Content( "~/Admin/Activity/Search" )">Activity Search</a>
+                                @if ( AccountServices.IsUserAnAdmin() )
+                                {
+                                    <a href="@Url.Content( "~/Admin/Site/NormalizeAddresses?maxRecords=100" )">Normalize Addresses</a>
+                                }
+                            </div>
+                        </div>
+                    }
+
+
+				<div class="headerMenu column" id="headerMenuAccount">
+					<button class="headerMenuTitle"><i class="fa fa-user"></i> <div id="userName" title="@user.FullName()">My Account</div> <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+					<div class="headerMenuList">
+						@*<a href="@Url.Content( "/Account/UserProfile" )" id="manageLink">@user.FullName()</a>
+							<a href="@Url.Content( "/Manage/ChangePassword" )" id="manageLink">Change Password</a>*@
+						<form action="@Url.Action("LogOff", "Account", new { returnUrl = "" } )" method="post" id="logoutForm">
+							@Html.AntiForgeryToken()
+							<a href="javascript:document.getElementById('logoutForm').submit();" id="logoutLink">Logout</a>
+						</form>
+					</div>
+				</div>
+			}
+			else if (env != "prod")
+			{
+				<div class="headerMenu column" id="headerMenuAdd">
+					<button class="headerMenuTitle"><i class="fa fa-user"></i> Login <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+					<div class="headerMenuList">
+						<a href="@Url.Content( @loginUrl )">Login</a>
+						@*<a href="@Url.Content( @registerUrl )">Register</a>*@
+
+					</div>
+				</div>
+                }
+                else 
+                {
+                    <div class="headerMenu column" id="headerMenuAdd">
+                        <div class="headerMenuTitle">
+                            <a style="color:white"  href="@Url.Content( @loginUrl )">.....</a>
+                        </div>
+                    </div>
+                }
+		</div>
+        
+    </div>
+</div>
+
+@if ( url.Contains( "home/about" ) || url == "/" )
+{
+	<div id="mainSiteAlertBanner" style="display: none;text-align: center;padding: 10px;background-color: #45A085;color: #FFF;font-size: 20px;">
+		<div id="mainSiteAlertMessage" style="margin: auto; width: 50%; padding: 10px;">
+			<div>The Credential Engine Publisher (editor) website has moved. The new location is:<br /> <a href='https://credentialengine.org/publisher/' style='color:white;'>credentialengine.org/publisher/</a></div>
+			<div>This website is now the Credential Finder Prototype Search. This application will be frequently updated over the coming weeks to harness the power of the Credential Registry.</div>
+		</div>
+	</div>
+}
+
+

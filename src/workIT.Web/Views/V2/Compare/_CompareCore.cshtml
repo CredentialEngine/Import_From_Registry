@@ -1,0 +1,119 @@
+﻿<script type="text/javascript">
+    var compare = {
+        items: {
+            credential: [],
+            organization: [],
+            assessment: [],
+            learningopportunity: []
+        }, //Items to track
+        onUpdate: [] //Functions to call when an update happens
+    };
+
+    /* Comparison Functions */
+
+    //Get items on startup
+    $(document).ready(function () {
+    	compare.getItems();
+    });
+    //
+
+    //Add functions to call when something happens
+    compare.listen = function (event, method) {
+        if (event.indexOf(method) == -1) {
+            event.push(method);
+        }
+    }
+    //
+
+    //Get items
+    compare.getItems = function () {
+        compare.doAjax("getItems", null, compare.success_getItems, null);
+    }
+    //
+
+    //Toggle item
+    compare.toggleCompareItem = function(id, type, title, button) {
+        for(var i in compare.items[type]){
+            if(compare.items[type][i].Id == id){
+                compare.removeItem(id, type, button);
+                return;
+            }
+        }
+        compare.addItem(id, type, title, button);
+    }
+
+    //Add item
+    compare.addItem = function (id, type, title, button) {
+        compare.doAjax("addItem", { Type: type, Id: id, Title: title }, compare.success_getItems, { button: button, type: "add", title: title });
+        if (button) {
+            $(button).attr("data-compareInList", "working").prop("disabled", true);
+        }
+    }
+
+    //Remove item
+    compare.removeItem = function (id, type, button) {
+        compare.doAjax("removeItem", { Type: type, Id: id, }, compare.success_getItems, { button: button, type: "remove" });
+        if (button) {
+            $(button).attr("data-compareInList", "working").prop("disabled", true);
+        }
+    }
+
+    //AJAX
+    compare.doAjax = function (method, data, success, passThrough) {
+        $.ajax({
+            url: "@Url.Content( "~/Compare/" )" + method,
+            async: true,
+            headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+            dataType: "json",
+            type: "POST",
+            data: JSON.stringify(data),
+            success: function (message) {
+                console.log("Response: ", message);
+                if (typeof (success) == "function") {
+                    success(message, passThrough);
+                }
+            }
+        });
+    }
+    //
+
+    //Load items
+    compare.success_getItems = function (message, action) {
+        if (message.valid) {
+            for (var i in compare.items) {
+                compare.items[i] = [];
+            }
+            for (var i in message.data) {
+                if(typeof(compare.items[message.data[i].Type]) == "undefined"){
+                    compare.items[message.data[i].Type] = []; //Reset or add an item list
+                }
+                compare.items[message.data[i].Type].push(message.data[i]); //Add items to the list
+            }
+            for (var i in compare.onUpdate) {
+                compare.onUpdate[i](); //Call registered functions
+            }
+            if (action) {
+                if (action.type == "add") {
+                    consoleMessage.addSuccessMessage("Added " + action.title + " to comparison list", "", 2000);
+                    if (action.button) {
+                        $(action.button).prop("disabled", false).attr("data-compareInList", "true");
+                    }
+                }
+                else if (action.type == "remove") {
+                    consoleMessage.addInfoMessage("Item removed from comparison list", "", 2000);
+                    if (action.button) {
+                        $(action.button).prop("disabled", false).attr("data-compareInList", "false");
+                    }
+                }
+            }
+        }
+        else {
+            consoleMessage.addErrorMessage(message.status, "", 2000);
+            if (action.button) {
+                $(action.button).prop("disabled", false).attr("data-compareInList", "false");
+            }
+        }
+    }
+    //
+
+</script>

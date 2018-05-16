@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{22328DEE-B11F-44AE-ADDE-F85774CB5DC9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Import.Services</RootNamespace>
+    <AssemblyName>Import.Services</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ImportCompetencyFramesworks.cs" />
+    <Compile Include="Envelope.cs" />
+    <Compile Include="ImportAssessment.cs" />
+    <Compile Include="ImportConditionManifests.cs" />
+    <Compile Include="ImportCostManifests.cs" />
+    <Compile Include="ImportLearningOpportunties.cs" />
+    <Compile Include="ImportOrganization.cs" />
+    <Compile Include="ImportCredential.cs" />
+    <Compile Include="ImportServiceHelpers.cs" />
+    <Compile Include="MappingHelper.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RegistryModels\Json\Address.cs" />
+    <Compile Include="RegistryModels\Json\Agent.cs" />
+    <Compile Include="RegistryModels\Json\AssessmentProfile.cs" />
+    <Compile Include="RegistryModels\Json\AvailableAt.cs" />
+    <Compile Include="RegistryModels\Json\Competency.cs" />
+    <Compile Include="RegistryModels\Json\CompetencyFramework.cs" />
+    <Compile Include="RegistryModels\Json\ConditionManifest.cs" />
+    <Compile Include="RegistryModels\Json\ConditionProfile.cs" />
+    <Compile Include="RegistryModels\Json\ContactPoint.cs" />
+    <Compile Include="RegistryModels\Json\CostManifest.cs" />
+    <Compile Include="RegistryModels\Json\CostProfile.cs" />
+    <Compile Include="RegistryModels\Json\Credential.cs" />
+    <Compile Include="RegistryModels\Json\CredentialAlignmentObject.cs" />
+    <Compile Include="RegistryModels\Json\DirectCostType.cs" />
+    <Compile Include="RegistryModels\Json\DurationProfile.cs" />
+    <Compile Include="RegistryModels\Json\FinancialAlignmentObject.cs" />
+    <Compile Include="RegistryModels\Json\HelpersClass.cs" />
+    <Compile Include="RegistryModels\Json\JsonLDDocument.cs" />
+    <Compile Include="RegistryModels\Json\JurisdictionProfile.cs" />
+    <Compile Include="RegistryModels\Json\LearningOpportunityProfile.cs" />
+    <Compile Include="RegistryModels\Json\OrganizationBase.cs" />
+    <Compile Include="RegistryModels\Json\Place.cs" />
+    <Compile Include="RegistryModels\Json\ProcessProfile.cs" />
+    <Compile Include="RegistryModels\Json\VerificationServiceProfile.cs" />
+    <Compile Include="RegistryServices.cs" />
+    <Compile Include="ResolutionServices.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\workIT.Data\workIT.Data.csproj">
+      <Project>{22db7fde-7f0b-4a48-9261-1fab15767cae}</Project>
+      <Name>workIT.Data</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\workIT.Factories\workIT.Factories.csproj">
+      <Project>{42051501-1140-42d1-a59e-8be61b7853b0}</Project>
+      <Name>workIT.Factories</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\workIT.Models\workIT.Models.csproj">
+      <Project>{7f2454e1-4cee-4955-9b84-b5645414bd6a}</Project>
+      <Name>workIT.Models</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\workIT.Services\workIT.Services.csproj">
+      <Project>{68e38652-32b7-4d9a-ba53-0fa5d58a6e0d}</Project>
+      <Name>workIT.Services</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WorkIT.Utilities\workIT.Utilities.csproj">
+      <Project>{ea37cbf4-045b-471a-b8b6-af2ba7586722}</Project>
+      <Name>workIT.Utilities</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
