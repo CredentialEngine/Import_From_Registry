@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-	public class OrganizationSummary : Organization
+    [Serializable]
+    public class OrganizationSummary : Organization
 	{
 		public OrganizationSummary()
 		{
@@ -33,6 +34,8 @@ namespace workIT.Models.Common
 
         public AgentRelationshipResult AgentAndRoles { get; set; }
         public AgentRelationshipResult QualityAssurance { get; set; }
+        public TargetAssertionResult QualityAssurancePerformed { get; set; }
+        public int QualityAssuranceCombinedTotal { get; set; }
     }
 
 }

@@ -104,8 +104,8 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity_RevocationProfile> Entity_RevocationProfile { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_VerificationProfile> Entity_VerificationProfile { get; set; }
-        public virtual Entity_Cache Entity_Cache { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ContactPoint> Entity_ContactPoint { get; set; }
+        public virtual Entity_Cache Entity_Cache { get; set; }
     }
 }

@@ -6,19 +6,19 @@
     <edmx:Diagrams>
       <Diagram DiagramId="07347eb567c04ed794f22b6fbcf2a4e6" Name="Diagram1">
         <EntityTypeShape EntityType="AccountsModel.Account" Width="1.5" PointX="3" PointY="4.125" IsExpanded="true" />
-        <EntityTypeShape EntityType="AccountsModel.AspNetRole" Width="1.5" PointX="3.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="AccountsModel.AspNetRole" Width="1.5" PointX="10.75" PointY="4.75" IsExpanded="true" />
         <EntityTypeShape EntityType="AccountsModel.AspNetUserClaim" Width="1.5" PointX="3" PointY="8.375" IsExpanded="true" />
         <EntityTypeShape EntityType="AccountsModel.AspNetUserLogin" Width="1.5" PointX="3" PointY="11.125" IsExpanded="true" />
         <EntityTypeShape EntityType="AccountsModel.AspNetUserRole" Width="1.5" PointX="6" PointY="7.625" IsExpanded="true" />
         <EntityTypeShape EntityType="AccountsModel.AspNetUser" Width="1.5" PointX="0.75" PointY="6.25" IsExpanded="true" />
-        <EntityTypeShape EntityType="AccountsModel.Account_Summary" Width="1.5" PointX="5.75" PointY="2.125" IsExpanded="true" />
+        <EntityTypeShape EntityType="AccountsModel.Account_Summary" Width="2.125" PointX="5" PointY="0.625" IsExpanded="true" />
         <AssociationConnector Association="AccountsModel.FK_Account_AspNetUsers" ManuallyRouted="false" />
         <AssociationConnector Association="AccountsModel.FK_dbo_AspNetUserRoles_dbo_AspNetRoles_RoleId" ManuallyRouted="false" />
         <AssociationConnector Association="AccountsModel.FK_dbo_AspNetUserClaims_dbo_AspNetUsers_UserId" ManuallyRouted="false" />
         <AssociationConnector Association="AccountsModel.FK_dbo_AspNetUserLogins_dbo_AspNetUsers_UserId" ManuallyRouted="false" />
         <AssociationConnector Association="AccountsModel.FK_dbo_AspNetUserRoles_dbo_AspNetUsers_UserId" ManuallyRouted="false" />
         <EntityTypeShape EntityType="AccountsModel.Organization" Width="1.5" PointX="5.25" PointY="10.875" />
-        <EntityTypeShape EntityType="AccountsModel.Organization_Member" Width="1.5" PointX="8.5" PointY="9.125" />
+        <EntityTypeShape EntityType="AccountsModel.Organization_Member" Width="2.125" PointX="8" PointY="4.625" />
         <AssociationConnector Association="AccountsModel.FK_Organization_Member_Account" />
         <AssociationConnector Association="AccountsModel.FK_Organization_Account_Creator" />
         <AssociationConnector Association="AccountsModel.FK_Organization_Account_Modifier" />

@@ -9,8 +9,9 @@ using workIT.Models.Common;
 namespace workIT.Models.ProfileModels
 {
 
-	//Note - referred to as AgentRoleProfile in the spreadsheet
-	public class OrganizationRoleProfile : BaseProfile
+    //Note - referred to as AgentRoleProfile in the spreadsheet
+    [Serializable]
+    public class OrganizationRoleProfile : BaseProfile
 	{
 		public OrganizationRoleProfile()
 		{
@@ -41,7 +42,7 @@ namespace workIT.Models.ProfileModels
 		/// <summary>
 		/// Inflate ActingAgentUid for display 
 		/// </summary>
-		public Organization ActingAgent { get; set; }
+		public Organization ActingAgent { get; set; } = new Organization();
 
 
 		//????how is participant different from acting
@@ -59,17 +60,18 @@ namespace workIT.Models.ProfileModels
 		public string AllRoleIds { get; set; }
 		public string AllRoles { get; set; }
 		public bool IsInverseRole { get; set; }
+        public string SourceEntityType { get; set; }
+        public int SourceEntityStateId { get; set; }
+        //public string SchemaTag { get; set; }
+        //public string ReverseSchemaTag { get; set; }
 
-		//public string SchemaTag { get; set; }
-		//public string ReverseSchemaTag { get; set; }
+        #region === Targets - where acted upon by the agent ======================
 
-		#region === Targets - where acted upon by the agent ======================
-
-		/// <summary>
-		/// TargetCredentialId is the parentId in credential to org roles
-		/// The credential acted upon by the agent
-		/// </summary>
-		public Credential TargetCredential { get; set; }
+        /// <summary>
+        /// TargetCredentialId is the parentId in credential to org roles
+        /// The credential acted upon by the agent
+        /// </summary>
+        public Credential TargetCredential { get; set; }
 		public int TargetCredentialId { get; set; }
 
 		/// <summary>
@@ -95,11 +97,11 @@ namespace workIT.Models.ProfileModels
 		#endregion
 	}
 	//
-	public class OrganizationRoleImport
-	{
+	//public class OrganizationRoleImport
+	//{
 
-		public int RoleTypeId { get; set; }
-		public Guid OrganizationUid { get; set; }
+	//	public int RoleTypeId { get; set; }
+	//	public Guid OrganizationUid { get; set; }
 
-	}
+	//}
 }

@@ -14,9 +14,14 @@ namespace workIT.Models.ProfileModels
 
 		public int Id { get; set; }
 		public string FrameworkName { get; set; }
+        [Obsolete]
 		public string FrameworkUrl { get; set; }
-		//public string RepositoryUri { get; set; }
-		public System.Guid RowId { get; set; }
+        //public string RepositoryUri { get; set; }
+        public string CTID { get; set; }
+        public string FrameworkUri { get; set; }
+        public string SourceUrl { get; set; }
+
+        public System.Guid RowId { get; set; }
 		public System.DateTime Created { get; set; }
 		//public int OwningOrganizationId { get; set; }
 

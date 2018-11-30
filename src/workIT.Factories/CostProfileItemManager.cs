@@ -39,7 +39,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool Save( ThisEntity entity, int parentId, ref SaveStatus status )
+		private bool Save( ThisEntity entity, int parentId, ref SaveStatus status )
 		{
 			bool isValid = true;
 			if ( parentId == 0 )
@@ -239,20 +239,28 @@ namespace workIT.Factories
 			to.CostProfileId = from.CostProfileId;
 			to.CostTypeId = from.CostTypeId;
 
-			//profile name will no longer be visible, but we could still persist with the cost type
+			if ( from.Codes_PropertyValue != null )
+			{
+				to.CostTypeName = from.Codes_PropertyValue.Title;
+				to.CostTypeSchema = from.Codes_PropertyValue.SchemaName;
 
-				//if ( from.Codes_PropertyValue != null )
-				//{
-				//	to.CostTypeName = from.Codes_PropertyValue.Title;
+				to.ProfileName = from.Codes_PropertyValue.Title;
 
-				//	to.ProfileName = from.Codes_PropertyValue.Title;
-					
-				//}
-			
-			//}
-			
+				EnumeratedItem item = new EnumeratedItem();
+				item.Id = to.CostTypeId;
+				item.Value = to.CostTypeId.ToString();
+				item.Selected = true;
+
+				item.Name = to.CostTypeName;
+				item.SchemaName = to.CostTypeSchema;
+				to.DirectCostType.Items.Add( item );
+			}
+
+
 			//NA 3/17/2017 - Need this to fix null errors in publishing and detail page, but it isn't working: no item is selected, and it's not clear why. 
-			to.DirectCostType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST ); 
+			//mp 18-11-02 - COPIED this from publisher: no item, because the Fill method looks for data in Entity.Property, and the cost type id is stored on CostProfileItem ==> NOW HANDLED ABOVE
+
+			//to.DirectCostType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST ); 
 
 			to.Price = from.Price == null ? 0 : ( decimal ) from.Price;
 	

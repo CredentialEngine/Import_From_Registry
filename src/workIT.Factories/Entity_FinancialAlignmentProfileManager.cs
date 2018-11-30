@@ -27,13 +27,27 @@ namespace workIT.Factories
 		#region === -Persistance ==================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
+                return false;
+            }
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
-				Save( item, parentUid, ref status );
+				Save( item, parent, ref status );
 			}
 
 			return isAllValid;
@@ -47,21 +61,14 @@ namespace workIT.Factories
 		/// <param name="userId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, Guid parentUid, ref SaveStatus status )
+		public bool Save( ThisEntity entity, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
-
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( "Error: the parent identifier was not provided." );
-				return false;
-			}
-
 			int count = 0;
 
 			DBEntity efEntity = new DBEntity();
 
-			Entity parent = EntityManager.GetEntity( parentUid );
+			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the parent entity was not found." );
@@ -84,9 +91,12 @@ namespace workIT.Factories
 						FromMap( entity, efEntity );
 						efEntity.EntityId = parent.Id;
 						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-						efEntity.RowId = Guid.NewGuid();
+                        if ( IsValidGuid( entity.RowId ) )
+                            efEntity.RowId = entity.RowId;
+                        else
+                            efEntity.RowId = Guid.NewGuid();
 
-						context.Entity_FinancialAlignmentProfile.Add( efEntity );
+                        context.Entity_FinancialAlignmentProfile.Add( efEntity );
 						count = context.SaveChanges();
 
 						entity.Id = efEntity.Id;
@@ -197,8 +207,32 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_FinancialAlignmentProfile.RemoveRange( context.Entity_FinancialAlignmentProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+            return isValid;
+        }
+        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 

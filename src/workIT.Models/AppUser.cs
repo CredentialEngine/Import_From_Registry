@@ -17,7 +17,6 @@ namespace workIT.Models
 			UserRoles = new List<string>();
 			Roles = "";
             OrgMbrs = "";
-			Organizations = new List<CodeItem>();
 		}
 		//public int Id { get; set; }
 		//public Guid RowId { get; set; }
@@ -28,8 +27,9 @@ namespace workIT.Models
 		public string LastName { get; set; }
 		public string SortName { get; set; }
 		public string AspNetUserId { get; set; }
-		//
-		public bool IsActive { get; set; }
+        public string CEAccountIdentifier { get; set; } = "";
+        //
+        public bool IsActive { get; set; }
 		public bool IsValid { get; set; }
 
 		public List<string> UserRoles { get; set; }
@@ -40,13 +40,13 @@ namespace workIT.Models
 
 		public int PrimaryOrgId { get; set; }
 		public int DefaultRoleId { get; set; }
-		public List<CodeItem> Organizations { get; set; }
+        public List<Organization> Organizations { get; set; } = new List<Organization>();
 
-		/// <summary>
-		/// Returns full name of user
-		/// </summary>
-		/// <returns></returns>
-		public string FullName()
+        /// <summary>
+        /// Returns full name of user
+        /// </summary>
+        /// <returns></returns>
+        public string FullName()
 		{
 			if ( string.IsNullOrWhiteSpace( FirstName ) )
 				return "Incomplete - Update Profile";

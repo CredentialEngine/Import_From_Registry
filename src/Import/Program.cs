@@ -14,25 +14,35 @@ namespace CTI.Import
 	class Program
 	{
 		static string thisClassName = "Program";
-		static void Main( string[] args )
+        public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
+
+        ImportCredential credImportMgr = new ImportCredential();
+        ImportOrganization orgImportMgr = new ImportOrganization();
+        ImportAssessment asmtImportMgr = new ImportAssessment();
+        ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
+        ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
+        ImportCostManifests cstManImportMgr = new ImportCostManifests();
+
+        static void Main( string[] args )
 		{
 			//NOTE: consider the IOER approach that all candidate records are first downloaded, and then a separate process does the import
 
-			RegistryImport mgr = new RegistryImport();
+			RegistryImport registryImport = new RegistryImport();
 			LoggingHelper.DoTrace( 1, "======================= STARTING IMPORT =======================" );
             TimeZone zone = TimeZone.CurrentTimeZone;
             // Demonstrate ToLocalTime and ToUniversalTime.
             DateTime local = zone.ToLocalTime( DateTime.Now );
             DateTime universal = zone.ToUniversalTime( DateTime.Now );
-            Console.WriteLine( local );
-            Console.WriteLine( universal );
+            Console.WriteLine( "Local time: " + local );
+            Console.WriteLine( "Universal time: " + universal );
 
             //need to determine how to get last start date
             //may be run multiple times during day, so use a schedule type
             string scheduleType = UtilityManager.GetAppKeyValue( "scheduleType", "daily" );
             int deleteAction = UtilityManager.GetAppKeyValue( "deleteAction", 0 );
             bool doingDownloadOnly = UtilityManager.GetAppKeyValue( "DoingDownloadOnly", false );
-            
+
+            #region  Import Type/Arguments
             if ( args != null && args.Length == 1 )
 			{
 				scheduleType = args[ 0 ];
@@ -124,6 +134,7 @@ namespace CTI.Import
 				//LoggingHelper.DoTrace( 1, string.Format( " - Updates since: {0} ", startingDate ) );
 				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} ", startingDate ) );
 			}
+            #endregion
             //===================================================================================================
             LogStart();
             //set to zero to handle all, or a number to limit records to process
@@ -131,39 +142,44 @@ namespace CTI.Import
             //although once can sort by date, we can use this, and update the start date
             int maxImportRecords = UtilityManager.GetAppKeyValue( "maxImportRecords", 50 );
 
-            //NOTE - NEED TO REBUILD CACHE TABLES BEFORE BUILDING ELASTIC INDICES
+			//NOTE - NEED TO REBUILD CACHE TABLES BEFORE BUILDING ELASTIC INDICES
 
-            //Actions: 0-normal; 1-DeleteOnly; 2-SkipDelete 
+			//Actions: 0-normal; 1-DeleteOnly; 2-SkipDelete 
+			int recordsDeleted = 0;
             if ( deleteAction < 2 )
             {
                 //handle deleted records
-                importResults = importResults + "<br/>" + HandleDeletes( startingDate, endingDate, maxImportRecords );
+                importResults = importResults + "<br/>" + HandleDeletes( startingDate, endingDate, maxImportRecords, ref recordsDeleted );
             }
-
+			int recordsImported = 0;
             if ( deleteAction != 1 )
             {
-                //handle organizations
-                //might be better to do last, then can populate placeholders, try first
-                importResults = importResults + "<br/>" + new OrganizationsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-
                 //do manifests 
-                importResults = importResults + "<br/>" + new ConditionManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-
-                importResults = importResults + "<br/>" + new CostManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                //importResults = importResults + "<br/>" + new ConditionManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+                //importResults = importResults + "<br/>" + new CostManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
                 //handle credentials
-                importResults = importResults + "<br/>" + new CredentialsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-
+                //importResults = importResults + "<br/>" + new CredentialsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
                 //handle assessments
-                importResults = importResults + "<br/>" + new AssessmentsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                //importResults = importResults + "<br/>" + new AssessmentsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
                 //handle learning opps
-                importResults = importResults + "<br/>" + new LearningOpportuniesImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                //importResults = importResults + "<br/>" + new LearningOpportuniesImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
                 importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
 
-                if ( !doingDownloadOnly )
-                {
+                //handle organizations
+                //might be better to do last, then can populate placeholders, try first
+                //importResults = importResults + "<br/>" + new OrganizationsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+                importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+
+				if ( !doingDownloadOnly && recordsImported > 0 )
+				{
                     //==============================================================
                     //import pending
                     string pendingStatus = new RegistryServices().ImportPending();
@@ -173,13 +189,13 @@ namespace CTI.Import
             }
 
             //===================================================================================================
-            if ( !doingDownloadOnly )
+            if ( !doingDownloadOnly && recordsImported > 0 )
             {
                 //update elastic if not included - probably will always delay elastic, due to multiple possible updates
                 //may want to move this to services for use by other process, including adhoc imports
                 if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
                 {
-                    ElasticServices.UpdateElastic();
+                    ElasticServices.UpdateElastic(true);
                     //procs have been updated to use the 
                     //new CacheManager().PopulateAllCaches();
                     ////
@@ -199,10 +215,10 @@ namespace CTI.Import
 			LoggingHelper.DoTrace( 1, "======================= all done ==============================" );
 		}
 
-		public static string DisplayMessages( string message )
+        public static string DisplayMessages( string message )
 		{
 			LoggingHelper.DoTrace( 1, message );
-			Console.WriteLine( message );
+			//Console.WriteLine( message );
 
 			return message;
 		}
@@ -213,7 +229,7 @@ namespace CTI.Import
             );
 
         }
-        public static string HandleDeletes( string startingDate, string endingDate, int maxRecords )
+        public static string HandleDeletes( string startingDate, string endingDate, int maxRecords, ref int recordsDeleted )
 		{
 			int pageNbr = 1;
 			int pageSize = 50;
@@ -233,121 +249,124 @@ namespace CTI.Import
 		
 			LoggingHelper.DoTrace( 1, string.Format( "===                   DELETES                   ===", thisClassName ) );
 			//startingDate = "2017-10-29T00:00:00";
-
-			while ( pageNbr > 0 && !isComplete )
+			try
 			{
-				list = RegistryImport.GetDeleted( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
-
-				if ( list == null || list.Count == 0 )
+				while ( pageNbr > 0 && !isComplete )
 				{
-					isComplete = true;
-					if ( pageNbr == 1 )
-					{
-						importNote = " No records where found for date range ";
-						Console.WriteLine( thisClassName + ".HandleDeletes() - " + importNote );
-						LoggingHelper.DoTrace( 1, thisClassName + ".HandleDeletes() - " +  importNote );
-					}
-					break;
-				}
-				foreach ( ReadEnvelope item in list )
-				{
-					cntr++;
-					string payload = item.DecodedResource.ToString();
+					list = RegistryImport.GetDeleted( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
 
-					string ctdlType = RegistryServices.GetResourceType( payload );
-                    string ctid = RegistryServices.GetCtidFromUnknownEnvelope( item );
-                    //may not be available in database, may want to use ctid
-					string envelopeIdentifier = item.EnvelopeIdentifier;
-					string envelopeUrl = RegistryServices.GetEnvelopeUrl( item.EnvelopeIdentifier );
-					LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-					
-					LoggingHelper.DoTrace( 6, string.Format( "{0}. EnvelopeIdentifier: {1} ", cntr, item.EnvelopeIdentifier ) );
-					try
+					if ( list == null || list.Count == 0 )
 					{
-						//only need the envelopeId and type
-						//so want a full delete, or set EntityStateId to 4 or greater - just as a precaution
-						messages = new List<string>();
-						status = new SaveStatus();
-						status.ValidationGroup = "Deletes";
-                        //importError = "";
-                        //each delete method will add an entry to SearchPendingReindex.
-                        //at the end of the process, call method to handle all the deletes
-                        switch ( ctdlType.ToLower() )
+						isComplete = true;
+						if ( pageNbr == 1 )
 						{
-							case "credentialorganization":
-								DisplayMessages( string.Format( "{0}. Deleting CredentialOrganization by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-								if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "qacredentialorganization":
-								DisplayMessages( string.Format( "{0}. Deleting QAOrganization by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) ); 
-								if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "organization":
-								DisplayMessages( string.Format( "{0}. Deleting Organization by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) ); 
-								if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "assessmentprofile":
-								DisplayMessages( string.Format( "{0}. Deleting Assessment by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-                                if ( !new AssessmentManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "learningopportunityprofile":
-								DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-                                if ( !new LearningOpportunityManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "conditionmanifest":
-								DisplayMessages( string.Format( "{0}. Deleting ConditionManifest by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-                                if ( !new ConditionManifestManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							case "costmanifest":
-								DisplayMessages( string.Format( "{0}. Deleting CostManifest by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-                                if ( !new CostManifestManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
-							default:
-								//default to credential
-								DisplayMessages( string.Format( "{0}. Deleting Credential ({2}) by EnvelopeIdentifier/ctid: {1}/{3} ", cntr, item.EnvelopeIdentifier, ctdlType, ctid ) );
-								if ( !new CredentialManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
-                                    DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-								break;
+							importNote = "Deletes: No records where found for date range ";
+							//Console.WriteLine( thisClassName + ".HandleDeletes() - " + importNote );
+							LoggingHelper.DoTrace( 1, thisClassName + ".HandleDeletes() - " + importNote );
 						}
-					} catch (Exception ex)
-					{
-						LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), false, "CredentialFinder Import exception" );
-						//importError = ex.Message;
-
-					}
-
-					if ( maxRecords > 0 && cntr > maxRecords )
-					{
 						break;
 					}
-				} //foreach ( ReadEnvelope item in list )
+					foreach ( ReadEnvelope item in list )
+					{
+						cntr++;
+						string payload = item.DecodedResource.ToString();
 
-				pageNbr++;
-				if ( (maxRecords > 0 && cntr > maxRecords) || cntr > pTotalRows )
+						string ctdlType = RegistryServices.GetResourceType( payload );
+						string ctid = RegistryServices.GetCtidFromUnknownEnvelope( item );
+						//may not be available in database, may want to use ctid
+						string envelopeIdentifier = item.EnvelopeIdentifier;
+						string envelopeUrl = RegistryServices.GetEnvelopeUrl( item.EnvelopeIdentifier );
+						LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+
+						LoggingHelper.DoTrace( 6, string.Format( "{0}. EnvelopeIdentifier: {1} ", cntr, item.EnvelopeIdentifier ) );
+						try
+						{
+							//only need the envelopeId and type
+							//so want a full delete, or set EntityStateId to 4 or greater - just as a precaution
+							messages = new List<string>();
+							status = new SaveStatus();
+							status.ValidationGroup = "Deletes";
+							//importError = "";
+							//each delete method will add an entry to SearchPendingReindex.
+							//at the end of the process, call method to handle all the deletes
+							switch ( ctdlType.ToLower() )
+							{
+								case "credentialorganization":
+								case "qacredentialorganization":
+								case "organization":
+									DisplayMessages( string.Format( "{0}. Deleting {3} by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid, ctdlType ) );
+									if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+
+								case "assessmentprofile":
+									DisplayMessages( string.Format( "{0}. Deleting Assessment by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									if ( !new AssessmentManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+								case "learningopportunityprofile":
+									DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									if ( !new LearningOpportunityManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+								case "conditionmanifest":
+									DisplayMessages( string.Format( "{0}. Deleting ConditionManifest by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									if ( !new ConditionManifestManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									{
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									}
+									break;
+								case "costmanifest":
+									DisplayMessages( string.Format( "{0}. Deleting CostManifest by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									if ( !new CostManifestManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+								default:
+									//default to credential
+									DisplayMessages( string.Format( "{0}. Deleting Credential ({2}) by EnvelopeIdentifier/ctid: {1}/{3} ", cntr, item.EnvelopeIdentifier, ctdlType, ctid ) );
+									if ( !new CredentialManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+							}
+						}
+						catch ( Exception ex )
+						{
+							LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), false, "CredentialFinder Import exception" );
+							//importError = ex.Message;
+
+						}
+
+						if ( maxRecords > 0 && cntr > maxRecords )
+						{
+							break;
+						}
+					} //foreach ( ReadEnvelope item in list )
+
+					pageNbr++;
+					if ( ( maxRecords > 0 && cntr > maxRecords ) || cntr > pTotalRows )
+					{
+						isComplete = true;
+						DisplayMessages( string.Format( "Delete EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows ) );
+
+					}
+				} //while
+				  //delete from elastic
+				if ( cntr > 0 )
 				{
-					isComplete = true;
-					DisplayMessages( string.Format( "Delete EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows ) );
-
+					messages = new List<string>();
+					ElasticServices.HandlePendingDeletes( ref messages );
 				}
-			} //while
-            //delete from elastic
-            if (cntr > 0)
-            {
-                messages = new List<string>();
-                ElasticServices.HandlePendingDeletes(ref messages);
-            }
 
-			importResults = string.Format( "HandleDeletes - Processed {0} records, with {1} exceptions. \r\n", cntr, exceptionCtr );
-			if ( !string.IsNullOrWhiteSpace( importNote ) )
-				importResults += importNote;
-
+				importResults = string.Format( "HandleDeletes - Processed {0} records, with {1} exceptions. \r\n", cntr, exceptionCtr );
+				if ( !string.IsNullOrWhiteSpace( importNote ) )
+					importResults += importNote;
+			}
+			catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, "Import.HandleDeletes" );
+			}
+			//actually only attepted at this time, need to account for errors!
+			recordsDeleted= cntr;
 			return importResults;
 		}
 	}

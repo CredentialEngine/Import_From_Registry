@@ -1,0 +1,177 @@
+﻿<script type="text/javascript">
+	/* ToolTips */
+	var tooltips = {
+		MouseX: 0,
+		MouseY: 0,
+		WindowScrollLeft: 0,
+		WindowScrollTop: 0
+	};
+
+	$(document).ready(function () {
+		tooltips.setupBox();
+		tooltips.initializeAll();
+	});
+
+	tooltips.setupBox = function () {
+		tooltips.Box = $("<div id=\"tooltip_box\"></div>").appendTo($("body"));
+		tooltips.Template = $("#tooltip_template_tip").html();
+		var win = $(window);
+		$(document).on("mousemove", function (event) {
+			tooltips.MouseXDocument = event.pageX,
+			tooltips.MouseYDocument = event.pageY,
+			tooltips.MouseX = event.pageX - tooltips.WindowScrollLeft;
+			tooltips.MouseY = event.pageY - tooltips.WindowScrollTop;
+		});
+		win.on("scroll", function () {
+			tooltips.WindowScrollLeft = win.scrollLeft();
+			tooltips.WindowScrollTop = win.scrollTop();
+		});
+	}
+	//
+
+	tooltips.initializeAll = function () {
+		$("[data-tooltip]").not(".tooltipInitailized").each(function () {
+			tooltips.initializeSingle($(this));
+		});
+	}
+	//
+
+	tooltips.initializeSingle = function (trigger) {
+		var rawData = trigger.attr("data-tooltip");
+		if (rawData.trim() == "") {
+			return;
+		}
+
+		var data = rawData.split("|");
+		if (data.length == 1) {
+			tooltips.initializeTip(trigger, "", data[0]);
+		}
+		else {
+			var header = data.shift();
+			for (var i in data) {
+				data[i] = utilities.linkifyText(data[i].trim());
+			}
+			var text = "<div>" + data.join("</div><div>") + "</div>";
+			tooltips.initializeTip(trigger, header, text)
+		}
+	}
+	//
+
+	tooltips.initializeTip = function (trigger, header, text) {
+		//Parts
+		var Tip = {};
+		Tip.Trigger = trigger;
+		Tip.HeaderText = header;
+		Tip.BodyText = text;
+		Tip.Box = $(tooltips.Template).appendTo(tooltips.Box);
+		Tip.Box.find(".tooltipHeader").html(Tip.HeaderText);
+		Tip.Box.find(".tooltipText").html(Tip.BodyText);
+		Tip.Visible = false;
+
+		//Functionality
+		Tip.Trigger.on("mouseover focus", function () {
+			tooltips.waitShow(Tip);
+		});
+		Tip.Trigger.on("mouseout blur", function () {
+			tooltips.waitHide(Tip);
+		});
+		Tip.Box.on("mouseover focus", function () {
+			tooltips.waitShow(Tip);
+		});
+		Tip.Box.on("mouseout blur", function () {
+			tooltips.waitHide(Tip);
+		});
+		Tip.Box.find("[data-action=close]").on("click", function () {
+			tooltips.hide(Tip);
+		});
+		$(window).on("scroll", function () {
+			tooltips.hide(Tip);
+		});
+
+		//Return
+		Tip.Trigger.addClass("tooltipInitialized");
+		return Tip;
+	}
+	//
+
+	tooltips.getStats = function (entity) {
+		var stats = entity.position();
+		stats.height = entity.outerHeight();
+		stats.width = entity.outerWidth();
+		stats.right = stats.left + stats.width;
+		stats.bottom = stats.top + stats.height;
+		return stats;
+	}
+	//
+
+	tooltips.setPosition = function (Box, left, top) {
+		Box.css("left", left + "px");
+		Box.css("top", top + "px");
+	}
+	//
+
+	tooltips.show = function (Tip) {
+		var triggerPos = tooltips.getStats(Tip.Trigger);
+		//If the cursor is over the tip, use the cursor position + offset, otherwise use the center of the item to accommodate keyboards
+		//Skip if the box is focused though, to keep the tooltip out of the way of textareas
+		if (!Tip.Trigger.is(":focus") && (tooltips.MouseXDocument >= triggerPos.left && tooltips.MouseXDocument <= triggerPos.right && tooltips.MouseYDocument >= triggerPos.top && tooltips.MouseYDocument <= triggerPos.bottom)) {
+			var mouseLeftOffset = tooltips.MouseX + 15;
+			var triggerLeftOffset = triggerPos.left + (triggerPos.width * .15);
+			var leftOffset = mouseLeftOffset > triggerLeftOffset ? mouseLeftOffset : triggerLeftOffset;
+			tooltips.setPosition(Tip.Box, leftOffset, tooltips.MouseY - 15);
+		}
+		else {
+			tooltips.setPosition(Tip.Box, triggerPos.left + 15 - tooltips.WindowScrollLeft, triggerPos.top + triggerPos.height + 5 - tooltips.WindowScrollTop);
+		}
+
+		if (!Tip.Visible) {
+			Tip.Box.stop().hide().fadeIn(250);
+		}
+		Tip.Visible = true;
+	}
+	//
+
+	tooltips.hide = function (Tip) {
+		Tip.Box.stop().fadeOut(250, function () {
+			Tip.Visible = false;
+			Tip.Box.hide();
+		});
+	}
+	//
+
+	tooltips.waitShow = function (Tip) {
+		setTimeout(function () {
+			if (Tip.Box.is(":hover") || Tip.Trigger.is(":hover") || Tip.Box.is(":focus") || Tip.Trigger.is(":focus")) {
+				tooltips.show(Tip);
+			}
+		}, 750);
+	}
+	//
+
+	tooltips.waitHide = function (Tip) {
+		setTimeout(function () {
+			if (!Tip.Box.is(":hover") && !Tip.Trigger.is(":hover") && !Tip.Box.is(":focus") && !Tip.Trigger.is(":focus")) {
+				tooltips.hide(Tip);
+			}
+		}, 250);
+	}
+	//
+
+</script>
+<script type="text/template" id="tooltip_template_tip">
+	<div class="tooltip">
+		<div class="tooltipData">
+			<div class="tooltipHeader"></div>
+			<div class="tooltipText"></div>
+		</div>
+	</div>
+</script>
+<style type="text/css">
+	#tooltip_box { height: 0; width: 0; overflow: hidden; }
+	.tooltip { position: fixed; z-index: 9999; background-color: #F5F5F5; border: 1px solid #CCC; font-size: 12px; transition: none; margin: 0 10px 10px 10px; max-width: 400px; box-shadow: 0px 0px 10px -2px rgba(0,0,0,0.5); }
+	.tooltip .tooltipHeader { font-weight: bold; padding: 5px; background-color: rgba(0,0,0,0.1); }
+	.tooltip .tooltipHeader:empty { display: none; }
+	.tooltip .tooltipText { padding: 5px; }
+	.tooltip .tooltipText div:not(:last-child) { margin-bottom: 5px; }
+	.tooltip .tooltipText:empty { display: none; }
+</style>

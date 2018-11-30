@@ -8,8 +8,8 @@
     //From https://docs.google.com/spreadsheets/d/1RaqRY_s9evMdlXUKVLh1xSNGJgqVig3Jnn1H5vlhRwg/edit#gid=0
     //var totalOrgs = Model.TotalOrganizations;
     //var totalCreds = Model.TotalCredentialsAtCurrentCtdl;
-    var totalOrgs = Model.MainEntityTotals.FirstOrDefault(m => m.Name == "Organization").Totals;
-    var totalCreds = Model.MainEntityTotals.FirstOrDefault(m => m.Name == "Credential").Totals;
+    var totalOrgs = Model.MainEntityTotals.FirstOrDefault( m => m.Name == "Organization" ).Totals;
+    var totalCreds = Model.MainEntityTotals.FirstOrDefault( m => m.Name == "Credential" ).Totals;
     var totalAsmts = Model.MainEntityTotals.FirstOrDefault( m => m.Name == "AssessmentProfile" ).Totals;
     var totalLopps = Model.MainEntityTotals.FirstOrDefault( m => m.Name == "LearningOpportunity" ).Totals;
     var enumServices = new EnumerationServices();
@@ -17,102 +17,103 @@
     var states = new List<string>() { "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming" };
 
     var stats = new List<Statistic>()
-    {
-		/*Organizations 
-         * new Statistic( "Partner Organizations", "Organizations recognized as Credential Engine Partners", 98, "organizations_partners", new List<string>() { "organizations", "organizations_partners", "general" } ) { CategoryId = "7", CodeId = "2375", IsSearchabilityAllowed = true },
-         * */
-		new Statistic( "Total Organizations", "All organizations in the system", totalOrgs, "organizations_total", new List<string>() { "organizations", "grandTotal" } ),
+{
+/*Organizations
+* new Statistic( "Partner Organizations", "Organizations recognized as Credential Engine Partners", 98, "organizations_partners", new List<string>() { "organizations", "organizations_partners", "general" } ) { CategoryId = "7", CodeId = "2375", IsSearchabilityAllowed = true },
+* */
+new Statistic( "Total Organizations", "All organizations in the system", totalOrgs, "organizations_total", new List<string>() { "organizations", "grandTotal" } ),
 
-        Model.GetSingleStatistic( "orgReport:HasCostManifest", "hasCostManifest", new List<string>() { "organizations", "general" }, true, "Has Cost Manifest", "Organizations who have cost manifest(s)" ),
+Model.GetSingleStatistic( "orgReport:HasCostManifest", "hasCostManifest", new List<string>() { "organizations", "general" }, true, "Has Cost Manifest", "Organizations who have cost manifest(s)" ),
 
-        Model.GetSingleStatistic( "orgReport:HasNoCostManifests", "hasNoCostManifests", new List<string>() { "organizations", "general" }, true, "Has No Cost Manifests", "Organizations who do not have cost manifest(s)" ),
+Model.GetSingleStatistic( "orgReport:HasNoCostManifests", "hasNoCostManifests", new List<string>() { "organizations", "general" }, true, "Has No Cost Manifests", "Organizations who do not have cost manifest(s)" ),
 
-        Model.GetSingleStatistic( "orgReport:HasConditionManifest", "hasConditionManifest", new List<string>() { "organizations", "general" }, true, "Has Condition Manifest", "Organizations who have condition manifest(s)" ),
+Model.GetSingleStatistic( "orgReport:HasConditionManifest", "hasConditionManifest", new List<string>() { "organizations", "general" }, true, "Has Condition Manifest", "Organizations who have condition manifest(s)" ),
 
-        Model.GetSingleStatistic( "orgReport:HasNoConditionManifests", "hasNoConditionManifests", new List<string>() { "organizations", "general" }, true, "Has No Condition Manifests", "Organizations who do not have condition manifest(s)" ),
+Model.GetSingleStatistic( "orgReport:HasNoConditionManifests", "hasNoConditionManifests", new List<string>() { "organizations", "general" }, true, "Has No Condition Manifests", "Organizations who do not have condition manifest(s)" ),
 
-        Model.GetSingleStatistic( "orgReport:HasVerificationService", "hasVerificationService", new List<string>() { "organizations", "general" }, true, "Has Verification Service", "Organizations that offer a verification service for their credentials" ),
+Model.GetSingleStatistic( "orgReport:HasVerificationService", "hasVerificationService", new List<string>() { "organizations", "general" }, true, "Has Verification Service", "Organizations that offer a verification service for their credentials" ),
 
-        Model.GetSingleStatistic( "orgReport:HasNoVerificationService", "hasNoVerificationService", new List<string>() { "organizations", "general" }, true, "Has No Verification Service", "Organizations that DO NOT offer a verification service for their credentials" ),
+Model.GetSingleStatistic( "orgReport:HasNoVerificationService", "hasNoVerificationService", new List<string>() { "organizations", "general" }, true, "Has No Verification Service", "Organizations that DO NOT offer a verification service for their credentials" ),
 
-        Model.GetSingleStatistic( "orgReport:HasSubsidiary", "hasSubsidiary", new List<string>() { "organizations", "general" }, true, "Has Subsidiary", "Organizations that are having subsidiaries", true ),
+Model.GetSingleStatistic( "orgReport:HasSubsidiary", "hasSubsidiary", new List<string>() { "organizations", "general" }, true, "Has Subsidiary", "Organizations that are having subsidiaries", true ),
 
-        Model.GetSingleStatistic( "orgReport:HasDepartment", "hasDepartment", new List<string>() { "organizations", "general" }, true, "Has Department", "Organizations that are having departments", true ),
+Model.GetSingleStatistic( "orgReport:HasDepartment", "hasDepartment", new List<string>() { "organizations", "general" }, true, "Has Department", "Organizations that are having departments", true ),
 
-        Model.GetSingleStatistic( "orgReport:HasIndustries", "hasIndustries", new List<string>() { "organizations", "general" }, true, "Has Industries", "Organizations that are having Industries.", true ),
+Model.GetSingleStatistic( "orgReport:HasIndustries", "hasIndustries", new List<string>() { "organizations", "general" }, true, "Has Industries", "Organizations that are having Industries.", true ),
 
-		//Credentials
-		new Statistic( "Total Credentials", "All Credentials in the system", totalCreds, "credentials_total", new List<string>() { "credentials", "grandTotal", "general" }),
+//Credentials
+new Statistic( "Total Credentials", "All Credentials in the system", totalCreds, "credentials_total", new List<string>() { "credentials", "grandTotal", "general" }),
 
-        Model.GetSingleStatistic( "credReport:AvailableOnline", "availableOnline", new List<string>() { "credentials", "general" }, true, "Available Online", "Credentials that are available online" ),
+Model.GetSingleStatistic( "credReport:AvailableOnline", "availableOnline", new List<string>() { "credentials", "general" }, true, "Available Online", "Credentials that are available online" ),
 
-        Model.GetSingleStatistic( "credReport:HasProcessProfile", "hasProcess", new List<string>() { "credentials", "general" }, true, "Has Process Information", "Credentials that have process-related information" ),
-        Model.GetSingleStatistic( "credReport:HasRevocation", "hasRevocation", new List<string>() { "credentials", "general" }, true, "Has Revocation Information", "Credentials that have revocation-related information" ),
-        Model.GetSingleStatistic( "credReport:HasVerificationBadges", "hasVerificationBadges", new List<string>() { "credentials", "general" }, true, "Has Verification Badges", "Credentials that have verification badges." ),
-        Model.GetSingleStatistic( "credReport:HasEmbeddedCredentials", "hasEmbeddedCredentials", new List<string>() { "credentials", "general" }, true, "Has Embedded Credentials", "Credentials that have Embedded Credentials." ),
-        Model.GetSingleStatistic( "credReport:HasOccupations", "hasOccupations", new List<string>() { "credentials", "general" }, true, "Has Occupations", "Credentials that are having Occupations." , true),
-        Model.GetSingleStatistic( "credReport:HasCompetencies", "hasCompetencies", new List<string>() { "credentials", "general" }, true, "Has Competencies", "Credentials that are having any competencies." , true),
-        Model.GetSingleStatistic( "credReport:HasIndustries", "hasIndustries", new List<string>() { "credentials", "general" }, true, "Has Industries", "Credentials that are having Industries.", true ),
-        Model.GetSingleStatistic( "credReport:IsPartOfCredential", "IsPartOfCredential", new List<string>() { "credentials", "credentialConnectionType" }, true, "Is PartOf Credential", "Credentials that are Is Part Of Other Credentials." , true ),
-        Model.GetSingleStatistic( "credReport:HasConditionProfile", "HasConditionProfile", new List<string>() { "credentials", "general" }, true, "Has Condition Profile", "Credentials that are having Condition Profiles.", true ),
-        Model.GetSingleStatistic( "credReport:HasDurationProfile", "HasDurationProfile", new List<string>() { "credentials", "general" }, true, "Has Duration Profile", "Credentials that are having Duration Profiles.", true ),
-        //Requires
-        Model.GetSingleStatistic( "credReport:RequiresCredential", "requiresCredential", new List<string>() { "credentials", "directConnection" }, true, "Requires Credentials", "Credentials that require at least one credential" ),
-        Model.GetSingleStatistic( "credReport:RequiresCompetencies", "requiresCompetency", new List<string>() { "credentials", "directConnection" }, true , "Requires Competencies", "Credentials that require at least one competency" ),
-        Model.GetSingleStatistic( "credReport:RequiresAssessment", "requiresAssessment", new List<string>() { "credentials", "directConnection" }, true, "Requires Assessment", "Credentials that require at least one assessment" ),
-        Model.GetSingleStatistic( "credReport:RequiresLearningOpportunity", "requiresLearningOpportunity", new List<string>() { "credentials", "directConnection" }, true, "Requires Learning Opportunity", "Credentials that require at least one learning opportunity" ),
+Model.GetSingleStatistic( "credReport:HasProcessProfile", "hasProcess", new List<string>() { "credentials", "general" }, true, "Has Process Information", "Credentials that have process-related information" ),
+Model.GetSingleStatistic( "credReport:HasRevocation", "hasRevocation", new List<string>() { "credentials", "general" }, true, "Has Revocation Information", "Credentials that have revocation-related information" ),
+Model.GetSingleStatistic( "credReport:HasVerificationBadges", "hasVerificationBadges", new List<string>() { "credentials", "general" }, true, "Has Verification Badges", "Credentials that have verification badges." ),
+Model.GetSingleStatistic( "credReport:HasEmbeddedCredentials", "hasEmbeddedCredentials", new List<string>() { "credentials", "general" }, true, "Has Embedded Credentials", "Credentials that have Embedded Credentials." ),
+Model.GetSingleStatistic( "credReport:HasOccupations", "hasOccupations", new List<string>() { "credentials", "general" }, true, "Has Occupations", "Credentials that are having Occupations." , true),
+Model.GetSingleStatistic( "credReport:HasCompetencies", "hasCompetencies", new List<string>() { "credentials", "general" }, true, "Has Competencies", "Credentials that are having any competencies." , true),
+Model.GetSingleStatistic( "credReport:HasIndustries", "hasIndustries", new List<string>() { "credentials", "general" }, true, "Has Industries", "Credentials that are having Industries.", true ),
+Model.GetSingleStatistic( "credReport:IsPartOfCredential", "IsPartOfCredential", new List<string>() { "credentials", "credentialConnectionType" }, true, "Is PartOf Credential", "Credentials that are Is Part Of Other Credentials." , true ),
+Model.GetSingleStatistic( "credReport:HasConditionProfile", "HasConditionProfile", new List<string>() { "credentials", "general" }, true, "Has Condition Profile", "Credentials that are having Condition Profiles.", true ),
+Model.GetSingleStatistic( "credReport:HasDurationProfile", "HasDurationProfile", new List<string>() { "credentials", "general" }, true, "Has Duration Profile", "Credentials that are having Duration Profiles.", true ),
+//Requires
+Model.GetSingleStatistic( "credReport:RequiresCredential", "requiresCredential", new List<string>() { "credentials", "directConnection" }, true, "Requires Credentials", "Credentials that require at least one credential" ),
+Model.GetSingleStatistic( "credReport:RequiresCompetencies", "requiresCompetency", new List<string>() { "credentials", "directConnection" }, true , "Requires Competencies", "Credentials that require at least one competency" ),
+Model.GetSingleStatistic( "credReport:RequiresAssessment", "requiresAssessment", new List<string>() { "credentials", "directConnection" }, true, "Requires Assessment", "Credentials that require at least one assessment" ),
+Model.GetSingleStatistic( "credReport:RequiresLearningOpportunity", "requiresLearningOpportunity", new List<string>() { "credentials", "directConnection" }, true, "Requires Learning Opportunity", "Credentials that require at least one learning opportunity" ),
 
-        //Costs
-        Model.GetSingleStatistic( "credReport:HasCostProfile", "credentialHasCostProfile", new List<string>() { "credentials", "general" }, true, "Has Cost Profile", "Credentials that have Cost Profile(s)" ),
-        Model.GetSingleStatistic( "credReport:ReferencesCommonConditions", "credentialReferencesCommonConditions", new List<string>() { "credentials", "general" }, true, "References Common Conditions", "Credentials that reference Common Conditions" ),
-        Model.GetSingleStatistic( "credReport:ReferencesCommonCosts", "credentialReferencesCommonCosts", new List<string>() { "credentials", "general" }, true, "References Common Costs", "Credentials that reference Common Costs" ),
-        Model.GetSingleStatistic( "credReport:FinancialAid", "credentialtFinancialAid", new List<string>() { "credentials", "general" }, true, "Financial Aid", "Credentials that have Financial Assistance" ),
+//Costs
+Model.GetSingleStatistic( "credReport:HasCostProfile", "credentialHasCostProfile", new List<string>() { "credentials", "general" }, true, "Has Cost Profile", "Credentials that have Cost Profile(s)" ),
+Model.GetSingleStatistic( "credReport:ReferencesCommonConditions", "credentialReferencesCommonConditions", new List<string>() { "credentials", "general" }, true, "References Common Conditions", "Credentials that reference Common Conditions" ),
+Model.GetSingleStatistic( "credReport:ReferencesCommonCosts", "credentialReferencesCommonCosts", new List<string>() { "credentials", "general" }, true, "References Common Costs", "Credentials that reference Common Costs" ),
+Model.GetSingleStatistic( "credReport:FinancialAid", "credentialtFinancialAid", new List<string>() { "credentials", "general" }, true, "Financial Aid", "Credentials that have Financial Assistance" ),
 
-        //Recommends 
-        Model.GetSingleStatistic( "credReport:RecommendsCredential", "recommendsCredential", new List<string>() { "credentials", "directConnection" }, true, "Recommends Credentials", "Credentials that recommend at least one credential" ),
-        Model.GetSingleStatistic( "credReport:RecommendsAssessment", "recommendsAssessment", new List<string>() { "credentials", "directConnection" }, true, "Recommends Assessment", "Credentials that recommend at least one assessment" ),
-        Model.GetSingleStatistic( "credReport:RecommendsLearningOpportunity", "recommendsLearningOpportunity", new List<string>() { "credentials", "directConnection" }, true, "Recommends Learning Opportunity", "Credentials that recommend at least one learning opportunity" ),
+//Recommends
+Model.GetSingleStatistic( "credReport:RecommendsCredential", "recommendsCredential", new List<string>() { "credentials", "directConnection" }, true, "Recommends Credentials", "Credentials that recommend at least one credential" ),
+Model.GetSingleStatistic( "credReport:RecommendsAssessment", "recommendsAssessment", new List<string>() { "credentials", "directConnection" }, true, "Recommends Assessment", "Credentials that recommend at least one assessment" ),
+Model.GetSingleStatistic( "credReport:RecommendsLearningOpportunity", "recommendsLearningOpportunity", new List<string>() { "credentials", "directConnection" }, true, "Recommends Learning Opportunity", "Credentials that recommend at least one learning opportunity" ),
 
-		//Assessments
-		new Statistic("Total Assessments", "All Assessments in the system", totalAsmts, "assessments_total", new List<string>() { "assessments", "grandTotal", "general" }),
+//Assessments
+new Statistic("Total Assessments", "All Assessments in the system", totalAsmts, "assessments_total", new List<string>() { "assessments", "grandTotal", "general" }),
 
-        Model.GetSingleStatistic( "asmtReport:AvailableOnline", "assessmentAvailableOnline", new List<string>() { "assessments", "general" }, true, "Available Online", "Assessments that are available online" ),
-        Model.GetSingleStatistic( "asmtReport:RequiresCompetencies", "assessmentRequiresCompetencies", new List<string>() { "assessments", "general" }, false, "Requires Competencies", "Assessments that require competencies" ),
-        Model.GetSingleStatistic( "asmtReport:AssessesCompetencies", "assessmentAssessesCompetencies", new List<string>() { "assessments", "general" }, true, "Assesses Competencies", "Assessments that assess competencies" ),
-        Model.GetSingleStatistic( "asmtReport:HasCostProfile", "assessmentHasCostProfile", new List<string>() { "assessments", "general" }, true, "Has Cost Profile", "Assessments that have Cost Profile(s)" ),
-        Model.GetSingleStatistic( "asmtReport:HasDurationProfile", "assessmentHasDurationProfile", new List<string>() { "assessments", "general" }, true, "Has Duration Profile", "Assessments that have Duration Profile(s)" , true),
-        Model.GetSingleStatistic( "asmtReport:ReferencesCommonConditions", "assessmentReferencesCommonConditions", new List<string>() { "assessments", "general" }, true, "References Common Conditions", "Assessments that are having Common Conditions" ),
-        Model.GetSingleStatistic( "asmtReport:ReferencesCommonCosts", "assessmentReferencesCommonCosts", new List<string>() { "assessments", "general" }, true, "References Common Costs", "Assessments that are having  Common Costs" ),
-        Model.GetSingleStatistic( "asmtReport:FinancialAid", "assessmentFinancialAid", new List<string>() { "assessments", "general" }, true, "Financial Aid", "Assessments that are having  Financial Assistance" ),
-        Model.GetSingleStatistic( "asmtReport:HasProcessProfile", "assessmenthasProcess", new List<string>() { "assessments", "general" }, true, "Has Process Information", "Assessments that have process-related information" ),
-        Model.GetSingleStatistic( "asmtReport:HasCIP", "assessmenthasCIP", new List<string>() { "assessments", "general" }, true, "Has Instructional Program Classification", "Assessments  that are having Instructional Program Classification" ),
+Model.GetSingleStatistic( "asmtReport:AvailableOnline", "assessmentAvailableOnline", new List<string>() { "assessments", "general" }, true, "Available Online", "Assessments that are available online" ),
+Model.GetSingleStatistic( "asmtReport:RequiresCompetencies", "assessmentRequiresCompetencies", new List<string>() { "assessments", "general" }, false, "Requires Competencies", "Assessments that require competencies" ),
+Model.GetSingleStatistic( "asmtReport:AssessesCompetencies", "assessmentAssessesCompetencies", new List<string>() { "assessments", "general" }, true, "Assesses Competencies", "Assessments that assess competencies" ),
+Model.GetSingleStatistic( "asmtReport:HasCostProfile", "assessmentHasCostProfile", new List<string>() { "assessments", "general" }, true, "Has Cost Profile", "Assessments that have Cost Profile(s)" ),
+Model.GetSingleStatistic( "asmtReport:HasDurationProfile", "assessmentHasDurationProfile", new List<string>() { "assessments", "general" }, true, "Has Duration Profile", "Assessments that have Duration Profile(s)" , true),
+Model.GetSingleStatistic( "asmtReport:ReferencesCommonConditions", "assessmentReferencesCommonConditions", new List<string>() { "assessments", "general" }, true, "References Common Conditions", "Assessments that are having Common Conditions" ),
+Model.GetSingleStatistic( "asmtReport:ReferencesCommonCosts", "assessmentReferencesCommonCosts", new List<string>() { "assessments", "general" }, true, "References Common Costs", "Assessments that are having  Common Costs" ),
+Model.GetSingleStatistic( "asmtReport:FinancialAid", "assessmentFinancialAid", new List<string>() { "assessments", "general" }, true, "Financial Aid", "Assessments that are having  Financial Assistance" ),
+Model.GetSingleStatistic( "asmtReport:HasProcessProfile", "assessmenthasProcess", new List<string>() { "assessments", "general" }, true, "Has Process Information", "Assessments that have process-related information" ),
+Model.GetSingleStatistic( "asmtReport:HasCIP", "assessmenthasCIP", new List<string>() { "assessments", "general" }, true, "Has Instructional Program Classification", "Assessments  that are having Instructional Program Classification" ),
 
-		//Learning Opportunities
-		new Statistic("Total Learning Opportunities", "All Learning Opportunities in the system", totalLopps, "learningOpportunities_total", new List<string>() { "learningOpportunities", "grandTotal", "general" }),
+//Learning Opportunities
+new Statistic("Total Learning Opportunities", "All Learning Opportunities in the system", totalLopps, "learningOpportunities_total", new List<string>() { "learningOpportunities", "grandTotal", "general" }),
 
-        Model.GetSingleStatistic( "loppReport:AvailableOnline", "loppAvailableOnline", new List<string>() { "learningOpportunities", "general" }, true, "Available Online", "Learning Opportunities that are available online" ),
-        Model.GetSingleStatistic( "loppReport:RequiresCompetencies", "loppRequiresCompetencies", new List<string>() { "learningOpportunities", "general" }, false, "Requires Competencies", "Learning Opportunities that require competencies" ),
-        Model.GetSingleStatistic( "loppReport:TeachesCompetencies", "loppTeachesCompetencies", new List<string>() { "learningOpportunities", "general" }, true, "Teaches Competencies", "Learning Opportunities that teach competencies" ),
-        Model.GetSingleStatistic( "loppReport:HasCostProfile", "loppHasCostProfile", new List<string>() { "learningOpportunities", "general" }, true, "Has Cost Profile", "Learning Opportunities that have Cost Profile(s)" ),
-        Model.GetSingleStatistic( "loppReport:HasDurationProfile", "loppHasDurationProfile", new List<string>() { "learningOpportunities", "general" }, true, "Has Duration Profile", "Learning Opportunities that have Duration Profile(s)", true ),
-        Model.GetSingleStatistic( "loppReport:ReferencesCommonConditions", "loppReferencesCommonConditions", new List<string>() { "learningOpportunities", "general" }, true, "References Common Conditions", "Learning Opportunities that are having Common Conditions" ),
-        Model.GetSingleStatistic( "loppReport:ReferencesCommonCosts", "loppReferencesCommonCosts", new List<string>() { "learningOpportunities", "general" }, true, "References Common Costs", "Learning Opportunities that are having  Common Costs" ),
-        Model.GetSingleStatistic( "loppReport:FinancialAid", "loppFinancialAid", new List<string>() { "learningOpportunities", "general" }, true, "Financial Aid", "Learning Opportunities that are having Financial Aid" ),
-        Model.GetSingleStatistic( "loppReport:HasProcessProfile", "lopphasProcess", new List<string>() { "learningOpportunities", "general" }, true, "Has Process Information", "Learning Opportunities that have process-related information" ),
-        Model.GetSingleStatistic( "loppReport:HasCIP", "loppHasCIP", new List<string>() { "learningOpportunities", "general" }, true, "Has Instructional Program Classification", "Learning Opportunities that are having Instructional Program Classification" ),
-    };
+Model.GetSingleStatistic( "loppReport:AvailableOnline", "loppAvailableOnline", new List<string>() { "learningOpportunities", "general" }, true, "Available Online", "Learning Opportunities that are available online" ),
+Model.GetSingleStatistic( "loppReport:RequiresCompetencies", "loppRequiresCompetencies", new List<string>() { "learningOpportunities", "general" }, false, "Requires Competencies", "Learning Opportunities that require competencies" ),
+Model.GetSingleStatistic( "loppReport:TeachesCompetencies", "loppTeachesCompetencies", new List<string>() { "learningOpportunities", "general" }, true, "Teaches Competencies", "Learning Opportunities that teach competencies" ),
+Model.GetSingleStatistic( "loppReport:HasCostProfile", "loppHasCostProfile", new List<string>() { "learningOpportunities", "general" }, true, "Has Cost Profile", "Learning Opportunities that have Cost Profile(s)" ),
+Model.GetSingleStatistic( "loppReport:HasDurationProfile", "loppHasDurationProfile", new List<string>() { "learningOpportunities", "general" }, true, "Has Duration Profile", "Learning Opportunities that have Duration Profile(s)", true ),
+Model.GetSingleStatistic( "loppReport:ReferencesCommonConditions", "loppReferencesCommonConditions", new List<string>() { "learningOpportunities", "general" }, true, "References Common Conditions", "Learning Opportunities that are having Common Conditions" ),
+Model.GetSingleStatistic( "loppReport:ReferencesCommonCosts", "loppReferencesCommonCosts", new List<string>() { "learningOpportunities", "general" }, true, "References Common Costs", "Learning Opportunities that are having  Common Costs" ),
+Model.GetSingleStatistic( "loppReport:FinancialAid", "loppFinancialAid", new List<string>() { "learningOpportunities", "general" }, true, "Financial Aid", "Learning Opportunities that are having Financial Aid" ),
+Model.GetSingleStatistic( "loppReport:HasProcessProfile", "lopphasProcess", new List<string>() { "learningOpportunities", "general" }, true, "Has Process Information", "Learning Opportunities that have process-related information" ),
+Model.GetSingleStatistic( "loppReport:HasCIP", "loppHasCIP", new List<string>() { "learningOpportunities", "general" }, true, "Has Instructional Program Classification", "Learning Opportunities that are having Instructional Program Classification" ),
+};
 
     //Placeholder
     var statsToDevelop = new List<Statistic>()
-    {
-        new Statistic("Organizations with Quality Assurance", "Organizations which receive Quality Assurance", Ceiling( totalOrgs * 0.75 ), "organizations_withQA", new List<string>() { "organizations", "organizations_withQA", "general" } ),
-        new Statistic("Organizations available online", "Organizations which have a significant online presence", Ceiling( totalOrgs * 0.8 ), "organizations_online", new List<string>() { "organizations", "organizations_online", "general" } ),
-        new Statistic("Organizations with unique identifier", "Organizations which have a unique identifier such as IPEDS, OPE ID, FEIN, etc.", Ceiling( totalOrgs * 0.65 ), "organizations_uniqueID", new List<string>() { "organizations", "organizations_uniqueID", "general" } ),
-        new Statistic("Credentials with Quality Assurance", "Credentials which receive Quality Assurance", Ceiling( totalCreds * 0.3 ), "credentials_withQA", new List<string>() { "credentials", "credentials_withQA", "general" }),
-    };
+{
+new Statistic("Organizations with Quality Assurance", "Organizations which receive Quality Assurance", Ceiling( totalOrgs * 0.75 ), "organizations_withQA", new List<string>() { "organizations", "organizations_withQA", "general" } ),
+new Statistic("Organizations available online", "Organizations which have a significant online presence", Ceiling( totalOrgs * 0.8 ), "organizations_online", new List<string>() { "organizations", "organizations_online", "general" } ),
+new Statistic("Organizations with unique identifier", "Organizations which have a unique identifier such as IPEDS, OPE ID, FEIN, etc.", Ceiling( totalOrgs * 0.65 ), "organizations_uniqueID", new List<string>() { "organizations", "organizations_uniqueID", "general" } ),
+new Statistic("Credentials with Quality Assurance", "Credentials which receive Quality Assurance", Ceiling( totalCreds * 0.3 ), "credentials_withQA", new List<string>() { "credentials", "credentials_withQA", "general" }),
+};
 
     //Organizations by role
     stats = stats.Concat( Model.GetStatisticsByEntity( "Organization", "agentRole", "organizationAgentRole", new List<string>() { "organizations", "organizationAgentRole" }, false, true ) ).ToList();
+
 
     //Organizations by type
     stats = stats.Concat( Model.GetStatistics( "ceterms:OrganizationType", "organizationType", new List<string>() { "organizations", "organizationType" } ) ).ToList();
@@ -127,8 +128,10 @@
     stats = stats.Concat( Model.GetStatistics( "identityType", "organizationIdentity", new List<string>() { "organizations", "organizationIdentity" }, false, false ) ).ToList();
 
     stats = stats.Concat( Model.GetStatisticsByEntity( "Organization", "ceterms:industryType", "organizationIndustryGroup", new List<string>() { "organizations", "organizationIndustryGroup" }, false, false ) ).ToList();
+    //Organization by History
+    //stats = stats.Concat( Model.GetStatistics( "history", "organizationHistory", new List<string>() { "organizations", "organizationHistory" }, false, false ) ).ToList();
 
-    //Organizations by social media type - codes are not used, 
+    //Organizations by social media type - codes are not used,
     //stats = stats.Concat( Model.GetStatistics( "sameAs", "organizationSocialMedia", new List<string>() { "organizations", "organizationSocialMedia" }, false, false ) ).ToList();
 
     stats = stats.Concat( Model.GetStatisticsByEntity( "VerificationProfile", "ctdl:ClaimType", "organizationVerifyType", new List<string>() { "organizations", "organizationVerifyType" }, true, true ) ).ToList();
@@ -136,7 +139,7 @@
     //Organizations by state
     foreach ( var state in states )
     {
-        statsToDevelop.Add( new Statistic( state, "Organizations that have a significant presence in " + state, rand.Next( totalOrgs ), "organizationState_" + state.Replace( " " , "_" ).ToLower(), new List<string>() { "organizations", "organizationState" } ) );
+        statsToDevelop.Add( new Statistic( state, "Organizations that have a significant presence in " + state, rand.Next( totalOrgs ), "organizationState_" + state.Replace( " ", "_" ).ToLower(), new List<string>() { "organizations", "organizationState" } ) );
     }
 
     //Credentials by role
@@ -210,167 +213,401 @@
 
     //TODO: add the rest of the organization, credential, assessment, and learning opportunity related items
 
-	}
-	@functions {
-	public int Ceiling( double d )
-	{
-		return ( int ) Math.Ceiling( ( decimal ) d );
-	}
-
-	public string Identify( string prefix, EnumeratedItem item )
-	{
-		return prefix + "_" + ( item.SchemaName ?? "" ).Replace( ":", "_" );
-	}
-
-	public string Identify(string prefix, CodeItem item )
-	{
-		return prefix + "_" + (item.SchemaName ?? "").Replace( ":", "_" );
-	}
 }
-@helper RenderStatBox(string title, string entityType, string cssClass, List<Statistic> stats, Dictionary<string, string> buttons, bool orderAlpha = false )
+@functions {
+    public int Ceiling( double d )
+    {
+        return ( int )Math.Ceiling( ( decimal )d );
+    }
+
+    public string Identify( string prefix, EnumeratedItem item )
+    {
+        return prefix + "_" + ( item.SchemaName ?? "" ).Replace( ":", "_" );
+    }
+
+    public string Identify( string prefix, CodeItem item )
+    {
+        return prefix + "_" + ( item.SchemaName ?? "" ).Replace( ":", "_" );
+    }
+}
+@helper RenderStatBox( string title, string entityType, string cssClass, List<Statistic> stats, Dictionary<string, string> buttons, bool orderAlpha = false, List<HistoryTotal> history = null )
 {
+history = (history ?? new List<HistoryTotal>()).OrderByDescending( m => m.Period).ToList();
 var grandTotalItem = stats.FirstOrDefault( m => m.Tags.Contains( "grandTotal" ) );
-if (orderAlpha)
+if ( orderAlpha )
 {
-    stats = stats.OrderByDescending(m => m.Tags.Contains("grandTotal")).ThenBy(m => m.Title).ToList();
+    stats = stats.OrderByDescending( m => m.Tags.Contains( "grandTotal" ) ).ThenBy( m => m.Title ).ToList();
 }
 else
 {
-    stats = stats.OrderByDescending(m => m.Tags.Contains("grandTotal")).ThenBy(m => m.PrimarySortOrder).ThenByDescending(m => m.Value).ToList();
+    stats = stats.OrderByDescending( m => m.Tags.Contains( "grandTotal" ) ).ThenBy( m => m.PrimarySortOrder ).ThenByDescending( m => m.Value ).ToList();
 }
-	<div class="statMainClass @cssClass">
-		<h2 class="statHeader">@title</h2>
-		<div class="statBox">
-			<div class="statSummary">
-				<div class="statTotalBox">
-					<div class="statGrandTotal">@grandTotalItem.Value</div>
-					<div class="statGrandTotalTitle">Total @title</div>
-				</div>
-				<div class="statButtons">
-					@foreach ( var button in buttons )
-					{
-						if ( stats.Where( m => m.Tags.Contains( button.Key ) ).Count() > 0 )
-						{
-							<button data-group="@button.Key">@button.Value</button>
-						}
-					}
-				</div>
-			</div>
-			<div class="statDisplay">
-				@foreach ( var item in stats )
-				{
-					<div class="stat" data-value="@item.Value" data-group="@string.Join( " ", item.Tags )">
-						@if ( item.Tags.Contains( "grandTotal" ) )
-						{
-							<div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType )" target="searchLnk">@item.Title</a></div>
-						}
-						else if ( !string.IsNullOrWhiteSpace( item.CategoryId ) && !string.IsNullOrWhiteSpace( item.CodeId ) && item.IsSearchabilityAllowed )
-						{
-							if ( item.Tags.Contains( "entityIDFilter" ) )
-							{
-								<div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType + "&entityFilterID=" + item.CategoryId + "&entityID=" + item.CodeId )" target="searchLnk">@item.Title</a></div>
-							}
-							else
-							{
-								<div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType + "&filters=" + item.CategoryId + "-" + item.CodeId )" target="searchLnk">@item.Title</a></div>
-							}
-						}
-						else
-						{
-							<div class="statTitle">@item.Title</div>
-						}
-						<div class="statBarWrapper"><div class="statBar">@item.Value</div></div>
-						<div class="statDescription">@item.Description</div>
-					</div>
-				}
-			</div>
-		</div>
-	</div>
+    <div class="statMainClass @cssClass">
+        <h2 class="statHeader">@title</h2>
+        <div class="statBox">
+            <div class="statSummary">
+                <div class="statTotalBox">
+                    <div class="statGrandTotal">@grandTotalItem.Value</div>
+                    <div class="statGrandTotalTitle">Total @title</div>
+                </div>
+                <div class="statButtons">
+                    @foreach ( var button in buttons )
+                    {
+                        if ( stats.Where( m => m.Tags.Contains( button.Key ) ).Count() > 0 )
+                        {
+                            <button data-group="@button.Key">@button.Value</button>
+                        }
+                        else if ( history.Count() > 0 )
+                        {
+                            <button data-group="@button.Key">@button.Value</button>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="statDisplay">
+                @foreach ( var item in stats )
+                {
+                    <div class="stat" data-value="@item.Value" data-group="@string.Join( " ", item.Tags )">
+                        @if ( item.Tags.Contains( "grandTotal" ) )
+                        {
+                            <div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType )" target="searchLnk">@item.Title</a></div>
+                        }
+                        else if ( !string.IsNullOrWhiteSpace( item.CategoryId ) && !string.IsNullOrWhiteSpace( item.CodeId ) && item.IsSearchabilityAllowed )
+                        {
+                            if ( item.Tags.Contains( "entityIDFilter" ) )
+                            {
+                                <div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType + "&entityFilterID=" + item.CategoryId + "&entityID=" + item.CodeId )" target="searchLnk">@item.Title</a></div>
+                            }
+                            else
+                            {
+                                <div class="statTitle"><a href="@Url.Content( "~/search?searchType=" + entityType + "&filters=" + item.CategoryId + "-" + item.CodeId )" target="searchLnk">@item.Title</a></div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="statTitle">@item.Title</div>
+                        }
+                        <div class="statBarWrapper"><div class="statBar">@item.Value</div></div>
+                        <div class="statDescription">@item.Description</div>
+                    </div>
+                }
+                @if ( history != null && history.Count() > 0 )
+                {
+                    var createdMax = history.Max( x => x.CreatedCount );
+                    var updatedMax = history.Max( x => x.UpdatedCount );
+
+                    // organization
+                    <div class="historySection statGroup" data-group="organizationHistory">
+
+                        <div class="history" data-max-value="@createdMax">
+                            <h3>Created History</h3>
+                            <p>Monthly totals of Organizations published to the Credential Registry for the first time.   </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.CreatedCount" data-group="organizationHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM   yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.CreatedCount</div></div>
+                                        @*<div class="statDescription">@item.Description</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="history" data-max-value="@updatedMax">
+                            <h3>Updated History</h3>
+                            <p>Aggregated monthly totals for all updates to previously published Organizations.  </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.UpdatedCount" data-group="organizationHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.UpdatedCount</div></div>
+                                        @*<div class="statDescription">Aggregated monthly totals for all updates to previously published credentials</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    //credentials
+                    <div class="historySection statGroup" data-group="credentialHistory">
+
+                        <div class="history" data-max-value="@createdMax">
+                            <h3>Created History</h3>
+                            <p>Monthly totals of Credentials published to the Credential Registry for the first time.   </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.CreatedCount" data-group="credentialHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM   yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.CreatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString("yyyy-MM")</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="history" data-max-value="@updatedMax">
+                            <h3>Updated History</h3>
+                            <p>Aggregated monthly totals for all updates to previously published Credentials.  </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.UpdatedCount" data-group="credentialHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.UpdatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString( "yyyy-MM" )</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    //Assessments
+                    <div class="historySection statGroup" data-group="assessmentHistory">
+
+                        <div class="history" data-max-value="@createdMax">
+                            <h3>Created History</h3>
+                            <p>Monthly totals of Assessments published to the Credential Registry for the first time.   </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.CreatedCount" data-group="assessmentHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM   yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.CreatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString("yyyy-MM")</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="history" data-max-value="@updatedMax">
+                            <h3>Updated History</h3>
+                            <p>Aggregated monthly totals for all updates to previously published Assessments.  </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.UpdatedCount" data-group="assessmentHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.UpdatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString( "yyyy-MM" )</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    //LearningOpportunity
+                    <div class="historySection statGroup" data-group="learningOpportunityHistory">
+
+                        <div class="history" data-max-value="@createdMax">
+                            <h3>Created History</h3>
+                            <p>Monthly totals of Learning Opportunities published to the Credential Registry for the first time.   </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.CreatedCount" data-group="learningOpportunityHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM   yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.CreatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString("yyyy-MM")</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="history" data-max-value="@updatedMax">
+                            <h3>Updated History</h3>
+                            <p>Aggregated monthly totals for all updates to previously published Learning Opportunities.  </p>
+                            @{
+
+                                foreach ( var item in history )
+                                {
+                                    <div class="stat" data-value="@item.UpdatedCount" data-group="learningOpportunityHistory">
+                                        <div class="statTitle">@item.Period.ToString( "MMMM yyyy" )</div>
+                                        <div class="statBarWrapper"><div class="statBar">@item.UpdatedCount</div></div>
+                                        @*<div class="statDescription">@item.Period.ToString( "yyyy-MM" )</div>*@
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+
+
+                @*}*@
+            </div>
+        </div>
+    </div>
 }
 @helper RenderDebugTable( string header, List<CodeItem> data )
-{ 
-	<h1>@header</h1>
-	<table class="debugTable">
-		<tbody>
-			<tr><th>Id</th><th>Name</th><th>Description</th><th>SchemaName</th><th>ParentSchemaName</th><th>Totals</th><th>CategorySchema</th><th>CategoryId</th><th>EntityType</th></tr>
-			@foreach( var item in data )
-			{
-				<tr><td>@item.Id</td><td>@item.Name</td><td>@item.Description</td><td>@item.SchemaName</td><td>@item.ParentSchemaName</td><td>@item.Totals</td><td>@item.CategorySchema</td><td>@item.CategoryId</td><td>@item.EntityType</td></tr>
-			}
-		</tbody>
-	</table>
+{
+    <h1>@header</h1>
+    <table class="debugTable">
+        <tbody>
+            <tr><th>Id</th><th>Name</th><th>Description</th><th>SchemaName</th><th>ParentSchemaName</th><th>Totals</th><th>CategorySchema</th><th>CategoryId</th><th>EntityType</th></tr>
+            @foreach ( var item in data )
+            {
+                <tr><td>@item.Id</td><td>@item.Name</td><td>@item.Description</td><td>@item.SchemaName</td><td>@item.ParentSchemaName</td><td>@item.Totals</td><td>@item.CategorySchema</td><td>@item.CategoryId</td><td>@item.EntityType</td></tr>
+            }
+        </tbody>
+    </table>
 }
 
 <script type="text/javascript">
-	$(document).ready(function () {
-		setupBars();
-		setupButtons();
-	});
+    $(document).ready(function () {
+        setupBars();
+        setupButtons();
+        setupHistoryBars();
+        //renderCredChart();
+    });
 
-	function setupBars() {
-		var lists = $(".statDisplay");
-		lists.each(function () {
-			var list = $(this);
-			var stats = list.find(".stat");
-			var grandTotal = parseFloat(stats.filter("[data-group*=grandTotal]").attr("data-value"));
-			stats.each(function () {
-				var stat = $(this);
-				var dataBar = stat.find(".statBar");
-				var value = parseFloat(stat.attr("data-value"));
-				dataBar.css("width", ((value / grandTotal) * 100) + "%");
-			});
-		});
-	}
+    function setupBars() {
+        var lists = $(".statDisplay");
+        lists.each(function () {
+            var list = $(this);
+            var stats = list.find(".stat");
+            var grandTotal = parseFloat(stats.filter("[data-group*=grandTotal]").attr("data-value"));
+            stats.each(function () {
+                var stat = $(this);
+                var dataBar = stat.find(".statBar");
+                var value = parseFloat(stat.attr("data-value"));
+                dataBar.css("width", ((value / grandTotal) * 100) + "%");
+            });
+        });
+    }
 
-	function setupButtons() {
-		var lists = $(".statMainClass");
-		lists.each(function () {
-			var list = $(this);
-			var stats = list.find(".statDisplay .stat");
-			var buttons = list.find(".statButtons button");
-			buttons.each(function () {
-				var button = $(this);
-				var group = button.attr("data-group");
-				button.on("click", function () {
-					console.log(group);
-					stats.removeClass("selected").filter("[data-group*=" + group + "]").addClass("selected");
-				});
-			});
-			buttons.first().trigger("click");
-		});
-	}
+    function setupButtons() {
+        var lists = $(".statMainClass");
+        lists.each(function () {
+            var list = $(this);
+            var stats = list.find(".statDisplay .stat, .statDisplay .statGroup");
+            var buttons = list.find(".statButtons button");
+            buttons.each(function () {
+                var button = $(this);
+                var group = button.attr("data-group");
+                button.on("click", function () {
+                    console.log(group);
+                    stats.removeClass("selected").filter("[data-group*=" + group + "]").addClass("selected");
+                });
+            });
+            buttons.first().trigger("click");
+        });
+    }
+
+    function setupHistoryBars() {
+        var lists = $(".historySection");
+        lists.each(function () {
+            var list = $(this);
+            
+            list.find(".history").each(function(){
+                var history = $(this);
+                var maxValue = parseInt(history.attr("data-max-value"));
+                var stats = history.find(".stat");
+                stats.each(function () {
+                    var stat = $(this);
+                    var dataBar = stat.find(".statBar");
+                    var value = parseFloat(stat.attr("data-value"));
+                    dataBar.css("width", ((value / maxValue) * 100) + "%");
+                });
+            });
+            
+        });
+    }
+
+    function renderCredChart() {
+        var createdchartId = '#credchart-createdcount', updatedChartId = '#credchart-updatedcount';
+
+        var createdData = JSON.parse($(createdchartId).attr('data-chart'));
+        createdData.x.unshift('x');
+        createdData.y.unshift('Created History Count');
+        generateChart({ chartId: createdchartId, chartData: createdData })
+        var updatedData = JSON.parse($(createdchartId).attr('data-chart'));
+        createdData.y.unshift('data1');
+        createdData.x.unshift('Update History Count');
+        generateChart({ chartId: updatedChartId, chartData: updatedData })
+    }
+
+
+    function generateChart(options) {
+        var myData = {
+            x: 'x',
+            type: 'bar',
+            columns: [options.chartData.y, options.chartData.y]
+        };
+
+
+        var chart = c3.generate({
+            bindto: options.chartId,
+            data: myData,
+            size: {
+                height: 480,
+                width: 400,
+            },
+            bar: {
+                width: {
+                    ratio: 0.5 // this makes bar width 50% of length between ticks
+                }
+                // or
+                //width: 100 // this makes bar width 100px
+            },
+            axis: {
+                x: {
+                    type: 'timeseries',
+                    tick: {
+                        format: "%Y-%m"
+                    }
+                },
+
+            }
+        });
+    }
 </script>
 
 <style type="text/css">
-	.statMainClass { margin-bottom: 50px; }
-	.statMainClass .statHeader { margin: 0; padding: 5px; }
-	.statBox { display: -webkit-flex; display: flex; }
-	.statSummary { -webkit-flex: 300px 0 0; flex: 300px 0 0; }
-	.statTotalBox { background-color: #F5F5F5; padding: 10px; text-align: center; }
-	.statGrandTotal { font-size: 100px; font-weight: bold; }
-	.statGrandTotalTitle { font-size: 24px; font-weight: bold; }
-	.statButtons { padding: 5px 0; }
-	.statButtons button { display: block; padding: 5px; width: 100%; margin-bottom: 5px; }
-	.statDisplay { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 0 0 10px 10px; }
-	.stat { background-color: #F5F5F5; margin-bottom: 2px; -webkit-flex-wrap: wrap; flex-wrap: wrap; display: none; }
-	.stat.selected, .stat[data-group*=grandTotal] { display: -webkit-flex; display: flex; }
-	.stat .statTitle { -webkit-flex: 300px 0 0; flex: 300px 0 0; font-weight: bold; padding: 2px 5px; }
-	.stat .statBarWrapper { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 1px; background-color: #777; background-image: linear-gradient(#555,#777); height: 25px; }
-	.stat .statBarWrapper .statBar { background-color: #45A085; text-align: right; padding: 2px 5px; color: #FFF; height: 100%; max-width: 100%; min-width: 15px; background-image: linear-gradient(#45A085 10%, #56B196 30%, #45A085); }
-	.stat .statDescription { -webkit-flex: 100% 0 0; flex: 100% 0 0; padding: 2px 5px; font-size: 14px; }
+    .statMainClass { margin-bottom: 50px; }
+        .statMainClass .statHeader { margin: 0; padding: 5px; }
+    .statBox { display: -webkit-flex; display: flex; }
+    .statSummary { -webkit-flex: 300px 0 0; flex: 300px 0 0; }
+    .statTotalBox { background-color: #F5F5F5; padding: 10px; text-align: center; }
+    .statGrandTotal { font-size: 100px; font-weight: bold; }
+    .statGrandTotalTitle { font-size: 24px; font-weight: bold; }
+    .statButtons { padding: 5px 0; }
+        .statButtons button { display: block; padding: 5px; width: 100%; margin-bottom: 5px; }
+    .statDisplay { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 0 0 10px 10px; }
+    .stat { background-color: #F5F5F5; margin-bottom: 2px; -webkit-flex-wrap: wrap; flex-wrap: wrap; display: none; }
+        .stat.selected, .stat[data-group*=grandTotal]  { display: -webkit-flex; display: flex; }
+        .stat .statTitle { -webkit-flex: 300px 0 0; flex: 300px 0 0; font-weight: bold; padding: 2px 5px; }
+        .stat .statBarWrapper  { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 1px; background-color: #777; background-image: linear-gradient(#555,#777); height: 25px; }
+            .stat .statBarWrapper .statBar  { background-color: #45A085; text-align: right; padding: 2px 5px; color: #FFF; height: 100%; max-width: 100%; min-width: 15px; background-image: linear-gradient(#45A085 10%, #56B196 30%, #45A085); }
+        .stat .statDescription { -webkit-flex: 100% 0 0; flex: 100% 0 0; padding: 2px 5px; font-size: 14px; }
+    .statGroup { display: none; }
+    .statGroup.selected { display: block; }
+        /*/*history bars*/
+    /*.vStat { background-color: #F5F5F5; margin-bottom: 2px; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+    .vStat.selected, .vStat[data-group*=grandTotal] { display: -webkit-flex; display: flex; }
+        .vStat .statVTitle { -webkit-flex: 300px 0 0; flex: 300px 0 0; font-weight: bold; padding: 2px 5px; }
+        .vStat .statVBarWrapper { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 1px; background-color: #777; background-image: linear-gradient(#555,#777); height: 25px; }
+            .vStat .statVBarWrapper .statVBar { background-color: #45A085; text-align: right; color: #FFF; padding: 2px 5px; height: 100%; max-width: 100%; min-width: 15px; background-image: linear-gradient(#45A085 10%, #56B196 30%, #45A085); }
+        .statVBar{height:50%;}
+        .vStat .statDescription { -webkit-flex: 100% 0 0; flex: 100% 0 0; padding: 2px 5px; font-size: 14px; }*/
+       
+    .disclaimer { padding: 0 20px; font-style: italic; }
 
-	.disclaimer { padding: 0 20px; font-style: italic; }
-
-	@@media (max-width: 1000px)
-	{
-		.statSummary { -webkit-flex: 200px 0 0; flex: 200px 0 0; }
-		.stat .statBarWrapper { -webkit-flex: 100% 0 0; flex: 100% 0 0; }
-	}
-	@@media (max-width: 500px){
-		.statBox { -webkit-flex-wrap: wrap; flex-wrap: wrap; }
-		.statSummary { -webkit-flex: 100% 0 0; flex: 100% 0 0; }
-		.statDisplay { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 0; }
-	}
+    @@media (max-width: 1000px) {
+        .statSummary { -webkit-flex: 200px 0 0; flex: 200px 0 0; }
+        .stat .statBarWrapper { -webkit-flex: 100% 0 0; flex: 100% 0 0; }
+        .vStat .statVBarWrapper { -webkit-flex: 100% 0 0; flex: 100% 0 0; }
+    }
+    @@media (max-width: 500px) {
+        .statBox { -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+        .statVBar { -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+        .statSummary { -webkit-flex: 100% 0 0; flex: 100% 0 0; }
+        .statDisplay { -webkit-flex: auto 1 1; flex: auto 1 1; padding: 0; }
+    }
 </style>
 
 <h1>Credential Finder Data</h1>
@@ -378,19 +615,19 @@ else
 
 @if ( Request.Params[ "debug" ] == "true" )
 {
-	<style type="text/css">
-		.debugTable { width: 100%; max-width: none; }
-		.debugTable * { font-size: 12px; }
-	</style>
-	@RenderDebugTable( "Main Entity Totals", Model.MainEntityTotals )
-	@RenderDebugTable( "Properties Totals", Model.PropertiesTotals )
-	@RenderDebugTable( "By Entity Totals", Model.PropertiesTotalsByEntity )
+    <style type="text/css">
+        .debugTable { width: 100%; max-width: none; }
+            .debugTable * { font-size: 12px; }
+    </style>
+    @RenderDebugTable( "Main Entity Totals", Model.MainEntityTotals )
+    @RenderDebugTable( "Properties Totals", Model.PropertiesTotals )
+    @RenderDebugTable( "By Entity Totals", Model.PropertiesTotalsByEntity )
     @RenderDebugTable( "By Occupation Group Totals", Model.SOC_Groups )
     @RenderDebugTable( "By Industry Group Totals", Model.SOC_Groups )
 }
 
-@{ 
-	var orgItems = stats.Where( m => m.Tags.Contains( "organizations" ) ).OrderBy( m => m.Value ).ToList();
+@{
+    var orgItems = stats.Where( m => m.Tags.Contains( "organizations" ) ).OrderBy( m => m.Value ).ToList();
 }
 @RenderStatBox( "Organizations", "organization", "organizations", stats.Where( m => m.Tags.Contains( "organizations" ) ).ToList(), new Dictionary<string, string>()
 {
@@ -403,25 +640,30 @@ else
     { "organizationSocialMedia", "By Social Media Type" },
     { "organizationAgentRole", "By Organization Relationships" },
     { "organizationIndustryGroup", "By Industry Groups" },
-	//{ "organizationState", "By State" },
-   
-} )
+    {"organizationHistory", "By Organization History" },
+    
+
+    //{ "organizationState", "By State" },
+
+} ,false,Model.OrganizationHistory)
+
 
 @RenderStatBox( "Credentials", "credential", "credentials", stats.Where( m => m.Tags.Contains( "credentials" ) ).ToList(), new Dictionary<string, string>()
 {
     { "general", "General" },
     { "credentialType", "By Type" },
-	//{ "credentialAudienceType", "By Audience Type" },
-	{ "credentialAudienceLevel", "By Audience Level" },
-	//{ "credentialCostType", "By Cost Type" }, //Not supposed to be included by type
-	{ "credentialConnectionType", "By Connection Type" },
+    //{ "credentialAudienceType", "By Audience Type" },
+    { "credentialAudienceLevel", "By Audience Level" },
+    //{ "credentialCostType", "By Cost Type" }, //Not supposed to be included by type
+    { "credentialConnectionType", "By Connection Type" },
     { "directConnection", "By Direct Connection" },
     { "credentialStatusType", "By Status Type" },
     { "credentialAgentRole", "By Relationships to Organizations" },
     { "credentialSocGroup", "By Occupation Groups" },
     { "credentialIndustryGroup", "By Industry Groups" },
-	//{ "credentialState", "By State" },
-} )
+    {"credentialHistory", "By Credential History" },
+    //{ "credentialState", "By State" },
+},false,Model.CredentialHistory)
 
 @RenderStatBox( "Assessments", "assessment", "assessments", stats.Where( m => m.Tags.Contains( "assessments" ) ).ToList(), new Dictionary<string, string>()
 {
@@ -433,9 +675,10 @@ else
     { "assessmentAudience", "By Audience" },
     { "assessmentAgentRole", "By Relationships to Organizations" },
     { "assessmentCIPGroup", "By CIP Groups" },
-	//{ "deliveryType", "By Delivery Type" },
-	//{ "assessmentState", "By State" },
-} )
+    {"assessmentHistory", "By Assessment History" },
+    //{ "deliveryType", "By Delivery Type" },
+    //{ "assessmentState", "By State" },
+}, false, Model.AssessmentHistory )
 
 @RenderStatBox( "Learning Opportunities", "learningopportunity", "learningOpportunities", stats.Where( m => m.Tags.Contains( "learningOpportunities" ) ).ToList(), new Dictionary<string, string>()
 {
@@ -444,5 +687,6 @@ else
     { "deliveryType", "By Delivery Type" },
     { "learningOpportunityAgentRole", "By Relationships to Organizations" },
     { "learningOpportunityCIPGroup", "By CIP Groups" },
-	//{ "learningOpportunityState", "By State" },
-} )
+    {"learningOpportunityHistory", "By LearningOpportunity History" },
+    //{ "learningOpportunityState", "By State" },
+}, false, Model.LearningOpportunityHistory )

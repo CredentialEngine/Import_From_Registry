@@ -12,8 +12,8 @@ using Newtonsoft.Json;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.CredentialServices;
-using JsonEntity = RA.Models.Json.Credential;
-using ThisEntity = workIT.Models.Common.Credential;
+//using JsonEntity = RA.Models.Json.Credential;
+//using ThisEntity = workIT.Models.Common.Credential;
 using workIT.Factories;
 using workIT.Models;
 using Import.Services;
@@ -37,7 +37,7 @@ namespace CTI.Import
 		public string Import( string startingDate, string endingDate, int maxRecords, bool downloadOnly = false )
 		{
 			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  {0}  ***************** ", thisClassName ) );
-			JsonEntity input = new JsonEntity();
+			//JsonEntity input = new JsonEntity();
 			ReadEnvelope envelope = new ReadEnvelope();
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
 			EntityServices mgr = new EntityServices();
@@ -48,7 +48,7 @@ namespace CTI.Import
 			string importError = "";
 			string importResults = "";
 			string importNote = "";
-			ThisEntity output = new ThisEntity();
+			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
 
 			//the nbr of records needs to be monitored, to determine the optimum
@@ -74,7 +74,7 @@ namespace CTI.Import
 					isComplete = true;
 					if ( pageNbr == 1 )
 					{
-						importNote = " No records where found for date range ";
+						importNote = "Credentials: No records where found for date range ";
 
 						Console.WriteLine( thisClassName + importNote );
 						LoggingHelper.DoTrace( 4, thisClassName + importNote );
@@ -99,7 +99,7 @@ namespace CTI.Import
 					{
 						Console.WriteLine( string.Format( "{0}. Credential EnvelopeIdentifier {1} ", cntr, item.EnvelopeIdentifier ) );
 
-						importSuccessfull = entityImportMgr.ProcessEnvelope( mgr, item, status );
+						importSuccessfull = entityImportMgr.ProcessEnvelope( item, status );
 
 					} catch (Exception ex)
 					{

@@ -64,7 +64,7 @@
     <GenerateManifests>true</GenerateManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <SignManifests>true</SignManifests>
+    <SignManifests>false</SignManifests>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
@@ -91,13 +91,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssessmentsImport.cs" />
     <Compile Include="CompetencyFrameworksImport.cs" />
-    <Compile Include="ConditionManifestImport.cs" />
-    <Compile Include="CostManifestImport.cs" />
-    <Compile Include="CredentialsImport.cs" />
-    <Compile Include="LearningOpportuniesImport.cs" />
-    <Compile Include="OrganizationsImport.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RegistryImport.cs" />

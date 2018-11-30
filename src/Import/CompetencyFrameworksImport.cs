@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using JsonEntity = RA.Models.Json.CompetencyFramework;
+using JsonEntity = RA.Models.JsonV3.CompetencyFramework;
 
 using EntityServices = workIT.Services.CompetencyFrameworkServices;
 using ThisEntity = workIT.Models.Common.CostManifest;
@@ -25,7 +25,14 @@ namespace CTI.Import
 
         public string Import( string startingDate, string endingDate, int maxRecords, bool downloadOnly = false )
         {
-            LoggingHelper.DoTrace( 1, string.Format( "===  *****************  {0}  ***************** ", thisClassName ) );
+			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_competency_frameworks", true );
+			if ( !importingThisType )
+			{
+				LoggingHelper.DoTrace( 1, "===  *****************  Skipping import of Competency Frameworks  ***************** " );
+				return "Skipped import of competency_frameworks" ;
+			}
+
+			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  {0}  ***************** ", thisClassName ) );
             JsonEntity input = new JsonEntity();
             ReadEnvelope envelope = new ReadEnvelope();
             List<ReadEnvelope> list = new List<ReadEnvelope>();
@@ -63,7 +70,7 @@ namespace CTI.Import
                     isComplete = true;
                     if ( pageNbr == 1 )
                     {
-                        importNote = " No records where found for date range ";
+                        importNote = "Competency Frameworks: No records where found for date range ";
 
                         Console.WriteLine( thisClassName + importNote );
                         LoggingHelper.DoTrace( 4, thisClassName + importNote );

@@ -193,25 +193,7 @@ namespace workIT.Models.Common
         public string weight { get; set; }
 
     }
-    /// <summary>
-    /// Language Map is an object holds multiple 
-    /// </summary>
-    public class LanguageMap
-    {
-        public string English { get; set; }
-        public string English_US { get; set; }
 
-        public string English_GB { get; set; }
 
-        public string Spanish { get; set; }
-        public string Polish { get; set; }
-        public string German { get; set; }
-        public string Russian { get; set; }
-    }
-    public class LanguageItem
-    {
-        public string Language { get; set; }
-        public string Text { get; set; }
-    }
 
 }

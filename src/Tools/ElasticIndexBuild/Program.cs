@@ -15,33 +15,38 @@ namespace ElasticIndexBuild
 	{
 		static void Main( string[] args )
 		{
-            //determine if doing arbitrarily
-            new CacheManager().PopulateAllCaches();
+            if ( UtilityManager.GetAppKeyValue("populatingAllCaches", true) )
+            {
+                DisplayMessages("Populating All Caches");
+                //determine if doing arbitrarily
+                new CacheManager().PopulateAllCaches(true);
+            } else
+                DisplayMessages("Skipping Populating of All Caches");
 
             //set the related appKey to empty, to skip one of the loads
             if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "credentialCollection", "")))
 			    LoadCredentialsIndex();
 
-            if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "organizationCollection", "")))
-                LoadOrganizationIndex();
-
 
             if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "assessmentCollection", "")))
                 LoadAssessmentIndex();
 
-
             if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "learningOppCollection", "" ) ) )
                 LoadLearningOpportunityIndex();
+
+            if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "organizationCollection", "" ) ) )
+                LoadOrganizationIndex();
+
         }
 
-		public static void LoadCredentialsIndex()
+        public static void LoadCredentialsIndex()
 		{
             DisplayMessages( "Starting LoadCredentialsIndex" );
             try
             {
 
 
-                ElasticServices.BuildCredentialIndex( true );
+                ElasticServices.Credential_BuildIndex( true );
             } catch (Exception ex)
             {
                 LoggingHelper.LogError( ex, "LoadCredentialsIndex Failed", "ElasticIndex Build Exception" );
@@ -54,7 +59,7 @@ namespace ElasticIndexBuild
             DisplayMessages( "Starting LoadOrganizationIndex" );
             try
             {
-                ElasticServices.BuildOrganizationIndex( true );
+                ElasticServices.Organization_BuildIndex( true );
             }
             catch ( Exception ex )
             {
@@ -68,7 +73,7 @@ namespace ElasticIndexBuild
             DisplayMessages( "Starting LoadAssessmentIndex" );
             try
             {
-                ElasticServices.BuildAssessmentIndex( true );
+                ElasticServices.Assessment_BuildIndex( true );
             }
             catch ( Exception ex )
             {
@@ -83,7 +88,7 @@ namespace ElasticIndexBuild
 
             try
             {
-                ElasticServices.BuildLearningOppIndex( true );
+                ElasticServices.LearningOpp_BuildIndex( true );
             }
             catch ( Exception ex )
             {
@@ -93,7 +98,7 @@ namespace ElasticIndexBuild
 
         public static string DisplayMessages( string message )
         {
-            LoggingHelper.DoTrace( 1, message );
+            LoggingHelper.DoTrace( 1, System.DateTime.Now.ToString() + " - " + message );
             Console.WriteLine( message );
 
             return message;

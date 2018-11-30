@@ -61,6 +61,7 @@ namespace workIT.Models.Elastic
         public string Name { get; set; }
         public string Source { get; set; }
     }
+	//consider changing to organization connection
     public class IndexQualityAssurance
     {
         public int RelationshipTypeId { get; set; }
@@ -69,8 +70,23 @@ namespace workIT.Models.Elastic
         public string AgentUrl { get; set; }
         public int AgentRelativeId { get; set; }
         public string AgentName { get; set; }
+        public bool IsQARole { get; set; }
         public int EntityStateId { get; set; }
 
+    }
+    public class IndexQualityAssurancePerformed
+    {
+        public int AssertionTypeId { get; set; }
+        public string SourceToAgentRelationship { get; set; }
+        public string AgentToSourceRelationship { get; set; }
+        public int TargetEntityTypeId { get; set; }
+        public int TargetEntityBaseId { get; set; }
+       
+        public string TargetEntityName { get; set; }
+        public string TargetEntitySubjectWebpage { get; set; }
+        public bool IsQARole { get; set; }
+        public int EntityStateId { get; set; }
+        public string RoleSource { get; set; }
     }
     public class OrganizationRole
     {

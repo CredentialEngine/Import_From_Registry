@@ -6,7 +6,8 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-	public class Credential : BaseObject
+    [Serializable]
+    public class Credential : BaseObject
 	{
 		public Credential()
 		{
@@ -95,22 +96,11 @@ namespace workIT.Models.Common
 		/// Credential name
 		/// </summary>
 		public string Name { get; set; }
+        public DateTime RegistryLastUpdated { get; set; }
 		/// <summary>
 		/// OwningAgentUid
 		///  (Nov2016)
 		/// </summary>
-		 
-		//public string OwnerNameAndCredentialName {  get
-		//	{
-		//		try
-		//		{
-		//			return Name + " (" + OwningOrganization.Name + ")";
-		//		}
-		//		catch
-		//		{
-		//			return Name;
-		//		}
-		//	} }
 		public Guid OwningAgentUid { get; set; }
 		public Organization OwningOrganization { get; set; }
 
@@ -128,27 +118,7 @@ namespace workIT.Models.Common
         public Enumeration OwnerRoles { get; set; }
 		public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
 
-		public int InLanguageId { get; set; }
-		public string InLanguage { get; set; }
-		public string InLanguageCode { get; set; }
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
-		public List<TextValueProfile> Auto_InLanguageCode
-		{
-			get
-			{
-				var result = new List<TextValueProfile>().Concat( InLanguageCodeList ).ToList();
-				if ( !string.IsNullOrWhiteSpace( InLanguageCode ) )
-				{
-					result.Add( new TextValueProfile()
-					{
-						CodeId = InLanguageId,
-						TextTitle = InLanguage,
-						TextValue = InLanguageCode
-					} );
-				}
-				return result;
-			}
-		}
 
 		public Guid CopyrightHolder { get; set; }
 		public Organization CopyrightHolderOrganization { get; set; }
@@ -157,7 +127,7 @@ namespace workIT.Models.Common
         /// Use alternate name for display
         /// </summary>
 		public List<string> AlternateName { get; set; }
-        //use for import only
+        //use for import and detail, so maybe don't need AlternateName
         public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
         public string Description { get; set; }
@@ -244,8 +214,9 @@ namespace workIT.Models.Common
 
 
 		public Enumeration AudienceLevelType { get; set; }
-
-		public Enumeration CredentialStatusType { get; set; }
+        public Enumeration AudienceType { get; set; } = new Enumeration();
+        
+        public Enumeration CredentialStatusType { get; set; }
 		public List<Credential> EmbeddedCredentials { get; set; } //bundled/sub-credentials
 		public List<Credential> IsPartOf { get; set; } //pseudo-"parent" credentials that this credential is a part of or included with (could be multiple)
 		public List<int> HasPartIds { get; set; }
@@ -471,11 +442,12 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; }
 
-		/// <summary>
-		/// processStandards (Nov2016)
-		/// URL
-		/// </summary>
-		public string ProcessStandards { get; set; }
+        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+        /// <summary>
+        /// processStandards (Nov2016)
+        /// URL
+        /// </summary>
+        public string ProcessStandards { get; set; }
 		/// <summary>
 		/// ProcessStandardsDescription (Nov2016)
 		/// </summary>

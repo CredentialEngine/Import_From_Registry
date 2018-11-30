@@ -1,6 +1,6 @@
 ﻿using System.Web.Mvc;
 
-namespace WorkIT.Web.Areas.Admin
+namespace workIT.Web.Areas.Admin
 {
     public class AdminAreaRegistration : AreaRegistration 
     {

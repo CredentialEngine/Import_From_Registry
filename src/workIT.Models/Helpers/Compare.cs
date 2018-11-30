@@ -9,6 +9,7 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Helpers
 {
+	[Serializable]
     public class CompareItem
     {
         public string Type { get; set; }

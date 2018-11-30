@@ -24,13 +24,22 @@ namespace workIT.Factories
 		#region Entity Persistance ===================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
-				Save( item, parentUid, ref status );
+				Save( item, parent, ref status );
 			}
 
 			return isAllValid;
@@ -39,29 +48,15 @@ namespace workIT.Factories
 		 /// Persist VerificationProfile
 		 /// </summary>
 		 /// <param name="entity"></param>
-		 /// <param name="parentUid"></param>
+		 /// <param name="parent"></param>
 		 /// <param name="userId"></param>
 		 /// <param name="messages"></param>
 		 /// <returns></returns>
-		public bool Save( ThisEntity entity, Guid parentUid, ref SaveStatus status )
+		public bool Save( ThisEntity entity, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( "Error: the parent identifier was not provided." );
-				return false;
-			}
-
 			int count = 0;
-
 			DBEntity efEntity = new DBEntity();
-
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddError( "Error - the parent entity was not found." );
-				return false;
-			}
 			using ( var context = new EntityContext() )
 			{
 				try
@@ -86,9 +81,12 @@ namespace workIT.Factories
 						efEntity.EntityId = parent.Id;
 
 						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-						efEntity.RowId = Guid.NewGuid();
+                        if ( IsValidGuid( entity.RowId ) )
+                            efEntity.RowId = entity.RowId;
+                        else
+                            efEntity.RowId = Guid.NewGuid();
 
-						context.Entity_VerificationProfile.Add( efEntity );
+                        context.Entity_VerificationProfile.Add( efEntity );
 						count = context.SaveChanges();
 						//update profile record so doesn't get deleted
 						entity.Id = efEntity.Id;
@@ -188,9 +186,33 @@ namespace workIT.Factories
 			return isOK;
 
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_VerificationProfile.RemoveRange( context.Entity_VerificationProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
+            return isValid;
+        }
 
-		public bool ValidateProfile( ThisEntity profile, ref bool isEmpty, ref SaveStatus status )
+        public bool ValidateProfile( ThisEntity profile, ref bool isEmpty, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -288,7 +310,9 @@ namespace workIT.Factories
 			return entity;
 		}//
 
-		public static void MapToDB( ThisEntity from, DBEntity to )
+        
+
+        public static void MapToDB( ThisEntity from, DBEntity to )
 		{
 			//want to ensure fields from create are not wiped
 			if ( to.Id == 0 )
@@ -324,6 +348,7 @@ namespace workIT.Factories
 				bool includingItems
 			)
 		{
+            //TODO - add option for get during import to get less data
 			to.Id = from.Id;
 			to.RowId = from.RowId;
 

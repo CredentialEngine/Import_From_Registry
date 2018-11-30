@@ -5,9 +5,10 @@ using Microsoft.Owin;
 using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.Google;
 using Owin;
-using WorkIT.Web.Models;
+using workIT.Web.Models;
 using workIT.Utilities;
-namespace WorkIT.Web
+
+namespace workIT.Web
 {
     public partial class Startup
     {

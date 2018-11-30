@@ -31,6 +31,12 @@ namespace RA.Models.Json
         [JsonProperty( "@type" )]
         public string Type { get; set; }
 
+        /// <summary>
+        /// Target Node
+        /// The node of a framework targeted by the alignment. Must be a valid URL.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:targetNode" )]
+        public string TargetNode { get; set; }
 
         /// <summary>
         /// Alignment Date
@@ -54,14 +60,6 @@ namespace RA.Models.Json
         public string CodedNotation { get; set; }
 		//public List<string> CodedNotation { get; set; }
 		/// <summary>
-		/// Coded Notation
-		/// A short set of alpha-numeric symbols that uniquely identifies a resource and supports its discovery.
-		///// </summary>
-		//[JsonProperty( PropertyName = "ceterms:codedNotation" )]
-		//public string CodedNotation2 { get; set; }
-
-
-		/// <summary>
 		/// Framework URL
 		/// The framework to which the resource being described is aligned.Must be a valid URL.
 		/// </summary>
@@ -75,12 +73,6 @@ namespace RA.Models.Json
 		[JsonProperty( PropertyName = "ceterms:frameworkName" )]
         public string FrameworkName { get; set; }
 
-        /// <summary>
-        /// Target Node
-        /// The node of a framework targeted by the alignment. Must be a valid URL.
-        /// </summary>
-        [JsonProperty( PropertyName = "ceterms:targetNode" )]
-        public string TargetNode { get; set; }
 
         /// <summary>
         /// Target Description

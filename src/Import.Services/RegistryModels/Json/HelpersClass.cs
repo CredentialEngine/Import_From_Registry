@@ -67,20 +67,20 @@ namespace RA.Models.Json
         public string IdentifierValueCode { get; set; }
     }
 
-    public class UnknownPayload : JsonLDDocument
-    {
-        /// <summary>
-		/// object type
-		/// </summary>
-		[JsonProperty( "@type" )]
-        public string Type
-        {
-            get; set;
-        }
+  //  public class UnknownPayload : JsonLDDocument
+  //  {
+  //      /// <summary>
+		///// object type
+		///// </summary>
+		//[JsonProperty( "@type" )]
+  //      public string Type
+  //      {
+  //          get; set;
+  //      }
 
-        [JsonProperty( "@id" )]
-        public string CtdlId { get; set; }
-        [JsonProperty( PropertyName = "ceterms:ctid" )]
-        public string Ctid { get; set; }
-    }
+  //      [JsonProperty( "@id" )]
+  //      public string CtdlId { get; set; }
+  //      [JsonProperty( PropertyName = "ceterms:ctid" )]
+  //      public string Ctid { get; set; }
+  //  }
 }

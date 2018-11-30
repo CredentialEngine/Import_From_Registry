@@ -13,7 +13,7 @@ namespace RA.Models.Json
     public class Agent : JsonLDDocument
 	{
 		[JsonIgnore]
-		public static string classType = "ceterms:Agent";
+		public static string classType = "ceterms:CredentialOrganization";
 
 		public Agent()
         {
@@ -35,7 +35,7 @@ namespace RA.Models.Json
 			SameAs = new List<string>();
 			SocialMedia = new List<string>();
             Address = new List<Place>();
-            ContactPoint = new List<Json.ContactPoint>();
+            //ContactPoint = new List<Json.ContactPoint>();
 
 			HasConditionManifest = new List<string>();
 			HasCostManifest = new List<string>();
@@ -45,14 +45,16 @@ namespace RA.Models.Json
             RegulatedBy = null;
             RecognizedBy = null;
 
+            Accredits = null;
 			Approves = null;
 			Offers = null;
 			Owns = null;
 			Renews = null;
 			Revokes = null;
 			Recognizes = null;
+            Regulates = null;
 
-			AccreditedIn = null;
+            AccreditedIn = null;
             ApprovedIn = null;
             RecognizedIn = null;
             RegulatedIn = null;
@@ -85,8 +87,7 @@ namespace RA.Models.Json
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string Ctid { get; set; }
-		[JsonProperty( PropertyName = "ceterms:alternateName" )]
-		public List<string> AlternateName { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; } //URL
 
@@ -105,6 +106,8 @@ namespace RA.Models.Json
         [JsonProperty( PropertyName = "ceterms:sameAs" )]
 		public List<string> SameAs { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public List<string> AlternateName { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:socialMedia" )]
 		public List<string> SocialMedia { get; set; }
@@ -161,7 +164,10 @@ namespace RA.Models.Json
 		[JsonProperty( PropertyName = "ceterms:opeID" )]
 		public string OPEID { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:email" )]
+        [JsonProperty( PropertyName = "ceterms:leiCode" )]
+        public string LEICode { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:email" )]
 		public List<string> Email { get; set; }
 
 
@@ -175,8 +181,8 @@ namespace RA.Models.Json
         [JsonProperty( PropertyName = "ceterms:address" )]
         public  List<Place> Address { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:targetContactPoint" )]
-        public List<ContactPoint> ContactPoint { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:targetContactPoint" )]
+        //public List<ContactPoint> ContactPoint { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
 		public List<JurisdictionProfile> Jurisdiction { get; set; }
@@ -193,8 +199,10 @@ namespace RA.Models.Json
         [JsonProperty( PropertyName = "ceterms:regulatedBy" )]
         public List<OrganizationBase> RegulatedBy { get; set; }
 
+        [JsonProperty( PropertyName = "ceterms:accredits" )]
+        public List<EntityBase> Accredits { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:approves" )]
+        [JsonProperty( PropertyName = "ceterms:approves" )]
 		public List<EntityBase> Approves { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:offers" )]
@@ -211,8 +219,10 @@ namespace RA.Models.Json
 
 		[JsonProperty( PropertyName = "ceterms:recognizes" )]
 		public List<EntityBase> Recognizes { get; set; }
+        [JsonProperty( PropertyName = "ceterms:regulates" )]
+        public List<EntityBase> Regulates { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:hasConditionManifest" )]
+        [JsonProperty( PropertyName = "ceterms:hasConditionManifest" )]
 		public List<string> HasConditionManifest { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:hasCostManifest" )]

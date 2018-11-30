@@ -17,7 +17,7 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Codes_EntityTypes()
         {
-            this.Entities = new HashSet<Entity>();
+            this.Entity = new HashSet<Entity>();
         }
     
         public int Id { get; set; }
@@ -29,6 +29,6 @@ namespace workIT.Data.Tables
         public Nullable<int> Totals { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity> Entities { get; set; }
+        public virtual ICollection<Entity> Entity { get; set; }
     }
 }

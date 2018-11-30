@@ -77,8 +77,11 @@
     //Go to compare page if something is selected
     compare.bar.compareSelected = function() {
         for(var i in compare.items){
-            if(compare.items[i].length >= 2){
-                window.open('@Url.Content( "~/Compare/V3" )', 'findCompare');
+            if (compare.items[i].length >= 2) {
+                if (window != window.top) 
+                    window.open('@Url.Content( "~/Compare/V3" )', '_self');
+                else 
+                    window.open('@Url.Content( "~/Compare/V3" )', 'findCompare');
                 return;
             }
         }
@@ -176,9 +179,9 @@
             <div class="compareCompactItem compareTotal column" data-type="learningopportunity"><span class="total">0</span> Learning Opportunities</div>
         </div>
         <div id="compareButtons" class="compareSection">
-            <button class="greenButton compareCompactItem column" id="compareToggle" onclick="compare.bar.toggleBar();"><i class="fa fa-copy"></i> Expand/Hide Details</button>
-            <button class="greenButton compareCompactItem column" onclick="compare.bar.compareSelected();">Compare Selected <i class="fa fa-arrow-circle-right"></i></button>
-            <button class="greenButton compareCompactItem column" id="compareClearAll" onclick="compare.bar.clearAll();" title="Clear All"><i class="fa fa-trash"></i></button>
+            <button class="compareFooterButton compareCompactItem column" id="compareToggle" onclick="compare.bar.toggleBar();"><i class="fa fa-copy"></i> Expand/Hide Details</button>
+            <button class="compareFooterButton compareCompactItem column" onclick="compare.bar.compareSelected();">Compare Selected <i class="fa fa-arrow-circle-right"></i></button>
+            <button class="compareFooterButton compareCompactItem column" id="compareClearAll" onclick="compare.bar.clearAll();" title="Clear All"><i class="fa fa-trash"></i></button>
         </div>
     </div>
     <div id="compareBarExpanded" class="inlineBlockBox">
@@ -210,7 +213,7 @@
     <script type="text/template" id="template_compareTemplate">
         <div class="compareItem" data-id="{Id}" data-type="{Type}">
             <div class="compareItemTitle"><a href="@Url.Content("~/detail/"){Type}/{Id}">{Title}</a></div>
-            <button class="closeButton fa fa-close" title="Remove" onclick="compare.removeItem({Id}, '{Type}');"></button>
+            <button class="closeButton fas fa-times" title="Remove" onclick="compare.removeItem({Id}, '{Type}');"></button>
         </div>
     </script>
 </div>

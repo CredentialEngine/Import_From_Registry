@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-
-	public class JurisdictionProfile : BaseObject
+    [Serializable]
+    public class JurisdictionProfile : BaseObject
 	{
 		public JurisdictionProfile()
 		{
@@ -35,7 +35,8 @@ namespace workIT.Models.Common
 		public int JProfilePurposeId { get; set; }
 		
 		public string Description { get; set; }
-		public string ProfileSummary { get; set; }
+        public string Description_Map { get; set; }
+        public string ProfileSummary { get; set; }
 		public GeoCoordinates MainJurisdiction { get; set; }
 		//public List<GeoCoordinates> MainJurisdictions { get; set; }
 		public List<GeoCoordinates> Auto_MainJurisdiction { get
@@ -51,10 +52,11 @@ namespace workIT.Models.Common
 
 		public Enumeration JurisdictionAssertion { get; set; }
 		public Guid AssertedBy { get; set; }
-		/// <summary>
-		/// Inflate AssertedBy for display 
-		/// </summary>
-		public Organization AssertedByOrganization { get; set; }
+        public List<Guid> AssertedByList { get; set; } = new List<Guid>();
+        /// <summary>
+        /// Inflate AssertedBy for display 
+        /// </summary>
+        public Organization AssertedByOrganization { get; set; }
 
 		public int AssertedInTypeId { get; set; }
 		public string AssertedInType { get; set; }

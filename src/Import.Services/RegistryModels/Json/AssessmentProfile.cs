@@ -103,9 +103,10 @@ namespace RA.Models.Json
 		[JsonProperty( PropertyName = "ceterms:assesses" )]
 		public List<CredentialAlignmentObject> Assesses { get; set; }
 
+        [JsonProperty( PropertyName = "ceterms:audienceType" )]
+        public List<CredentialAlignmentObject> AudienceType { get; set; }
 
-
-		[JsonProperty( PropertyName = "ceterms:dateEffective" )]
+        [JsonProperty( PropertyName = "ceterms:dateEffective" )]
         public string DateEffective { get; set; }
 
 

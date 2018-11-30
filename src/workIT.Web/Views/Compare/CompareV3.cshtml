@@ -315,6 +315,10 @@
 		setupCollapsers();
 		setupTruncation();
         $(window).trigger("resize");
+        $("#homePageSection").css("display", "");
+        $('#btnHome').on("click", function () {
+            window.location = '\\';
+        });                      
 	});
     //
 
@@ -409,9 +413,7 @@
 
 </script>
 <style type="text/css">
-#mainSiteFooter {
-		display: none;
-    }
+    #mainSiteFooter { display: none; }
 
     #compareContainer {
         display: -webkit-flex;

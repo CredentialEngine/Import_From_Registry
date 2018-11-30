@@ -22,100 +22,7 @@ namespace workIT.Factories
 	public class Entity_AssessmentManager : BaseFactory
 	{
 		static string thisClassName = "Entity_AssessmentManager";
-		/// <summary>
-		/// Get all assessments for the provided entity
-		/// The returned entities are just the base
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <returns></returnsThisEntity
-		public static List<AssessmentProfile> GetAll( Guid parentUid)
-		{
-			List<AssessmentProfile> list = new List<AssessmentProfile>();
-			AssessmentProfile entity = new AssessmentProfile();
-
-			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 5, string.Format( "EntityAssessments_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
-
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					List<DBEntity> results = context.Entity_Assessment
-							.Where( s => s.EntityId == parent.Id )
-							.OrderBy( s => s.Assessment.Name )
-							.ToList();
-
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( DBEntity item in results )
-						{
-							entity = new AssessmentProfile();
-
-                            //need to distinguish between on a detail page for conditions and assessment detail
-                            //would usually only want basics here??
-                            //17-05-26 mp- change to MapFromDB_Basic
-                            if ( item.Assessment != null && item.Assessment.EntityStateId > 1 )
-                            {
-                                AssessmentManager.MapFromDB_Basic( item.Assessment, entity,
-                                true );//includingCosts-not sure
-                                       //add competencies
-                                AssessmentManager.MapFromDB_Competencies( entity );
-                                list.Add( entity );
-                            }
-						}
-					}
-					return list;
-				}
-
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".EntityAssessments_GetAll" );
-			}
-			return list;
-		}
-
-		public static ThisEntity Get( int parentId, int assessmentId )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( parentId < 1 || assessmentId < 1 )
-			{
-				return entity;
-			}
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					EM.Entity_Assessment from = context.Entity_Assessment
-							.SingleOrDefault( s => s.AssessmentId == assessmentId && s.EntityId == parentId );
-
-					if ( from != null && from.Id > 0 )
-					{
-						entity.Id = from.Id;
-						entity.AssessmentId = from.AssessmentId;
-						entity.EntityId = from.EntityId;
-
-						entity.ProfileSummary = from.Assessment.Name;
-						//to.Credential = from.Credential;
-						entity.Assessment = new AssessmentProfile();
-						AssessmentManager.MapFromDB_Basic( from.Assessment, entity.Assessment,
-								false //includeCosts - propose to use for credential editor
-								);
-
-						if ( IsValidDate( from.Created ) )
-							entity.Created = ( DateTime ) from.Created;
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Get" );
-			}
-			return entity;
-		}//
-
-		#region Entity Assessment Persistance ===================
+#region Entity Assessment Persistance ===================
 	
 		/// <summary>
 		/// Add an Entity assessment
@@ -213,46 +120,127 @@ namespace workIT.Factories
 			}
 			return id;
 		}
-		//public bool Delete( Guid parentUid, int assessmentId, ref string statusMessage )
-		//{
-		//	bool isValid = false;
-		//	if ( assessmentId == 0 )
-		//	{
-		//		statusMessage = "Error - missing an identifier for the Assessment to remove";
-		//		return false;
-		//	}
-		//	//need to get Entity.Id 
-		//	Entity parent = EntityManager.GetEntity( parentUid );
-		//	if ( parent == null || parent.Id == 0 )
-		//	{
-		//		statusMessage = "Error - the parent entity was not found.";
-		//		return false;
-		//	}
+        
+        //may not be necessary, as should be deleted when a condition profile is deleted.
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_Assessment.RemoveRange( context.Entity_Assessment.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		DBEntity efEntity = context.Entity_Assessment
-		//						.SingleOrDefault( s => s.EntityId == parent.Id && s.AssessmentId == assessmentId );
+            return isValid;
+        }
+        #endregion
+        /// <summary>
+        /// Get all assessments for the provided entity
+        /// The returned entities are just the base
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returnsThisEntity
+        public static List<AssessmentProfile> GetAll( Guid parentUid)
+		{
+			List<AssessmentProfile> list = new List<AssessmentProfile>();
+			AssessmentProfile entity = new AssessmentProfile();
 
-		//		if ( efEntity != null && efEntity.Id > 0 )
-		//		{
-		//			context.Entity_Assessment.Remove( efEntity );
-		//			int count = context.SaveChanges();
-		//			if ( count > 0 )
-		//			{
-		//				isValid = true;
-		//			}
-		//		}
-		//		else
-		//		{
-		//			statusMessage = "Warning - the record was not found - probably because the target had been previously deleted";
-		//			isValid = true;
-		//		}
-		//	}
+			Entity parent = EntityManager.GetEntity( parentUid );
+			LoggingHelper.DoTrace( 7, string.Format( "EntityAssessments_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 
-		//	return isValid;
-		//}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_Assessment
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.Assessment.Name )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							entity = new AssessmentProfile();
+
+                            //need to distinguish between on a detail page for conditions and assessment detail
+                            //would usually only want basics here??
+                            //17-05-26 mp- change to MapFromDB_Basic
+                            if ( item.Assessment != null && item.Assessment.EntityStateId > 1 )
+                            {
+                                AssessmentManager.MapFromDB_Basic( item.Assessment, entity,
+                                true );//includingCosts-not sure
+                                       //add competencies
+                                AssessmentManager.MapFromDB_Competencies( entity );
+                                list.Add( entity );
+                            }
+						}
+					}
+					return list;
+				}
+
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".EntityAssessments_GetAll" );
+			}
+			return list;
+		}
+
+		public static ThisEntity Get( int parentId, int assessmentId )
+		{
+			ThisEntity entity = new ThisEntity();
+			if ( parentId < 1 || assessmentId < 1 )
+			{
+				return entity;
+			}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					EM.Entity_Assessment from = context.Entity_Assessment
+							.SingleOrDefault( s => s.AssessmentId == assessmentId && s.EntityId == parentId );
+
+					if ( from != null && from.Id > 0 )
+					{
+						entity.Id = from.Id;
+						entity.AssessmentId = from.AssessmentId;
+						entity.EntityId = from.EntityId;
+
+						entity.ProfileSummary = from.Assessment.Name;
+						//to.Credential = from.Credential;
+						entity.Assessment = new AssessmentProfile();
+						AssessmentManager.MapFromDB_Basic( from.Assessment, entity.Assessment,
+								false //includeCosts - propose to use for credential editor
+								);
+
+						if ( IsValidDate( from.Created ) )
+							entity.Created = ( DateTime ) from.Created;
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".Get" );
+			}
+			return entity;
+		}//
+
 		
-		#endregion
 	}
 }

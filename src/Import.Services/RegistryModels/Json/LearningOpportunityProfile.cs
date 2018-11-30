@@ -127,6 +127,9 @@ namespace RA.Models.Json
         [JsonProperty( PropertyName = "ceterms:deliveryTypeDescription" )]
         public string DeliveryTypeDescription { get; set; }
 
+        [JsonProperty( PropertyName = "ceterms:audienceType" )]
+        public List<CredentialAlignmentObject> AudienceType { get; set; }
+
         [JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
         public List<DurationProfile> EstimatedDuration { get; set; }
 

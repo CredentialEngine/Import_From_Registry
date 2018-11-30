@@ -16,6 +16,7 @@ namespace workIT.Models.Helpers
 		}
 		public string Name { get; set; }
 		public string CategoryName { get; set; }
+		public string CategoryLabel { get; set; }
 		public string DisplayTemplate { get; set; }
 		public int TotalItems { get; set; }
 		public List<SearchTagItem> Items { get; set; }

@@ -5,13 +5,18 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.CostManifestServices;
 using InputEntity = RA.Models.Json.CostManifest;
+
+using InputEntityV3 = RA.Models.JsonV3.CostManifest;
+using BNodeV3 = RA.Models.JsonV3.BlankNode;
 using ThisEntity = workIT.Models.Common.CostManifest;
 using workIT.Factories;
 using workIT.Models;
+using workIT.Models.ProfileModels;
 
 namespace Import.Services
 {
@@ -42,7 +47,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
+			
 			string ctdlType = "";
 			try
 			{
@@ -82,7 +87,7 @@ namespace Import.Services
 				{
 					input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
 					//ctdlType = RegistryServices.GetResourceType( payload );
-					return Import( mgr, input, "", status );
+					return Import( input, "", status );
 				}
 				else
 					return false;
@@ -96,18 +101,23 @@ namespace Import.Services
 
 		public bool ImportByPayload( string payload, SaveStatus status )
 		{
-			EntityServices mgr = new EntityServices();
-			input = JsonConvert.DeserializeObject<InputEntity>( payload );
+            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            {
+				//if ( payload.IndexOf( "\"en\":" ) > 0 )
+				return ImportV3( payload, "", status );
+				//else
+				//    return ImportV2( payload, "", status );
 
-			return Import( mgr, input, "", status );
-		}
+			}
+			else
+            {
+                input = JsonConvert.DeserializeObject<InputEntity>( payload );
+                return Import( input, "", status );
+            }
+        }
 		#endregion
+
 		public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
-		{
-			EntityServices mgr = new EntityServices();
-			return ProcessEnvelope( mgr, item, status );
-		}
-		public bool ProcessEnvelope( EntityServices mgr, ReadEnvelope item, SaveStatus status )
 		{
 			if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
 			{
@@ -119,21 +129,31 @@ namespace Import.Services
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_costManifest", payload, "", false );
-			input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            {
+				//if ( payload.IndexOf( "\"en\":" ) > 0 )
+				return ImportV3( payload, "", status );
+				//else
+				//    return ImportV2( payload, "", status );
+			}
+			else
+            {
+                LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+                LoggingHelper.WriteLogFile( 1, "costManifest_" + item.EnvelopeIdentifier, payload, "", false );
+                input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
 
-			return Import( mgr, input, envelopeIdentifier, status );
+                return Import( input, envelopeIdentifier, status );
+            }
 		}
-		public bool Import( EntityServices mgr, InputEntity input, string envelopeIdentifier, SaveStatus status )
+		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
 		{
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-
-			//try
-			//{
-			//input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-			string ctid = input.Ctid;
+            EntityServices mgr = new EntityServices();
+            //try
+            //{
+            //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+            string ctid = input.Ctid;
 			string referencedAtId = input.CtdlId;
 			LoggingHelper.DoTrace( 5, "		name: " + input.Name );
 			LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
@@ -144,7 +164,7 @@ namespace Import.Services
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input, ref output ) )
+            if ( !DoesEntityExist( input.Ctid, ref output ) )
 			{
 				output.RowId = Guid.NewGuid();
 			}
@@ -187,20 +207,122 @@ namespace Import.Services
 						false,
 						ref messages,
 						output.Id > 0 );
+   //     }
+			//catch ( Exception ex )
+			//{
+
+   //             LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Finder Import exception" );
+			//}
 
 			return importSuccessfull;
 		}
 
-		public bool DoesEntityExist( InputEntity jsonEntity, ref ThisEntity entity )
-		{
-			bool exists = false;
-			entity = EntityServices.GetByCtid( jsonEntity.Ctid );
-			if ( entity != null && entity.Id > 0 )
-				return true;
+        public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
+        {
+            InputEntityV3 input = new InputEntityV3();
+            var bnodes = new List<BNodeV3>();
+            var mainEntity = new Dictionary<string, object>();
 
-			return exists;
-		}
-	}
+            //status.AddWarning( "The resource uses @graph and is not handled yet" );
+
+            Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
+            object graph = dictionary[ "@graph" ];
+            //serialize the graph object
+            var glist = JsonConvert.SerializeObject( graph );
+
+            //parse graph in to list of objects
+            JArray graphList = JArray.Parse( glist );
+            int cntr = 0;
+            foreach ( var item in graphList )
+            {
+                cntr++;
+                if ( cntr == 1 )
+                {
+                    var main = item.ToString();
+                    //may not use this. Could add a trace method
+                    mainEntity = RegistryServices.JsonToDictionary( main );
+                    input = JsonConvert.DeserializeObject<InputEntityV3>( main );
+                }
+                else
+                {
+                    var bn = item.ToString();
+                    bnodes.Add( JsonConvert.DeserializeObject<BNodeV3>( bn ) );
+                }
+
+            }
+
+            List<string> messages = new List<string>();
+            bool importSuccessfull = false;
+            EntityServices mgr = new EntityServices();
+            MappingHelperV3 helper = new MappingHelperV3();
+            helper.entityBlankNodes = bnodes;
+  
+            string ctid = input.Ctid;
+            string referencedAtId = input.CtdlId;
+            LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
+            LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
+            status.Ctid = ctid;
+
+            if ( status.DoingDownloadOnly )
+                return true;
+
+            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            {
+                output.RowId = Guid.NewGuid();
+            }
+
+            helper.currentBaseObject = output;
+
+            output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+            output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
+
+            output.CTID = input.Ctid;
+            output.CredentialRegistryId = envelopeIdentifier;
+            output.CostDetails = input.CostDetails;
+
+            output.OwningAgentUid = helper.MapOrganizationReferencesGuid( input.CostManifestOf, ref status );
+
+            output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
+            output.EndDate = helper.MapDate( input.EndDate, "StartDate", ref status );
+
+            output.EstimatedCosts = helper.FormatCosts( input.EstimatedCost, ref status );
+
+            status.DocumentId = output.Id;
+            status.DocumentRowId = output.RowId;
+
+            //=== if any messages were encountered treat as warnings for now
+            if ( messages.Count > 0 )
+                status.SetMessages( messages, true );
+
+            importSuccessfull = mgr.Import( output, ref status );
+            //just in case
+            if ( status.HasErrors )
+                importSuccessfull = false;
+
+            //if record was added to db, add to/or set EntityResolution as resolved
+            int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+                        ctid,
+                        CodesManager.ENTITY_TYPE_COST_MANIFEST,
+                        output.RowId,
+                        output.Id,
+                        false,
+                        ref messages,
+                        output.Id > 0 );
+ 
+            return importSuccessfull;
+        }
+        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+        {
+            bool exists = false;
+            entity = EntityServices.GetByCtid( ctid );
+            if ( entity != null && entity.Id > 0 )
+                return true;
+
+            return exists;
+        }
+    }
 
 	
 }

@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 using EntityServices = workIT.Services.CompetencyFrameworkServices;
-using InputEntity = RA.Models.Json.CompetencyFrameworksGraph;
+using InputGraph = RA.Models.JsonV3.CompetencyFrameworksGraph;
+using InputEntity = RA.Models.JsonV3.CompetencyFrameworkInput;
 using ThisEntity = workIT.Models.Common.CompetencyFramework;
 using workIT.Utilities;
 using workIT.Factories;
@@ -21,7 +22,7 @@ namespace Import.Services
         int entityTypeId = CodesManager.ENTITY_TYPE_CASS_COMPETENCY_FRAMEWORK;
         string thisClassName = "ImportCompetencyFramesworks";
         ImportManager importManager = new ImportManager();
-        InputEntity input = new InputEntity();
+        InputGraph input = new InputGraph();
         ThisEntity output = new ThisEntity();
 
         public bool ProcessEnvelope( EntityServices mgr, ReadEnvelope item, SaveStatus status )
@@ -38,19 +39,19 @@ namespace Import.Services
             string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
             LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
             LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_competencyFrameswork", payload, "", false );
-            input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-            RA.Models.Json.CompetencyFrameworkInput framework = GetFramework( input.Graph );
-            LoggingHelper.DoTrace( 5, "		framework name: " + framework.name.English_US );
+            input = JsonConvert.DeserializeObject<InputGraph>( item.DecodedResource.ToString() );
+            InputEntity framework = GetFramework( input.Graph );
+            LoggingHelper.DoTrace( 5, "		framework name: " + framework.name.ToString() );
 
             //just store input for now
             return Import( mgr, input, envelopeIdentifier, status );
 
             //return true;
         } //
-        private RA.Models.Json.CompetencyFrameworkInput GetFramework( object graph )
+        private InputEntity GetFramework( object graph )
         {
             //string ctid = "";
-            RA.Models.Json.CompetencyFrameworkInput entity = new RA.Models.Json.CompetencyFrameworkInput();
+            InputEntity entity = new InputEntity();
             Newtonsoft.Json.Linq.JArray jarray = ( Newtonsoft.Json.Linq.JArray ) graph;
             foreach ( var token in jarray )
             {
@@ -58,9 +59,9 @@ namespace Import.Services
                 {
                     if ( token.ToString().IndexOf( "ceasn:CompetencyFramework" ) > -1 )
                     {
-                        entity = ( ( Newtonsoft.Json.Linq.JObject ) token ).ToObject<RA.Models.Json.CompetencyFrameworkInput>();
+                        entity = ( ( Newtonsoft.Json.Linq.JObject ) token ).ToObject<InputEntity>();
 
-                        //RA.Models.Json.CompetencyFrameworkInput cf = ( RA.Models.Json.CompetencyFrameworkInput ) JsonConvert.DeserializeObject( token.ToString() );
+                        //InputEntity cf = ( InputEntity ) JsonConvert.DeserializeObject( token.ToString() );
                         return entity;
                     }
                     else if ( token.ToString().IndexOf( "ceasn:Competency" ) > -1 )
@@ -79,14 +80,14 @@ namespace Import.Services
             //no ctid found, so????
             return entity;
         }
-        public bool Import( EntityServices mgr, InputEntity input, string envelopeIdentifier, SaveStatus status )
+        public bool Import( EntityServices mgr, InputGraph input, string envelopeIdentifier, SaveStatus status )
         {
             List<string> messages = new List<string>();
             bool importSuccessfull = true;
 
             //try
             //{
-            //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+            //input = JsonConvert.DeserializeObject<InputGraph>( item.DecodedResource.ToString() );
             string ctid = input.CTID;
             status.Ctid = ctid;
             string referencedAtId = input.CtdlId;

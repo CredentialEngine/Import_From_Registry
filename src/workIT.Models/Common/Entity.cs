@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-	public class Entity : BaseObject
+    [Serializable]
+    public class Entity : BaseObject
 	{
 		public Entity ()
 		{

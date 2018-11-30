@@ -318,7 +318,8 @@ namespace workIT.Utilities
                         file.WriteLine(msg);
                         file.Close();
                     }
-                }
+					Console.WriteLine( message );
+				}
             }
             catch
             {
@@ -342,13 +343,23 @@ namespace workIT.Utilities
 					string datePrefix = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
 					if ( !string.IsNullOrWhiteSpace( datePrefixOverride ) )
 						datePrefix = datePrefixOverride;
+					else if ( datePrefixOverride == " " )
+						datePrefix = "";
 
 					string logFile = UtilityManager.GetAppKeyValue( "path.log.file", "C:\\LOGS.txt" );
 					string outputFile = logFile.Replace( "[date]", datePrefix ).Replace( "[filename]", filename );
-					if ( outputFile.IndexOf( "json.txt" ) > 1 )
-						outputFile = outputFile.Replace( "json.txt", "json" );
+                    if ( outputFile.IndexOf( "csv.txt" ) > 1 )
+                        outputFile = outputFile.Replace( "csv.txt", "csv" );
+                    else if ( outputFile.IndexOf( "csv.json" ) > 1 )
+                        outputFile = outputFile.Replace( "csv.json", "csv" );
+                    else if ( outputFile.IndexOf( "json.txt" ) > 1 )
+                        outputFile = outputFile.Replace( "json.txt", "json" );
+                    else if ( outputFile.IndexOf( "json.json" ) > 1 )
+                        outputFile = outputFile.Replace( "json.json", "json" );
+                    else if ( outputFile.IndexOf( "txt.json" ) > 1 )
+                        outputFile = outputFile.Replace( "txt.json", "txt" );
 
-					if ( appendingText )
+                    if ( appendingText )
 					{
 						StreamWriter file = File.AppendText( outputFile );
 
@@ -422,7 +433,7 @@ namespace workIT.Utilities
         /// <param name="partner">Partner name</param>
         /// <param name="comment">Comment</param>
         /// <param name="remoteIP">client IP address</param>
-        /// <remarks>06/09/15 contactUs - added remoteIP</remarks>
+        /// <remarks>06/09/15 mparsons - added remoteIP</remarks>
 		public static void LogPageVisit( string sessionId, string template, string queryString, string parmString, bool isPostBack, string userid, string partner, string comment, string remoteIP, string lwia )
         {
             System.DateTime visitDate = System.DateTime.Now;

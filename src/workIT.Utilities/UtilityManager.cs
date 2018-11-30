@@ -237,17 +237,42 @@ namespace workIT.Utilities
             return encodedUrl;
         }
 
-        #endregion
+		/// <summary>
+		/// Generate an MD5 hash of a string
+		/// </summary>
+		/// <param name="input"></param>
+		/// <returns></returns>
+		public static string GenerationMD5String( string input, bool returnAsLowerCase = true )
+		{
+			// Use input string to calculate MD5 hash
+			using ( System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create() )
+			{
+				byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes( input );
+				byte[] hashBytes = md5.ComputeHash( inputBytes );
 
-        #region === Path related Methods ===
-       
-        /// <summary>
-        /// FormatAbsoluteUrl an absolute URL - equivalent to Url.Content()
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="uriScheme"></param>
-        /// <returns></returns>
-        public static string FormatAbsoluteUrl( string path, string uriScheme = null )
+				// Convert the byte array to hexadecimal string
+				StringBuilder sb = new StringBuilder();
+				for ( int i = 0; i < hashBytes.Length; i++ )
+				{
+					sb.Append( hashBytes[ i ].ToString( "X2" ) );
+				}
+				if ( returnAsLowerCase )
+					return sb.ToString().ToLower();
+				else
+					return sb.ToString();
+			}
+		}
+		#endregion
+
+		#region === Path related Methods ===
+
+		/// <summary>
+		/// FormatAbsoluteUrl an absolute URL - equivalent to Url.Content()
+		/// </summary>
+		/// <param name="path"></param>
+		/// <param name="uriScheme"></param>
+		/// <returns></returns>
+		public static string FormatAbsoluteUrl( string path, string uriScheme = null )
         {
             uriScheme = uriScheme ?? HttpContext.Current.Request.Url.Scheme; //allow overriding http or https
 
@@ -311,6 +336,7 @@ namespace workIT.Utilities
                 return "";
             if ( string.IsNullOrEmpty( host ) )
                 return "";
+            relativeUrl = relativeUrl.Replace( "~/", "/" );
             //ensure not already an absolute
             if ( relativeUrl.ToLower().StartsWith( "http" ) )
                 return relativeUrl;

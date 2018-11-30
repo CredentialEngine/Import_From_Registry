@@ -22,6 +22,7 @@ namespace workIT.Data.Tables
     
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string SubjectWebpage { get; set; }
@@ -42,7 +43,6 @@ namespace workIT.Data.Tables
         public string DeliveryTypeDescription { get; set; }
         public string VerificationMethodDescription { get; set; }
         public Nullable<int> InLanguageId { get; set; }
-        public Nullable<int> EntityStateId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_LearningOpportunity> Entity_LearningOpportunity { get; set; }

@@ -26,7 +26,21 @@ namespace workIT.Factories
 		#region Persistance - Entity_Address
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
+                return false;
+            }
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
@@ -78,9 +92,12 @@ namespace workIT.Factories
 						if (entity.HasAddress() )
 						{
 							efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-							efEntity.RowId = Guid.NewGuid();
+                            if ( IsValidGuid( entity.RowId ) )
+                                efEntity.RowId = entity.RowId;
+                            else
+                                efEntity.RowId = Guid.NewGuid();
 
-							context.Entity_Address.Add( efEntity );
+                            context.Entity_Address.Add( efEntity );
 							count = context.SaveChanges();
 
 							//update profile record so doesn't get deleted
@@ -89,7 +106,7 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							if ( count == 0 )
 							{
-								status.AddError( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.Name ) ? "no description" : entity.Name ) );
+								status.AddError( string.Format( " Unable to add address. parentUid: {0}, City: {1}, Region: {2} <br\\> ", parentUid, efEntity.City, efEntity.Region ) );
 							}
 							else
 							{
@@ -99,12 +116,16 @@ namespace workIT.Factories
 								}
 							}
 						}
-						//handle contact points
-						//if address present, these need to be closely related
-						if ( entity.Id > 0)
-							new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
-						else // put under parent
-							new Entity_ContactPointManager().SaveList( entity.ContactPoint, parentUid, ref status );
+                        //handle contact points
+                        //if address present, these need to be closely related
+                        if ( entity.Id > 0 )
+                            new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
+                        else
+                        {
+                            // put under parent
+                            //should log this. If under parent should onlybe an org, and delete all has already been done. 
+                            new Entity_ContactPointManager().SaveList( entity.ContactPoint, parentUid, ref status, false );
+                        }
 					}
 					else
 					{
@@ -153,8 +174,32 @@ namespace workIT.Factories
 			}
 			return isValid;
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_Address.RemoveRange( context.Entity_Address.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		public bool Reset_Prior_ISPrimaryFlags( int entityId, int newPrimaryProfileId )
+            return isValid;
+        }
+        public bool Reset_Prior_ISPrimaryFlags( int entityId, int newPrimaryProfileId )
 		{
 			bool isValid = true;
 			string sql = string.Format( "UPDATE [dbo].[Entity.Address]   SET [IsPrimaryAddress] = 0 WHERE EntityId = {0} AND [IsPrimaryAddress] = 1  AND Id <> {1}", entityId, newPrimaryProfileId );
@@ -251,12 +296,18 @@ namespace workIT.Factories
 
 			return !status.HasSectionErrors;
 		}
-		#endregion
-		#region  retrieval ==================
-	
+        #endregion
+        #region  retrieval ==================
 
-		#region  entity address
-		public static List<ThisEntity> GetAll( Guid parentUid )
+
+        #region  entity address
+        public static List<ThisEntity> GetAll( Guid parentUid )
+        {
+            List<ContactPoint> orphans = new List<ContactPoint>();
+            return GetAll( parentUid, ref orphans );
+        }
+
+        public static List<ThisEntity> GetAll( Guid parentUid, ref List<ContactPoint> orphanContacts )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
@@ -276,7 +327,10 @@ namespace workIT.Factories
 						{
 							entity = new ThisEntity();
 							MapFromDB( item, entity );
-
+                            if (entity.HasAddress() == false && entity.HasContactPoints())
+                            {
+                                orphanContacts.AddRange( entity.ContactPoint );
+                            }
 							list.Add( entity );
 						}
 					}
@@ -284,7 +338,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format(".GetAll. Guid parentUid: {0}", parentUid) );
 			}
 			return list;
 		}//
@@ -346,7 +400,9 @@ namespace workIT.Factories
 			if ( IsValidDate( from.LastUpdated ) )
 				to.LastUpdated = ( DateTime ) from.LastUpdated;
 			//get address specific contacts
+            //address could be empty
 			to.ContactPoint = Entity_ContactPointManager.GetAll( to.RowId );
+
 		}
 
 		public static void MapToDB( ThisEntity from, EM.Entity_Address to, ref bool resetIsPrimaryFlag )
@@ -388,7 +444,7 @@ namespace workIT.Factories
 			to.PostOfficeBoxNumber = GetData( from.PostOfficeBoxNumber, null );
 			to.City = from.City;
 			to.PostalCode = from.PostalCode;
-			to.Region = from.AddressRegion;
+			to.Region = from.AddressRegion ?? "";
 			to.Country = from.Country;
 			//likely provided
 			to.Latitude = from.Latitude;
@@ -397,8 +453,11 @@ namespace workIT.Factories
 			if ( from.HasAddress() )
 			{
 				//check if lat/lng were not provided with address
+				//may want to always do this to expand region!
 				if ( to.Latitude == null || to.Latitude == 0
-				  || to.Longitude == null || to.Longitude == 0 )
+				  || to.Longitude == null || to.Longitude == 0 
+				  || ( to.Region ?? "" ).Length == 2
+				  )
 					UpdateGeo( from, to );
 			}
 
@@ -528,8 +587,8 @@ namespace workIT.Factories
                 from.DisplayAddress(),
                 from.LooseDisplayAddress(),
                 from.PostalCode ?? "",
-                from.AddressRegion ?? "",
-                from.Country ?? ""
+                from.AddressRegion ?? ""
+                //,from.Country ?? ""
             };
             foreach ( var test in addressesToTry )
             {
@@ -589,7 +648,7 @@ namespace workIT.Factories
                             //?not sure if should assume the google result is accurate
                             to.PostalCode = postalCode;
                         }
-                        if ( !string.IsNullOrEmpty( country ) &&
+                        if ( !string.IsNullOrEmpty( country ) && 
                             to.CountryId == null )
                         {
                             //set country string, and perhaps plan update process.

@@ -123,10 +123,11 @@ namespace workIT.Models.ProfileModels
 		//}
 		
 		public Guid AssertedByAgentUid { get; set; }
-		/// <summary>
-		/// Inflate AssertedByAgentUid for display 
-		/// </summary>
-		public Organization AssertedBy { get; set; }
+        public List<Guid> AssertedByAgent { get; set; } = new List<Guid>();
+        /// <summary>
+        /// Inflate AssertedByAgentUid for display 
+        /// </summary>
+        public Organization AssertedBy { get; set; }
 		#endregion
 
 		#region general condition
@@ -169,7 +170,10 @@ namespace workIT.Models.ProfileModels
 		#region Prperties for Display
 		public List<CostProfile> EstimatedCosts { get; set; }
 		public List<CostProfile> EstimatedCost { get { return EstimatedCosts; } set { EstimatedCosts = value; } } //Alias
-		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
+
+        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+        public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
+        //IMPORT ONLY
 		public List<CredentialAlignmentObjectProfile> TargetCompetencies { get; set; }
 		public List<TextValueProfile> Condition { get; set; }
 

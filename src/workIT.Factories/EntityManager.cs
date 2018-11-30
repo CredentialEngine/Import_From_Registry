@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,7 +24,7 @@ namespace workIT.Factories
 {
 	/// <summary>
 	/// manager for entities
-	/// NOTE: May 7, 2016 contactUs - using after insert triggers to create the entity related a new created major entities like:
+	/// NOTE: May 7, 2016 mparsons - using after insert triggers to create the entity related a new created major entities like:
 	/// - Credential
 	/// - Organization
 	/// - Assessment
@@ -33,18 +35,18 @@ namespace workIT.Factories
 	public class EntityManager : BaseFactory
 	{
 		string thisClassName = "EntityManager";
-		#region 
-		/// <summary>
-		/// Resetting an entity by first deleting it, and then readding.
-		/// The purpose of the delete is to remove all children relationships.
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public bool ResetEntity(Entity entity, ref string statusMessage)
+        #region persistance
+        /// <summary>
+        /// Resetting an entity by first deleting it, and then readding.
+        /// The purpose of the delete is to remove all children relationships.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="statusMessage"></param>
+        /// <returns></returns>
+        public bool ResetEntity(Entity entity, ref string statusMessage)
 		{
 			bool isValid = true; 
-			if (Delete(entity.EntityUid, ref statusMessage) == false)
+			if (Delete(entity.EntityUid, ref statusMessage, 2) == false)
 			{
 				//major issue
 				return false;
@@ -94,7 +96,7 @@ namespace workIT.Factories
 					efEntity.EntityBaseName = baseName;
 					efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
 
-					context.Entities.Add( efEntity );
+					context.Entity.Add( efEntity );
 
 					// submit the change to database
 					int count = context.SaveChanges();
@@ -127,47 +129,112 @@ namespace workIT.Factories
 			return 0;
 		}
 
-		/// <summary>
-		/// Delete an Entity
-		/// This should be handled by triggers as well, or at least with the child entity
-		/// </summary>
-		/// <param name="entityUid"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public bool Delete( Guid entityUid, ref string statusMessage )
-		{
-			bool isValid = false;
-			if ( !IsValidGuid(entityUid))
-			{
-				statusMessage = "Error - missing a valid identifier for the Entity";
-				return false;
-			}
-			using ( var context = new EntityContext() )
-			{
-				DBentity efEntity = context.Entities
-							.FirstOrDefault( s => s.EntityUid == entityUid );
+        public bool UpdateModifiedDate( Guid entityUid, ref SaveStatus status )
+        {
+            bool isValid = false;
+            if ( !IsValidGuid( entityUid ) )
+            {
+                status.AddError( thisClassName + ".UpdateModifiedDate(). Error - missing a valid identifier for the Entity" );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                DBentity efEntity = context.Entity
+                            .FirstOrDefault( s => s.EntityUid == entityUid );
 
-				if ( efEntity != null && efEntity.Id > 0 )
-				{
-					int entityTypeId = efEntity.EntityTypeId;
-					//string entityType = efEntity.Codes_EntityType.Title;
+                if ( efEntity != null && efEntity.Id > 0 )
+                {
+                    efEntity.LastUpdated = DateTime.Now;
+                    int count = context.SaveChanges();
+                    if ( count >= 0 )
+                    {
+                        isValid = true;
+                        LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".UpdateModifiedDate - update last updated for TypeId: {0}, BaseId: {1}", efEntity.EntityTypeId, efEntity.EntityBaseId ) );
+                    }
+                }
+                else
+                {
+                    status.AddError( thisClassName + ".UpdateModifiedDate(). Error - Entity  was not found.");
+                    LoggingHelper.LogError( thisClassName + string.Format( ".UpdateModifiedDate - record was not found. entityUid: {0}", entityUid ), true );
+                }
+            }
 
-					context.Entities.Remove( efEntity );
-					int count = context.SaveChanges();
-					if ( count >= 0 )
-					{
-						isValid = true;
-					}
-				}
-				else
-				{
-					statusMessage = "Error - Entity delete unnecessary, as record was not found.";
-					LoggingHelper.LogError( thisClassName + string.Format( ".Delete - WIERD - delete failed, as record was not found. entityUid: {0}", entityUid ), true );
-				}
-			}
+            return isValid;
+        }///
+         /// <summary>
+         /// Delete an Entity
+         /// This should be handled by triggers as well, or at least with the child entity
+         /// </summary>
+         /// <param name="entityUid"></param>
+         /// <param name="statusMessage"></param>
+         /// <returns></returns>
+        public bool Delete( Guid entityUid, ref string statusMessage, int attemptsRemaining = 0 )
+        {
+            bool isValid = false;
+            statusMessage = "";
+            if ( !IsValidGuid(entityUid) )
+            {
+                statusMessage = "Error - missing a valid identifier for the Entity";
+                return false;
+            }
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    DBentity efEntity = context.Entity
+                                .FirstOrDefault(s => s.EntityUid == entityUid);
 
-			return isValid;
-		}
+                    if ( efEntity != null && efEntity.Id > 0 )
+                    {
+                        int entityTypeId = efEntity.EntityTypeId;
+                        //string entityType = efEntity.Codes_EntityType.Title;
+
+                        context.Entity.Remove(efEntity);
+                        int count = context.SaveChanges();
+                        if ( count > 0 )
+                        {
+                            isValid = true;
+                        } else
+                        {
+                            statusMessage = string.Format( "Entity delete returned count of zero - potential inconsistant state. entityTypeId: {0}, entityUid: {1}", entityTypeId, entityUid );
+                            LoggingHelper.LogError( thisClassName + string.Format( ".Delete - Entity delete returned count of zero - potential inconsistant state. entityTypeId: {0}, entityUid: {1}", entityTypeId, entityUid ), true );
+                        }
+                    }
+                    else
+                    {
+                        statusMessage = "Error - Entity delete unnecessary, as record was not found.";
+                        LoggingHelper.LogError(thisClassName + string.Format(".Delete - WIERD - delete failed, as record was not found. entityUid: {0}", entityUid), true);
+                    }
+                }
+            }
+            catch (SqlException sex)
+            {
+                statusMessage = FormatExceptions(sex);
+                if ( statusMessage.ToLower().IndexOf("was deadlocked on lock resources with another process") > -1 )
+                {
+                    LoggingHelper.DoTrace(4, thisClassName + string.Format(".Delete(). Attempt to delete entity: {0} failed with deadlock. Retrying {1} more times.", entityUid, attemptsRemaining));
+                    if ( attemptsRemaining > 0 )
+                    {
+                        attemptsRemaining--;
+                        return Delete(entityUid, ref statusMessage, attemptsRemaining);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch ( Exception ex )
+            {
+                statusMessage = FormatExceptions(ex);
+            }
+
+            return isValid;
+        }
 		#endregion 
 		#region retrieval
 
@@ -177,7 +244,7 @@ namespace workIT.Factories
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
 			{
-				DBentity item = context.Entities
+				DBentity item = context.Entity
 						.FirstOrDefault( s => s.EntityUid == entityUid );
 
 				if ( item != null && item.Id > 0 )
@@ -204,7 +271,7 @@ namespace workIT.Factories
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
 			{
-				DBentity item = context.Entities
+				DBentity item = context.Entity
 						.FirstOrDefault( s => s.Id == entityId);
 
 				if ( item != null && item.Id > 0 )
@@ -226,7 +293,7 @@ namespace workIT.Factories
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
 			{
-				DBentity item = context.Entities
+				DBentity item = context.Entity
 						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
 							&& s.EntityBaseId == entityBaseId );
 
@@ -247,48 +314,49 @@ namespace workIT.Factories
 
 		}
 
-		//Entity_Cache
-		public static Entity GetEntity_FromCache( int entityId )
-		{
-			Entity entity = new Entity();
-			using ( var context = new EntityContext() )
-			{
-				EM.Entity_Cache item = context.Entity_Cache
-						.SingleOrDefault( s => s.Id == entityId );
+        //Entity_Cache
+        //public static Entity GetEntity_FromCache( int entityId )
+        //{
+        //	Entity entity = new Entity();
+        //	using ( var context = new EntityContext() )
+        //	{
+        //		EM.Entity_Cache item = context.Entity_Cache
+        //				.SingleOrDefault( s => s.Id == entityId );
 
-				if ( item != null && item.Id > 0 )
-				{
-					entity.Id = item.Id;
-					entity.EntityTypeId = item.EntityTypeId;
-					entity.EntityType = item.EntityType;
-					entity.EntityUid = item.EntityUid;
-					entity.EntityBaseId = item.BaseId;
-					entity.EntityBaseName = item.Name;
-					entity.Created = ( DateTime ) item.Created;
-					entity.LastUpdated = ( DateTime ) item.LastUpdated;
-					if (item.parentEntityId > 0)
-					{
-						//NOTE	- can use the included Entity to get more info
-						//		- although may want to turn off lazy loading
-						entity.ParentEntity = new ThisEntity();
-						entity.ParentEntity.Id = item.parentEntityId ?? 0;
-						entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
-						entity.ParentEntity.EntityType = item.parentEntityType;
-						entity.ParentEntity.EntityUid = (Guid)item.parentEntityUid;
-					}
-				}
-				return entity;
-			}
-		}
+        //		if ( item != null && item.Id > 0 )
+        //		{
+        //			entity.Id = item.Id;
+        //			entity.EntityTypeId = item.EntityTypeId;
+        //			entity.EntityType = item.EntityType;
+        //			entity.EntityUid = item.EntityUid;
+        //			entity.EntityBaseId = item.BaseId;
+        //			entity.EntityBaseName = item.Name;
+        //			entity.Created = ( DateTime ) item.Created;
+        //			entity.LastUpdated = ( DateTime ) item.LastUpdated;
+        //			if (item.parentEntityId > 0)
+        //			{
+        //				//NOTE	- can use the included Entity to get more info
+        //				//		- although may want to turn off lazy loading
+        //				entity.ParentEntity = new ThisEntity();
+        //				entity.ParentEntity.Id = item.parentEntityId ?? 0;
+        //				entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
+        //				entity.ParentEntity.EntityType = item.parentEntityType;
+        //				entity.ParentEntity.EntityUid = (Guid)item.parentEntityUid;
+        //			}
+        //		}
+        //		return entity;
+        //	}
+        //}
 
-		/// <summary>
-		/// Look up for resolving a third party entity
-		/// </summary>
-		/// <param name="entityTypeId"></param>
-		/// <param name="name"></param>
-		/// <param name="subjectWebpage"></param>
-		/// <returns></returns>
-		public static Entity Entity_Cache_Get( int entityTypeId, string name, string subjectWebpage )
+        /// <summary>
+        /// Look up for resolving a third party entity
+        /// NOTE: entityTypeId will often be zero (as unknown at time), 
+        /// </summary>
+        /// <param name="entityTypeId"></param>
+        /// <param name="name"></param>
+        /// <param name="subjectWebpage"></param>
+        /// <returns></returns>
+        public static Entity Entity_Cache_Get( int entityTypeId, string name, string subjectWebpage )
 		{
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
@@ -322,100 +390,7 @@ namespace workIT.Factories
 				return entity;
 			}
 		}
-		/*
-		/// <summary>
-		/// Get Entity_Summary
-		/// NOTE: work to minimize use of this method - slow
-		/// </summary>
-		/// <param name="entityUid"></param>
-		/// <returns></returns>
-		public static Views.Entity_Summary GetDBEntity( Guid entityUid )
-		{
-			using ( var context = new ViewContext() )
-			{
-				Views.Entity_Summary item = context.Entity_Summary
-						.FirstOrDefault( s => s.EntityUid == entityUid );
-
-				if ( item != null && item.Id > 0 )
-				{
-					
-				}
-				return item;
-			}
-		}
-
-		/// <summary>
-		/// Get an Entity Summary object by entityId 
-		/// </summary>
-		/// <param name="entityId"></param>
-		/// <returns></returns>
-		public static EntitySummary GetEntitySummary( int entityId)
-		{
-			EntitySummary entity = new EntitySummary();
-			using ( var context = new ViewContext() )
-			{
-				Views.Entity_Summary item = context.Entity_Summary
-							.FirstOrDefault( s => s.Id == entityId );
-			
-				if ( item != null && item.Id > 0 )
-				{
-					entity.Id = item.Id;
-					entity.EntityTypeId = item.EntityTypeId;
-					entity.EntityType = item.EntityType;
-					entity.EntityUid = item.EntityUid;
-					entity.Name = item.Name;
-					entity.BaseId = item.BaseId;
-					entity.Description = item.Description;
-					entity.StatusId = ( int ) ( item.StatusId ?? 1 );
-					if ( IsValidDate( item.Created ) )
-						entity.Created = ( DateTime ) item.Created;
-					entity.CreatedById = item.CreatedById ?? 0;
-
-					entity.ManagingOrgId = (int) (item.ManagingOrgId ?? 0);
-
-					entity.parentEntityId = item.parentEntityId;
-					entity.parentEntityUid = item.parentEntityUid;
-					entity.parentEntityType = item.parentEntityType;
-					entity.parentEntityTypeId = item.parentEntityTypeId;
-				}
-				return entity;
-			}
-		}
-
-
-		/// <summary>
-		/// Get the top level entity for a entity component. 
-		/// This currently means one of:
-		/// 1 - credential
-		/// 2 - Organization
-		/// 3 - Assessment
-		/// 4 - Learning Opp
-		/// </summary>
-		/// <param name="entityId"></param>
-		/// <returns></returns>
-		public static Views.Entity_Summary GetTopLevelParentEntity( Guid entityUid)
-		{
-			Views.Entity_Summary topParent = new Views.Entity_Summary();
-
-			using ( var context = new ViewContext() )
-			{
-				while ( topParent != null )
-				{
-					topParent = context.Entity_Summary
-						.FirstOrDefault( s => s.EntityUid == entityUid );
-
-					if ( topParent == null && topParent.Id == 0 )
-					{
-						//should not happen, so ???
-
-						break;
-					}
-				}
-
-				return topParent;
-			}
-		}
-		*/
+	
 		#endregion
 
     }

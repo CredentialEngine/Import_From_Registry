@@ -25,7 +25,7 @@ namespace workIT.Factories
     {
         static string thisClassName = "Entity_ReferenceManager";
         static int defaultCategoryId = CodesManager.PROPERTY_CATEGORY_REFERENCE_URLS;
-        int maxReferenceTextLength = UtilityManager.GetAppKeyValue( "maxReferenceTextLength", 500 );
+        int maxReferenceTextLength = UtilityManager.GetAppKeyValue( "maxReferenceTextLength", 600 );
         int maxKeywordLength = UtilityManager.GetAppKeyValue( "maxKeywordLength", 200 );
         int maxReferenceUrlLength = UtilityManager.GetAppKeyValue( "maxReferenceUrlLength", 600 );
 
@@ -53,7 +53,7 @@ namespace workIT.Factories
                 code = CodesManager.GetLanguage( item.TextValue );
                 if ( code.Id > 0 )
                 {
-                    textValue = string.Format( "{0} ({1})", code.Name, code.Value );
+                    textValue = string.Format( "{0} ", code.Name );
                     AddTextValue( textValue, parent.Id, ref status, categoryId );
                 }
             }
@@ -337,7 +337,37 @@ namespace workIT.Factories
             return isOK;
 
         }
+        /// <summary>
+        /// Delete all properties for parent (in preparation for import)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_Reference.RemoveRange( context.Entity_Reference.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
+            return isValid;
+        }
 
         private bool Validate( ThisEntity profile, bool isTitleRequired,
             ref bool isEmpty,
@@ -356,7 +386,7 @@ namespace workIT.Factories
             }
             profile.TextTitle = ( profile.TextTitle ?? "" );
             profile.TextValue = ( profile.TextValue ?? "" );
-            //16-07-22 contactUs - changed to, for now, let user enter one or the other (except for urls), this gives flexibility to the interface choosing which to show or require
+            //16-07-22 mparsons - changed to, for now, let user enter one or the other (except for urls), this gives flexibility to the interface choosing which to show or require
             //ultimately, we will make the profile configurable
             if ( profile.CategoryId == CodesManager.PROPERTY_CATEGORY_REFERENCE_URLS )
             {
@@ -443,12 +473,12 @@ namespace workIT.Factories
             {
                 if ( !string.IsNullOrWhiteSpace( profile.TextTitle ) && profile.TextTitle.Length > maxReferenceTextLength )
                 {
-                    status.AddWarning( string.Format( "Error - the title must be less than {0} characters.", maxReferenceTextLength ) );
+                    status.AddWarning( string.Format( "Warning - the TextTitle must be less than {0} characters, categoryId: {1}.", maxReferenceTextLength, profile.CategoryId ) );
                 }
 
                 if ( !string.IsNullOrWhiteSpace( profile.TextValue ) && profile.TextValue.Length > maxReferenceTextLength )
                 {
-                    status.AddWarning( string.Format( "Error - the value must be less than {0} characters.", maxReferenceTextLength ) );
+                    status.AddWarning( string.Format( "Warning - the text value must be less than {0} characters, categoryId: {1}.", maxReferenceTextLength, profile.CategoryId ) );
                 }
             }
             if ( profile.CategoryId != CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM
@@ -476,55 +506,60 @@ namespace workIT.Factories
         /// Get all profiles for the parent
         /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
         /// NOTE: the view: uses Entity_Cache, so this method is only for use where the related entity parent is in the Entity_Cache table.
+        /// 
+        /// TODO - minimize dependency on this method, ie stop using entity_cache
         /// </summary>
         /// <param name="parentUid"></param>
-        public static List<ThisEntity> GetAll( Guid parentUid, int categoryId )
+        public static List<ThisEntity> GetAllOLD( Guid parentUid, int categoryId )
         {
-            ThisEntity entity = new ThisEntity();
-            List<ThisEntity> list = new List<ThisEntity>();
-            List<ThisEntity> results = new List<ThisEntity>();
-            Entity parent = EntityManager.GetEntity( parentUid );
-            if ( parent == null || parent.Id == 0 )
-            {
-                return list;
-            }
-            try
-            {
-                using ( var context = new ViewContext() )
-                {
-                    List<Entity_Reference_Summary> search = context.Entity_Reference_Summary
-                            .Where( s => s.EntityId == parent.Id
-                            && s.CategoryId == categoryId )
-                            .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
-                            .ToList();
+            return GetAll( parentUid, categoryId );
 
-                    if ( categoryId == CodesManager.PROPERTY_CATEGORY_SUBJECT
-                      || categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
-                    {
-                        search = search.OrderBy( s => s.TextValue ).ToList();
-                    }
-                    else
-                    {
-                        search = search.OrderBy( s => s.EntityReferenceId ).ToList();
-                    }
 
-                    if ( search != null && search.Count > 0 )
-                    {
-                        foreach ( Entity_Reference_Summary item in search )
-                        {
-                            entity = new ThisEntity();
-                            MapFromDB( item, entity );
+            //ThisEntity entity = new ThisEntity();
+            //List<ThisEntity> list = new List<ThisEntity>();
+            //List<ThisEntity> results = new List<ThisEntity>();
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            //if ( parent == null || parent.Id == 0 )
+            //{
+            //    return list;
+            //}
+            //try
+            //{
+            //    using ( var context = new ViewContext() )
+            //    {
+            //        List<Entity_Reference_Summary> search = context.Entity_Reference_Summary
+            //                .Where( s => s.EntityId == parent.Id
+            //                && s.CategoryId == categoryId )
+            //                .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
+            //                .ToList();
 
-                            list.Add( entity );
-                        }
-                    }
-                }
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
-            }
-            return list;
+            //        if ( categoryId == CodesManager.PROPERTY_CATEGORY_SUBJECT
+            //          || categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
+            //        {
+            //            search = search.OrderBy( s => s.TextValue ).ToList();
+            //        }
+            //        else
+            //        {
+            //            search = search.OrderBy( s => s.EntityReferenceId ).ToList();
+            //        }
+
+            //        if ( search != null && search.Count > 0 )
+            //        {
+            //            foreach ( Entity_Reference_Summary item in search )
+            //            {
+            //                entity = new ThisEntity();
+            //                MapFromDB( item, entity );
+
+            //                list.Add( entity );
+            //            }
+            //        }
+            //    }
+            //}
+            //catch ( Exception ex )
+            //{
+            //    LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+            //}
+            //return list;
         }//
 
         /// <summary>
@@ -533,7 +568,7 @@ namespace workIT.Factories
         /// <param name="parentUid"></param>
         /// <param name="categoryId"></param>
         /// <returns></returns>
-        public static List<ThisEntity> GetAllDirect( Guid parentUid, int categoryId )
+        public static List<ThisEntity> GetAll( Guid parentUid, int categoryId )
         {
             ThisEntity entity = new ThisEntity();
             List<ThisEntity> list = new List<ThisEntity>();
@@ -552,7 +587,7 @@ namespace workIT.Factories
                             && s.CategoryId == categoryId )
                             .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
                             .ToList();
-
+                    //this appears wrong, the ToList means query not deferred???
                     if ( categoryId == CodesManager.PROPERTY_CATEGORY_SUBJECT
                       || categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
                     {
@@ -577,7 +612,7 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+                LoggingHelper.LogError( ex, thisClassName + ".GetAllDirect" );
             }
             return list;
         }//
@@ -897,23 +932,34 @@ namespace workIT.Factories
             {
                 to.TextValue = PhoneNumber.DisplayPhone( from.TextValue );
             }
-            else if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_ORGANIZATION_IDENTIFIERS )
-            {
-                to.TextValue = from.TextValue;
-            }
             else
-            {
                 to.TextValue = from.TextValue;
-            }
+            //else if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_ORGANIZATION_IDENTIFIERS )
+            //{
+            //    to.TextValue = from.TextValue;
+            //}
+            //else
+            //{
+            //    to.TextValue = from.TextValue;
+            //}
 
             to.CodeId = from.PropertyValueId ?? 0;
-            to.ProfileSummary = to.TextTitle + " - " + to.TextValue;
+            if (string.IsNullOrWhiteSpace(to.TextTitle ) )
+                to.ProfileSummary = to.TextValue;
+            else
+                to.ProfileSummary = to.TextTitle + " - " + to.TextValue;
+            to.CodeTitle = "";
+            to.CodeSchema = "";
             if ( from.Codes_PropertyValue != null && from.Codes_PropertyValue.Id > 0 )
             {
                 to.CodeTitle = from.Codes_PropertyValue.Title;
                 to.CodeSchema = from.Codes_PropertyValue.SchemaName ?? "";
             }
-
+            if ( from.Entity != null && from.Entity.Id > 0 )
+            {
+                to.EntityBaseId = from.Entity.EntityBaseId ?? 0;
+                to.EntityTypeId = from.Entity.EntityTypeId;
+            }
             if ( IsValidDate( from.Created ) )
                 to.Created = ( DateTime )from.Created;
 
@@ -924,23 +970,25 @@ namespace workIT.Factories
 
         private static void MapFromDB( Entity_Reference_Summary from, ThisEntity to )
         {
+            //core properties
             to.Id = from.EntityReferenceId;
             to.EntityId = from.EntityId;
-            to.EntityBaseId = from.EntityBaseId;
-            to.TextTitle = from.Title;
+
+            to.TextTitle = from.Title ?? "";
             to.CategoryId = from.CategoryId;
             if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_PHONE_TYPE )
                 to.TextValue = PhoneNumber.DisplayPhone( from.TextValue );
             else
                 to.TextValue = from.TextValue;
 
-            to.CodeTitle = from.PropertyValue;
             to.CodeId = ( int )( from.PropertyValueId ?? 0 );
-
+            to.CodeTitle = from.PropertyValue;
             to.CodeSchema = from.PropertySchema ?? "";
 
             to.ProfileSummary = to.TextTitle + " - " + to.TextValue;
 
+            //from entity
+            to.EntityBaseId = from.EntityBaseId;
         }
 
         private static void SendNewOtherIdentityNotice( ThisEntity entity )

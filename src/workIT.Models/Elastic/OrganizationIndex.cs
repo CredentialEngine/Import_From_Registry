@@ -8,7 +8,7 @@ using Nest;
 
 namespace workIT.Models.Elastic
 {
-    public class OrganizationIndex
+    public class OrganizationIndex : IIndex
     {
         public OrganizationIndex()
         {
@@ -30,6 +30,18 @@ namespace workIT.Models.Elastic
         public int EntityTypeId { get; set; } = 2;
         public string FriendlyName { get; set; }
         public int Id { get; set; }
+        public int OwnerOrganizationId
+        {
+            get
+            {
+                return Id;
+            }
+            set
+            {
+                Id = value;
+            }
+        }
+        public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
         public int NameIndex { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -37,7 +49,7 @@ namespace workIT.Models.Elastic
         public string SubjectWebpage { get; set; }
         public string CTID { get; set; }
         public string ImageURL { get; set; }
-
+        public int EntityStateId { get; set; }
         public string CredentialRegistryId { get; set; }
 
         public DateTime Created { get; set; }
@@ -63,21 +75,38 @@ namespace workIT.Models.Elastic
         public List<IndexProperty> OrganizationServiceTypes { get; set; } = new List<IndexProperty>();
 
         //actually only one sector type
-       // public int OrganizationSectorTypeId { get; set; }
+        // public int OrganizationSectorTypeId { get; set; }
         public List<int> OrganizationSectorTypeIds { get; set; } = new List<int>();
         public List<IndexProperty> OrganizationSectorTypes { get; set; } = new List<IndexProperty>();
 
         public List<int> OrganizationClaimTypeIds { get; set; } = new List<int>();
         public List<IndexProperty> OrganizationClaimTypes { get; set; } = new List<IndexProperty>();
 
-        public List<string> Keyword { get; set; }
+        //note this is already included in TextValue
         public List<string> AlternateNames { get; set; }
-        public List<string> TextValues { get; set; }
 
-        //public List<IndexReferenceFramework> Industries { get; set; }
+        public List<string> Keyword { get; set; }
 
-        //public string NaicsResults { get; set; }
-        public List<string> IndustryCodeGroups { get; set; }
+		/// <summary>
+		/// Source will be Entity.SearchIndex, including:
+		/// NAICS        
+		/// Keyword
+		/// PLUS:
+		/// - Alternate name
+		/// - AlternateIdentifiers
+		/// - Id
+		/// - CredentialRegistryId
+		/// - CTID
+		/// - ServiceTypes, OrgTypes, SectorTypes, ClaimTypes 
+		/// - QA role by QA Org name
+		/// </summary>
+		public List<string> TextValues { get; set; } = new List<string>();
+		public List<string> PremiumValues { get; set; } = new List<string>();
+
+		//public List<IndexReferenceFramework> Industries { get; set; }
+
+		//public string NaicsResults { get; set; }
+		public List<string> IndustryCodeGroups { get; set; }
         public List<string> IndustryCodeNotations { get; set; }
         //public string IndustryOtherResults { get; set; }
         public List<IndexReferenceFramework> ReferenceFrameworks { get; set; } = new List<IndexReferenceFramework>();
@@ -85,6 +114,7 @@ namespace workIT.Models.Elastic
         public List<int> PropertyValues { get; set; }
         public List<int> Codes { get; set; }
         public List<int> AgentRelationships { get; set; }
+        //public List<int> TargetAssertion { get; set; }
         //public string MainPhoneNumber { get; set; }
 
         public string OwnedByResults { get; set; }
@@ -96,6 +126,7 @@ namespace workIT.Models.Elastic
         public string RecognizedByResults { get; set; }
         public string RegulatedByResults { get; set; }
         public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
+        public List<IndexQualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<IndexQualityAssurancePerformed>();
         //counts
         public int VerificationProfilesCount { get; set; }
         public int CostManifestsCount { get; set; }
@@ -104,6 +135,7 @@ namespace workIT.Models.Elastic
         public int DepartmentsCount { get; set; }
         public int HasIndustriesCount { get; set; }
         public List<int> ReportFilters { get; set; } = new List<int>();
-    }      
+
+    }
 
 }

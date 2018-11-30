@@ -178,187 +178,236 @@ namespace workIT.Services
 
 			return false;
 		}
-		//public static bool CanUserEditAllContent()
-		//{
-		//	AppUser user = GetUserFromSession();
-		//	if ( user == null || user.Id == 0 )
-		//	{
-		//		//status = "You must be authenticated and authorized before being allowed to view any content.";
-		//		return false;
-		//	}
+        //public static bool CanUserEditAllContent()
+        //{
+        //	AppUser user = GetUserFromSession();
+        //	if ( user == null || user.Id == 0 )
+        //	{
+        //		//status = "You must be authenticated and authorized before being allowed to view any content.";
+        //		return false;
+        //	}
 
-		//	if ( user.UserRoles.Contains( "Administrator" )
-		//	  || user.UserRoles.Contains( "Site Manager" )
-		//	  || user.UserRoles.Contains( "Site Staff" )
-		//		)
-		//		return true;
+        //	if ( user.UserRoles.Contains( "Administrator" )
+        //	  || user.UserRoles.Contains( "Site Manager" )
+        //	  || user.UserRoles.Contains( "Site Staff" )
+        //		)
+        //		return true;
 
-		//	return false;
-		//}
+        //	return false;
+        //}
 
 
-		///// <summary>
-		///// Return true if current user can create content
-		///// Called from header. 
-		///// </summary>
-		///// <returns></returns>
-		//public static bool CanUserCreateContent()
-		//{
-		//    //this method will not expect a status message
-		//    string status = "";
-		//    AppUser user = GetUserFromSession();
-		//    if ( user == null || user.Id == 0 )
-		//        return false;
-		//    return CanUserCreateContent( user, ref status );
-		//}
+        ///// <summary>
+        ///// Return true if current user can create content
+        ///// Called from header. 
+        ///// </summary>
+        ///// <returns></returns>
+        //public static bool CanUserCreateContent()
+        //{
+        //    //this method will not expect a status message
+        //    string status = "";
+        //    AppUser user = GetUserFromSession();
+        //    if ( user == null || user.Id == 0 )
+        //        return false;
+        //    return CanUserCreateContent( user, ref status );
+        //}
 
-		///// <summary>
-		///// Return true if user can publish content
-		///// Essentially this relates to being able to create credentials and related entities. 
-		///// </summary>
-		///// <param name="user"></param>
-		///// <param name="status"></param>
-		///// <returns></returns>
-		//public static bool CanUserCreateContent( AppUser user, ref string status )
-		//{
-		//    status = "";
-		//    if ( user == null || user.Id == 0 )
-		//    {
-		//        status = "You must be authenticated and authorized before being allowed to create any content.";
-		//        return false;
-		//    }
+        ///// <summary>
+        ///// Return true if user can publish content
+        ///// Essentially this relates to being able to create credentials and related entities. 
+        ///// </summary>
+        ///// <param name="user"></param>
+        ///// <param name="status"></param>
+        ///// <returns></returns>
+        //public static bool CanUserCreateContent( AppUser user, ref string status )
+        //{
+        //    status = "";
+        //    if ( user == null || user.Id == 0 )
+        //    {
+        //        status = "You must be authenticated and authorized before being allowed to create any content.";
+        //        return false;
+        //    }
 
-		//    if ( user.UserRoles.Contains( "Administrator" )
-		//      || user.UserRoles.Contains( "Site Manager" )
-		//      || user.UserRoles.Contains( "Site Staff" )
-		//      || user.UserRoles.Contains( "Site Partner" )
-		//        )
-		//        return true;
+        //    if ( user.UserRoles.Contains( "Administrator" )
+        //      || user.UserRoles.Contains( "Site Manager" )
+        //      || user.UserRoles.Contains( "Site Staff" )
+        //      || user.UserRoles.Contains( "Site Partner" )
+        //        )
+        //        return true;
 
-		//    bool canEditorsViewAll = UtilityManager.GetAppKeyValue( "canEditorsViewAll", false );
-		//    //if allowing anyone with edit for any org return true;
-		//    if ( canEditorsViewAll && OrganizationServices.IsMemberOfAnOrganization( user.Id ) )
-		//        return true;
+        //    bool canEditorsViewAll = UtilityManager.GetAppKeyValue( "canEditorsViewAll", false );
+        //    //if allowing anyone with edit for any org return true;
+        //    if ( canEditorsViewAll && OrganizationServices.IsMemberOfAnOrganization( user.Id ) )
+        //        return true;
 
-		//    //allow once out of beta, and user is member of an org
-		//    if ( UtilityManager.GetAppKeyValue( "isSiteInBeta", true ) == false
-		//        && OrganizationManager.IsMemberOfAnyOrganization( user.Id ) )
-		//        return true;
+        //    //allow once out of beta, and user is member of an org
+        //    if ( UtilityManager.GetAppKeyValue( "isSiteInBeta", true ) == false
+        //        && OrganizationManager.IsMemberOfAnyOrganization( user.Id ) )
+        //        return true;
 
-		//    status = "Sorry - You have not been authorized to add or update content on this site during this <strong>BETA</strong> period. Please contact site management if you believe that you should have access during this <strong>BETA</strong> period.";
+        //    status = "Sorry - You have not been authorized to add or update content on this site during this <strong>BETA</strong> period. Please contact site management if you believe that you should have access during this <strong>BETA</strong> period.";
 
-		//    return false;
-		//}
+        //    return false;
+        //}
 
-		
-		///// <summary>
-		///// Perform basic authorization checks. First establish an initial user object.
-		///// Used where the user object is not to be returned.
-		///// </summary>
-		///// <param name="action"></param>
-		///// <param name="mustBeLoggedIn"></param>
-		///// <param name="status"></param>
-		///// <returns></returns>
-		//public static bool AuthorizationCheck( ref string status )
-		//{
-		//    AppUser user = GetCurrentUser();
-		//    return AuthorizationCheck( "", false, ref status, ref user );
-		//}
-		///// <summary>
-		///// Do auth check - where user is not expected back, so can be instantiate here and passed to next version
-		///// </summary>
-		///// <param name="action"></param>
-		///// <param name="mustBeLoggedIn"></param>
-		///// <param name="status"></param>
-		///// <returns></returns>
-		//public static bool AuthorizationCheck( string action, bool mustBeLoggedIn, ref string status )
-		//{
 
-		//    AppUser user = new AppUser(); //GetCurrentUser();
-		//    return AuthorizationCheck( action, false, ref status, ref user );
-		//}
-		///// <summary>
-		///// Perform basic authorization checks
-		///// </summary>
-		///// <param name="action"></param>
-		///// <param name="mustBeLoggedIn"></param>
-		///// <param name="status"></param>
-		///// <param name="user"></param>
-		///// <returns></returns>
-		//public static bool AuthorizationCheck( string action, bool mustBeLoggedIn, ref string status, ref AppUser user )
-		//{
-		//    bool isAuthorized = true;
-		//    user = GetCurrentUser();
-		//    bool isAuthenticated = IsUserAuthenticated( user );
-		//    if ( mustBeLoggedIn && !isAuthenticated )
-		//    {
-		//        status = string.Format( "You must be logged in to do that ({0}).", action );
-		//        return false;
-		//    }
+        ///// <summary>
+        ///// Perform basic authorization checks. First establish an initial user object.
+        ///// Used where the user object is not to be returned.
+        ///// </summary>
+        ///// <param name="action"></param>
+        ///// <param name="mustBeLoggedIn"></param>
+        ///// <param name="status"></param>
+        ///// <returns></returns>
+        //public static bool AuthorizationCheck( ref string status )
+        //{
+        //    AppUser user = GetCurrentUser();
+        //    return AuthorizationCheck( "", false, ref status, ref user );
+        //}
+        ///// <summary>
+        ///// Do auth check - where user is not expected back, so can be instantiate here and passed to next version
+        ///// </summary>
+        ///// <param name="action"></param>
+        ///// <param name="mustBeLoggedIn"></param>
+        ///// <param name="status"></param>
+        ///// <returns></returns>
+        //public static bool AuthorizationCheck( string action, bool mustBeLoggedIn, ref string status )
+        //{
 
-		//    if ( action == "Delete" )
-		//    {
+        //    AppUser user = new AppUser(); //GetCurrentUser();
+        //    return AuthorizationCheck( action, false, ref status, ref user );
+        //}
+        ///// <summary>
+        ///// Perform basic authorization checks
+        ///// </summary>
+        ///// <param name="action"></param>
+        ///// <param name="mustBeLoggedIn"></param>
+        ///// <param name="status"></param>
+        ///// <param name="user"></param>
+        ///// <returns></returns>
+        //public static bool AuthorizationCheck( string action, bool mustBeLoggedIn, ref string status, ref AppUser user )
+        //{
+        //    bool isAuthorized = true;
+        //    user = GetCurrentUser();
+        //    bool isAuthenticated = IsUserAuthenticated( user );
+        //    if ( mustBeLoggedIn && !isAuthenticated )
+        //    {
+        //        status = string.Format( "You must be logged in to do that ({0}).", action );
+        //        return false;
+        //    }
 
-		//        //TODO: validate user's ability to delete a specific entity (though this should probably be handled by the delete method?)
-		//        //if ( AccountServices.IsUserSiteStaff( user ) == false )
-		//        //{
-		//        //	ConsoleMessageHelper.SetConsoleInfoMessage( "Sorry - You have not been authorized to delete content on this site during this <strong>BETA</strong> period.", "", false );
+        //    if ( action == "Delete" )
+        //    {
 
-		//        //	status = "You have not been authorized to delete content on this site during this BETA period.";
-		//        //	return false;
-		//        //}
-		//    }
-		//    return isAuthorized;
+        //        //TODO: validate user's ability to delete a specific entity (though this should probably be handled by the delete method?)
+        //        //if ( AccountServices.IsUserSiteStaff( user ) == false )
+        //        //{
+        //        //	ConsoleMessageHelper.SetConsoleInfoMessage( "Sorry - You have not been authorized to delete content on this site during this <strong>BETA</strong> period.", "", false );
 
-		//}
+        //        //	status = "You have not been authorized to delete content on this site during this BETA period.";
+        //        //	return false;
+        //        //}
+        //    }
+        //    return isAuthorized;
 
-		///// <summary>
-		///// Perform common checks to see if a user can edit something
-		///// </summary>
-		///// <param name="valid"></param>
-		///// <param name="status"></param>
-		////public static void EditCheck( ref bool valid,
-		////					ref string status )
-		////{
-		////	var user = GetUserFromSession();
+        //}
 
-		////	if ( !AuthorizationCheck( "edit", true, ref status, ref user ) )
-		////	{
-		////		valid = false;
-		////		status = "ERROR - NOT AUTHENTICATED. You will not be able to add or update content";
-		////		ConsoleMessageHelper.SetConsoleInfoMessage( status, "", false );
-		////		return;
-		////	}
+        ///// <summary>
+        ///// Perform common checks to see if a user can edit something
+        ///// </summary>
+        ///// <param name="valid"></param>
+        ///// <param name="status"></param>
+        ////public static void EditCheck( ref bool valid,
+        ////					ref string status )
+        ////{
+        ////	var user = GetUserFromSession();
 
-		////	if ( !CanUserPublishContent( user, ref status ) )
-		////	{
-		////		valid = false;
-		////		//Status already set
-		////		ConsoleMessageHelper.SetConsoleInfoMessage( status, "", false );
-		////		return;
-		////	}
+        ////	if ( !AuthorizationCheck( "edit", true, ref status, ref user ) )
+        ////	{
+        ////		valid = false;
+        ////		status = "ERROR - NOT AUTHENTICATED. You will not be able to add or update content";
+        ////		ConsoleMessageHelper.SetConsoleInfoMessage( status, "", false );
+        ////		return;
+        ////	}
 
-		////	valid = true;
-		////	status = "okay";
-		////	return;
-		////}
-		////
+        ////	if ( !CanUserPublishContent( user, ref status ) )
+        ////	{
+        ////		valid = false;
+        ////		//Status already set
+        ////		ConsoleMessageHelper.SetConsoleInfoMessage( status, "", false );
+        ////		return;
+        ////	}
 
-		#endregion
+        ////	valid = true;
+        ////	status = "okay";
+        ////	return;
+        ////}
+        ////
 
-		#region Create/Update
-		/// <summary>
-		/// Create a new account, based on the AspNetUser info!
-		/// </summary>
-		/// <param name="email"></param>
-		/// <param name="firstName"></param>
-		/// <param name="lastName"></param>
-		/// <param name="userName"></param>
-		/// <param name="userKey"></param>
-		/// <param name="password">NOTE: may not be necessary as the hash in the aspNetUsers table is used?</param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public int Create( string email, string firstName, string lastName, string userName, string userKey, string password,
+        #endregion
+
+        #region Create/Update
+        /// <summary>
+        /// Create a new account, based on the AspNetUser info!
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="firstName"></param>
+        /// <param name="lastName"></param>
+        /// <param name="userName"></param>
+        /// <param name="userKey"></param>
+        /// <param name="password">NOTE: may not be necessary as the hash in the aspNetUsers table is used?</param>
+        /// <param name="statusMessage"></param>
+        /// <returns></returns>
+        public int Create( string email, string firstName, string lastName, string userName, string userKey, string password, string externalCEAccountIdentifier,
+                ref string statusMessage,
+                bool doingEmailConfirmation = false,
+                bool isExternalSSO = false )
+        {
+            int id = 0;
+            statusMessage = "";
+            //this password, as stored in the account table, is not actually used
+            string encryptedPassword = "";
+            if ( !string.IsNullOrWhiteSpace(password) )
+                encryptedPassword = UtilityManager.Encrypt(password);
+
+            AppUser user = new AppUser()
+            {
+                Email = email,
+                UserName = email,
+                FirstName = firstName,
+                LastName = lastName,
+                IsActive = !doingEmailConfirmation,
+                AspNetUserId = userKey,
+                Password = encryptedPassword,
+                CEAccountIdentifier = externalCEAccountIdentifier
+            };
+            id = new AccountManager().Add(user, ref statusMessage);
+            if ( id > 0 )
+            {
+                //don't want to add to session, user needs to confirm
+                //AddUserToSession( HttpContext.Current.Session, user );
+
+
+                string msg = string.Format("New user registration. <br/>Email: {0}, <br/>Name: {1}<br/>Type: {2}", email, firstName + " " + lastName, ( isExternalSSO ? "External SSO" : "Forms" ));
+                ActivityServices.UserRegistration(user, "registration", msg);
+                //EmailManager.SendSiteEmail( "New Credential Publisher Account", msg );
+            }
+
+            return id;
+        } //
+
+          /// <summary>
+          /// Create a new account, based on the AspNetUser info!
+          /// </summary>
+          /// <param name="email"></param>
+          /// <param name="firstName"></param>
+          /// <param name="lastName"></param>
+          /// <param name="userName"></param>
+          /// <param name="userKey"></param>
+          /// <param name="password">NOTE: may not be necessary as the hash in the aspNetUsers table is used?</param>
+          /// <param name="statusMessage"></param>
+          /// <returns></returns>
+        public int Create( string email, string firstName, string lastName, string userName, string userKey, string password,
 				ref string statusMessage,
 				bool doingEmailConfirmation = false,
 				bool isExternalSSO = false )
@@ -575,9 +624,9 @@ namespace workIT.Services
 			bool isSecure = false;
 			if ( UtilityManager.GetAppKeyValue( "usingSSL", false ) )
 				isSecure = true;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			string subject = "Reset Password for your Credential Finder account";
 
 			string email = EmailManager.GetEmailText( "ForgotPassword" );
@@ -611,9 +660,9 @@ namespace workIT.Services
 
 			
 			//string toEmail = user.Email;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			string subject = "Confirm Your Credential Finder Account";
 			string email = EmailManager.GetEmailText( "ConfirmAccount" );
 			string eMessage = "";
@@ -639,9 +688,9 @@ namespace workIT.Services
 			AppUser user = GetUserByEmail( userEmail );
 			string subject = "Forgot password attempt with unconfirmed email";
 
-			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			//string subject = "Forgot Password";
 			string email = "User: {0} attempted Forgot Password, and email has not been confirmed.<br/>Email: {1}<br/>Created: {2}";
 			string eMessage = "";
@@ -779,8 +828,13 @@ namespace workIT.Services
 
 			return user;
 		} //
+        public static AppUser GetUserByCEAccountId( string accountIdentifier )
+        {
+            AppUser user = AccountManager.GetUserByCEAccountId(accountIdentifier);
 
-		public static AppUser GetAccount( int id )
+            return user;
+        } //
+        public static AppUser GetAccount( int id )
 		{
 			return AccountManager.Get( id );
 		} //

@@ -16,17 +16,23 @@ namespace workIT.Data.Views
     {
         public int EntityId { get; set; }
         public string EntityType { get; set; }
-        public int BaseId { get; set; }
         public string EntityName { get; set; }
         public int EntityCompetencyFrameworkItemId { get; set; }
         public string FrameworkName { get; set; }
+        public string FrameworkUri { get; set; }
+        public string SourceUrl { get; set; }
+        public string FrameworkCtid { get; set; }
         public int EntityCompetencyId { get; set; }
         public string Competency { get; set; }
         public string TargetNodeDescription { get; set; }
         public string TargetNode { get; set; }
         public string CodedNotation { get; set; }
-        public string FrameworkUrl { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<decimal> Weight { get; set; }
+        public int EntityTypeId { get; set; }
+        public Nullable<int> EntityBaseId { get; set; }
+        public int ConnectionTypeId { get; set; }
+        public int ConditionEntityTypeId { get; set; }
+        public int ConditionEntityBaseId { get; set; }
     }
 }

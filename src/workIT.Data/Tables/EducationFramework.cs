@@ -22,6 +22,9 @@ namespace workIT.Data.Tables
     
         public int Id { get; set; }
         public string FrameworkName { get; set; }
+        public string CTID { get; set; }
+        public string FrameworkUri { get; set; }
+        public string SourceUrl { get; set; }
         public string FrameworkUrl { get; set; }
         public System.Guid RowId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }

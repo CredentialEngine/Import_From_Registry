@@ -43,37 +43,15 @@ namespace workIT.Models.Common
 		public int CreatedById { get; set; }
 		public string CreatedBy { get; set; }
 		public DateTime LastUpdated { get; set; }
-		public string LastUpdatedDisplay
-		{
-			get
-			{
-				if ( LastUpdated == null )
-				{
-					if ( Created != null )
-					{
-						return Created.ToShortDateString();
-					}
-					return "";
-				}
-				return LastUpdated.ToShortDateString();
-			}
-		}
+		public string CreatedDisplay { get { return Created == null ? "" : Created.ToShortDateString(); } }
+		public string LastUpdatedDisplay { get { return LastUpdated == null ? CreatedDisplay : LastUpdated.ToShortDateString(); } }
 		public int LastUpdatedById { get; set; }
 		public string LastUpdatedBy { get; set; }
 
-		//Publishing properties
-		//public string Publish_Type { get; set; }
-		//public virtual Dictionary<string, object> Publish_GetPublishableVersion()
-		//{
-		//	return new Dictionary<string, object>()
-		//	{
-		//		{ "@type", Publish_Type },
-		//		{ "@id", "http://credentialregistry.org/resource/" + RowId.ToString() }
-		//	};
-		//}
-		//
-
-	}
+        //store language map properties
+        public List<EntityLanguageMap> LanguageMaps { get; set; } = new List<EntityLanguageMap>();
+        public string FirstLanguage { get; set; }
+    }
 	//
 
 }

@@ -1,7 +1,349 @@
 ﻿@{
-    ViewBag.Title = "About";
+    ViewBag.Title = "Credential Finder";
 }
-<h2>@ViewBag.Title.</h2>
-<h3>@ViewBag.Message</h3>
 
-<p>Use this area to provide additional information.</p>
+<script type="text/javascript">
+
+</script>
+<script type="text/javascript">
+    //Rotators
+    var rotatorID = 0;
+
+    $(document).ready(function () {
+        initRotators();
+ 
+    });
+
+    function getRotator(id) {
+        return $(".rotatorBox[data-rotatorID=" + id + "]");
+    }
+
+    function initRotators() {
+        $(".rotatorBox").not(".initialized").each(function () {
+            var rotator = $(this);
+            var navLeft = rotator.find(".rotatorNavigationLeft");
+            var navRight = rotator.find(".rotatorNavigationRight");
+
+            var currentID = rotatorID;
+            rotator.attr("data-rotatorID", currentID);
+            navLeft.on("click", function () {
+                console.log(currentID);
+                rotatorRotate(currentID, -1);
+            });
+            navRight.on("click", function () {
+                console.log(currentID);
+                rotatorRotate(currentID, 1);
+            });
+            rotatorID++;
+
+            rotator.addClass("initialized");
+        })
+    }
+
+    function rotatorRotate(id, direction) {
+        var box = getRotator(id);
+        var slides = box.find(".slideList .slide");
+        var backgrounds = box.find(".rotatorBackgrounds div");
+        var currentSlide = slides.filter(".selected");
+
+        console.log(box);
+        console.log(slides);
+        console.log(currentSlide);
+
+        //Update slide indices
+        var slideID = 0;
+        slides.each(function () {
+            $(this).attr("data-slideID", slideID);
+            slideID++;
+        })
+
+        //Determine target
+        var targetSlideID = parseInt(currentSlide.attr("data-slideID")) + direction;
+        if (targetSlideID < 0) { targetSlideID = slideID - 1; }
+        if (targetSlideID > slideID - 1) { targetSlideID = 0; }
+
+        //Flip the selection
+        var targetSlide = slides.filter("[data-slideID=" + targetSlideID + "]");
+        slides.removeClass("selected");
+        targetSlide.addClass("selected");
+
+        //Update background
+        backgrounds.removeClass("selected");
+        backgrounds.filter("[data-slide=" + targetSlide.attr("data-slide") + "]").addClass("selected");
+    }
+</script>
+
+<style type="text/css">
+    .section { margin: 0 -5vw; padding: 50px 5vw; }
+
+    /* Banner */
+    #banner { position: relative; padding-top: 20vh; padding-bottom: 20vh; background-position: center top 10%; background-size: cover; background-repeat: no-repeat; z-index: 0; }
+
+        #banner h1, #banner p { text-align: center; color: #FFF; text-shadow: 0 3px 3px rgba(0,0,0,0.5); }
+
+        #banner h1 { font-size: 80px; }
+
+        #banner p { font-size: 20px; margin: 0 -5vw; background-color: rgba(0,0,0,0.35); padding: 25px 30vw; }
+
+    #bannerOverlay { background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.35)); position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 5; }
+
+    #bannerContent { z-index: 10; position: relative; }
+
+
+    /* Autocomplete */
+    .ui-autocomplete { background-color: #FFF; list-style-type: none; border: 1px solid #CAD9DB; margin: 0; padding: 0; }
+
+        .ui-autocomplete .ui-menu-item { padding: 5px; color: inherit; margin: 0; border: 0; }
+
+    .ui-state-focus { border: none; background-color: transparent; font-weight: inherit; color: inherit; }
+
+    .ui-autocomplete .ui-menu-item:hover, .ui-autocomplete .ui-menu-item:focus { background-color: #BADCA3; }
+
+    /* Credential Types */
+    #credentialTypes { background-color: #F2F4F4; text-align: center; }
+
+        #credentialTypes h2 { color: #0F3E63; }
+
+        #credentialTypes p { max-width: 725px; margin: 0 auto; font-size: 18px; line-height: 1.8em; }
+
+    #credentialTypesList { display: block; list-style-type: none; padding: 0; margin: 0; }
+
+        #credentialTypesList li { width: calc((100% / 9) - 0.1px); }
+
+            #credentialTypesList li img { max-width: 100%; }
+
+            #credentialTypesList li h3 { margin-top: -15%; font-size: 16px; }
+
+    #credentialTypes #learnMore { padding: 25px; }
+
+        #credentialTypes #learnMore .actionButton { font-size: 20px; padding: 10px 50px; }
+
+    /* Information */
+    #information { font-size: 0; padding: 10vh 7vw; }
+
+        #information .bigColumn { background-color: #FFF; padding: 5vh 5vw; display: inline-block; vertical-align: top; margin: 0 2vw; width: calc(50% - 4vw); min-height: 700px; border-radius: 4px; }
+
+            #information .bigColumn h2 { color: #0F3E63; text-align: center; font-size: 56px; }
+
+            #information .bigColumn p { text-align: center; }
+
+            #information .bigColumn img { display: block; max-height: 200px; margin: 10px auto; }
+
+    #learnMoreButton { padding: 10px; display: block; margin: 5px auto; }
+
+    /* Video */
+    #video { padding: 0; }
+
+    #videoBox { position: relative; }
+
+    #videoResizer { width: 100%; background-color: #000; }
+
+    #videoFrame { display: block; border: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+
+    /* Audiences */
+    #audiences { padding: 0; background-color: #0F3E63; }
+
+    #audienceRotatorBox { padding-left: 50%; color: #FFF; }
+
+        #audienceRotatorBox .slideList { background-image: linear-gradient(90deg, rgba(15, 62, 99, 0.75), rgba(15, 62, 99, 1) 35%); padding: 5vh 7vw; min-height: 75vh; }
+
+        #audienceRotatorBox .rotatorBackgrounds { right: 25vw; }
+
+    #audiences h3, #audiences h4 { color: #FFF; }
+
+    #audiences h3 { font-size: 26px; padding: 10px 0 25px 0; border-bottom: 1px solid #607171; margin-bottom: 25px; padding-right: 100px; }
+
+    #audiences h4 { font-size: 56px; padding-left: 0; }
+
+    #audiences p { font-size: 18px; padding: 5px 0 15px 0; color: #FFF; }
+
+    #audiences .whiteButton { padding: 15px 25px; margin-top: 10px; color: #0F3E63; }
+
+    #audienceRotatorBox .rotatorNavigation { top: 5vh; right: 7vw; }
+
+    /* Rotator */
+    .rotatorBox { position: relative; }
+
+        .rotatorBox.rotatorRight { padding-left: 50%; }
+
+            .rotatorBox.rotatorRight .slide { transform-origin: center right; }
+
+        .rotatorBox .rotatorBackgrounds { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; }
+
+            .rotatorBox .rotatorBackgrounds div { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-position: top 20% center; background-size: cover; background-repeat: no-repeat; transition: opacity 0.25s; }
+
+                .rotatorBox .rotatorBackgrounds div:not(.selected) { opacity: 0; }
+
+        .rotatorBox .slideList { z-index: 20; position: relative; white-space: nowrap; }
+
+        .rotatorBox .slide { transition: transform 0.25s, opacity 0.25s; white-space: normal; width: 100%; margin-right: -100%; }
+
+            .rotatorBox .slide:not(.selected) { opacity: 0; padding-left: 50px; z-index: -1; transform: rotateY(90deg); }
+
+            .rotatorBox .slide.selected { transform: rotateY(0); }
+
+        .rotatorBox .rotatorNavigation { position: absolute; top: 0; right: 0; z-index: 50; }
+
+            .rotatorBox .rotatorNavigation button { background-color: transparent; border: 2px solid #FFF; border-color: inherit; border-radius: 50%; font-size: 20px; line-height: 25px; width: 30px; height: 30px; color: inherit; margin: 0 5px; }
+
+    /* Responsive */
+    @@media (max-width: 1600px) {
+        #banner p { padding: 25px 25vw; }
+    }
+
+    @@media (max-width: 1300px) {
+        #banner p { padding: 25px 15vw; }
+
+        #information .bigColumn { min-height: 875px; }
+
+        #information .bigColumn p { line-height: 1.7em; }
+    }
+
+    @@media (max-width: 1000px) {
+        #banner p { padding: 15px 5vw; }
+
+        #credentialTypesList li { width: calc(100% / 4); }
+
+        #information { padding: 5vh 5vw; }
+
+        #information .bigColumn { padding: 4vh 4vw; margin: 0 1vw; width: calc(50% - 2vw); }
+
+        #information .bigColumn h2 { font-size: 40px; }
+
+        #information .bigColumn p { line-height: 1.5em; }
+    }
+
+    @@media (max-width: 800px) {
+        #credentialTypes p { line-height: 1.6em; }
+
+        #audienceRotatorBox { padding: 0; }
+
+        #audienceRotatorBox .rotatorBackgrounds { right: 0; top: 30%; }
+
+        #audienceRotatorBox .slideList { background-image: linear-gradient(0deg, rgba(15, 62, 99, 0.5), rgba(15, 62, 99, 1) 60%); min-height: 100vh; }
+
+        .rotatorBox .rotatorBackgrounds div { background-position: center center; }
+    }
+
+    @@media (max-width: 650px) {
+        #banner h1 { font-size: 50px; }
+
+
+        #credentialTypesList li { width: calc(100% / 3); }
+
+        #information .bigColumn { display: block; width: 100%; margin: 1vh 0; min-height: 0; }
+    }
+
+    @@media (max-width: 450px) {
+        #credentialTypesList li { width: calc(100% / 2); }
+    }
+</style>
+
+<div class="section" id="banner" style="background-image:url('@Url.Content( "~/images/Common/background_office.jpg" )');">
+    <div id="bannerOverlay"></div>
+    <div id="bannerContent">
+        <h1 class="huge">Discover Credentials</h1>
+        <p>Credential Finder is the ultimate toolkit for students, job-seekers, professionals, and employers who want to build a path toward the right career or new hire.</p>
+        
+    </div>
+</div>
+
+<div class="section" id="credentialTypes">
+    <h2>What's the value of a credential?</h2>
+    <p>What does this degree mean you can do? Can this certification provide credit toward a degree? How does a badge from this online academy compare with a certification in the same field?  Can I get this certification while pursuing a degree? What does this license allow you to do? How can I be assured that this is a high-quality credential that can be trusted?</p>
+    <p>When credentials are unique and difficult to compare, they lose much of their value to job seekers and employers. Credential Finder provides comparable information on all types of credentials to help align credentials with the needs of students, job seekers, workers, and employers.</p>
+    <ul id="credentialTypesList" class="inlineBlockBox">
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_apprentice.png" )" alt="Apprenticeship Icon" /><h3>Apprenticeship</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_badge.png" )" alt="Badge Icon" /><h3>Badge</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_certificate.png" )" alt="Certificate Icon" /><h3>Certificate</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_certification.png" )" alt="Certification Icon" /><h3>Certification</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_degree.png" )" alt="Degree Icon" /><h3>Degree</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_diploma.png" )" alt="Diploma Icon" /><h3>Diploma</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_license.png" )" alt="License Icon" /><h3>License</h3></li>
+        <li class="column"><img src="@Url.Content( "~/images/Icons/flat_microcredential.png" )" alt="Micro-Credential Icon" /><h3>Micro-Credential</h3></li>
+        @*<li class="column"><img src="@Url.Content( "~/images/Icons/flat_quality.png" )" alt="Quality Assurance Icon" /><h3>Quality Assurance</h3></li>*@
+    </ul>
+    @*<div id="learnMore">
+            <input type="button" class="actionButton" value="Learn More" />
+        </div>*@
+</div>
+
+<div class="section rainbow" id="information">
+    <div class="bigColumn">
+        <h2 class="huge">Credential Finder Provides Access to Information You Can Use</h2>
+        <p>Credentials can act as the critical connection that both job seekers and employers need to identify real knowledge and skills, and match them with appropriate opportunities.</p>
+        <p>Credential Finder allows users to see what various credentials represent in terms of competencies, connections with other credentials, assessment rigor, third-party approval status, and much more. The goals are transparency and clarity, and to help align credentials with the needs of students, job seekers, workers, and employers.</p>
+    </div>
+    <div class="bigColumn">
+        <h2 class="huge">Quality Is Important</h2>
+        <p>Students, job-seekers, and employers often want assurances that credentials can be trusted to meet the quality requirements of employers, professions, government, and others.</p>
+        <p>Quality assurance (QA) is a process often carried out by independent third parties to verify that those issuing credentials meet specific guidelines, criteria, standards, and/or regulations.</p>
+        <p>With Credential Finder, you can see whether QA entities provide assurances about credentials, credentialing organizations or both and compare information from QA bodies about who they are, what assurances they provide, and how they perform their work.</p>
+        <img src="@Url.Content( "~/images/Icons/flat_quality.png" )" alt="Quality Assurance Icon" />
+    </div>
+</div>
+
+<div class="section" id="video">
+    <div id="videoBox">
+        <img id="videoResizer" src="@Url.Content( "~/images/common/resizer_16x9.png" )" />
+        <iframe src="https://www.youtube.com/embed/EMfk1FSLbiY?rel=0" id="videoFrame" allowfullscreen="allowfullscreen"></iframe>
+    </div>
+</div>
+
+<div class="section" id="audiences">
+    <div id="audienceRotatorBox" class="rotatorBox rotatorRight">
+        <div class="rotatorBackgrounds">
+            <div class="selected" data-slide="jobSeekers" style="background-image:url('@Url.Content( "~/images/Photos/jobseekers.jpg" )');"></div>
+            <div data-slide="careerChangers" style="background-image:url('@Url.Content( "~/images/Photos/workers.jpg" )');"></div>
+            <div data-slide="employers" style="background-image:url('@Url.Content( "~/images/Photos/occupations.jpg" )');"></div>
+            <div data-slide="education" style="background-image:url('@Url.Content( "~/images/Photos/educators.jpg" )');"></div>
+            <div data-slide="government" style="background-image:url('@Url.Content( "~/images/Photos/government.jpg" )');"></div>
+            <div data-slide="students" style="background-image:url('@Url.Content( "~/images/Photos/students.jpg" )');"></div>
+        </div>
+        <div class="slideList inlineBlockBox">
+            <div class="slide column selected" data-slide="jobSeekers">
+                <h3 class="huge">1/6: Job Seekers</h3>
+                <h4 class="huge">Knowing what you want isn't the problem</h4>
+                <p>You want to advance your career or change it completely, to finally go after that college degree or certification.</p>
+                <p>Making it happen is where things start to get tricky.</p>
+                <p>This is why we built Credential Finder - a tool that helps you find out what credentials you need, to take you where you want to go.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+            <div class="slide column" data-slide="careerChangers">
+                <h3 class="huge">2/6: Young Adults and Career Changers</h3>
+                <h4 class="huge">Find the right job</h4>
+                <p>Connect to credentials that will get you where you want to go, how best to obtain them, and how to maximize the value of your skills and knowledge.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+            <div class="slide column" data-slide="students">
+                <h3 class="huge">3/6: Students</h3>
+                <h4 class="huge">Find the right education</h4>
+                <p>Find credentials you can use, and learn what jobs a credential will actually qualify you for.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+            <div class="slide column" data-slide="employers">
+                <h3 class="huge">4/6: Employers</h3>
+                <h4 class="huge">Hire the right people</h4>
+                <p>Find credentials that best meet your hiring requirements and address your most critical skill requirements.</p>
+                <p>Learn what skills a particular credential represents and how much you can trust credential holders have these skills.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+            <div class="slide column" data-slide="education">
+                <h3 class="huge">5/6: Education, Training, and Credentialing Organizations</h3>
+                <h4 class="huge">Be Found</h4>
+                <p>Communicate the distinct features, quality, value, and effectiveness of the credentials you award and be found by the growing numbers of students, parents and career counselors who will use this search tool to identify credentials and programs of interest.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+            <div class="slide column" data-slide="government">
+                <h3 class="huge">6/6: Government Agencies</h3>
+                <h4 class="huge">Serve your community</h4>
+                <p>Provide clear information by which credentials and education and training providers meet your quality requirements and are eligible for government financial assistance for students, job-seekers, veterans and others.</p>
+                <input type="button" class="whiteButton" value="Search Now" onclick="doSearch();" />
+            </div>
+        </div>
+        <div class="rotatorNavigation inlineBlockBox">
+            <button class="rotatorNavigationLeft column"><i class="fa fa-caret-left"></i></button>
+            <button class="rotatorNavigationRight column"><i class="fa fa-caret-right"></i></button>
+        </div>
+    </div>
+</div>

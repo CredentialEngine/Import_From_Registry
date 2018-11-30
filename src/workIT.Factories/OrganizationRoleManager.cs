@@ -98,7 +98,7 @@ namespace workIT.Factories
 
                         if ( ( bool ) item.IsQARole )
                         {
-                            val.IsSpecialValue = true;
+                            val.IsQAValue = true;
                             
                         }
                         if ( parentEntityTypeId == 3 )
@@ -226,7 +226,7 @@ namespace workIT.Factories
 
                             if ((bool)item.IsQARole)
                             {
-                                val.IsSpecialValue = true;
+                                val.IsQAValue = true;
                                 if (IsDevEnv())
                                     val.Name += " (QA)";
                             }
@@ -286,7 +286,7 @@ namespace workIT.Factories
 
                         if ((bool)item.IsQARole)
                         {
-                            val.IsSpecialValue = true;
+                            val.IsQAValue = true;
                             if (IsDevEnv())
                                 val.Name += " (QA)";
                         }

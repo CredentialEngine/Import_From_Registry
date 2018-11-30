@@ -1,0 +1,282 @@
+﻿<script type="text/javascript">
+	/* AJAX */
+	var ajax = {};
+	ajax.Cache = {};
+	//
+
+	$(document).ready(function () {
+		ajax.alertBox = $("<div id=\"ajaxAlertBox\"></div>").appendTo("body");
+	});
+
+	ajax.doAjax = function (entity, controller, method, data, success, button, passThrough) {
+		ajax.setButtonWorking(button, true);
+		$.ajax({
+			url: "@Url.Content("~/")" + controller + "/" + method,
+			headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+			dataType: "json",
+			type: "POST",
+			data: JSON.stringify(data),
+			success: function (msg) {
+				console.log("Response", msg);
+				if (entity) {
+					success(entity, msg, passThrough);
+				}
+				else {
+					success(msg, passThrough);
+				}
+			},
+			error: function(msg, e1, e2){
+				console.log("Error", msg);
+				console.log(e1);
+				console.log(e2);
+			}
+		}).always(function () {
+			ajax.setButtonNormal(button, null);
+		});
+	}
+	//
+
+	ajax.readForm = function (form, data) {
+		//Hold result
+		data = data || {
+			TransactionProperties: {}
+		};
+
+		//Get all fields whose closest [data-type=object] parent element is the form
+		var fields = form.find("[data-property]").filter(function () {
+			var property = $(this);
+			return form[0] == property.parentsUntil("[data-type=formObject]").parent()[0] || form[0] == property.parent()[0];
+		});
+
+		fields.each(function () {
+			var field = $(this);
+			var propertyName = field.attr("data-property");
+			if (field.attr("data-isTransactionProperty") == "true") {
+				data.TransactionProperties[propertyName] = ajax.readProperty(field);
+			}
+			else {
+				data[propertyName] = ajax.readProperty(field);
+			}
+		});
+
+		return data;
+	}
+	//
+
+	ajax.readProperty = function (field) {
+		switch (field.attr("data-type").toLowerCase()) {
+			case "text":
+			case "string":
+			case "number":
+			case "textarea":
+			case "hidden":
+			case "select":
+                return (field.val() || "").trim();
+			case "checkboxlist":
+				var result = [];
+				field.find("[type=checkbox], [type=radio]").each(function () {
+					var box = $(this);
+					if (box.prop("checked")) {
+						result.push(box.attr("value"));
+					}
+				});
+				return result;
+			case "radiobuttonlist":
+				return field.find("[type=radio]:checked").attr("value");
+			case "boolean":
+				return field.prop("checked");
+			case "formobject":
+				return ajax.readForm(field);
+			case "formobjectlist":
+				var items = [];
+				field.find("[data-type='formObjectListItems'] [data-type='formObject']").each(function () {
+					items.push(ajax.readForm($(this)));
+				});
+				return items;
+			default:
+				try{
+					return field[0].getValue(); //Custom fields should implement this
+				}
+				catch (e) {
+					if (field[0].getValue) {
+						console.log("Error: Unable to get data from custom field:", field);
+					}
+					else {
+						console.log("Error: Unable to determine type for field:", field);
+					}
+				}
+				return null;
+		}
+	}
+	//
+
+	ajax.writeForm = function (form, data) {
+		//Get all fields whose closest [data-type=object] parent element is the form
+		var fields = form.find("[data-property]").filter(function () {
+			var property = $(this);
+			return form[0] == property.parentsUntil("[data-type=formObject]").parent()[0] || form[0] == property.parent()[0];
+		});
+
+		fields.each(function () {
+			var field = $(this);
+			var propertyName = field.attr("data-property");
+			if (field.attr("data-isTransactionProperty") == "true") {
+				ajax.writeProperty(field, data.TransactionProperties[propertyName]);
+			}
+			else {
+				ajax.writeProperty(field, data[propertyName]);
+			}
+		});
+	}
+	//
+
+	ajax.writeProperty = function (field, data) {
+        if (data == null) {
+            data = "";
+			//return;
+		}
+        switch (field.attr("data-type").toLowerCase()) {
+			case "text":
+			case "string":
+			case "number":
+			case "textarea":
+			case "hidden":
+			case "select":
+				field.val(data);
+                break;
+            case "anchor":
+                field.prop('href', data);
+                break;
+			case "checkboxlist":
+				var boxes = field.find("[type=checkbox]");
+				boxes.each(function () {
+					var box = $(this);
+					box.prop("checked", data.indexOf(box.attr("value")) > -1);
+				});
+				break;
+			case "radiobuttonlist":
+				var boxes = field.find("[type=radio]");
+				boxes.prop("checked", false);
+				boxes.filter("[value='" + data + "']").prop("checked", true);
+			case "boolean":
+				field.prop("checked", data);
+				break;
+			case "formobject":
+				ajax.writeForm(field, data);
+				break;
+			case "formobjectlist":
+				field.find("[data-type='formObjectListItems']").html("");
+				for (var i in data) {
+					(function (dataItem) {
+						ajax.addFormObjectListItem(field, dataItem);
+					})(data[i]);
+				}
+				break;
+			default:
+				try{
+					field[0].setValue(data); //Custom fields should implement this
+				}
+				catch (e) {
+					if (field[0].setValue) {
+						console.log("Error: Data may be invalid for custom field:");
+						console.log("Field:", field);
+						console.log("Data:", data);
+					}
+					else {
+						console.log("Error: Unable to determine type for field:", field);
+					}
+				}
+				break;
+		}
+	}
+	//
+
+	ajax.setButtonWorking = function (button, replaceWithSpinner, text) {
+		if (button) {
+			var jButton = $(button);
+			jButton.prop("disabled", true);
+			ajax.Cache[button] = jButton.html();
+			jButton.html((replaceWithSpinner ? "" : jButton.html()) + (text ? " " + text + " " : "") + "<i class=\"fa fa-spin fa-spinner\"></i>");
+		}
+	}
+	//
+
+	ajax.setButtonNormal = function (button, text) {
+		if (button) {
+			var jButton = $(button);
+			jButton.prop("disabled", false);
+			jButton.html(text ? text : (ajax.Cache[button] || ""));
+		}
+	}
+	//
+
+	ajax.alert = function (message, cssClass, autoDismissAfterSeconds, onDismiss) {
+		var alert = $($("#ajax_template_alertmessage").html().replace(/{cssClass}/g, cssClass || "").replace(/{message}/g, message)).appendTo($("#ajaxAlertBox"));
+		if (autoDismissAfterSeconds) {
+			setTimeout(function () {
+				ajax.dismissAlert(alert, onDismiss);
+			}, autoDismissAfterSeconds * 1000);
+		}
+		alert.find("[data-action=dismiss]").on("click", function () {
+			ajax.dismissAlert(alert, onDismiss);
+		});
+	}
+	//
+
+	ajax.dismissAlert = function (alert, onDismiss) {
+		alert.fadeOut(250, function () { alert.remove(); });
+		if (onDismiss) {
+			onDismiss();
+		}
+	}
+	//
+
+	ajax.dismissAllAlerts = function () {
+		$("#ajaxAlertBox .ajaxAlert").each(function () {
+			$(this).find("[data-action=dismiss]").trigger("click");
+		});
+	}
+	//
+
+	ajax.addFormObjectListItem = function (field, data) {
+		var template = $("#" + field.attr("data-template")).html();
+		var item = $(template).appendTo(field.find("[data-type='formObjectListItems']"));
+		ajax.writeForm(item, data);
+		item.find("[data-action='removeFormObject']").on("click", function () {
+			if (confirm("Really remove this item?")) {
+				item.remove();
+			}
+		});
+		$(window).trigger("FormObjectListItemAdded", { item: item, field: field, data: data });
+	}
+	//
+
+	ajax.autoFormat = function(template, data, prefix) {
+		for (var i in data) {
+			try {
+				if (typeof (data[i]) == "object") {
+					if (!Array.isArray(data[i])) {
+						template = autoFormat(template, data[i], i);
+					}
+				} else if (data[i] != null && typeof (data[i]) != "undefined") {
+					template = template.replace(new RegExp("{" + (prefix ? prefix + "." : "") + i + "}", "g"), data[i]);
+				}
+
+			}
+			catch (e) { }
+		}
+		return template;
+	}
+	//
+</script>
+<style type="text/css">
+    #ajaxAlertBox { position: fixed; top: 0; left: 0; height: 0; width: 100%; text-align: center; }
+        #ajaxAlertBox .ajaxAlert { position: relative; width: 100%; max-width: 900px; margin: 5px auto; padding: 5px 40px 5px 5px; background-color: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.4); box-shadow: rgba(0,0,0,0.1) 0 0 50px -5px; min-height: 42px; font-size: 20px; }
+            #ajaxAlertBox .ajaxAlert.success { background-color: rgba(25,150,50,0.8); border: 1px solid rgba(0,75,0,0.9); color: #FFF; }
+            #ajaxAlertBox .ajaxAlert.error { background-color: rgba(200,20,20,0.8); border: 1px solid rgba(75,0,0,0.9); color: #FFF; }
+            #ajaxAlertBox .ajaxAlert button[data-action=dismiss] { position: absolute; top: 5px; right: 5px; width: 30px; height: 30px; background-color: rgba(0,0,0,0.2); border-color: rgba(0,0,0,0.4); color: #FFF; font-size: 20px; }
+                #ajaxAlertBox .ajaxAlert button[data-action=dismiss]:hover, #ajaxAlertBox .ajaxAlert button[data-action=dismiss]:focus { background-color: rgba(0,0,0,0.4); border-color: rgba(0,0,0,0.5); }
+</style>
+<script type="text/template" id="ajax_template_alertmessage">
+    <div class="ajaxAlert {cssClass}">{message} <button data-action="dismiss"><i class="fa fa-times"></i></button></div>
+</script>

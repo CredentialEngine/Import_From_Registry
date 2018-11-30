@@ -106,136 +106,111 @@ namespace workIT.Factories
 			return Add( parent, credentialId, ref newId, ref status );
 		}
 
-		public bool Add( Entity parent, int credentialId, 
-				ref int newId, ref SaveStatus status )
-		{
-			bool isValid = true;
-			int count = 0;
-			newId = 0;
+        private bool Add( Entity parent, int credentialId,
+                ref int newId, ref SaveStatus status )
+        {
+            bool isValid = true;
+            int count = 0;
+            newId = 0;
 
 
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddWarning( string.Format(thisClassName + ".Add() Error: a valid parent entity was not provided for credential: {0}.", credentialId) );
-				return false;
-			}
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddWarning( string.Format( thisClassName + ".Add() Error: a valid parent entity was not provided for credential: {0}.", credentialId ) );
+                return false;
+            }
 
-			if ( credentialId < 1 )
-			{
-				status.AddWarning( thisClassName + ".Add() Error: a valid credential was not provided." );
-				return false;
-			}
-
-
-			DBEntity efEntity = new DBEntity();
-		
-			using ( var context = new EntityContext() )
-			{
-				//first check for duplicates
-				efEntity = context.Entity_Credential
-						.FirstOrDefault( s => s.EntityId == parent.Id && s.CredentialId == credentialId );
-				if ( efEntity != null && efEntity.Id > 0 )
-				{
-					//just let it go - expected for an update
-					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Add() the credential is already part of this profile. credential: {0} to parent entityId: :{1}  ", credentialId, parent.Id ) );
-					return true;
-				}
+            if ( credentialId < 1 )
+            {
+                status.AddWarning( thisClassName + ".Add() Error: a valid credential was not provided." );
+                return false;
+            }
 
 
-				//check if combo exists.
-				//at some point we may want to track who asserted
-				//efEntity = context.Entity_Credential
-				//		.FirstOrDefault( s => s.EntityId == parent.Id && s.CredentialId == credentialId );
-				//if ( efEntity != null && efEntity.Id > 0 )
-				//{
-				//	efEntity.CredentialId = credentialId;
+            DBEntity efEntity = new DBEntity();
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    //first check for duplicates
+                    efEntity = context.Entity_Credential
+                            .FirstOrDefault( s => s.EntityId == parent.Id && s.CredentialId == credentialId );
+                    if ( efEntity != null && efEntity.Id > 0 )
+                    {
+                        newId = efEntity.Id;
+                        //just let it go - expected for an update
+                        LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Add() the credential is already part of this profile. credential: {0} to parent entityId: :{1}  ", credentialId, parent.Id ) );
+                        return true;
+                    }
 
-				//	return true;
-				//}
+                    //add
+                    efEntity = new DBEntity();
+                    efEntity.CredentialId = credentialId;
+                    efEntity.EntityId = parent.Id;
+                    efEntity.Created = DateTime.Now;
 
-				//add
-				efEntity = new DBEntity();
-				efEntity.CredentialId = credentialId;
-				efEntity.EntityId = parent.Id;
+                    context.Entity_Credential.Add( efEntity );
+                    count = context.SaveChanges();
 
-				efEntity.Created = DateTime.Now;
+                    newId = efEntity.Id;
 
-				context.Entity_Credential.Add( efEntity );
-				count = context.SaveChanges();
-				
-				newId = efEntity.Id;
+                    if ( count == 0 )
+                    {
+                        status.AddError( string.Format( thisClassName + ".Add() Unable to add the related credential: {0} to parent entityId: {1} ", credentialId, parent.Id ) );
+                        isValid = false;
+                    }
+                }
+            }
+            catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+            {
+                string message = HandleDBValidationError( dbex, thisClassName + ".Add()", string.Format( "CredentialId: {0} to parent entityId: {1} ", credentialId, parent.Id ) );
+                status.AddError( message );
+            }
+            catch ( Exception ex )
+            {
+                string message = thisClassName + string.Format( ".Add(), CredentialId: {0} to parent entityId: {1} ", credentialId, parent.Id );
+                LoggingHelper.LogError( ex, message );
+                status.AddError( message );
+            }
+            return isValid;
+        }
 
-				if ( count == 0 )
-				{
-					status.AddError( string.Format( thisClassName + ".Add() Unable to add the related credential: {0} to parent entityId: {1} ", credentialId, parent.Id ) );
-					isValid = false;
-				}
-			}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_Credential.RemoveRange( context.Entity_Credential.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-			return isValid;
-		}
+            return isValid;
+        }
+        #endregion
 
-		/// <summary>
-		/// Delete a entity credentail via the entity id and credential id
-		/// </summary>
-		/// <param name="parentId"></param>
-		/// <param name="credentialId"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		//public bool Delete( int parentId, int credentialId, ref string statusMessage )
-		//{
-		//	bool isOK = true;
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		DBEntity p = context.Entity_Credential.FirstOrDefault( s => s.EntityId == parentId && s.CredentialId == credentialId );
-		//		if ( p != null && p.Id > 0 )
-		//		{
-		//			context.Entity_Credential.Remove( p );
-		//			int count = context.SaveChanges();
-		//		}
-		//		else
-		//		{
-		//			statusMessage = string.Format( "Requested record was not found: {0}", credentialId );
-		//			isOK = false;
-		//		}
-		//	}
-		//	return isOK;
+        #region  retrieval ==================
 
-		//}
-
-		//public bool Delete( int recordId, ref string statusMessage )
-		//{
-		//	bool isOK = true;
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		DBEntity p = context.Entity_Credential.FirstOrDefault( s => s.Id == recordId );
-		//		if ( p != null && p.Id > 0 )
-		//		{
-		//			context.Entity_Credential.Remove( p );
-		//			int count = context.SaveChanges();
-		//		}
-		//		else
-		//		{
-		//			statusMessage = "Warning - the record was not found - probably because the target had been previously deleted";
-		//			isOK = true;
-		//		}
-		//	}
-		//	return isOK;
-
-		//}
-
-
-		#endregion
-
-		#region  retrieval ==================
-
-		/// <summary>
-		/// get all the base credentials for an EntityCredential
-		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <returns></returns>
-		public static List<Credential> GetAll( Guid parentUid, bool isForDetailPageCondition = false )
+        /// <summary>
+        /// get all the base credentials for an EntityCredential
+        /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returns>
+        public static List<Credential> GetAll( Guid parentUid, bool isForDetailPageCondition = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<Credential> list = new List<Credential>();
@@ -261,7 +236,9 @@ namespace workIT.Factories
 						foreach ( DBEntity item in results )
 						{
 							entity = new ThisEntity();
-							if ( item.Credential != null && item.Credential.Id > 0 && item.Credential.EntityStateId > 1 )
+							if ( item.Credential != null 
+                                && item.Credential.Id > 0 
+                                && item.Credential.EntityStateId > 1 )
 							{
 								MapFromDB( item, entity, isForDetailPageCondition );
 
@@ -276,60 +253,6 @@ namespace workIT.Factories
 				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
 			}
 			return list;
-		}//
-
-		public static ThisEntity Get( int profileId )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( profileId == 0 )
-			{
-				return entity;
-			}
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					DBEntity item = context.Entity_Credential
-							.SingleOrDefault( s => s.Id == profileId );
-
-					if ( item != null && item.Id > 0 )
-					{
-						MapFromDB( item, entity );
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Entity_Get" );
-			}
-			return entity;
-		}//
-
-		public static ThisEntity Get( int parentId, int credentialId )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( parentId < 1 || credentialId < 1 )
-			{
-				return entity;
-			}
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					DBEntity item = context.Entity_Credential
-							.SingleOrDefault( s => s.CredentialId == credentialId && s.EntityId == parentId);
-
-					if ( item != null && item.Id > 0 )
-					{
-						MapFromDB( item, entity );
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Get" );
-			}
-			return entity;
 		}//
 
 		public static void MapToDB( ThisEntity from, DBEntity to )
@@ -350,7 +273,7 @@ namespace workIT.Factories
 			to.Id = from.Id;
 			to.CredentialId = from.CredentialId;
 			to.ParentId = from.EntityId;
-
+            
 			
 			//to.Credential = from.Credential;
 			to.Credential = new Credential();
@@ -392,6 +315,7 @@ namespace workIT.Factories
 
 			to.SubjectWebpage = from.SubjectWebpage;
 			to.CTID = from.CTID;
+            to.EntityStateId = (int)from.EntityStateId;
 			// 16-06-15 mp - always include credential type
 			//can be null for a pending record
 			to.CredentialTypeId = ( int ) ( from.CredentialTypeId ?? 0 );
@@ -418,11 +342,13 @@ namespace workIT.Factories
 
 			to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 
-			to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-			to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+			//to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+            to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+            to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-			to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-			to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+            //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+            to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+            to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
 			to.Subject = Entity_ReferenceManager.GetAllSubjects( to.RowId );
 

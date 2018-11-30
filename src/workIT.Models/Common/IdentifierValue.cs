@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-	public class IdentifierValue : BaseObject
+    [Serializable]
+    public class IdentifierValue : BaseObject
 	{
 		public string Name { get; set; }
 		public string Description { get; set; }

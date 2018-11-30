@@ -11,11 +11,11 @@ using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 
-using WorkIT.Web.Models;
+using workIT.Web.Models;
 using workIT.Services;
 using workIT.Utilities;
 
-namespace WorkIT.Web
+namespace workIT.Web
 {
 	public class EmailService : IIdentityMessageService
 	{

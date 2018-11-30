@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using workIT.Models.ProfileModels;
 namespace workIT.Models.Common
 {
-	public class CostManifest : BaseObject
+    [Serializable]
+    public class CostManifest : BaseObject
 	{
 
 		public CostManifest()

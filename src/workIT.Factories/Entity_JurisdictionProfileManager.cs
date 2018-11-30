@@ -107,8 +107,12 @@ namespace workIT.Factories
 				DBEntity efEntity = new DBEntity();
 				MapToDB( entity, efEntity );
 				efEntity.EntityId = parent.Id;
-				efEntity.RowId = Guid.NewGuid();
-				entity.RowId = efEntity.RowId;
+                if ( IsValidGuid( entity.RowId ) )
+                    efEntity.RowId = entity.RowId;
+                else
+                    efEntity.RowId = Guid.NewGuid();
+
+                entity.RowId = efEntity.RowId;
 
 				if ( efEntity.JProfilePurposeId == null || efEntity.JProfilePurposeId == 0 )
 					efEntity.JProfilePurposeId = 1;
@@ -132,60 +136,7 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-		/// <summary>
-		/// Update a jurisdiction profile
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="property">Can be blank. Set to a property where additional validation is necessary</param>
-		/// <param name="messages"></param>
-		/// <returns></returns>
-		//public bool Update( ThisEntity entity, string property, ref SaveStatus status )
-		//{
-		//	bool isValid = true;
-
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		if ( entity == null || entity.Id == 0 || !IsValidGuid( entity.ParentEntityId ) )
-		//		{
-		//			status.AddWarning( "Error - missing an identifier for the JurisdictionProfile" );
-		//			return false;
-		//		}
-
-		//		MC.Entity parent = EntityManager.GetEntity( entity.ParentEntityId );
-		//		if ( parent == null || parent.Id == 0 )
-		//		{
-		//			status.AddWarning( "Error - the parent entity was not found." );
-		//			return false;
-		//		}
-		//		bool isEmpty = false;
-		//		if ( ValidateProfile( entity, property, ref isEmpty, ref status ) == false )
-		//		{
-		//			return false;
-		//		}
-
-		//		DBEntity efEntity =
-		//			context.Entity_JurisdictionProfile.SingleOrDefault( s => s.Id == entity.Id );
-
-		//		entity.RowId = efEntity.RowId;
-		//		MapToDB( entity, efEntity );
-				
-
-		//		if ( HasStateChanged( context ) )
-		//		{
-		//			efEntity.LastUpdated = DateTime.Now;
-		//			efEntity.LastUpdatedById = entity.LastUpdatedById;
-		//			int count = context.SaveChanges();
-		//			if ( count > 0 )
-		//			{
-						
-		//			}
-		//		}
-		//		//always do parts
-		//		isValid = UpdateParts( entity, false, ref status );
-		//	}
-
-		//	return isValid;
-		//}
+		
 		public bool UpdateParts( ThisEntity entity, bool isAdd, ref SaveStatus status )
 		{
 			bool isValid = true;
@@ -203,33 +154,7 @@ namespace workIT.Factories
 				}
 			return isValid;
 		}
-		public bool UpdateJPRegions( ThisEntity entity, ref SaveStatus status )
-		{
-			bool isValid = true;
-			//List<MC.GeoCoordinates> list = new List<MC.GeoCoordinates>();
-			//if ( entity.MainJurisdiction != null && entity.MainJurisdiction.GeoNamesId > 0 )
-			//{
-			//	list.Add( entity.MainJurisdiction );
-			//	isValid = GeoCoordinate_Update( list, entity.RowId, false, ref status );
-			//	//do exceptions
-			//	if ( GeoCoordinate_Update( entity.JurisdictionException, entity.RowId,  true, ref status ) == false )
-			//	{
-			//		isValid = false;
-			//	}
-			//}
-			//else
-			//{
-			//	//can't have exceptions (what if exceptions are to world wide, or to text?
-			//	if ( entity.JurisdictionException != null && entity.JurisdictionException.Count() > 0 )
-			//	{
-			//		isValid = false;
-			//		status.AddWarning( "Error: you must have a main region before entering exceptions" );
-			//	}
-			//}
-
-
-			return isValid;
-		}
+		
 		/// <summary>
 		/// May want to use an isLast check to better handle an empty object
 		/// </summary>
@@ -317,7 +242,7 @@ namespace workIT.Factories
 		/// <param name="Id"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool JurisdictionProfile_Delete( int Id, ref string statusMessage )
+		public bool Delete( int Id, ref string statusMessage )
 		{
 			bool isValid = false;
 
@@ -349,16 +274,46 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+        /// <summary>
+        /// Delete all properties for parent (in preparation for import)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_JurisdictionProfile.RemoveRange( context.Entity_JurisdictionProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		#endregion
-		#region JurisdictionProfile retrieve  =======================
+            return isValid;
+        }
+        #endregion
+        #region JurisdictionProfile retrieve  =======================
 
-		/// <summary>
-		/// get all related JurisdictionProfiles for the parent
-		/// </summary>
-		/// <param name="parentUId"></param>
-		/// <returns></returns>
-		public static List<ThisEntity> Jurisdiction_GetAll( Guid parentUid, int jprofilePurposeId = 1 )
+        /// <summary>
+        /// get all related JurisdictionProfiles for the parent
+        /// </summary>
+        /// <param name="parentUId"></param>
+        /// <returns></returns>
+        public static List<ThisEntity> Jurisdiction_GetAll( Guid parentUid, int jprofilePurposeId = 1 )
 		{
 			//efEntity.JProfilePurposeId
 			ThisEntity entity = new ThisEntity();
@@ -656,7 +611,7 @@ namespace workIT.Factories
 					efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 
-					context.GeoCoordinates.Add( efEntity );
+					context.GeoCoordinate.Add( efEntity );
 
 					// submit the change to database
 					int count = context.SaveChanges();
@@ -697,7 +652,7 @@ namespace workIT.Factories
 		//		}
 
 		//		EM.GeoCoordinate efEntity =
-		//			context.GeoCoordinates.SingleOrDefault( s => s.Id == entity.Id );
+		//			context.GeoCoordinate.SingleOrDefault( s => s.Id == entity.Id );
 		//		if ( efEntity.JurisdictionId < 1 )
 		//		{
 		//			status.AddWarning( "Error - missing a parent identifier" );
@@ -743,10 +698,10 @@ namespace workIT.Factories
 		//		}
 
 		//		EM.GeoCoordinate efEntity =
-		//			context.GeoCoordinates.SingleOrDefault( s => s.Id == Id );
+		//			context.GeoCoordinate.SingleOrDefault( s => s.Id == Id );
 		//		if ( efEntity != null && efEntity.Id > 0 )
 		//		{
-		//			context.GeoCoordinates.Remove( efEntity );
+		//			context.GeoCoordinate.Remove( efEntity );
 		//			int count = context.SaveChanges();
 		//			if ( count > 0 )
 		//			{
@@ -777,7 +732,7 @@ namespace workIT.Factories
 			List<MC.GeoCoordinates> list = new List<MC.GeoCoordinates>();
 			using ( var context = new EntityContext() )
 			{
-				EM.GeoCoordinate item = context.GeoCoordinates
+				EM.GeoCoordinate item = context.GeoCoordinate
 							.SingleOrDefault( s => s.Id == Id );
 
 				if ( item != null && item.Id > 0 )
@@ -800,7 +755,7 @@ namespace workIT.Factories
 			List<MC.GeoCoordinates> list = new List<MC.GeoCoordinates>();
 			using ( var context = new EntityContext() )
 			{
-				EM.GeoCoordinate item = context.GeoCoordinates
+				EM.GeoCoordinate item = context.GeoCoordinate
 							.FirstOrDefault( s => s.GeoNamesId == geoNamesId );
 
 				if ( item != null && item.Id > 0 )
@@ -820,7 +775,7 @@ namespace workIT.Factories
 			geoUri = geoUri.ToLower();
 			using ( var context = new EntityContext() )
 			{
-				EM.GeoCoordinate item = context.GeoCoordinates
+				EM.GeoCoordinate item = context.GeoCoordinate
 							.FirstOrDefault( s => s.Url.ToLower() == geoUri );
 
 				if ( item != null && item.Id > 0 )
@@ -843,7 +798,7 @@ namespace workIT.Factories
 			bool isFound = false;
 			using ( var context = new EntityContext() )
 			{
-				EM.GeoCoordinate item = context.GeoCoordinates
+				EM.GeoCoordinate item = context.GeoCoordinate
 							.FirstOrDefault( s => s.JurisdictionId == parentId && s.GeoNamesId == geoNamesId && s.IsException == isException );
 
 				if ( item != null && item.Id > 0 )
@@ -868,7 +823,7 @@ namespace workIT.Factories
 			//MC.GeoCoordinates entity = new MC.GeoCoordinates();
 			using ( var context = new EntityContext() )
 			{
-				List<EM.GeoCoordinate> list = context.GeoCoordinates
+				List<EM.GeoCoordinate> list = context.GeoCoordinate
 							.Where( s => s.JurisdictionId == parentId && s.IsException == false ).ToList();
 
 				if ( list != null && list.Count > 0 )
@@ -891,7 +846,7 @@ namespace workIT.Factories
 			List<MC.GeoCoordinates> entities = new List<MC.GeoCoordinates>();
 			using ( var context = new EntityContext() )
 			{
-				List<EM.GeoCoordinate> items = context.GeoCoordinates.Where( m => Ids.Contains( m.Id ) ).ToList();
+				List<EM.GeoCoordinate> items = context.GeoCoordinate.Where( m => Ids.Contains( m.Id ) ).ToList();
 				foreach ( var item in items )
 				{
 					MC.GeoCoordinates entity = new MC.GeoCoordinates();
@@ -918,7 +873,7 @@ namespace workIT.Factories
 
 			using ( var context = new EntityContext() )
 			{
-				List<EM.GeoCoordinate> Items = context.GeoCoordinates
+				List<EM.GeoCoordinate> Items = context.GeoCoordinate
 							.Where( s => s.JurisdictionId == parentId && s.IsException == isException )
 							.OrderBy( s => s.Id ).ToList();
 

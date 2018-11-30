@@ -12,7 +12,7 @@ using workIT.Models.Helpers;
 //using workIT.Models.Common;
 using workIT.Utilities;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
     public class SearchController : Controller
     {
@@ -23,12 +23,24 @@ namespace WorkIT.Web.Controllers
         //Main Search Page
         public ActionResult Index()
         {
-            return View( "Index" );
+            if ( Request.Params[ "oldSearch" ] == "yes" )
+            {
+                return View( "~/Views/Search/Index.cshtml" );
+            }
+            else
+                return View( "~/Views/Search/SearchV2.cshtml" );
+
+            //if (WidgetServices.IsWidgetMode())
+            //{
+            //    return View("SearchV2");
+            //    //query.useElastic = false;
+            //}
+            //return View("Index");
         }
 
-        public JsonResult DoAutoComplete( string text, string context, string searchType )
+        public JsonResult DoAutoComplete( string text, string context, string searchType, int widgetId = 0 )
         {
-            var data = SearchServices.DoAutoComplete( text, context, searchType );
+            var data = SearchServices.DoAutoComplete( text, context, searchType, widgetId );
 
             return JsonHelper.GetJsonWithWrapper( data, true, "", null );
         }
@@ -38,7 +50,7 @@ namespace WorkIT.Web.Controllers
         {
             //DateTime start = DateTime.Now;
             //LoggingHelper.DoTrace( 6, string.Format( "$$$$SearchController.MainSearch === Started: " ) );
-            if ( Request.Params["useSql"] == "true" )
+            if ( Request.Params[ "useSql" ] == "true" )
             {
                 //query.useSql = true;
                 //query.useElastic = false;
@@ -107,52 +119,69 @@ namespace WorkIT.Web.Controllers
                 switch ( AjaxQueryName )
                 {
                     case "GetSearchResultCompetencies":
+                    {
+                        items = data.Items.ConvertAll( m => new SearchTagItem()
                         {
-                            items = data.Items.ConvertAll( m => new SearchTagItem()
-                            {
-                                Display = string.IsNullOrWhiteSpace( m.Description ) ?
-                                m.Label :
-                                "<b>" + m.Label + "</b>" + System.Environment.NewLine + m.Description,
-                                QueryValues = new Dictionary<string, object>()
+                            Display = string.IsNullOrWhiteSpace( m.Description ) ? m.Label : "<b>" + m.Label + "</b>" + System.Environment.NewLine + m.Description,
+                            QueryValues = new Dictionary<string, object>()
                                 {
                                     { "SchemaName", m.Schema },
                                     { "CodeId", m.CodeId },
                                     { "TextValue", m.Label },
                                     { "TextDescription", m.Description }
                                 }
-                            } );
-                            break;
-                        }
+                        } );
+                        break;
+                    }
                     case "GetSearchResultCosts":
+                    {
+                        items = data.CostItems.ConvertAll( m => new SearchTagItem()
                         {
-                            items = data.CostItems.ConvertAll( m => new SearchTagItem()
-                            {
-                                Display = m.CostType + ": " + m.CurrencySymbol + m.Price + " ( " + ( m.SourceEntity ?? "direct" ) + " )",
-                                QueryValues = new Dictionary<string, object>()
+                            Display = m.CostType + ": " + m.CurrencySymbol + m.Price + " ( " + ( m.SourceEntity ?? "direct" ) + " )",
+                            QueryValues = new Dictionary<string, object>()
                                 {
                                     { "CurrencySymbol", m.CurrencySymbol },
                                     { "Price", m.Price },
                                     { "CostType", m.CostType }
                                 }
-                                //Something that probably looks like that -^
-                            } );
-                            break;
-                        }
+                            //Something that probably looks like that -^
+                        } );
+                        break;
+                    }
+                    case "GetSearchResultPerformed":
+                    {
+                        items = data.QAItems.ConvertAll( m => new SearchTagItem()
+                        {
+                            Display = "<b>" + m.AgentToTargetRelationship + "</b> <b>" + m.TargetEntityType + "</b> " + m.TargetEntityName,
+                            QueryValues = new Dictionary<string, object>()
+                                {
+                                    { "SearchType", m.TargetEntityType.ToLower() },
+                                    { "RecordId", m.TargetEntityBaseId },
+                                    { "TargetEntityType", m.TargetEntityType },
+                                    { "IsReference", m.IsReference },
+                                    {"SubjectWebpage", m.TargetEntitySubjectWebpage },
+                                    {"TargetEntityTypeId", m.TargetEntityTypeId },
+                                    {"AssertionTypeId",m.AssertionTypeId }
+                                }
+                        } );
+                        break;
+                    }
+
                     case "CredentialConnections":
+                    {
+                        items = data.CostItems.ConvertAll( m => new SearchTagItem()
                         {
-                            items = data.CostItems.ConvertAll( m => new SearchTagItem()
-                            {
-                                Display = m.CostType + ": " + m.CurrencySymbol + m.Price + " ( " + ( m.SourceEntity ?? "direct" ) + " )",
-                                QueryValues = new Dictionary<string, object>()
+                            Display = m.CostType + ": " + m.CurrencySymbol + m.Price + " ( " + ( m.SourceEntity ?? "direct" ) + " )",
+                            QueryValues = new Dictionary<string, object>()
                                 {
                                     { "CurrencySymbol", m.CurrencySymbol },
                                     { "Price", m.Price },
                                     { "CostType", m.CostType }
                                 }
-                                //Something that probably looks like that -^
-                            } );
-                            break;
-                        }
+                            //Something that probably looks like that -^
+                        } );
+                        break;
+                    }
                     default:
                         break;
                 }
@@ -178,13 +207,13 @@ namespace WorkIT.Web.Controllers
             return JsonHelper.GetJsonWithWrapper( data, true, "", null );
         }
         //
-		
-		[HttpPost]
-		public ActionResult LoadPartial( string partialName, Dictionary<string, object> queryValues )
-		{
-			return View( "~/Views/Search/ResultPartials/" + partialName + ".cshtml", queryValues );
-		}
-		//
+
+        [HttpPost]
+        public ActionResult LoadPartial( string partialName, Dictionary<string, object> queryValues )
+        {
+            return View( "~/Views/Search/ResultPartials/" + partialName + ".cshtml", queryValues );
+        }
+        //
     }
-    
+
 }

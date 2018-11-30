@@ -46,5 +46,6 @@ namespace workIT.Data.Views
         public string ConnectionsList { get; set; }
         public string CredentialsList { get; set; }
         public string Org_QAAgentAndRoles { get; set; }
+        public Nullable<System.Guid> OwningAgentUid { get; set; }
     }
 }

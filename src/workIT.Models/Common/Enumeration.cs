@@ -15,8 +15,8 @@ namespace workIT.Models.Common
 		MULTI_SELECT_ID_ONLY,
 		CUSTOM
 	}
-
-	public class Enumeration
+    [Serializable]
+    public class Enumeration
 	{
 		public Enumeration()
 		{
@@ -133,12 +133,12 @@ namespace workIT.Models.Common
 		//}
 		//
 	}
-	//
-
-	public class EnumeratedItem
+    //
+    [Serializable]
+    public class EnumeratedItem
 	{
 		public EnumeratedItem() {
-			IsSpecialValue = false;
+			IsQAValue = false;
 		}
 		/// <summary>
 		/// Database unique ID. 
@@ -156,9 +156,24 @@ namespace workIT.Models.Common
 		/// Displayed name
 		/// </summary>
 		public string Name { get; set; }
- 		/// <summary>
+		//public string DisplayName
+		//{
+		//	get
+		//	{
+		//		string start = Name;
+		//		if ( IsIndirectAssertion )
+		//			if ( IsDirectAssertion )
+		//				start += " <span aria-hidden='true' class='fa fa-check-double'></span>";
+		//			else
+		//				start += " <span aria-hidden='true' class='fa fa-check-circle'></span>";
+		//		else if ( IsDirectAssertion )
+		//			start += " <span aria-hidden='true' class='fa fa-check-circle'></span>";
+		//		return start;
+		//	}
+		//}
+		/// <summary>
 		/// Url - optional
- 		/// </summary>
+		/// </summary>
 		public string URL { get; set; }  
 		/// <summary>
 		/// Description (if applicable)
@@ -177,12 +192,26 @@ namespace workIT.Models.Common
 		/// Value referenced in "value" property of HTML objects
 		/// </summary>
 		public string Value { get; set; }
-		public bool IsSpecialValue { get; set; }
-
 		/// <summary>
-		/// URL to schema descriptor - can probably delete this
+		/// This is 
 		/// </summary>
-		public string SchemaUrl { get; set; } 
+		public bool IsQAValue { get; set; }
+        public bool IsDirectAssertion { get; set; }
+        public bool IsIndirectAssertion { get; set; }
+        public bool IsMatchedAssertion
+        {
+            get
+            {
+                if ( IsDirectAssertion && IsIndirectAssertion )
+                    return true;
+                else
+                    return false;
+            }
+        }
+        /// <summary>
+        /// URL to schema descriptor - can probably delete this
+        /// </summary>
+        public string SchemaUrl { get; set; } 
 		public int SortOrder { get; set; } //Sort Order
 		/// <summary>
 		/// Indicates whether or not the item is selected
@@ -202,5 +231,7 @@ namespace workIT.Models.Common
 		public string ReverseTitle { get; set; }
 		public string ReverseDescription { get; set; }
 		public string ReverseSchemaName { get; set; }
-	}
+
+        public string LanguageMapString { get; set; }
+    }
 }

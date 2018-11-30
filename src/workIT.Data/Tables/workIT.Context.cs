@@ -25,16 +25,22 @@ namespace workIT.Data.Tables
             throw new UnintentionalCodeFirstException();
         }
     
-        public virtual DbSet<ActivityLog> ActivityLogs { get; set; }
-        public virtual DbSet<Assessment> Assessments { get; set; }
+        public virtual DbSet<ActivityLog> ActivityLog { get; set; }
+        public virtual DbSet<Assessment> Assessment { get; set; }
         public virtual DbSet<Codes_AssertionType> Codes_AssertionType { get; set; }
+        public virtual DbSet<Codes_ConditionProfileType> Codes_ConditionProfileType { get; set; }
+        public virtual DbSet<Codes_CredentialAgentRelationship> Codes_CredentialAgentRelationship { get; set; }
         public virtual DbSet<Codes_EntityTypes> Codes_EntityTypes { get; set; }
-        public virtual DbSet<ConditionManifest> ConditionManifests { get; set; }
-        public virtual DbSet<CostManifest> CostManifests { get; set; }
-        public virtual DbSet<Credential> Credentials { get; set; }
+        public virtual DbSet<Codes_PropertyCategory> Codes_PropertyCategory { get; set; }
+        public virtual DbSet<Codes_PropertyValue> Codes_PropertyValue { get; set; }
+        public virtual DbSet<Codes_State> Codes_State { get; set; }
+        public virtual DbSet<ConditionManifest> ConditionManifest { get; set; }
+        public virtual DbSet<CostManifest> CostManifest { get; set; }
+        public virtual DbSet<Counts_SiteTotals> Counts_SiteTotals { get; set; }
+        public virtual DbSet<Credential> Credential { get; set; }
         public virtual DbSet<Credential_SummaryCache> Credential_SummaryCache { get; set; }
-        public virtual DbSet<EducationFramework> EducationFrameworks { get; set; }
-        public virtual DbSet<Entity> Entities { get; set; }
+        public virtual DbSet<EducationFramework> EducationFramework { get; set; }
+        public virtual DbSet<Entity> Entity { get; set; }
         public virtual DbSet<Entity_Address> Entity_Address { get; set; }
         public virtual DbSet<Entity_AgentRelationship> Entity_AgentRelationship { get; set; }
         public virtual DbSet<Entity_Assertion> Entity_Assertion { get; set; }
@@ -64,18 +70,16 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_RevocationProfile> Entity_RevocationProfile { get; set; }
         public virtual DbSet<Entity_VerificationProfile> Entity_VerificationProfile { get; set; }
         public virtual DbSet<Entity_VerificationStatus> Entity_VerificationStatus { get; set; }
-        public virtual DbSet<Entity_Cache> Entity_Cache { get; set; }
-        public virtual DbSet<GeoCoordinate> GeoCoordinates { get; set; }
+        public virtual DbSet<GeoCoordinate> GeoCoordinate { get; set; }
         public virtual DbSet<Import_EntityResolution> Import_EntityResolution { get; set; }
         public virtual DbSet<Import_Message> Import_Message { get; set; }
         public virtual DbSet<Import_Staging> Import_Staging { get; set; }
-        public virtual DbSet<LearningOpportunity> LearningOpportunities { get; set; }
-        public virtual DbSet<Organization> Organizations { get; set; }
+        public virtual DbSet<LearningOpportunity> LearningOpportunity { get; set; }
+        public virtual DbSet<Organization> Organization { get; set; }
         public virtual DbSet<Reference_Frameworks> Reference_Frameworks { get; set; }
-        public virtual DbSet<Codes_PropertyCategory> Codes_PropertyCategory { get; set; }
-        public virtual DbSet<Codes_PropertyValue> Codes_PropertyValue { get; set; }
-        public virtual DbSet<Codes_ConditionProfileType> Codes_ConditionProfileType { get; set; }
-        public virtual DbSet<Codes_CredentialAgentRelationship> Codes_CredentialAgentRelationship { get; set; }
-        public virtual DbSet<SearchPendingReindex> SearchPendingReindexes { get; set; }
+        public virtual DbSet<SearchPendingReindex> SearchPendingReindex { get; set; }
+        public virtual DbSet<Widget> Widget { get; set; }
+        public virtual DbSet<Entity_Cache> Entity_Cache { get; set; }
+        public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
     }
 }

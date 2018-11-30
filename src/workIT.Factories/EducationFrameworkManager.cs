@@ -120,7 +120,7 @@ namespace workIT.Factories
 					efEntity.Created = DateTime.Now;
 					efEntity.RowId = Guid.NewGuid();
 
-					context.EducationFrameworks.Add( efEntity );
+					context.EducationFramework.Add( efEntity );
 
 					count = context.SaveChanges();
 
@@ -134,7 +134,7 @@ namespace workIT.Factories
 				else
 				{
 
-					efEntity = context.EducationFrameworks.SingleOrDefault( s => s.Id == entity.Id );
+					efEntity = context.EducationFramework.SingleOrDefault( s => s.Id == entity.Id );
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
 						entity.RowId = efEntity.RowId;
@@ -164,10 +164,10 @@ namespace workIT.Factories
 			bool isOK = true;
 			using ( var context = new EntityContext() )
 			{
-				DBEntity p = context.EducationFrameworks.FirstOrDefault( s => s.Id == recordId );
+				DBEntity p = context.EducationFramework.FirstOrDefault( s => s.Id == recordId );
 				if ( p != null && p.Id > 0 )
 				{
-					context.EducationFrameworks.Remove( p );
+					context.EducationFramework.Remove( p );
 					int count = context.SaveChanges();
 				}
 				else
@@ -212,7 +212,7 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.EducationFrameworks
+					DBEntity item = context.EducationFramework
 							.SingleOrDefault( s => s.Id == profileId );
 
 					if ( item != null && item.Id > 0 )
@@ -242,8 +242,12 @@ namespace workIT.Factories
 				return 0;
 			SaveStatus status = new SaveStatus();
 			entity.FrameworkName = frameworkName;
-			entity.FrameworkUrl = frameworkUrl;
-			Save( entity, ref status );
+            //this could an external Url, or a registry Uri
+            if (frameworkUrl.ToLower().IndexOf("credentialengineregistry.org/resources/") > -1 )
+			    entity.FrameworkUri = frameworkUrl;
+            else
+                entity.SourceUrl = frameworkUrl;
+            Save( entity, ref status );
 			if (entity.Id > 0)
 				return entity.Id;
 
@@ -259,8 +263,11 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.EducationFrameworks
-							.FirstOrDefault( s => s.FrameworkUrl == frameworkUrl );
+                    //lookup by frameworkUri, or SourceUrl
+					DBEntity item = context.EducationFramework
+							.FirstOrDefault( s => s.FrameworkUri.ToLower() == frameworkUrl.ToLower()
+                            || s.SourceUrl.ToLower() == frameworkUrl.ToLower()
+                            );
 
 					if ( item != null && item.Id > 0 )
 					{
@@ -270,7 +277,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Get" );
+				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl" );
 			}
 			return entity;
 		}//
@@ -281,7 +288,26 @@ namespace workIT.Factories
 			//to.Id = from.Id;
 
 			to.FrameworkName = from.FrameworkName;
-			to.FrameworkUrl = from.FrameworkUrl;
+            //will want to extract from FrameworkUri (for now)
+            if (!string.IsNullOrWhiteSpace(from.CTID) && from.CTID.Length == 39 )
+                to.CTID = from.CTID;
+            else
+            {
+                if ( from.FrameworkUri.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") > -1 )
+                {
+                    to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
+
+                }
+                //else if ( from.FrameworkUri.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") > -1 )
+                //{
+                //    to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
+                //}
+            }
+            to.SourceUrl = from.SourceUrl;
+            to.FrameworkUri = from.FrameworkUri;
+
+            //soon to be obsolete
+            //to.FrameworkUrl = from.FrameworkUrl;
 		} //
 
 		public static void MapFromDB( DBEntity from, ThisEntity to)
@@ -289,7 +315,11 @@ namespace workIT.Factories
 			to.Id = from.Id;
 			to.RowId = from.RowId;
 			to.FrameworkName = from.FrameworkName;
-			to.FrameworkUrl = from.FrameworkUrl;
+            to.CTID = from.CTID;
+            to.SourceUrl = from.SourceUrl;
+            to.FrameworkUri = from.FrameworkUri;
+            //soon to be obsolete
+			//to.FrameworkUrl = from.FrameworkUrl;
 		}
 
 		#endregion
@@ -338,7 +368,7 @@ namespace workIT.Factories
 						pTotalRows = 0;
 					}
 				}
-
+				
 				foreach ( DataRow dr in result.Rows )
 				{
 					item = new ThisEntityItem();

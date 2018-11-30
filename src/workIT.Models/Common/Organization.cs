@@ -5,8 +5,8 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-
-	public class Organization : Agent
+    [Serializable]
+    public class Organization : Agent
 	{
 		public Organization()
 		{
@@ -23,7 +23,6 @@ namespace workIT.Models.Common
 			OrganizationRole_Subsidiary = new List<OrganizationRoleProfile>();
 			ParentOrganizations = new List<OrganizationRoleProfile>();
 
-			OrganizationAssertions = new List<Common.OrganizationAssertion>();
 			OrganizationRole_Actor = new List<OrganizationRoleProfile>();
 			OrganizationRole_Recipient = new List<OrganizationRoleProfile>();
 
@@ -124,12 +123,14 @@ namespace workIT.Models.Common
 
 		public List<JurisdictionProfile> RegulatedIn { get; set; }
 
-		public List<Guid> Approves { get; set; }
+        public List<Guid> Accredits { get; set; } = new List<Guid>();
+        public List<Guid> Approves { get; set; }
 
 		public List<Guid> Offers { get; set; }
 		public List<Guid> Owns { get; set; }
 		public List<Guid> Recognizes { get; set; }
-		public List<Guid> Renews { get; set; }
+        public List<Guid> Regulates { get; set; } = new List<Guid>();
+        public List<Guid> Renews { get; set; }
 
 		public List<Guid> Revokes { get; set; }
 
@@ -168,21 +169,22 @@ namespace workIT.Models.Common
 
 		/// <summary>
 		/// roles where org is the actor, ie Accredits something
+        /// this would be a third party assertion
 		/// </summary>
-		[Obsolete]
+		//[Obsolete]
 		public List<OrganizationRoleProfile> OrganizationRole_Actor { get; set; }
 
-		public List<OrganizationAssertion> OrganizationAssertions{ get; set; }
+        public List<OrganizationRoleProfile> OrganizationAssertions { get; set; } = new List<OrganizationRoleProfile>();
 
 
 		/// <summary>
 		/// Roles where org was acted upon - that is accrdedited by another agent
 		/// </summary>
 		public List<OrganizationRoleProfile> OrganizationRole_Recipient { get; set; }
-		public List<OrganizationRoleProfile> OrganizationRole {
-			get { return OrganizationRole_Recipient; }
-			set { OrganizationRole_Recipient = value; } 
-		}
+		//public List<OrganizationRoleProfile> OrganizationRole {
+		//	get { return OrganizationRole_Recipient; }
+		//	set { OrganizationRole_Recipient = value; } 
+		//}
 		//public List<QualityAssuranceActionProfile> QualityAssuranceAction { get; set; }
 		//public List<QualityAssuranceActionProfile> QualityAssuranceActor { get; set; }
 

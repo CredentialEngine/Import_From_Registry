@@ -17,6 +17,7 @@ namespace workIT.Data.Tables
         public int Id { get; set; }
         public int EntityId { get; set; }
         public int ConnectionTypeId { get; set; }
+        public Nullable<int> ConditionSubTypeId { get; set; }
         public Nullable<System.Guid> AgentUid { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -34,7 +35,6 @@ namespace workIT.Data.Tables
         public Nullable<int> CreditUnitTypeId { get; set; }
         public string CreditUnitTypeDescription { get; set; }
         public Nullable<decimal> CreditUnitValue { get; set; }
-        public Nullable<int> ConditionSubTypeId { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

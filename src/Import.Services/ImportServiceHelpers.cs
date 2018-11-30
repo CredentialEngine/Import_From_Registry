@@ -14,6 +14,19 @@ namespace Import.Services
 {
     public class ImportServiceHelpers
     {
+        public static bool IsAGraphResource(string payload)
+        {
+            if ( string.IsNullOrWhiteSpace( payload ) )
+                return false;
+
+            //may need additional checks?
+            if ( payload.IndexOf( "@graph" ) > 0 )
+                return true;
+            //else if ( payload.IndexOf( "\"en\":" ) > 0 ) //actually this should be an error condition
+            //    return true;
+            else
+                return false;
+        }
 
         /// <summary>
         /// Add envelope and related data to the staging table

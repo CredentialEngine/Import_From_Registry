@@ -99,7 +99,7 @@ namespace workIT.Factories
 						else
 							efEntity.RowId = Guid.NewGuid();
 
-						context.ConditionManifests.Add( efEntity );
+						context.ConditionManifest.Add( efEntity );
 						count = context.SaveChanges();
 
 						entity.Id = efEntity.Id;
@@ -133,22 +133,22 @@ namespace workIT.Factories
 					else
 					{
 
-						efEntity = context.ConditionManifests.SingleOrDefault( s => s.Id == entity.Id );
+						efEntity = context.ConditionManifest.SingleOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							//delete the entity and re-add
-							Entity e = new Entity()
-							{
-								EntityBaseId = efEntity.Id,
-								EntityTypeId = CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,
-								EntityType = "ConditionManifest",
-								EntityUid = efEntity.RowId,
-								EntityBaseName = efEntity.Name
-							};
-							if ( entityMgr.ResetEntity( e, ref statusMessage ) )
-							{
+							//Entity e = new Entity()
+							//{
+							//	EntityBaseId = efEntity.Id,
+							//	EntityTypeId = CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,
+							//	EntityType = "ConditionManifest",
+							//	EntityUid = efEntity.RowId,
+							//	EntityBaseName = efEntity.Name
+							//};
+							//if ( entityMgr.ResetEntity( e, ref statusMessage ) )
+							//{
 
-							}
+							//}
 
 							entity.RowId = efEntity.RowId;
 							//update
@@ -164,8 +164,13 @@ namespace workIT.Factories
 
 								count = context.SaveChanges();
 							}
+                            else
+                            {
+                                //update entity.LastUpdated - assuming there has to have been some change in related data
+                                new EntityManager().UpdateModifiedDate( entity.RowId, ref status );
+                            }
 
-							if ( !UpdateParts( entity, ref status ) )
+                            if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 
 							SiteActivity sa = new SiteActivity()
@@ -205,10 +210,18 @@ namespace workIT.Factories
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
+            Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+            if ( relatedEntity == null || relatedEntity.Id == 0 )
+            {
+                status.AddError( "Error - the related Entity was not found." );
+                return false;
+            }
 
-			//ConditionProfile
-			Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-			emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
+            //ConditionProfile
+            Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
+            emanager.DeleteAll( relatedEntity, ref status );
+
+            emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
 			emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
 			emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
 			emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
@@ -217,64 +230,7 @@ namespace workIT.Factories
 			return !status.HasSectionErrors;
 		} //
 
-		/// <summary>
-		/// Not actually sure this should be possible??
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
-		{
-			DBEntity efEntity = new DBEntity();
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					if ( entity == null ||
-						( string.IsNullOrWhiteSpace( entity.Name ) ||
-						string.IsNullOrWhiteSpace( entity.Description ) ||
-						string.IsNullOrWhiteSpace( entity.SubjectWebpage )
-						) )
-					{
-						status.AddError( thisClassName + ". AddBaseReference() The assessment is incomplete" );
-						return 0;
-					}
 
-					//only add DB required properties
-					//NOTE - an entity will be created via trigger
-					efEntity.EntityStateId = 2;
-					efEntity.Name = entity.Name;
-					efEntity.Description = entity.Description;
-					efEntity.SubjectWebpage = entity.SubjectWebpage;
-					if ( IsValidGuid( entity.RowId ) )
-						efEntity.RowId = entity.RowId;
-					else
-						efEntity.RowId = Guid.NewGuid();
-
-					efEntity.Created = System.DateTime.Now;
-					efEntity.LastUpdated = System.DateTime.Now;
-
-					context.ConditionManifests.Add( efEntity );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						entity.Id = efEntity.Id;
-						return efEntity.Id;
-					}
-
-					status.AddError( thisClassName + ". AddBaseReference() Error - the save was not successful, but no message provided. " );
-				}
-			}
-
-			catch ( Exception ex )
-			{
-				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddBaseReference. Name:  {0}, SubjectWebpage: {1}", entity.Name, entity.SubjectWebpage ) );
-				status.AddError( thisClassName + " Error - the save was not successful. " + message );
-
-			}
-			return 0;
-		}
 		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
 		{
 			DBEntity efEntity = new DBEntity();
@@ -305,7 +261,7 @@ namespace workIT.Factories
 					efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 
-					context.ConditionManifests.Add( efEntity );
+					context.ConditionManifest.Add( efEntity );
 					int count = context.SaveChanges();
 					if ( count > 0 )
 						return efEntity.Id;
@@ -342,14 +298,14 @@ namespace workIT.Factories
 			{
 				try
 				{
-					DBEntity efEntity = context.ConditionManifests
+					DBEntity efEntity = context.ConditionManifest
 								.SingleOrDefault( s => s.Id == Id );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
 						Guid rowId = efEntity.RowId;
 
-						context.ConditionManifests.Remove( efEntity );
+						context.ConditionManifest.Remove( efEntity );
 						int count = context.SaveChanges();
 						if ( count > 0 )
 						{
@@ -399,7 +355,7 @@ namespace workIT.Factories
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.ConditionManifests
+					DBEntity efEntity = context.ConditionManifest
                                 .FirstOrDefault( s => s.CredentialRegistryId == envelopeId
                                 || ( s.CTID == ctid )
                                 );
@@ -412,7 +368,7 @@ namespace workIT.Factories
                         //-using before delete trigger - verify won't have RI issues
                         string msg = string.Format( " ConditionManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
                         //leaving as a delete
-                        context.ConditionManifests.Remove( efEntity );
+                        context.ConditionManifest.Remove( efEntity );
                         //efEntity.EntityStateId = 0;
                         //efEntity.LastUpdated = System.DateTime.Now;
 
@@ -486,7 +442,7 @@ namespace workIT.Factories
 			ThisEntity entity = new ThisEntity();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity from = context.ConditionManifests
+				DBEntity from = context.ConditionManifest
 						.SingleOrDefault( s => s.CTID == ctid );
 
 				if ( from != null && from.Id > 0 )
@@ -510,7 +466,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.ConditionManifests
+				DBEntity from = context.ConditionManifest
 						.FirstOrDefault( s => s.SubjectWebpage.ToLower() == swp.ToLower() );
 
 				if ( from != null && from.Id > 0 )
@@ -539,7 +495,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 			
-				DBEntity item = context.ConditionManifests
+				DBEntity item = context.ConditionManifest
 						.SingleOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
@@ -568,7 +524,7 @@ namespace workIT.Factories
 				//want to get org, deal with others
 				//context.Configuration.LazyLoadingEnabled = false;
 
-				DBEntity item = context.ConditionManifests
+				DBEntity item = context.ConditionManifest
 						.SingleOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
@@ -1001,7 +957,7 @@ namespace workIT.Factories
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
-						status.AddError( string.Format( "Error - this ConditionManifest has already been added to this profile.", thisClassName ) );
+						//status.AddError( string.Format( "Error - this ConditionManifest has already been added to this profile.", thisClassName ) );
 						return 0;
 					}
 

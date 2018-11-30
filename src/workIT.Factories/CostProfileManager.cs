@@ -25,7 +25,21 @@ namespace workIT.Factories
 		#region persistance ==================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
+                return false;
+            }
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
@@ -85,9 +99,12 @@ namespace workIT.Factories
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
 						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-						efEntity.RowId = Guid.NewGuid();
+                        if ( IsValidGuid( entity.RowId ) )
+                            efEntity.RowId = entity.RowId;
+                        else
+                            efEntity.RowId = Guid.NewGuid();
 
-						context.Entity_CostProfile.Add( efEntity );
+                        context.Entity_CostProfile.Add( efEntity );
 						count = context.SaveChanges();
 						//update profile record so doesn't get deleted
 						entity.Id = efEntity.Id;
@@ -144,7 +161,32 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_CostProfile.RemoveRange( context.Entity_CostProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
+
+            return isValid;
+        }
+        private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 
@@ -155,7 +197,8 @@ namespace workIT.Factories
 			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
 			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
 
-			new CostProfileItemManager().SaveList( entity.Items, entity.Id, ref status );
+            if ( entity.Items != null && entity.Items.Count > 0)
+			    new CostProfileItemManager().SaveList( entity.Items, entity.Id, ref status );
 
 			return isAllValid;
 		}
@@ -377,14 +420,7 @@ namespace workIT.Factories
 
 			to.ProfileName = from.ProfileName;
 			to.Description = from.Description;
-			//set viewHeading
-			if ( from.Entity != null )
-			{
-				if ( from.Entity.Entity_Cache != null )
-					to.ViewHeading = from.Entity.Entity_Cache.EntityType + " - ";
-				//this name could be out of date
-				to.ViewHeading += from.Entity.EntityBaseName;
-			}
+
 			if ( IsValidDate( from.ExpirationDate ) )
 				to.EndDate = ( ( DateTime ) from.ExpirationDate ).ToShortDateString();
 			else
@@ -411,7 +447,7 @@ namespace workIT.Factories
 			if ( IsValidDate( from.LastUpdated ) )
 				to.LastUpdated = ( DateTime ) from.LastUpdated;
 
-			to.Condition = Entity_ReferenceManager.GetAllDirect( to.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM );
+			to.Condition = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM );
 
 			if ( includingItems )
 			{

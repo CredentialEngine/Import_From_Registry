@@ -1,0 +1,107 @@
+﻿/* === widget wide styles === */
+/*set up banner background color*/
+#mainSiteHeader { background-color: #FFFFFF; }
+/*you can change the logo over here*/
+#mainSiteLogo { height: 90px; width: 90px; background-position: center center; background-repeat: no-repeat; background-size: contain; background-image: url('/Images/Common/logo_stacked.png'); }
+/* typically partners may want to hide Credential finder tagline*/
+#mainSiteTagline{display: none;}
+/* === search page styles === */
+/* main content - search specific */
+#content { padding: 0; background-color: #FFF; transition: none; }
+.whiteGhost, .whiteGhost.closeButton, button.whiteGhost { background-color: transparent; color: #FFF; box-shadow: none; border-color: rgba(255,255,255,0); }
+.whiteGhost:hover, .whiteGhost:focus, .whiteGhost.current, .whiteGhost.active, .whiteGhost.selected { background-color: #FFF; color: #0F3E63; cursor: pointer; }
+.whiteGhost.borderedGhost { border: 1px solid rgba(255,255,255,0.7); }
+.whiteGhost.borderedGhost:hover, .whiteGhost.borderedGhost:focus { border-color: rgba(255,255,255,1); }
+
+/*set up  the searchButton color*/
+.searchButton { background-color: #0F3E63; color: #FFFFFF; }
+
+/*set up the filterButton color*/
+.filterButton { background-color: #3b7741; color: #FFFFFF; }
+
+/*set up the resetButton color*/
+.resetButton { background-color: #B55130; color: #FFFFFF; }
+
+/*set the background-color and hide the buttons*/
+.contentToggleButton { border-radius: 4px; border: 1px solid transparent; padding: 2px 5px; opacity: 0.9; -webkit-appearance: none; white-space: normal; display: inline-block; text-decoration: none; color: #3D4443; }
+
+
+/*hide the viewButton*/
+.viewButton { background-color: #FFFFFF; color: #000000; border: 1px solid #CAD9DB; }
+
+/*set up color and hide the compareButton*/
+.compareButton { background-color: #0F3E63; color: #FFFFFF; }
+
+/*footerCompareButton class under compareBar*/
+.footerCompareButton { background-color: #45A085; color: #FFFFFF; }
+
+
+/*hoverFilterButton class under filter buton*/
+/*.hoverFilterButton { background-color: #0F3E63; color: #FFF; padding: 10px 5vw; display: none; }*/
+
+
+/*filterCloseButton class under filter button*/
+/*.filterCloseButton { background-color: #607171; border-radius: 50%; color: #FFFFFF; font-weight: normal; padding: 0; line-height: 1px; }*/
+
+
+/*clearCloseButton class under for text box*/
+/*.clearCloseButton { background-color: #607171; border-radius: 50%; color: #FFFFFF; font-weight: normal; padding: 0; line-height: 1px; }*/
+
+
+
+/* =======================================
+    filter sections. Uncomment to hide the related filter in the search interface*/
+
+/*To Hide The Filter Button - and consequently all filters */
+/*#btnToggleFilters { display: none; }*/
+
+/*#searchMainFilters #filtersList button.whiteGhost.credential.audienceleveltypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.audiencetypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.credentialconnections { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.competencies { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.subjects { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.occupations { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.industries { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.credential.qualityassurance { display: none; }*/
+/* normally this should be hidden */
+#searchMainFilters #filtersList button.whiteGhost.credential.reports { display: none; }
+/* === detail page styles === */
+
+
+/*Organization filter*/
+/*#searchMainFilters #filtersList button.whiteGhost.organization.industries { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.organization.servicetypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.organization.sectortypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.organization.qualityassurance { display: none; }*/
+/* normally this should be hidden */
+#searchMainFilters #filtersList button.whiteGhost.organization.reports { display: none; }
+
+/*Assessment filter*/
+/*#searchMainFilters #filtersList button.whiteGhost.assessment.subjects { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.assessmentconnections { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.assessmentmethodtypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.assessmentusetypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.scoringmethodtypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.deliverymethodtypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.instructionalprogramtype { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.audiencetypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.assessment.qualityassurance { display: none; }*/
+/* normally this should be hidden */
+#searchMainFilters #filtersList button.whiteGhost.assessment.reports { display: none; }
+
+/*Learning Opportunity filter*/
+/*#searchMainFilters #filtersList button.whiteGhost.learningopportunity.subjects { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.learningopportunityconnections { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.learningmethodtypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.deliverymethodtypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.instructionalprogramtype { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.audiencetypes { display: none; }
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.qualityassurance { display: none; }*/
+/* normally this should be hidden */
+#searchMainFilters #filtersList button.whiteGhost.learningopportunity.reports { display: none; }
+
+
+/* === detail page styles === */
+
+
+/* === compare page styles === */

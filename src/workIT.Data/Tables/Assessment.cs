@@ -22,6 +22,7 @@ namespace workIT.Data.Tables
     
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public Nullable<System.DateTime> DateEffective { get; set; }
@@ -56,7 +57,6 @@ namespace workIT.Data.Tables
         public string ScoringMethodExampleDescription { get; set; }
         public Nullable<int> InLanguageId { get; set; }
         public string VersionIdentifier { get; set; }
-        public Nullable<int> EntityStateId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Assessment> Entity_Assessment { get; set; }

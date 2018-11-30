@@ -66,6 +66,7 @@ namespace workIT.Models.ProfileModels
 		public Enumeration DirectCostType { get; set; }
 		public int CostTypeId { get; set; }
 		public string CostTypeName { get; set; }
+		public string CostTypeSchema { get; set; }
 		public string PaymentPattern { get; set; }
 		public decimal Price { get; set; }
 

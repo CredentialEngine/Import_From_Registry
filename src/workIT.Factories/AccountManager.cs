@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 //using Microsoft.Owin.Security;
 
 using workIT.Models;
-using workIT.Models.Search;
+using MC = workIT.Models.Common;
 
 using workIT.Data.Tables;
 using workIT.Utilities;
@@ -500,16 +500,31 @@ namespace workIT.Factories
 
 			return entity;
 		}
+        public static AppUser GetUserByCEAccountId( string accountIdentifier )
+        {
+            AppUser entity = new AppUser();
+            using ( var context = new ViewContext() )
+            {
+                Views.Account_Summary efEntity = context.Account_Summary
+                            .FirstOrDefault(s => s.CEAccountIdentifier.ToLower() == accountIdentifier.ToLower());
 
-		//public static List<Views.AspNetUserRoles_Summary> GetUserRoles( int userId )
-		//{
-		//	using ( var context = new ViewContext() )
-		//	{
-		//		return context.AspNetUserRoles_Summary.Where( x => x.Id == userId ).ToList();
-		//	}
-		//}
+                if ( efEntity != null && efEntity.Id > 0 )
+                {
+                    MapFromDB(efEntity, entity);
+                }
+            }
 
-		public static AppUser AppUser_GetByKey( string aspNetId )
+            return entity;
+        }
+        //public static List<Views.AspNetUserRoles_Summary> GetUserRoles( int userId )
+        //{
+        //	using ( var context = new ViewContext() )
+        //	{
+        //		return context.AspNetUserRoles_Summary.Where( x => x.Id == userId ).ToList();
+        //	}
+        //}
+
+        public static AppUser AppUser_GetByKey( string aspNetId )
 		{
 			AppUser entity = new AppUser();
 			using ( var context = new ViewContext() )
@@ -686,10 +701,11 @@ namespace workIT.Factories
 				foreach ( EM.Organization_Member mbrs in fromEntity.Organization_Member )
 				{
 					//just a light version for now
-					to.Organizations.Add( new CodeItem()
+					to.Organizations.Add( new MC.Organization()
 					{
 						Id = mbrs.Organization.Id,
-						Name = mbrs.Organization.Name
+						Name = mbrs.Organization.Name,
+                        CTID = mbrs.Organization.CTID
 					} );
 				}
 			}
@@ -717,8 +733,9 @@ namespace workIT.Factories
 			to.FirstName = fromEntity.FirstName;
 			to.LastName = fromEntity.LastName;
 			to.Email = fromEntity.Email;
+            to.CEAccountIdentifier = fromEntity.CEAccountIdentifier;
 
-			to.Created = fromEntity.Created;
+            to.Created = fromEntity.Created;
 			to.LastUpdated = fromEntity.LastUpdated;
 			to.LastUpdatedById = fromEntity.LastUpdatedById;
 

@@ -23,13 +23,22 @@ namespace workIT.Factories
 		#region === Persistance ===================
 		public bool SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            //first do a deleteAll
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( int item in list )
 			{
-				Save( parentUid, item, ref status );
+				Save( parent, item, ref status );
 			}
 
 			return isAllValid;
@@ -41,7 +50,7 @@ namespace workIT.Factories
 		/// <param name="profileId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		private int Save( Guid parentUid,
+		private int Save( Entity parent,
 					int conditionManifestId,
 					ref SaveStatus status )
 		{
@@ -53,7 +62,7 @@ namespace workIT.Factories
 				return 0;
 			}
 			
-			Entity parent = EntityManager.GetEntity( parentUid );
+			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the parent entity was not found." );
@@ -101,7 +110,7 @@ namespace workIT.Factories
 					{
 						//?no info on error
 						status.AddError( "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a ConditionManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, conditionManifestId: {2}", parentUid, parent.EntityType, conditionManifestId );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a ConditionManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, conditionManifestId: {2}", parent.EntityUid, parent.EntityType, conditionManifestId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
@@ -170,22 +179,46 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_CommonCondition.RemoveRange( context.Entity_CommonCondition.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		#endregion
+            return isValid;
+        }
+        #endregion
 
-		/// <summary>
-		/// Get all ConditionManifests for the provided entity
-		/// The returned entities are just the basic, unless for the detail view
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <returns></returns>
-		public static List<ConditionManifest> GetAll( Guid parentUid )
+        /// <summary>
+        /// Get all ConditionManifests for the provided entity
+        /// The returned entities are just the basic, unless for the detail view
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returns>
+        public static List<ConditionManifest> GetAll( Guid parentUid )
 		{
 			List<ConditionManifest> list = new List<ConditionManifest>();
 			ConditionManifest entity = new ConditionManifest();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 6, string.Format( "Entity_CommonConditionManager_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			LoggingHelper.DoTrace( 7, string.Format( "Entity_CommonConditionManager_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 
 			try
 			{

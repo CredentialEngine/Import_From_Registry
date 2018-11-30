@@ -23,9 +23,24 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_ContactPointManager";
 		#region Entity Persistance ===================
-		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
+		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status, bool doingDelete = true )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddWarning( "Error: the parent identifier was not provided." );
+                return false;
+            }
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddWarning( "Error - the parent entity was not found." );
+                return false;
+            }
+            if ( doingDelete )
+                DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
@@ -47,17 +62,14 @@ namespace workIT.Factories
 		public bool Save( ThisEntity entity, Guid parentUid, ref SaveStatus status )
 		{
 			bool isValid = true;
-			
-			if ( !IsValidGuid( parentUid ) )
+            int count = 0;
+            DBEntity efEntity = new DBEntity();
+
+            if ( !IsValidGuid( parentUid ) )
 			{
 				status.AddWarning( "Error: the parent identifier was not provided." );
 				return false;
 			}
-
-
-			int count = 0;
-
-			DBEntity efEntity = new DBEntity();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
@@ -166,8 +178,32 @@ namespace workIT.Factories
 			return isOK;
 
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_ContactPoint.RemoveRange( context.Entity_ContactPoint.Where( s => s.ParentEntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+            return isValid;
+        }
+        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -310,8 +346,8 @@ namespace workIT.Factories
 			to.Name = from.ProfileName;
 
 			to.ContactType = from.ContactType;
-			//TODO - update to be a list
-			to.ContactOption = from.ContactOption;
+			
+			//to.ContactOption = from.ContactOption;
 
 			//to.Email = from.Email;
 			//to.Telephone = from.Telephone;
@@ -330,16 +366,33 @@ namespace workIT.Factories
 			to.ProfileName = from.Name;
 
 			to.ContactType = from.ContactType;
-			to.ContactOption = from.ContactOption;
+            //to.ContactOption = from.ContactOption;
 
-			if ( string.IsNullOrWhiteSpace( to.ProfileName ) )
-				to.ProfileName = SetEntitySummary( to );
+            string summary = "Contact Point ";
+            if ( string.IsNullOrWhiteSpace( to.ProfileName ) )
+            {
+                if ( !string.IsNullOrWhiteSpace( to.ContactType ) )
+                {
+                    to.ProfileName = to.ContactType;
+                    to.ContactType = "";
+                }
+            }
+             
+            if ( string.IsNullOrWhiteSpace( to.ProfileName ) )
+            {
+                if ( string.IsNullOrWhiteSpace( to.ProfileName ) && from.Entity != null )
+                {
+                    to.ProfileName = from.Entity.EntityBaseName ?? "Contact Point";
+                }
+                else
+                    to.ProfileName = summary;
+            }
 
 			if ( includingItems )
 			{
-				to.SocialMedia = Entity_ReferenceManager.GetAllDirect( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
-				to.PhoneNumber = Entity_ReferenceManager.GetAllDirect( to.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE );
-				to.Email = Entity_ReferenceManager.GetAllDirect( to.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
+				to.SocialMedia = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
+				to.PhoneNumber = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE );
+				to.Email = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
 			}
 
 
@@ -361,10 +414,10 @@ namespace workIT.Factories
 			{
 				return to.ContactType;
 			}
-			else if ( !string.IsNullOrWhiteSpace( to.ContactOption ) )
-			{
-				return to.ContactOption;
-			}
+			//else if ( !string.IsNullOrWhiteSpace( to.ContactOption ) )
+			//{
+			//	return to.ContactOption;
+			//}
 			//else if ( !string.IsNullOrWhiteSpace( to.ContactOption ) )
 			//{
 			//	return to.ContactOption;
@@ -381,10 +434,10 @@ namespace workIT.Factories
 			//{
 			//	return "Email: " + to.Email;
 			//}
-			if ( to.Id > 1 )
-			{
-				summary += to.Id.ToString();
-			}
+			//if ( to.Id > 1 )
+			//{
+			//	summary += to.Id.ToString();
+			//}
 			return summary;
 
 		}

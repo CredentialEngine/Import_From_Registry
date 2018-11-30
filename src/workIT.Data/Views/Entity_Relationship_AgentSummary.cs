@@ -46,5 +46,7 @@ namespace workIT.Data.Views
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public int EntityStateId { get; set; }
+        public Nullable<int> SourceEntityStateId { get; set; }
+        public string SourceOwningOrganizationName { get; set; }
     }
 }

@@ -57,7 +57,7 @@ namespace workIT.Factories
 					item.TargetNodeName = record.Title;
 					item.CodedNotation = record.Code;
 					item.TargetNode = record.URL;
-					Add( parentEntityId, categoryId, item, ref status );
+					Add( parentEntityId, categoryId, item, ref status, false );
 				}
 			}
 
@@ -71,7 +71,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status )
+		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates = true )
 		{
 
 			DBEntity efEntity = new DBEntity();
@@ -103,7 +103,8 @@ namespace workIT.Factories
 					//check if a duplicate
 					if ( Exists( parentEntityId, rf.Id ) )
 					{
-						status.AddWarning( string.Format("Warning - Duplicate encountered for categoryId: {0}, entityId: {1}, Name: {2}", categoryId, parentEntityId, entity.TargetNodeName) );
+						if (warningOnDuplicates)
+							status.AddWarning( string.Format( "Warning - Duplicate encountered for categoryId: {0}, entityId: {1}, Name: {2}, ReferenceId: {3}, CodedNotation: {4}", categoryId, parentEntityId, entity.TargetNodeName, rf.Id, rf.CodedNotation) );
 						return 0;
 					}
 					//save
@@ -122,7 +123,7 @@ namespace workIT.Factories
 					else
 					{
 
-						string message = string.Format( thisClassName + ".Add Failed", "Attempted to add a Entity_ReferenceFramework item. The process appeared to not work, but was not an exception, so we have no message, or no clue. parentId: {0}, CategoryId: {1}", parentEntityId, categoryId );
+						string message = string.Format( thisClassName + ".Add Failed", "Attempted to add a Entity_ReferenceFramework item. The process appeared to not work, but was not an exception, so we have no message, or no clue. parentId: {0}, CategoryId: {1}, Name: {2}, ReferenceId: {3}, CodedNotation: {4}", parentEntityId, categoryId, entity.TargetNodeName, rf.Id, rf.CodedNotation );
 						//?no info on error
 						status.AddWarning( "Error - the add was not successful. \r\n" + message );
 						//EmailManager.NotifyAdmin( thisClassName + ".ItemAdd Failed", message );
@@ -131,7 +132,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					string message = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), parentId: {0}, CategoryId: {1}", parentEntityId, categoryId ) );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), parentId: {0}, CategoryId: {1}, Name: {2}, CodedNotation: {3}", parentEntityId, categoryId, entity.TargetNodeName, entity.CodedNotation ) );
 					status.AddError( thisClassName + ".Add() - Error - the save was not successful. \r\n" + message );
 				}
 			}
@@ -161,6 +162,36 @@ namespace workIT.Factories
 			}
 			return false;
 		}//
+        /// <summary>
+        /// Delete all properties for parent (in preparation for import)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_ReferenceFramework.RemoveRange( context.Entity_ReferenceFramework.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-	}
+            return isValid;
+        }
+    }
 }

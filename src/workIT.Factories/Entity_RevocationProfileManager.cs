@@ -25,13 +25,29 @@ namespace workIT.Factories
 
 		public bool SaveList( List<ThisEntity> list, Credential credential, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+
+            if ( credential == null || credential.Id < 1 )
+            {
+                status.AddError( "Error: the credential identifier was not provided." );
+                return false;
+            }
+
+            DBEntity efEntity = new DBEntity();
+            Entity parent = EntityManager.GetEntity( credential.RowId );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			status.HasSectionErrors = false;
 			foreach ( ThisEntity item in list )
 			{
-				Save( item, credential, ref status );
+				Save( item, parent, ref status );
 			}
 
 			return !status.HasSectionErrors;
@@ -41,21 +57,15 @@ namespace workIT.Factories
 		/// Persist Revocation Profiles
 		/// </summary>
 		/// <param name="entity"></param>
-		/// <param name="credential"></param>
+		/// <param name="parent"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, Credential credential, ref SaveStatus status )
+		private bool Save( ThisEntity entity, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
 
-			if ( credential == null || credential.Id < 1 )
-			{
-				status.AddError( "Error: the credential identifier was not provided." );
-				return false;
-			}
-
 			DBEntity efEntity = new DBEntity();
-			Entity parent = EntityManager.GetEntity( credential.RowId );
+			//Entity parent = EntityManager.GetEntity( credential.RowId );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the parent entity was not found." );
@@ -86,9 +96,12 @@ namespace workIT.Factories
 					efEntity.EntityId = parent.Id;
 
 					efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-					efEntity.RowId = Guid.NewGuid();
+                    if ( IsValidGuid( entity.RowId ) )
+                        efEntity.RowId = entity.RowId;
+                    else
+                        efEntity.RowId = Guid.NewGuid();
 
-					context.Entity_RevocationProfile.Add( efEntity );
+                    context.Entity_RevocationProfile.Add( efEntity );
 					int count = context.SaveChanges();
 					//update profile record so doesn't get deleted
 					entity.Id = efEntity.Id;
@@ -126,28 +139,32 @@ namespace workIT.Factories
 			return isValid;
 		}
 	
-		public bool Delete( int recordId, ref string statusMessage )
-		{
-			bool isOK = true;
-			using ( var context = new EntityContext() )
-			{
-				DBEntity p = context.Entity_RevocationProfile.FirstOrDefault( s => s.Id == recordId );
-				if ( p != null && p.Id > 0 )
-				{
-					context.Entity_RevocationProfile.Remove( p );
-					int count = context.SaveChanges();
-				}
-				else
-				{
-					statusMessage = string.Format( "Revocation Profile record was not found: {0}", recordId );
-					isOK = false;
-				}
-			}
-			return isOK;
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_RevocationProfile.RemoveRange( context.Entity_RevocationProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		}
-		
-		public bool ValidateProfile( ThisEntity profile, ref bool isEmpty, ref SaveStatus status )
+            return isValid;
+        }
+        public bool ValidateProfile( ThisEntity profile, ref bool isEmpty, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 

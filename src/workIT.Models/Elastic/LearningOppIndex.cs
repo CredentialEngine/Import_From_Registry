@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Elastic
 {
-    public class LearningOppIndex
-    {
+    public class LearningOppIndex: BaseIndex, IIndex
+	{
         public LearningOppIndex()
         {
             TeachesCompetencies = new List<IndexCompetency>();
@@ -19,17 +19,18 @@ namespace workIT.Models.Elastic
             QualityAssurance = new List<IndexQualityAssurance>();
             Addresses = new List<Address>();
         }
-
-        public string Name { get; set; }
-        public string FriendlyName { get; set; }
-        public int EntityStateId { get; set; }
+        //public int Id { get; set; }
+        //public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
+        //public string Name { get; set; }
+        //public string FriendlyName { get; set; }
+        //public int EntityStateId { get; set; }
         public string DateEffective { get; set; }
 
-        public Guid RowId { get; set; }
-        public string CTID { get; set; }
+        //public Guid RowId { get; set; }
+        //public string CTID { get; set; }
         public List<IndexCompetency> TeachesCompetencies { get; set; }
         public List<IndexCompetency> RequiresCompetencies { get; set; }
-        public List<string> InLanguage { get; set; } = new List<string>();
+        //public List<string> InLanguage { get; set; } = new List<string>();
 
         // public string AssessmentMethodType { get; set; }
         public string ProcessStandards { get; set; }
@@ -38,26 +39,45 @@ namespace workIT.Models.Elastic
 
         public int HasPartCount { get; set; }
 
-        public string SubjectWebpage { get; set; }
+        //public string SubjectWebpage { get; set; }
         public List<int> RelationshipTypes { get; set; }
         //public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
 
         public string Subject { get; set; }
-        public string Description { get; set; }
-        public int Id { get; set; }
+        //public string Description { get; set; }
+
         public int NameIndex { get; set; }
         public string IdentificationCode { get; set; }
-        public int OrgId { get; set; }
+        public int OwnerOrganizationId { get; set; }
         public string Organization { get; set; }
         
-        public DateTime Created { get; set; }
-        public DateTime LastUpdated { get; set; }
+        //public DateTime Created { get; set; }
+        //public DateTime LastUpdated { get; set; }
         public string AvailableOnlineAt { get; set; }
+        public bool IsAvailableOnline
+        {
+            get
+            {
+                if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
+                    return true;
+                else
+                    return false;
+            }
+        }
         public decimal TotalCost { get; set; }
-        public string CredentialRegistryId { get; set; }
-
-        public List<string> TextValues { get; set; }
-        public List<string> SubjectAreas { get; set; }
+        //public string CredentialRegistryId { get; set; }
+		/// <summary>
+		/// Source will be Entity.SearchIndex:
+		/// Audience Level Type,         
+		/// ONET Occupation Codes
+		/// Classification of Instructional Programs( CIP)
+		/// Competency Item
+		/// Subject
+		/// Keyword
+		/// </summary>
+		public List<string> TextValues { get; set; } = new List<string>();
+		public List<string> PremiumValues { get; set; } = new List<string>();
+		public List<string> SubjectAreas { get; set; }
         public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
         public List<IndexProperty> LearningMethodTypes { get; set; } = new List<IndexProperty>();
@@ -74,11 +94,30 @@ namespace workIT.Models.Elastic
      
         public int CompetenciesCount { get; set; }
         public string ListTitle { get; set; }
+        public List<int> AudienceTypeIds { get; set; } = new List<int>();
         public List<int> ReportFilters { get; set; } = new List<int>();
 
-        #region counts
-        //connections
-        public int RequiresCount { get; set; }
+		//-actual connection type (no credential info)
+		public string ConnectionsList { get; set; }
+		//replace CredentialsList with Connection class - handle all types
+		public List<Connection> Connections { get; set; } = new List<Connection>();
+		//connection type, plus Id, and name of credential
+		public string CredentialsList { get; set; }
+
+		//condition profiles - future
+
+		// public int EntryConditionCount { get; set; }
+
+		//  public int AvailableAddresses { get; set; }
+		//public int AddressesCount { get; set; }
+
+		public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
+		public string TypesResults { get; set; }
+		public List<string> Keyword { get; set; } = new List<string>();
+
+		#region counts
+		//connections
+		public int RequiresCount { get; set; }
 
         public int RecommendsCount { get; set; }
         public int AdvancedStandingFromCount { get; set; }
@@ -93,20 +132,6 @@ namespace workIT.Models.Elastic
         public int FinancialAidCount { get; set; }
         public int ProcessProfilesCount { get; set; }
 
-        //-actual connection type (no credential info)
-        public string ConnectionsList { get; set; }
-        //connection type, plus Id, and name of credential
-        public string CredentialsList { get; set; }
-
-        //condition profiles - future
-
-
-       // public int EntryConditionCount { get; set; }
-
-      //  public int AvailableAddresses { get; set; }
-        //public int AddressesCount { get; set; }
-
-        public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 
         #endregion
 

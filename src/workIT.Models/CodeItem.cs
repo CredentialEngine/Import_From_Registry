@@ -53,6 +53,7 @@ namespace workIT.Models
 		public string ReverseDescription { get; set; }
 		public string ReverseSchemaName { get; set; }
         public int RelationshipId { get; internal set; }
+        public int AssertionId { get; internal set; }
         public string CodeTitle { get; set; }
     }
 }

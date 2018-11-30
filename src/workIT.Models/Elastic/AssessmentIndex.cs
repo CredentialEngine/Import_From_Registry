@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace workIT.Models.Elastic
 {
-    public class AssessmentIndex
+	public class AssessmentIndex: BaseIndex, IIndex
     {
         public AssessmentIndex()
         {
@@ -21,17 +17,34 @@ namespace workIT.Models.Elastic
             Addresses = new List<Address>();
         }
 
-        public string Name { get; set; }
-        public string FriendlyName { get; set; }
-        public int EntityStateId { get; set; }
-        public string DateEffective { get; set; }
-        public System.Guid OwningAgentUid { get; set; }
-        public Guid RowId { get; set; }
-        public string CTID { get; set; }
+		public int NameIndex { get; set; }
+		public int OwnerOrganizationId { get; set; }
+		public string Organization { get; set; }    //rename
+
+		//public int EntityTypeId { get; set; } = 3;
+		//public int Id { get; set; }
+		//public Guid RowId { get; set; }
+		//public string CTID { get; set; }
+		//public int EntityStateId { get; set; }
+		//public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
+
+		// public string Name { get; set; }
+
+		//public string FriendlyName { get; set; }
+		//public string Description { get; set; }
+		//public string SubjectWebpage { get; set; }
+		//public string CredentialRegistryId { get; set; }
+
+		//public DateTime Created { get; set; }
+		//public DateTime LastUpdated { get; set; }
+
+		public string DateEffective { get; set; }
+        
+        
         public List<IndexCompetency> AssessesCompetencies { get; set; }
         public List<IndexCompetency> RequiresCompetencies { get; set; }
 
-        public List<string> InLanguage { get; set; } = new List<string>();
+
         public string AssessmentUseType { get; set; }
         // public string AssessmentMethodType { get; set; }
         public string ProcessStandards { get; set; }
@@ -42,28 +55,38 @@ namespace workIT.Models.Elastic
         public string ScoringMethodExample { get; set; }
         public string ScoringMethodExampleDescription { get; set; }
 
-
-        public string SubjectWebpage { get; set; }
         public List<int> RelationshipTypes { get; set; }
         //public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
 
-        
-        public string Description { get; set; }
-        public int Id { get; set; }
-
-        public int NameIndex { get; set; }
         public string IdentificationCode { get; set; }
-        public int OrgId { get; set; }
-        public string Organization { get; set; }
-        public DateTime Created { get; set; }
-        public DateTime LastUpdated { get; set; }
+
+
         public string AvailableOnlineAt { get; set; }
+        public bool IsAvailableOnline
+        {
+            get
+            {
+                if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
+                    return true;
+                else
+                    return false;
+            }
+        }
         public string AvailabilityListing { get; set; }
        
-        public string CredentialRegistryId { get; set; }
+        
 
-        public List<string> TextValues { get; set; }
-        public List<int> ReportFilters { get; set; } = new List<int>();
+		/// <summary>
+		/// Source will be Entity.SearchIndex
+		/// Audience Level Type,        
+		/// Classification of Instructional Programs( CIP)
+		/// Competency Item
+		/// Subject
+		/// Keyword
+		/// </summary>
+		public List<string> TextValues { get; set; } = new List<string>();
+		public List<string> PremiumValues { get; set; } = new List<string>();
+		public List<int> ReportFilters { get; set; } = new List<int>();
         //public string Subject { get; set; }
         public List<string> SubjectAreas { get; set; }
         //SubjectAreas1 was the same as Classifications
@@ -72,7 +95,8 @@ namespace workIT.Models.Elastic
         public List<int> AssessmentMethodTypeIds { get; set; } = new List<int>();
         public List<int> AssessmentUseTypeIds { get; set; } = new List<int>();
         public List<int> ScoringMethodTypeIds { get; set; } = new List<int>();
-        
+        public List<int> AudienceTypeIds { get; set; } = new List<int>();
+
         public List<IndexProperty> AssessmentMethodTypes { get; set; } = new List<IndexProperty>();
         public List<IndexProperty> AssessmentUseTypes { get; set; } = new List<IndexProperty>();
         public List<IndexProperty> ScoringMethodTypes { get; set; } = new List<IndexProperty>();
@@ -90,7 +114,7 @@ namespace workIT.Models.Elastic
        // public string Org_QAAgentAndRoles { get; set; }
 
         public string CodedNotation { get; set; }
-        public int AvailableAddresses { get; set; }
+        
         //public int AddressesCount { get; set; }
         public string ListTitle { get; set; }
         
@@ -126,8 +150,9 @@ namespace workIT.Models.Elastic
         //condition profiles - future
 
         public int EntryConditionCount { get; set; }
+        public string TypesResults { get; set; }
 
-
+        public List<string> Keyword { get; set; } = new List<string>();
         #endregion
 
     }

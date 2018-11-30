@@ -24,6 +24,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
     
+        public virtual Codes_PropertyValue Codes_PropertyValue { get; set; }
         public virtual Entity_CostProfile Entity_CostProfile { get; set; }
     }
 }

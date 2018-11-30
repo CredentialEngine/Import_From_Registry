@@ -145,8 +145,11 @@ namespace workIT.Factories
 					MapToDB(entity, efEntity);
 
 					efEntity.EntityId = entity.ParentId;
-					efEntity.RowId = Guid.NewGuid();
-					efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
+                    if ( IsValidGuid( entity.RowId ) )
+                        efEntity.RowId = entity.RowId;
+                    else
+                        efEntity.RowId = Guid.NewGuid();
+                    efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
 					
 					context.Entity_ConditionProfile.Add(efEntity);
 
@@ -171,7 +174,7 @@ namespace workIT.Factories
 				}
 				catch (System.Data.Entity.Validation.DbEntityValidationException dbex)
 				{
-					string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , CostTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
+					string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
 					status.AddWarning( message );
 					
 				}
@@ -183,8 +186,32 @@ namespace workIT.Factories
 
 			return efEntity.Id;
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_ConditionProfile.RemoveRange( context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		public bool UpdateParts(ThisEntity entity, ref SaveStatus status)
+            return isValid;
+        }
+        public bool UpdateParts(ThisEntity entity, ref SaveStatus status)
 		{
 			bool isAllValid = true;
 
@@ -259,7 +286,7 @@ namespace workIT.Factories
 				Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
 				foreach ( int id in entity.TargetLearningOpportunityIds )
 				{
-					LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
+					LoggingHelper.DoTrace( 6, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
 					newId = elm.Add( entity.RowId, id, true, ref status );
 				}
 			}
@@ -446,7 +473,7 @@ namespace workIT.Factories
 						foreach ( DBEntity item in results )
 						{
 							entity = new ThisEntity();
-							MapFromDB( item, entity, true, true, false, isForCredentialDetail );
+							MapFromDB( item, entity, true, true, isForCredentialDetail );
 
 
 							list.Add( entity );
@@ -514,7 +541,7 @@ namespace workIT.Factories
 				}
 				else
 				{
-					if ( to.ConditionSubTypeId == 0 )
+					if ( (to.ConditionSubTypeId ?? 0) == 0 )
 					{
 						if ( from.ConnectionProfileType == "CredentialConnections" )
 							to.ConditionSubTypeId = ConditionSubType_CredentialConnection;
@@ -545,7 +572,7 @@ namespace workIT.Factories
 			to.Id = from.Id;
 			
 			
-			//170316 contactUs - ProfileSummary is used in the edit interface for Name
+			//170316 mparsons - ProfileSummary is used in the edit interface for Name
 			if ( string.IsNullOrWhiteSpace( from.ProfileName ) )
 				from.ProfileName = from.ProfileSummary ?? "";
 			
@@ -620,10 +647,9 @@ namespace workIT.Factories
 		public static void MapFromDB(DBEntity from, ThisEntity to
 				, bool includingProperties
 				, bool incudingResources
-				, bool forEditView
 				, bool isForCredentialDetails )
 		{
-			MapFromDB_Basics( from, to, forEditView );
+			MapFromDB_Basics( from, to, isForCredentialDetails );
 
 			//========================================================
 			//TODO - determine what is really needed for the detail page for conditions
@@ -649,12 +675,16 @@ namespace workIT.Factories
 
 			to.SubmissionOf = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM );
 
-			//to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
-			//fake it
-			to.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( to.RowId );
-			//to.TargetCompetency = Entity_CompetencyManager.Competency_GetAll( to.RowId );
+            //to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
+            var frameworksList = new Dictionary<string, RegistryImport>();
+            to.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( to.RowId, ref frameworksList);
+            if ( to.RequiresCompetenciesFrameworks.Count > 0 )
+            {
+                to.HasCompetencies = true;
+                to.FrameworkPayloads = frameworksList;
+            }
 
-			to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
+            to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
 
 			if (includingProperties)
 			{
@@ -684,10 +714,9 @@ namespace workIT.Factories
 						to.ChildHasCompetencies = true;
 						break;
 					}
-				}
-	
+				}	
 
-				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, forEditView, forEditView, isForCredentialDetails );
+				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, false, isForCredentialDetails );
 				foreach (LearningOpportunityProfile e in to.TargetLearningOpportunity)
 				{
 					if (e.HasCompetencies || e.ChildHasCompetencies)
@@ -753,7 +782,7 @@ namespace workIT.Factories
 			to.ConnectionProfileTypeId = ( int ) from.ConnectionTypeId;
 			to.ConditionSubTypeId = GetField( from.ConditionSubTypeId, 1 );
 			//todo reset to.ConnectionProfileTypeId if after a starter profile
-			if ( to.ConditionSubTypeId == ConditionSubType_CredentialConnection )
+			if ( to.ConditionSubTypeId >= ConditionSubType_CredentialConnection )
 			{
 				//if ( to.Created == to.LastUpdated )
 				//{
@@ -772,7 +801,7 @@ namespace workIT.Factories
 				conditionType = GetConditionType(to.ConnectionProfileTypeId);
 
 			//TODO - need to have a default for a missing name
-			//17-03-16 contactUs - using ProfileName for the list view, and ProfileSummary for the edit view
+			//17-03-16 mparsons - using ProfileName for the list view, and ProfileSummary for the edit view
 			if ( ( from.Name ?? "" ).Length > 0 )
 			{
 				//note could have previously had a name, and no longer shown!
@@ -956,7 +985,7 @@ namespace workIT.Factories
 			//get entity for credential
 			using ( var context = new EntityContext() )
 			{
-				EM.Entity dbEntity = context.Entities
+				EM.Entity dbEntity = context.Entity
 						.Include( "Entity_ConditionProfile" )
 						.AsNoTracking()
 						.SingleOrDefault( s => s.EntityUid == to.RowId );
@@ -985,7 +1014,7 @@ namespace workIT.Factories
                         foreach (EM.Entity_ConditionProfile item in list)
                         {
 							entity = new ConditionProfile();
-							MapFromDB( item, entity, true, true, false, true );
+							MapFromDB( item, entity, true, true, true );
 
 							//Add the credit unit type enumeration with the selected item, to fix null error in publishing and probably detail - NA 3/17/2017
 							entity.CreditUnitType = new Enumeration()
@@ -1043,7 +1072,7 @@ namespace workIT.Factories
 //			//get entity for credential
 //			using ( var context = new EntityContext() )
 //			{
-//				EM.Entity dbEntity = context.Entities
+//				EM.Entity dbEntity = context.Entity
 //						.Include( "Entity_ConditionProfile" )
 //						.AsNoTracking()
 //						.SingleOrDefault( s => s.EntityUid == to.RowId );

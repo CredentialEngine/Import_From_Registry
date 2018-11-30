@@ -7,7 +7,7 @@ using System.Web.Mvc;
 using workIT.Models.Helpers.Reports;
 using workIT.Services;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
     public class ReportsController : Controller
     {

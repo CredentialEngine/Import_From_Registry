@@ -10,7 +10,12 @@ namespace workIT.Factories
 {
 	public class CacheManager : BaseFactory
 	{
-        public void PopulateAllCaches( bool doingAll = true)
+        /// <summary>
+        /// Populate/rebuild all caches
+        /// The rebuild all is slower and should not be done during day for production
+        /// </summary>
+        /// <param name="doingAll">False: only updates where entities have changed, True: rebuild all</param>
+        public void PopulateAllCaches( bool doingAll)
         {
             string connectionString = MainConnection();
             try
@@ -18,11 +23,15 @@ namespace workIT.Factories
                 using ( SqlConnection c = new SqlConnection( connectionString ) )
                 {
                     c.Open();
+                    int populateType = -1; //updates only, where handled
+                    if ( doingAll )
+                        populateType = 0;
 
                     using ( SqlCommand command = new SqlCommand( "[Populate_AllCaches]", c ) )
                     {
                         command.CommandType = CommandType.StoredProcedure;
-
+                        command.Parameters.Add( new SqlParameter( "@PopulateType", populateType ) );
+                        command.CommandTimeout = 300;
                         command.ExecuteNonQuery();
                         command.Dispose();
                         c.Close();
@@ -73,8 +82,8 @@ namespace workIT.Factories
 					c.Open();
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-
-					command.ExecuteNonQuery();
+                    command.CommandTimeout = 300;
+                    command.ExecuteNonQuery();
 					command.Dispose();
 					c.Close();
 
@@ -85,8 +94,8 @@ namespace workIT.Factories
 					c.Open();
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-
-					command.ExecuteNonQuery();
+                    command.CommandTimeout = 300;
+                    command.ExecuteNonQuery();
 					command.Dispose();
 					c.Close();
 
@@ -104,8 +113,8 @@ namespace workIT.Factories
 					{
 						command.CommandType = CommandType.StoredProcedure;
 						command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
-
-						command.ExecuteNonQuery();
+                        command.CommandTimeout = 300;
+                        command.ExecuteNonQuery();
 						command.Dispose();
 						c.Close();
 
@@ -120,8 +129,8 @@ namespace workIT.Factories
 					{
 						command.CommandType = CommandType.StoredProcedure;
 						command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
-
-						command.ExecuteNonQuery();
+                        command.CommandTimeout = 300;
+                        command.ExecuteNonQuery();
 						command.Dispose();
 						c.Close();
 
@@ -155,8 +164,8 @@ namespace workIT.Factories
 					{
 						command.CommandType = CommandType.StoredProcedure;
 						command.Parameters.Add( new SqlParameter( "@OrganizationId", orgId ) );
-
-						command.ExecuteNonQuery();
+                        command.CommandTimeout = 300;
+                        command.ExecuteNonQuery();
 						command.Dispose();
 						c.Close();
 
@@ -185,6 +194,7 @@ namespace workIT.Factories
                     using ( SqlCommand command = new SqlCommand( "[CodeTables_UpdateTotals]", c ) )
                     {
                         command.CommandType = CommandType.StoredProcedure;
+                        command.CommandTimeout = 300;
                         command.ExecuteNonQuery();
                         command.Dispose();
                         c.Close();
@@ -221,7 +231,7 @@ namespace workIT.Factories
 				{
 					if ( cache.lastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "===CacheManager.IsCredentialAvailableFromCache === Using cached version of Credential, Id: {0}, {1}, key: {2}", cache.Item.Id, cache.Item.Name, key ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.IsCredentialAvailableFromCache === Using cached version of Credential, Id: {0}, {1}, key: {2}", cache.Item.Id, cache.Item.Name, key ) );
 
 						//check if user can update the object
 						//or move these checks to the manager
@@ -261,12 +271,12 @@ namespace workIT.Factories
 						HttpRuntime.Cache.Remove( key );
 						HttpRuntime.Cache.Insert( key, newCache );
 
-						LoggingHelper.DoTrace( 5, string.Format( "===CacheManager.AddCredentialToCache $$$ Updating cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddCredentialToCache $$$ Updating cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
 
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 5, string.Format( "===CacheManager.AddCredentialToCache ****** Inserting new cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddCredentialToCache ****** Inserting new cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}
@@ -292,7 +302,7 @@ namespace workIT.Factories
 				{
 					if ( cache.lastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "%%%CacheManager.IsLearningOpportunityAvailableFromCache === Using cached version of LearningOpportunity, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
+						LoggingHelper.DoTrace( 7, string.Format( "%%%CacheManager.IsLearningOpportunityAvailableFromCache === Using cached version of LearningOpportunity, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
 
 						//check if user can update the object
 						//string status = "";
@@ -331,12 +341,12 @@ namespace workIT.Factories
 						HttpRuntime.Cache.Remove( key );
 						HttpRuntime.Cache.Insert( key, newCache );
 
-						LoggingHelper.DoTrace( 5, string.Format( "%%%CacheManager.AddLearningOpportunityToCache $$$ Updating cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
+						LoggingHelper.DoTrace( 7, string.Format( "%%%CacheManager.AddLearningOpportunityToCache $$$ Updating cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
 
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 5, string.Format( "%%%CacheManager.AddLearningOpportunityToCache ****** Inserting new cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
+						LoggingHelper.DoTrace( 6, string.Format( "%%%CacheManager.AddLearningOpportunityToCache ****** Inserting new cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}
@@ -362,7 +372,7 @@ namespace workIT.Factories
 				{
 					if ( cache.lastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "===CacheManager.IsConditionProfileAvailableFromCache === Using cached version of ConditionProfile, Id: {0}, {1}", cache.Item.Id, cache.Item.ProfileName ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.IsConditionProfileAvailableFromCache === Using cached version of ConditionProfile, Id: {0}, {1}", cache.Item.Id, cache.Item.ProfileName ) );
 
 						//check if user can update the object
 						//string status = "";
@@ -401,12 +411,12 @@ namespace workIT.Factories
 						HttpRuntime.Cache.Remove( key );
 						HttpRuntime.Cache.Insert( key, newCache );
 
-						LoggingHelper.DoTrace( 5, string.Format( "===CacheManager.AddConditionProfileToCache $$$ Updating cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddConditionProfileToCache $$$ Updating cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
 
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 5, string.Format( "===CacheManager.AddConditionProfileToCache ****** Inserting new cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
+						LoggingHelper.DoTrace( 6, string.Format( "===CacheManager.AddConditionProfileToCache ****** Inserting new cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}
@@ -425,7 +435,7 @@ namespace workIT.Factories
 			{
 				HttpRuntime.Cache.Remove( key );
 
-				LoggingHelper.DoTrace( 6, string.Format( "===CacheManager.RemoveFromCache $$$ Removed cached version of a {0}, Id: {1}", type, id ) );
+				LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.RemoveFromCache $$$ Removed cached version of a {0}, Id: {1}", type, id ) );
 
 			}
 		}

@@ -13,8 +13,8 @@ using Import.Services;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.LearningOpportunityServices;
-using JsonEntity = RA.Models.Json.LearningOpportunityProfile;
-using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
+//using JsonEntity = RA.Models.Json.LearningOpportunityProfile;
+//using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using workIT.Factories;
 using workIT.Models;
 
@@ -40,7 +40,7 @@ namespace CTI.Import
 			string importError = "";
 			string importResults = "";
 			string importNote = "";
-			ThisEntity output = new ThisEntity();
+			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
 
 			//the nbr of records needs to be monitored, to determine the optimum
@@ -66,7 +66,7 @@ namespace CTI.Import
 					isComplete = true;
 					if ( pageNbr == 1 )
 					{
-						importNote = " No records where found for date range ";
+						importNote = " LOPP:  No records where found for date range ";
 
 						Console.WriteLine( thisClassName + importNote );
 						LoggingHelper.DoTrace( 4, thisClassName + importNote );
@@ -88,7 +88,7 @@ namespace CTI.Import
 					{
 						Console.WriteLine( string.Format( "{0}. LearningOpportunity EnvelopeIdentifier {1} ", cntr, item.EnvelopeIdentifier ) );
 						
-						importSuccessfull = entityImportMgr.ProcessEnvelope( mgr, item, status );
+						importSuccessfull = entityImportMgr.ProcessEnvelope( item, status );
 
 					} catch (Exception ex)
 					{

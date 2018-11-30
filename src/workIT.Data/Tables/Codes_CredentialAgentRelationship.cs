@@ -33,5 +33,6 @@ namespace workIT.Data.Tables
         public Nullable<int> OrganizationTotals { get; set; }
         public Nullable<int> AssessmentTotals { get; set; }
         public Nullable<int> LoppTotals { get; set; }
+        public Nullable<int> QAPerformedTotals { get; set; }
     }
 }

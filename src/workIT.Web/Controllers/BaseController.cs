@@ -5,11 +5,14 @@ using System.Web;
 using System.Web.Mvc;
 
 using workIT.Models.Common;
+using workIT.Utilities;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
 	public class BaseController : Controller
 	{
+       protected InMemoryCache cacheProvider = new InMemoryCache();
+
         public bool DoesViewExist(string path)
         {
             return System.IO.File.Exists(Server.MapPath(path));
@@ -55,9 +58,16 @@ namespace WorkIT.Web.Controllers
 			Session[ "popupMessage" ] = msg;
 		}
 
+        //public JsonResult JsonResponse(object data, bool valid, string status, object extra)
+        //{
+        //    return new JsonResult() { Data = new { data = data, valid = valid, status = status, extra = extra } };
+        //}
         public JsonResult JsonResponse(object data, bool valid, string status, object extra)
         {
-            return new JsonResult() { Data = new { data = data, valid = valid, status = status, extra = extra } };
+            return new JsonResult() { Data = new { data = data, valid = valid, status = status, extra = extra }, JsonRequestBehavior = JsonRequestBehavior.AllowGet, MaxJsonLength = int.MaxValue };
         }
+
+   
+
     }
 }

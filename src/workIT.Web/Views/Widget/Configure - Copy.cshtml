@@ -1,0 +1,1605 @@
+﻿@using workIT.Models.Common;
+@using workIT.Utilities;
+@using Newtonsoft.Json;
+@model workIT.Models.Common.Widget
+
+
+@{
+    ViewBag.Title = "Widget Management";
+    var absoluteSearchRoot = Request.Url.AbsoluteUri.Replace( Request.Url.PathAndQuery, "" ) + "/search";
+    var widgetIframeUrl = Request.Url.AbsoluteUri.Replace( Request.Url.PathAndQuery, "" );
+
+    var user = AccountServices.GetUserFromSession();
+    var orgData = new List<Organization>();
+    var orgWidgets = new List<Widget>();
+
+    var countries = ( new EnumerationServices() ).GetExistingCountries();
+
+
+    var emptyWidget = new Widget();
+    emptyWidget.WidgetStyles = new WidgetStyles();
+
+    var isProduction = UtilityManager.GetAppKeyValue( "envType" ) == "production";
+    //clean out org references
+    foreach ( var orgReference in user.Organizations )
+    {
+        if ( !string.IsNullOrWhiteSpace( orgReference.CTID ) )
+        {
+            //var org = OrganizationServices.GetBasic(orgReference.Id);
+            orgData.Add( orgReference );
+        }
+    }
+    user.Organizations = orgData;
+
+    if ( user.Organizations == null || user.Organizations.Count == 0 )
+    {
+        //should not happen, as now checked in controller.
+    }
+    if ( user.Organizations.Count == 1 )
+    {
+        orgWidgets = WidgetServices.GetWidgetsForOrganization( user.Organizations[ 0 ].CTID );
+    }
+
+}
+@functions {
+    public class ValueItem
+    {
+        public ValueItem() { }
+        public ValueItem( string key, string value )
+        {
+            Key = key;
+            Value = value;
+        }
+        public string Key { get; set; }
+        public string Value { get; set; }
+    }
+}
+@Styles.Render( "~/Content/css" )
+@Html.Partial( "~/Views/Shared/_Ajax.cshtml" )
+@*javascript objects for microsearch!*@
+@Html.Partial( "~/views/shared/_microsearch.cshtml" )
+
+@helper RenderFilterListItem( string searchType, string filterName, string filterLabel, bool renderAllowed = true )
+{
+    if ( renderAllowed )
+    {
+        <button class="filterListItem whiteGhost" data-searchType="@searchType" data-filterName="@filterName.ToLower()">@Html.Raw( filterLabel )</button>
+    }
+}
+
+@helper RenderFormItem( string property, string label, string dataType, bool isRequired = false, string helpText = "", string tooltipText = "", List<ValueItem> values = null, bool isReadOnly = false, bool isHidden = false, bool includeTextClearBtn = false, string id = "" )
+{
+    values = values ?? new List<ValueItem>();
+    <div class="formItem @( isHidden ? "hidden" : "" )">
+        <div class="itemLabel">@label</div>
+        <div class="required @( isRequired ? "" : "suppress" )">*</div>
+        <div class="toolTipIcon fa fa-exclamation-circle @( string.IsNullOrWhiteSpace(tooltipText) ? "suppress" : "" )" title="@tooltipText"></div>
+        <div class="itemValue">
+            @switch ( dataType )
+            {
+                case "textClear":
+                {
+                    <div class="clearableText">
+                        <input type="text" data-property="@property" data-type="@dataType" @Html.Raw( isReadOnly ? "readonly" : "" ) class="colorSection" id="@id" />
+                        <button class="crossButton">x</button>
+                    </div>
+                    break;
+                }
+                case "text":
+                {
+                    <input type="text" data-property="@property" data-type="@dataType" @Html.Raw( isReadOnly ? "readonly" : "" ) class="clearable" id="@id" />
+
+
+                    break;
+
+                }
+                case "color":
+                {
+
+                    <input type="color" data-property="@property" data-type="text" @Html.Raw( isReadOnly ? "readonly" : "" ) id="@id" class="colorSection" />
+
+
+                    break;
+                }
+                case "select":
+                {
+                    <select data-type="@dataType" @Html.Raw( isReadOnly ? "readonly" : "" )>
+                        @foreach ( var value in values )
+                        {
+                            <option value="@value.Key">@value.Value</option>
+                        }
+                    </select>
+                    break;
+                }
+                case "checkbox":
+                {
+                    <label data-tooltip="@tooltipText"><input id="@id" type="checkbox" data-type="boolean" data-property="@property" /> @label</label>
+
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        </div>
+        <div class="help">@Html.Raw( helpText )</div>
+    </div>
+}
+<script type="text/javascript">
+    /* set up */
+    var widgetData = @Html.Raw( JsonConvert.SerializeObject( Model ) );
+    var emptyWidget = @Html.Raw( JsonConvert.SerializeObject( emptyWidget ) );
+
+
+	$(document).ready(function () {
+        setupSearches();
+        setupCollapseBoxes();
+        setupConfig();
+        setUpWidgetSelection();
+        setUpSaveButton();
+        setUpDeleteButton();
+        setUpNewButton();
+        setupDescriptionToggle();
+        setUpUserOrganization();
+        setUpCountrySelection();
+        setUpRegionSelection();
+        setUpCitySelection();
+        setupAutoComplete();
+        setUpClearPreviousWidgetFile();
+        setupBasicData();
+        setUpCustomStyle();
+        setUpClearHexValue();
+        setUpColorRgbHex();
+    });
+
+    function setupBasicData() {
+        var form = $(".widgetFormData");
+        ajax.writeForm(form, emptyWidget);
+        loadCSSConfiguration(emptyWidget.WidgetStyles);
+        //var form = $("#widgetData");
+
+        //ajax.writeForm(form, widgetData);
+
+        //Populate selected organizations
+        //doAjax("Widget", "GetOrganizations", widgetData.OwningOrganizationIdsList, success_getOrganizations, null, {});
+    }
+
+
+    function setupCollapseBoxes() {
+        $(".collapseBox").not(".collapseBoxInitialized").each(function () {
+            var box = $(this);
+            box.find("> .collapseToggle").on("click", function () { box.toggleClass("collapsed") });
+        });
+    }
+    function setUpCustomStyle() {
+        $("#CustomStyleCheckBox").on("click", function () {
+           if (this.checked == true)
+            {
+                $("#customStyleWrapper").show();
+            }
+            else
+            {
+                $("#customStyleWrapper").hide();
+            }
+        });
+    }
+
+    function setUpClearHexValue() {
+        $(".crossButton").on("click", function () {
+            $(this).siblings().val('');
+            $("#mainSiteHeaderColor").val('#ffffff');
+            });
+    }
+
+    function setUpColorRgbHex() {
+        $(".colorSection").on("change", function () {
+            var color = $(this).val();
+            $(this).closest(".colorWraper").find(".colorSection").val(color);
+        });
+  }
+
+
+
+	function setupSearches() {
+		var findOrganizations = microsearch.initialize($("[data-search=findOrganizations]"), "findOrganizations", 20);
+        findOrganizations.Box.find(".searchFilter input[type=text]").on("keyup change", function () {
+            var query = {};
+            query.Filters = microsearch.getMicroSearchV2Filters(findOrganizations.Box.find(".searchFilter [data-property]"));
+			query.StartPage = findOrganizations.PageNumber; //Compatibility
+			query.SearchType = "organization";
+            microsearch.doSearch(findOrganizations, query, "Widget", "DoMicroSearch", success_findOrganizations, { query: query }, true);
+            //microsearch.doSearch(findOrganizations, query, "Widget", " OrgSearch", success_findOrganizations, { query: query }, true);
+		});
+	}
+	//
+
+	//
+    function setUpWidgetSelection() {
+        $("#widgetSelector").change(function () {
+            if (this.value && this.value > 0) {
+                loadWidgetInfo(this.value);
+
+                $("#previewWidget").attr("href", "/?widgetId=" + this.value)
+                $("#previewWidget").show();
+                $("#testWidgetAnchor").attr("href", "widget/testwidget?widgetId=" + this.value)
+                $("#testWidgetAnchor").show();
+                $("#finderWidgetIframe").attr("value", "<iframe src='@widgetIframeUrl?widgetId=" + this.value + "'  style=\"width: 100%;\"></iframe>")
+            }
+          });
+    }
+
+    function setUpCountrySelection() {
+        $("#countries").change(function () {
+            var countryName = this.selectedOptions[0].text;
+            if (this.value && this.value > 0) {
+                loadCountryRegions(this.selectedOptions[0].text);
+                addSelectedCountries({ Name: countryName });
+            }
+            else {
+                $("#regions").empty();
+                $("#cities").empty();
+
+            }
+        });
+    }
+
+    function setUpRegionSelection() {
+        $("#regions").change(function () {
+            var regionName = this.selectedOptions[0].text;
+            if (this.value && parseInt(this.value) > 0) {
+
+                addSelectedRegions({ Name: regionName });
+            }
+            else {
+                $("#cities").empty();
+            }
+        });
+
+    }
+
+    function setUpCitySelection() {
+        $("#cities").change(function () {
+            if (this.value && this.value > -1) {
+                addSelectedCities({ Name: this.selectedOptions[0].text });
+            }
+            else {
+                $("#cities").empty();
+            }
+        });
+    }
+
+    function setUpSaveButton() {
+        $(".saveButton").on("click", function () {
+            saveWidget();
+
+
+        });
+    }
+
+    function setUpDeleteButton() {
+        $(".deleteButton").on("click", function () {
+            deleteWidget();
+        });
+    }
+
+    function setUpNewButton() {
+        $(".newButton").on("click", function() {
+
+                if (confirm("Continuing will clear the current data. Are you sure you want to continue?")) {
+                    var form = $(".widgetFormData");
+                    ajax.writeForm(form, emptyWidget);
+                    loadCSSConfiguration(emptyWidget.WidgetStyles);
+                    $(".selectedOrganizationList").html("");
+                    $(".selectedCountriesList").html("");
+                    $(".selectedRegionsList").html("");
+                    $(".selectedCitiesList").html("");
+                }
+            });
+
+    }
+
+     //Handle autocomplete
+    //Setup AutoComplete fields
+    function setupAutoComplete() {
+        $(".hasAutoComplete").each(function () {
+            var box = $(this);
+            box.autocomplete({
+                source: function (request, response) { handleAutoComplete(request, response, box); },
+                select: function (event, ui) { box.val(ui.item.value); box.trigger("change"); box.trigger("autoCompleteSelect"); },
+                delay: 150,
+            });
+        });
+    }
+
+    function handleAutoComplete(request, response, box) {
+        var context = box.attr("data-autocompletecontext").toLowerCase();
+        if (box.val().trim().length >= 2) {
+            doAjax("Search", "DoAutoComplete", { text: request.term, context: context, searchType: "organization" }, success_handleAutoComplete, null, { response: response, box: box })
+        }
+    }
+    //
+
+    function success_handleAutoComplete(message, extra) {
+        if (message.valid) {
+            console.log("AutoComplete suggestions received", { message: message, extra: extra });
+            extra.response(message.data);
+        }
+        else {
+            extra.response([]);
+        }
+    }
+
+
+      function  setUpClearPreviousWidgetFile(){
+          $("#clearButton").on("click", function () {
+              $(".clearFile [data-property = 'CustomStylesFileName']").val('');
+          });
+
+    }
+
+    //
+
+
+
+
+</script>
+<script type="text/javascript">
+    //Reset timeout
+    var microSearchTimeouts = [];
+    function updateMicroSearch(name,event) {
+        clearTimeout(microSearchTimeouts[name]);
+        microSearchTimeouts[name] = setTimeout(function () {
+            doMicroSearch(name);
+        }, 800);
+    }
+
+    //////reset a MicroSearch query,results, and paging
+    function resetMicroSearch(name) {
+
+
+        var box = $("[data-search=findOrganizations]");
+        //$(".selectedOrganizationList").empty();
+
+        box.find(".searchResults").html("");
+        box.find(".searchPaging").html("");
+        box.attr("data-pagenumber", "1");
+        box.attr("data-previous", "");
+
+        setMicroSearchStatus(box, "", "");
+    }
+
+    function getMicroSearchBox(name) {
+        return $(".microSearchBox[data-microsearchname='" + name + "']");
+    }
+    function setMicroSearchStatus(box, message, status) {
+        box.find(".searchStatus").attr("data-status", status).html(message);
+    }
+
+    function setupSearches() {
+        var findOrganizations = microsearch.initialize($("[data-search=findOrganizations]"), "findOrganizations", 20);
+        findOrganizations.Box.find(".searchFilter input[type=text]").on("keyup change", function () {
+            var query = {};
+            query.Filters = microsearch.getMicroSearchV2Filters(findOrganizations.Box.find(".searchFilter [data-property]"));
+            query.StartPage = findOrganizations.PageNumber; //Compatibility
+            query.SearchType = "organization";
+            microsearch.doSearch(findOrganizations, query, "Widget", "DoMicroSearch", success_findOrganizations, { query: query }, true);
+            //microsearch.doSearch(findOrganizations, query, "Widget", " OrgSearch", success_findOrganizations, { query: query }, true);
+        });
+    }
+    //
+
+    function success_findOrganizations(search, message, pagingFunction, passThrough) {
+        if (message.valid) {
+            var template = $("#template_searchresult_organization").html();
+            microsearch.setStatus(search.StatusBox, "Found " + message.extra.TotalResults + " Results", "");
+            search.ResultsBox.html("");
+            //for (var i in message.data.Results) {
+            for (var i in message.data) {
+                (function (resultData) {
+                    var result = microsearch.renderResult(search.ResultsBox, resultData, template, ["Box"]);
+                    result.Box.find("[data-action=addOrganization]").on("click", function () {
+                        event.preventDefault();
+                        addSelectedOrganization(resultData);
+                    });
+                })(message.data[i]);
+            }
+            var forcePaging = function (pageNumber) {
+                passThrough.query.StartPage = pageNumber;
+                pagingFunction(pageNumber);
+            }
+            microsearch.renderPaging(search, search.PagingBox, message.extra.TotalResults, forcePaging);
+        }
+
+        else {
+            microsearch.setStatus(search.StatusBox, "Error: " + message.status, "error");
+        }
+    }
+	//
+
+	function addSelectedOrganization(resultData) {
+		var box = $(".selectedOrganizationList");
+		var template = $("#template_selectedresult_organization").html();
+		var existing = box.find("[data-rowid='" + resultData.RowId + "']");
+		if (existing.length == 0) {
+			var result = microsearch.renderResult(box, resultData, template, ["Box"]);
+			result.Box.find("[data-action=removeOrganization]").on("click", function () {
+				result.Box.remove();
+			});
+		}
+    }
+
+    function addSelectedCountries(resultData) {
+        var box = $(".selectedCountriesList");
+        var template = $("#template_selectedresult_countries").html();
+        var existing = box.find("[data-name='" + resultData.Name + "']");
+        if (existing.length == 0) {
+            var result = microsearch.renderResult(box, resultData, template, ["Box"]);
+            result.Box.find("[data-action=removeCountry]").on("click", function () {
+                result.Box.remove();
+                showHideRegions();
+                showHideCities();
+            });
+        }
+        showHideRegions();
+        //showHideCities();
+    }
+
+    function showHideRegions() {
+        if ($("[data-action=removeCountry]").length > 1) {
+            $(".selectedRegionsList").empty();
+            $(".selectedCitiesList").empty();
+            $("#regions").empty().append('<option selected="selected" value= "0">Select a Region</option>');
+            $("#regionsDiv").hide();
+            $("#cityDiv").hide();
+        }
+        else {
+            $("#regionsDiv").show();
+            loadCountryRegions($("#countries option:selected").text());
+        }
+    }
+
+    function addSelectedRegions(resultData) {
+        var box = $(".selectedRegionsList");
+        var template = $("#template_selectedresult_regions").html();
+        var existing = box.find("[data-name='" + resultData.Name + "']");
+        if (existing.length == 0) {
+            var result = microsearch.renderResult(box, resultData, template, ["Box"]);
+            result.Box.find("[data-action=removeRegion]").on("click", function () {
+                result.Box.remove();
+                showHideCities();
+            });
+        }
+        showHideCities();
+    }
+
+    function showHideCities() {
+        if ($("[data-action=removeRegion]").length > 1 || $("[data-action=removeCountry]").length>1){
+            $(".selectedCitiesList").empty();
+            $("#cities").empty().append('<option selected="selected" value="-1">Select a City</option>');
+            $("#cityDiv").hide();
+        }
+        else {
+            $("#cityDiv").show();
+            loadRegionCities($("#countries option:selected").text(),$("#regions option:selected").text());
+        }
+    }
+
+
+    function addSelectedCities(resultData) {
+        var box = $(".selectedCitiesList");
+        var template = $("#template_selectedresult_cities").html();
+        var existing = box.find("[data-name='" + resultData.Name + "']");
+        if (existing.length == 0) {
+            var result = microsearch.renderResult(box, resultData, template, ["Box"]);
+            result.Box.find("[data-action=removeCity]").on("click", function () {
+                result.Box.remove();
+
+            });
+        }
+
+    }
+
+
+	//
+
+
+	function readItem(item, data) {
+		var property = item.attr("data-property");
+		var type = item.attr("data-type");
+		switch (type) {
+			case "boolean":
+				data[property] = item.prop("checked");
+                break;
+            case "text":
+                data[property] = item.val().trim();
+                break;
+            case "select":
+                data[property] =  item.val();
+            default: break;
+		}
+    }
+
+	//
+    function loadOrganizationWidgets(orgCTID) {
+        var data = { orgId: orgCTID };
+        var sucess_loadWidgets = function (message) {
+            var ddlWidgets = $("#widgetSelector");
+            ddlWidgets.empty().append('<option selected="selected" value="0">Select a Widget</option>');
+            if (message.data) {
+                $.each(message.data, function () {
+                    ddlWidgets.append($("<option></option>").val(this['Id']).html(this['Name']));
+                });
+            }
+        };
+        doAjaxGet("widget", "getorganizationwidgets", data, sucess_loadWidgets, null);
+    }
+
+    function loadWidgetInfo(widgetId) {
+        var data = { widgetId: widgetId };
+
+        var sucess_LoadWidgetInfo = function(message)
+            {
+            var form = $(".widgetFormData");
+            var styleForm = $("");
+            var widgetData = message.data;
+            ajax.writeForm(form, widgetData);
+            loadCSSConfiguration(widgetData.WidgetStyles);
+            //$('#widgetData #OrgCTID').val(message.data.OrgCTID);
+
+            $(".selectedOrganizationList").html("");
+            doAjax("Widget", "GetOrganizations", widgetData.OwningOrganizationIdsList, success_getOrganizations, null, {});
+            $(".selectedCountriesList").html("");
+            $(".selectedRegionsList").html("");
+            $(".selectedCitiesList").html("");
+            if (widgetData.CountryFilters) {
+                var countries = widgetData.CountryFilters.split(',');
+                countries.forEach(function (country) {
+                    addSelectedCountries({ Name: country });
+                });
+
+            }
+            if (widgetData.RegionFilters) {
+                var regions = widgetData.RegionFilters.split(',');
+                regions.forEach(function (region) {
+                    addSelectedRegions({ Name: region });
+                });
+
+            }
+            if (widgetData.CityFilters) {
+                var cities = widgetData.CityFilters.split(',');
+                cities.forEach(function (city) {
+                    addSelectedCities({ Name: city });
+                });
+
+            }
+
+
+        };
+        doAjaxGet("widget", "getwidget", data, sucess_LoadWidgetInfo, null);
+
+    }
+
+
+
+    function saveWidget() {
+        //var ctid = $(".widgetData [data-property = 'orgCTID']").val();
+        //var orgName = $(".widgetData [data-property = 'OrganizationName']").val();
+
+        var ctid = $("#OrgCTID").val();
+        var orgName = $("#OrgCTID :selected").text();
+        if ((!ctid||ctid == '') && (!orgName||orgName == '')) {
+            ajax.alert("Select an organization.", "error", 5);
+            return;
+        }
+        var fileContents = "";
+        var styleUpload = $("input[name='cssFileUpload'").get(0);
+        if (styleUpload && styleUpload.files.length > 0) {
+            var fileName = styleUpload.files[0].name;
+            var fileExtension = fileName.slice((fileName.lastIndexOf(".") - 1 >>> 0) + 2);
+            if (fileExtension && fileExtension.toLowerCase() != "css") {
+                ajax.alert("Select a valid stylesheet", "error", 5);
+                return;
+            } else {
+                //FileReader is the built-in File API stuff that the browser offers you
+                var reader = new FileReader();
+                
+                reader.onloadend = function (data) {
+                    //The "data" object contains the results of the file read operation
+                    //data.target.result is the raw information we're interested in
+                    var result = data.target.result;
+                    console.log("Read CSS from file:", result);
+                }
+                reader.readAsText(fileName, 'ISO-8859-1');
+            }
+        }
+
+
+        var widgetData = {};
+        var form = $(".widgetFormData");
+        ajax.readForm(form, widgetData);
+
+        widgetData.OrganizationName = orgName;
+        //Get selected organizations
+        
+        widgetData.OwningOrganizationIdsList = [];
+        widgetData.CountryFilters = [];
+        widgetData.RegionFilters = [];
+        widgetData.CityFilters = [];
+        //widgetData.WidgetStylesContent = fileContents;
+
+        $(".selectedOrganizationList .organization.selected").each(function () {
+            widgetData.OwningOrganizationIdsList.push(parseInt($(this).attr("data-id")));
+        });
+        $(".selectedCountriesList .countries.selected").each(function () {
+            widgetData.CountryFilters.push($(this).attr("data-name"));
+        });
+        $(".selectedRegionsList .regions.selected").each(function () {
+            widgetData.RegionFilters.push($(this).attr("data-name"));
+        });
+        $(".selectedCitiesList .cities.selected").each(function () {
+            widgetData.CityFilters.push($(this).attr("data-name"));
+        });
+        widgetData.CountryFilters = widgetData.CountryFilters.join(",");
+        widgetData.RegionFilters = widgetData.RegionFilters.join(",");
+        widgetData.CityFilters = widgetData.CityFilters.join(",");
+        console.log(widgetData);
+        saveAndUploadWidget(widgetData, success_saveWidget);
+
+    }
+
+    function saveAndUploadWidget(widgetData, saveSuccess) {
+        widgetData.WidgetStyles = getCSSConfiguration();
+
+        if (window.FormData !== undefined) {
+            // Create FormData object
+            var fileData = new FormData();
+
+            var fileUpload = $("input[name='cssFileUpload']").get(0);
+            if (fileUpload && fileUpload.files.length > 0) {
+
+                var files = fileUpload.files;
+
+                // Looping over all files and add it to FormData object  
+                for (var i = 0; i < files.length; i++) {
+                    fileData.append(files[i].name, files[i]);
+                }
+            }
+     
+            // Adding one more key to FormData object  
+            fileData.append('widgetData', JSON.stringify(widgetData));
+            //Object.keys(widgetData).forEach(function (key) {
+            //    fileData.append(key, widgetData[key]);
+            //});
+        
+            $.ajax({
+                url: '/Widget/SaveWidget',
+                type: "POST",
+                contentType: false, // Not to set any content header  
+                processData: false, // Not to process data  
+                data: fileData,
+                success: function (result) {
+                    saveSuccess(result);
+                },
+                error: function (err) {
+                    alert(err.statusText);
+                }
+            });
+
+        }
+    }
+    function success_saveWidget(message) {
+        console.log(message);
+        if (message.valid) {
+            var form = $(".widgetFormData");
+            widgetData = message.data;
+            ajax.writeForm(form, message.data);
+            loadCSSConfiguration(widgetData.WidgetStyles);
+            ajax.alert("Your widget has been saved.", "success", 5);
+            refreshWidget();
+
+            $("#testWidgetAnchor").attr("href", "~/?widgetId=" + widgetData.Id)
+            $("#finderWidgetIframe").attr("value", "<iframe src='@widgetIframeUrl?widgetId=" + widgetData.Id + "'  style=\"width: 100%;\></iframe>")
+        }
+        else {
+            ajax.dismissAllAlerts();
+            var errorMessage = message.extra.join("<br />");
+            ajax.alert(errorMessage, "error");
+        }
+    }
+
+    function deleteWidget() {
+        var recordID = $(".widgetData [data-property='Id']").val();
+        var name = $(".widgetData [data-property='Name']").val();
+        modal.confirm(
+            "Confirm Delete",
+            "Are you sure you want to delete <b>" + name + "</b>? This action cannot be undone!",
+            function () {
+                doAjax("widget", "deletewidget", { id: recordID }, success_deleteWidget, null);
+            },
+            function () {
+                //result.removeClass("aboutToDelete");
+            });
+
+    }
+
+    // delete success message
+    function success_deleteWidget(message, result) {
+        if (message.valid) {
+            ajax.alert("Your widget has been deleted.", "success", 5);
+            //
+            var form = $(".widgetFormData");
+            ajax.writeForm(form, emptyWidget);
+            $(".selectedOrganizationList").html("");
+            $(".selectedCountriesList").html("");
+            $(".selectedRegionsList").html("");
+            $(".selectedCitiesList").html("");
+        }
+        else {
+            consoleMessage.addErrorMessage(message.status, "", 5000);
+            //result.removeClass("aboutToDelete");
+        }
+    }
+
+
+
+    function loadCountryRegions(selectedcountry) {
+        var data = { country: selectedcountry };
+        var sucess_loadRegions = function (message) {
+            var ddlRegions = $("#regions");
+            ddlRegions.empty().append('<option selected="selected" value="0">Select a Region</option>');
+            if (message.data) {
+                $.each(message.data, function () {
+                    ddlRegions.append($("<option></option>").val(this['Id']).html(this['Name']));
+                });
+            }
+        };
+
+        doAjax("widget", "getregionsforcountry", data, sucess_loadRegions, null);
+    }
+
+    function loadRegionCities(selectedCountry, selectedRegion) {
+        var data = { country: selectedCountry, region: selectedRegion };
+        var sucess_loadCities = function (message) {
+            var ddlCities = $("#cities");
+            ddlCities.empty().append('<option selected="selected" value="-1">select a City</option>')
+            if (message.data) {
+                $.each(message.data, function () {
+                    ddlCities.append($("<option></option>").val(this['Id']).html(this['Name']));
+                });
+            }
+        };
+        doAjax("widget", "getexistingcitiesforregion", data,sucess_loadCities, null);
+    }
+
+
+
+    //////////////////////////////////////////////////////////
+    function doAjax(controller, method, data, success, button, passThrough) {
+        $.ajax({
+            url: "@Url.Content( "~/" )" + controller + "/" + method,
+            async: true,
+            headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+            dataType: "json",
+            type: "POST",
+            data: JSON.stringify(data),
+            success: function (message) {
+                success(message, passThrough);
+            },
+            error: function (message) {
+                success(message, passThrough);
+            }
+        });
+    }
+
+    function doAjaxGet(controller, method, data, success, button, passThrough) {
+        $.ajax({
+            url: "@Url.Content( "~/" )" + controller + "/" + method,
+            async: true,
+            headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+            dataType: "json",
+            type: "get",
+            data: data,
+            success: function (message) {
+                success(message, passThrough);
+            },
+            error: function (message) {
+                success(message, passThrough);
+            }
+        });
+    }
+
+    function success_saveWidget(message) {
+        console.log(message);
+        if (message.valid) {
+            var form = $(".widgetFormData");
+			widgetData = message.data;
+			ajax.writeForm(form, message.data);
+					ajax.alert("Your widget has been saved.", "success", 5);
+            refreshWidget();
+			}
+		else{
+            ajax.dismissAllAlerts();
+            var errorMessage = message.extra.join("<br />");
+			ajax.alert(errorMessage, "error");
+		}
+    }
+    // delete success message
+
+    function success_deleteWidget(message, result) {
+        if (message.valid) {
+            ajax.alert("Your widget has been deleted.", "success", 5);
+            //refreshWidget();
+            //result.remove();
+            //May need to remove map marker(s)
+        }
+        else {
+            consoleMessage.addErrorMessage(message.status, "", 5000);
+            //result.removeClass("aboutToDelete");
+        }
+    }
+    function success_newWidget(message) {
+        if (message.valid) {
+
+            ajax.alert("you are in new form.", "success", 5);
+            newWidget();
+        }
+        else {
+            ajax.alert(errorMessage, "error");
+        }
+
+    }
+
+    function refreshWidget() {
+        if (userOrganizations) {
+            if (userOrganizations.length == 1) {
+                loadOrganizationWidgets(userOrganizations[0].CTID);
+            }
+            else if (userOrganizations.length > 1) {
+                $('#organizationSelector').change(function () {
+                    //old approach
+                    var ctid = $("input[data-property='OrgCTID']");
+                    var orgName = $("input[data-property='OrganizationName']");
+
+                    if ($('option:selected', this).index() > 0) {
+                        ctid.val(this.value);
+                        orgName.val($(this).find("option:selected").text());
+                       // $("#widgetSelector").prop("disabled", false);
+                        $('.widgetSelectorBox').show();
+                        loadOrganizationWidgets(this.value);
+                    }
+                    else {
+                        //$("#widgetSelector").prop("disabled", true);
+                        $("#widgetSelector").empty().append('<option selected="selected" value="0">Select a Widget</option>');
+                        ctid.val('');
+                        orgName.val('');
+                    }
+                });
+            }
+        }
+    }
+
+    //
+
+
+
+
+
+
+    function setupDescriptionToggle() {
+        $('#toggleDescriptions').on("click", function (event) {
+            $('.data #searchResultsContent').toggleClass("hideDescriptions");
+        });
+    }
+    var userOrganizations = null;
+    function setUpUserOrganization() {
+        var success_getUserOrganization = function (message) {
+            if (message.data) {
+                userOrganizations= message.data;
+                if (userOrganizations.length == 1) {
+                    //new: set the dropdown val
+                    //$("input[data-property='OrganizationName']").val(userOrganizations[0].Name);
+                    //$("input[data-property='OrgCTID']").val(userOrganizations[0].CTID);
+                }
+                else if (userOrganizations.length > 1) {
+                    refreshWidget();
+                }
+            }
+        };
+        doAjaxGet("widget", "getuserorganizations", null, success_getUserOrganization, null);
+    }
+    function success_getOrganizations(message) {
+        console.log("Loaded organization data", message);
+        if (message.valid) {
+            message.data.forEach(function (resultData) {
+                addSelectedOrganization(resultData);
+            });
+            //microsearch.renderPaging(search, search.PagingBox, message.data.length, forcePaging);
+        }
+    }
+
+
+    //
+
+</script>
+<script type="text/javascript">
+    /* widget functions */
+</script>
+<script type="text/javascript">
+
+
+    /* obsolete/not used*/
+
+    function setupConfig() {
+        $("[data-action=getConfiguration]").on("click", function () {
+            getConfiguration();
+        });
+    }
+	function getConfiguration() {
+		var config = {};
+
+		//Organizations
+        config.OrganizationIds = [];
+        config.CountriesIds = [];
+        config.RegionsIds = [];
+        config.CitiesIds = [];
+		$(".selectedOrganizationList .organization").each(function () {
+			config.OrganizationIds.push(parseInt($(this).attr("data-RecordId")));
+        });
+        $(".selectedCountriesList .countries").each(function () {
+            config.CountriesIds.push(parseInt($(this).attr("data-RecordId")));
+        });
+        $(".selectedRegionsList .regions").each(function () {
+            config.RegionsIds.push(parseInt($(this).attr("data-RecordId")));
+        });
+        $(".selectedCitiesList .cities").each(function () {
+            config.CitiesIds.push(parseInt($(this).attr("data-RecordId")));
+        });
+
+		$(".option.booleans [data-property]").each(function () {
+			readItem($(this), config);
+		});
+
+		console.log(config);
+		$("#configurationResultURL").val("@absoluteSearchRoot" + "?widget=" + btoa(JSON.stringify(config)));
+	}
+	//
+</script>
+
+@* Move this stuff to wherever it makes sense *@
+<script type="text/javascript">
+    function getCSSConfiguration() {
+        var data = ajax.readForm($(".cssConfiguration"), {});
+        return data;
+    }
+    //
+
+    function loadCSSConfiguration(data) {
+        ajax.writeForm($(".cssConfiguration"), data);
+    }
+    //
+</script>
+<style type="text/css">
+    #content { min-height: 100vh; padding-bottom: 100px; }
+    /* Collapse Boxes */
+    .collapseBox.collapsed > .collapseContent { display: none; }
+    .collapseBox.collapsed > .expanded, .collapseBox.collapsed > .collapseToggle .expanded { display: none; }
+    .collapseBox:not(.collapsed) > .collapsed, .collapseBox:not(.collapsed) > .collapseToggle .collapsed { display: none; }
+    .collapseBox .collapseToggle { display: -webkit-flex; display: flex; font-weight: bold; padding: 5px; width: 100%; text-align: left; background-color: #F5F5F5; }
+        .collapseBox .collapseToggle:hover, .collapseBox .collapseToggle:focus { background-color: #EEE; }
+        .collapseBox .collapseToggle .arrows { margin-left: auto; }
+        .collapseBox .collapseToggle.h4 .title { font-size: 24px; }
+        .collapseBox .collapseToggle.h4 .arrows { font-size: 30px; }
+
+    .option { padding: 5px; margin-bottom: 10px; }
+
+    .columns { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; }
+        .columns .column { -webkit-flex: 50% 1 1; flex: 50% 1 1; max-width: calc(50% - 5px); }
+
+    .configurationResult { display: -webkit-flex; display: flex; }
+        .configurationResult button { -webkit-flex: 1 1 200px; flex: 1 1 200px; padding: 0 10px; margin-right: 5px; }
+        .configurationResult input[type=text] { -webkit-flex: 1 1 100%; flex: 1 1 100%; }
+
+    .searchResult.organization { padding: 5px; margin-bottom: 5px; border: 1px solid #CCC; }
+        .searchResult.organization .description { max-height: 100px; overflow: hidden; }
+        .searchResult.organization .buttons { text-align: right; }
+    .searchPaging { text-align: center; padding: 5px; }
+        .searchPaging button { padding: 2.5px; margin: 0 2.5px; min-width: 50px; }
+            .searchPaging button.currentPage { background-color: #555; color: #FFF; }
+
+    #searchResultsContent.hideDescriptions { display: none; }
+    .searchResult .data .description { display: none; }
+    .downloadButton { float: right; }
+    .required { color: orangered }
+    .control-label { margin-right: 5px; }
+    #mainSiteFooter { display: none; }
+    #globalButtons { bottom: 0; left: 0; right: 0; height: 55px; background-color: #000; border: 1px solid #333; padding: 2px 10px; margin-top: 10px; position: fixed; }
+        #globalButtons #globalInputs { display: inline-block; vertical-align: top; white-space: nowrap; float: right; }
+        #globalButtons #preview { display: inline-block; vertical-align: top; white-space: nowrap; float: left; }
+    #globalInputs { color: black; float: left; padding: 3px 5px; box-sizing: border-box; font-size: 16px; }
+    .actionButton { margin-right: 10px; color: white; height: 40px; width: 100px; font-size: 16px; }
+    .linkSection { text-align: center; height: 30px; width: 300px; font-size: 16px; background-color: #F5F5F5; margin: 3px; border-radius: 5px; padding-top: 3px; display: block; }
+    .link_class { display: inline-block; width: 100%; height: 100%; }
+
+    .linkButton { text-decoration: none; background-color: #3b7741; color: #FFF; height: 40px; padding: 2px 6px 2px 6px; border-top: 1px solid #3b7741; border-right: 1px solid #3b7741; border-bottom: 1px solid #3b7741; border-left: 1px solid #3b7741; border-radius: 5px; }
+        .linkButton label:focus { background-color: rgba(0,0,0,0.05); cursor: pointer; }
+    .data { display: inline-block; }
+    #globalGuidance { height: 40px; text-align: center; width: 200px; }
+    #previewWidget { margin-left: 1em; height: 40px; text-align: center; width: 200px; }
+    .previewInput { display: flex }
+
+    /* FormItem */
+    .formItem { display: flex; align-items: baseline; margin-bottom: 10px; }
+        .formItem .itemLabel { flex: 200px 0 0; }
+        .formItem .required.suppress { flex: 25px 0 0; display: block; opacity: 0; }
+        .formItem .toolTipIcon.suppress { flex: 25px 0 0; display: block; opacity: 0; }
+        /*.formItem .itemValue { flex: 50% 1 1; }*/
+        .formItem .help { flex: 50% 1 1; margin-left: 10px; }
+
+
+
+        .formItem .itemValue input:not([type='checkbox']):not([type='radio']), .formItem .itemValue textarea, .formItem .itemValue, select { display: block; width: 400px; }
+
+            .formItem .itemValue textarea { resize: vertical; }
+    .crossButton { background-color: red; color: white; }
+    /*Misc*/
+    .instructions { padding: 5px; }
+    .linkButton:hover { color: white; }
+    .clearableText { display: flex; }
+</style>
+
+
+<link href="~/Content/chosen.min.css" rel="stylesheet" />
+<script src="~/Scripts/chosen.jquery.min.js"></script>
+<div class="widgetFormData " data-type="formObject">
+    <div class="column">
+        <h1>Create a Widget</h1>
+        <p> Create a widget in order to get a customized version of the credential finder search</p>
+    </div>
+
+
+    <div class="section">
+
+        <div class="organizationSelectorBox" @Html.Raw( user.Organizations.Count() <= 1 ? "style=\"display:none;\"" : "" )>
+            <h2>Existing Widget</h2>
+            <div class="formItem">
+                <div class="itemLabel"> Select Your Organization:</div>
+                <div class="itemValue">
+                    <select id="organizationSelector">
+                        <option value="">Select an Organization</option>
+                        @foreach ( var org in user.Organizations )
+                        {
+                            <option value="@org.CTID.ToString()">@org.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="widgetSelectorBox">
+            <div class="formItem">
+                <div class="itemLabel">Select an Existing Widget:</div>
+                <div class="itemValue">
+                    <select id="widgetSelector">
+                        <option value="0">Select a Widget</option>
+                        @foreach ( var item in orgWidgets )
+                        {
+                            <option value="@item.Id.ToString()">@item.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="section">
+        <div class="columns">
+            <div id="widgetData" class="option widgetData column">
+                <h2>Widget Data</h2>
+                <div class="formItem">
+                    <div class="itemLabel">
+                        Organization Name:<span class="required">*</span>
+                    </div>
+                    <div class="itemValue">
+                        <select id="OrgCTID" data-property="OrgCTID" data-type="select">
+                            <option value="">Select an Organization</option>
+                            @foreach ( var org in user.Organizations )
+                            {
+                                <option value="@org.CTID.ToString()">@org.Name</option>
+                            }
+                        </select>
+                    </div>
+                    @*//<input type="text" readonly data-type="text" data-property="OrganizationName" required placeholder="Select an Organization" />*@
+                </div>
+                @*@RenderFormItem( "OrgCTID", "Organization Name:", "select", true, "Select an organization", "", new List<ValueItem>() { new ValueItem( "", "Select an Organization" ) }.Concat( user.Organizations.ConvertAll( m => new ValueItem( m.CTID.ToString(), m.Name ) ) ).ToList() )*@
+
+                <div class="formItem">
+                    <div class="itemLabel">Widget Id:</div>
+                    <div class="itemValue">
+                        <input type="text" readonly data-type="text" data-property="Id" />
+                    </div>
+                    <div id="widgetIdSymbol" title="This is the identifier that will be used to personalize the finder search." class="fa fa-exclamation-circle"></div>
+                </div>
+                @*@RenderFormItem( "Id", "Widget ID:", "text", true, "", "This is the identifier that will be used to personalize the finder search", null, true )*@
+
+                @*<div class="formItem"><label>CTID:<span class="required">*</span></label> <input type="text" readonly data-type="text" data-property="OrgCTID" required /> </div>*@
+                <div class="formItem">
+                    <div class="itemLabel">Name:<span class="required">*</span></div>
+                    <div class="itemValue">
+                        <input type="text" data-type="text" data-property="Name" />
+                    </div>
+                </div>
+                @*@RenderFormItem( "Name", "Name", "text", true )*@
+
+                @*<div class="formItem"><label> LogoUrl:</label> <input type="text" data-type="text" data-property="LogoUrl" /> </div>*@
+
+
+
+            </div>
+        </div>
+    </div>
+
+
+
+    @*<div class="option booleans">
+            <h3>Search Result Display</h3>
+            <p class="help">Configure options:</p>
+        </div>*@
+
+    <div class="row collapseBox collapsed">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Organization Filters</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+
+            <div class="option organizations">
+
+                <p class="help">Limit searches to just the selected organizations, and only show credentials, assessments, and learning opportunities that are connected to them:</p>
+                <div class="columns">
+                    <div class="column microsearch findOrganizations" data-search="findOrganizations" id="resetOrganization">
+                        <h4>Find Organizations</h4>
+                        <form id="btnReset">
+                            <div class="searchHeader">
+                                <div class="searchFilter">
+                                    <label class="control-label">Name</label>
+
+                                    <div class="value">
+                                        <input type="text" class="form-control hasAutoComplete ui-autocomplete-input ui-autocomplete-loading" data-type="text" data-property="Keywords" data-autocompletecontext="mainsearch" placeholder="Start typing to search..." autocomplete="off" />
+                                        <input type="button" id="btnResetButton" value="Reset" onclick="resetMicroSearch('0_OwningOrganization');" class="redButton btn btn-danger" style="margin-top:5px;">
+                                        @*<input type="button" onclick="resetButton()" value="Reset form" id="clear-filter">*@
+
+
+                                    </div>
+                                </div>
+                                <button id="toggleDescriptions" style="display: none;" class="contentToggleButton">Show/Hide Description</button>
+                                <div class="searchStatus"></div>
+                                <div class="searchResults"></div>
+                                <div class="searchPaging"></div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="column selectedOrganizations">
+                        <h4>Selected Organizations</h4>
+                        <div class="selectedOrganizationList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row collapseBox collapsed">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Location Filters</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+            <div class="option countries">
+                <p class="help">
+                    Location Filter Options:
+                    <ul>
+                        <li>One or more countries</li>
+                        <li>Or, one Country, and one or more regions</li>
+                        <li>Or, one Country, one region, and one or more cities</li>
+                    </ul>
+                    The list of regions is for only those with available data. Also note that data for a region may not relate to all search types. For example: Selecting Indiana as a region may result in hits for the credential search but not the assessment search.
+                </p>
+
+                <div class="column">
+
+                    <div class="column">
+                        <label>Always Include Any Credential Available Online</label>
+                        <input type="checkbox" id="btnAvailableOnline" data-type="boolean" data-property="IncludeIfAvailableOnline" /><br />
+                        <div class="formItem">
+                            <label style="width: 100px;">
+                                Country
+                            </label>
+                            <select id="countries">
+                                <option value="">Select Country</option>
+                                @foreach ( var country in countries )
+                                {
+                                    <option value="@country.Id">@country.Name</option>
+                                }
+
+                            </select>
+                            <div id="searchSymbol" title="you can select more then one country,but if you select more than one country you cannot select region and city." class="fa fa-exclamation-circle">
+
+                            </div>
+                        </div>
+
+                        <div id="regionsDiv" class="column">
+                            <div class="formItem">
+                                <label style="width: 100px;">Regions</label>
+                                <select id="regions"></select>
+                                <div id="regionSymbol" title="If you select more than one region then,you cannot select city." class="fa fa-exclamation-circle">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="cityDiv" class="column">
+                            <div class="formItem">
+                                <label style="width: 100px;">City</label>
+                                <select id="cities"></select>
+                                <div id="citySymbol" title="Here you can select more than one city." class="fa fa-exclamation-circle">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column">
+                        <div class="columns">
+                            <div class="column selectedCountries">
+                                <h4>Selected Countries</h4>
+                                <div class="selectedCountriesList"></div>
+                            </div>
+                            <div class="column selectedRegions">
+                                <h4>Selected Regions</h4>
+                                <div class="selectedRegionsList"></div>
+                            </div>
+                            <div class="column selectedCities">
+                                <h4>Selected Cities</h4>
+                                <div class="selectedCitiesList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row collapseBox collapsed" style="display: none;">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Credential Filters</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+            <div class="option">
+                <h3>Select Credential Filters to Hide</h3>
+
+                <div id="filtersList">
+                    @* Credential *@
+                    <div class="filterList" data-searchType="credential">
+                        @RenderFilterListItem( "credential", "CredentialTypes", "Credential Types" )
+                        @RenderFilterListItem( "credential", "AudienceLevelTypes", "Audience Level Types" )
+                        @RenderFilterListItem( "credential", "AudienceTypes", "Applicable Audience Types" )
+                        @RenderFilterListItem( "credential", "CredentialConnections", "Credential Connections" )
+                        @RenderFilterListItem( "credential", "Competencies", "Competencies" )
+                        @RenderFilterListItem( "credential", "Subjects", "Subject Areas" )
+                        @RenderFilterListItem( "credential", "Occupations", "Occupations" )
+                        @RenderFilterListItem( "credential", "Industries", "Industries" )
+                        @RenderFilterListItem( "credential", "QualityAssurance", "Quality Assurance" )
+                        @RenderFilterListItem( "credential", "Reports", "Other Filters" )
+                    </div>
+
+                    @* Organization *@
+                    <div class="filterList" data-searchType="organization">
+                        @RenderFilterListItem( "organization", "OrganizationTypes", "Organization Types" )
+                        @RenderFilterListItem( "organization", "Industries", "Industries" )
+                        @RenderFilterListItem( "organization", "ServiceTypes", "Service Types" )
+                        @RenderFilterListItem( "organization", "SectorTypes", "Sector Types" )
+                        @RenderFilterListItem( "organization", "QualityAssurance", "Quality Assurance" )
+                        @RenderFilterListItem( "organization", "Reports", "Other Filters" )
+
+                    </div>
+
+
+
+                    @* Learning Opportunity *@
+                    <div class="filterList" data-searchType="learningopportunity">
+                        @RenderFilterListItem( "learningopportunity", "Competencies", "Competencies" )
+                        @RenderFilterListItem( "learningopportunity", "Subjects", "Subject Areas" )
+                        @RenderFilterListItem( "learningopportunity", "LearningOpportunityConnections", "Learning Opportunity Connections" )
+                        @RenderFilterListItem( "learningopportunity", "LearningMethodTypes", "Learning Method Types" )
+                        @RenderFilterListItem( "learningopportunity", "DeliveryMethodTypes", "Delivery Method Types" )
+                        @RenderFilterListItem( "learningopportunity", "InstructionalProgramType", "Instructional Program Classification" )
+                        @RenderFilterListItem( "learningopportunity", "AudienceTypes", "Applicable Audience Types" )
+                        @RenderFilterListItem( "learningopportunity", "QualityAssurance", "Quality Assurance" )
+                        @RenderFilterListItem( "learningopportunity", "Reports", "Other Filters" )
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+    <div class="row collapseBox collapsed" style="display: none;">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Assessment Filters</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+            <div class="option">
+                <h3>Select Assessment Filters to Hide</h3>
+                @* Assessment *@
+                <div class="filterList" data-searchType="assessment">
+                    @RenderFilterListItem( "assessment", "Competencies", "Competencies" )
+                    @RenderFilterListItem( "assessment", "Subjects", "Subject Areas" )
+                    @RenderFilterListItem( "assessment", "AssessmentConnections", "Assessment Connections" )
+                    @RenderFilterListItem( "assessment", "AssessmentMethodTypes", "Assessment Method Types" )
+                    @RenderFilterListItem( "assessment", "AssessmentUseTypes", "Assessment Use Types" )
+                    @RenderFilterListItem( "assessment", "ScoringMethodTypes", "Scoring Method Types" )
+                    @RenderFilterListItem( "assessment", "DeliveryMethodTypes", "Delivery Method Types" )
+                    @RenderFilterListItem( "assessment", "InstructionalProgramType", "Instructional Program Classification" )
+                    @RenderFilterListItem( "assessment", "AudienceTypes", "Applicable Audience Types" )
+                    @RenderFilterListItem( "assessment", "QualityAssurance", "Quality Assurance" )
+                    @RenderFilterListItem( "assessment", "Reports", "Other Filters" )
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+    @*<div class="option">
+            <h3>Configured URL</h3>
+            <p class="help">Click the "Get Configuration" button, then use the provided URL to access the widget.</p>
+            <div class="configurationResult">
+                <button class="greenButton" data-action="getConfiguration">Get Configuration</button>
+                <input id="configurationResultURL" type="text" readonly="readonly" onclick="this.select()" />
+            </div>
+        </div>*@
+    <div class="row collapseBox collapsed">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Customize Widget Style</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+            @*<div class="chooseAnyOne"><b>Below are the three following styles, User can pick any one style from them.</b></div>*@
+            @* Anything you put in the div below can be retrieved/loaded with the "getCSSConfiguration" and "loadCSSConfiguration" methods above - note that the ajax.readForm and ajax.writeForm methods get scoped to anything with a data-type="formObject" attribute, as shown below.  This means that the data in this div will be separate from the data in the rest of the widget editor (though you can change that if you want). *@
+            @*<h1>Option 1</h1>*@
+            <div class="cssConfiguration" data-type="formObject">
+                @RenderFormItem( "CustomStyleCheckBox", "Custom Style", "checkbox", false, "Check to generate a style sheet.", "", null, false, false, false, "CustomStyleCheckBox" )
+                @*<input id="CustomStyleCheckBox" type="checkbox">Check to generate a style sheet</input>*@
+                <div class="renderCustomStyle" id="customStyleWrapper" style="display:none">
+
+                    <div class="instructions">Select colors for parts of the widget. Colors use <b title="Hexadecimal values represent colors and look like this: #73ddcd">hexadecimal values</b>. If your browser doesn't support the color picker feature, <a href="https://www.w3schools.com/colors/colors_picker.asp" target="_blank">click here</a> for a tool to select color values, or ask your web development team for the appropriate values.</div>
+                    @*@RenderFormItem( "PrimaryColor", "Primary Color", "color", false, "This color will be used for major elements." )
+                        @RenderFormItem( "SecondaryColor", "Secondary Color", "color", false, "This color will be used for secondary elements." )
+                        @RenderFormItem( "TertiaryColor", "Tertiary Color", "color", false, "This color will be used for small or decorative elements." )*@
+                    <div class="colorWraper">
+
+                        @RenderFormItem( "MainSiteHeader", "Site Header Background Color", "color", false, "This will change the background color of the site header." )
+
+                        @RenderFormItem( "MainSiteHeader", "Header Hex Value", "textClear", false, "This will convert rgb to hex values." )
+
+                    </div>
+                    <div class="colorWraper">
+
+                        @RenderFormItem( "SearchButton1", "Search Button", "color", false, "This color will be used to change the Search Button Color." )
+
+                        @RenderFormItem( "SearchButton1", "Search Hex Value", "textClear", false, "this will convert rgb to hex values." )
+
+                    </div>
+                    <div class="colorWraper">
+
+                        @RenderFormItem( "FilterButton1", "Filter Button", "color", false, "This color will be used to change the Filter Button Color." )
+
+                        @RenderFormItem( "FilterButton1", " Filter Hex Value", "textClear", false, "this will convert rgb to hex values." )
+
+                    </div>
+                    <div class="colorWraper">
+
+                        @RenderFormItem( "ResetButton1", "Reset Button", "color", false, "This color will be used to change the Reset Button Color." )
+
+                        @RenderFormItem( "ResetButton1", "Reset Hex Value", "textClear", false, "this will convert rgb to hex values." )
+
+                    </div>
+                    @RenderFormItem( "MainSiteLogo", "URL of External Logo Image", "text", false, "URL to an image to use in the site header." )
+                    @RenderFormItem( "HideDescriptions", "Hide Descriptions", "checkbox", false, "Check to hide description in the search results." )
+                    @RenderFormItem( "HideAllFilters", "Hide Filters", "checkbox", false, "Check to hide all search filters - except text." )
+
+
+                    <div class="formItem" style="margin-top:15px;">
+
+                        <label> Download Custom Style Generated/Uploaded: </label>
+                        <a href="#" data-property="CustomStylesURL" target="_blank" data-type="anchor" download="">Download</a>
+                    </div>
+                </div>
+
+            </div>
+
+            @*<h1>Option 2</h1>
+                <div class="formItem uploadFiles">
+                    <h2 style="margin-top:8px;">Upload Your Stylesheet File</h2>
+                    <p>Start by <a href="~/StyleTemplate1.css" download>downloading the Stylesheet Template</a>, modify the styles as needed, and save. Then return here and upload and save the file.</p>
+                </div>
+
+                <div class="formItem">
+
+                    <div class="itemLabel">Previous Uploaded Style</div>
+                    <ul>
+                        <li>On click of button, clears the data in the field.</li>
+                        <li>After deleting the text, click on save button,so that it will remove from the data base.</li>
+                    </ul>
+                </div>
+                <div class="clearFile">
+                    <input type="text" data-type="text" readonly="readonly" data-property="CustomStylesFileName" />
+                    <input id="clearButton" type="button" value="clear" style="background-color:red; margin-left:5px;color:white;" />
+                </div>*@
+
+            @*<div class="previewInput">*@
+            @*@using ( Html.BeginForm( "UploadStyle", "Widget", FormMethod.Post, new { id = "styleUploadForm", enctype = "multipart/form-data" } ) )
+                {*@
+            @*<input type="file" name="cssFileUpload" style="margin-top:12px;">*@
+            @*<input type="submit" id="btnStyleUpload" value="Upload" />*@
+            @*}*@
+            @*</div>*@
+
+            @*<h1 style="margin-top:8px;margin-bottom:-15px;">Option 3</h1>
+                <div class="formItem" style="margin-top:15px;">
+                    <h2> Widget Style Sheet Url</h2>
+                    <input type="text" data-type="text" data-property="SearchSheetUrl" />
+                    <p>Enter the URL to a stylesheet file to use with this widget. Start by <a href="~/StyleTemplate1.css" download>downloading the Stylesheet Template</a>, modify the styles as needed, store the file on a website that is publically available. Then place the URL to the stylesheet in the textbox below.</p>
+
+
+                </div>*@
+
+
+            @*<div class="formItem"><label><input type="checkbox" data-type="boolean" data-property="HideDescriptions" /> Hide Descriptions</label> </div>
+                <div class="formItem"><label><input type="checkbox" data-type="boolean" data-property="HideGrayButtons" /> Hide Gray Buttons</label> </div>*@
+
+        </div>
+
+    </div>
+
+    <div id="templates" style="display:none;">
+
+        <script type="text/template" id="template_searchresult_organization">
+            <div class="searchResult organization  regions canSelect" data-rowID="{RowId}" data-id="{Id}">
+                <div class="data">
+                    <a class="name" target="_blank" href="@Url.Content("~/organization/"){Id}/{FriendlyName}">{Name}</a>
+                    <div id="searchResultsContent" class="description">{Description}</div>
+                </div>
+                <div class="buttons">
+                    <button class="greenButton" data-action="addOrganization">Add Organization</button>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/template" id="template_selectedresult_organization">
+            <div class="searchResult organization selected" data-rowID="{RowId}" data-id="{Id}">
+                <div class="data">
+                    <a class="name" target="_blank" href="@Url.Content("~/organization/"){Id}/{FriendlyName}">{Name}</a>
+
+                    <div class="description">{Description}</div>
+                </div>
+                <div class="buttons">
+                    <button class="redButton" data-action="removeOrganization">Remove Organization</button>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/template" id="template_selectedresult_countries">
+
+            <div class="searchResult countries selected" data-rowID="{RowId}" data-id="{Id}" data-name="{Name}" style="display:inline-block;">
+                <div class="data">
+
+                    <a class="name" target="_blank" href="@Url.Content("~/countries/")">{Name}</a>
+                    <button id="btnCountry" class="redButton" data-action="removeCountry" style="font-size:xx-small;">X</button>
+
+                </div>
+
+            </div>
+        </script>
+
+
+        <script type="text/template" id="template_selectedresult_regions">
+            <div class="searchResult regions selected" data-Name="{Name}" style="display:inline-block;">
+                <div class="data">
+                    <a class="name">
+                        {Name}
+                    </a>
+
+                    <button id="btnRegion" class="redButton" data-action="removeRegion" style="font-size:xx-small;">X</button>
+
+
+                </div>
+            </div>
+        </script>
+        <script type="text/template" id="template_selectedresult_cities">
+            <div class="searchResult cities selected" data-Name="{Name}" style="display:inline-block;">
+                <div class="data">
+                    <div class="name">
+                        {Name}
+
+                        <button id="btnCity" class="redButton" data-action="removeCity" style="font-size:xx-small;">X</button>
+
+                    </div>
+                </div>
+            </div>
+        </script>
+
+
+    </div>
+
+    <div class="row collapseBox collapsed">
+        <button class="collapseToggle h4" id="properties_required_mainclass_new">
+            <div class="title">Templates</div>
+            <i class="arrows expanded fa fa-chevron-circle-down" aria-hidden="true"></i>
+            <i class="arrows collapsed fa fa-chevron-circle-right" aria-hidden="true"></i>
+        </button>
+        <div class="collapseContent">
+            <div class="row">
+                <div class="linkSection">
+                    <a class="link_class" href="~/StyleTemplate1.css" download>Download Stylesheet Template </a>
+                </div>
+
+            </div>
+            <div class="row">
+                <div class="configuration">
+                    <p>Step 1: Copy and paste the text from this field directly into your site's code:</p>
+                    <input class="copyFrom" type="text" readonly="readonly" id="finderWidgetIframe" value="" data-restful="false" style="width: 500px;">
+                    <p>
+                        Step 2: Include the Credential Finder iframe resizing code on your page
+                        To enable resizing, add the following above or below the widget's iframe tags:
+                        <script type="text/javascript" src="//credentialfinder.com/scripts/WidgetIframeScript.js?V1.1"></script>
+                    </p>
+                </div>
+            </div>
+            </div>
+        </div>
+            <div class="row" style="margin-top:65px;">
+                <div id="globalButtons">
+                    <div id="preview">
+                        <a id="previewWidget" href="/?widgetId=@Model.Id" target="preview" class="linkButton" style="display: none;">Preview Widget</a>
+                        <a id="testWidgetAnchor" href="/widget/testwidget?widgetId=@Model.Id" target="preview" class="linkButton" style="display: none;">Preview Widget in IFrame</a>
+
+            </div>
+            <div id="globalInputs">
+                <button class="saveButton actionButton" onclick="saveWidget" style=" background-color:forestgreen;">Save</button>
+                <button class="deleteButton actionButton" onclick="deleteWidget" style="background-color:red;">Delete</button>
+                <button class="newButton actionButton">New</button>
+                <a href="/widget/guidance" target="_blank" class="linkButton" style="margin-left: 5px; padding-top: 9px;">Guidance</a>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+
+        @* Move this stuff to wherever it makes sense *@
+        <script type="text/javascript">
+            function getCSSConfiguration() {
+                var data = ajax.readForm($(".cssConfiguration"), {});
+                return data;
+            }
+            //
+
+            function loadCSSConfiguration(data) {
+                ajax.writeForm($(".cssConfiguration"), data);
+            }
+                //
+        </script>
+        <style type="text/css">
+        </style>
+

@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-
-	public class GeoCoordinates : BaseObject
+    [Serializable]
+    public class GeoCoordinates : BaseObject
 	{
 		//public new Guid ParentId { get; set; } //Hides integer ParentId. Should perhaps be called ParentGuid?
 		//public int Id { get; set; }
@@ -30,7 +30,8 @@ namespace workIT.Models.Common
 		/// </summary>
 		public int GeoNamesId { get; set; } 
 		public string Name { get; set; }
-		public bool IsException { get; set; }
+        public string Name_Map { get; set; }
+        public bool IsException { get; set; }
 		public Address Address { get; set; }
 		public List<Address> Auto_Address {  get
 			{
@@ -78,9 +79,10 @@ namespace workIT.Models.Common
 		public BoundingBox Bounds { get; set; }
 
 	}
-	//
+    //
 
-	public class BoundingBox
+    [Serializable]
+    public class BoundingBox
 	{
 		public bool IsDefined { get { return !( North == 0 && South == 0 && East == 0 && West == 0 ); } }
 		public decimal North { get; set; }

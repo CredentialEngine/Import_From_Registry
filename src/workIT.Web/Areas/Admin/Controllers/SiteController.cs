@@ -11,9 +11,9 @@ using workIT.Services;
 using workIT.Utilities;
 
 
-namespace WorkIT.Web.Areas.Admin.Controllers
+namespace workIT.Web.Areas.Admin.Controllers
 {
-    public class SiteController : WorkIT.Web.Controllers.BaseController
+    public class SiteController : workIT.Web.Controllers.BaseController
 	{
         // GET: Admin/Site
         public ActionResult Index()
@@ -29,17 +29,17 @@ namespace WorkIT.Web.Areas.Admin.Controllers
             var user = AccountServices.GetCurrentUser();
             if ( user != null && 
                 ( 
-                    user.Email == "contactUs@test.com" ||
-                    user.Email == "nathan.argo@test.com"
+                    user.Email == "mparsons@siuccwd.com" ||
+                    user.Email == "nathan.argo@siuccwd.com"
                   )
                 )
             {
                 //next
             } else 
             //if ( !User.Identity.IsAuthenticated
-            //    || ( User.Identity.Name != "contactUs"
-            //    && User.Identity.Name != "contactUs@test.com"
-            //    && User.Identity.Name != "nathan.argo@test.com" )
+            //    || ( User.Identity.Name != "mparsons"
+            //    && User.Identity.Name != "mparsons@siuccwd.com"
+            //    && User.Identity.Name != "nathan.argo@siuccwd.com" )
             //    )
             {
                 SetSystemMessage( "Unauthorized Action", "You are not authorized to invoke NormalizeAddresses." );
@@ -64,12 +64,21 @@ namespace WorkIT.Web.Areas.Admin.Controllers
             return RedirectToAction( "Index", "Message", new { area = "" } );
         }
 
-        public ActionResult HandlePending( int maxRecords = 100 )
+        public ActionResult HandlePendingDeletes( int maxRecords = 100 )
         {
             List<String> messages = new List<string>();
             ElasticServices.HandlePendingDeletes(ref messages);
             string report = string.Join( "<br/>", messages.ToArray() ); 
             SetSystemMessage( "Handling Pending Deletes From Elastic", report );
+
+            return RedirectToAction( "Index", "Message", new { area = "" } );
+        }
+        public ActionResult HandlePendingUpdates( int maxRecords = 100 )
+        {
+            List<String> messages = new List<string>();
+            ElasticServices.HandlePendingReindexRequests( ref messages );
+            string report = string.Join( "<br/>", messages.ToArray() );
+            SetSystemMessage( "Handling Pending Updates From Elastic", report );
 
             return RedirectToAction( "Index", "Message", new { area = "" } );
         }

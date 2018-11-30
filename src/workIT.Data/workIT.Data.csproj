@@ -33,6 +33,15 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Staging|AnyCPU'">
+    <OutputPath>bin\Staging\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework">
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
@@ -123,10 +132,19 @@
     <Compile Include="Tables\Codes_PropertyValue.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Codes_State.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\ConditionManifest.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\CostManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_SiteTotals.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Credential.cs">
@@ -255,6 +273,9 @@
     <Compile Include="Tables\SearchPendingReindex.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Widget.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\workIT.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -318,6 +339,9 @@
     <Compile Include="Views\Entity_AgentRelationshipIdCSV.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
+    <Compile Include="Views\Entity_Assertion_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
     <Compile Include="Views\Entity_FrameworkCIPCodeSummary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
@@ -345,6 +369,15 @@
     <Compile Include="Views\Entity_Subjects.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
+    <Compile Include="Views\ExistingCountries_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExistingCountryRegions_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExistingRegionCities_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
     <Compile Include="Views\NAIC.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
@@ -355,6 +388,18 @@
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\ONET_SOC_JobFamily.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Organization_CombinedConnections.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Organization_CombinedQAPerformed.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Query_IndianaCredentials.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Query_IndianapolisCredentials.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\SiteTotalsSummary.cs">

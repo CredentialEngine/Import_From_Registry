@@ -13,8 +13,8 @@ using Import.Services;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.AssessmentServices;
-using JsonEntity = RA.Models.Json.AssessmentProfile;
-using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
+//using JsonEntity = RA.Models.Json.AssessmentProfile;
+//using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
 using workIT.Factories;
 using workIT.Models;
 
@@ -33,7 +33,7 @@ namespace CTI.Import
 			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  {0}  ***************** ", thisClassName ) );
 			ReadEnvelope envelope = new ReadEnvelope();
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
-			EntityServices mgr = new EntityServices();
+			//EntityServices mgr = new EntityServices();
 			string type = "assessment_profile";
             int entityTypeId = CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE;
 
@@ -42,7 +42,7 @@ namespace CTI.Import
 			string importError = "";
 			string importResults = "";
 			string importNote = "";
-			ThisEntity output = new ThisEntity();
+			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
 
             //the nbr of records needs to be monitored, to determine the optimum
@@ -69,7 +69,7 @@ namespace CTI.Import
 					isComplete = true;
 					if ( pageNbr == 1 )
 					{
-						importNote = " No records where found for date range ";
+						importNote = "Assessment: No records where found for date range ";
 
 						Console.WriteLine( thisClassName + importNote );
 						LoggingHelper.DoTrace( 4, thisClassName + importNote );
@@ -91,7 +91,7 @@ namespace CTI.Import
                     {
 						Console.WriteLine( string.Format( "{0}. Assessment EnvelopeIdentifier {1} ", cntr, item.EnvelopeIdentifier ) );
 
-						importSuccessfull = entityImportMgr.ProcessEnvelope( mgr, item, status );
+						importSuccessfull = entityImportMgr.ProcessEnvelope( item, status );
 						
                     }
                     catch ( Exception ex )

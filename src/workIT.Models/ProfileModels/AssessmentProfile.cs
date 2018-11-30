@@ -8,8 +8,8 @@ using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-
-	public class AssessmentProfile : BaseProfile
+    [Serializable]
+    public class AssessmentProfile : BaseProfile
 	{
 		public AssessmentProfile()
 		{
@@ -53,7 +53,7 @@ namespace workIT.Models.ProfileModels
 			ScoringMethodType = new Enumeration();
 			OwnerRoles = new Enumeration();
 			//to delete
-
+			CredentialsList = new CredentialConnectionsResult();
 			InLanguageCodeList = new List<TextValueProfile>();
 			VersionIdentifierList = new List<Entity_IdentifierValue>();
 		}
@@ -92,9 +92,9 @@ namespace workIT.Models.ProfileModels
 
 		public string CTID { get; set; }
 		public string CredentialRegistryId { get; set; }
-		public int InLanguageId { get; set; }
-		public string InLanguage { get; set; }
-		public string InLanguageCode { get; set; }
+		//public int InLanguageId { get; set; }
+		//public string InLanguage { get; set; }
+		//public string InLanguageCode { get; set; }
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
 		public string CreditHourType { get; set; }
@@ -129,10 +129,14 @@ namespace workIT.Models.ProfileModels
         public List<string> Subjects { get; set; } = new List<string>();
         public List<TextValueProfile> Keyword { get; set; }
 
+        //used by import, NOT the detail page
 		public List<CredentialAlignmentObjectProfile> AssessesCompetencies { get; set; }
 		public int CompetenciesCount { get; set; }
 
-		public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
+        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+
+        //used by detail page, not the import
+        public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 
 		public string SubjectWebpage { get; set; }
@@ -233,7 +237,8 @@ namespace workIT.Models.ProfileModels
         public CodeItemResult InstructionalProgramClassification{ get; set; } = new CodeItemResult();
         public Enumeration AssessmentMethodType { get; set; }
 		public string AssessmentOutput { get; set; }
-		public string ExternalResearch { get; set; }
+        public Enumeration AudienceType { get; set; } = new Enumeration();
+        public string ExternalResearch { get; set; }
 		//public List<TextValueProfile> Auto_ExternalResearch
 		//{
 		//	get
@@ -266,7 +271,7 @@ namespace workIT.Models.ProfileModels
         public CodeItemResult AssessmentUseTypes { get; set; } = new CodeItemResult();
         public CodeItemResult ScoringMethodTypes { get; set; } = new CodeItemResult();
         public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
-        public AgentRelationshipResult QualityAssurance { get; set; }
+		public AgentRelationshipResult QualityAssurance { get; set; }
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
     }
 	//

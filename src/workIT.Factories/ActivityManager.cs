@@ -74,11 +74,11 @@ namespace workIT.Factories
                 string referrer = GetUserReferrer();
                 log.Referrer = referrer;
             }
-            if ( log.Referrer.Length > 1000 )
-            {
-                truncateMsg += string.Format( "Referrer overflow: {0}; ", log.Referrer.Length );
-                log.Referrer = log.Referrer.Substring( 0, 1000 );
-            }
+            //if ( log.Referrer.Length > 1000 )
+            //{
+            //    truncateMsg += string.Format( "Referrer overflow: {0}; ", log.Referrer.Length );
+            //    log.Referrer = log.Referrer.Substring( 0, 1000 );
+            //}
 
 
             if ( log.RelatedTargetUrl != null && log.RelatedTargetUrl.Length > 500 )
@@ -92,11 +92,11 @@ namespace workIT.Factories
 
             //log.Comment += GetUserAgent();
 
-            if ( log.Comment != null && log.Comment.Length > 1000 )
-            {
-                truncateMsg += string.Format( "Comment overflow: {0}; ", log.Comment.Length );
-                log.Comment = log.Comment.Substring( 0, 1000 );
-            }
+            //if ( log.Comment != null && log.Comment.Length > 1000 )
+            //{
+            //    truncateMsg += string.Format( "Comment overflow: {0}; ", log.Comment.Length );
+            //    log.Comment = log.Comment.Substring( 0, 1000 );
+            //}
 
             //the following should not be necessary but getting null related exceptions
             if ( log.TargetUserId == null )
@@ -119,7 +119,7 @@ namespace workIT.Factories
                     if ( log.ActivityType == null || log.ActivityType.Length < 5 )
                         log.ActivityType = "Audit";
 
-                    context.ActivityLogs.Add( log );
+                    context.ActivityLog.Add( log );
 
                     // submit the change to database
                     count = context.SaveChanges();
@@ -368,7 +368,7 @@ namespace workIT.Factories
             SiteActivity entity = new SiteActivity();
             using (var context = new EntityContext())
             {
-                List<ActivityLog> list = context.ActivityLogs
+                List<ActivityLog> list = context.ActivityLog
                         .Where( s => s.ActivityType == "System"
                         && s.Activity == "Import"
                         && s.Event == "Start")
@@ -530,9 +530,19 @@ namespace workIT.Factories
                     {
                         pTotalRows = Int32.Parse( rows );
                     }
-                    catch
+                    catch ( Exception ex )
                     {
                         pTotalRows = 0;
+                        LoggingHelper.LogError( ex, thisClassName + string.Format( ".Search() - Execute proc, Message: {0} \r\n Filter: {1} \r\n", ex.Message, pFilter ) );
+
+                        item = new SiteActivity
+                        {
+                            ActivityType = "Unexpected error encountered. System administration has been notified. Please try again later. ",
+                            Comment = ex.Message,
+                            Event = "error"
+                        };
+                        list.Add( item );
+                        return list;
                     }
                 }
 
@@ -546,9 +556,17 @@ namespace workIT.Factories
                     item.Event = GetRowColumn( dr, "Event", "" );
                     item.Comment = GetRowColumn( dr, "Comment", "" );
                     item.ActionByUser = GetRowColumn( dr, "ActionByUser", "" );
+                    item.ActionByUserId = GetRowColumn( dr, "ActionByUserId", 0 );
                     item.Referrer = GetRowColumn( dr, "Referrer", "" );
                     item.ActivityObjectId = GetRowColumn( dr, "ActivityObjectId", 0 );
                     item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
+                    item.SessionId = GetRowColumn( dr, "SessionId", "" );
+                    item.IsBot = GetRowColumn( dr, "IsBot", false );
+
+                    //N/A
+                    //item.ParentObject = GetRowColumn( dr, "ParentObject", "" );
+                    //item.ParentEntityTypeId = GetRowColumn( dr, "ParentEntityTypeId", 0 );
+                    //item.ParentRecordId = GetRowColumn( dr, "ParentRecordId", 0 );
 
                     list.Add( item );
                 }

@@ -17,7 +17,7 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Entity_JurisdictionProfile()
         {
-            this.GeoCoordinates = new HashSet<GeoCoordinate>();
+            this.GeoCoordinate = new HashSet<GeoCoordinate>();
         }
     
         public int Id { get; set; }
@@ -36,6 +36,6 @@ namespace workIT.Data.Tables
         public virtual Codes_AssertionType Codes_AssertionType { get; set; }
         public virtual Entity Entity { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<GeoCoordinate> GeoCoordinates { get; set; }
+        public virtual ICollection<GeoCoordinate> GeoCoordinate { get; set; }
     }
 }

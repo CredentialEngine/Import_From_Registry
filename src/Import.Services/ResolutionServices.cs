@@ -442,27 +442,32 @@ namespace Import.Services
 			if ( registryId.Length == 39 && registryId.ToLower().IndexOf( "ce-" ) == 0 )
 				return registryId;
 
-			int pos = registryId.ToLower().IndexOf( "/resources/ce-" );
-			if ( pos > 1)
+			int pos = registryId.ToLower().IndexOf( "/graph/ce-" );
+			if ( pos > 1 )
 			{
-				ctid = registryId.Substring( pos + 11 );
-			} else 
+				ctid = registryId.Substring( pos + 7 );
+			}
+			else
 			{
-				//shouldn't happen, once all fixed. In case was published without ce-
-				pos = registryId.ToLower().IndexOf( "/resources/" );
-				if ( pos > 10 )
-				{
-					ctid = "ce-" + registryId.Substring( pos + 11 );
-				}
+				pos = registryId.ToLower().IndexOf( "/resources/ce-" );
+				if ( pos > 1 )
+					ctid = registryId.Substring( pos + 11 );
 				else
 				{
-
-					pos = registryId.ToLower().IndexOf( "ce-" );
-					if ( pos > -1 )
-						ctid = registryId.Substring( pos );
+					//shouldn't happen, once all fixed. In case was published without ce-
+					pos = registryId.ToLower().IndexOf( "/resources/" );
+					if ( pos > 10 )
+					{
+						ctid = "ce-" + registryId.Substring( pos + 11 );
+					}
+					else
+					{
+						pos = registryId.ToLower().IndexOf( "/ce-" );
+						if ( pos > -1 )
+							ctid = registryId.Substring( pos + 1 );
+					}
 				}
 			}
-			
 
 			return ctid;
 		}

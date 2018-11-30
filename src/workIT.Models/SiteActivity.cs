@@ -8,7 +8,8 @@ using workIT.Models.Common;
 
 namespace workIT.Models
 {
-	public class SiteActivity : BaseObject
+    [Serializable]
+    public class SiteActivity : BaseObject
 	{
 		public SiteActivity()
 		{

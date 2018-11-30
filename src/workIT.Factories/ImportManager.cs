@@ -33,7 +33,7 @@ namespace workIT.Factories
 					efEntity.EntityTypedId = entity.EntityTypedId;
 					efEntity.DocumentUpdatedAt = entity.DocumentUpdatedAt;
 					efEntity.EnvelopeId = entity.EnvelopeId;
-					efEntity.Message = entity.Message;
+					//efEntity.Message = entity.Message; //See Import.Message
 					efEntity.Payload = entity.Payload;
 					//efEntity.ResourcePublicKey = entity.ResourcePublicKey;
 					
@@ -75,6 +75,7 @@ namespace workIT.Factories
 
         /// <summary>
         /// get all to enable deleting
+        /// NOTE: there can be many entries for an entity in Import staging. do a uniqueness check.
         /// </summary>
         /// <returns></returns>
         public static List<ThisEntity> GetAll( int entityTypeId = 0)
@@ -84,13 +85,15 @@ namespace workIT.Factories
            
             try
             {
+                string prevCTID = "";
                 using ( var context = new EntityContext() )
                 {
                     List<DBEntity> search = context.Import_Staging
                             .Where( s =>( entityTypeId == 0 || s.EntityTypedId == entityTypeId))
-                            .OrderBy( s => s.EntityTypedId ).ThenBy( x => x.EnvelopeId )
+                            .OrderBy( s => s.EntityTypedId )
+                            .ThenBy( x => x.EnvelopeId )
+                            .ThenByDescending( s => s.DownloadDate )
                             .ToList();
-
 
                     if ( search != null && search.Count > 0 )
                     {
@@ -100,8 +103,10 @@ namespace workIT.Factories
                             entity.EnvelopeId = item.EnvelopeId;
                             entity.Ctid = item.Ctid;
                             entity.EntityTypedId = item.EntityTypedId;
-                           
-                            list.Add( entity );
+                            if ( prevCTID != entity.Ctid.ToLower() )
+                                list.Add( entity );
+
+                            prevCTID = entity.Ctid.ToLower();
                         }
                     }
                 }
@@ -135,13 +140,15 @@ namespace workIT.Factories
                     if ( list != null && list.Count > 0 )
                     {
                         DBEntity dbentity = list[ 0 ];
-                        entity = new ThisEntity();
-                        entity.EnvelopeId = dbentity.EnvelopeId;
-                        entity.Ctid = dbentity.Ctid;
-                        entity.EntityTypedId = dbentity.EntityTypedId;
-                        entity.Payload = dbentity.Payload;
-                        entity.DownloadDate = dbentity.DownloadDate;
-                        if ( dbentity.DocumentUpdatedAt != null )
+						entity = new ThisEntity
+						{
+							EnvelopeId = dbentity.EnvelopeId,
+							Ctid = dbentity.Ctid,
+							EntityTypedId = dbentity.EntityTypedId,
+							Payload = dbentity.Payload,
+							DownloadDate = dbentity.DownloadDate
+						};
+						if ( dbentity.DocumentUpdatedAt != null )
                             entity.DocumentUpdatedAt = ( DateTime ) dbentity.DocumentUpdatedAt;
                     }
                 }
@@ -250,7 +257,7 @@ namespace workIT.Factories
                         efEntity.ReferencedEntityTypeId = referencedEntityTypeId;
                         efEntity.EntityBaseId = newEntityId;
                         efEntity.EntityUid = entityUid;
-                        efEntity.IsResolved = isResolved;
+                        efEntity.IsResolved = setAsResolved;
 
                         context.Import_EntityResolution.Add( efEntity );
                         int count = context.SaveChanges();
@@ -324,6 +331,12 @@ namespace workIT.Factories
 			{
 				return entity;
 			}
+			//consider, although we already have a ctid lookp fall back
+			string altId = "";
+			if ( referencedAtId.ToLower().IndexOf( "/graph" ) > -1 )
+				altId = referencedAtId.Replace( "/graph", "/resources" );
+			else
+				altId = referencedAtId.Replace( "/resources", "/graph" );
 			try
 			{
 				using ( var context = new EntityContext() )

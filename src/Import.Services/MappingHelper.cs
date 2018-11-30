@@ -8,7 +8,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using MJ = RA.Models.Json;
-using InputAddress1 = RA.Models.Json.Address;
 using InputAddress = RA.Models.Json.Place;
 using workIT.Models;
 using MC = workIT.Models.Common;
@@ -65,23 +64,23 @@ namespace Import.Services
 			else
 				return "";
 		}
-		public void MapIdentifierValueListToTextValueProfile( List<MJ.IdentifierValue> list, List<WPM.TextValueProfile> output )
-        {
-            if ( list == null || list.Count == 0 )
-                return;
+		//public void MapIdentifierValueListToTextValueProfile( List<MJ.IdentifierValue> list, List<WPM.TextValueProfile> output )
+  //      {
+  //          if ( list == null || list.Count == 0 )
+  //              return;
 
 
-            foreach ( var property in list )
-            {
-                var tvp = new WPM.TextValueProfile
-                {
-                    TextTitle = property.Name,
-                    TextValue = property.IdentifierValueCode
-                };
-                output.Add( tvp );
-            }
+  //          foreach ( var property in list )
+  //          {
+  //              var tvp = new WPM.TextValueProfile
+  //              {
+  //                  TextTitle = property.Name,
+  //                  TextValue = property.IdentifierValueCode
+  //              };
+  //              output.Add( tvp );
+  //          }
 
-        }
+  //      }
 
         public static List<WPM.Entity_IdentifierValue> MapIdentifierValueList( List<MJ.IdentifierValue> property )
         {
@@ -120,33 +119,33 @@ namespace Import.Services
             return output;
         }
 
-        public static List<WPM.TextValueProfile> MapToTextValueProfile( List<MJ.IdProperty> property )
-        {
-            List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
-            if ( property == null || property.Count == 0 )
-                return list;
+        //public static List<WPM.TextValueProfile> MapToTextValueProfile( List<MJ.IdProperty> property )
+        //{
+        //    List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
+        //    if ( property == null || property.Count == 0 )
+        //        return list;
 
-            foreach ( var item in property )
-            {
-                var tvp = new WPM.TextValueProfile { TextValue = item.Id };
-                list.Add( tvp );
-            }
-            return list;
-        } //
+        //    foreach ( var item in property )
+        //    {
+        //        var tvp = new WPM.TextValueProfile { TextValue = item.Id };
+        //        list.Add( tvp );
+        //    }
+        //    return list;
+        //} //
 
-        public static List<WPM.TextValueProfile> MapToTextValueProfile( List<MJ.OrganizationBase> property )
-        {
-            List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
-            if ( property == null || property.Count == 0 )
-                return list;
+        //public static List<WPM.TextValueProfile> MapToTextValueProfile( List<MJ.OrganizationBase> property )
+        //{
+        //    List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
+        //    if ( property == null || property.Count == 0 )
+        //        return list;
 
-            foreach ( var item in property )
-            {
-                var tvp = new WPM.TextValueProfile { TextValue = item.CtdlId };
-                list.Add( tvp );
-            }
-            return list;
-        } //
+        //    foreach ( var item in property )
+        //    {
+        //        var tvp = new WPM.TextValueProfile { TextValue = item.CtdlId };
+        //        list.Add( tvp );
+        //    }
+        //    return list;
+        //} //
         #endregion
 
         #region  CredentialAlignmentObject
@@ -165,7 +164,7 @@ namespace Import.Services
                 {
 					output.Items.Add( new workIT.Models.Common.EnumeratedItem()
 					{
-						SchemaName = item.TargetNode != null ? item.TargetNode : "",
+						SchemaName = item.TargetNode ?? "",
 						Name = item.TargetNodeName ?? ""
 					} );
                 }
@@ -186,7 +185,7 @@ namespace Import.Services
 			{
 				output.Items.Add( new workIT.Models.Common.EnumeratedItem()
 				{
-					SchemaName = input.TargetNode != null ? input.TargetNode : "",
+					SchemaName = input.TargetNode ?? "",
 					Name = input.TargetNodeName ?? ""
 				} );
 			}
@@ -196,27 +195,42 @@ namespace Import.Services
 		public static List<MC.CredentialAlignmentObjectProfile> MapCAOListToFramework( List<MJ.CredentialAlignmentObject> input )
 		{
 			List<MC.CredentialAlignmentObjectProfile> output = new List<workIT.Models.Common.CredentialAlignmentObjectProfile>();
+            MC.CredentialAlignmentObjectProfile entity = new MC.CredentialAlignmentObjectProfile();
 
-			if ( input == null || input.Count == 0 )
+            if ( input == null || input.Count == 0 )
 				return output;
 
 			foreach ( MJ.CredentialAlignmentObject item in input )
 			{
-				if ( item != null && !string.IsNullOrEmpty( item.TargetNodeName ) )
+				if ( item != null && !string.IsNullOrWhiteSpace( item.TargetNodeName ) )
 				{
-					output.Add( new MC.CredentialAlignmentObjectProfile()
-					{
-						TargetNode = item.TargetNode,
-						CodedNotation = item.CodedNotation,
+                    entity = new MC.CredentialAlignmentObjectProfile()
+                    {
+                        TargetNode = item.TargetNode ?? "",
+                        CodedNotation = item.CodedNotation ?? "",
 
-						TargetNodeName = item.TargetNodeName,
-						TargetNodeDescription = item.TargetNodeDescription,
+                        TargetNodeName = item.TargetNodeName ?? "",
+                        TargetNodeDescription = item.TargetNodeDescription ?? "",
 
-						FrameworkName = item.FrameworkName,
-						FrameworkUrl = item.Framework,
-						Weight = item.Weight
-						//Weight = StringtoDecimal( item.Weight )
-					} );
+                        FrameworkName = item.FrameworkName ?? "",
+                        //won't know if url or registry uri
+                        //SourceUrl = item.Framework,
+                        Weight = item.Weight
+                        //Weight = StringtoDecimal( item.Weight )
+                    } ;
+                    if ( !string.IsNullOrWhiteSpace( item.Framework ) )
+                    {
+						if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1
+							|| item.Framework.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) == -1 )
+						{
+                            entity.SourceUrl = item.Framework;
+                        }
+                        else
+                        {
+                            entity.FrameworkUri = item.Framework;
+                        }
+                    }
+                    output.Add( entity );
 				}
 
 			}
@@ -226,26 +240,42 @@ namespace Import.Services
 		public static List<MC.CredentialAlignmentObjectProfile> MapCAOListToCompetencies( List<MJ.CredentialAlignmentObject> input )
 		{
 			List<MC.CredentialAlignmentObjectProfile> output = new List<workIT.Models.Common.CredentialAlignmentObjectProfile>();
-			
-			if ( input == null || input.Count == 0 )
+            MC.CredentialAlignmentObjectProfile cao = new MC.CredentialAlignmentObjectProfile();
+
+            if ( input == null || input.Count == 0 )
 				return output;
 
 			foreach ( MJ.CredentialAlignmentObject item in input )
 			{
 				if ( item != null && !string.IsNullOrEmpty(item.TargetNodeName) )
 				{
-					output.Add( new MC.CredentialAlignmentObjectProfile()
-					{
-						TargetNodeName = item.TargetNodeName,
-						TargetNodeDescription = item.TargetNodeDescription,
-						TargetNode = item.TargetNode ,
-						CodedNotation = item.CodedNotation,
-						FrameworkName = item.FrameworkName,
-						FrameworkUrl = item.Framework,
-						Weight = item.Weight
-						//Weight = StringtoDecimal(item.Weight)
-					} );
-				}
+                    cao = new MC.CredentialAlignmentObjectProfile()
+                    {
+                        TargetNodeName = item.TargetNodeName,
+                        TargetNodeDescription = item.TargetNodeDescription,
+                        TargetNode = item.TargetNode,
+                        CodedNotation = item.CodedNotation,
+                        FrameworkName = item.FrameworkName,
+                        //FrameworkUrl = item.Framework,
+                        Weight = item.Weight
+                        //Weight = StringtoDecimal(item.Weight)
+                    };
+                    //Framework willl likely be a registry url, so should be saved as FrameworkUri. The SourceUrl will be added from a download of the actual framework
+                    if ( !string.IsNullOrWhiteSpace( item.Framework ) )
+                    {
+                        if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1 
+							|| item.Framework.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) == -1 )
+						{
+                            cao.SourceUrl = item.Framework;
+                        }
+                        else
+                        {
+                            cao.FrameworkUri = item.Framework;
+                        }
+                    }
+
+                    output.Add(cao);
+                }
 
             }
             return output;
@@ -319,7 +349,7 @@ namespace Import.Services
                                 Name = cpi.Name,
                                 ContactType = cpi.ContactType
                             };
-                            cp.ContactOption = MapListToString( cpi.ContactOption );
+                            //cp.ContactOption = MapListToString( cpi.ContactOption );
                             cp.PhoneNumbers = cpi.PhoneNumbers;
                             cp.Emails = cpi.Emails;
                             cp.SocialMediaPages = cpi.SocialMediaPages;
@@ -357,7 +387,7 @@ namespace Import.Services
                             Name = cpi.Name,
                             ContactType = cpi.ContactType
                         };
-                        cp.ContactOption = MapListToString( cpi.ContactOption );
+                        //cp.ContactOption = MapListToString( cpi.ContactOption );
                         cp.PhoneNumbers = cpi.PhoneNumbers;
                         cp.Emails = cpi.Emails;
                         cp.SocialMediaPages = cpi.SocialMediaPages;
@@ -372,33 +402,33 @@ namespace Import.Services
             return list;
         } //
 
-        public static List<MC.ContactPoint> FormatContactPoints( List<MJ.ContactPoint> contactPoints, ref SaveStatus status )
-        {
-            List<MC.ContactPoint> list = new List<MC.ContactPoint>();
-            if ( contactPoints == null || contactPoints.Count == 0 )
-                return list;
+    //    public static List<MC.ContactPoint> FormatContactPoints( List<MJ.ContactPoint> contactPoints, ref SaveStatus status )
+    //    {
+    //        List<MC.ContactPoint> list = new List<MC.ContactPoint>();
+    //        if ( contactPoints == null || contactPoints.Count == 0 )
+    //            return list;
 
-            MC.ContactPoint cp = new MC.ContactPoint();
+    //        MC.ContactPoint cp = new MC.ContactPoint();
 
-            foreach ( var a in contactPoints )
-            {
-                cp = new MC.ContactPoint()
-                {
-                    Name = a.Name,
-                    ContactType = a.ContactType
-                };
-                cp.ContactOption = MapListToString( a.ContactOption );
-                cp.PhoneNumbers = a.PhoneNumbers;
-                cp.Emails = a.Emails;
-                cp.SocialMediaPages = a.SocialMediaPages;
-				if (cp.PhoneNumber.Count > 0
-					|| cp.Email.Count > 0
-					|| cp.SocialMediaPages.Count > 0)
-					list.Add( cp );
-            }
+    //        foreach ( var a in contactPoints )
+    //        {
+    //            cp = new MC.ContactPoint()
+    //            {
+    //                Name = a.Name,
+    //                ContactType = a.ContactType
+    //            };
+    //            cp.ContactOption = MapListToString( a.ContactOption );
+    //            cp.PhoneNumbers = a.PhoneNumbers;
+    //            cp.Emails = a.Emails;
+    //            cp.SocialMediaPages = a.SocialMediaPages;
+				//if (cp.PhoneNumber.Count > 0
+				//	|| cp.Email.Count > 0
+				//	|| cp.SocialMediaPages.Count > 0)
+				//	list.Add( cp );
+    //        }
 
-            return list;
-        } //
+    //        return list;
+    //    } //
 
         public static List<MC.JurisdictionProfile> MapToJurisdiction( List<MJ.JurisdictionProfile> jps, ref SaveStatus status )
         {
@@ -496,7 +526,7 @@ namespace Import.Services
             return list;
 		} //
 
-		private static MC.GeoCoordinates ResolveGeoCoordinates( MJ.Place input )
+        private static MC.GeoCoordinates ResolveGeoCoordinates( MJ.Place input )
 		{
 			var gc = new MC.GeoCoordinates();
 			gc.Name = input.Name;
@@ -560,23 +590,7 @@ namespace Import.Services
             return output;
         }
 
-		private static MC.Address MapAddress( MJ.AvailableAt input )
-		{
-			MC.Address output = new MC.Address()
-			{
-				Name = input.Name,
-				Address1 = input.StreetAddress,
-				//Address2 = input.Address2,
-				City = input.City,
-				Country = input.Country,
-				AddressRegion = input.AddressRegion,
-				PostalCode = input.PostalCode,
-				Latitude = input.Latitude,
-				Longitude = input.Longitude
-			};
 
-			return output;
-		}
 		#endregion
 
 		#region  Process profile
@@ -602,9 +616,9 @@ namespace Import.Services
 
                 cp.SubjectWebpage = input.SubjectWebpage;
                 cp.ExternalInputType = MapCAOListToEnumermation( input.ExternalInputType );
-                cp.ProcessMethod = input.ProcessMethod != null ? input.ProcessMethod : "";
-                cp.ProcessStandards = input.ProcessStandards != null ? input.ProcessStandards : "";
-                cp.ScoringMethodExample = input.ScoringMethodExample != null ? input.ScoringMethodExample : "";
+                cp.ProcessMethod = input.ProcessMethod ?? "";
+                cp.ProcessStandards = input.ProcessStandards ?? "";
+                cp.ScoringMethodExample = input.ScoringMethodExample ?? "";
                 cp.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
 
                 //while the profiles is a list, we are only handling single
@@ -747,37 +761,37 @@ namespace Import.Services
         /// <param name="input">object with json string</param>
         /// <param name="status"></param>
         /// <returns></returns>
-        public static Guid MapOrganizationReferenceGuid( object input, ref SaveStatus status )
-        {
-            string registryAtId = "";
-            bool isResolved = false;
-            Guid entityRef = new Guid();
-            string objectString = input.ToString().Trim();
-            try
-            {
-                //add a property name for the DeserializeObject
-                objectString = objectString.Replace( "[", "IdList:[ " );
-                if ( objectString.IndexOf( "{" ) > 0 )
-                    objectString = "{ " + objectString + "}";
+        //public static Guid MapOrganizationReferenceGuid( object input, ref SaveStatus status )
+        //{
+        //    string registryAtId = "";
+        //    bool isResolved = false;
+        //    Guid entityRef = new Guid();
+        //    string objectString = input.ToString().Trim();
+        //    try
+        //    {
+        //        //add a property name for the DeserializeObject
+        //        objectString = objectString.Replace( "[", "IdList:[ " );
+        //        if ( objectString.IndexOf( "{" ) > 0 )
+        //            objectString = "{ " + objectString + "}";
 
-                EntityReferenceHelper data = Newtonsoft.Json.JsonConvert.DeserializeObject<EntityReferenceHelper>( objectString );
+        //        EntityReferenceHelper data = Newtonsoft.Json.JsonConvert.DeserializeObject<EntityReferenceHelper>( objectString );
 
-                //extract the @Id
-                if ( data != null && data.IdList != null && data.IdList.Count > 0 )
-                {
-                    //this method only cares about the first entry
-                    registryAtId = data.IdList[0].CtdlId;
-                    return ResolveOrgRegistryAtIdToGuid( registryAtId, ref status, ref isResolved );
+        //        //extract the @Id
+        //        if ( data != null && data.IdList != null && data.IdList.Count > 0 )
+        //        {
+        //            //this method only cares about the first entry
+        //            registryAtId = data.IdList[0].CtdlId;
+        //            return ResolveOrgRegistryAtIdToGuid( registryAtId, ref status, ref isResolved );
 
-                }
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.LogError( ex, string.Format( "MappingHelper.MapOrganizationReferenceGuid(object input), objectString: {0}", objectString ) );
-                status.AddError( string.Format( "MappingHelper.MapOrganizationReferenceGuid(object input), objectString: {0}", objectString ) );
-            }
-            return entityRef;
-        }
+        //        }
+        //    }
+        //    catch ( Exception ex )
+        //    {
+        //        LoggingHelper.LogError( ex, string.Format( "MappingHelper.MapOrganizationReferenceGuid(object input), objectString: {0}", objectString ) );
+        //        status.AddError( string.Format( "MappingHelper.MapOrganizationReferenceGuid(object input), objectString: {0}", objectString ) );
+        //    }
+        //    return entityRef;
+        //}
 
 
 		public static List<Guid> MapOrganizationReferenceGuids( List<MJ.OrganizationBase> input, ref SaveStatus status )
@@ -865,7 +879,7 @@ namespace Import.Services
                 SocialMediaPages = MappingHelper.MapToTextValueProfile( input.SocialMedia ),
                 RowId = Guid.NewGuid()
             };
-            if ( new OrganizationManager().AddOrganizationReference( org, ref status ) > 0 )
+            if ( new OrganizationManager().AddBaseReference( org, ref status ) > 0 )
                 entityRef = org.RowId;
 
             return entityRef;
@@ -880,35 +894,35 @@ namespace Import.Services
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static Guid MapEntityReferenceGuid( List<MJ.EntityBase> input, int entityTypeId, ref SaveStatus status )
-        {
+        //public static Guid MapEntityReferenceGuid( List<MJ.EntityBase> input, int entityTypeId, ref SaveStatus status )
+        //{
 
-            Guid entityRef = new Guid();
-            string registryAtId = "";
-            //var or = new List<RA.Models.Input.EntityReference>();
-            if ( input == null || input.Count < 1 )
-                return entityRef;
+        //    Guid entityRef = new Guid();
+        //    string registryAtId = "";
+        //    //var or = new List<RA.Models.Input.EntityReference>();
+        //    if ( input == null || input.Count < 1 )
+        //        return entityRef;
 
-            //just take first one
-            foreach ( var target in input )
-            {
-                //determine if just Id, or base
-                if ( !string.IsNullOrWhiteSpace( target.CtdlId ) )
-                {
-                    registryAtId = target.CtdlId;
-                    return ResolveEntityRegistryAtIdToGuid( registryAtId, entityTypeId, ref status );
-                    //break;
-                }
-                else
-                {
-                    //should be a org reference
-                    //if type present,can use
-                    return ResolveEntityBaseToGuid( target, entityTypeId, ref status );
-                }
-            }
+        //    //just take first one
+        //    foreach ( var target in input )
+        //    {
+        //        //determine if just Id, or base
+        //        if ( !string.IsNullOrWhiteSpace( target.CtdlId ) )
+        //        {
+        //            registryAtId = target.CtdlId;
+        //            return ResolveEntityRegistryAtIdToGuid( registryAtId, entityTypeId, ref status );
+        //            //break;
+        //        }
+        //        else
+        //        {
+        //            //should be a org reference
+        //            //if type present,can use
+        //            return ResolveEntityBaseToGuid( target, entityTypeId, ref status );
+        //        }
+        //    }
 
-            return entityRef;
-        }
+        //    return entityRef;
+        //}
 
         /// <summary>
         /// Map a List of EntityBases to a List of Guids
@@ -919,7 +933,6 @@ namespace Import.Services
         /// <returns></returns>
         public static List<Guid> MapEntityReferenceGuids( List<MJ.EntityBase> input, int entityTypeId, ref SaveStatus status )
         {
-
             Guid entityRef = new Guid();
             List<Guid> entityRefs = new List<Guid>();
             string registryAtId = "";
@@ -970,7 +983,7 @@ namespace Import.Services
         {
             Guid entityRef = new Guid();
             int start = status.Messages.Count;
-            if ( !string.IsNullOrWhiteSpace( input.Name ) )
+            if ( string.IsNullOrWhiteSpace( input.Name ) )
                 status.AddError( "Invalid EntityBase, missing name" );
             //if ( !string.IsNullOrWhiteSpace( input.Description ) )
             //    status.AddError( "Invalid EntityBase, missing Description" );
@@ -979,16 +992,29 @@ namespace Import.Services
 
             if ( start < status.Messages.Count )
                 return entityRef;
-            string url = input.SubjectWebpage;
+            
 			//look up by subject webpage
 			//to be strict, we could use EntityStateId = 2. However, we could cover bases and get full if present
 			//NOTE: need to avoid duplicate swp's; so  should combine
-			//if ()
-			MC.Entity entity = EntityManager.Entity_Cache_Get( entityTypeId, input.Name, url );
+			//18-08-24 mp - don't think that an entity ref will be in the cache???
+			MC.Entity entity = EntityManager.Entity_Cache_Get( entityTypeId, input.Name, input.SubjectWebpage );
 			if ( entity != null && entity.Id > 0 )
-				entityRef = entity.EntityUid;
+                return entity.EntityUid;
 
-			return entityRef;
+            int entityRefId = 0;
+            //if not found, then create
+            if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+                entityRefId = ResolveBaseEntityAsCredential( input, ref entityRef, ref status );
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
+                entityRefId = ResolveBaseEntityAsAssessment( input, ref entityRef, ref status );
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+                entityRefId = ResolveBaseEntityAsLopp( input, ref entityRef, ref status );
+            else
+            {
+                //unexpected, should not have entity references for manifests
+                status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+            }
+            return entityRef;
         }
 
         /// <summary>
@@ -1037,14 +1063,31 @@ namespace Import.Services
             return entityRefs;
         }
 
-		/// <summary>
-		/// Entities will be string, where cannot be a third party reference
-		/// </summary>
-		/// <param name="input"></param>
-		/// <param name="entityTypeId"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public static List<int> MapEntityReferences( List<string> input, int entityReferenceTypeId, int parentEntityTypeId, ref SaveStatus status )
+        //public static List<workIT.Models.ProfileModels.LearningOpportunityProfile> MapToLearningOpportunityProfile( List<Guid> input, int entityTypeId, ref SaveStatus status )
+        //{
+        //    var output = new List<workIT.Models.ProfileModels.LearningOpportunityProfile>();
+
+        //    //var or = new List<RA.Models.Input.EntityReference>();
+        //    if ( input == null || input.Count < 1 )
+        //        return output;
+
+        //    //just take first one
+        //    foreach ( var target in input )
+        //    {
+        //        output.AddRange( Entity_LearningOpportunityManager.LearningOpps_GetAll( target, false, false ) );
+        //    }
+
+        //    return output;
+        //}
+
+        /// <summary>
+        /// Entities will be string, where cannot be a third party reference
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="entityTypeId"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public static List<int> MapEntityReferences( List<string> input, int entityReferenceTypeId, int parentEntityTypeId, ref SaveStatus status )
 		{
 			int entityRef = 0;
 			List<int> entityRefs = new List<int>();
@@ -1095,6 +1138,7 @@ namespace Import.Services
         {
 
             int entityRefId = 0;
+            Guid entityRef = new Guid();
             int start = status.Messages.Count;
             if ( string.IsNullOrWhiteSpace( input.Name ) )
                 status.AddError( "Invalid EntityBase, missing name" );
@@ -1106,68 +1150,83 @@ namespace Import.Services
             if ( start < status.Messages.Count )
                 return entityRefId;
 
-            string swp = input.SubjectWebpage;
             //look up by subject webpage
             //to be strict, we could use EntityStateId = 2. However, we could cover bases and get full if present
             //NOTE: need to avoid duplicate swp's; so  should combine
             if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
-                entityRefId = ResolveBaseEntityAsCredential( input, swp, ref status );
+                entityRefId = ResolveBaseEntityAsCredential( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
-                entityRefId = ResolveBaseEntityAsAssessment( input, swp, ref status );
+                entityRefId = ResolveBaseEntityAsAssessment( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-                entityRefId = ResolveBaseEntityAsLopp( input, swp, ref status );
+                entityRefId = ResolveBaseEntityAsLopp( input, ref entityRef, ref status );
             else
             {
                 //unexpected, should not have entity references for manifests
-                status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, swp ) );
+                status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
             }
 
 
             return entityRefId;
         }
-        private static int ResolveBaseEntityAsCredential( MJ.EntityBase input, string swp, ref SaveStatus status )
+        private static int ResolveBaseEntityAsCredential( MJ.EntityBase input, ref Guid entityUid, ref SaveStatus status )
         {
             int entityRefId = 0;
-
-            MC.Credential entity = CredentialManager.GetBySubjectWebpage( swp );
+            //MC.Credential entity = CredentialManager.GetBySubjectWebpage( input.SubjectWebpage );
+            MC.Credential entity = CredentialManager.GetByName_SubjectWebpage( input.Name, input.SubjectWebpage );
             if ( entity != null && entity.Id > 0 )
+            {
+                entityUid = entity.RowId;
                 return entity.Id;
-			entity = new workIT.Models.Common.Credential()
+            }
+            entity = new workIT.Models.Common.Credential()
 			{
 				Name = input.Name,
 				SubjectWebpage = input.SubjectWebpage,
-				Description = input.Description
-			};
+				Description = input.Description,
+                CredentialTypeSchema = input.Type
+            };
 			if ( new CredentialManager().AddBaseReference( entity, ref status ) > 0 )
+            {
+                entityUid = entity.RowId;
                 entityRefId = entity.Id;
+            }
 
             return entityRefId;
         }
-        private static int ResolveBaseEntityAsAssessment( MJ.EntityBase input, string swp, ref SaveStatus status )
+        private static int ResolveBaseEntityAsAssessment( MJ.EntityBase input, ref Guid entityUid, ref SaveStatus status )
         {
             int entityRefId = 0;
 
-            WPM.AssessmentProfile entity = AssessmentManager.GetBySubjectWebpage( swp );
+            WPM.AssessmentProfile entity = AssessmentManager.GetByName_SubjectWebpage( input.Name, input.SubjectWebpage );
             if ( entity != null && entity.Id > 0 )
+            {
+                entityUid = entity.RowId;
                 return entity.Id;
-			entity = new workIT.Models.ProfileModels.AssessmentProfile()
+            }
+            entity = new workIT.Models.ProfileModels.AssessmentProfile()
 			{
 				Name = input.Name,
 				SubjectWebpage = input.SubjectWebpage,
 				Description = input.Description
 			};
 			if ( new AssessmentManager().AddBaseReference( entity, ref status ) > 0 )
+            {
+                entityUid = entity.RowId;
                 entityRefId = entity.Id;
+            }
 
             return entityRefId;
         }
-        private static int ResolveBaseEntityAsLopp( MJ.EntityBase input, string swp, ref SaveStatus status )
+        private static int ResolveBaseEntityAsLopp( MJ.EntityBase input, ref Guid entityUid, ref SaveStatus status )
         {
             int entityRefId = 0;
 
-            WPM.LearningOpportunityProfile entity = LearningOpportunityManager.GetBySubjectWebpage( swp );
+            WPM.LearningOpportunityProfile entity = LearningOpportunityManager.GetByName_SubjectWebpage( input.Name, input.SubjectWebpage );
             if ( entity != null && entity.Id > 0 )
+            {
+                entityUid = entity.RowId;
                 return entity.Id;
+            }
 			entity = new workIT.Models.ProfileModels.LearningOpportunityProfile()
 			{
 				Name = input.Name,
@@ -1175,50 +1234,14 @@ namespace Import.Services
 				Description = input.Description
 			};
             if ( new LearningOpportunityManager().AddBaseReference( entity, ref status ) > 0 )
+            {
+                entityUid = entity.RowId;
                 entityRefId = entity.Id;
+            }
 
             return entityRefId;
         }
 
-		///THIS SHOULD NOT BE POSSIBLE
-		private static int ResolveBaseEntityAsConditionManifest( MJ.EntityBase input, string swp, ref SaveStatus status )
-        {
-            int entityRefId = 0;
-
-            MC.ConditionManifest entity = ConditionManifestManager.GetBySubjectWebpage( swp );
-            if ( entity != null && entity.Id > 0 )
-                return entity.Id;
-			entity = new workIT.Models.Common.ConditionManifest()
-			{
-				Name = input.Name,
-				SubjectWebpage = input.SubjectWebpage,
-				Description = input.Description
-			};
-			if ( new ConditionManifestManager().AddBaseReference( entity, ref status ) > 0 )
-                entityRefId = entity.Id;
-
-            return entityRefId;
-        }
-
-		///THIS SHOULD NOT BE POSSIBLE
-		private static int ResolveBaseEntityAsCostManifest( MJ.EntityBase input, string swp, ref SaveStatus status )
-        {
-            int entityRefId = 0;
-
-            MC.CostManifest entity = CostManifestManager.GetBySubjectWebpage( swp );
-            if ( entity != null && entity.Id > 0 )
-                return entity.Id;
-			entity = new workIT.Models.Common.CostManifest()
-			{
-				Name = input.Name,
-				CostDetails = input.SubjectWebpage,
-				Description = input.Description
-			};
-			if ( new CostManifestManager().AddBaseReference( entity, ref status ) > 0 )
-                entityRefId = entity.Id;
-
-            return entityRefId;
-        }
         #endregion
 
 
@@ -1244,27 +1267,11 @@ namespace Import.Services
                 cp.SubmissionOf = MapToTextValueProfile( input.SubmissionOf );
 
                 //while the input is a list, we are only handling single
-                //cp.AssertedByAgentUid = MapOrganizationReferenceGuid( input.AssertedBy, ref status );
-                //string assertedByReference = "";
                 if ( input.AssertedBy != null )
                 {
 					cp.AssertedByAgentUid = MapOrganizationReferenceGuidFromObject( input.AssertedBy, ref status );
-					//assertedByReference = input.AssertedBy.ToString();
-					//Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( assertedByReference );
-					//if ( assertedByReference.IndexOf( "@id" ) > -1 )
-     //               {
-     //                   cp.AssertedByAgentUid = MapOrganizationReferenceGuid( input.AssertedBy, ref status );
 
-     //               }
-     //               else
-     //               {
-					//	//org references
-					//	//need to determine the json pattern
-						
-					//}
                 }
-
-
 
                 cp.Experience = input.Experience;
                 cp.MinimumAge = input.MinimumAge;
@@ -1299,8 +1306,6 @@ namespace Import.Services
 					LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile. Has learning opportunities. Mapped to list: " + cp.TargetLearningOpportunityIds.Count.ToString() );
 				}
 
-				//if ( input.TargetCompetency != null && input.TargetCompetency.Count > 0 )
-				//cp.TargetCompetency = FormatCompetencies( input.RequiresCompetency, "Requires", ref messages );
 				cp.TargetCompetencies = MappingHelper.MapCAOListToCompetencies( input.TargetCompetency );
 				list.Add( cp );
             }
@@ -1344,76 +1349,76 @@ namespace Import.Services
             //return OFormatCosts( costs, ref status );
         }
 
-        private static List<WPM.CostProfile> OFormatCosts( List<MJ.CostProfile> costs, ref SaveStatus status )
-        {
-            if ( costs == null || costs.Count == 0 )
-                return null;
+        //private static List<WPM.CostProfile> OFormatCosts( List<MJ.CostProfile> costs, ref SaveStatus status )
+        //{
+        //    if ( costs == null || costs.Count == 0 )
+        //        return null;
 
-            List<WPM.CostProfile> list = new List<WPM.CostProfile>();
-            var cp = new WPM.CostProfile();
+        //    List<WPM.CostProfile> list = new List<WPM.CostProfile>();
+        //    var cp = new WPM.CostProfile();
 
-            foreach ( MJ.CostProfile item in costs )
-            {
-                cp = new WPM.CostProfile();
-                cp.Description = item.Description;
-                cp.CostDetails = item.CostDetails;
+        //    foreach ( MJ.CostProfile item in costs )
+        //    {
+        //        cp = new WPM.CostProfile();
+        //        cp.Description = item.Description;
+        //        cp.CostDetails = item.CostDetails;
 
-                //NEED validation
-                cp.Currency = item.Currency;
-                cp.ProfileName = item.Name;
-                cp.EndDate = item.EndDate;
-                cp.StartDate = item.StartDate;
+        //        //NEED validation
+        //        cp.Currency = item.Currency;
+        //        cp.ProfileName = item.Name;
+        //        cp.EndDate = item.EndDate;
+        //        cp.StartDate = item.StartDate;
 
-                cp.Jurisdiction = MapToJurisdiction( item.Jurisdiction, ref status );
+        //        cp.Jurisdiction = MapToJurisdiction( item.Jurisdiction, ref status );
 
-                WPM.CostProfileItem cpi = null;
+        //        WPM.CostProfileItem cpi = null;
 
-                if ( item.DirectCostType != null && item.DirectCostType.Count > 0 )
-                {
-                    if ( cpi == null )
-                        cpi = new workIT.Models.ProfileModels.CostProfileItem();
-                    cpi.DirectCostType = MapCAOListToEnumermation( item.DirectCostType );
-                }
+        //        if ( item.DirectCostType != null && !string.IsNullOrWhiteSpace(item.DirectCostType.TargetNodeName) )
+        //        {
+        //            if ( cpi == null )
+        //                cpi = new workIT.Models.ProfileModels.CostProfileItem();
+        //            cpi.DirectCostType = MapCAOToEnumermation( item.DirectCostType );
+        //        }
 
-                if ( item.ResidencyType != null && item.ResidencyType.Count > 0 )
-                {
-                    if ( cpi == null )
-                        cpi = new workIT.Models.ProfileModels.CostProfileItem();
-                    cpi.ResidencyType = MapCAOListToEnumermation( item.ResidencyType );
-                }
+        //        if ( item.ResidencyType != null && item.ResidencyType.Count > 0 )
+        //        {
+        //            if ( cpi == null )
+        //                cpi = new workIT.Models.ProfileModels.CostProfileItem();
+        //            cpi.ResidencyType = MapCAOListToEnumermation( item.ResidencyType );
+        //        }
 
-                if ( item.AudienceType != null && item.AudienceType.Count > 0 )
-                {
-                    if ( cpi == null )
-                        cpi = new workIT.Models.ProfileModels.CostProfileItem();
-                    cpi.ApplicableAudienceType = MapCAOListToEnumermation( item.AudienceType );
-                }
+        //        if ( item.AudienceType != null && item.AudienceType.Count > 0 )
+        //        {
+        //            if ( cpi == null )
+        //                cpi = new workIT.Models.ProfileModels.CostProfileItem();
+        //            cpi.ApplicableAudienceType = MapCAOListToEnumermation( item.AudienceType );
+        //        }
 
-                if ( cpi == null )
-                    cpi = new workIT.Models.ProfileModels.CostProfileItem();
-                cpi.PaymentPattern = item.PaymentPattern;
-                cpi.Price = item.Price;
-                if ( cpi != null )
-                    cp.Items.Add( cpi );
+        //        if ( cpi == null )
+        //            cpi = new workIT.Models.ProfileModels.CostProfileItem();
+        //        cpi.PaymentPattern = item.PaymentPattern;
+        //        cpi.Price = item.Price;
+        //        if ( cpi != null )
+        //            cp.Items.Add( cpi );
 
-                //cp.Region = MapRegions( item.Region, ref messages );
+        //        //cp.Region = MapRegions( item.Region, ref messages );
 
-                //cost items - should be an array
-                //foreach ( MJ.CostProfileItem cpi in item.CostItems )
-                //{
-                //}
-                //cp.Price = item.Price <= 0 ? null : item.Price.ToString() ;
-                //cp.AudienceType = FormatCredentialAlignmentVocabs( item.AudienceType, "audience", ref messages );
-                //cp.ResidencyType = FormatCredentialAlignmentVocabs( item.ResidencyType, "residency", ref messages );
+        //        //cost items - should be an array
+        //        //foreach ( MJ.CostProfileItem cpi in item.CostItems )
+        //        //{
+        //        //}
+        //        //cp.Price = item.Price <= 0 ? null : item.Price.ToString() ;
+        //        //cp.AudienceType = FormatCredentialAlignmentVocabs( item.AudienceType, "audience", ref messages );
+        //        //cp.ResidencyType = FormatCredentialAlignmentVocabs( item.ResidencyType, "residency", ref messages );
 
-                //foreach ( var type in item.AudienceType ) cp.AudienceType.Add( FormatCredentialAlignment( type ) );
-                //foreach ( var type in item.ResidencyType ) cp.ResidencyType.Add( FormatCredentialAlignment( type ) );
+        //        //foreach ( var type in item.AudienceType ) cp.AudienceType.Add( FormatCredentialAlignment( type ) );
+        //        //foreach ( var type in item.ResidencyType ) cp.ResidencyType.Add( FormatCredentialAlignment( type ) );
 
-                list.Add( cp );
-            }
+        //        list.Add( cp );
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
         public static List<WPM.CostProfile> FormatCostProfileMerged( List<MJ.CostProfile> costs, ref SaveStatus status )
         {
@@ -1442,13 +1447,15 @@ namespace Import.Services
                     ProfileName = item.Name,
                     AudienceType = MapCAOListToEnumermation( item.AudienceType ),
 
-                    CostType = MapCAOListToEnumermation( item.DirectCostType ),
+                    CostType = MapCAOToEnumermation( item.DirectCostType ),
 
                     Price = item.Price,
 
                     PaymentPattern = item.PaymentPattern,
                     ResidencyType = MapCAOListToEnumermation( item.ResidencyType )
                 };
+                //cp.CostType = MapCAOToEnumermation(item.DirectCostType);
+
                 list.Add( cp );
             }
             return WPM.CostProfileMerged.ExpandCosts( list );
@@ -1543,9 +1550,9 @@ namespace Import.Services
                 var fa = new MC.FinancialAlignmentObject
                 {
                     AlignmentType = item.AlignmentType,
-                    Framework = item.Framework != null ? item.Framework : "",
+                    Framework = item.Framework ?? "",
                     FrameworkName = item.FrameworkName,
-                    TargetNode = item.TargetNode != null ? item.TargetNode : "",
+                    TargetNode = item.TargetNode ?? "",
                     TargetNodeDescription = item.TargetNodeDescription,
                     TargetNodeName = item.TargetNodeName,
                     Weight = item.Weight
@@ -1641,22 +1648,22 @@ namespace Import.Services
 
             return output;
         }
-        private static WPM.DurationItem FormatDurationItem( MJ.DurationItem duration )
-        {
-            if ( duration == null )
-                return null;
-            var output = new WPM.DurationItem
-            {
-                Days = duration.Days,
-                Hours = duration.Hours,
-                Minutes = duration.Minutes,
-                Months = duration.Months,
-                Weeks = duration.Weeks,
-                Years = duration.Years
-            };
+        //private static WPM.DurationItem FormatDurationItem( MJ.DurationItem duration )
+        //{
+        //    if ( duration == null )
+        //        return null;
+        //    var output = new WPM.DurationItem
+        //    {
+        //        Days = duration.Days,
+        //        Hours = duration.Hours,
+        //        Minutes = duration.Minutes,
+        //        Months = duration.Months,
+        //        Weeks = duration.Weeks,
+        //        Years = duration.Years
+        //    };
 
-            return output;
-        }
+        //    return output;
+        //}
 
         #endregion
 

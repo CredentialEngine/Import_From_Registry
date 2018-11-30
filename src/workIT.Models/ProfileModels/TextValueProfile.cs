@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.ProfileModels
 {
-	public class TextValueProfile : BaseProfile
+    [Serializable]
+    public class TextValueProfile : BaseProfile
 	{
 		//public string ProfileSummary { get; set; }
 
@@ -27,12 +28,16 @@ namespace workIT.Models.ProfileModels
 		/// <summary>
 		/// Actually container primary key (as opposed to EntityId)
 		/// </summary>
-		public int EntityBaseId { get; set; } 
-
-		/// <summary>
-		/// Title of the category (e.g. "Reference Url")
-		/// </summary>
-		public string CategoryTitle { get; set; }
+		public int EntityBaseId { get; set; }
+        /// <summary>
+        /// Actual parent type
+        /// </summary>
+        public int EntityTypeId { get; set; }
+        
+        /// <summary>
+        /// Title of the category (e.g. "Reference Url")
+        /// </summary>
+        public string CategoryTitle { get; set; }
  
 		/// <summary>
 		/// Unique Id of the code (typically in Codes.PropertyValue)
@@ -60,7 +65,8 @@ namespace workIT.Models.ProfileModels
 		/// <summary>
 		/// Value from the end user (e.g. an actual DUNS number)
 		/// </summary>
-		public string TextValue { get; set; } 
-	}
+		public string TextValue { get; set; }
+        public string TextValue_Map { get; set; }
+    }
 
 }

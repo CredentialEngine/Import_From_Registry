@@ -30,5 +30,6 @@ namespace workIT.Data.Accounts
         public string Roles { get; set; }
         public string OrgMbrs { get; set; }
         public Nullable<System.DateTime> lastLogon { get; set; }
+        public string CEAccountIdentifier { get; set; }
     }
 }

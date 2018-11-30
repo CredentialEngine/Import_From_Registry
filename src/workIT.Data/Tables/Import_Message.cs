@@ -15,7 +15,7 @@ namespace workIT.Data.Tables
     public partial class Import_Message
     {
         public int Id { get; set; }
-        public Nullable<int> ParentId { get; set; }
+        public int ParentId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<int> Severity { get; set; }
         public string Message { get; set; }

@@ -11,8 +11,8 @@ using Import.Services;
 //using CTI.Import.classes;
 using workIT.Utilities;
 using EntityServices = workIT.Services.OrganizationServices;
-using JsonEntity = RA.Models.Json.Agent;
-using ThisEntity = workIT.Models.Common.Organization;
+//using JsonEntity = RA.Models.Json.Agent;
+//using ThisEntity = workIT.Models.Common.Organization;
 using workIT.Models;
 using workIT.Factories;
 
@@ -42,7 +42,7 @@ namespace CTI.Import
 			string importError = "";
 			string importResults  = "";
 			string importNote = "";
-			ThisEntity output = new ThisEntity();
+			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
 
 			//the nbr of records needs to be monitored, to determine the optimum
@@ -69,7 +69,7 @@ namespace CTI.Import
 					isComplete = true;
 					if ( pageNbr == 1 )
 					{
-						importNote = " No records where found for date range ";
+						importNote = " Organizations: No records where found for date range ";
 
 					   Console.WriteLine( thisClassName + importNote );
 						LoggingHelper.DoTrace( 4, thisClassName + importNote );
@@ -96,7 +96,7 @@ namespace CTI.Import
 					{
 						Console.WriteLine( string.Format( "{0}. Organization EnvelopeIdentifier {1} ", cntr, item.EnvelopeIdentifier ) );
 
-						importSuccessfull = entityImportMgr.ProcessEnvelope( mgr, item, status );
+						importSuccessfull = entityImportMgr.ProcessEnvelope( item, status );
 
                     }
                     catch ( Exception ex )

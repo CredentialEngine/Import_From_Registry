@@ -11,7 +11,7 @@ using workIT.Services;
 using workIT.Utilities;
 using ImportHelpers;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
 
 	public class ImportController : BaseController
@@ -38,7 +38,7 @@ namespace WorkIT.Web.Controllers
         }
 
 		//[Authorize]
-		[ HttpGet Route( "Import/ByEnvelopeId/{envelopeId}" )]
+		[ HttpGet, Route( "Import/ByEnvelopeId/{envelopeId}" )]
 		public ActionResult ByEnvelopeId( string envelopeId)
 		{
 			if ( !IsAuthorized() )
@@ -56,7 +56,7 @@ namespace WorkIT.Web.Controllers
 				LoggingHelper.DoTrace( 4, "ImportController. Starting ByEnvelopeId: " + envelopeId );
 				status = mgr.ImportByEnvelopeId( envelopeId );
                // if ( !status.HasErrors )
-                    ElasticServices.UpdateElastic();
+                    ElasticServices.UpdateElastic(false);
             }
 			else
 			{
@@ -73,7 +73,7 @@ namespace WorkIT.Web.Controllers
 		}
 
 		//[Authorize]
-		[HttpGet Route( "Import/byctid/{ctid}" )]
+		[HttpGet, Route( "Import/byctid/{ctid}" )]
 		public ActionResult ByCtid( string ctid )
 		{
 			if ( !IsAuthorized() )
@@ -91,7 +91,7 @@ namespace WorkIT.Web.Controllers
 				LoggingHelper.DoTrace( 4, "ImportController. Starting ByCtid: " + ctid );
 				status = mgr.ImportByCtid( ctid );
                 //if ( !status.HasErrors )
-                    ElasticServices.UpdateElastic();
+                    ElasticServices.UpdateElastic( false );
             }
 			else
 			{
@@ -115,14 +115,14 @@ namespace WorkIT.Web.Controllers
 			{
 				status = mgr.ImportByCtid( model.Ctid );
                 //if ( !status.HasErrors )
-                    ElasticServices.UpdateElastic();
+                    ElasticServices.UpdateElastic( false );
 
             }
 			else if ( !string.IsNullOrWhiteSpace( model.EnvelopeId ) && model.EnvelopeId.Length == 36 )
 			{
 				status = mgr.ImportByEnvelopeId( model.EnvelopeId );
-                if ( !status.HasErrors )
-                    ElasticServices.UpdateElastic();
+                //if ( !status.HasErrors )
+                    ElasticServices.UpdateElastic( false );
 
             }
 			else
@@ -135,46 +135,22 @@ namespace WorkIT.Web.Controllers
 
 				//return RedirectToAction( "Index", "Home" );
 			}
-
+            if (status.Messages.Count == 0 && string.IsNullOrWhiteSpace(status.DetailPageUrl))
+            {
+                status.Messages.Add( new StatusMessage() { Message = "Import was successful, there is no detail page for this document type.", IsWarning = true } );
+            }
 			return View( "index", status );
 		}
 
-
-		//public ActionResult Credential( string ctid = "", string envelopeId = "" )
-		//{
-		//	ImportRequest mgr = new ImportRequest();
-		//	SaveStatus status = new SaveStatus();
-
-		//	if ( !string.IsNullOrWhiteSpace(ctid ) && ctid.Length == 39)
-		//	{
-		//		status = mgr.ImportCredentialByCtid( ctid );
-
-		//	} else if ( !string.IsNullOrWhiteSpace( envelopeId ) && envelopeId.Length == 36 )
-		//	{
-		//		status = mgr.ImportCredential( envelopeId );
-
-		//	} else
-		//	{
-		//		SetPopupErrorMessage( "ERROR - provide a valid CTID or envelopeId " );
-		//		msg.Title = "ERROR - provide a valid CTID or envelopeId";
-		//		msg.Message = "Either a valid CTID, or a valid registry envelope identifier must be provided.";
-		//		Session[ "siteMessage" ] = msg;
-		//		return View();
-
-		//		//return RedirectToAction( "Index", "Home" );
-		//	}
-
-		//	return View( "index", status );
-		//}
 		//[Authorize]
 		public JsonResult Reimport( ReimportClass context )
 		{
-			//Check permission - maybe later
-			//if ( !IsAuthorized() )
-			//{
-			//	return JsonHelper.GetJsonWithWrapper( null, false, status, null );
-			//}
-			bool valid = true;
+            //Check permission - maybe later
+            //if ( !IsAuthorized() )
+            //{
+            //	return JsonHelper.GetJsonWithWrapper( null, false, "You are not authorized for this request type.", null );
+            //}
+            bool valid = true;
 
 			ImportRequest mgr = new ImportRequest();
 			SaveStatus status = new SaveStatus();
@@ -236,7 +212,7 @@ namespace WorkIT.Web.Controllers
 			} else
 			{
 				returnStatus = "Seems to have worked??";
-                ElasticServices.UpdateElastic();
+                ElasticServices.UpdateElastic( true );
             }
 			
 			
@@ -244,7 +220,57 @@ namespace WorkIT.Web.Controllers
 			return JsonHelper.GetJsonWithWrapper( null, valid, returnStatus, null );
 		}
 
-		public class ReimportClass
+        public JsonResult Reindex( ReimportClass context )
+        {
+            //Check permission 
+            if ( !IsAuthorized() )
+            {
+                return JsonHelper.GetJsonWithWrapper( null, false, "You are not authorized for this request type.", null );
+            }
+            bool valid = true;
+
+            string filter = string.Format( " base.CTID = '{0}'", context.Ctid );
+            int processed = 0;
+            string returnStatus = "";
+            //Do the request
+            switch ( context.TypeName )
+            {
+                case "credential":
+                case "CredentialProfile":
+                    ElasticServices.Credential_UpdateIndex( filter, ref processed );
+                    break;
+
+                case "organization":
+                case "QAOrganization":
+                    ElasticServices.Organization_UpdateIndex( filter, ref processed );
+                    break;
+                case "AssessmentProfile":
+                case "assessment":
+                    ElasticServices.Assessment_UpdateIndex( filter, ref processed );
+                    break;
+                case "LearningOpportunityProfile":
+                case "learningopportunity":
+                    ElasticServices.LearningOpp_UpdateIndex( filter, ref processed );
+                    break;
+                default:
+                    valid = false;
+                    returnStatus = "Profile not handled";
+                    return JsonHelper.GetJsonWithWrapper( null, valid, returnStatus, null );
+                    //break;
+            }
+
+            if ( processed > 0 )
+                returnStatus = "Seems to have worked, try searching again.";
+            else
+            {
+                valid = false;
+                returnStatus = "Hmmm - didn't seem to work.";
+            }
+
+            //Return the result
+            return JsonHelper.GetJsonWithWrapper( null, valid, returnStatus, null );
+        }
+        public class ReimportClass
 		{
 			public int Id { get; set; }
 			public string Ctid { get; set; }

@@ -2,40 +2,57 @@
 @using Microsoft.AspNet.Identity
 @using workIT.Utilities
 @{
-    var env = UtilityManager.GetAppKeyValue( "envType", "prod" );
     var url = Request.Url.PathAndQuery.ToLower();
 
     var suffix = "";
+    var clientToken = UtilityManager.GetAppKeyValue( "finderClientToken", "" );
+    var callbackUrl = UtilityManager.GetAppKeyValue( "finderCallbackUrl", "" );
+    var loginApi = UtilityManager.GetAppKeyValue( "accountsLogin", "" );
     var loginUrl = "~/Account/Login?returnUrl=" + ( url.Contains( "/account" ) ? "" : url );
     var registerUrl = "~/Account/Register";
-    if ( Request.Url.Host.ToLower().Contains( "credfinder.test.com" )
-        || Request.Url.Host.ToLower().Contains( "localhost" )
-        )
+    var accountsRegister = UtilityManager.GetAppKeyValue( "accountsRegister", "" );
+    if ( Request.Url.Host.ToLower().Contains( "credfinder.siuccwd.com" )
+|| Request.Url.Host.ToLower().Contains( "localhost" )
+)
     {
         loginUrl = "~/Account/LoginTest?returnUrl=" + url;
         registerUrl = "~/Account/RegisterTest";
         suffix = "Test";
     }
-    var user = AccountServices.GetCurrentUser();
+    if ( string.IsNullOrWhiteSpace( loginApi ) )
+    {
+        loginApi = loginUrl;
+    }
+    else
+    {
+        loginApi += "?ClientId=" + clientToken + "&callback=" + callbackUrl;
+        registerUrl = accountsRegister;
+    }
+    //var user = AccountServices.GetCurrentUser();
 }
 <div id="mainSiteFooter">
-	<div class="footerColumn footerLogo">
-		<a id="mainSiteFooterLogo" href="@Url.Content( "~/home" )"><img src="@Url.Content( "~/Images/Common/poweredby.png" )" /></a>
-		<div id="footerLogoText">Learn more about the <a href="http://www.credentialengine.org/" target="_blank">Credential Engine</a></div>
-		<a id="mainSiteFooterLogin" href="@Url.Content( @loginUrl )">Login</a>
-	</div>
+    <div class="footerColumn footerLogo">
+        <a id="mainSiteFooterLogo" href="@Url.Content( "~/home" )"><img src="@Url.Content( "~/Images/Common/poweredby.png" )" /></a>
+        <a id="mainSiteFooterLogin" href="@Url.Content( "~/home/about" )">About Credential Finder</a>
+        <div id="footerLogoText">Learn more about the <a href="http://www.credentialengine.org/" target="_blank">Credential Engine</a></div>
+        <a id="mainSiteFooterLogin" href="@Url.Content( @loginApi )">Login</a>
+        @if ( Request.Url.Host.ToLower().Contains( "localhost" ) )
+        {
+            <a href="@Url.Content( @loginUrl )">OLD Account Login</a>
+        }
+    </div>
 	<div class="footerColumn">
 		<h2>Follow Us:</h2>
-		<a href="https://twitter.com/credengine" target="_blank"><i class="fa fa-fw fa-twitter"></i> Twitter</a>
-		<a href="https://www.facebook.com/credengine" target="_blank"><i class="fa fa-fw fa-facebook"></i> Facebook</a>
-		<a href="https://www.youtube.com/channel/UCyTpUktFYQNlLrLR4O_AcQA" target="_blank"><i class="fa fa-fw fa-youtube"></i> YouTube</a>
-		@*<a href="http://linkedin.com" target="_blank"><i class="fa fa-fw fa-linkedin"></i> LinkedIn</a>*@
-        <h2>Contact Us:</h2>
-        <a href="mailto:info@credentialengine.org" target="_blank"><i class="fa fa-fw fa-envelope"></i> Email Us</a>
+		<a href="https://twitter.com/credengine" target="_blank"><i class="fab fa-twitter-square fa-fw"></i> Twitter</a>
+		<a href="https://www.facebook.com/credengine" target="_blank"><i class="fab fa-facebook-square fa-fw"></i> Facebook</a>
+		<a href="https://www.youtube.com/channel/UCyTpUktFYQNlLrLR4O_AcQA" target="_blank"><i class="fab fa-youtube-square fa-fw"></i> YouTube</a>
+		<a href="https://www.linkedin.com/company/credential-engine" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>
+		<h2>Contact Us:</h2>
+		<a href="mailto:info@credentialengine.org" target="_blank"><i class="fa fa-fw fa-envelope"></i> Email Us</a>
 	</div>
 	<div class="footerColumn">
         <h2>Information</h2>
-        <a href="@Url.Content( "~/Reports" )">Reports</a>
+        <a href="@Url.Content( "~/Reports" )">Credential Finder Data</a>
 	</div>
 	<div class="footerColumn">
 		<h2>Policies and Terms of Use:</h2>
@@ -55,6 +72,8 @@
 		<a class="imageLink" href="http://www.luminafoundation.org/" target="_blank" title="Lumina Foundation"><img src="@Url.Content( "~/images/common/logo_lumina.jpg" )" /></a>
 		<a class="imageLink" href="https://www.jpmorganchase.com/corporate/Corporate-Responsibility/global-philanthropy.htm" target="_blank" title="JPMorgan Chase & Co."><img src="@Url.Content( "~/images/common/logo_jpmorgan.jpg" )" /></a>
 		<a class="imageLink" href="http://www.microsoft.com/" target="_blank" title="Microsoft"><img src="@Url.Content( "~/images/common/logo_microsoft.jpg" )" /></a>
-		<a class="imageLink" href="" target="_blank"><img src="@Url.Content( "~/images/common/logo_walmart.png" )" /></a>
+		<a class="imageLink" href="http://www.northropgrumman.com/CorporateResponsibility/CorporateCitizenship/Philanthropy/Pages/Foundation.aspx" target="_blank" title="Northrop Grumman Foundation"><img src="@Url.Content( "~/images/common/logo_northropgrumman.jpg" )" /></a>
+		<a class="imageLink" href="http://giving.walmart.com/" target="_blank" title="Walmart Giving"><img src="@Url.Content( "~/images/common/logo_walmart.png" )" /></a>
+		<a class="imageLink" href="https://www.ecmcfoundation.org/" target="_blank" title="ECMC Foundation"><img src="@Url.Content( "~/images/common/logo_ecmc.jpg" )" /></a>
 	</div>
 </div>

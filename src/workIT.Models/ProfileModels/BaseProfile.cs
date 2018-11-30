@@ -8,8 +8,8 @@ using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-
-	public class BaseProfile : BaseObject
+    [Serializable]
+    public class BaseProfile : BaseObject
 	{
 		public BaseProfile()
 		{

@@ -5,14 +5,20 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.OrganizationServices;
 using InputEntity = RA.Models.Json.Agent;
+
+using InputEntityV3 = RA.Models.JsonV3.Agent;
+using BNodeV3 = RA.Models.JsonV3.BlankNode;
 using ThisEntity = workIT.Models.Common.Organization;
 using workIT.Models.Common;
 using workIT.Factories;
 using workIT.Models;
+using workIT.Models.ProfileModels;
 
 namespace Import.Services
 {
@@ -28,8 +34,6 @@ namespace Import.Services
 		#region custom imports
 		public void ImportPendingRecords()
 		{
-			string registryFilter = string.Format( UtilityManager.GetAppKeyValue( "credentialRegistryResource", "http://lr-staging.learningtapestry.com/resources/{0}" ), "ce-%" );
-            //string where = string.Format( " [SubjectWebpage] like '{0}' ", registryFilter );
             string where = " [EntityStateId] = 1 ";
             int pTotalRows = 0;
 
@@ -56,7 +60,7 @@ namespace Import.Services
 		/// <param name="envelopeId"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
+		public bool RequestImportByEnvelopeId( string envelopeId, SaveStatus status )
 		{
 			//this is currently specific, assumes envelop contains an organization
 			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
@@ -75,7 +79,7 @@ namespace Import.Services
 				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
 				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
 				{
-					return ProcessEnvelope( envelope, status );
+					return CustomProcessEnvelope( envelope, status );
 				}
 				else
 					return false;
@@ -98,7 +102,7 @@ namespace Import.Services
 		/// <param name="ctid"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool ImportByCtid( string ctid, SaveStatus status )
+		public bool RequestImportByCtid( string ctid, SaveStatus status )
 		{
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
@@ -109,7 +113,6 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
 			string ctdlType = "";
 			try
 			{
@@ -117,20 +120,10 @@ namespace Import.Services
 				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
 				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
 				{
-					return ProcessEnvelope( envelope, status );
+					return CustomProcessEnvelope( envelope, status );
 				}
 				else
 					return false;
-				//string payload = RegistryServices.GetResourceByCtid( ctid, ref ctdlType, ref statusMessage );
-
-				//if ( !string.IsNullOrWhiteSpace( payload ) )
-				//{
-				//	input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-				//	//ctdlType = RegistryServices.GetResourceType( payload );
-				//	return Import( mgr, input, "", status );
-				//}
-				//else
-				//	return false;
 			}
 			catch ( Exception ex )
 			{
@@ -153,7 +146,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains an organization
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
+			//EntityServices mgr = new EntityServices();
 			string ctdlType = "";
 			try
 			{
@@ -161,8 +154,18 @@ namespace Import.Services
 
 				if ( !string.IsNullOrWhiteSpace( payload ) )
 				{
-					input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-					return Import( mgr, input, "", status );
+                    if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+                    {
+                        //if ( payload.IndexOf( "\"en\":" ) > 0 )
+                            return ImportV3( payload, "", status );
+                        //else
+                        //    return ImportV2( payload, "", status );
+                    }
+                    else
+                    {
+                        input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
+                        return Import( input, "", status );
+                    }
 				}
 				else
 					return false;
@@ -180,17 +183,33 @@ namespace Import.Services
 		}
 		public bool ImportByPayload( string payload, SaveStatus status )
 		{
-			EntityServices mgr = new EntityServices();
-			input = JsonConvert.DeserializeObject<InputEntity>( payload );
-
-			return Import( mgr, input, "", status );
+			//EntityServices mgr = new EntityServices();
+            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            {
+				//if ( payload.IndexOf( "\"en\":" ) > 0 )
+				return ImportV3( payload, "", status );
+				//else
+				//    return ImportV2( payload, "", status );
+			}
+			else
+            {
+                //do additional check in case of getting just the resource instead of /graph/
+                input = JsonConvert.DeserializeObject<InputEntity>( payload );
+                return Import( input, "", status );
+            }
+            
 		}
 		#endregion
-
-		public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
+		/// <summary>
+		/// Custom version, typically called outside a scheduled import
+		/// </summary>
+		/// <param name="item"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
 			EntityServices mgr = new EntityServices();
-            bool importSuccessfull = ProcessEnvelope( mgr, item, status );
+            bool importSuccessfull = ProcessEnvelope( item, status );
             List<string> messages = new List<string>();
             string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
             //store envelope
@@ -203,7 +222,7 @@ namespace Import.Services
             }
             return importSuccessfull;
         }
-		public bool ProcessEnvelope( EntityServices mgr, ReadEnvelope item, SaveStatus status )
+		public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
 			if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
 			{
@@ -213,24 +232,33 @@ namespace Import.Services
 
 			//EntityServices mgr = new EntityServices();
 			string payload = item.DecodedResource.ToString();
-			string envelopeIdentifier = item.EnvelopeIdentifier;
-			string ctdlType = RegistryServices.GetResourceType( payload );
-			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_org", payload, "", false );
-			input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+            string envelopeIdentifier = item.EnvelopeIdentifier;
+            string ctdlType = RegistryServices.GetResourceType( payload );
+            string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 
-			return Import( mgr, input, envelopeIdentifier, status );
+            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            {
+                //if ( payload.IndexOf( "\"en\":" ) > 0 )
+                   return ImportV3( payload, envelopeIdentifier, status );
+                //else
+                //    return ImportV2( payload, envelopeIdentifier, status );
+            }
+            else
+            {
+                LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+                LoggingHelper.WriteLogFile( 1, "org_" + item.EnvelopeIdentifier, payload, "", false );
+                input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+
+                return Import( input, envelopeIdentifier, status );
+            }
 		}
 	
-		public bool Import( EntityServices mgr, InputEntity input, string envelopeIdentifier, SaveStatus status )
+		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
 		{
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
+            EntityServices mgr = new EntityServices();
 
-            //try
-            //{
-            //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
             string ctid = input.Ctid;
             string referencedAtId = input.CtdlId;
 
@@ -243,7 +271,7 @@ namespace Import.Services
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input, ref output ) )
+            if ( !DoesEntityExist( input.Ctid, ref output ) )
             {
                 //set the rowid now, so that can be referenced as needed
                 output.RowId = Guid.NewGuid();
@@ -261,7 +289,7 @@ namespace Import.Services
             output.CTID = input.Ctid;
             output.CredentialRegistryId = envelopeIdentifier;
 			//output.AlternateNames = input.AlternateName;
-			output.AlternateName = MappingHelper.MapToTextValueProfile( input.AlternateName );
+			output.AlternateNames = MappingHelper.MapToTextValueProfile( input.AlternateName );
 			output.ImageUrl = input.Image;
 
             output.AgentPurpose = input.AgentPurpose;
@@ -314,15 +342,17 @@ namespace Import.Services
 
             if ( !string.IsNullOrWhiteSpace( input.OPEID ) )
                 output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
-			//alternativeidentifier - should just be added to IdentificationCodes
-			output.AlternativeIdentifier = MappingHelper.MapIdentifierValueListToString( input.AlternativeIdentifier );
+            if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
+            //alternativeidentifier - should just be added to IdentificationCodes
+            output.AlternativeIdentifier = MappingHelper.MapIdentifierValueListToString( input.AlternativeIdentifier );
 			output.AlternativeIdentifierList = MappingHelper.MapIdentifierValueList( input.AlternativeIdentifier );
 
 			//email
 
 			output.Emails = MappingHelper.MapToTextValueProfile( input.Email );
-            //contact point
-            output.ContactPoint = MappingHelper.FormatContactPoints( input.ContactPoint, ref status );
+            //contact point - now in address
+            //output.ContactPoint = MappingHelper.FormatContactPoints( input.ContactPoint, ref status );
             //Jurisdiction
             output.Jurisdiction = MappingHelper.MapToJurisdiction( input.Jurisdiction, ref status );
 
@@ -359,21 +389,23 @@ namespace Import.Services
 			output.RecognizedIn = MappingHelper.MapToJurisdiction( input.RecognizedIn, ref status );
 			output.RegulatedIn = MappingHelper.MapToJurisdiction( input.RegulatedIn, ref status );
 
-			//Asserts
-			//the entity type is not known
-			output.Approves = MappingHelper.MapEntityReferenceGuids( input.Approves, 0, ref status );
+            //Asserts
+            //the entity type is not known
+            output.Accredits = MappingHelper.MapEntityReferenceGuids( input.Accredits, 0, ref status );
+            output.Approves = MappingHelper.MapEntityReferenceGuids( input.Approves, 0, ref status );
 			output.Offers = MappingHelper.MapEntityReferenceGuids( input.Offers, 0, ref status );
 			output.Owns = MappingHelper.MapEntityReferenceGuids( input.Owns, 0, ref status );
 			output.Renews = MappingHelper.MapEntityReferenceGuids( input.Renews, 0, ref status );
 			output.Revokes = MappingHelper.MapEntityReferenceGuids( input.Revokes, 0, ref status );
 			output.Recognizes = MappingHelper.MapEntityReferenceGuids( input.Recognizes, 0, ref status );
+            output.Regulates = MappingHelper.MapEntityReferenceGuids( input.Regulates, 0, ref status );
 
-			//Ins - defer to later    
+            //Ins - defer to later    
 
-			
 
-			//=== if any messages were encountered treat as warnings for now
-			if ( messages.Count > 0 )
+
+            //=== if any messages were encountered treat as warnings for now
+            if ( messages.Count > 0 )
                 status.SetMessages( messages, true );
 			//just in case check if entity added since start
 			if ( output.Id == 0 )
@@ -407,15 +439,247 @@ namespace Import.Services
             return importSuccessfull;
         }
 
+        public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
+        {
+            InputEntityV3 input = new InputEntityV3();
+            var bnodes = new List<BNodeV3>();
+            var mainEntity = new Dictionary<string, object>();
 
-        public bool DoesEntityExist( InputEntity jsonEntity, ref ThisEntity entity )
+            Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
+            object graph = dictionary[ "@graph" ];
+            //serialize the graph object
+            var glist = JsonConvert.SerializeObject( graph );
+
+            //parse graph in to list of objects
+            JArray graphList = JArray.Parse( glist );
+            int cntr = 0;
+            foreach ( var item in graphList )
+            {
+                cntr++;
+                if ( cntr == 1 )
+                {
+                    var main = item.ToString();
+                    //may not use this. Could add a trace method
+                    mainEntity = RegistryServices.JsonToDictionary( main );
+                    input = JsonConvert.DeserializeObject<InputEntityV3>( main );
+                }
+                else //is this too much of an assumption?
+                {
+                    var bn = item.ToString();
+                    bnodes.Add( JsonConvert.DeserializeObject<BNodeV3>( bn ) );
+                }
+
+            }
+  
+            List<string> messages = new List<string>();
+            bool importSuccessfull = false;
+            EntityServices mgr = new EntityServices();
+            MappingHelperV3 helper = new MappingHelperV3();
+            helper.entityBlankNodes = bnodes;
+
+            string ctid = input.Ctid;
+            string referencedAtId = input.CtdlId;
+
+            LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
+            LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
+            status.Ctid = ctid;
+
+            if ( status.DoingDownloadOnly )
+                return true;
+
+            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            {
+                //set the rowid now, so that can be referenced as needed
+                output.RowId = Guid.NewGuid();
+            }
+
+            helper.currentBaseObject = output;
+
+            output.AgentDomainType = input.Type;
+            output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+            output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
+            //map from idProperty to url
+            output.SubjectWebpage = input.SubjectWebpage;
+            output.CTID = input.Ctid;
+            output.CredentialRegistryId = envelopeIdentifier;
+            output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+            output.ImageUrl = input.Image;
+
+            output.AgentPurpose = input.AgentPurpose;
+            output.AgentPurposeDescription = helper.HandleLanguageMap( input.AgentPurposeDescription, output, "AgentPurposeDescription" );
+
+            output.FoundingDate = input.FoundingDate;
+            output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
+            //future prep
+            output.AvailabilityListings = input.AvailabilityListing;
+
+            output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
+            output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
+
+            output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
+			if ( UtilityManager.GetAppKeyValue( "skipOppImportIfNoShortRegions", false ) )
+			{
+				if ( output.Addresses.Count == 0 )
+				{
+					//skip
+					LoggingHelper.DoTrace( 2, string.Format( "		***Skipping org# {0}, {1} as it has no addresses and this is a special run.", output.Id, output.Name ) );
+					return true;
+				} else if (output.HasAnyShortRegions == false)
+				{
+					//skip
+					LoggingHelper.DoTrace( 2, string.Format( "		***Skipping org# {0}, {1} as it has no addresses with short regions and this is a special run.", output.Id, output.Name ) );
+					return true;
+				}
+			}
+
+			//agent type, map to enumeration
+			output.AgentType = helper.MapCAOListToEnumermation( input.AgentType );
+
+
+            //Manifests
+            output.ConditionManifestIds = helper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status );
+            output.CostManifestIds = helper.MapEntityReferences( input.HasCostManifest, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status );
+
+            //hasVerificationService
+            output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status );
+
+            // output.targetc
+            //other enumerations
+            //	serviceType, AgentSectorType
+            output.ServiceType = helper.MapCAOListToEnumermation( input.ServiceType );
+            output.AgentSectorType = helper.MapCAOListToEnumermation( input.AgentSectorType );
+
+            //Industries
+            //output.Industry = helper.MapCAOListToEnumermation( input.IndustryType );
+            output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
+            //naics
+            output.Naics = input.Naics;
+
+            //keywords
+            output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+
+            //duns, Fein.  IpedsID, opeID
+            if ( !string.IsNullOrWhiteSpace( input.DUNS ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:duns", TextValue = input.DUNS } );
+            if ( !string.IsNullOrWhiteSpace( input.FEIN ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:fein", TextValue = input.FEIN } );
+
+            if ( !string.IsNullOrWhiteSpace( input.IpedsID ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ipedsID", TextValue = input.IpedsID } );
+
+            if ( !string.IsNullOrWhiteSpace( input.OPEID ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
+            if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
+                output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
+            //alternativeidentifier - should just be added to IdentificationCodes
+            output.AlternativeIdentifier = helper.MapIdentifierValueListToString( input.AlternativeIdentifier );
+            output.AlternativeIdentifierList = helper.MapIdentifierValueList( input.AlternativeIdentifier );
+
+            //email
+
+            output.Emails = helper.MapToTextValueProfile( input.Email );
+            //contact point
+            //output.ContactPoint = helper.FormatContactPoints( input.ContactPoint, ref status );
+            //Jurisdiction
+            output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
+
+            //SameAs
+            output.SameAs = helper.MapToTextValueProfile( input.SameAs );
+            //Social media
+            output.SocialMediaPages = helper.MapToTextValueProfile( input.SocialMedia );
+
+            //departments
+            //not sure - MP - want to change how depts, and subs are handled
+            //output.ParentOrganization = helper.MapOrganizationReferenceGuids( input.ParentOrganization, ref status );
+            output.Departments = helper.MapOrganizationReferenceGuids( input.Department, ref status );
+            output.SubOrganizations = helper.MapOrganizationReferenceGuids( input.SubOrganization, ref status );
+
+            //output.OrganizationRole_Subsidiary = helper.FormatOrganizationReferences( input.SubOrganization );
+
+            //Process profiles
+            output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
+            output.MaintenanceProcess = helper.FormatProcessProfile( input.MaintenanceProcess, ref status );
+            output.ComplaintProcess = helper.FormatProcessProfile( input.ComplaintProcess, ref status );
+            output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
+            output.RevocationProcess = helper.FormatProcessProfile( input.RevocationProcess, ref status );
+            output.ReviewProcess = helper.FormatProcessProfile( input.ReviewProcess, ref status );
+            output.AppealProcess = helper.FormatProcessProfile( input.AppealProcess, ref status );
+
+            //BYs
+            output.AccreditedBy = helper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
+            output.ApprovedBy = helper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
+            output.RecognizedBy = helper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
+            output.RegulatedBy = helper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
+            //INs
+            output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
+            output.ApprovedIn = helper.MapToJurisdiction( input.ApprovedIn, ref status );
+            output.RecognizedIn = helper.MapToJurisdiction( input.RecognizedIn, ref status );
+            output.RegulatedIn = helper.MapToJurisdiction( input.RegulatedIn, ref status );
+
+            //Asserts
+            //the entity type is not known
+            output.Accredits = helper.MapEntityReferenceGuids( input.Accredits, 0, ref status );
+            output.Approves = helper.MapEntityReferenceGuids( input.Approves, 0, ref status );
+            if ( output.Approves.Count > 0 )
+            {
+
+            }
+            output.Offers = helper.MapEntityReferenceGuids( input.Offers, 0, ref status );
+            output.Owns = helper.MapEntityReferenceGuids( input.Owns, 0, ref status );
+            output.Renews = helper.MapEntityReferenceGuids( input.Renews, 0, ref status );
+            output.Revokes = helper.MapEntityReferenceGuids( input.Revokes, 0, ref status );
+            output.Recognizes = helper.MapEntityReferenceGuids( input.Recognizes, 0, ref status );
+            output.Regulates = helper.MapEntityReferenceGuids( input.Regulates, 0, ref status );
+
+            //Ins - defer to later    
+
+
+
+            //=== if any messages were encountered treat as warnings for now
+            if ( messages.Count > 0 )
+                status.SetMessages( messages, true );
+            //just in case check if entity added since start
+            if ( output.Id == 0 )
+            {
+                ThisEntity entity = EntityServices.GetByCtid( ctid );
+                if ( entity != null && entity.Id > 0 )
+                {
+                    output.Id = entity.Id;
+                    output.RowId = entity.RowId;
+                }
+            }
+            importSuccessfull = mgr.Import( output, ref status );
+
+            status.DocumentId = output.Id;
+            status.DetailPageUrl = string.Format( "~/organization/{0}", output.Id );
+            status.DocumentRowId = output.RowId;
+
+            //just in case
+            if ( status.HasErrors )
+                importSuccessfull = false;
+
+            //if record was added to db, add to/or set EntityResolution as resolved
+            int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+                        ctid, CodesManager.ENTITY_TYPE_ORGANIZATION,
+                        output.RowId,
+                        output.Id,
+                        false,
+                        ref messages,
+                        output.Id > 0 );
+
+            return importSuccessfull;
+        }
+
+        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
         {
             bool exists = false;
-            entity = EntityServices.GetByCtid( jsonEntity.Ctid );
+            entity = EntityServices.GetByCtid( ctid );
             if ( entity != null && entity.Id > 0 )
                 return true;
 
             return exists;
         }
     }
-    }
+}

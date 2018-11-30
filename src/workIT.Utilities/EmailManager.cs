@@ -43,15 +43,15 @@ namespace workIT.Utilities
 		/// <returns></returns>
 		public static bool SendSiteEmail( string subject, string message )
 		{
-			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.contactUs@ad.siu.edu" );
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.mparsons@ad.siu.edu" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
 
 		public static bool SendEmail( string toEmail, string subject, string message )
 		{
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
@@ -90,8 +90,8 @@ namespace workIT.Utilities
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
             MailMessage email = new MailMessage();
-            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "contactUs@test.com" );
-			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
 			if ( string.IsNullOrWhiteSpace( BCC ) )
 				BCC = systemAdminEmail;
 			else
@@ -103,12 +103,12 @@ namespace workIT.Utilities
 				if ( fromEmail.Trim().Length == 0 )
                     fromEmail = appEmail;
 
-				//10-04-06 contactUs - with our new mail server, we can't send emails where the from address is anything but @test.com
+				//10-04-06 mparsons - with our new mail server, we can't send emails where the from address is anything but @siuccwd.com
 				//									- also try to handle the aliases 
 				if ( fromEmail.IndexOf( "_siuccwd.com" ) > -1 )
 					fromEmail = HandleProxyEmails( fromEmail.Trim() );
 
-				if ( fromEmail.ToLower().IndexOf( "@test.com" ) == -1 )
+				if ( fromEmail.ToLower().IndexOf( "@siuccwd.com" ) == -1 )
 				{
 					//not this site so set to DoNotReply@ and switch
 					string orig = fromEmail;
@@ -128,9 +128,9 @@ namespace workIT.Utilities
 				//check for overrides on the to email 
 				if ( UtilityManager.GetAppKeyValue( "usingTempOverrideEmail", "no" ) == "yes" )
 				{
-                    if ( toEmail.ToLower().IndexOf( "illinoisworknet.com" ) < 0 && toEmail.ToLower().IndexOf( "test.com" ) < 0 )
+                    if ( toEmail.ToLower().IndexOf( "illinoisworknet.com" ) < 0 && toEmail.ToLower().IndexOf( "siuccwd.com" ) < 0 )
 					{
-						toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+						toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
 					}
 				}
 
@@ -233,11 +233,13 @@ namespace workIT.Utilities
                 SendEmailViaApi( emailMsg );
 			else if ( emailService == "smtp" )
 			{
-				SmtpClient smtp = new SmtpClient( UtilityManager.GetAppKeyValue( "SmtpHost" ) );
-				smtp.UseDefaultCredentials = false;
-				smtp.Credentials = new NetworkCredential( "contactUs", "SomeNewCreds" );
+                SmtpClient smtp = new SmtpClient( UtilityManager.GetAppKeyValue( "SmtpHost" ) )
+                {
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential( "mparsons", "SomeNewCreds" )
+                };
 
-				smtp.Send( emailMsg );
+                smtp.Send( emailMsg );
 				//SmtpMail.Send(email);
 			}
 			//else if ( emailService == "sendGrid" )
@@ -433,7 +435,7 @@ namespace workIT.Utilities
 		/// <returns>True id message was sent successfully, otherwise false</returns>
 		public static bool NotifyAdmin( string subject, string message )
 		{
-			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );	
+			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );	
 
 			return  NotifyAdmin( emailTo, subject, message );
         } 
@@ -449,8 +451,8 @@ namespace workIT.Utilities
 		{
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
-			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail", "TheWatcher@test.com" );
-			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "contactUs@test.com" );
+			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail", "TheWatcher@siuccwd.com" );
+			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
             if ( emailTo == "" )
             {
                 emailTo = cc;

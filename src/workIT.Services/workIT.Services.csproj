@@ -76,6 +76,8 @@
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
     <Compile Include="ThirdPartyApiServices.cs" />
+    <Compile Include="WidgetQueryFilters.cs" />
+    <Compile Include="WidgetServices.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\workIT.Factories\workIT.Factories.csproj">

@@ -52,7 +52,7 @@ namespace workIT.Factories
 			DBEntity efEntity = new DBEntity();
 			int parentOrgId = 0;
 			
-			Guid condtionManifestParentUid = new Guid();
+			Guid conditionManifestParentUid = new Guid();
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -62,7 +62,7 @@ namespace workIT.Factories
 			if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
 			{
 				parentOrgId = parent.EntityBaseId;
-				condtionManifestParentUid = parent.EntityUid;
+				conditionManifestParentUid = parent.EntityUid;
 				//no common Cost in this context
 			}
 
@@ -103,7 +103,7 @@ namespace workIT.Factories
 						else
 							efEntity.RowId = Guid.NewGuid();
 
-						context.CostManifests.Add( efEntity );
+						context.CostManifest.Add( efEntity );
 						count = context.SaveChanges();
 
 						entity.Id = efEntity.Id;
@@ -129,7 +129,8 @@ namespace workIT.Factories
 
 							//create the Entity.CostManifest
 							//ensure to handle this properly when adding a commonCost CM to a CM
-							Entity_HasCostManifest_Add( condtionManifestParentUid, efEntity.Id, ref status );
+                            //18-10-10 mp - the HasCostManifest on org is a reverse property that should probably be ignored. This entry point should check if exists, if so, it is OK, with no message
+							EntityCostManifest_Add( conditionManifestParentUid, efEntity.Id, ref status );
 
 							// a trigger is used to create the entity Object. 
 							
@@ -138,22 +139,22 @@ namespace workIT.Factories
 					else
 					{
 
-						efEntity = context.CostManifests.SingleOrDefault( s => s.Id == entity.Id );
+						efEntity = context.CostManifest.SingleOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							//delete the entity and re-add
-							Entity e = new Entity()
-							{
-								EntityBaseId = efEntity.Id,
-								EntityTypeId = CodesManager.ENTITY_TYPE_COST_MANIFEST,
-								EntityType = "CostManifest",
-								EntityUid = efEntity.RowId,
-								EntityBaseName = efEntity.Name
-							};
-							if ( entityMgr.ResetEntity( e, ref statusMessage ) )
-							{
+							//Entity e = new Entity()
+							//{
+							//	EntityBaseId = efEntity.Id,
+							//	EntityTypeId = CodesManager.ENTITY_TYPE_COST_MANIFEST,
+							//	EntityType = "CostManifest",
+							//	EntityUid = efEntity.RowId,
+							//	EntityBaseName = efEntity.Name
+							//};
+							//if ( entityMgr.ResetEntity( e, ref statusMessage ) )
+							//{
 
-							}
+							//}
 
 							entity.RowId = efEntity.RowId;
 							//update
@@ -170,8 +171,13 @@ namespace workIT.Factories
 								efEntity.LastUpdated = System.DateTime.Now;
 								count = context.SaveChanges();
 							}
+                            else
+                            {
+                                //update entity.LastUpdated - assuming there has to have been some change in related data
+                                new EntityManager().UpdateModifiedDate( entity.RowId, ref status );
+                            }
 
-							if ( !UpdateParts( entity, ref status ) )
+                            if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 
 							SiteActivity sa = new SiteActivity()
@@ -235,7 +241,6 @@ namespace workIT.Factories
 				{
 					if ( entity == null ||
 						( string.IsNullOrWhiteSpace( entity.Name ) ||
-						string.IsNullOrWhiteSpace( entity.Description ) ||
 						string.IsNullOrWhiteSpace( entity.CostDetails )
 						) )
 					{
@@ -253,11 +258,12 @@ namespace workIT.Factories
 						efEntity.RowId = entity.RowId;
 					else
 						efEntity.RowId = Guid.NewGuid();
-
-					efEntity.Created = System.DateTime.Now;
+                    //set to return, just in case
+                    entity.RowId = efEntity.RowId;
+                    efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 
-					context.CostManifests.Add( efEntity );
+					context.CostManifest.Add( efEntity );
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
@@ -308,7 +314,7 @@ namespace workIT.Factories
 					efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 
-					context.CostManifests.Add( efEntity );
+					context.CostManifest.Add( efEntity );
 					int count = context.SaveChanges();
 					if ( count > 0 )
 						return efEntity.Id;
@@ -347,14 +353,14 @@ namespace workIT.Factories
 			{
 				try
 				{
-					DBEntity efEntity = context.CostManifests
+					DBEntity efEntity = context.CostManifest
 								.SingleOrDefault( s => s.Id == Id );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
 						Guid rowId = efEntity.RowId;
 
-						context.CostManifests.Remove( efEntity );
+						context.CostManifest.Remove( efEntity );
 						int count = context.SaveChanges();
 						if ( count > 0 )
 						{
@@ -405,7 +411,7 @@ namespace workIT.Factories
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.CostManifests
+					DBEntity efEntity = context.CostManifest
                                 .FirstOrDefault( s => s.CredentialRegistryId == envelopeId
                                 || ( s.CTID == ctid )
                                 );
@@ -418,7 +424,7 @@ namespace workIT.Factories
                         //-using before delete trigger - verify won't have RI issues
                         string msg = string.Format( " CostManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
                         //leaving as a delete
-                        context.CostManifests.Remove( efEntity );
+                        context.CostManifest.Remove( efEntity );
                         //efEntity.EntityStateId = 0;
                         //efEntity.LastUpdated = System.DateTime.Now;
 
@@ -518,7 +524,7 @@ namespace workIT.Factories
 			ThisEntity entity = new ThisEntity();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity from = context.CostManifests
+				DBEntity from = context.CostManifest
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 				if ( from != null && from.Id > 0 )
@@ -542,7 +548,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.CostManifests
+				DBEntity from = context.CostManifest
 						.FirstOrDefault( s => s.CostDetails.ToLower() == swp.ToLower() );
 
 				if ( from != null && from.Id > 0 )
@@ -570,7 +576,7 @@ namespace workIT.Factories
 
 			using ( var context = new EntityContext() )
 			{
-				DBEntity item = context.CostManifests
+				DBEntity item = context.CostManifest
 						.SingleOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
@@ -599,7 +605,7 @@ namespace workIT.Factories
 				//want to get org, deal with others
 				//context.Configuration.LazyLoadingEnabled = false;
 
-				DBEntity item = context.CostManifests
+				DBEntity item = context.CostManifest
 						.SingleOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
@@ -973,28 +979,56 @@ namespace workIT.Factories
 		#endregion
 
 		#region === Entity_HasCostManifest ================
-		public bool HasCostManifest_SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
+		public bool EntityCostManifest_SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            //Entity_CostManifest is most likely added from CostManifest manager, don't deleted, in fact don't even call me!!!!
+            //DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( int profileId in list )
 			{
-				Entity_HasCostManifest_Add( parentUid, profileId, ref status );
+				EntityCostManifest_Add( parent, profileId, ref status );
 			}
 
 			return isAllValid;
-		}
+        }
+        /// <summary>
+        /// Add an Entity_CommonCost
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <param name="profileId"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public int EntityCostManifest_Add( Guid parentUid,
+                    int profileId,
+                    ref SaveStatus status )
+        {
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return 0;
+            }
+            //currently called from con
+            return EntityCostManifest_Add( parent, profileId, ref status ); 
+        }
 		/// <summary>
 		/// Add an Entity_CommonCost
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <param name="profileId"></param>
-		/// <param name="userId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public int Entity_HasCostManifest_Add( Guid parentUid,
+		public int EntityCostManifest_Add( Entity parent,
 					int profileId,
 					ref SaveStatus status )
 		{
@@ -1007,12 +1041,6 @@ namespace workIT.Factories
 			}
 			
 
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddError( "Error - the parent entity was not found." );
-				return 0;
-			}
 			using ( var context = new EntityContext() )
 			{
 				EM.Entity_CostManifest efEntity = new EM.Entity_CostManifest();
@@ -1025,7 +1053,7 @@ namespace workIT.Factories
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
-						status.AddError( string.Format( "Error - this CostManifest has already been added to this profile.", thisClassName ) );
+						//status.AddError( string.Format( "Error - this CostManifest has already been added to this profile.", thisClassName ) );
 						return 0;
 					}
 
@@ -1048,7 +1076,7 @@ namespace workIT.Factories
 					{
 						//?no info on error
 						status.AddError( "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a CostManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parentUid, parent.EntityType, profileId );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a CostManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parent.EntityUid, parent.EntityType, profileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
@@ -1071,7 +1099,33 @@ namespace workIT.Factories
 			}
 			return id;
 		}
-		public bool Delete_EntityCostManifest( Guid parentUid, int profileId, ref string statusMessage )
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_CostManifest.RemoveRange( context.Entity_CostManifest.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
+
+            return isValid;
+        }
+
+        public bool Delete_EntityCostManifest( Guid parentUid, int profileId, ref string statusMessage )
 		{
 			bool isValid = false;
 			if ( profileId == 0 )

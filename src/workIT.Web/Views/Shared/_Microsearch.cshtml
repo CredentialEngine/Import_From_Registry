@@ -64,6 +64,21 @@
 	}
 	//
 
+    microsearch.getMicroSearchV2Filters = function (filterList) {
+        var filters = microsearch.readFilters(filterList);
+        var result = [];
+        for (var i in filters) {
+            (function (key, value) {
+                result.push({
+                    Name: key,
+                    Value: value.toString()
+                });
+            })(i, filters[i]);
+        }
+        return result;
+    }
+    //
+
 	//Do a search
 	microsearch.doSearch = function (Search, query, controller, method, success, passThrough, resetPaging, setPaging) {
 		clearTimeout(Search.Countdown);
@@ -162,7 +177,7 @@
 			}
 			try {
 				if (data[i] == null || typeof (data[i]) == "undefined" || (typeof(data[i]) == "string" && data[i] == "")) {
-					template = template.replace(new RegExp("{" + (prefix != "" ? prefix + "." : "") + i + "}", "g"), "(No Data)");
+					template = template.replace(new RegExp("{" + (prefix != "" ? prefix + "." : "") + i + "}", "g"), "");
 				}
 				else if (typeof (data[i]) == "object") {
 					if (Array.isArray(data[i])) {

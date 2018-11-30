@@ -28,6 +28,7 @@ namespace workIT.Models.ProfileModels
 		#region External Properties
 
 		public string FrameworkName { get; set; }
+        //can be source url or framework Uri
 		public string FrameworkUrl { get; set; }
 		#endregion
 	}

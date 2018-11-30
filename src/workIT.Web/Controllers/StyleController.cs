@@ -1,6 +1,6 @@
 ﻿using System.Web.Mvc;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
     public class StyleController : Controller
   {

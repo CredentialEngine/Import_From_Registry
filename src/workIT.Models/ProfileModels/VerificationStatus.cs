@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.ProfileModels
 {
-	public class VerificationStatus : BaseProfile
+    [Serializable]
+    public class VerificationStatus : BaseProfile
 	{
 
 		public string Name

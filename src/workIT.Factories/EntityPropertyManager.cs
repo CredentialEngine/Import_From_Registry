@@ -76,16 +76,24 @@ namespace workIT.Factories
 							op.EntityId = parent.Id;
 							op.PropertyValueId = code.Id;
 							op.Created = System.DateTime.Now;
-
-							context.Entity_Property.Add( op );
-							count = context.SaveChanges();
-							if ( count == 0 )
-							{
-								status.AddWarning( string.Format( thisClassName + ".AddProperties(). Unable to add property value Id of: {0} for categoryId: {1}, parentTypeId: {2}  ", code.Id, categoryId, parentTypeId ) );
-								isAllValid = false;
-							}
-							else
-								updatedCount++;
+                            //do a quick duplicates check
+                            var property = context.Entity_Property.FirstOrDefault( s => s.EntityId == parent.Id && s.PropertyValueId == code.Id );
+                            if ( property == null || property.Id == 0 )
+                            {
+                                context.Entity_Property.Add( op );
+                                count = context.SaveChanges();
+                                if ( count == 0 )
+                                {
+                                    status.AddWarning( string.Format( thisClassName + ".AddProperties(). Unable to add property value Id of: {0} for categoryId: {1}, parentTypeId: {2}  ", code.Id, categoryId, parentTypeId ) );
+                                    isAllValid = false;
+                                }
+                                else
+                                    updatedCount++;
+                            } else
+                            {
+                                //not sure how can happen
+                                status.AddWarning( string.Format( thisClassName + ".AddProperties(). Duplicate property encountered for categoryId: {0}, propertyValueId: {1} parentTypeId: {2}, parent.Id: {3}. IGNORED  ", categoryId, code.Id, parentTypeId, parent.Id ) );
+                            }
 						}
 						else
 						{
@@ -112,10 +120,40 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
+        /// <summary>
+        /// Delete all properties for parent (in preparation for import)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_Property.RemoveRange( context.Entity_Property.Where( s => s.EntityId == parent.Id ));
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		#endregion
-		#region Entity property read ===================
-		public static Enumeration FillEnumeration( Guid parentUid, int categoryId )
+            return isValid;
+        }
+        #endregion
+        #region Entity property read ===================
+        public static Enumeration FillEnumeration( Guid parentUid, int categoryId )
 		{
 			Enumeration entity = new ThisEntity();
 			entity = CodesManager.GetEnumeration( categoryId );

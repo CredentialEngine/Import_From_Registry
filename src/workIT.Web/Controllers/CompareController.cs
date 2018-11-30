@@ -8,7 +8,7 @@ using workIT.Utilities;
 using workIT.Models.Helpers;
 using workIT.Services;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
     public class CompareController : Controller
     {
@@ -16,32 +16,33 @@ namespace WorkIT.Web.Controllers
 
         //Load Compare page
         public ActionResult Index()
-        {           
-            var vm = new CompareItemSummary();
+        {
+            return V3();
+   //         var vm = new CompareItemSummary();
 
-            var lists = GetSessionItems();
-            foreach ( var item in lists )
-            {
-                switch ( item.Type )
-                {
-					case "credential":
-						vm.Credentials.Add( CredentialServices.GetCredentialForCompare( item.Id ) );
-						break;
-					case "organization":
-						vm.Organizations.Add( OrganizationServices.GetDetail( item.Id ) );
-						break;
-					case "assessment":
-						vm.Assessments.Add( AssessmentServices.GetDetail( item.Id ) );
-						break;
-					case "learningopportunity":
-						vm.LearningOpportunities.Add( LearningOpportunityServices.GetDetail( item.Id ) );
-						break;
-					default:
-						break;
-				}
-            }
+   //         var lists = GetSessionItems();
+   //         foreach ( var item in lists )
+   //         {
+   //             switch ( item.Type )
+   //             {
+			//		case "credential":
+			//			vm.Credentials.Add( CredentialServices.GetCredentialForCompare( item.Id ) );
+			//			break;
+			//		case "organization":
+			//			vm.Organizations.Add( OrganizationServices.GetDetail( item.Id ) );
+			//			break;
+			//		case "assessment":
+			//			vm.Assessments.Add( AssessmentServices.GetDetail( item.Id ) );
+			//			break;
+			//		case "learningopportunity":
+			//			vm.LearningOpportunities.Add( LearningOpportunityServices.GetDetail( item.Id ) );
+			//			break;
+			//		default:
+			//			break;
+			//	}
+   //         }
 
-			return View( "CompareV3", vm );
+			//return View( "CompareV3", vm );
 		}
 
         public ActionResult V3()

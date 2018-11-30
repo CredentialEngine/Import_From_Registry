@@ -351,12 +351,17 @@ namespace workIT.Services
 			}
 			else
 			{
-				if ( "id activity event email comment createddate actionbyuser".IndexOf( parms.OrderBy.ToLower() ) == -1 )
+				if ( "id activity event comment createddate actionbyuser".IndexOf( parms.OrderBy.ToLower() ) == -1 )
 				{
 					parms.OrderBy = "CreatedDate";
-					//pOrderBy = "Created DESC";
-				}
-			}
+                    if ( parms.IsDescending )
+                        parms.OrderBy += " DESC";
+                    //pOrderBy = "Created DESC";
+                } else if ( parms.IsDescending && parms.OrderBy.ToLower().IndexOf( "desc" ) == -1 )
+                {
+                    parms.OrderBy = parms.OrderBy + " desc";
+                }
+        }
 			List<SiteActivity> list = ActivityManager.Search( parms.Filter, parms.OrderBy, parms.PageNumber, parms.PageSize, ref pTotalRows );
 			//pTotalRows = parms.TotalRows;
 			return list;

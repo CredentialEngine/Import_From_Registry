@@ -16,14 +16,19 @@ namespace Import.Services
 		[JsonProperty( PropertyName = "envelope_version" )]
 		public string EnvelopeVersion { get; set; }
 
+        [JsonProperty( PropertyName = "envelope_ceterms_ctid" )]
+        public string EnvelopeCetermsCtid { get; set; }
 
-		/// <summary>
-		/// Not used for an add - may be added back later
-		/// </summary>
-		//[JsonProperty( PropertyName = "envelope_id" )]
-		//public string EnvelopeIdentifier { get; set; }
+        [JsonProperty( PropertyName = "envelope_ctdl_type" )]
+        public string EnvelopeCtdlType { get; set; }
 
-		[JsonProperty( PropertyName = "envelope_community" )]
+        /// <summary>
+        /// Not used for an add - may be added back later
+        /// </summary>
+        //[JsonProperty( PropertyName = "envelope_id" )]
+        //public string EnvelopeIdentifier { get; set; }
+
+        [JsonProperty( PropertyName = "envelope_community" )]
 		public string EnvelopeCommunity { get; set; }
 
 		[JsonProperty( PropertyName = "resource" )]
@@ -62,13 +67,18 @@ namespace Import.Services
 		[JsonProperty( PropertyName = "node_headers" )]
 		public NodeHeader NodeHeaders { get; set; }
 
+		[JsonProperty( PropertyName = "publisher_id" )]
+		public string PublisherId { get; set; }
+
+		[JsonProperty( PropertyName = "secondary_publisher_id" )]
+		public string SecondaryPublisherId { get; set; }
 	}
 	public class NodeHeader
 	{
 		[JsonProperty( PropertyName = "resource_digest" )]
 		public string ResourceDigest { get; set; }
 
-		[JsonProperty( PropertyName = "versions" )]
+		[JsonProperty( PropertyName = "revision_history" )]
 		public List<NodeVersion> NodeVersions { get; set; }
 
 		[JsonProperty( PropertyName = "created_at" )]

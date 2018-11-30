@@ -151,9 +151,12 @@ namespace workIT.Models.Common
 		public int CredentialId { get; set; }
 
 		public string Credential { get; set; }
+        public string CredentialOwningOrg { get; set; }
+        public int CredentialOwningOrgId { get; set; }
 
-	}
-	public class AgentRelationshipResult
+
+    }
+    public class AgentRelationshipResult
 	{
 		public AgentRelationshipResult()
 		{
@@ -165,4 +168,16 @@ namespace workIT.Models.Common
 
 		public List<AgentRelationship> Results { get; set; }
 	} 
+    public class TargetAssertionResult
+    {
+        public TargetAssertionResult()
+        {
+            HasAnIdentifer = true;
+            Results = new List<TargetAssertion>();
+        }
+        public int CategoryId { get; set; }
+        public bool HasAnIdentifer { get; set; }
+
+        public List<TargetAssertion> Results { get; set; }
+    }
 }

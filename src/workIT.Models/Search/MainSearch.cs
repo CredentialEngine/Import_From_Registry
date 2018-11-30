@@ -21,10 +21,11 @@ namespace workIT.Models.Search
             Filters = new List<MainSearchFilter>();
             FiltersV2 = new List<MainSearchFilterV2>();
         }
-
+        public int WidgetId { get; set; }
         public string SearchType { get; set; }
         public int StartPage { get; set; }
         public int PageSize { get; set; }
+        public bool IncludingReferenceObjects { get; set; }
         public string Keywords { get; set; }
         public string CompetenciesKeywords { get; set; }
         public string SortOrder { get; set; }
@@ -77,6 +78,7 @@ namespace workIT.Models.Search
         }
 
         public bool Elastic { get; set; }
+        public int Results { get; set; }
     }
     //
 
@@ -98,21 +100,27 @@ namespace workIT.Models.Search
         {
             try
             {
-                return Values[key].ToString();
+
+                return Values[ key ].ToString();
+
             }
-            catch { }
-            return defaultValue;
+            catch
+            {
+
+                return defaultValue;
+            }
+
         }
         public int GetValueOrDefault( string key, int defaultValue = 0 )
         {
             try
             {
-                return int.Parse( ( string )Values[key] );
+                return int.Parse( ( string )Values[ key ] );
             }
             catch { }
             try
             {
-                return ( int )Values[key];
+                return ( int )Values[ key ];
             }
             catch { }
             return defaultValue;
@@ -121,12 +129,12 @@ namespace workIT.Models.Search
         {
             try
             {
-                return decimal.Parse( ( string )Values[key] );
+                return decimal.Parse( ( string )Values[ key ] );
             }
             catch { }
             try
             {
-                return ( decimal )Values[key];
+                return ( decimal )Values[ key ];
             }
             catch { }
             return defaultValue;
@@ -135,7 +143,7 @@ namespace workIT.Models.Search
         {
             try
             {
-                return ( T )Values[key];
+                return ( T )Values[ key ];
             }
             catch
             {
@@ -160,6 +168,7 @@ namespace workIT.Models.Search
                 return new CodeItem()
                 {
                     RelationshipId = GetValueOrDefault( "RelationshipId", 0 ),
+                    AssertionId = GetValueOrDefault( "AssertionId", 0 ),
                     CategoryId = GetValueOrDefault( "CategoryId", 0 ),
                     Id = GetValueOrDefault( "CodeId", 0 ),
                     SchemaName = GetValueOrDefault( "SchemaName", "" ),
@@ -172,6 +181,39 @@ namespace workIT.Models.Search
             }
         }
 
+        public Common.WidgetV2.LocationSet AsLocationSet()
+        {
+            var locationSet = new Common.WidgetV2.LocationSet();
+            try
+            {
+                //
+                //List<string> checkEmpty = new List<string> { "Countries[0]", "Regions[0]", "Cities[0]", "" };
+                //if ( checkEmpty  ! = "")
+                //    {
+                //    locationSet.Countries = GetValueOrDefault( "Countries[0]", "" ).Split( ',' ).ToList();
+                //    locationSet.Regions = GetValueOrDefault( "Regions[0]", "" ).Split( ',' ).ToList();
+                //    locationSet.Cities = GetValueOrDefault( "Cities[0]", "" ).Split( ',' ).ToList();
+                //}
+                string checkemptyCountries = GetValueOrDefault( "Countries[0]", "" );
+                string checkemptyRegions = GetValueOrDefault( "Regions[0]", "" );
+                string checkemptyCities = GetValueOrDefault( "Cities[0]", "" );
+                if ( checkemptyCountries != "" )
+                    locationSet.Countries = GetValueOrDefault( "Countries[0]", "" ).Split( ',' ).ToList();
+                if ( checkemptyRegions != "" )
+                    locationSet.Regions = GetValueOrDefault( "Regions[0]", "" ).Split( ',' ).ToList();
+                if ( checkemptyCities != "" )
+                    locationSet.Cities = GetValueOrDefault( "Cities[0]", "" ).Split( ',' ).ToList();
+
+                locationSet.IsAvailableOnline = GetValueOrDefault( "IsAvailableOnline", false );
+
+                return locationSet;
+            }
+            catch
+            {
+                return locationSet;
+            }
+        }
+
         public CodeItem AsQaItem()
         {
             try
@@ -179,6 +221,21 @@ namespace workIT.Models.Search
                 return new CodeItem()
                 {
                     RelationshipId = GetValueOrDefault( "RelationshipId", 0 ),
+                    Id = GetValueOrDefault( "AgentId", 0 ),
+                };
+            }
+            catch
+            {
+                return new CodeItem();
+            }
+        }
+        public CodeItem AsQapItem()
+        {
+            try
+            {
+                return new CodeItem()
+                {
+                    AssertionId = GetValueOrDefault( "AssertionId", 0 ),
                     Id = GetValueOrDefault( "AgentId", 0 ),
                 };
             }
@@ -275,6 +332,7 @@ namespace workIT.Models.Search
         public int CategoryId { get; set; }
         public List<TagItem> Items { get; set; }
         public List<CostTagItem> CostItems { get; set; }
+        public List<QAPerformedTagItem> QAItems { get; set; } = new List<QAPerformedTagItem>();
         public int Count { get; set; }
     }
     //
@@ -294,6 +352,17 @@ namespace workIT.Models.Search
         public string CostType { get; set; }
         public string CurrencySymbol { get; set; }
         public string SourceEntity { get; set; }
+    }
+    public class QAPerformedTagItem
+    {
+        public int TargetEntityBaseId { get; set; }
+        public int AssertionTypeId { get; set; }
+        public string AgentToTargetRelationship { get; set; }
+        public string TargetEntityType { get; set; }
+        public string TargetEntityName { get; set; }
+        public string TargetEntitySubjectWebpage { get; set; }
+        public bool IsReference { get; set; }
+        public int TargetEntityTypeId { get; set; }
     }
     //
     //Used by EnumerationFilter partial

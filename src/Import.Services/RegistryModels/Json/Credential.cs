@@ -178,6 +178,9 @@ namespace RA.Models.Json
 		[JsonProperty( PropertyName = "ceterms:audienceLevelType" )]
         public List<CredentialAlignmentObject> AudienceLevel { get; set; }
 
+        [JsonProperty( PropertyName = "ceterms:audienceType" )]
+        public List<CredentialAlignmentObject> AudienceType { get; set; }
+
         [JsonProperty( PropertyName = "ceterms:degreeConcentration" )]
         public List<CredentialAlignmentObject> DegreeConcentration { get; set; }
 

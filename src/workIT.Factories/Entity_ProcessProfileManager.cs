@@ -160,8 +160,11 @@ namespace workIT.Factories
 					efEntity.EntityId = parent.Id;
 
 					efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-				
-					efEntity.RowId = Guid.NewGuid();
+
+                    if ( IsValidGuid( entity.RowId ) )
+                        efEntity.RowId = entity.RowId;
+                    else 
+					    efEntity.RowId = Guid.NewGuid();
 
 					context.Entity_ProcessProfile.Add( efEntity );
 					count = context.SaveChanges();
@@ -272,9 +275,33 @@ namespace workIT.Factories
 			return isOK;
 
 		}
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_ProcessProfile.RemoveRange( context.Entity_ProcessProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
+            return isValid;
+        }
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;	
 
@@ -495,7 +522,7 @@ namespace workIT.Factories
 				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId );
 				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId );
 
-				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, false, true );
+				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, true );
 			}
 
 

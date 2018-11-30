@@ -6,7 +6,7 @@ using System.Web;
 using System.Web.Mvc;
 using workIT.Utilities;
 
-namespace WorkIT.Web.Controllers
+namespace workIT.Web.Controllers
 {
     public class RegistryController : BaseController
     {

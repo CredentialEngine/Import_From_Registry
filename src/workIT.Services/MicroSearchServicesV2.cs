@@ -23,7 +23,7 @@ namespace workIT.Services
 		public static List<MicroProfile> DoMicroSearch( MicroSearchInputV2 query, ref int totalResults, ref bool valid, ref string status )
 		{
 			//Ensure there is a query
-		if ( query.Filters.Count() == 0 )
+		if ( query.Filters.Count() == 0 && query.SearchType != "organization")
 			{
 				valid = false;
 				status = "No search parameters found!";
@@ -44,8 +44,11 @@ namespace workIT.Services
 				case "credential": mainSearchTypeCode = 1; break;
 				case "organization": mainSearchTypeCode = 2; break;
 				case "assessment": mainSearchTypeCode = 3; break;
-				case "learningopportunity": mainSearchTypeCode = 7; break; 
-				default:
+				case "learningopportunity": mainSearchTypeCode = 7; break;
+                case "widget": 
+                    mainSearchTypeCode = 25;
+                    break;
+                default:
 					mainSearchTypeCode = 1;
 					break;
 			}
@@ -53,7 +56,13 @@ namespace workIT.Services
 			totalResults = 0;
 			switch ( query.SearchType )
 			{
-				case "RegionSearch":
+                case "OrganizationSearch":
+                case "organization":
+                    {
+                        var results = OrganizationServices.MicroSearch( query, query.PageNumber, query.PageSize, ref totalResults );
+                        return results.ConvertAll( m => ConvertProfileToMicroProfile( m ) );
+                    }
+                case "RegionSearch":
 					{
 						var locationType = query.GetFilterValueString( "LocationType" ).Split( ',' ).ToList();
 						var results = new ThirdPartyApiServices().GeoNamesSearch( query.GetFilterValueString( "Keywords" ), query.PageNumber, query.PageSize, locationType, ref totalResults, false );

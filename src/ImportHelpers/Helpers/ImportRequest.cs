@@ -10,6 +10,9 @@ using workIT.Utilities;
 
 namespace ImportHelpers
 {
+    /// <summary>
+    /// Created to enable calling import methods from the web project
+    /// </summary>
     public class ImportRequest
     {
 		string thisClassName = "ImportHelpers.ImportRequest";
@@ -61,7 +64,7 @@ namespace ImportHelpers
 		public SaveStatus ImportOrganization( string envelopeId )
 		{
 			Import.Services.ImportOrganization mgr = new Import.Services.ImportOrganization();
-			mgr.ImportByEnvelopeId( envelopeId, status );
+			mgr.RequestImportByEnvelopeId( envelopeId, status );
 			new RegistryServices().ImportPending();
 
 			return status;
@@ -69,7 +72,7 @@ namespace ImportHelpers
 		public SaveStatus ImportOrganizationByCtid( string ctid )
 		{
 			Import.Services.ImportOrganization mgr = new Import.Services.ImportOrganization();
-			mgr.ImportByCtid( ctid, status );
+			mgr.RequestImportByCtid( ctid, status );
 			new RegistryServices().ImportPending();
 
 			return status;

@@ -81,9 +81,9 @@ namespace workIT.Models.Common
 			return result;
 		}
 	}
-	//
-
-	public class ConditionManifest : BaseObject
+    //
+    [Serializable]
+    public class ConditionManifest : BaseObject
 	{
 		
 		public ConditionManifest ()

@@ -21,6 +21,7 @@
           <Property Name="LastUpdatedById" Type="int" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AspNetId" Type="nvarchar" MaxLength="128" />
+          <Property Name="CEAccountIdentifier" Type="varchar" MaxLength="50" />
         </EntityType>
         <EntityType Name="AspNetRoles">
           <Key>
@@ -139,7 +140,7 @@
           <Property Name="AccessDate" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'ctdlEditor.dbo.Account_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Account_Summary">
           <Key>
             <PropertyRef Name="Id" />
@@ -164,6 +165,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
           <Property Name="Created" Type="datetime" Nullable="false" />
           <Property Name="LastUpdated" Type="datetime" Nullable="false" />
           <Property Name="LastUpdatedById" Type="int" />
+          <Property Name="CEAccountIdentifier" Type="varchar" MaxLength="50" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AspNetId" Type="nvarchar" MaxLength="128" />
           <Property Name="Roles" Type="nvarchar(max)" />
@@ -315,6 +317,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
     [Account_Summary].[Created] AS [Created], 
     [Account_Summary].[LastUpdated] AS [LastUpdated], 
     [Account_Summary].[LastUpdatedById] AS [LastUpdatedById], 
+    [Account_Summary].[CEAccountIdentifier] AS [CEAccountIdentifier], 
     [Account_Summary].[RowId] AS [RowId], 
     [Account_Summary].[AspNetId] AS [AspNetId], 
     [Account_Summary].[Roles] AS [Roles], 
@@ -383,6 +386,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
           <NavigationProperty Name="Organization_Member" Relationship="AccountsModel.FK_Organization_Member_Account" FromRole="Account" ToRole="Organization_Member" />
           <NavigationProperty Name="Organizations" Relationship="AccountsModel.FK_Organization_Account_Creator" FromRole="Account" ToRole="Organization" />
           <NavigationProperty Name="Organizations1" Relationship="AccountsModel.FK_Organization_Account_Modifier" FromRole="Account" ToRole="Organization" />
+          <Property Name="CEAccountIdentifier" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="AspNetRole">
           <Key>
@@ -480,6 +484,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
           <Property Name="Roles" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="OrgMbrs" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="lastLogon" Type="DateTime" Precision="3" />
+          <Property Name="CEAccountIdentifier" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
         <Association Name="FK_Account_AspNetUsers">
           <End Role="AspNetUsers" Type="Self.AspNetUser" Multiplicity="0..1">
@@ -723,6 +728,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
           <EntitySetMapping Name="Accounts">
             <EntityTypeMapping TypeName="AccountsModel.Account">
               <MappingFragment StoreEntitySet="Account">
+                <ScalarProperty Name="CEAccountIdentifier" ColumnName="CEAccountIdentifier" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
                 <ScalarProperty Name="UserName" ColumnName="UserName" />
                 <ScalarProperty Name="Password" ColumnName="Password" />
@@ -801,6 +807,7 @@ warning 6002: The table/view 'CTI.dbo.Account_Summary' does not have a primary k
           <EntitySetMapping Name="Account_Summary">
             <EntityTypeMapping TypeName="AccountsModel.Account_Summary">
               <MappingFragment StoreEntitySet="Account_Summary">
+                <ScalarProperty Name="CEAccountIdentifier" ColumnName="CEAccountIdentifier" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
                 <ScalarProperty Name="UserName" ColumnName="UserName" />
                 <ScalarProperty Name="FirstName" ColumnName="FirstName" />

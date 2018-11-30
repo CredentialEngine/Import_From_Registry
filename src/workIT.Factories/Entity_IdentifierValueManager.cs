@@ -29,14 +29,29 @@ namespace workIT.Factories
 		#region === Persistance ===================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, int IdentityValueTypeId, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
+                return false;
+            }
+
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( "Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
 				item.IdentityValueTypeId = IdentityValueTypeId;
-				Add( parentUid, item, ref status );
+				Add( parent, item, ref status );
 			}
 
 			return isAllValid;
@@ -49,20 +64,14 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public int Add( Guid parentUid,
+		private int Add( Entity parent,
 					ThisEntity entity,
 					ref SaveStatus status )
 		{
 			int id = 0;
 			int count = 0;
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
-				return 0;
-			}
 
-
-			Entity parent = EntityManager.GetEntity( parentUid );
+			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the parent entity was not found." );
@@ -93,7 +102,7 @@ namespace workIT.Factories
 					{
 						//?no info on error
 						status.AddError( "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_IdentifierValue for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}, createdById: {3}", parentUid, parent.EntityType, entity.IdentifierType );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_IdentifierValue for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}, createdById: {3}", parent.EntityUid, parent.EntityType, entity.IdentifierType );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
@@ -116,23 +125,47 @@ namespace workIT.Factories
 			return id;
 		}
 
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_IdentifierValue.RemoveRange( context.Entity_IdentifierValue.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		#endregion
+            return isValid;
+        }
+        #endregion
 
 
-		/// <summary>
-		/// Get all assessments for the provided entity
-		/// The returned entities are just the base
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <returns></returnsThisEntity
-		public static List<ThisEntity> GetAll( Guid parentUid, int identityValueTypeId )
+        /// <summary>
+        /// Get all assessments for the provided entity
+        /// The returned entities are just the base
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returnsThisEntity
+        public static List<ThisEntity> GetAll( Guid parentUid, int identityValueTypeId )
 		{
 			List<ThisEntity> list = new List<ThisEntity>();
 			ThisEntity entity = new ThisEntity();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 5, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 
 			try
 			{

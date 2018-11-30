@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Web;
@@ -23,7 +24,6 @@ namespace workIT.Services
     public class CredentialServices
     {
         static string thisClassName = "CredentialServices";
-        ActivityServices activityMgr = new ActivityServices();
 
         public List<string> messages = new List<string>();
 
@@ -32,37 +32,28 @@ namespace workIT.Services
         }
 
         #region import
-        public static ThisEntity GetByCtid( string ctid )
-        {
-            ThisEntity entity = new ThisEntity();
-            if ( string.IsNullOrWhiteSpace( ctid ) )
-                return entity;
-
-            return EntityMgr.GetByCtid( ctid );
-        }
-
         public bool Import( ThisEntity entity, ref SaveStatus status )
         {
-            bool isValid = new EntityMgr().Save( entity, ref status );
-            List<string> messages = new List<string>();
+            //do a get, and add to cache before updating
             if ( entity.Id > 0 )
             {
-                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
-                {
-                    //update cache
-                    new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-                    //update Elastic
-                    if ( Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
-                        ElasticServices.UpdateCredentialIndex( entity.Id );
-                    else
-                    {
-                        ElasticServices.UpdateCredentialIndex( entity.Id );
+                var detail = GetDetail( entity.Id, false );
+            }
+            bool isValid = new EntityMgr().Save( entity, ref status );
+            List<string> messages = new List<string>();
 
-                        new SearchPendingReindexManager().Add( 1, entity.Id, 1, ref messages );
-                        if ( messages.Count > 0 )
-                            status.AddWarningRange( messages );
-                    }
-                } else
+            if ( entity.Id > 0 )
+            {
+				CacheManager.RemoveItemFromCache( "credential", entity.Id );
+
+				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+                {
+                    ThreadPool.QueueUserWorkItem( UpdateCaches2, entity );
+                    new SearchPendingReindexManager().Add( 1, entity.Id, 1, ref messages );
+                    if ( messages.Count > 0 )
+                        status.AddWarningRange( messages );
+                }
+                else
                 {
                     new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
                     new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
@@ -78,10 +69,42 @@ namespace workIT.Services
 
             return isValid;
         }
-        public void AddCredentialsToPendingReindex(List<Credential> list)
+        static void UpdateCaches2( Object entity )
+        {
+            if ( entity.GetType() != typeof( Models.Common.Credential ) )
+                return;
+            var cred = ( entity as Models.Common.Credential );
+            new CacheManager().PopulateEntityRelatedCaches( cred.RowId );
+            //update Elastic
+            if ( Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
+                ElasticServices.Credential_UpdateIndex( cred.Id );
+            else
+            {
+                ElasticServices.Credential_UpdateIndex( cred.Id );
+            }
+        }
+        static void UpdateCaches( Object uuid )
+        {
+            if ( uuid == null || !ServiceHelper.IsValidGuid( uuid.ToString() ) )
+                return;
+            //update 
+            Guid rowId = new Guid( uuid.ToString() );
+            new CacheManager().PopulateEntityRelatedCaches( rowId );
+            //update Elastic
+            //if ( Utilities.UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false) )
+            //    ElasticServices.UpdateCredentialIndex(entity.Id);
+            //else
+            //{
+            //    ElasticServices.UpdateCredentialIndex(entity.Id);
+
+
+            //}
+
+        }
+        public void AddCredentialsToPendingReindex( List<Credential> list )
         {
             List<string> messages = new List<string>();
-            foreach (var item in list)
+            foreach ( var item in list )
             {
                 new SearchPendingReindexManager().Add( 1, item.Id, 1, ref messages );
             }
@@ -89,7 +112,7 @@ namespace workIT.Services
         public void AddCredentialsToPendingReindex( List<int> list )
         {
             List<string> messages = new List<string>();
-            foreach (var item in list)
+            foreach ( var item in list )
             {
                 new SearchPendingReindexManager().Add( 1, item, 1, ref messages );
             }
@@ -104,7 +127,7 @@ namespace workIT.Services
         /// <param name="keyword"></param>
         /// <param name="maxTerms"></param>
         /// <returns></returns>
-        public static List<string> Autocomplete( string keyword, int maxTerms = 25 )
+        public static List<string> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
         {
             int userId = 0;
             string where = "";
@@ -118,7 +141,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
             {
-                return ElasticServices.CredentialAutoComplete( keyword, maxTerms, ref pTotalRows );
+                return ElasticServices.CredentialAutoComplete( keyword, maxTerms, ref pTotalRows, widgetId );
             }
             else
             {
@@ -153,7 +176,7 @@ namespace workIT.Services
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
             {
-                return ElasticServices.CredentialSearch( data, ref pTotalRows );
+                return ElasticServices.Credential_Search( data, ref pTotalRows );
             }
             else
             {
@@ -564,7 +587,7 @@ namespace workIT.Services
             if ( qaSettings.Count == 1 )
             {
                 //ignore unless one filter
-                string item = qaSettings[0];
+                string item = qaSettings[ 0 ];
                 if ( where.Length > 0 )
                     AND = " AND ";
                 if ( item == "includeNormal" ) //IsAQAOrganization = false
@@ -637,7 +660,24 @@ namespace workIT.Services
         #endregion
 
         #region Retrievals
+        public static ThisEntity GetByCtid( string ctid )
+        {
+            ThisEntity entity = new ThisEntity();
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+                return entity;
 
+            return EntityMgr.GetByCtid( ctid );
+        }
+        public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+        {
+            ThisEntity entity = new ThisEntity();
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+                return entity;
+            var credential = EntityMgr.GetByCtid( ctid );
+            
+            return GetDetail( credential.Id, skippingCache );
+            
+        }
         /// <summary>
         /// Get a minimal credential - typically for a link, or need just basic properties
         /// </summary>
@@ -679,12 +719,12 @@ namespace workIT.Services
             string key = "credential_" + id.ToString();
 
             if ( skippingCache == false
-                && HttpRuntime.Cache[key] != null && cacheMinutes > 0 )
+                && HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
             {
-                var cache = ( CachedCredential )HttpRuntime.Cache[key];
+                var cache = ( CachedCredential )HttpRuntime.Cache[ key ];
                 try
                 {
-                    if ( cache.lastUpdated > maxTime )
+                    if ( cache.LastUpdated > maxTime )
                     {
                         LoggingHelper.DoTrace( 6, string.Format( "===CredentialServices.GetCredentialDetail === Using cached version of Credential, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
 
@@ -710,17 +750,19 @@ namespace workIT.Services
 
             DateTime end = DateTime.Now;
             int elasped = ( end - start ).Seconds;
-            //Cache the output if more than 3? seconds
-            if ( key.Length > 0 && cacheMinutes > 0 && elasped > 3 )
-            {
+			//Cache the output if more than specific seconds,
+			//NOTE need to be able to force it for imports
+			//&& elasped > 2
+			if ( key.Length > 0 && cacheMinutes > 0 )
+			{
                 var newCache = new CachedCredential()
                 {
                     Item = entity,
-                    lastUpdated = DateTime.Now
+                    LastUpdated = DateTime.Now
                 };
                 if ( HttpContext.Current != null )
                 {
-                    if ( HttpContext.Current.Cache[key] != null )
+                    if ( HttpContext.Current.Cache[ key ] != null )
                     {
                         HttpRuntime.Cache.Remove( key );
                         HttpRuntime.Cache.Insert( key, newCache );
@@ -803,288 +845,15 @@ namespace workIT.Services
 
         #endregion
 
-        /*
-		
-		#region === add/update/delete =============
-		
-		/// <summary>
-		/// Save a credential - vai new editor
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="user"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool Credential_Save( ThisEntity entity, AppUser user, ref string status )
-		{
-			//entity.IsNewVersion = true;
-			return Credential_Update( entity, user, ref status );
-		}
-
-		public bool Credential_Update( ThisEntity entity, AppUser user, ref string status )
-		{
-			entity.LastUpdatedById = user.Id;
-			LoggingHelper.DoTrace( 5, string.Format( thisClassName + ".Credential_Update. CredentialId: {0}, userId: {1}", entity.Id, entity.LastUpdatedById ) );
-			Mgr mgr = new Mgr();
-			bool valid = true;
-			if ( !ValidateCredential( entity, false, ref messages ) )
-			{
-				status = string.Join( "<br/>", messages.ToArray() );
-				return false;
-			}
-			try
-			{
-				if ( entity.ManagingOrgId == 0 )
-					entity.ManagingOrgId = OrganizationManager.GetPrimaryOrganizationId( user.Id );
-
-				valid = mgr.Update( entity, ref status );
-				if ( valid )
-				{
-					ConsoleMessageHelper.SetConsoleInfoMessage( "Successfully Updated Credential" );
-					activityMgr.AddActivity( "Credential", "Update", string.Format( "{0} updated credential (or parts of): {1}", user.FullName(), entity.Name ), user.Id, 0, entity.Id );
-
-					//remove from cache
-					//RemoveFromCache( "credential",entity.Id );
-					RemoveCredentialFromCache( entity.Id );
-					
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Credential_Update" );
-				valid = false;
-				status = ex.Message;
-			}
-
-			return valid;
-		}
-
-		//public bool Credential_Delete( int credentialId, AppUser user )
-		//{
-		//	var isOK = false;
-		//	var statusMessage = "";
-		//	return Credential_Delete( credentialId, user,ref isOK, ref statusMessage );
-		//}
-		public bool Credential_Delete( int credentialId, AppUser user, ref string status )
-		{
-			Mgr mgr = new Mgr();
-			bool valid = true;
-			try
-			{
-				ThisEntity entity = new ThisEntity();
-				if (CanUserUpdateCredential( credentialId, user, ref status, ref entity ) == false) 
-				{
-					status = "You do not have authorization to delete this credential";
-					valid = false;
-					return false;
-				}
-				valid = mgr.Credential_Delete( credentialId, user.Id, ref status );
-				if ( valid )
-				{
-					activityMgr.AddActivity( "Credential", "Deactivate", string.Format( "{0} deactivated credential: {1} (id: {2})", user.FullName(), entity.Name, entity.Id ), user.Id, 0, credentialId );
-					status = "";
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Credential_Delete" );
-				status = ex.Message;
-				valid = false;
-			}
-
-			return valid;
-		}
-		
-		#endregion
-
-		
-
-		#region Duration Profiles
-		/// <summary>
-		/// Get all Duration profiles for a parent
-		/// </summary>
-		/// <param name="parentId"></param>
-		/// <returns></returns>
-		//public static List<DurationProfile> DurationProfile_GetAll( Guid parentId )
-		//{
-		//	List<DurationProfile> list = DurationProfileManager.GetAll( parentId );
-		//	return list;
-		//}
-
-		/// <summary>
-		/// Get a Duration Profile By integer Id
-		/// </summary>
-		/// <param name="id"></param>
-		/// <returns></returns>
-		public static DurationProfile DurationProfile_Get( int id )
-		{
-			DurationProfile profile = DurationProfileManager.Get( id );
-			return profile;
-		}
-
-
-		public bool DurationProfile_Update( DurationProfile entity, Guid contextParentUid, Guid contextMainUid, int userId, ref string statusMessage )
-		{
-			//LoggingHelper.DoTrace( 2, string.Format( "CredentialServices.DurationProfile_Update. contextParentUid: {0} contextMainUid: {1} ", contextParentUid.ToString(), contextMainUid.ToString() ) 				);
-
-			List<String> messages = new List<string>();
-			if ( entity == null || !BaseFactory.IsGuidValid( contextParentUid ) )
-			{
-				messages.Add( "Error - missing an identifier for the DurationProfile" );
-				return false;
-			}
-			//validate credential and access
-			//==> not just from a credential
-			//ThisEntity credential = GetCredential()
-			//if (CanUserUpdateCredential( contextMainUid, userId, ref statusMessage ) == false) 
-			//{
-			//	messages.Add( "Error - missing credential identifier" );
-			//	return false;
-			//}
-			//CanUser update entity?
-			MC.Entity e = EntityManager.GetEntity( contextParentUid );
-
-			//remove this if properly passed from client
-			//plus need to migrate to the use of EntityId
-			//entity.ParentUid = parentUid;
-			entity.EntityId = e.Id;
-			entity.CreatedById = entity.LastUpdatedById = userId;
-
-			//if an add, the new id will be returned in the entity
-			bool isValid = new DurationProfileManager().DurationProfileUpdate( entity, userId, ref messages );
-			statusMessage = string.Join( "<br/>", messages.ToArray() );
-			return isValid;
-
-		}
-
-		public bool DurationProfile_Delete( int profileID, ref string status )
-		{
-			bool valid = false;
-			AppUser user = AccountServices.GetCurrentUser();
-			if ( user == null || user.Id == 0 )
-			{
-				status = "You must be logged and authorized to perform this action.";
-				return false;
-			}
-			try
-			{
-				DurationProfile profile = DurationProfileManager.Get( profileID );
-				//ensure has access
-
-				valid = new DurationProfileManager().DurationProfile_Delete( profileID, ref status );
-				if ( valid )
-				{
-					//if valid, status contains the cred name and id
-					activityMgr.AddActivity( "DurationProfile", "Delete", string.Format( "{0} deleted {1}", user.FullName(), status ), user.Id, 0, profileID );
-					status = "";
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".DurationProfile_Delete" );
-				status = ex.Message;
-				valid = false;
-			}
-
-			return valid;
-		}
-
-		#endregion
-
-		
-		#region Credential Revocation Profile
-		public static RevocationProfile RevocationProfile_GetForEdit( int profileId,
-				bool forEditView = true )
-		{
-			
-			RevocationProfile profile = Entity_RevocationProfileManager.Get( profileId );
-
-			return profile;
-		}
-
-		public bool RevocationProfile_Save( RevocationProfile entity, Guid credentialUid, string action, AppUser user, ref string status, bool isQuickCreate = false )
-		{
-			bool valid = true;
-			status = "";
-			List<string> messages = new List<string>();
-			Entity_RevocationProfileManager mgr = new Entity_RevocationProfileManager();
-			try
-			{
-				ThisEntity credential = GetBasicCredentialAsLink( credentialUid );
-
-				int count = 0;
-				//entity.IsNewVersion = true;
-				if ( mgr.Save( entity, credential, user.Id, ref messages ) == false )
-				{
-					valid = false;
-					status = string.Join( "<br/>", messages.ToArray() );
-				}
-				else 
-				{
-					if ( isQuickCreate )
-					{
-						status = "Created an initial Profile. Please provide a meaningful name, and fill out the remainder of the profile";
-					}
-					else
-					{
-						status = "Successful";
-						activityMgr.AddActivity( "RevocationProfile", "Modify", string.Format( "{0} added/updated Revocation Profiles under credential: {1}, count:{2}", user.FullName(), credential.Name, count ), user.Id, 0, entity.Id );
-					}
-				}
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".RevocationProfile_Save" );
-				valid = false;
-				status = ex.Message;
-			}
-			return valid;
-		}
-		/// <summary>
-		/// Delete a revocation Profile ??????????????
-		/// TODO - ensure current user has access to the credential
-		/// </summary>
-		/// <param name="credenialId"></param>
-		/// <param name="profileId"></param>
-		/// <param name="user"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool RevocationProfile_Delete( int credentialId, int profileId, AppUser user, ref string status )
-		{
-			bool valid = true;
-
-			try
-			{
-				valid = new Entity_RevocationProfileManager().Delete( profileId, ref status );
-
-				if ( valid )
-				{
-					//if valid, status contains the cred id, category, and codeId
-					activityMgr.AddActivity( "Revocation Profile", "Delete", string.Format( "{0} deleted Revocation Profile: {1} from Credential: {2}", user.FullName(), profileId, credentialId ), user.Id, 0, profileId );
-					status = "";
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".RevocationProfile_Delete" );
-				status = ex.Message;
-				valid = false;
-			}
-
-			return valid;
-		}
-
-		#endregion
-		*/
     }
 
     public class CachedCredential
     {
         public CachedCredential()
         {
-            lastUpdated = DateTime.Now;
+            LastUpdated = DateTime.Now;
         }
-        public DateTime lastUpdated { get; set; }
+        public DateTime LastUpdated { get; set; }
         public Credential Item { get; set; }
 
     }

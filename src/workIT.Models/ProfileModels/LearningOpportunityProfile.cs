@@ -8,8 +8,8 @@ using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-
-	public class LearningOpportunityProfile : BaseProfile
+    [Serializable]
+    public class LearningOpportunityProfile : BaseProfile
 	{
 		public LearningOpportunityProfile()
 		{
@@ -53,6 +53,7 @@ namespace workIT.Models.ProfileModels
             QualityAssurance = new AgentRelationshipResult();
             InLanguageCodeList = new List<TextValueProfile>();
 			VersionIdentifierList = new List<Entity_IdentifierValue>();
+			CredentialsList = new CredentialConnectionsResult();
 		}
 
 		public string Name { get; set; }
@@ -147,9 +148,9 @@ namespace workIT.Models.ProfileModels
 		/// </summary>
 		public string CodedNotation { get; set; }
 
-		public int InLanguageId { get; set; }
-		public string InLanguage { get; set; }
-		public string InLanguageCode { get; set; }
+		//public int InLanguageId { get; set; }
+		//public string InLanguage { get; set; }
+		//public string InLanguageCode { get; set; }
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
 
@@ -163,6 +164,8 @@ namespace workIT.Models.ProfileModels
 		public List<DurationProfile> EstimatedDuration { get; set; }
 		
 		public Enumeration DeliveryType { get; set; }
+        public Enumeration AudienceType { get; set; } = new Enumeration();
+        //
         public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
         public string DeliveryTypeDescription { get; set; }
 		public string VerificationMethodDescription { get; set; }
@@ -188,9 +191,9 @@ namespace workIT.Models.ProfileModels
 
 		public int CompetenciesCount { get; set; }
 		public List<CredentialAlignmentObjectProfile> TeachesCompetencies { get; set; }
+        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 
-
-		public List<CredentialAlignmentObjectFrameworkProfile> TeachesCompetenciesFrameworks { get; set; }
+        public List<CredentialAlignmentObjectFrameworkProfile> TeachesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 				
 
@@ -205,6 +208,9 @@ namespace workIT.Models.ProfileModels
         public string ListTitle { get; set; }
 
         #region import 
+        public List<int> HasPartIds { get; set; }
+        public List<int> IsPartOfIds { get; set; }
+        
         //CostManifestId
         //hmm, need to create a placeholder CMs
         public List<int> CostManifestIds { get; set; }
@@ -277,9 +283,8 @@ namespace workIT.Models.ProfileModels
 
 		public List<ConditionProfile> LearningOppConnections { get; set; }
         public CredentialConnectionsResult CredentialsList { get; set; }
-
-        #endregion
-    }
+		#endregion
+	}
 	//
 
 }

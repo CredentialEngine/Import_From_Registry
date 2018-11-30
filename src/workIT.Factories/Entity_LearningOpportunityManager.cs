@@ -129,66 +129,43 @@ namespace workIT.Factories
 			return id;
 		}
 
-		/// <summary>
-		/// Delete a learning opportunity from a parent entity
-		/// </summary>
-		/// <param name="parentId"></param>
-		/// <param name="entityTypeId"></param>
-		/// <param name="learningOppId"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		//public bool Delete( Guid parentUid, int learningOppId, ref string statusMessage )
-		//{
-		//	bool isValid = false;
-		//	if ( learningOppId == 0 )
-		//	{
-		//		statusMessage = "Error - missing an identifier for the LearningOpp to remove";
-		//		return false;
-		//	}
-		//	//need to get Entity.Id 
-		//	Entity parent = EntityManager.GetEntity( parentUid );
-		//	if ( parent == null || parent.Id == 0 )
-		//	{
-		//		statusMessage = "Error - the parent entity was not found.";
-		//		return false;
-		//	}
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		DBEntity efEntity = context.Entity_LearningOpportunity
-		//						.SingleOrDefault( s => s.EntityId == parent.Id && s.LearningOpportunityId == learningOppId );
+       
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_LearningOpportunity.RemoveRange( context.Entity_LearningOpportunity.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
 
-		//		if ( efEntity != null && efEntity.Id > 0 )
-		//		{
-		//			context.Entity_LearningOpportunity.Remove( efEntity );
-		//			int count = context.SaveChanges();
-		//			if ( count > 0 )
-		//			{
-		//				isValid = true;
-		//			}
-		//		}
-		//		else
-		//		{
-		//			statusMessage = "Warning - the record was not found - probably because the target had been previously deleted";
-		//			isValid = true;
-		//		}
-		//	}
-
-		//	return isValid;
-		//}
-
-		#endregion
+            return isValid;
+        }
+        #endregion
 
 
-		/// <summary>
-		/// Get all learning opportunties for the parent
-		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <param name="forEditView"></param>
-		/// <param name="forProfilesList"></param>
-		/// <returns></returns>
-		public static List<ThisEntity> LearningOpps_GetAll( Guid parentUid,
-					bool forEditView,
+        /// <summary>
+        /// Get all learning opportunties for the parent
+        /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <param name="forProfilesList"></param>
+        /// <returns></returns>
+        public static List<ThisEntity> LearningOpps_GetAll( Guid parentUid,
 					bool forProfilesList,
 					bool isForCredentialDetails = false )
 		{
@@ -200,15 +177,15 @@ namespace workIT.Factories
 			{
 				return list;
 			}
-
+			//TODO - this was left over from the publisher, needs to be cleaned up
 			bool includingProperties = isForCredentialDetails;
 			bool includingProfiles = false;
-			if ( !forEditView )
+			if ( isForCredentialDetails )
 			{
 				includingProperties = true;
 				includingProfiles = true;
 			}
-			LoggingHelper.DoTrace( 5, string.Format( "Entity_LearningOpps_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			LoggingHelper.DoTrace( 7, string.Format( "Entity_LearningOpps_GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -227,22 +204,27 @@ namespace workIT.Factories
                             {
                                 if ( forProfilesList || isForCredentialDetails )
                                 {
-                                    entity.Id = item.LearningOpportunityId;
-                                    entity.RowId = item.LearningOpportunity.RowId;
 
-                                    entity.Name = item.LearningOpportunity.Name;
-                                    entity.Description = item.LearningOpportunity.Description == null ? "" : item.LearningOpportunity.Description;
+									LearningOpportunityManager.MapFromDB_Basic( item.LearningOpportunity, entity,
+								true );
 
-                                    entity.SubjectWebpage = item.LearningOpportunity.SubjectWebpage;
-                                    entity.CTID = item.LearningOpportunity.CTID;
+									//entity.Id = item.LearningOpportunityId;
+         //                           entity.RowId = item.LearningOpportunity.RowId;
+
+         //                           entity.Name = item.LearningOpportunity.Name;
+         //                           entity.Description = item.LearningOpportunity.Description == null ? "" : item.LearningOpportunity.Description;
+									//entity.EntityStateId = ( int )( item.LearningOpportunity.EntityStateId ?? 1 );
+									//entity.SubjectWebpage = item.LearningOpportunity.SubjectWebpage;
+         //                           entity.CTID = item.LearningOpportunity.CTID;
                                     //also get costs - really only need the profile list view 
-                                    entity.EstimatedCost = CostProfileManager.GetAllForList( entity.RowId );
-
+                                    //entity.EstimatedCost = CostProfileManager.GetAllForList( entity.RowId );
+                                    //entity.CommonCosts = Entity_CommonCostManager.GetAll( entity.RowId );
                                     //get durations - need this for search and compare
-                                    entity.EstimatedDuration = DurationProfileManager.GetAll( entity.RowId );
+                                    //entity.EstimatedDuration = DurationProfileManager.GetAll( entity.RowId );
                                     if ( isForCredentialDetails )
                                     {
-                                        LearningOpportunityManager.MapFromDB_HasPart( entity, false, false );
+										entity.EstimatedDuration = DurationProfileManager.GetAll( entity.RowId );
+										LearningOpportunityManager.MapFromDB_HasPart( entity, false );
                                         LearningOpportunityManager.MapFromDB_Competencies( entity );
                                     }
                                     list.Add( entity );
@@ -250,22 +232,21 @@ namespace workIT.Factories
                                 }
                                 else
                                 {
-                                    if ( !forEditView
-                                      && CacheManager.IsLearningOpportunityAvailableFromCache( item.LearningOpportunityId, ref entity ) )
+                                    if ( CacheManager.IsLearningOpportunityAvailableFromCache( item.LearningOpportunityId, ref entity ) )
                                     {
                                         list.Add( entity );
                                     }
                                     else
                                     {
-                                        //to determine minimum needed for a or detail page
+                                        //TODO - is this section used??
+										//to determine minimum needed for a or detail page
                                         LearningOpportunityManager.MapFromDB( item.LearningOpportunity, entity,
                                             includingProperties,
                                             includingProfiles,
-                                            forEditView, //forEditView
                                             false //includeWhereUsed
                                             );
                                         list.Add( entity );
-                                        if ( !forEditView && entity.HasPart.Count > 0 )
+                                        if ( entity.HasPart.Count > 0 )
                                         {
                                             CacheManager.AddLearningOpportunityToCache( entity );
                                         }

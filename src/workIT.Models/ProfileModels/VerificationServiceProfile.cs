@@ -8,7 +8,8 @@ using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-	public class VerificationServiceProfile : BaseProfile
+    [Serializable]
+    public class VerificationServiceProfile : BaseProfile
 	{
 		public VerificationServiceProfile()
 		{

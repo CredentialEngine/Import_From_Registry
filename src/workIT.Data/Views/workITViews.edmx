@@ -92,10 +92,11 @@ warning 6002: The table/view 'credFinder.dbo.Assessment_Summary' does not have a
             <PropertyRef Name="Org_QAAgentAndRoles" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
-          <Property Name="Name" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="Description" Type="varchar(max)" />
           <Property Name="OrgId" Type="int" Nullable="false" />
           <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="OwningAgentUid" Type="uniqueidentifier" />
           <Property Name="DateEffective" Type="datetime" />
           <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
           <Property Name="EntityStateId" Type="int" />
@@ -443,6 +444,52 @@ warning 6002: The table/view 'credFinder.dbo.Entity.FrameworkItemSummary' does n
           <Property Name="URL" Type="varchar" MaxLength="300" />
         </EntityType>
         <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Entity_Assertion_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Entity_Assertion_Summary">
+          <Key>
+            <PropertyRef Name="EntityAssertionId" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="AssertionTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="EntityAssertionId" Type="int" Nullable="false" />
+          <Property Name="AgentUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="OrgId" Type="int" Nullable="false" />
+          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentSubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="AgentCTID" Type="varchar" MaxLength="50" />
+          <Property Name="AgentEntityStateId" Type="int" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="int" />
+          <Property Name="TargetEntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="TargetEntityType" Type="varchar" MaxLength="100" />
+          <Property Name="TargetEntityBaseId" Type="int" />
+          <Property Name="TargetEntityName" Type="nvarchar" MaxLength="500" />
+          <Property Name="TargetEntityDescription" Type="nvarchar(max)" />
+          <Property Name="TargetEntitySubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityStateId" Type="int" />
+          <Property Name="TargetCtdlType" Type="varchar" MaxLength="100" />
+          <Property Name="TargetCTID" Type="varchar" MaxLength="50" />
+          <Property Name="TargetOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="AssertionTypeId" Type="int" Nullable="false" />
+          <Property Name="IsPending" Type="bit" />
+          <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="AgentToSourceRelationship" Type="varchar" MaxLength="100" />
+          <Property Name="RelationshipDescription" Type="varchar" MaxLength="500" />
+          <Property Name="SchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="ReverseSchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="IsQARole" Type="bit" />
+          <Property Name="IsOwnerAgentRole" Type="bit" />
+          <Property Name="Created" Type="datetime" />
+        </EntityType>
+        <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder.dbo.Entity_LearningOpportunity_IsPartOfSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
           <Key>
@@ -475,10 +522,10 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Reference_Summary' does not 
             <PropertyRef Name="EntityId" />
             <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="EntityUid" />
-            <PropertyRef Name="EntityName" />
-            <PropertyRef Name="EntityBaseId" />
             <PropertyRef Name="EntityReferenceId" />
             <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityBaseId" />
           </Key>
           <Property Name="PK" Type="int" Nullable="false" />
           <Property Name="EntityId" Type="int" Nullable="false" />
@@ -548,9 +595,6 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Relationship_AgentSummary' d
             <PropertyRef Name="EntityId" />
             <PropertyRef Name="SourceEntityUid" />
             <PropertyRef Name="SourceEntityTypeId" />
-            <PropertyRef Name="SourceEntityBaseId" />
-            <PropertyRef Name="SourceEntityName" />
-            <PropertyRef Name="SourceEntityDescription" />
             <PropertyRef Name="RelationshipTypeId" />
             <PropertyRef Name="SourceToAgentRelationship" />
             <PropertyRef Name="ActingAgentUid" />
@@ -560,6 +604,9 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Relationship_AgentSummary' d
             <PropertyRef Name="AgentRelativeId" />
             <PropertyRef Name="CTID" />
             <PropertyRef Name="EntityStateId" />
+            <PropertyRef Name="SourceEntityBaseId" />
+            <PropertyRef Name="SourceEntityName" />
+            <PropertyRef Name="SourceEntityDescription" />
             <PropertyRef Name="AgentToSourceRelationship" />
             <PropertyRef Name="SchemaTag" />
           </Key>
@@ -574,6 +621,8 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Relationship_AgentSummary' d
           <Property Name="SourceEntityDescription" Type="nvarchar(max)" Nullable="false" />
           <Property Name="SourceEntityUrl" Type="varchar" MaxLength="600" />
           <Property Name="SourceEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="SourceEntityStateId" Type="int" />
+          <Property Name="SourceOwningOrganizationName" Type="varchar" MaxLength="300" />
           <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
           <Property Name="IsInverseRole" Type="bit" />
           <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
@@ -620,19 +669,24 @@ warning 6002: The table/view 'credFinder.dbo.EntityCompetencyFramework_Items_Sum
         <EntityType Name="EntityCompetencyFramework_Items_Summary">
           <Key>
             <PropertyRef Name="EntityId" />
-            <PropertyRef Name="BaseId" />
-            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="EntityCompetencyFrameworkItemId" />
             <PropertyRef Name="EntityCompetencyId" />
-            <PropertyRef Name="FrameworkName" />
+            <PropertyRef Name="ConnectionTypeId" />
+            <PropertyRef Name="ConditionEntityTypeId" />
+            <PropertyRef Name="ConditionEntityBaseId" />
+            <PropertyRef Name="EntityName" />
           </Key>
           <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="EntityType" Type="varchar" MaxLength="100" />
-          <Property Name="BaseId" Type="int" Nullable="false" />
+          <Property Name="EntityBaseId" Type="int" />
           <Property Name="EntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
           <Property Name="EntityCompetencyFrameworkItemId" Type="int" Nullable="false" />
-          <Property Name="FrameworkName" Type="varchar" MaxLength="500" Nullable="false" />
-          <Property Name="FrameworkUrl" Type="varchar" MaxLength="500" />
+          <Property Name="FrameworkName" Type="varchar" MaxLength="500" />
+          <Property Name="FrameworkUri" Type="varchar" MaxLength="500" />
+          <Property Name="SourceUrl" Type="varchar" MaxLength="500" />
+          <Property Name="FrameworkCtid" Type="varchar" MaxLength="50" />
           <Property Name="EntityCompetencyId" Type="int" Nullable="false" />
           <Property Name="Competency" Type="nvarchar" MaxLength="600" />
           <Property Name="TargetNodeDescription" Type="nvarchar(max)" />
@@ -640,6 +694,9 @@ warning 6002: The table/view 'credFinder.dbo.EntityCompetencyFramework_Items_Sum
           <Property Name="CodedNotation" Type="nvarchar" MaxLength="300" />
           <Property Name="Created" Type="datetime" />
           <Property Name="Weight" Type="decimal" Precision="5" Scale="2" />
+          <Property Name="ConnectionTypeId" Type="int" Nullable="false" />
+          <Property Name="ConditionEntityTypeId" Type="int" Nullable="false" />
+          <Property Name="ConditionEntityBaseId" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder.dbo.EntityProperty_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
@@ -673,6 +730,42 @@ warning 6002: The table/view 'credFinder.dbo.EntityProperty_Summary' does not ha
           <Property Name="CategoryDescription" Type="varchar" MaxLength="500" />
           <Property Name="IsActive" Type="bit" />
           <Property Name="IsSubType1" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.ExistingCountries_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="ExistingCountries_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+          </Key>
+          <Property Name="CountryNumber" Type="int" Nullable="false" />
+          <Property Name="Country" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.ExistingCountryRegions_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="ExistingCountryRegions_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Region" />
+          </Key>
+          <Property Name="CountryNumber" Type="int" Nullable="false" />
+          <Property Name="Country" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Region" Type="nvarchar" MaxLength="200" Nullable="false" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.ExistingRegionCities_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="ExistingRegionCities_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Region" />
+            <PropertyRef Name="City" />
+          </Key>
+          <Property Name="CountryNumber" Type="int" Nullable="false" />
+          <Property Name="Country" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Region" Type="nvarchar" MaxLength="200" Nullable="false" />
+          <Property Name="City" Type="nvarchar" MaxLength="200" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder.dbo.NAICS' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
@@ -733,6 +826,133 @@ warning 6002: The table/view 'credFinder.dbo.ONET_SOC.JobFamily' does not have a
           <Property Name="JobFamilyId" Type="int" Nullable="false" />
           <Property Name="Description" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Totals" Type="int" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Organization_CombinedConnections' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Organization_CombinedConnections">
+          <Key>
+            <PropertyRef Name="roleSource" />
+            <PropertyRef Name="OrgUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="roleSource" Type="varchar" MaxLength="25" Nullable="false" />
+          <Property Name="OrgUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="OrgId" Type="int" Nullable="false" />
+          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentSubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="AgentCTID" Type="varchar" MaxLength="50" />
+          <Property Name="AgentEntityStateId" Type="int" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="int" />
+          <Property Name="TargetEntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="TargetEntityType" Type="varchar" MaxLength="100" />
+          <Property Name="TargetEntityBaseId" Type="int" />
+          <Property Name="TargetEntityName" Type="nvarchar" MaxLength="500" />
+          <Property Name="TargetEntityDescription" Type="nvarchar(max)" />
+          <Property Name="TargetEntitySubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityStateId" Type="int" />
+          <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
+          <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="AgentToSourceRelationship" Type="varchar" MaxLength="100" />
+          <Property Name="RelationshipDescription" Type="varchar" MaxLength="500" />
+          <Property Name="SchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="ReverseSchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="IsQARole" Type="bit" />
+          <Property Name="IsOwnerAgentRole" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Organization_CombinedQAPerformed' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Organization_CombinedQAPerformed">
+          <Key>
+            <PropertyRef Name="roleSource" />
+            <PropertyRef Name="OrgUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="roleSource" Type="varchar" MaxLength="17" Nullable="false" />
+          <Property Name="OrgUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="OrgId" Type="int" Nullable="false" />
+          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentSubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="AgentCTID" Type="varchar" MaxLength="50" />
+          <Property Name="AgentEntityStateId" Type="int" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="int" />
+          <Property Name="TargetEntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="TargetEntityType" Type="varchar" MaxLength="100" />
+          <Property Name="TargetEntityBaseId" Type="int" />
+          <Property Name="TargetEntityName" Type="nvarchar" MaxLength="500" />
+          <Property Name="TargetEntityDescription" Type="nvarchar(max)" />
+          <Property Name="TargetEntitySubjectWebpage" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="TargetEntityStateId" Type="int" />
+          <Property Name="TargetOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
+          <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="AgentToSourceRelationship" Type="varchar" MaxLength="100" />
+          <Property Name="RelationshipDescription" Type="varchar" MaxLength="500" />
+          <Property Name="SchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="ReverseSchemaTag" Type="varchar" MaxLength="200" />
+          <Property Name="IsQARole" Type="bit" />
+          <Property Name="IsOwnerAgentRole" Type="bit" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Query_IndianaCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Query_IndianaCredentials">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OwningOrganization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="SubjectWebpage" />
+            <PropertyRef Name="CredentialType" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="orgCTID" Type="varchar" MaxLength="50" />
+          <Property Name="OwningOrganization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="400" Nullable="false" />
+          <Property Name="Description" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="SubjectWebpage" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="CredentialType" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="OwnedBy" Type="varchar" MaxLength="93" />
+        </EntityType>
+        <!--Errors Found During Generation:
+warning 6002: The table/view 'credFinder.dbo.Query_IndianapolisCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+        <EntityType Name="Query_IndianapolisCredentials">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OwningOrganization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="SubjectWebpage" />
+            <PropertyRef Name="CredentialType" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="orgCTID" Type="varchar" MaxLength="50" />
+          <Property Name="OwningOrganization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="400" Nullable="false" />
+          <Property Name="Description" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="SubjectWebpage" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="CredentialType" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="OwnedBy" Type="varchar" MaxLength="93" />
         </EntityType>
         <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
@@ -805,6 +1025,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Assessment_Summary].[Description] AS [Description], 
     [Assessment_Summary].[OrgId] AS [OrgId], 
     [Assessment_Summary].[Organization] AS [Organization], 
+    [Assessment_Summary].[OwningAgentUid] AS [OwningAgentUid], 
     [Assessment_Summary].[DateEffective] AS [DateEffective], 
     [Assessment_Summary].[SubjectWebpage] AS [SubjectWebpage], 
     [Assessment_Summary].[EntityStateId] AS [EntityStateId], 
@@ -1055,6 +1276,42 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_FrameworkItemSummary].[URL] AS [URL]
     FROM [dbo].[Entity.FrameworkItemSummary] AS [Entity_FrameworkItemSummary]</DefiningQuery>
           </EntitySet>
+          <EntitySet Name="Entity_Assertion_Summary" EntityType="Self.Entity_Assertion_Summary" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Entity_Assertion_Summary].[EntityAssertionId] AS [EntityAssertionId], 
+    [Entity_Assertion_Summary].[AgentUid] AS [AgentUid], 
+    [Entity_Assertion_Summary].[Organization] AS [Organization], 
+    [Entity_Assertion_Summary].[OrgId] AS [OrgId], 
+    [Entity_Assertion_Summary].[AgentDescription] AS [AgentDescription], 
+    [Entity_Assertion_Summary].[AgentSubjectWebpage] AS [AgentSubjectWebpage], 
+    [Entity_Assertion_Summary].[AgentImageUrl] AS [AgentImageUrl], 
+    [Entity_Assertion_Summary].[AgentCTID] AS [AgentCTID], 
+    [Entity_Assertion_Summary].[AgentEntityStateId] AS [AgentEntityStateId], 
+    [Entity_Assertion_Summary].[EntityId] AS [EntityId], 
+    [Entity_Assertion_Summary].[TargetEntityTypeId] AS [TargetEntityTypeId], 
+    [Entity_Assertion_Summary].[TargetEntityUid] AS [TargetEntityUid], 
+    [Entity_Assertion_Summary].[TargetEntityType] AS [TargetEntityType], 
+    [Entity_Assertion_Summary].[TargetEntityBaseId] AS [TargetEntityBaseId], 
+    [Entity_Assertion_Summary].[TargetEntityName] AS [TargetEntityName], 
+    [Entity_Assertion_Summary].[TargetEntityDescription] AS [TargetEntityDescription], 
+    [Entity_Assertion_Summary].[TargetEntitySubjectWebpage] AS [TargetEntitySubjectWebpage], 
+    [Entity_Assertion_Summary].[TargetEntityImageUrl] AS [TargetEntityImageUrl], 
+    [Entity_Assertion_Summary].[TargetEntityStateId] AS [TargetEntityStateId], 
+    [Entity_Assertion_Summary].[TargetCtdlType] AS [TargetCtdlType], 
+    [Entity_Assertion_Summary].[TargetCTID] AS [TargetCTID], 
+    [Entity_Assertion_Summary].[TargetOwningOrganizationName] AS [TargetOwningOrganizationName], 
+    [Entity_Assertion_Summary].[AssertionTypeId] AS [AssertionTypeId], 
+    [Entity_Assertion_Summary].[IsPending] AS [IsPending], 
+    [Entity_Assertion_Summary].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
+    [Entity_Assertion_Summary].[AgentToSourceRelationship] AS [AgentToSourceRelationship], 
+    [Entity_Assertion_Summary].[RelationshipDescription] AS [RelationshipDescription], 
+    [Entity_Assertion_Summary].[SchemaTag] AS [SchemaTag], 
+    [Entity_Assertion_Summary].[ReverseSchemaTag] AS [ReverseSchemaTag], 
+    [Entity_Assertion_Summary].[IsQARole] AS [IsQARole], 
+    [Entity_Assertion_Summary].[IsOwnerAgentRole] AS [IsOwnerAgentRole], 
+    [Entity_Assertion_Summary].[Created] AS [Created]
+    FROM [dbo].[Entity_Assertion_Summary] AS [Entity_Assertion_Summary]</DefiningQuery>
+          </EntitySet>
           <EntitySet Name="Entity_LearningOpportunity_IsPartOfSummary" EntityType="Self.Entity_LearningOpportunity_IsPartOfSummary" store:Type="Views" store:Schema="dbo">
             <DefiningQuery>SELECT 
     [Entity_LearningOpportunity_IsPartOfSummary].[Id] AS [Id], 
@@ -1131,6 +1388,8 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_Relationship_AgentSummary].[SourceEntityDescription] AS [SourceEntityDescription], 
     [Entity_Relationship_AgentSummary].[SourceEntityUrl] AS [SourceEntityUrl], 
     [Entity_Relationship_AgentSummary].[SourceEntityImageUrl] AS [SourceEntityImageUrl], 
+    [Entity_Relationship_AgentSummary].[SourceEntityStateId] AS [SourceEntityStateId], 
+    [Entity_Relationship_AgentSummary].[SourceOwningOrganizationName] AS [SourceOwningOrganizationName], 
     [Entity_Relationship_AgentSummary].[RelationshipTypeId] AS [RelationshipTypeId], 
     [Entity_Relationship_AgentSummary].[IsInverseRole] AS [IsInverseRole], 
     [Entity_Relationship_AgentSummary].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
@@ -1169,19 +1428,25 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySet Name="EntityCompetencyFramework_Items_Summary" EntityType="Self.EntityCompetencyFramework_Items_Summary" store:Type="Views" store:Schema="dbo">
             <DefiningQuery>SELECT 
     [EntityCompetencyFramework_Items_Summary].[EntityId] AS [EntityId], 
+    [EntityCompetencyFramework_Items_Summary].[EntityTypeId] AS [EntityTypeId], 
     [EntityCompetencyFramework_Items_Summary].[EntityType] AS [EntityType], 
-    [EntityCompetencyFramework_Items_Summary].[BaseId] AS [BaseId], 
+    [EntityCompetencyFramework_Items_Summary].[EntityBaseId] AS [EntityBaseId], 
     [EntityCompetencyFramework_Items_Summary].[EntityName] AS [EntityName], 
     [EntityCompetencyFramework_Items_Summary].[EntityCompetencyFrameworkItemId] AS [EntityCompetencyFrameworkItemId], 
     [EntityCompetencyFramework_Items_Summary].[FrameworkName] AS [FrameworkName], 
-    [EntityCompetencyFramework_Items_Summary].[FrameworkUrl] AS [FrameworkUrl], 
+    [EntityCompetencyFramework_Items_Summary].[FrameworkUri] AS [FrameworkUri], 
+    [EntityCompetencyFramework_Items_Summary].[SourceUrl] AS [SourceUrl], 
+    [EntityCompetencyFramework_Items_Summary].[FrameworkCtid] AS [FrameworkCtid], 
     [EntityCompetencyFramework_Items_Summary].[EntityCompetencyId] AS [EntityCompetencyId], 
     [EntityCompetencyFramework_Items_Summary].[Competency] AS [Competency], 
     [EntityCompetencyFramework_Items_Summary].[TargetNodeDescription] AS [TargetNodeDescription], 
     [EntityCompetencyFramework_Items_Summary].[TargetNode] AS [TargetNode], 
     [EntityCompetencyFramework_Items_Summary].[CodedNotation] AS [CodedNotation], 
     [EntityCompetencyFramework_Items_Summary].[Created] AS [Created], 
-    [EntityCompetencyFramework_Items_Summary].[Weight] AS [Weight]
+    [EntityCompetencyFramework_Items_Summary].[Weight] AS [Weight], 
+    [EntityCompetencyFramework_Items_Summary].[ConnectionTypeId] AS [ConnectionTypeId], 
+    [EntityCompetencyFramework_Items_Summary].[ConditionEntityTypeId] AS [ConditionEntityTypeId], 
+    [EntityCompetencyFramework_Items_Summary].[ConditionEntityBaseId] AS [ConditionEntityBaseId]
     FROM [dbo].[EntityCompetencyFramework_Items_Summary] AS [EntityCompetencyFramework_Items_Summary]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="EntityProperty_Summary" EntityType="Self.EntityProperty_Summary" store:Type="Views" store:Schema="dbo">
@@ -1206,6 +1471,27 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [EntityProperty_Summary].[IsActive] AS [IsActive], 
     [EntityProperty_Summary].[IsSubType1] AS [IsSubType1]
     FROM [dbo].[EntityProperty_Summary] AS [EntityProperty_Summary]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="ExistingCountries_list" EntityType="Self.ExistingCountries_list" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [ExistingCountries_list].[CountryNumber] AS [CountryNumber], 
+    [ExistingCountries_list].[Country] AS [Country]
+    FROM [dbo].[ExistingCountries_list] AS [ExistingCountries_list]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="ExistingCountryRegions_list" EntityType="Self.ExistingCountryRegions_list" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [ExistingCountryRegions_list].[CountryNumber] AS [CountryNumber], 
+    [ExistingCountryRegions_list].[Country] AS [Country], 
+    [ExistingCountryRegions_list].[Region] AS [Region]
+    FROM [dbo].[ExistingCountryRegions_list] AS [ExistingCountryRegions_list]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="ExistingRegionCities_list" EntityType="Self.ExistingRegionCities_list" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [ExistingRegionCities_list].[CountryNumber] AS [CountryNumber], 
+    [ExistingRegionCities_list].[Country] AS [Country], 
+    [ExistingRegionCities_list].[Region] AS [Region], 
+    [ExistingRegionCities_list].[City] AS [City]
+    FROM [dbo].[ExistingRegionCities_list] AS [ExistingRegionCities_list]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="NAICS" EntityType="Self.NAICS" store:Type="Views" store:Schema="dbo">
             <DefiningQuery>SELECT 
@@ -1247,6 +1533,95 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [ONET_SOC_JobFamily].[Description] AS [Description], 
     [ONET_SOC_JobFamily].[Totals] AS [Totals]
     FROM [dbo].[ONET_SOC.JobFamily] AS [ONET_SOC_JobFamily]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Organization_CombinedConnections" EntityType="Self.Organization_CombinedConnections" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Organization_CombinedConnections].[roleSource] AS [roleSource], 
+    [Organization_CombinedConnections].[OrgUid] AS [OrgUid], 
+    [Organization_CombinedConnections].[Organization] AS [Organization], 
+    [Organization_CombinedConnections].[OrgId] AS [OrgId], 
+    [Organization_CombinedConnections].[AgentDescription] AS [AgentDescription], 
+    [Organization_CombinedConnections].[AgentSubjectWebpage] AS [AgentSubjectWebpage], 
+    [Organization_CombinedConnections].[AgentImageUrl] AS [AgentImageUrl], 
+    [Organization_CombinedConnections].[AgentCTID] AS [AgentCTID], 
+    [Organization_CombinedConnections].[AgentEntityStateId] AS [AgentEntityStateId], 
+    [Organization_CombinedConnections].[EntityId] AS [EntityId], 
+    [Organization_CombinedConnections].[TargetEntityTypeId] AS [TargetEntityTypeId], 
+    [Organization_CombinedConnections].[TargetEntityUid] AS [TargetEntityUid], 
+    [Organization_CombinedConnections].[TargetEntityType] AS [TargetEntityType], 
+    [Organization_CombinedConnections].[TargetEntityBaseId] AS [TargetEntityBaseId], 
+    [Organization_CombinedConnections].[TargetEntityName] AS [TargetEntityName], 
+    [Organization_CombinedConnections].[TargetEntityDescription] AS [TargetEntityDescription], 
+    [Organization_CombinedConnections].[TargetEntitySubjectWebpage] AS [TargetEntitySubjectWebpage], 
+    [Organization_CombinedConnections].[TargetEntityImageUrl] AS [TargetEntityImageUrl], 
+    [Organization_CombinedConnections].[TargetEntityStateId] AS [TargetEntityStateId], 
+    [Organization_CombinedConnections].[RelationshipTypeId] AS [RelationshipTypeId], 
+    [Organization_CombinedConnections].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
+    [Organization_CombinedConnections].[AgentToSourceRelationship] AS [AgentToSourceRelationship], 
+    [Organization_CombinedConnections].[RelationshipDescription] AS [RelationshipDescription], 
+    [Organization_CombinedConnections].[SchemaTag] AS [SchemaTag], 
+    [Organization_CombinedConnections].[ReverseSchemaTag] AS [ReverseSchemaTag], 
+    [Organization_CombinedConnections].[IsQARole] AS [IsQARole], 
+    [Organization_CombinedConnections].[IsOwnerAgentRole] AS [IsOwnerAgentRole]
+    FROM [dbo].[Organization_CombinedConnections] AS [Organization_CombinedConnections]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Organization_CombinedQAPerformed" EntityType="Self.Organization_CombinedQAPerformed" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Organization_CombinedQAPerformed].[roleSource] AS [roleSource], 
+    [Organization_CombinedQAPerformed].[OrgUid] AS [OrgUid], 
+    [Organization_CombinedQAPerformed].[Organization] AS [Organization], 
+    [Organization_CombinedQAPerformed].[OrgId] AS [OrgId], 
+    [Organization_CombinedQAPerformed].[AgentDescription] AS [AgentDescription], 
+    [Organization_CombinedQAPerformed].[AgentSubjectWebpage] AS [AgentSubjectWebpage], 
+    [Organization_CombinedQAPerformed].[AgentImageUrl] AS [AgentImageUrl], 
+    [Organization_CombinedQAPerformed].[AgentCTID] AS [AgentCTID], 
+    [Organization_CombinedQAPerformed].[AgentEntityStateId] AS [AgentEntityStateId], 
+    [Organization_CombinedQAPerformed].[EntityId] AS [EntityId], 
+    [Organization_CombinedQAPerformed].[TargetEntityTypeId] AS [TargetEntityTypeId], 
+    [Organization_CombinedQAPerformed].[TargetEntityUid] AS [TargetEntityUid], 
+    [Organization_CombinedQAPerformed].[TargetEntityType] AS [TargetEntityType], 
+    [Organization_CombinedQAPerformed].[TargetEntityBaseId] AS [TargetEntityBaseId], 
+    [Organization_CombinedQAPerformed].[TargetEntityName] AS [TargetEntityName], 
+    [Organization_CombinedQAPerformed].[TargetEntityDescription] AS [TargetEntityDescription], 
+    [Organization_CombinedQAPerformed].[TargetEntitySubjectWebpage] AS [TargetEntitySubjectWebpage], 
+    [Organization_CombinedQAPerformed].[TargetEntityImageUrl] AS [TargetEntityImageUrl], 
+    [Organization_CombinedQAPerformed].[TargetEntityStateId] AS [TargetEntityStateId], 
+    [Organization_CombinedQAPerformed].[TargetOwningOrganizationName] AS [TargetOwningOrganizationName], 
+    [Organization_CombinedQAPerformed].[RelationshipTypeId] AS [RelationshipTypeId], 
+    [Organization_CombinedQAPerformed].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
+    [Organization_CombinedQAPerformed].[AgentToSourceRelationship] AS [AgentToSourceRelationship], 
+    [Organization_CombinedQAPerformed].[RelationshipDescription] AS [RelationshipDescription], 
+    [Organization_CombinedQAPerformed].[SchemaTag] AS [SchemaTag], 
+    [Organization_CombinedQAPerformed].[ReverseSchemaTag] AS [ReverseSchemaTag], 
+    [Organization_CombinedQAPerformed].[IsQARole] AS [IsQARole], 
+    [Organization_CombinedQAPerformed].[IsOwnerAgentRole] AS [IsOwnerAgentRole]
+    FROM [dbo].[Organization_CombinedQAPerformed] AS [Organization_CombinedQAPerformed]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Query_IndianaCredentials" EntityType="Self.Query_IndianaCredentials" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Query_IndianaCredentials].[Id] AS [Id], 
+    [Query_IndianaCredentials].[orgCTID] AS [orgCTID], 
+    [Query_IndianaCredentials].[OwningOrganization] AS [OwningOrganization], 
+    [Query_IndianaCredentials].[CTID] AS [CTID], 
+    [Query_IndianaCredentials].[Name] AS [Name], 
+    [Query_IndianaCredentials].[Description] AS [Description], 
+    [Query_IndianaCredentials].[SubjectWebpage] AS [SubjectWebpage], 
+    [Query_IndianaCredentials].[CredentialType] AS [CredentialType], 
+    [Query_IndianaCredentials].[OwnedBy] AS [OwnedBy]
+    FROM [dbo].[Query_IndianaCredentials] AS [Query_IndianaCredentials]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="Query_IndianapolisCredentials" EntityType="Self.Query_IndianapolisCredentials" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Query_IndianapolisCredentials].[Id] AS [Id], 
+    [Query_IndianapolisCredentials].[orgCTID] AS [orgCTID], 
+    [Query_IndianapolisCredentials].[OwningOrganization] AS [OwningOrganization], 
+    [Query_IndianapolisCredentials].[CTID] AS [CTID], 
+    [Query_IndianapolisCredentials].[Name] AS [Name], 
+    [Query_IndianapolisCredentials].[Description] AS [Description], 
+    [Query_IndianapolisCredentials].[SubjectWebpage] AS [SubjectWebpage], 
+    [Query_IndianapolisCredentials].[CredentialType] AS [CredentialType], 
+    [Query_IndianapolisCredentials].[OwnedBy] AS [OwnedBy]
+    FROM [dbo].[Query_IndianapolisCredentials] AS [Query_IndianapolisCredentials]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="SiteTotalsSummary" EntityType="Self.SiteTotalsSummary" store:Type="Views" store:Schema="dbo">
             <DefiningQuery>SELECT 
@@ -1357,7 +1732,6 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySet Name="Credential_Assets_AgentRelationship_Totals" EntityType="workITViewModels.Credential_Assets_AgentRelationship_Totals" />
           <EntitySet Name="Entity_AgentRelationshipIdCSV" EntityType="workITViewModels.Entity_AgentRelationshipIdCSV" />
           <EntitySet Name="Entity_FrameworkItemSummary" EntityType="workITViewModels.Entity_FrameworkItemSummary" />
-          <EntitySet Name="EntityCompetencyFramework_Items_Summary" EntityType="workITViewModels.EntityCompetencyFramework_Items_Summary" />
           <EntitySet Name="Entity_FrameworkCIPCodeSummary" EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" />
           <EntitySet Name="Entity_FrameworkIndustryCodeSummary" EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" />
           <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="workITViewModels.Entity_ReferenceFramework_Summary" />
@@ -1365,6 +1739,15 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySet Name="SiteTotalsSummaries" EntityType="workITViewModels.SiteTotalsSummary" />
           <EntitySet Name="CodesProperty_Counts_ByEntity" EntityType="workITViewModels.CodesProperty_Counts_ByEntity" />
           <EntitySet Name="CodesProperty_Summary" EntityType="workITViewModels.CodesProperty_Summary" />
+          <EntitySet Name="ExistingCountries_list" EntityType="workITViewModels.ExistingCountries_list" />
+          <EntitySet Name="ExistingCountryRegions_list" EntityType="workITViewModels.ExistingCountryRegions_list" />
+          <EntitySet Name="EntityCompetencyFramework_Items_Summary" EntityType="workITViewModels.EntityCompetencyFramework_Items_Summary" />
+          <EntitySet Name="ExistingRegionCities_list" EntityType="workITViewModels.ExistingRegionCities_list" />
+          <EntitySet Name="Entity_Assertion_Summary" EntityType="workITViewModels.Entity_Assertion_Summary" />
+          <EntitySet Name="Organization_CombinedQAPerformed" EntityType="workITViewModels.Organization_CombinedQAPerformed" />
+          <EntitySet Name="Query_IndianapolisCredentials" EntityType="workITViewModels.Query_IndianapolisCredentials" />
+          <EntitySet Name="Query_IndianaCredentials" EntityType="workITViewModels.Query_IndianaCredentials" />
+          <EntitySet Name="Organization_CombinedConnections" EntityType="workITViewModels.Organization_CombinedConnections" />
         </EntityContainer>
         <EntityType Name="CIPCode2010">
           <Key>
@@ -1575,7 +1958,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
             <PropertyRef Name="Org_QAAgentAndRoles" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
-          <Property Name="Name" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="DateEffective" Type="DateTime" Precision="3" />
           <Property Name="IdentificationCode" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
@@ -1606,6 +1989,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="ConnectionsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="CredentialsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="OwningAgentUid" Type="Guid" />
         </EntityType>
         <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
           <Key>
@@ -1748,6 +2132,8 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="Created" Type="DateTime" Precision="3" />
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+          <Property Name="SourceEntityStateId" Type="Int32" />
+          <Property Name="SourceOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="Credential_Assets_AgentRelationship_Totals">
           <Key>
@@ -1837,30 +2223,6 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="FrameworkGroup2" Type="String" MaxLength="2" FixedLength="false" Unicode="false" />
           <Property Name="Url2" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="URL" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
-        </EntityType>
-        <EntityType Name="EntityCompetencyFramework_Items_Summary">
-          <Key>
-            <PropertyRef Name="EntityId" />
-            <PropertyRef Name="BaseId" />
-            <PropertyRef Name="EntityName" />
-            <PropertyRef Name="EntityCompetencyFrameworkItemId" />
-            <PropertyRef Name="FrameworkName" />
-            <PropertyRef Name="EntityCompetencyId" />
-          </Key>
-          <Property Name="EntityId" Type="Int32" Nullable="false" />
-          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="BaseId" Type="Int32" Nullable="false" />
-          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
-          <Property Name="EntityCompetencyFrameworkItemId" Type="Int32" Nullable="false" />
-          <Property Name="FrameworkName" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="EntityCompetencyId" Type="Int32" Nullable="false" />
-          <Property Name="Competency" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
-          <Property Name="TargetNodeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="CodedNotation" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
-          <Property Name="FrameworkUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="Created" Type="DateTime" Precision="3" />
-          <Property Name="Weight" Type="Decimal" Precision="5" Scale="2" />
         </EntityType>
         <EntityType Name="Entity_FrameworkCIPCodeSummary">
           <Key>
@@ -1985,6 +2347,231 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="ParentSchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="PropertySchemaUrl" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
           <Property Name="Totals" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ExistingCountries_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+          </Key>
+          <Property Name="CountryNumber" Type="Int32" Nullable="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="ExistingCountryRegions_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Region" />
+          </Key>
+          <Property Name="CountryNumber" Type="Int32" Nullable="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Region" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="EntityCompetencyFramework_Items_Summary">
+          <Key>
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityCompetencyFrameworkItemId" />
+            <PropertyRef Name="EntityCompetencyId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="ConnectionTypeId" />
+            <PropertyRef Name="ConditionEntityTypeId" />
+            <PropertyRef Name="ConditionEntityBaseId" />
+          </Key>
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityCompetencyFrameworkItemId" Type="Int32" Nullable="false" />
+          <Property Name="FrameworkName" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkUri" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SourceUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkCtid" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityCompetencyId" Type="Int32" Nullable="false" />
+          <Property Name="Competency" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNodeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="Weight" Type="Decimal" Precision="5" Scale="2" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="ConnectionTypeId" Type="Int32" Nullable="false" />
+          <Property Name="ConditionEntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="ConditionEntityBaseId" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ExistingRegionCities_list">
+          <Key>
+            <PropertyRef Name="CountryNumber" />
+            <PropertyRef Name="Country" />
+            <PropertyRef Name="Region" />
+            <PropertyRef Name="City" />
+          </Key>
+          <Property Name="CountryNumber" Type="Int32" Nullable="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Region" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="true" />
+          <Property Name="City" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="Entity_Assertion_Summary">
+          <Key>
+            <PropertyRef Name="EntityAssertionId" />
+            <PropertyRef Name="AgentUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="AssertionTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="EntityAssertionId" Type="Int32" Nullable="false" />
+          <Property Name="AgentUid" Type="Guid" Nullable="false" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="OrgId" Type="Int32" Nullable="false" />
+          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentSubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="Int32" />
+          <Property Name="TargetEntityUid" Type="Guid" Nullable="false" />
+          <Property Name="TargetEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityBaseId" Type="Int32" />
+          <Property Name="TargetEntityName" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntityDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntitySubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityStateId" Type="Int32" />
+          <Property Name="TargetCtdlType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="TargetCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="AssertionTypeId" Type="Int32" Nullable="false" />
+          <Property Name="IsPending" Type="Boolean" />
+          <Property Name="SourceToAgentRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="AgentToSourceRelationship" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="RelationshipDescription" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReverseSchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="IsQARole" Type="Boolean" />
+          <Property Name="IsOwnerAgentRole" Type="Boolean" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="AgentEntityStateId" Type="Int32" />
+          <Property Name="TargetOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Organization_CombinedQAPerformed">
+          <Key>
+            <PropertyRef Name="roleSource" />
+            <PropertyRef Name="OrgUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="roleSource" Type="String" Nullable="false" MaxLength="17" FixedLength="false" Unicode="false" />
+          <Property Name="OrgUid" Type="Guid" Nullable="false" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="OrgId" Type="Int32" Nullable="false" />
+          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentSubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="Int32" />
+          <Property Name="TargetEntityUid" Type="Guid" Nullable="false" />
+          <Property Name="TargetEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityBaseId" Type="Int32" />
+          <Property Name="TargetEntityName" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntityDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntitySubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityStateId" Type="Int32" />
+          <Property Name="RelationshipTypeId" Type="Int32" Nullable="false" />
+          <Property Name="SourceToAgentRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="AgentToSourceRelationship" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="RelationshipDescription" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReverseSchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="IsQARole" Type="Boolean" />
+          <Property Name="IsOwnerAgentRole" Type="Boolean" />
+          <Property Name="AgentEntityStateId" Type="Int32" />
+          <Property Name="TargetOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Query_IndianapolisCredentials">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OwningOrganization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="SubjectWebpage" />
+            <PropertyRef Name="CredentialType" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="orgCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="OwningOrganization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="400" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="SubjectWebpage" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="CredentialType" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OwnedBy" Type="String" MaxLength="93" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Query_IndianaCredentials">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="OwningOrganization" />
+            <PropertyRef Name="CTID" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="SubjectWebpage" />
+            <PropertyRef Name="CredentialType" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="orgCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="OwningOrganization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="400" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="SubjectWebpage" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="CredentialType" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="OwnedBy" Type="String" MaxLength="93" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Organization_CombinedConnections">
+          <Key>
+            <PropertyRef Name="roleSource" />
+            <PropertyRef Name="OrgUid" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="OrgId" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="TargetEntityUid" />
+            <PropertyRef Name="RelationshipTypeId" />
+            <PropertyRef Name="SourceToAgentRelationship" />
+          </Key>
+          <Property Name="roleSource" Type="String" Nullable="false" MaxLength="25" FixedLength="false" Unicode="false" />
+          <Property Name="OrgUid" Type="Guid" Nullable="false" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="OrgId" Type="Int32" Nullable="false" />
+          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentSubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="AgentCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="AgentEntityStateId" Type="Int32" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="TargetEntityTypeId" Type="Int32" />
+          <Property Name="TargetEntityUid" Type="Guid" Nullable="false" />
+          <Property Name="TargetEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityBaseId" Type="Int32" />
+          <Property Name="TargetEntityName" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntityDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="TargetEntitySubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TargetEntityStateId" Type="Int32" />
+          <Property Name="RelationshipTypeId" Type="Int32" Nullable="false" />
+          <Property Name="SourceToAgentRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="AgentToSourceRelationship" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="RelationshipDescription" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReverseSchemaTag" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="IsQARole" Type="Boolean" />
+          <Property Name="IsOwnerAgentRole" Type="Boolean" />
         </EntityType>
       </Schema>
     </edmx:ConceptualModels>
@@ -2220,6 +2807,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Assessment_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Assessment_Summary">
               <MappingFragment StoreEntitySet="Assessment_Summary">
+                <ScalarProperty Name="OwningAgentUid" ColumnName="OwningAgentUid" />
                 <ScalarProperty Name="Org_QAAgentAndRoles" ColumnName="Org_QAAgentAndRoles" />
                 <ScalarProperty Name="CredentialsList" ColumnName="CredentialsList" />
                 <ScalarProperty Name="ConnectionsList" ColumnName="ConnectionsList" />
@@ -2321,6 +2909,8 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Entity_Relationship_AgentSummary">
             <EntityTypeMapping TypeName="workITViewModels.Entity_Relationship_AgentSummary">
               <MappingFragment StoreEntitySet="Entity_Relationship_AgentSummary">
+                <ScalarProperty Name="SourceOwningOrganizationName" ColumnName="SourceOwningOrganizationName" />
+                <ScalarProperty Name="SourceEntityStateId" ColumnName="SourceEntityStateId" />
                 <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
                 <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
                 <ScalarProperty Name="Created" ColumnName="Created" />
@@ -2423,26 +3013,6 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
                 <ScalarProperty Name="EntityId" ColumnName="EntityId" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="EntityCompetencyFramework_Items_Summary">
-            <EntityTypeMapping TypeName="workITViewModels.EntityCompetencyFramework_Items_Summary">
-              <MappingFragment StoreEntitySet="EntityCompetencyFramework_Items_Summary">
-                <ScalarProperty Name="Weight" ColumnName="Weight" />
-                <ScalarProperty Name="Created" ColumnName="Created" />
-                <ScalarProperty Name="FrameworkUrl" ColumnName="FrameworkUrl" />
-                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
-                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
-                <ScalarProperty Name="TargetNodeDescription" ColumnName="TargetNodeDescription" />
-                <ScalarProperty Name="Competency" ColumnName="Competency" />
-                <ScalarProperty Name="EntityCompetencyId" ColumnName="EntityCompetencyId" />
-                <ScalarProperty Name="FrameworkName" ColumnName="FrameworkName" />
-                <ScalarProperty Name="EntityCompetencyFrameworkItemId" ColumnName="EntityCompetencyFrameworkItemId" />
-                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
-                <ScalarProperty Name="BaseId" ColumnName="BaseId" />
-                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
-                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
@@ -2557,6 +3127,194 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
                 <ScalarProperty Name="Category" ColumnName="Category" />
                 <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
                 <ScalarProperty Name="PK" ColumnName="PK" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ExistingCountries_list">
+            <EntityTypeMapping TypeName="workITViewModels.ExistingCountries_list">
+              <MappingFragment StoreEntitySet="ExistingCountries_list">
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="CountryNumber" ColumnName="CountryNumber" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ExistingCountryRegions_list">
+            <EntityTypeMapping TypeName="workITViewModels.ExistingCountryRegions_list">
+              <MappingFragment StoreEntitySet="ExistingCountryRegions_list">
+                <ScalarProperty Name="Region" ColumnName="Region" />
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="CountryNumber" ColumnName="CountryNumber" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EntityCompetencyFramework_Items_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.EntityCompetencyFramework_Items_Summary">
+              <MappingFragment StoreEntitySet="EntityCompetencyFramework_Items_Summary">
+                <ScalarProperty Name="ConditionEntityBaseId" ColumnName="ConditionEntityBaseId" />
+                <ScalarProperty Name="ConditionEntityTypeId" ColumnName="ConditionEntityTypeId" />
+                <ScalarProperty Name="ConnectionTypeId" ColumnName="ConnectionTypeId" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Weight" ColumnName="Weight" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="TargetNodeDescription" ColumnName="TargetNodeDescription" />
+                <ScalarProperty Name="Competency" ColumnName="Competency" />
+                <ScalarProperty Name="EntityCompetencyId" ColumnName="EntityCompetencyId" />
+                <ScalarProperty Name="FrameworkCtid" ColumnName="FrameworkCtid" />
+                <ScalarProperty Name="SourceUrl" ColumnName="SourceUrl" />
+                <ScalarProperty Name="FrameworkUri" ColumnName="FrameworkUri" />
+                <ScalarProperty Name="FrameworkName" ColumnName="FrameworkName" />
+                <ScalarProperty Name="EntityCompetencyFrameworkItemId" ColumnName="EntityCompetencyFrameworkItemId" />
+                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ExistingRegionCities_list">
+            <EntityTypeMapping TypeName="workITViewModels.ExistingRegionCities_list">
+              <MappingFragment StoreEntitySet="ExistingRegionCities_list">
+                <ScalarProperty Name="City" ColumnName="City" />
+                <ScalarProperty Name="Region" ColumnName="Region" />
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="CountryNumber" ColumnName="CountryNumber" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_Assertion_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_Assertion_Summary">
+              <MappingFragment StoreEntitySet="Entity_Assertion_Summary">
+                <ScalarProperty Name="TargetOwningOrganizationName" ColumnName="TargetOwningOrganizationName" />
+                <ScalarProperty Name="AgentEntityStateId" ColumnName="AgentEntityStateId" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="IsOwnerAgentRole" ColumnName="IsOwnerAgentRole" />
+                <ScalarProperty Name="IsQARole" ColumnName="IsQARole" />
+                <ScalarProperty Name="ReverseSchemaTag" ColumnName="ReverseSchemaTag" />
+                <ScalarProperty Name="SchemaTag" ColumnName="SchemaTag" />
+                <ScalarProperty Name="RelationshipDescription" ColumnName="RelationshipDescription" />
+                <ScalarProperty Name="AgentToSourceRelationship" ColumnName="AgentToSourceRelationship" />
+                <ScalarProperty Name="SourceToAgentRelationship" ColumnName="SourceToAgentRelationship" />
+                <ScalarProperty Name="IsPending" ColumnName="IsPending" />
+                <ScalarProperty Name="AssertionTypeId" ColumnName="AssertionTypeId" />
+                <ScalarProperty Name="TargetCTID" ColumnName="TargetCTID" />
+                <ScalarProperty Name="TargetCtdlType" ColumnName="TargetCtdlType" />
+                <ScalarProperty Name="TargetEntityStateId" ColumnName="TargetEntityStateId" />
+                <ScalarProperty Name="TargetEntityImageUrl" ColumnName="TargetEntityImageUrl" />
+                <ScalarProperty Name="TargetEntitySubjectWebpage" ColumnName="TargetEntitySubjectWebpage" />
+                <ScalarProperty Name="TargetEntityDescription" ColumnName="TargetEntityDescription" />
+                <ScalarProperty Name="TargetEntityName" ColumnName="TargetEntityName" />
+                <ScalarProperty Name="TargetEntityBaseId" ColumnName="TargetEntityBaseId" />
+                <ScalarProperty Name="TargetEntityType" ColumnName="TargetEntityType" />
+                <ScalarProperty Name="TargetEntityUid" ColumnName="TargetEntityUid" />
+                <ScalarProperty Name="TargetEntityTypeId" ColumnName="TargetEntityTypeId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="AgentCTID" ColumnName="AgentCTID" />
+                <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
+                <ScalarProperty Name="AgentSubjectWebpage" ColumnName="AgentSubjectWebpage" />
+                <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
+                <ScalarProperty Name="OrgId" ColumnName="OrgId" />
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="AgentUid" ColumnName="AgentUid" />
+                <ScalarProperty Name="EntityAssertionId" ColumnName="EntityAssertionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Organization_CombinedQAPerformed">
+            <EntityTypeMapping TypeName="workITViewModels.Organization_CombinedQAPerformed">
+              <MappingFragment StoreEntitySet="Organization_CombinedQAPerformed">
+                <ScalarProperty Name="TargetOwningOrganizationName" ColumnName="TargetOwningOrganizationName" />
+                <ScalarProperty Name="AgentEntityStateId" ColumnName="AgentEntityStateId" />
+                <ScalarProperty Name="IsOwnerAgentRole" ColumnName="IsOwnerAgentRole" />
+                <ScalarProperty Name="IsQARole" ColumnName="IsQARole" />
+                <ScalarProperty Name="ReverseSchemaTag" ColumnName="ReverseSchemaTag" />
+                <ScalarProperty Name="SchemaTag" ColumnName="SchemaTag" />
+                <ScalarProperty Name="RelationshipDescription" ColumnName="RelationshipDescription" />
+                <ScalarProperty Name="AgentToSourceRelationship" ColumnName="AgentToSourceRelationship" />
+                <ScalarProperty Name="SourceToAgentRelationship" ColumnName="SourceToAgentRelationship" />
+                <ScalarProperty Name="RelationshipTypeId" ColumnName="RelationshipTypeId" />
+                <ScalarProperty Name="TargetEntityStateId" ColumnName="TargetEntityStateId" />
+                <ScalarProperty Name="TargetEntityImageUrl" ColumnName="TargetEntityImageUrl" />
+                <ScalarProperty Name="TargetEntitySubjectWebpage" ColumnName="TargetEntitySubjectWebpage" />
+                <ScalarProperty Name="TargetEntityDescription" ColumnName="TargetEntityDescription" />
+                <ScalarProperty Name="TargetEntityName" ColumnName="TargetEntityName" />
+                <ScalarProperty Name="TargetEntityBaseId" ColumnName="TargetEntityBaseId" />
+                <ScalarProperty Name="TargetEntityType" ColumnName="TargetEntityType" />
+                <ScalarProperty Name="TargetEntityUid" ColumnName="TargetEntityUid" />
+                <ScalarProperty Name="TargetEntityTypeId" ColumnName="TargetEntityTypeId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="AgentCTID" ColumnName="AgentCTID" />
+                <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
+                <ScalarProperty Name="AgentSubjectWebpage" ColumnName="AgentSubjectWebpage" />
+                <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
+                <ScalarProperty Name="OrgId" ColumnName="OrgId" />
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="OrgUid" ColumnName="OrgUid" />
+                <ScalarProperty Name="roleSource" ColumnName="roleSource" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Query_IndianapolisCredentials">
+            <EntityTypeMapping TypeName="workITViewModels.Query_IndianapolisCredentials">
+              <MappingFragment StoreEntitySet="Query_IndianapolisCredentials">
+                <ScalarProperty Name="OwnedBy" ColumnName="OwnedBy" />
+                <ScalarProperty Name="CredentialType" ColumnName="CredentialType" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="OwningOrganization" ColumnName="OwningOrganization" />
+                <ScalarProperty Name="orgCTID" ColumnName="orgCTID" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Query_IndianaCredentials">
+            <EntityTypeMapping TypeName="workITViewModels.Query_IndianaCredentials">
+              <MappingFragment StoreEntitySet="Query_IndianaCredentials">
+                <ScalarProperty Name="OwnedBy" ColumnName="OwnedBy" />
+                <ScalarProperty Name="CredentialType" ColumnName="CredentialType" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="OwningOrganization" ColumnName="OwningOrganization" />
+                <ScalarProperty Name="orgCTID" ColumnName="orgCTID" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Organization_CombinedConnections">
+            <EntityTypeMapping TypeName="workITViewModels.Organization_CombinedConnections">
+              <MappingFragment StoreEntitySet="Organization_CombinedConnections">
+                <ScalarProperty Name="IsOwnerAgentRole" ColumnName="IsOwnerAgentRole" />
+                <ScalarProperty Name="IsQARole" ColumnName="IsQARole" />
+                <ScalarProperty Name="ReverseSchemaTag" ColumnName="ReverseSchemaTag" />
+                <ScalarProperty Name="SchemaTag" ColumnName="SchemaTag" />
+                <ScalarProperty Name="RelationshipDescription" ColumnName="RelationshipDescription" />
+                <ScalarProperty Name="AgentToSourceRelationship" ColumnName="AgentToSourceRelationship" />
+                <ScalarProperty Name="SourceToAgentRelationship" ColumnName="SourceToAgentRelationship" />
+                <ScalarProperty Name="RelationshipTypeId" ColumnName="RelationshipTypeId" />
+                <ScalarProperty Name="TargetEntityStateId" ColumnName="TargetEntityStateId" />
+                <ScalarProperty Name="TargetEntityImageUrl" ColumnName="TargetEntityImageUrl" />
+                <ScalarProperty Name="TargetEntitySubjectWebpage" ColumnName="TargetEntitySubjectWebpage" />
+                <ScalarProperty Name="TargetEntityDescription" ColumnName="TargetEntityDescription" />
+                <ScalarProperty Name="TargetEntityName" ColumnName="TargetEntityName" />
+                <ScalarProperty Name="TargetEntityBaseId" ColumnName="TargetEntityBaseId" />
+                <ScalarProperty Name="TargetEntityType" ColumnName="TargetEntityType" />
+                <ScalarProperty Name="TargetEntityUid" ColumnName="TargetEntityUid" />
+                <ScalarProperty Name="TargetEntityTypeId" ColumnName="TargetEntityTypeId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="AgentEntityStateId" ColumnName="AgentEntityStateId" />
+                <ScalarProperty Name="AgentCTID" ColumnName="AgentCTID" />
+                <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
+                <ScalarProperty Name="AgentSubjectWebpage" ColumnName="AgentSubjectWebpage" />
+                <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
+                <ScalarProperty Name="OrgId" ColumnName="OrgId" />
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="OrgUid" ColumnName="OrgUid" />
+                <ScalarProperty Name="roleSource" ColumnName="roleSource" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

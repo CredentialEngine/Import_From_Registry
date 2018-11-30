@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.ProfileModels
 {
-	public class Entity_IdentifierValue
+    [Serializable]
+    public class Entity_IdentifierValue
 	{
 		public int Id { get; set; }
 		

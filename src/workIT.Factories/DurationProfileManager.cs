@@ -24,45 +24,64 @@ namespace workIT.Factories
 		#region persistance ==================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
+            if ( !IsValidGuid( parentUid ) )
+            {
+                status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
+                return false;
+            }
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the parent entity was not found." );
+                return false;
+            }
+            DeleteAll( parent, ref status );
+
+            if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
-				Save( item, parentUid, ref status );
+				Save( item, parent, ref status );
 			}
 
 			return isAllValid;
 		}
 
-		public bool Save( WM.DurationItem entity, Guid parentUid, ref SaveStatus status )
+		public bool SaveRenewalFrequency( WM.DurationItem entity, Guid parentUid, ref SaveStatus status )
 		{
 			bool isValid = true;
-			WM.DurationProfile item = new ThisEntity();
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the parent entity was not found." );
+                return false;
+            }
+
+            WM.DurationProfile item = new ThisEntity();
 			if (entity != null && entity.HasValue)
 			{
 				item.ExactDuration = entity;
-				return Save( item, parentUid, ref status );
+                item.DurationProfileTypeId = 3;
+
+                return Save( item, parent, ref status );
 			}
 			return isValid;
 		}
 
-		public bool Save( WM.DurationProfile profile, Guid parentUid, ref SaveStatus status )
+		public bool Save( WM.DurationProfile profile, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
 
 			int count = 0;
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( thisClassName + "Error: the parent identifier was not provided." );
-			}
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddError( thisClassName + "Error - the parent entity was not found " + parentUid );
-				return false;
-			}
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			//if ( parent == null || parent.Id == 0 )
+			//{
+			//	status.AddError( thisClassName + "Error - the parent entity was not found " + parentUid );
+			//	return false;
+			//}
 			profile.EntityId = parent.Id;
 			EM.Entity_DurationProfile efEntity = new EM.Entity_DurationProfile();
 			//entityId will be in the passed entity
@@ -79,7 +98,7 @@ namespace workIT.Factories
 				}
 				if ( isEmpty )
 				{
-					status.AddWarning( thisClassName + "Error - no data was entered." );
+					//status.AddWarning( thisClassName + "Error - no data was entered." );
 					return false;
 				}
 
@@ -128,7 +147,7 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-		public bool DurationProfile_Delete( int recordId, ref string statusMessage )
+		public bool Delete( int recordId, ref string statusMessage )
 		{
 			bool isOK = true;
 			using ( var context = new EntityContext() )
@@ -148,7 +167,38 @@ namespace workIT.Factories
 			return isOK;
 
 		}
-		private void MapToDB( ThisEntity from, DBEntity to )
+        /// <summary>
+        /// Delete all properties for parent (in preparation for import)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
+            using ( var context = new EntityContext() )
+            {
+                context.Entity_DurationProfile.RemoveRange( context.Entity_DurationProfile.Where( s => s.EntityId == parent.Id ) );
+                int count = context.SaveChanges();
+                if ( count > 0 )
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    //if doing a delete on spec, may not have been any properties
+                }
+            }
+
+            return isValid;
+        }
+        private void MapToDB( ThisEntity from, DBEntity to )
 		{
 			int totalMinutes = 0;
 			to.Id = from.Id;
@@ -192,9 +242,9 @@ namespace workIT.Factories
 				to.FromDuration = AsSchemaDuration( from.ExactDuration, ref totalMinutes );
                 to.AverageMinutes = totalMinutes;
 
-                to.TypeId = 1;
-				//reset any to max duration values
-				to.ToYears = null;
+                to.TypeId = from.DurationProfileTypeId == 3 ? from.DurationProfileTypeId : 1;
+                //reset any to max duration values
+                to.ToYears = null;
 				to.ToMonths = null;
 				to.ToWeeks = null;
 				to.ToDays = null;

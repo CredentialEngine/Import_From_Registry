@@ -9,7 +9,8 @@ using workIT.Models.Common;
 namespace workIT.Models.ProfileModels
 {
 
-	public class ProcessProfile : BaseProfile
+    [Serializable]
+    public class ProcessProfile : BaseProfile
 	{
 		public ProcessProfile()
 		{

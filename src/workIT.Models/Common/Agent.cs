@@ -8,18 +8,19 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-	/// <summary>
-	/// Agent could be an org or a person
-	/// This could just inherit from org?
-	/// </summary>
-	public class Agent : BaseObject
+    /// <summary>
+    /// Agent could be an org or a person
+    /// This could just inherit from org?
+    /// </summary>
+    [Serializable]
+    public class Agent : BaseObject
 	{
 		public Agent()
 		{
 			Address = new Address();
 			Addresses = new List<Address>();
-			AlternateName = new List<TextValueProfile>();
-			AlternateNames = new List<string>();
+			AlternateNames = new List<TextValueProfile>();
+			AlternateName = new List<string>();
 			IdentificationCodes = new List<TextValueProfile>();
 			Keyword = new List<TextValueProfile>();
 			//Subjects = new List<TextValueProfile>();
@@ -50,12 +51,29 @@ namespace workIT.Models.Common
 
 		public string CredentialRegistryId { get; set; }
 		public string CTID { get; set; }
-		public List<TextValueProfile> AlternateName { get; set; }
-		public List<string> AlternateNames { get; set; }
+        //use for import only
+        public List<TextValueProfile> AlternateNames { get; set; }
+		public List<string> AlternateName { get; set; }
 
 		public Address Address { get; set; }
 
 		public List<Address> Addresses { get; set; }
+		public bool HasAnyShortRegions
+		{
+			get 
+			{
+				if ( Addresses.Count == 0 )
+					return false;
+				else
+				{
+					var exists = Addresses.FirstOrDefault( a => a.HasShortRegion == true );
+					if ( exists != null && exists.AddressRegion.Length > 0 )
+						return true;
+					else
+						return false;
+				}
+			}
+		}
 		//Alias used for search
 		public List<Address> Auto_Address
 		{
@@ -84,8 +102,18 @@ namespace workIT.Models.Common
         //public List<TextValueProfile> PhoneNumbers { get; set; } = new List<TextValueProfile>();
 
 		public List<TextValueProfile> Emails { get; set; }
-		
-		public List<TextValueProfile> Keyword { get; set; }
+        public List<TextValueProfile> Auto_Email
+        {
+            get
+            {
+                var result = new List<TextValueProfile>()
+                    .Concat( Emails ).ToList();
+                
+                return result;
+            }
+        }
+
+        public List<TextValueProfile> Keyword { get; set; }
 
 		public List<ContactPoint> ContactPoint { get; set; }
 

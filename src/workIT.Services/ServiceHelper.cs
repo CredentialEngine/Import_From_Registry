@@ -202,7 +202,45 @@ namespace workIT.Services
 			return result;
 
 		} //end
-		public static bool IsValidGuid( Guid field )
+        public static bool IsValidCtid( string ctid, ref List<string> messages, bool isRequired = false, bool skippingErrorMessages = true )
+        {
+            bool isValid = true;
+
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+            {
+                if ( isRequired )
+                {
+                    messages.Add( "Error - A valid CTID property must be entered." );
+                }
+                return false;
+            }
+
+            ctid = ctid.ToLower();
+            if ( ctid.Length != 39 )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - Invalid CTID format. The proper format is ce-UUID. ex. ce-84365AEA-57A5-4B5A-8C1C-EAE95D7A8C9B" );
+                return false;
+            }
+
+            if ( !ctid.StartsWith( "ce-" ) )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - The CTID property must begin with ce-" );
+                return false;
+            }
+            //now we have the proper length and format, the remainder must be a valid guid
+            if ( !IsValidGuid( ctid.Substring( 3, 36 ) ) )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - Invalid CTID format. The proper format is ce-UUID. ex. ce-84365AEA-57A5-4B5A-8C1C-EAE95D7A8C9B" );
+                return false;
+            }
+
+            return isValid;
+        }
+
+        public static bool IsValidGuid( Guid field )
 		{
 			if ( ( field == null || field == Guid.Empty ) )
 				return false;

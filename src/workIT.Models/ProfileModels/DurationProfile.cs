@@ -23,7 +23,14 @@ namespace workIT.Models.ProfileModels
 		public int ParentTypeId { get; set; }
 		public string ParentType { get; set; }
 		public string Conditions { get { return Description; } set { Description = value; } }
-		public DurationItem MinimumDuration { get; set; }
+
+        /// <summary>
+		/// 1 - Exact Estimated Duration
+		/// 2 - Range Estimated Duration
+		/// 3 - Renewal frequency
+		/// </summary>
+		public int DurationProfileTypeId { get; set; }
+        public DurationItem MinimumDuration { get; set; }
 		public DurationItem MaximumDuration { get; set; }
 		public DurationItem ExactDuration { get; set; }
 

@@ -64,16 +64,16 @@ namespace workIT.Factories
         public int Add( ThisEntity entity, ref List<String> messages )
         {
             DBEntity efEntity = new DBEntity();
-            
-            using ( var context = new EntityContext() )
+
+            if ( !IsValid( entity, ref messages ) )
+                return 0;
+            try
             {
-                try
+                using ( var context = new EntityContext() )
                 {
-                    if ( !IsValid( entity, ref messages ) )
-                        return 0;
 
                     //check if a pending record exists
-                    DBEntity exists = context.SearchPendingReindexes
+                    DBEntity exists = context.SearchPendingReindex
                                 .FirstOrDefault( s => s.EntityTypeId == entity.EntityTypeId && s.RecordId == entity.RecordId && s.StatusId == 1 );
                     if ( exists != null && exists.Id > 0 )
                     {
@@ -85,11 +85,11 @@ namespace workIT.Factories
                         return exists.Id;
                     }
 
-                    MapToDB( entity, efEntity );                    
+                    MapToDB( entity, efEntity );
                     efEntity.Created = System.DateTime.Now;
                     efEntity.LastUpdated = System.DateTime.Now;
 
-                    context.SearchPendingReindexes.Add( efEntity );
+                    context.SearchPendingReindex.Add( efEntity );
 
                     // submit the change to database
                     int count = context.SaveChanges();
@@ -104,14 +104,17 @@ namespace workIT.Factories
                         //?no info on error
                         messages.Add( "Error - the profile was not saved. " );
                         string message = string.Format( thisClassName + ".Add. Failed. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}, RecordId: {1}", entity.EntityTypeId, entity.RecordId );
-                       // EmailManager.NotifyAdmin( thisClassName + ". Add Failed", message );
+                        // EmailManager.NotifyAdmin( thisClassName + ". Add Failed", message );
                     }
                 }
-                catch ( Exception ex )
-                {
-                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(). EntityTypeId: {0}, RecordId: {1}", entity.EntityTypeId, entity.RecordId ) );
-                }
+
+
             }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(). EntityTypeId: {0}, RecordId: {1}", entity.EntityTypeId, entity.RecordId ) );
+            }
+
 
             return efEntity.Id;
         }
@@ -132,7 +135,7 @@ namespace workIT.Factories
 
                 using ( var context = new EntityContext() )
                 {
-                    DBEntity efEntity = context.SearchPendingReindexes
+                    DBEntity efEntity = context.SearchPendingReindex
                                 .FirstOrDefault( s => s.Id == entity.Id );
 
                     if ( efEntity != null && efEntity.Id > 0 )
@@ -174,7 +177,7 @@ namespace workIT.Factories
             return isValid;
         }
 
-        public bool UpdateAll( int requestTypeId, ref List<String> messages )
+        public bool UpdateAll( int requestTypeId, ref List<String> messages, int entityTypeId = 0 )
         {
             bool isValid = false;
             int count = 0;
@@ -185,8 +188,14 @@ namespace workIT.Factories
                 //could be a proc
                 using ( var context = new EntityContext() )
                 {
-                    List<DBEntity> results = context.SearchPendingReindexes
-                                .Where( s => s.IsUpdateOrDeleteTypeId == requestTypeId ).ToList();
+                    List<DBEntity> results = context.SearchPendingReindex
+                                .Where
+								( 
+									s => s.StatusId == 1 
+								&&	s.IsUpdateOrDeleteTypeId == requestTypeId 
+								&& ( entityTypeId  == 0 || s.EntityTypeId == entityTypeId )
+								)
+								.ToList();
                     if ( results != null && results.Count > 0)
                     {
                         foreach ( var efEntity in results)
@@ -233,12 +242,12 @@ namespace workIT.Factories
             }
             using ( var context = new EntityContext() )
             {
-                DBEntity efEntity = context.SearchPendingReindexes
+                DBEntity efEntity = context.SearchPendingReindex
                             .SingleOrDefault( s => s.Id == Id );
 
                 if ( efEntity != null && efEntity.Id > 0 )
                 {
-                    context.SearchPendingReindexes.Remove( efEntity );
+                    context.SearchPendingReindex.Remove( efEntity );
                     int count = context.SaveChanges();
                     if ( count > 0 )
                     {
@@ -281,7 +290,7 @@ namespace workIT.Factories
             using ( var context = new EntityContext() )
             {
 
-                List<DBEntity> results = context.SearchPendingReindexes
+                List<DBEntity> results = context.SearchPendingReindex
                         .Where( s => s.IsUpdateOrDeleteTypeId == 2 && s.StatusId == 1 )
                         .OrderBy( s => s.EntityTypeId).ThenBy(s => s.Created)
                         .ToList();
@@ -306,7 +315,7 @@ namespace workIT.Factories
             using ( var context = new EntityContext() )
             {
 
-                List<DBEntity> results = context.SearchPendingReindexes
+                List<DBEntity> results = context.SearchPendingReindex
                         .Where( s => s.IsUpdateOrDeleteTypeId == 1 && s.StatusId == 1 )
                         .OrderBy( s => s.EntityTypeId ).ThenBy( s => s.Created )
                         .ToList();
@@ -330,7 +339,7 @@ namespace workIT.Factories
             using ( var context = new EntityContext() )
             {
 
-                DBEntity item = context.SearchPendingReindexes
+                DBEntity item = context.SearchPendingReindex
                         .SingleOrDefault( s => s.Id == id );
 
                 if ( item != null && item.Id > 0 )

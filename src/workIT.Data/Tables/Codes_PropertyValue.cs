@@ -17,6 +17,7 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Codes_PropertyValue()
         {
+            this.Entity_CostProfileItem = new HashSet<Entity_CostProfileItem>();
             this.Entity_Reference = new HashSet<Entity_Reference>();
         }
     
@@ -34,6 +35,8 @@ namespace workIT.Data.Tables
         public Nullable<bool> IsSubType1 { get; set; }
     
         public virtual Codes_PropertyCategory Codes_PropertyCategory { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_CostProfileItem> Entity_CostProfileItem { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Reference> Entity_Reference { get; set; }
     }

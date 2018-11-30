@@ -23,8 +23,10 @@ namespace workIT.Data.Tables
     
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public Nullable<int> CredentialTypeId { get; set; }
         public string Version { get; set; }
         public Nullable<System.DateTime> EffectiveDate { get; set; }
         public string SubjectWebpage { get; set; }
@@ -45,8 +47,6 @@ namespace workIT.Data.Tables
         public string ProcessStandardsDescription { get; set; }
         public Nullable<System.Guid> CopyrightHolder { get; set; }
         public Nullable<int> InLanguageId { get; set; }
-        public Nullable<int> CredentialTypeId { get; set; }
-        public Nullable<int> EntityStateId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }

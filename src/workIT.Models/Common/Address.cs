@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-	public class Address : BaseObject
+    [Serializable]
+    public class Address : BaseObject
 	{
 		public Address()
 		{
@@ -14,19 +15,25 @@ namespace workIT.Models.Common
 			ContactPoint = new List<ContactPoint>();
 		}
 		public string Name { get; set; }
-		public string Address1 { get; set; }
-		public string Address2 { get; set; }
+        public string Name_Map { get; set; }
+        public string Address1 { get; set; }
+        public string Address1_Map { get; set; }
+        public string Address2 { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
 
 		public string City { get; set; }
-		public string AddressLocality { get { return City; } set { City = value; } } //Alias used for publishing
+        public string City_Map { get; set; }
+        public string AddressLocality { get { return City; } set { City = value; } } //Alias used for publishing
 		public string AddressRegion { get; set; }
+		public bool HasShortRegion { get; set; }
+        public string AddressRegion_Map { get; set; }
         //
-        public string AddressRegionFull { get; set; }
+        //public string AddressRegionFull { get; set; }
        
         public string Country { get; set; }
+        public string Country_Map { get; set; }
 
-		public string PostalCode { get; set; }
+        public string PostalCode { get; set; }
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
 		public bool IsMainAddress { get; set; }
@@ -68,15 +75,22 @@ namespace workIT.Models.Common
 				)
 				hasAddress = false;
 				
-
-
 			return hasAddress;
 		}
-		/// <summary>
-		/// Note: the GeoCoordinates use the rowId from the parent for the FK. If the parent of the address object can have other regions, then there will be a problem!
-		/// This may lead to the addition of concrete rowIds as needed to a parent with an address.
-		/// </summary>
-		public GeoCoordinates GeoCoordinates { get; set; }
+        public bool HasContactPoints()
+        {
+            bool hasData = true;
+
+            if ( ContactPoint == null || ContactPoint.Count == 0 )
+                return false;
+
+            return hasData;
+        }
+        /// <summary>
+        /// Note: the GeoCoordinates use the rowId from the parent for the FK. If the parent of the address object can have other regions, then there will be a problem!
+        /// This may lead to the addition of concrete rowIds as needed to a parent with an address.
+        /// </summary>
+        public GeoCoordinates GeoCoordinates { get; set; }
 
 
 		public List<ContactPoint> ContactPoint { get; set; }

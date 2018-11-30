@@ -1,7 +1,7 @@
 ﻿using System.Web;
 using System.Web.Mvc;
 
-namespace WorkIT.Web
+namespace workIT.Web
 {
     public class FilterConfig
     {
