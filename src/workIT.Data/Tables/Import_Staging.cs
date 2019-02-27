@@ -30,6 +30,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> DocumentUpdatedAt { get; set; }
         public string ResourcePublicKey { get; set; }
         public string Payload { get; set; }
+        public Nullable<bool> IsMostRecentDownload { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Import_Message> Import_Message { get; set; }

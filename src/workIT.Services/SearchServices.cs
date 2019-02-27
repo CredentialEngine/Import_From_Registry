@@ -9,6 +9,10 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+
 namespace workIT.Services
 {
 	public class SearchServices
@@ -44,37 +48,74 @@ namespace workIT.Services
 			switch ( searchType )
 			{
 				case "credential":
-					{
-						var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
-
-						var results = CredentialServices.Search( data, ref totalResults );
-						return ConvertCredentialResults( results, totalResults, searchType );
-					}
+				{
+					var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
+                    if(data.UseSimpleSearch )
+                    {
+                        var results = ElasticServices.CredentialSimpleSearch( data, ref totalResults );
+                        return ConvertCredentialResults( results, totalResults, searchType );
+                    }
+                    else
+                    {
+                        var results = CredentialServices.Search( data, ref totalResults );
+                        return ConvertCredentialResults( results, totalResults, searchType );
+                    }
+					
+					
+				}
 				case "organization":
-					{
-						var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
-
-						var results = OrganizationServices.Search( data, ref totalResults );
-						return ConvertOrganizationResults( results, totalResults, searchType );
-					}
-				case "assessment":
-					{
-						var results = AssessmentServices.Search( data, ref totalResults );
-						return ConvertAssessmentResults( results, totalResults, searchType );
-					}
-				case "learningopportunity":
-					{
-						var results = LearningOpportunityServices.Search( data, ref totalResults );
-						return ConvertLearningOpportunityResults( results, totalResults, searchType );
-					}
-				default:
-					{
-						valid = false;
-						status = "Unknown search mode: " + searchType;
-						return null;
-					}
-			}
-		}
+				{
+					var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
+                    if ( data.UseSimpleSearch )
+                    {
+                        var results = ElasticServices.OrganizationSimpleSearch( data, ref totalResults );
+                        return ConvertOrganizationResults( results, totalResults, searchType );
+                    }
+                    else
+                    {
+                        var results = OrganizationServices.Search( data, ref totalResults );
+                        return ConvertOrganizationResults( results, totalResults, searchType );
+                    }
+                }
+                case "assessment":
+                {
+                    if ( data.UseSimpleSearch )
+                    {
+                        var results = ElasticServices.AssessmentSimpleSearch( data, ref totalResults );
+                        return ConvertAssessmentResults( results, totalResults, searchType );
+                    }
+                    else
+                    {
+                        var results = AssessmentServices.Search( data, ref totalResults );
+                        return ConvertAssessmentResults( results, totalResults, searchType );
+                    }
+                }
+                case "learningopportunity":
+                {
+                    if ( data.UseSimpleSearch )
+                    {
+                        var results = ElasticServices.LearningOppSimpleSearch( data, ref totalResults );
+                        return ConvertLearningOpportunityResults( results, totalResults, searchType );
+                    }
+                    else
+                    {
+                        var results = LearningOpportunityServices.Search( data, ref totalResults );
+                        return ConvertLearningOpportunityResults( results, totalResults, searchType );
+                    }
+                }
+				case "competencyframework":
+				{
+					var results = CompetencyFrameworkServices.SearchViaRegistry( data, ref totalResults );
+					return ConvertCompetencyFrameworkResults( results, totalResults, searchType );
+				}
+                default:
+                {
+                    valid = false;
+                    status = "Unknown search mode: " + searchType;
+                    return null;
+                }
+            }
+        }
 
 		//Do an autocomplete
 		public static List<string> DoAutoComplete( string text, string context, string searchType, int widgetId = 0 )
@@ -89,7 +130,7 @@ namespace workIT.Services
 						{
 							//case "mainsearch": return CredentialServices.Autocomplete( text, 10 ).Select( m => m.Name ).ToList();
 							case "mainsearch":
-								return CredentialServices.Autocomplete( text, 15, widgetId );
+								return CredentialServices.Autocomplete( text, 15/*, widgetId*/ );
 							//case "competencies":
 							//	return CredentialServices.AutocompleteCompetencies( text, 10 );
 							case "subjects":
@@ -98,6 +139,8 @@ namespace workIT.Services
 								return Autocomplete_Occupations( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
 							case "industries":
 								return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
+							case "instructionalprogramtype":
+								return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
 							default:
 								break;
 						}
@@ -121,7 +164,7 @@ namespace workIT.Services
 						switch ( context.ToLower() )
 						{
 							case "mainsearch":
-								return AssessmentServices.Autocomplete( text, 15, widgetId );
+								return AssessmentServices.Autocomplete( text, 15/*, widgetId */);
 							//case "competencies":
 							//	return AssessmentServices.Autocomplete( text, "competencies", 10 );
 							case "subjects":
@@ -268,7 +311,7 @@ namespace workIT.Services
 		}
 		//
 
-		public enum TagTypes { CONNECTIONS, QUALITY, LEVEL, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, DELIVER_METHODS, SCORING_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, QAPERFORMED }
+		public enum TagTypes { CONNECTIONS, QUALITY, AUDIENCE_LEVEL, AUDIENCE_TYPE, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, SCORING_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, QAPERFORMED }
 
 		public MainSearchResults ConvertCredentialResults( List<CredentialSummary> results, int totalResults, string searchType )
 		{
@@ -359,11 +402,21 @@ namespace workIT.Services
 						new Models.Helpers.SearchTag()
 						{
 							CategoryName = "Levels",
-							DisplayTemplate = "{#} Level{s}",
-							Name = TagTypes.LEVEL.ToString().ToLower(),
-							TotalItems = item.LevelsResults.Results.Count(),
+							DisplayTemplate = "{#} Audience Level{s}",
+							Name = TagTypes.AUDIENCE_LEVEL.ToString().ToLower(),
+							TotalItems = item.AudienceLevelsResults.Results.Count(),
 							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.LevelsResults.Results, "{Name}", item.LevelsResults.CategoryId )
+							Items = GetSearchTagItems_Filter( item.AudienceLevelsResults.Results, "{Name}", item.AudienceLevelsResults.CategoryId )
+						},
+						//Audience Type
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Types",
+							DisplayTemplate = "{#} Audience Type{s}",
+							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
+							TotalItems = item.AudienceTypesResults.Results.Count(),
+							SearchQueryType = "code",
+							Items = GetSearchTagItems_Filter( item.AudienceTypesResults.Results, "{Name}", item.AudienceTypesResults.CategoryId )
 						},
 						//Occupations
 						new Models.Helpers.SearchTag()
@@ -383,11 +436,47 @@ namespace workIT.Services
 							CategoryName = "Industries",
 							DisplayTemplate = "{#} Industr{ies}",
 							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-							TotalItems = item.NaicsResults.Results.Count(),
+							TotalItems = item.IndustryResults.Results.Count(),
                             //SearchQueryType = "framework",
                             SearchQueryType = "text",
                             //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-                            Items = item.NaicsResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+						},
+						//Instructional Program Classfication
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "InstructionalProgramType",
+							CategoryLabel = "Instructional Program Type",
+							DisplayTemplate = "{#} Instructional Program{s}",
+							Name = "instructionalprogramtype",
+							TotalItems = item.InstructionalProgramClassification.Results.Count(),
+							SearchQueryType = "text",
+                           //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
+                            Items = item.InstructionalProgramClassification.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+						},
+
+						//Asmnt Delivery Method Type
+                        new Models.Helpers.SearchTag()
+						{
+							CategoryName = "AssessmentDeliveryTypes",
+							CategoryLabel = "Assessment Delivery Types",
+							DisplayTemplate = "{#} Assessment DeliveryType{s}",
+							Name = TagTypes.ASMNT_DELIVER_METHODS.ToString().ToLower(),
+							TotalItems = item.AssessmentDeliveryType.Results.Count(),
+							SearchQueryType = "code",
+							Items = GetSearchTagItems_Filter(item.AssessmentDeliveryType.Results, "{Name}", item.AssessmentDeliveryType.CategoryId)
+						},
+
+						//Learning Delivery Method Type
+                        new Models.Helpers.SearchTag()
+						{
+							CategoryName = "LearningDeliveryTypes",
+							CategoryLabel = "Learning Delivery Types",
+							DisplayTemplate = "{#} Learning Delivery Type{s}",
+							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
+							TotalItems = item.LearningDeliveryType.Results.Count(),
+							SearchQueryType = "code",
+							Items = GetSearchTagItems_Filter(item.LearningDeliveryType.Results, "{Name}", item.LearningDeliveryType.CategoryId)
 						},
 						//Subjects
 						new Models.Helpers.SearchTag()
@@ -861,11 +950,11 @@ namespace workIT.Services
 							CategoryName = "Industries",
 							DisplayTemplate = "{#} Industr{ies}",
 							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-							TotalItems = item.NaicsResults.Results.Count(),
+							TotalItems = item.IndustryResults.Results.Count(),
                             //SearchQueryType = "framework",
                             SearchQueryType = "text",
                             //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-                            Items = item.NaicsResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
 						},
 					}
 				) );
@@ -1059,6 +1148,17 @@ namespace workIT.Services
 							Items = GetSearchTagItems_Filter(item.DeliveryMethodTypes.Results, "{Name}", item.DeliveryMethodTypes.CategoryId)
 						},
 
+						//Audience Type
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Types",
+							DisplayTemplate = "{#} Audience Type{s}",
+							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
+							TotalItems = item.AudienceTypes.Results.Count(),
+							SearchQueryType = "code",
+							Items = GetSearchTagItems_Filter( item.AudienceTypes.Results, "{Name}", item.AudienceTypes.CategoryId )
+						},
+
 						//Durations
 						new Models.Helpers.SearchTag()
 						{
@@ -1079,6 +1179,30 @@ namespace workIT.Services
 									{ "Conditions", m.Conditions}
 								}
 							} ).ToList()
+						},
+						//Occupations
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Occupations",
+							DisplayTemplate = "{#} Occupation{s}",
+							Name = TagTypes.OCCUPATIONS.ToString().ToLower(),
+							TotalItems = item.OccupationResults.Results.Count(),
+                            //SearchQueryType = "framework",
+                            SearchQueryType = "text",
+							Items = item.OccupationResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+                            //Items = GetSearchTagItems_Filter( item.OccupationResults.Results, "{Name}", item.OccupationResults.CategoryId )
+                        },
+						//Industries
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Industries",
+							DisplayTemplate = "{#} Industr{ies}",
+							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
+							TotalItems = item.IndustryResults.Results.Count(),
+                            //SearchQueryType = "framework",
+                            SearchQueryType = "text",
+                            //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
+                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
 						},
                         //Instructional Program Classfication
 						new Models.Helpers.SearchTag()
@@ -1247,7 +1371,17 @@ namespace workIT.Services
 							SearchQueryType = "code",
 							Items = GetSearchTagItems_Filter(item.LearningMethodTypes.Results, "{Name}", item.LearningMethodTypes.CategoryId)
 						},
-						
+
+						//Audience Type
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Types",
+							DisplayTemplate = "{#} Audience Type{s}",
+							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
+							TotalItems = item.AudienceTypes.Results.Count(),
+							SearchQueryType = "code",
+							Items = GetSearchTagItems_Filter( item.AudienceTypes.Results, "{Name}", item.AudienceTypes.CategoryId )
+						},
 						//Durations
 						new Models.Helpers.SearchTag()
 						{
@@ -1269,7 +1403,30 @@ namespace workIT.Services
 								}
 							} ).ToList()
 						},
-
+						//Occupations
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Occupations",
+							DisplayTemplate = "{#} Occupation{s}",
+							Name = TagTypes.OCCUPATIONS.ToString().ToLower(),
+							TotalItems = item.OccupationResults.Results.Count(),
+                            //SearchQueryType = "framework",
+                            SearchQueryType = "text",
+							Items = item.OccupationResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+                            //Items = GetSearchTagItems_Filter( item.OccupationResults.Results, "{Name}", item.OccupationResults.CategoryId )
+                        },
+						//Industries
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Industries",
+							DisplayTemplate = "{#} Industr{ies}",
+							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
+							TotalItems = item.IndustryResults.Results.Count(),
+                            //SearchQueryType = "framework",
+                            SearchQueryType = "text",
+                            //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
+                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+						},
                         //Instructional Program Classfication
 				        new Models.Helpers.SearchTag()
 						{
@@ -1324,69 +1481,110 @@ namespace workIT.Services
 							} )
 						},
 
-					}
+                    }
+                ) );
+            }
+            return output;
+        }
+        //
+		
+		public MainSearchResults ConvertCompetencyFrameworkResults( List<CTDLAPICompetencyFrameworkResult> results, int totalResults, string searchType )
+		{
+			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+			foreach( var result in results )
+			{
+				output.Results.Add( Result( result.Name.ToString(), result.Description.ToString(), 9999,
+					new Dictionary<string, object>()
+					{
+						{ "CTID", result.CTID ?? "" },
+						{ "CreatorCTID", result.Creator == null ? "" : (result.Creator.FirstOrDefault() ?? "").Split('/').ToList().Last() },
+						{ "Locations", new List<object>() { } },
+						{ "DateCreated", result.DateCreated == null || result.DateCreated == DateTime.MinValue ? "Unknown" : result.DateCreated.ToString("yyyy-MM-dd") },
+						{ "DateModified", result.DateModified == null || result.DateModified == DateTime.MinValue ? "Unknown" : result.DateModified.ToString("yyyy-MM-dd") },
+						//TODO: add framework and competency data to supply ajax calls after rendering
+						{ "RawData", result.RawData },
+
+						//Compatibility with SearchV2
+						{ "Name", result.Name.ToString() },
+						{ "ctid", result.CTID ?? "" },
+						{ "Description", result.Description.ToString() },
+						{ "Owner", "" },
+						{ "OwnerId", result.Creator == null ? "" : (result.Creator.FirstOrDefault() ?? "").Split('/').ToList().Last() },
+						{ "LastUpdated", result.DateModified == null || result.DateModified == DateTime.MinValue ? "Unknown" : "Unknown; Last Updated: " + result.DateModified.ToString("yyyy-MM-dd") },
+						{ "SearchType", "competencyframework" },
+						{ "RecordId", result.CTID ?? "" },
+						{ "UrlTitle", "" }
+					},
+					null,
+					new List<Models.Helpers.SearchTag>()
+					{
+
+					} 
 				) );
 			}
+
 			return output;
 		}
 		//
+
+
 		public Dictionary<string, string> ConvertCompetenciesToDictionary( List<CredentialAlignmentObjectProfile> input )
-		{
-			var result = new Dictionary<string, string>();
-			if ( input != null )
-			{
-				foreach ( var item in input )
-				{
-					try
-					{
-						result.Add( item.Id.ToString(), item.Description );
-					}
-					catch { }
-				}
-			}
-			return result;
-		}
-		public MainSearchResult Result( string name, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
-		{
-			return new MainSearchResult()
-			{
-				Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
-				Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
-				RecordId = recordID,
-				Properties = properties == null ? new Dictionary<string, object>() : properties,
-				Tags = tags == null ? new List<TagSet>() : tags,
-				TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
-			};
-		}
-		//
-		public MainSearchResult Result( string name, string friendlyName, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
-		{
-			return new MainSearchResult()
-			{
-				Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
-				FriendlyName = string.IsNullOrWhiteSpace( friendlyName ) ? "Record" : friendlyName,
-				Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
-				RecordId = recordID,
-				Properties = properties == null ? new Dictionary<string, object>() : properties,
-				Tags = tags == null ? new List<TagSet>() : tags,
-				TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
-			};
-		}
-		//
-		public Dictionary<string, string> ConvertCodeItemsToDictionary( List<CodeItem> input )
-		{
-			var result = new Dictionary<string, string>();
-			foreach ( var item in input )
-			{
-				try
-				{
-					result.Add( item.Code, item.Name );
-				}
-				catch { }
-			}
-			return result;
-		}
-		//
+        {
+            var result = new Dictionary<string, string>();
+            if ( input != null )
+            {
+                foreach ( var item in input )
+                {
+                    try
+                    {
+                        result.Add( item.Id.ToString(), item.Description );
+                    }
+                    catch { }
+                }
+            }
+            return result;
+        }
+        public MainSearchResult Result( string name, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
+        {
+            return new MainSearchResult()
+            {
+                Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
+                Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
+                RecordId = recordID,
+                Properties = properties == null ? new Dictionary<string, object>() : properties,
+                Tags = tags == null ? new List<TagSet>() : tags,
+                TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
+            };
+        }
+        //
+        public MainSearchResult Result( string name, string friendlyName, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
+        {
+            return new MainSearchResult()
+            {
+                Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
+                FriendlyName = string.IsNullOrWhiteSpace( friendlyName ) ? "Record" : friendlyName,
+                Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
+                RecordId = recordID,
+                Properties = properties == null ? new Dictionary<string, object>() : properties,
+                Tags = tags == null ? new List<TagSet>() : tags,
+                TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
+            };
+        }
+        //
+        public Dictionary<string, string> ConvertCodeItemsToDictionary( List<CodeItem> input )
+        {
+            var result = new Dictionary<string, string>();
+            foreach ( var item in input )
+            {
+                try
+                {
+                    result.Add( item.Code, item.Name );
+                }
+                catch { }
+            }
+            return result;
+        }
+        //
 
 		public List<Dictionary<string, object>> ConvertAddresses( List<Address> input )
 		{
@@ -1429,6 +1627,7 @@ namespace workIT.Services
 		{
 			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( entityTypeId, 23, "", keyword, maxTerms );
 		}
+
 
 		#region Common filters
 		public static void HandleCustomFilters( MainSearchInput data, int searchCategory, ref string where )
@@ -1603,11 +1802,13 @@ namespace workIT.Services
 			string keyword = word.Trim() + "^";
 
 
-			if ( keyword.ToLower().LastIndexOf( "es^" ) > 4 )
-			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "es" ) );
-			}
-			else if ( keyword.ToLower().LastIndexOf( "s^" ) > 4 )
+			//if ( keyword.ToLower().LastIndexOf( "es^" ) > 4 )
+			//{
+			//	//may be too loose
+			//	//keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "es" ) );
+			//}
+			//else 
+			if ( keyword.ToLower().LastIndexOf( "s^" ) > 4 )
 			{
 				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "s" ) );
 			}
@@ -1628,8 +1829,26 @@ namespace workIT.Services
 			{
 				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ive^" ) );
 			}
+			bool isElasticSearch = true;
+			if ( isElasticSearch )
+			{
+				var env = UtilityManager.GetAppKeyValue( "envType" );
+				//not sure of this
+				if ( env!= "production" && keyword.IndexOf( "*" ) == -1 )
+				{
+					//keyword = "*" + keyword.Trim() + "*";
+					//keyword = keyword.Replace( "&", "*" ).Replace( " and ", "*" ).Replace( " in ", "*" ).Replace( " of ", "*" ).Replace( " for ", "*" ).Replace( " with ", "*" );
+					//keyword = keyword.Replace( " from ", "*" );
+					//keyword = keyword.Replace( " a ", "*" );
+					//keyword = keyword.Replace( " - ", "*" );
+					//keyword = keyword.Replace( " * ", "*" );
 
-			if ( keyword.IndexOf( "%" ) == -1 )
+					////just replace all spaces with *?
+					//keyword = keyword.Replace( "  ", "*" );
+					//keyword = keyword.Replace( " ", "*" );
+					//keyword = keyword.Replace( "**", "*" );
+				}
+			} else if ( keyword.IndexOf( "%" ) == -1 )
 			{
 				keyword = "%" + keyword.Trim() + "%";
 				keyword = keyword.Replace( "&", "%" ).Replace( " and ", "%" ).Replace( " in ", "%" ).Replace( " of ", "%" ).Replace( " for ", "%" ).Replace( " with ", "%" );

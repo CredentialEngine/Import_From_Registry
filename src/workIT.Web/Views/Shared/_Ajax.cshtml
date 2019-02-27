@@ -70,6 +70,7 @@
 			case "number":
 			case "textarea":
 			case "hidden":
+			case "summernote":
 			case "select":
                 return (field.val() || "").trim();
 			case "checkboxlist":
@@ -171,7 +172,15 @@
 						ajax.addFormObjectListItem(field, dataItem);
 					})(data[i]);
 				}
-				break;
+                break;
+            case "summernote":
+                if (field.hasClass("summernoteInitialized")) {
+                    field.summernote("code", data || "");
+                }
+                else {
+                    field.val(data);
+                }
+                break;
 			default:
 				try{
 					field[0].setValue(data); //Custom fields should implement this
@@ -256,7 +265,7 @@
 			try {
 				if (typeof (data[i]) == "object") {
 					if (!Array.isArray(data[i])) {
-						template = autoFormat(template, data[i], i);
+						template = ajax.autoFormat(template, data[i], i);
 					}
 				} else if (data[i] != null && typeof (data[i]) != "undefined") {
 					template = template.replace(new RegExp("{" + (prefix ? prefix + "." : "") + i + "}", "g"), data[i]);

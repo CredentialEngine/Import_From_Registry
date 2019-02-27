@@ -16,6 +16,8 @@ using WM = workIT.Models.ProfileModels;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+
+
 namespace workIT.Factories
 {
 	public class DurationProfileManager : BaseFactory
@@ -147,6 +149,37 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+		public void AssignDurationSummary(  )
+		{
+			ThisEntity row = new ThisEntity();
+			using ( var context = new EntityContext() )
+			{
+				List<EM.Entity_DurationProfile> results = context.Entity_DurationProfile
+						.OrderBy( s => s.Id )
+						.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( EM.Entity_DurationProfile item in results )
+					{
+						row = new ThisEntity();
+						MapFromDB( item, row );
+						if ( row.ExactDuration.HasValue || row.IsRange )
+						{
+							item.DurationSummary = row.DurationSummary;
+
+							if ( HasStateChanged( context ) )
+							{
+								//note: testing - the latter may be true if the child has changed - but shouldn't as the mapping only updates the parent
+								//item.LastUpdated = System.DateTime.Now;
+								context.SaveChanges();
+							}
+						}
+					}
+				}
+				
+			}
+		}
 		public bool Delete( int recordId, ref string statusMessage )
 		{
 			bool isOK = true;
@@ -220,7 +253,8 @@ namespace workIT.Factories
 				hasExactDuration = true;
 			if ( HasDurationItems( from.MinimumDuration ) || HasDurationItems( from.MaximumDuration ) )
 				hasRangeDuration = true;
-
+			string durationSummary = "";
+			string durationOnly = "";
 			to.TypeId = 0;
 			//validations should be done before here
 			if ( hasExactDuration )
@@ -251,6 +285,8 @@ namespace workIT.Factories
 				to.ToHours = null;
 				to.ToMinutes = null;
 				to.ToDuration = "";
+				DurationSummary( "", from.ExactDuration, ref durationOnly );
+				to.DurationSummary = durationOnly;
 			}
 			else if ( hasRangeDuration )
 			{
@@ -262,7 +298,9 @@ namespace workIT.Factories
 				to.FromMinutes = from.MinimumDuration.Minutes;
 				to.FromDuration = AsSchemaDuration( from.MinimumDuration, ref totalMinutes );
                 int fromMin = totalMinutes;
-                to.ToYears = from.MaximumDuration.Years;
+				DurationSummary( "", from.MinimumDuration, ref durationOnly );
+				to.DurationSummary = durationOnly;
+				to.ToYears = from.MaximumDuration.Years;
 				to.ToMonths = from.MaximumDuration.Months;
 				to.ToWeeks = from.MaximumDuration.Weeks;
 				to.ToDays = from.MaximumDuration.Days;
@@ -271,14 +309,17 @@ namespace workIT.Factories
 				to.ToDuration = AsSchemaDuration( from.MaximumDuration, ref totalMinutes );
                 to.AverageMinutes = ( fromMin + totalMinutes ) / 2;
                 to.TypeId = 2;
+				DurationSummary( "", from.MaximumDuration, ref durationOnly );
+				durationOnly += " to " + durationOnly;
 			}
-
+			
 		}
 
 		private static void MapFromDB( DBEntity from, ThisEntity to )
 		{
 			WM.DurationItem duration = new WM.DurationItem();
 			int totalMinutes = 0;
+			string durationOnly = "";
 			to.Id = from.Id;
 			to.EntityId = from.EntityId ?? 0;
 
@@ -301,7 +342,9 @@ namespace workIT.Factories
 				//format as from and to
 				to.MinimumDuration = duration;
 				to.MinimumDurationISO8601 = AsSchemaDuration( duration, ref totalMinutes );
-				to.ProfileSummary = DurationSummary( to.Conditions, duration );
+				to.ProfileSummary = DurationSummary( to.Conditions, duration, ref durationOnly );
+				if ( !string.IsNullOrWhiteSpace( durationOnly ) )
+					to.DurationSummary = durationOnly;
 
 				duration = new WM.DurationItem();
 				duration.Years = from.ToYears == null ? 0 : ( int ) from.ToYears;
@@ -314,28 +357,44 @@ namespace workIT.Factories
 				to.MaximumDuration = duration;
 				to.MaximumDurationISO8601 = AsSchemaDuration( duration, ref totalMinutes );
 
-				to.ProfileSummary += DurationSummary( " to ", duration );
+				to.ProfileSummary += DurationSummary( " to ", duration, ref durationOnly );
+				if ( !string.IsNullOrWhiteSpace( durationOnly ) )
+					to.DurationSummary += " to " + durationOnly;
 
 			}
 			else
 			{
 				to.ExactDuration = duration;
 				to.ExactDurationISO8601 = AsSchemaDuration( duration, ref totalMinutes );
-				to.ProfileSummary = DurationSummary( to.Conditions, duration );
+				to.ProfileSummary = DurationSummary( to.Conditions, duration, ref durationOnly );
+				if ( !string.IsNullOrWhiteSpace( durationOnly ) )
+					to.DurationSummary = durationOnly;
 			}
 
 			if ( string.IsNullOrWhiteSpace( to.ProfileName ) )
 				to.ProfileName = to.ProfileSummary;
+			
 		}
-		#endregion
+        private static void MapFromDB( DBEntity from, WM.DurationItem duration )
+        {
+            //WM.DurationItem duration = new WM.DurationItem();
+            //duration = new WM.DurationItem();
+            duration.Years = from.FromYears == null ? 0 : ( int )from.FromYears;
+            duration.Months = from.FromMonths == null ? 0 : ( int )from.FromMonths;
+            duration.Weeks = from.FromWeeks == null ? 0 : ( int )from.FromWeeks;
+            duration.Days = from.FromDays == null ? 0 : ( int )from.FromDays;
+            duration.Hours = from.FromHours == null ? 0 : ( int )from.FromHours;
+            duration.Minutes = from.FromMinutes == null ? 0 : ( int )from.FromMinutes;
+        }
+        #endregion
 
-		#region  retrieval ==================
+        #region  retrieval ==================
 
-		/// <summary>
-		/// Retrieve and fill duration profiles for parent entity
-		/// </summary>
-		/// <param name="parentUid"></param>
-		public static List<ThisEntity> GetAll( Guid parentUid )
+        /// <summary>
+        /// Retrieve and fill duration profiles for parent entity
+        /// </summary>
+        /// <param name="parentUid"></param>
+        public static List<ThisEntity> GetAll( Guid parentUid, int typeId = 0 )
 		{
 			ThisEntity row = new ThisEntity();
 			WM.DurationItem duration = new WM.DurationItem();
@@ -349,8 +408,9 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				List<EM.Entity_DurationProfile> results = context.Entity_DurationProfile
-						.Where( s => s.EntityId == parent.Id )
-						.OrderBy( s => s.Id )
+						.Where( s => s.EntityId == parent.Id 
+                        && ( ( typeId == 0 && s.TypeId < 3 ) || s.TypeId == typeId ))
+                        .OrderBy( s => s.Id )
 						.ToList();
 
 				if ( results != null && results.Count > 0 )
@@ -371,6 +431,37 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="id"></param>
 		/// <returns></returns>
+        /// 
+        public static WM.DurationItem GetRenewalDuration( Guid parentUid )
+        {
+            
+            WM.DurationItem duration = new WM.DurationItem();
+            ThisEntity profile = new ThisEntity();
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                return duration;
+            }
+
+            using ( var context = new EntityContext() )
+            {
+                List<EM.Entity_DurationProfile> results = context.Entity_DurationProfile
+                        .Where( s => s.EntityId == parent.Id
+                        && ( s.TypeId == 3 ) )
+                        .ToList();
+
+                if ( results != null && results.Count > 0 )
+                {
+                    foreach ( EM.Entity_DurationProfile item in results )
+                    {
+                       
+                        MapFromDB( item, duration );
+                        break;
+                    }
+                }
+                return duration;
+            }
+        }
 		public static ThisEntity Get( int id )
 		{
 			ThisEntity entity = new ThisEntity();
@@ -475,14 +566,15 @@ namespace workIT.Factories
 			return result;
 		}
 
-		private static string DurationSummary( string conditions, WM.DurationItem entity )
+		private static string DurationSummary( string conditions, WM.DurationItem entity, ref string durationOnly )
 		{
 			string duration = "";
+			string prefix = "";
 			string comma = "";
 			if ( string.IsNullOrWhiteSpace( conditions ) )
-				duration = "Duration: ";
+				prefix = "Duration: ";
 			else
-				duration = conditions + " ";
+				prefix = conditions + " ";
 
 			if ( entity.Years > 0 )
 			{
@@ -521,7 +613,8 @@ namespace workIT.Factories
 			{
 				duration = duration.Substring( 0, lastPos ) + " and " + duration.Substring( lastPos + 1 );
 			}
-			return duration;
+			durationOnly = duration;
+			return prefix + duration;
 		}
 		static string SetLabel( int value, string unit )
 		{

@@ -8,8 +8,8 @@ using Nest;
 
 namespace workIT.Models.Elastic
 {
-    public class OrganizationIndex : IIndex
-    {
+    public class OrganizationIndex : BaseIndex, IIndex
+	{
         public OrganizationIndex()
         {
             EntityTypeId = 2;
@@ -24,12 +24,12 @@ namespace workIT.Models.Elastic
             TextValues = new List<string>();
             PropertyValues = new List<int>();
             Codes = new List<int>();
-            AgentRelationships = new List<int>();
+
             //ReferenceFrameworks = new List<OrganizationFramework>();
         }
-        public int EntityTypeId { get; set; } = 2;
-        public string FriendlyName { get; set; }
-        public int Id { get; set; }
+        //public int EntityTypeId { get; set; } = 2;
+        //public string FriendlyName { get; set; }
+        //public int Id { get; set; }
         public int OwnerOrganizationId
         {
             get
@@ -41,20 +41,23 @@ namespace workIT.Models.Elastic
                 Id = value;
             }
         }
-        public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
+
         public int NameIndex { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public Guid RowId { get; set; }
-        public string SubjectWebpage { get; set; }
-        public string CTID { get; set; }
-        public string ImageURL { get; set; }
-        public int EntityStateId { get; set; }
-        public string CredentialRegistryId { get; set; }
+  //      public string Name { get; set; }
+  //      public string Description { get; set; }
+  //      public Guid RowId { get; set; }
+  //      public string SubjectWebpage { get; set; }
+  //      public string CTID { get; set; }
+		//public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
 
-        public DateTime Created { get; set; }
 
-        public DateTime LastUpdated { get; set; }
+		public string ImageURL { get; set; }
+        //public int EntityStateId { get; set; }
+        //public string CredentialRegistryId { get; set; }
+
+        //public DateTime Created { get; set; }
+
+        //public DateTime LastUpdated { get; set; }
 
         public bool IsACredentialingOrg { get; set; }
 
@@ -100,7 +103,7 @@ namespace workIT.Models.Elastic
 		/// - ServiceTypes, OrgTypes, SectorTypes, ClaimTypes 
 		/// - QA role by QA Org name
 		/// </summary>
-		public List<string> TextValues { get; set; } = new List<string>();
+		//public List<string> TextValues { get; set; } = new List<string>();
 		public List<string> PremiumValues { get; set; } = new List<string>();
 
 		//public List<IndexReferenceFramework> Industries { get; set; }
@@ -109,15 +112,15 @@ namespace workIT.Models.Elastic
 		public List<string> IndustryCodeGroups { get; set; }
         public List<string> IndustryCodeNotations { get; set; }
         //public string IndustryOtherResults { get; set; }
-        public List<IndexReferenceFramework> ReferenceFrameworks { get; set; } = new List<IndexReferenceFramework>();
+        //public List<IndexReferenceFramework> ReferenceFrameworks { get; set; } = new List<IndexReferenceFramework>();
 
         public List<int> PropertyValues { get; set; }
         public List<int> Codes { get; set; }
-        public List<int> AgentRelationships { get; set; }
-        //public List<int> TargetAssertion { get; set; }
-        //public string MainPhoneNumber { get; set; }
+        //public List<int> AgentRelationships { get; set; } = new List<int>();
+		//public List<int> TargetAssertion { get; set; }
+		//public string MainPhoneNumber { get; set; }
 
-        public string OwnedByResults { get; set; }
+		public string OwnedByResults { get; set; }
         public string OfferedByResults { get; set; }
         public string AsmtsOwnedByResults { get; set; }
         public string LoppsOwnedByResults { get; set; }
@@ -125,10 +128,16 @@ namespace workIT.Models.Elastic
         public string ApprovedByResults { get; set; }
         public string RecognizedByResults { get; set; }
         public string RegulatedByResults { get; set; }
-        public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
-        public List<IndexQualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<IndexQualityAssurancePerformed>();
-        //counts
-        public int VerificationProfilesCount { get; set; }
+		
+
+		public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
+        public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
+		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
+
+		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
+		//counts
+		public int VerificationProfilesCount { get; set; }
         public int CostManifestsCount { get; set; }
         public int ConditionManifestsCount { get; set; }
         public int SubsidiariesCount { get; set; }

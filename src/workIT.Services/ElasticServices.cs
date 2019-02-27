@@ -72,21 +72,29 @@ namespace workIT.Services
 
         #region Credentials
         #region Build/update index
-        public static void Credential_BuildIndex( bool deleteIndexFirst = false )
+        public static void Credential_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
         {
             try
             {
-                if ( deleteIndexFirst && EC.IndexExists( CredentialIndex ).Exists )
-                    EC.DeleteIndex( CredentialIndex );
 
-                //was correct before, with latter code in InitCredential??
-                if ( !EC.IndexExists( CredentialIndex ).Exists )
+				bool indexInitialized = false;
+				if ( deleteIndexFirst && EC.IndexExists( CredentialIndex ).Exists )
+				{
+					EC.DeleteIndex( CredentialIndex );
+				}
+				if ( !EC.IndexExists( CredentialIndex ).Exists )
+				{
+					CredentialInitializeIndex();
+					indexInitialized = true;
+				}
+
+				if ( indexInitialized || updatingIndexRegardless )
                 {
 
                     new ActivityServices().AddActivity( new SiteActivity()
                     { ActivityType = "Credential", Activity = "Elastic", Event = "Build Index" }
                     );
-                    CredentialInitializeIndex();
+                    //redentialInitializeIndex();
 					int processed = 0;
 					string filter = "base.EntityStateId = 3";
 					Credential_UpdateIndex( filter, ref processed );
@@ -170,7 +178,7 @@ namespace workIT.Services
 			try
             {
 				//actually this doesn't help unless we use an upating filter to target specific data!
-				int pageSize = 1000;
+				int pageSize = UtilityManager.GetAppKeyValue("credentialRebuildPageSize", 1500);
 				int pageNbr = 1;
 				int totalRows = 0;
 				bool isComplete = false;
@@ -288,7 +296,11 @@ namespace workIT.Services
                                     .Name( nn => nn.Occupations )
                                     .AutoMap()
                                 )
-                                .Nested<IndexCompetency>( n => n
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Classifications )
+									.AutoMap()
+								)
+								.Nested<IndexCompetency>( n => n
                                     .Name( nn => nn.Competencies )
                                     .AutoMap()
                                 )
@@ -296,12 +308,17 @@ namespace workIT.Services
                                  .Nested<Models.Elastic.Address>( n => n
                                     .Name( nn => nn.Addresses )
                                     .AutoMap()
-                                )
-                                .Nested<IndexQualityAssurance>( n => n
-                                    .Name( nn => nn.QualityAssurance )
-                                    .AutoMap()
-                                )
-                                .Nested<Connection>( n => n
+								) //AgentRelationshipForEntity will replace IndexQualityAssurance
+								 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+									.Name( nn => nn.AgentRelationshipsForEntity )
+									.AutoMap()
+								)
+								.Nested<IndexQualityAssurance>( n => n
+									.Name( nn => nn.QualityAssurance )
+									.AutoMap()
+								)
+
+								.Nested<Connection>( n => n
                                     .Name( nn => nn.Connections )
                                     .AutoMap()
                                 )
@@ -314,21 +331,72 @@ namespace workIT.Services
         #endregion
 
         #region Search
-        public static List<string> CredentialAutoComplete( string keyword, int maxTerms, ref int pTotalRows, int widgetId = 0 )
+        public static List<ThisSearchEntity> CredentialSimpleSearch( MainSearchInput query, ref int pTotalRows )
         {
-            #region Handle Widget Mode queries
-            WidgetQueryFilters widgetQuery = new WidgetQueryFilters();
+            List<ThisSearchEntity> list = new List<CredentialSummary>();
+            if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+            {
+                
+                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+                {
+                    var text = filter.AsText();
+                    if ( string.IsNullOrWhiteSpace( text ) )
+                        continue;
+                    //this doesn't work:
+                    //temp
+                    query.Keywords += " " + text;
+                   
+                }               
+                         
+            }
+            var sort = new SortDescriptor<CredentialIndex>();
 
-			//WidgetFilter<CredentialIndex>( widgetQuery, widgetId );
-			LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
-			//LocationFilter<CredentialIndex>( query, locationQueryFilters );
-			#endregion
+            var sortOrder = query.SortOrder;
+            if ( sortOrder == "alpha" )
+                sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+            else if ( sortOrder == "newest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Descending );
+            else if ( sortOrder == "oldest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+            else if ( sortOrder == "relevance" )
+                sort.Descending( SortSpecialField.Score );
+            else
+                sort.Ascending( s => s.Name );
+            if ( query.StartPage < 1 )
+                query.StartPage = 1;
+            var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q =>
+                 q.MultiMatch( m => m
+                                 .Fields( f => f
+                                  .Field( ff => ff.Name )
+                                  .Field( ff => ff.OwnerOrganizationName )
+                 )
+                 .Type( TextQueryType.PhrasePrefix )
+                 .Query( query.Keywords)
+                 .MaxExpansions( 10 ) ) )
+                 .Sort( s => sort )
+                     //.From( query.StartPage - 1 )
+                     .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+                     .Skip( ( query.StartPage - 1 ) * query.PageSize )
+                     .Size( query.PageSize ) );
+          
+            pTotalRows = ( int )search.Total;
+            
+            if ( pTotalRows > 0 )
+            {
+                //map results
+                list = ElasticManager.Credential_MapFromElastic( ( List<CredentialIndex> )search.Documents );
+
+                LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.CredentialSearch. found: {0} records", pTotalRows ) );
+            }
+            //stats
+            query.Results = pTotalRows;
+            return list;
+        }
+        public static List<string> CredentialAutoComplete( string keyword, int maxTerms, ref int pTotalRows )
+        {
+         
 			var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q =>
-                 widgetQuery.OwningOrgsQuery
-                 && widgetQuery.LocationQuery
-                 && widgetQuery.CountryQuery
-                 && widgetQuery.CityQuery
-                 && q.MultiMatch( m => m
+                 q.MultiMatch( m => m
                                  .Fields( f => f
                                   .Field( ff => ff.Name )
                                   .Field( ff => ff.OwnerOrganizationName )
@@ -336,7 +404,6 @@ namespace workIT.Services
                  .Type( TextQueryType.PhrasePrefix )
                  .Query( keyword )
                  .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
-
             //var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q => q.Term( t => t.Field( f => f.Subjects.First() ).Value( new[] { "Anatomy" } ) ) ) );
 
             pTotalRows = ( int )search.Total;
@@ -345,8 +412,122 @@ namespace workIT.Services
             return list.Select( x => x.ListTitle ).Distinct().ToList();
 		}
 
-		public static void CommonFilters<T>( MainSearchInput query, WidgetQueryFilters widgetQuery ) where T : class, IIndex
+		#region Common Frameworks
+		public static QueryContainer CommonOccupations<T>( MainSearchInput query ) where T : class, IIndex
 		{
+			QueryContainer occupationsQuery = null;
+			if ( query.FiltersV2.Any( x => x.Name == "occupations" ) )
+			{
+				var occupationNames = new List<string>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "occupations" ) )
+				{
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					occupationNames.Add( text );
+				}
+
+				QueryContainer qc = null;
+				occupationNames.ForEach( name =>
+				{
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Occupations.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Occupations.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
+
+				} );
+
+				if ( qc != null )
+					occupationsQuery = Query<T>.Nested( n => n.Path( p => p.Occupations ).Query( q => qc ).IgnoreUnmapped() );
+			}
+			return occupationsQuery;
+		}
+		public static QueryContainer CommonIndustries<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer industriesQuery = null;
+			if ( query.FiltersV2.Any( x => x.Name == "industries" ) )
+			{
+				var industryNames = new List<string>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "industries" ) )
+				{
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					industryNames.Add( text );
+				}
+
+				QueryContainer qc = null;
+				industryNames.ForEach( name =>
+				{
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
+
+				} );
+
+				if ( qc != null )
+					industriesQuery = Query<T>.Nested( n => n.Path( p => p.Industries ).Query( q => qc ).IgnoreUnmapped() );
+			}
+			return industriesQuery;
+		}
+		public static QueryContainer CommonCip<T>( MainSearchInput query) where T : class, IIndex
+		{
+			QueryContainer classificationsQuery = null;
+			if ( query.FiltersV2.Any( x => x.Name == "instructionalprogramtype" ) )
+			{
+				var CIPNames = new List<string>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "instructionalprogramtype" ) )
+				{
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					CIPNames.Add( text );
+				}
+
+				QueryContainer qc = null;
+				CIPNames.ForEach( name =>
+				{
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
+
+				} );
+
+				if ( qc != null )
+					classificationsQuery = Query<T>.Nested( n => n.Path( p => p.Classifications ).Query( q => qc ).IgnoreUnmapped() );
+			}
+			return classificationsQuery;
+		}
+		#endregion
+		public static QueryContainer CommonQualityAssurance<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer qualityAssurancesQuery = null;
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var assurances = new List<CodeItem>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
+				{
+					assurances.Add( filter.AsOrgRolesItem() );
+				}
+
+				if ( assurances.Any() )
+					assurances.ForEach( x =>
+					 {
+						 qualityAssurancesQuery |= Query<CredentialIndex>.Nested( n => n
+								.Path( p => p.AgentRelationshipsForEntity )
+								 .Query( q => q
+									 .Bool( mm => mm
+										  .Must( mu => mu.Terms( m => m.Field( f => f
+												 .AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms (x.IdsList)
+													//.Query( x.ItemList.ToString() )
+													)
+												   && mu.Terms( m => m.Field( f => f.AgentRelationshipsForEntity.First().OrgId ).Terms( x.Id )
+														//.Query( x.Id.ToString() )
+														) ) ) ) );
+					 } );
+			}
+			return qualityAssurancesQuery;
+		}
+
+		public static QueryContainer CommonQualityAssurance_OLD<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer qualityAssurancesQuery = null;
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
 			{
 				var assurances = new List<CodeItem>();
@@ -358,148 +539,156 @@ namespace workIT.Services
 				if ( assurances.Any() )
 					assurances.ForEach( x =>
 					{
-						widgetQuery.OrganizationConnectionQuery |= Query<IIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Query( x.RelationshipId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId ).Query( x.Id.ToString() ) ) ) ) ) );
+						qualityAssurancesQuery |= Query<CredentialIndex>.Nested( n => n
+							   .Path( p => p.QualityAssurance )
+								.Query( q => q
+									.Bool( mm => mm
+										 .Must( mu => mu.Match( m => m.Field( f => f
+												.QualityAssurance.First().RelationshipTypeId )
+												   .Query( x.RelationshipId.ToString() ) )
+												  && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId )
+													   .Query( x.Id.ToString() ) ) ) ) ) );
 					} );
 			}
+			return qualityAssurancesQuery;
 		}
+		//public static void WidgetFilter<T>( WidgetQueryFilters widgetQuery, int widgetId = 0 ) where T : class, IIndex
+		//{
+		//	if ( widgetId > 0 )
+		//	{
+		//		Widget widget = WidgetServices.GetCurrentWidget( widgetId );
+		//		if ( widget.OwningOrganizationIdsList.Any() )
+		//			if ( typeof( T ) == typeof( CredentialIndex ) )
+		//			{
+		//				widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
+		//				( widget.OwningOrganizationIdsList.ToArray() ) );
+		//			}
+		//			else
+		//				if ( typeof( T ) == typeof( AssessmentIndex ) )
+		//			{
+		//				widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
+		//				  ( widget.OwningOrganizationIdsList.ToArray() ) );
+		//			}
+		//			else
+		//				if ( typeof( T ) == typeof( LearningOppIndex ) )
+		//			{
+		//				widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
+		//				( widget.OwningOrganizationIdsList.ToArray() ) );
+		//			}
+		//			else
+		//				if ( typeof( T ) == typeof( OrganizationIndex ) )
+		//			{
+		//				widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.Id ).Terms
+		//				( widget.OwningOrganizationIdsList.ToArray() ) );
+		//			}
+		//		if ( !string.IsNullOrEmpty( widget.RegionFilters ) )
+		//		{
+		//			var locations = new List<string>();
+		//			var regions = widget.RegionFilters.Split( ',' );
+		//			foreach ( var r in regions )
+		//			{
+		//				locations.Add( r );
+		//			}
 
-		public static void WidgetFilter<T>( WidgetQueryFilters widgetQuery, int widgetId = 0 ) where T : class, IIndex
-		{
-			if ( widgetId > 0 )
-			{
-				Widget widget = WidgetServices.GetCurrentWidget( widgetId );
-				if ( widget.OwningOrganizationIdsList.Any() )
-					if ( typeof( T ) == typeof( CredentialIndex ) )
-					{
-						widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
-						( widget.OwningOrganizationIdsList.ToArray() ) );
-					}
-					else
-						if ( typeof( T ) == typeof( AssessmentIndex ) )
-					{
-						widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
-						  ( widget.OwningOrganizationIdsList.ToArray() ) );
-					}
-					else
-						if ( typeof( T ) == typeof( LearningOppIndex ) )
-					{
-						widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.OwnerOrganizationId ).Terms
-						( widget.OwningOrganizationIdsList.ToArray() ) );
-					}
-					else
-						if ( typeof( T ) == typeof( OrganizationIndex ) )
-					{
-						widgetQuery.OwningOrgsQuery = Query<T>.Terms( ts => ts.Field( f => f.Id ).Terms
-						( widget.OwningOrganizationIdsList.ToArray() ) );
-					}
-				if ( !string.IsNullOrEmpty( widget.RegionFilters ) )
-				{
-					var locations = new List<string>();
-					var regions = widget.RegionFilters.Split( ',' );
-					foreach ( var r in regions )
-					{
-						locations.Add( r );
-					}
+		//			locations.ForEach( x =>
+		//			{
+		//				if ( widget.IncludeIfAvailableOnline )
+		//				{
+		//					widgetQuery.LocationQuery |= Query<CredentialIndex>.Term( t => t.Field( f => f.IsAvailableOnline ).Value( true ) ) ||
+		//					Query<T>.Nested( n => n.Path( p => p.Addresses )
+		//					.Query( q => q.Bool( mm => mm.Must( mu => mu
+		//					.MultiMatch( m => m.Fields( mf => mf
+		//					.Field( f => f.Addresses.First().AddressRegion, 70 ) )
+		//					.Type( TextQueryType.PhrasePrefix )
+		//					.Query( x ) ) ) ) ).IgnoreUnmapped() );
+		//				}
+		//				else
+		//				{
+		//					widgetQuery.LocationQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
+		//					.Query( q => q.Bool( mm => mm.Must( mu => mu
+		//					.MultiMatch( m => m.Fields( mf => mf
+		//					.Field( f => f.Addresses.First().AddressRegion, 70 ) )
+		//					.Type( TextQueryType.PhrasePrefix )
+		//					.Query( x ) ) ) ) ).IgnoreUnmapped() );
+		//				}
+		//			} );
+		//		}
+		//		else if ( !string.IsNullOrEmpty( widget.CountryFilters ) )
+		//		{
+		//			var countries = new List<string>();
+		//			var options = widget.CountryFilters.Split( ',' );
+		//			foreach ( var r in options )
+		//				countries.Add( r );
+		//			countries.ForEach( x =>
+		//			{
+		//				widgetQuery.CountryQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
+		//					.Query( q => q.Bool( mm => mm.Must( mu => mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Addresses.First().Country, 70 ) )
+		//					.Type( TextQueryType.PhrasePrefix )
+		//					.Query( x ) ) ) ) )
+		//					.IgnoreUnmapped() );
+		//			} );
+		//		}
+		//		if ( !string.IsNullOrEmpty( widget.CityFilters ) )
+		//		{
+		//			var locations = new List<string>();
+		//			var cities = widget.CityFilters.Split( ',' );
+		//			foreach ( var c in cities )
+		//			{
+		//				locations.Add( c );
+		//			}
 
-					locations.ForEach( x =>
-					{
-						if ( widget.IncludeIfAvailableOnline )
-						{
-							widgetQuery.LocationQuery |= Query<CredentialIndex>.Term( t => t.Field( f => f.IsAvailableOnline ).Value( true ) ) ||
-							Query<T>.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => q.Bool( mm => mm.Must( mu => mu
-							.MultiMatch( m => m.Fields( mf => mf
-							.Field( f => f.Addresses.First().AddressRegion, 70 ) )
-							.Type( TextQueryType.PhrasePrefix )
-							.Query( x ) ) ) ) ).IgnoreUnmapped() );
-						}
-						else
-						{
-							widgetQuery.LocationQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => q.Bool( mm => mm.Must( mu => mu
-							.MultiMatch( m => m.Fields( mf => mf
-							.Field( f => f.Addresses.First().AddressRegion, 70 ) )
-							.Type( TextQueryType.PhrasePrefix )
-							.Query( x ) ) ) ) ).IgnoreUnmapped() );
-						}
-					} );
-				}
-				else if ( !string.IsNullOrEmpty( widget.CountryFilters ) )
-				{
-					var countries = new List<string>();
-					var options = widget.CountryFilters.Split( ',' );
-					foreach ( var r in options )
-						countries.Add( r );
-					countries.ForEach( x =>
-					{
-						widgetQuery.CountryQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => q.Bool( mm => mm.Must( mu => mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Addresses.First().Country, 70 ) )
-							.Type( TextQueryType.PhrasePrefix )
-							.Query( x ) ) ) ) )
-							.IgnoreUnmapped() );
-					} );
-				}
-				if ( !string.IsNullOrEmpty( widget.CityFilters ) )
-				{
-					var locations = new List<string>();
-					var cities = widget.CityFilters.Split( ',' );
-					foreach ( var c in cities )
-					{
-						locations.Add( c );
-					}
-
-					locations.ForEach( x =>
-					{
-						widgetQuery.CityQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
-						.Query( q => q.Bool( mm => mm.Must( mu => mu
-						.MultiMatch( m => m.Fields( mf => mf
-						.Field( f => f.Addresses.First().City, 70 ) )
-						.Type( TextQueryType.PhrasePrefix )
-						.Query( x ) ) ) ) ).IgnoreUnmapped() );
-					} );
-				}
+		//			locations.ForEach( x =>
+		//			{
+		//				widgetQuery.CityQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
+		//				.Query( q => q.Bool( mm => mm.Must( mu => mu
+		//				.MultiMatch( m => m.Fields( mf => mf
+		//				.Field( f => f.Addresses.First().City, 70 ) )
+		//				.Type( TextQueryType.PhrasePrefix )
+		//				.Query( x ) ) ) ) ).IgnoreUnmapped() );
+		//			} );
+		//		}
 
 
-				//has to be added org,asmnt,lopp filters and also separate section in the widget preview page for all the four.
-				string keywords = "";
-				if ( typeof( T ) == typeof( CredentialIndex ) )
-				{
-					keywords = widget.WidgetFilters.CredFilters.Keywords;
-				}
-				else
-				if ( typeof( T ) == typeof( AssessmentIndex ) )
-				{
-					keywords = widget.WidgetFilters.AssessmentFilters.Keywords;
-				}
-				else
-				if ( typeof( T ) == typeof( LearningOppIndex ) )
-				{
-					keywords = widget.WidgetFilters.LoppFilters.Keywords;
-				}
-				else
-				if ( typeof( T ) == typeof( OrganizationIndex ) )
-				{
-					keywords = widget.WidgetFilters.OrganizationFilters.Keywords;
-				}
+		//		//has to be added org,asmnt,lopp filters and also separate section in the widget preview page for all the four.
+		//		string keywords = "";
+		//		if ( typeof( T ) == typeof( CredentialIndex ) )
+		//		{
+		//			keywords = widget.WidgetFilters.CredFilters.Keywords;
+		//		}
+		//		else
+		//		if ( typeof( T ) == typeof( AssessmentIndex ) )
+		//		{
+		//			keywords = widget.WidgetFilters.AssessmentFilters.Keywords;
+		//		}
+		//		else
+		//		if ( typeof( T ) == typeof( LearningOppIndex ) )
+		//		{
+		//			keywords = widget.WidgetFilters.LoppFilters.Keywords;
+		//		}
+		//		else
+		//		if ( typeof( T ) == typeof( OrganizationIndex ) )
+		//		{
+		//			keywords = widget.WidgetFilters.OrganizationFilters.Keywords;
+		//		}
 
-				if ( !string.IsNullOrEmpty( keywords ) )
-				{
-					QueryContainer qc = null;
+		//		if ( !string.IsNullOrEmpty( keywords ) )
+		//		{
+		//			QueryContainer qc = null;
 
-					foreach ( var keyWord in keywords.Split( new char[ ( ',' ) ] ) )
-					{
-						qc |= Query<T>.MatchPhrasePrefix( mp => mp.Field( f => f.Keyword ).Query( keyWord ) );
-						qc |= Query<T>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword ) ).Type( TextQueryType.PhrasePrefix ).Query( keywords ) );
-						qc |= Query<T>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword ) ).Type( TextQueryType.BestFields ).Query( keywords ) );
-						//qc |= Query<CredentialIndex>.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.Keyword ).Query( keyWord ) ) ) );
-					}
-					//widgetQuery.KeywordQuery = Query<CredentialIndex>.Terms( t => t.Field( f => f.Keyword ).Terms<string>( keywords ) );
-					widgetQuery.KeywordQuery = qc;
-					//widgetQuery.KeywordQuery = Query<CredentialIndex>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword, 45 ) ).Type( TextQueryType.PhrasePrefix ).Query( keywords ) ) || Query<CredentialIndex>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword, 45 ) ).Type( TextQueryType.BestFields ).Query( keywords ) );
-				}
-			}
-		}
-		#endregion
+		//			foreach ( var keyWord in keywords.Split( new char[ ( ',' ) ] ) )
+		//			{
+		//				qc |= Query<T>.MatchPhrasePrefix( mp => mp.Field( f => f.Keyword ).Query( keyWord ) );
+		//				qc |= Query<T>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword ) ).Type( TextQueryType.PhrasePrefix ).Query( keywords ) );
+		//				qc |= Query<T>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword ) ).Type( TextQueryType.BestFields ).Query( keywords ) );
+		//				//qc |= Query<CredentialIndex>.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.Keyword ).Query( keyWord ) ) ) );
+		//			}
+		//			//widgetQuery.KeywordQuery = Query<CredentialIndex>.Terms( t => t.Field( f => f.Keyword ).Terms<string>( keywords ) );
+		//			widgetQuery.KeywordQuery = qc;
+		//			//widgetQuery.KeywordQuery = Query<CredentialIndex>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword, 45 ) ).Type( TextQueryType.PhrasePrefix ).Query( keywords ) ) || Query<CredentialIndex>.MultiMatch( m => m.Fields( f => f.Field( ff => ff.Keyword, 45 ) ).Type( TextQueryType.BestFields ).Query( keywords ) );
+		//		}
+		//	}
+		//}
+
 
 		private static void LocationFilter<T>( MainSearchInput query, LocationQueryFilters locationQueryFilters ) where T : class, IIndex
         {
@@ -521,7 +710,6 @@ namespace workIT.Services
 						{
 							if ( !string.IsNullOrEmpty( x ) )
 							{
-
 								locationQueryFilters.CityQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
 								.Query( q => q.Bool( mm => mm.Must( mu => mu
 								.MultiMatch( m => m.Fields( mf => mf
@@ -588,11 +776,14 @@ namespace workIT.Services
 
 
 			QueryContainer credentialTypeQuery = null;
+			QueryContainer credentialIdQuery = null;
+			QueryContainer credentialStatusTypeQuery = null;
 			QueryContainer audienceLevelTypeQuery = null;
 			QueryContainer audienceTypeQuery = null;
 			QueryContainer competenciesQuery = null;
 			QueryContainer rolesFilterQuery = null;
 			QueryContainer subjectsQuery = null;
+			QueryContainer keywordsQuery = null;
 			QueryContainer connectionsQuery = null;
 			QueryContainer occupationsQuery = null;
 			QueryContainer industriesQuery = null;
@@ -600,24 +791,32 @@ namespace workIT.Services
 			QueryContainer qualityAssurancesQuery = null;
 			QueryContainer languagesQuery = null;
 			QueryContainer reportsQuery = null;
+			QueryContainer classificationsQuery = null;
+			QueryContainer asmntDeliveryTypesQuery = null;
+			QueryContainer learningDeliveryTypesQuery = null;
 			WidgetQueryFilters widgetQuery = new WidgetQueryFilters();
 			LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
 
 			#region credSearchCategories
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
 			{
-				string searchCategories = UtilityManager.GetAppKeyValue( "credSearchCategories", "21,37," );
+				//2,4,14,18,21,39,
+				string searchCategories = UtilityManager.GetAppKeyValue( "credSearchCategories", "" );
 				var credSearchCategories = new List<int>();
 				foreach ( var s in searchCategories.Split( ',' ) )
 					if ( !string.IsNullOrEmpty( s ) )
 						credSearchCategories.Add( int.Parse( s ) );
 
-				var credentialTypeIds = new List<int>();
+                //var credentialIds = new List<int>();
+                var credentialTypeIds = new List<int>();
+				var credentialStatusTypeIds = new List<int>();
 				var audienceLevelTypeIds = new List<int>();
 				var audienceTypeIds = new List<int>();
 				var relationshipTypes = new List<int>();
 				var validConnections = new List<string>();
-				var connectionFilters = new List<string>();				
+				var connectionFilters = new List<string>();
+				var asmntdeliveryTypeIds = new List<int>();
+				var learningdeliveryTypeIds = new List<int>();
 				var reportIds = new List<int>();
 
 
@@ -633,7 +832,7 @@ namespace workIT.Services
 				foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
 				{
 					var item = filter.AsCodeItem();
-					if ( filter.Name == "reports" )
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
 					{
 						reportIds.Add( item.Id ); //can probably continue after here?
 					}
@@ -644,10 +843,16 @@ namespace workIT.Services
 					//{ }
 					if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE )
 						credentialTypeIds.Add( item.Id );
+					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE )
+						credentialStatusTypeIds.Add( item.Id );
 					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
 						audienceLevelTypeIds.Add( item.Id );
 					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
 						audienceTypeIds.Add( item.Id );
+					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE )
+						asmntdeliveryTypeIds.Add( item.Id );
+					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+						learningdeliveryTypeIds.Add( item.Id );
 					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE )
 						relationshipTypes.Add( item.Id );
 
@@ -660,6 +865,8 @@ namespace workIT.Services
 
 				if ( credentialTypeIds.Any() )
 					credentialTypeQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.CredentialTypeId ).Terms( credentialTypeIds.ToArray() ) );
+				if ( credentialStatusTypeIds.Any() )
+					credentialStatusTypeQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.CredentialStatusId ).Terms( credentialStatusTypeIds.ToArray() ) );
 
 				if ( audienceLevelTypeIds.Any() )
 					audienceLevelTypeQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.AudienceLevelTypeIds ).Terms<int>( audienceLevelTypeIds ) );
@@ -668,7 +875,14 @@ namespace workIT.Services
 					audienceTypeQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.AudienceTypeIds ).Terms<int>( audienceTypeIds ) );
 
 				if ( relationshipTypes.Any() )
-					rolesFilterQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.RelationshipTypes ).Terms<int>( relationshipTypes ) );
+					//rolesFilterQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.AgentRelationships ).Terms<int>( relationshipTypes ) );
+					rolesFilterQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.AgentRelationshipsForEntity ).Query( q => q.Terms( t => t.Field( f => f.AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms<int>( relationshipTypes.ToArray() ) ) ) );
+
+				if ( asmntdeliveryTypeIds.Any() )
+					asmntDeliveryTypesQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.AsmntDeliveryMethodTypeIds ).Terms<int>( asmntdeliveryTypeIds ) );
+				
+				if ( learningdeliveryTypeIds.Any() )
+					learningDeliveryTypesQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.LearningDeliveryMethodTypeIds ).Terms<int>( learningdeliveryTypeIds ) );
 
 				if ( reportIds.Any() )
 				{
@@ -709,22 +923,6 @@ namespace workIT.Services
 			}
 			#endregion
 
-			#region Address
-
-			//foreach ( var filter in query.FiltersV2.Where( m => m.Name == "locations" ).ToList() )
-
-			//{
-			//    var text = filter.AsText();
-			//    locations.Add( text );
-			//    locationQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.AddressLocations ).Terms( locations ) );
-			//}
-			#endregion
-
-			#region Handle Widget Mode queries
-
-			//WidgetFilter<CredentialIndex>( widgetQuery, query.WidgetId );
-
-			#endregion
 
 			#region Handle Location queries
 			LocationFilter<CredentialIndex>( query, locationQueryFilters );
@@ -732,20 +930,28 @@ namespace workIT.Services
 			#endregion
 
 			#region QualityAssurance, with owned and offered by
-			//NOTE: this is only referenced after clicking on a gray box, not from the search page ==> actually now used by search widget
+			//NOTE: this is only referenced after clicking on a gray box, not from the search page
+			//		==> actually now used by search widget
+			qualityAssurancesQuery = CommonQualityAssurance<CredentialIndex>( query );
+			#endregion
+
+			#region Credential Ids list
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
 			{
-				var assurances = new List<CodeItem>();
-				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
+				var credIds = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
 				{
-					assurances.Add( filter.AsQaItem() );
+					credIds.AddRange( JsonConvert.DeserializeObject<List<int>>(filter.CustomJSON ));
 				}
 
-				if ( assurances.Any() )
-					assurances.ForEach( x =>
+				if ( credIds.Any() )
+				{
+					credIds.ForEach( x =>
 					{
-						qualityAssurancesQuery |= Query<CredentialIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Query( x.RelationshipId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId ).Query( x.Id.ToString() ) ) ) ) ) );
+						credentialIdQuery |= Query<CredentialIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( credIds ) );
+						//.Nested( n => n.Path( p => p.Id ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.Id ) ) ) ) ) );
 					} );
+				}
 			}
 			#endregion
 
@@ -764,69 +970,26 @@ namespace workIT.Services
 					catch { }
 
 					if ( text.Trim().Length > 2 )
+					{
+						text = SearchServices.SearchifyWord( text );
 						competencies.Add( text.Trim() );
+					}
 				}
 
 				competencies.ForEach( x =>
 					{
 						//Should eventually change once the Competencies have proper inputs.
 						competenciesQuery |= Query<CredentialIndex>.Nested( n => n.Path( p => p.Competencies ).Query( q => q.Bool( mm => mm.Must( mu => mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Competencies.First().Name, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( x ) ) || mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Competencies.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( x ) ) ) ) ).IgnoreUnmapped() );
-
-						// competenciesQuery |= Query<CredentialIndex>.Nested( n => n.Path( p => p.Competencies ).Query( q => q.MultiMatch( mm => mm.Fields( fs => fs.Field( f => f.Competencies.First().Name ).Field( f => f.Competencies.First().Description ) ).Type( TextQueryType.BestFields ).Query( x ) ) ).IgnoreUnmapped() );
-
 					} );
-				//if ( qc != null ) competenciesQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Competencies ).Query( q => qc ).IgnoreUnmapped() );
-				//competenciesQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Competencies ).Query( q => q.Terms( t => t.Field( f => f.Competencies.First().Name ).Terms( competencies ) ) || q.Terms( t => t.Field( f => f.Competencies.First().Description ).Terms( competencies ) ) ).IgnoreUnmapped() );
-
-			}
+				}
 			#endregion
 
-			#region Occupations
-			if ( query.FiltersV2.Any( x => x.Name == "occupations" ) )
-			{
-				var occupationNames = new List<string>();
-				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "occupations" ) )
-				{
-					var text = filter.AsText();
-					if ( string.IsNullOrWhiteSpace( text ) )
-						continue;
-					occupationNames.Add( text );
-				}
+			#region Occupations, Industries, programs
+			occupationsQuery = CommonOccupations<CredentialIndex>( query );
 
-				QueryContainer qc = null;
-				occupationNames.ForEach( name =>
-				{
-					qc |= Query<CredentialIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Occupations.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
-					qc |= Query<CredentialIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
-				} );
+			industriesQuery = CommonIndustries<CredentialIndex>( query );
 
-				if ( qc != null )
-					occupationsQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Occupations ).Query( q => qc ).IgnoreUnmapped() );
-			}
-			#endregion
-
-			#region Industries
-			if ( query.FiltersV2.Any( x => x.Name == "industries" ) )
-			{
-				var industryNames = new List<string>();
-				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "industries" ) )
-				{
-					var text = filter.AsText();
-					if ( string.IsNullOrWhiteSpace( text ) )
-						continue;
-					industryNames.Add( text );
-				}
-
-				QueryContainer qc = null;
-				industryNames.ForEach( name =>
-				{
-					qc |= Query<CredentialIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
-					qc |= Query<CredentialIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
-				} );
-
-				if ( qc != null )
-					industriesQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Industries ).Query( q => qc ).IgnoreUnmapped() );
-			}
+			classificationsQuery = CommonCip<CredentialIndex>( query );
 			#endregion
 
 			#region Subjects
@@ -849,7 +1012,35 @@ namespace workIT.Services
 				{
 					qc |= Query<CredentialIndex>.MatchPhrase( mp => mp.Field( f => f.Subjects.First().Name ).Query( x ) );
 				} );
-				subjectsQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Subjects ).Query( q => qc ).IgnoreUnmapped() );
+				if ( qc != null )
+					subjectsQuery = Query<CredentialIndex>.Nested( n => n.Path( p => p.Subjects ).Query( q => qc ).IgnoreUnmapped() );
+			}
+			//keywords from widget 
+			
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				var tags = new List<string>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+				{
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					//this doesn't work:
+					//temp
+					query.Keywords += " " + text;
+					tags.Add( text.ToLower() );
+				}
+				QueryContainer qc = null;
+				tags.ForEach( x =>
+				{
+					//keywordsQuery = Query<CredentialIndex>.MatchPhrase( ts => ts.Field( f => f.Keyword ).Terms( tags ) );
+					qc |= Query<CredentialIndex>.MatchPhrase( mp => mp.Field( f => f.Keyword ).Query( x ) );
+					//keywordsQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.Keyword ).Terms( tags ) );
+					//qc |= Query<CredentialIndex>.MatchPhrase( mp => mp.Field( f => f.Keyword ).Query( x ) );
+				} );
+				//if ( qc != null )
+					//keywordsQuery = Query<CredentialIndex>.MatchPhrase( n => n.( p => p.Keyword ).Query( q => qc ).IgnoreUnmapped() );
+
 			}
 			#endregion
 
@@ -918,14 +1109,20 @@ namespace workIT.Services
 					 .Query( q =>
 						//q.Term( t => t.Field( f => f.EntityStateId ).Value( 3 ) )
 						credentialTypeQuery
+						&& credentialIdQuery
+						&& credentialStatusTypeQuery
 						&& connectionsQuery
 						&& audienceLevelTypeQuery
 						&& audienceTypeQuery
 						&& competenciesQuery
 						&& rolesFilterQuery
 						&& subjectsQuery
+						&& keywordsQuery		//special used by widget search only
 						&& occupationsQuery
 						&& industriesQuery
+						&& classificationsQuery
+						&& asmntDeliveryTypesQuery
+						&& learningDeliveryTypesQuery
 						&& boundariesQuery
 						&& qualityAssurancesQuery
 						&& languagesQuery
@@ -1056,21 +1253,26 @@ namespace workIT.Services
 
         #region Organizations
 
-        public static void Organization_BuildIndex( bool deleteIndexFirst = false )
+        public static void Organization_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
         {
-            try
+			bool indexInitialized = false;
+			try
             {
                 if ( deleteIndexFirst && EC.IndexExists( OrganizationIndex ).Exists )
                     EC.DeleteIndex( OrganizationIndex );
 
-                //was correct before, with latter code in InitCredential??
-                if ( !EC.IndexExists( OrganizationIndex ).Exists )
-                {
+				if ( !EC.IndexExists( OrganizationIndex ).Exists )
+				{
+					OrganizationInitializeIndex();
+					indexInitialized = true;
+				}
+
+				if ( indexInitialized || updatingIndexRegardless )
+				{
                     new ActivityServices().AddActivity( new SiteActivity()
                     { ActivityType = "Organization", Activity = "Elastic", Event = "Build Index" }
                     );
-                    OrganizationInitializeIndex();
-
+                    
                     string filter = "( base.EntityStateId >= 2 )";
                     var list = ElasticManager.Organization_SearchForElastic( filter );
 
@@ -1091,23 +1293,12 @@ namespace workIT.Services
             }
         }
 
-		public async void CreateIndex()
-		{
-			//using ( var httpClient = new HttpClient() )
-			//{
-			//    using ( var request = new HttpRequestMessage( HttpMethod.Put, new Uri( "http://elastic_server_ip/your_index_name" ) ) )
-			//    {
-			//        var content = @"{ ""settings"" : { ""number_of_shards"" : 1 } }";
-			//        request.Content = new StringContent( content );
-			//        var response = await httpClient.SendAsync( request );
-			//    }
-			//}
-		}
+
 
 		public static void OrganizationInitializeIndexTest()
 		{
 			ElasticClient client = GetClient();
-			string indexMappingFile = "";//get the mapping file
+			//string indexMappingFile = "";//get the mapping file
 										 //PostData<T> obj = new PostData<T>(indexMappingFile);
 
 			//var response = client.LowLevel.IndexPut<CredentialIndex>( "credentials", "CredentialIndex2", obj);
@@ -1134,14 +1325,18 @@ namespace workIT.Services
                                 .Text( s => s.Index( true ).Name( n => n.TextValues ) )
 
                                 .Nested<IndexReferenceFramework>( n => n
-                                    .Name( nn => nn.ReferenceFrameworks )
+                                    .Name( nn => nn.Industries )
                                     .AutoMap( 5 )
-                                )
-                                 .Nested<Models.Elastic.IndexQualityAssurance>( n => n
+								) //AgentRelationshipForEntity will replace IndexQualityAssurance
+								 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+									.Name( nn => nn.AgentRelationshipsForEntity )
+									.AutoMap()
+								)
+								 .Nested<Models.Elastic.IndexQualityAssurance>( n => n
                                     .Name( nn => nn.QualityAssurance )
                                     .AutoMap()
                                 )
-                                .Nested<Models.Elastic.IndexQualityAssurancePerformed>( n => n
+                                .Nested<Models.Elastic.QualityAssurancePerformed>( n => n
                                     .Name( nn => nn.QualityAssurancePerformed )
                                     .AutoMap()
                                 )
@@ -1221,31 +1416,92 @@ namespace workIT.Services
             }
 
         }
-
-        public static List<string> OrganizationAutoComplete( string keyword, int maxTerms, ref int pTotalRows, int widgetId = 0 )
+        public static List<OrganizationSummary> OrganizationSimpleSearch( MainSearchInput query, ref int pTotalRows )
         {
-            WidgetQueryFilters widgetQuery = new WidgetQueryFilters();
+            var list = new List<OrganizationSummary>();
+            if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+            {
 
-			#region Handle Widget Mode queries
-			//WidgetFilter<OrganizationIndex>( widgetQuery, widgetId );
-			LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
-			//LocationFilter<CredentialIndex>( query, locationQueryFilters );
+                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+                {
+                    var text = filter.AsText();
+                    if ( string.IsNullOrWhiteSpace( text ) )
+                        continue;
+                    //this doesn't work:
+                    //temp
+                    query.Keywords += " " + text;
 
-			#endregion
-			var search = EC.Search<OrganizationIndex>( i => i.Index( OrganizationIndex ).Query( q => widgetQuery.OwningOrgsQuery
-            && widgetQuery.LocationQuery
-            && widgetQuery.CountryQuery
-            && widgetQuery.CityQuery
-            && q.MultiMatch( m => m
-                           .Fields( f => f
+                }
+
+            }
+            var sort = new SortDescriptor<OrganizationIndex>();
+
+            var sortOrder = query.SortOrder;
+            if ( sortOrder == "alpha" )
+                sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+            else if ( sortOrder == "newest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Descending );
+            else if ( sortOrder == "oldest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+            else if ( sortOrder == "relevance" )
+                sort.Descending( SortSpecialField.Score );
+            else
+                sort.Ascending( s => s.Name );
+            if ( query.StartPage < 1 )
+                query.StartPage = 1;
+            var search = EC.Search<OrganizationIndex>( i => i.Index( OrganizationIndex ).Query( q =>
+                 q.MultiMatch( m => m
+                                 .Fields( f => f
                                .Field( ff => ff.Name )
                                .Field( ff => ff.Description )
                                .Field( ff => ff.SubjectWebpage )
                            )
-                           //.Operator( Operator.Or )
-                           .Type( TextQueryType.PhrasePrefix )
-                           .Query( keyword )
-                           .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
+                 .Type( TextQueryType.PhrasePrefix )
+                 .Query( query.Keywords )
+                 .MaxExpansions( 10 ) ) )
+                 .Sort( s => sort )
+                     //.From( query.StartPage - 1 )
+                     .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+                     .Skip( ( query.StartPage - 1 ) * query.PageSize )
+                     .Size( query.PageSize ) );
+
+            pTotalRows = ( int )search.Total;
+
+            if ( pTotalRows > 0 )
+            {
+                //map results
+                list = ElasticManager.Organization_MapFromElastic( ( List<OrganizationIndex> )search.Documents );
+
+                LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.OrganizationSearch. found: {0} records", pTotalRows ) );
+            }
+            //stats
+            query.Results = pTotalRows;
+            return list;
+        }
+        public static List<string> OrganizationAutoComplete( string keyword, int maxTerms, ref int pTotalRows )
+        {
+			QueryContainer organizationEntityStateQuery = null;
+			organizationEntityStateQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.EntityStateId ).Terms<int>( 3 ) );
+
+			var search = EC.Search<OrganizationIndex>( i => i
+							.Index( OrganizationIndex )
+							.Query( q =>
+								organizationEntityStateQuery
+								&&	(q.MultiMatch( m => m
+									.Fields( f => f
+									   .Field( ff => ff.Name )
+									   .Field( ff => ff.Description )
+									   .Field( ff => ff.SubjectWebpage )
+									   )
+								   //.Operator( Operator.Or )
+								   .Type( TextQueryType.PhrasePrefix )
+								   .Query( keyword )
+								   .MaxExpansions( 10 ) 
+									) 
+								)
+							)
+						   .Size( maxTerms ) 
+						   );
 
             //Need to be look for other approaches            
 
@@ -1262,7 +1518,8 @@ namespace workIT.Services
 
             QueryContainer organizationEntityStateQuery = null;
             QueryContainer organizationTypeQuery = null;
-            QueryContainer organizationServiceQuery = null;
+			QueryContainer OrgIdQuery = null;
+			QueryContainer organizationServiceQuery = null;
             QueryContainer sectorTypeQuery = null;
             QueryContainer claimTypeQuery = null;
             QueryContainer qualityAssuranceQuery = null;
@@ -1300,8 +1557,8 @@ namespace workIT.Services
                 foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
                 {
                     var item = filter.AsCodeItem();
-                    if ( filter.Name == "reports" )
-                        reportIds.Add( item.Id );
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
+						reportIds.Add( item.Id );
                     //Filters - OrganizationTypes, ServiceTypes
                     if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE )
                         organizationTypeIds.Add( item.Id );
@@ -1337,101 +1594,91 @@ namespace workIT.Services
                 if ( sectorTypeIds.Any() )
                     sectorTypeQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.OrganizationSectorTypeIds ).Terms<int>( sectorTypeIds ) );
 
-                //claimTypeIds.ForEach( x =>
-                //{
-                //    //claimTypeQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.OrganizationClaimTypes ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.OrganizationClaimTypes.First().SchemaName ).Query( x.SchemaName ) ) && mu.Match( m => m.Field( f => f.OrganizationClaimTypes.First().Id ).Query( x.Id.ToString() ) ) ) ) ) );
-                //    //claimTypeQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.OrganizationClaimTypes ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.OrganizationClaimTypes.First().Id ).Query( x.Id.ToString() ) ) ) ) ) );
-                //} );
-
                 if ( claimTypeIds.Any() )
                     claimTypeQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.OrganizationClaimTypeIds ).Terms<int>( claimTypeIds ) );
 
-                if ( qualityAssuranceIds.Any() )
-                    qualityAssuranceQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.AgentRelationships ).Terms<int>( qualityAssuranceIds.ToArray() ) );
+				if ( qualityAssuranceIds.Any() )
+				{
+					//qualityAssuranceQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.AgentRelationships ).Terms<int>( qualityAssuranceIds.ToArray() ) );
+					qualityAssuranceQuery = Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Terms( t => t.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Terms<int>( qualityAssuranceIds.ToArray() ) ) ) );
+				}
 
                 if ( qualityAssurancePerformedIds.Any() )
                     qualityAssurancePerformedIds.ForEach( x =>
                     {
-                        qualityAssurancePerformedQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurancePerformed ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().AssertionTypeId ).Query( x.ToString() ) ) ) ) ) );
+                        qualityAssurancePerformedQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurancePerformed ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().AssertionTypeIds ).Query( x.ToString() ) ) ) ) ) );
                     } );
             }
 
-            #endregion
-            #region Handle Widget Mode queries
-            //WidgetFilter<OrganizationIndex>( widgetQuery, query.WidgetId );
+			#endregion
 
-            #endregion
+			#region Handle Widget Mode queries
+			//WidgetFilter<OrganizationIndex>( widgetQuery, query.WidgetId );
+			//keywords from widget
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+				{
+					//append to any other keywords
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					query.Keywords += " " + text;
+				}
+			}
+			#endregion
 
-            #region Handle Location queries
-            LocationFilter<OrganizationIndex>( query, locationQueryFilters );
+			#region Handle Location queries
+			LocationFilter<OrganizationIndex>( query, locationQueryFilters );
 
-            #endregion
+			#endregion
 
-            #region Industries
-            if ( query.FiltersV2.Any( x => x.Name == "industries" ) )
-            {
-                var industryNames = new List<string>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "industries" ) )
-                {
-                    var text = filter.AsText();
-                    if ( string.IsNullOrWhiteSpace( text ) )
-                        continue;
-                    industryNames.Add( text.ToLower() );
-                }
+			#region Industries
+			industriesQuery = CommonIndustries<CredentialIndex>( query );
+			#endregion
 
-                QueryContainer qc = null;
-                industryNames.ForEach( name =>
-                {
-                    qc |= Query<OrganizationIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.ReferenceFrameworks.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
-
-                    qc |= Query<CredentialIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Industries.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
-                } );
-
-                if ( qc != null )
-                    industriesQuery = Query<OrganizationIndex>.Nested( n => n.Path( p => p.ReferenceFrameworks ).Query( q => qc ).IgnoreUnmapped() );
-            }
-            #endregion
-
-            #region QualityAssurance
+			#region QualityAssurance
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
-            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			qualityAssurancesQuery = CommonQualityAssurance<OrganizationIndex>( query );
+			#endregion
+
+			#region QualityAssurancePerformed
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
             {
                 var assurances = new List<CodeItem>();
-
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
-                {
-                    assurances.Add( filter.AsQaItem() );
-                }
-
-                if ( assurances.Any() )
-                    assurances.ForEach( x =>
-                    {
-                        qualityAssurancesQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Query( x.RelationshipId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId ).Query( x.Id.ToString() ) ) ) ) ) );
-                    } );
-            }
-            #endregion
-
-            #region QualityAssurancePerformed
-            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-            {
-                var assurances = new List<CodeItem>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassuranceperformed" ).ToList() )
+                foreach 
+					( var filter in query.FiltersV2.Where( m => m.Name == "qualityassuranceperformed" ).ToList() )
                 {
                     assurances.Add( filter.AsQapItem() );
                 }
                 if ( assurances.Any() )
                     assurances.ForEach( x =>
                     {
-                        qualityAssurancePerformedQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurancePerformed ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().AssertionTypeId ).Query( x.AssertionId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().TargetEntityBaseId ).Query( x.Id.ToString() ) ) ) ) ) );
+                        qualityAssurancePerformedQuery |= Query<OrganizationIndex>.Nested( n => n.Path( p => p.QualityAssurancePerformed ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().AssertionTypeIds ).Query( x.AssertionId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurancePerformed.First().TargetEntityBaseId ).Query( x.Id.ToString() ) ) ) ) ) );
                     } );
             }
-            #endregion
+			#endregion
 
+			#region Organization Ids list
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var orgIds = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
+				{
+					orgIds.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+				}
 
+				if ( orgIds.Any() )
+					orgIds.ForEach( x =>
+					{
+						OrgIdQuery |= Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( orgIds ) );
+					} );
+			}
+			#endregion
 
-            #region Boundaries
+			#region Boundaries
 
-            var boundaries = SearchServices.GetBoundaries( query, "bounds" );
+			var boundaries = SearchServices.GetBoundaries( query, "bounds" );
             if ( boundaries.IsDefined )
             {
                 boundariesQuery = Query<OrganizationIndex>
@@ -1464,7 +1711,8 @@ namespace workIT.Services
                    .Query( q =>
                       //q.Term( t => t.Field( f => f.EntityTypeId ).Value( 3 ) )
                       organizationTypeQuery
-                      && organizationEntityStateQuery
+					  && OrgIdQuery
+					  && organizationEntityStateQuery
                       && widgetQuery.OwningOrgsQuery
                       && organizationServiceQuery
                       && sectorTypeQuery
@@ -1510,7 +1758,8 @@ namespace workIT.Services
                    .Sort( s => sort )
                    .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
                    .Skip( ( query.StartPage - 1 ) * query.PageSize )
-                   .Size( query.PageSize ) );
+                   .Size( query.PageSize ) 
+				   );
 
             var debug = search.DebugInformation;
             #endregion
@@ -1543,21 +1792,30 @@ namespace workIT.Services
         #region Assessments
 
         #region Build/update index
-        public static void Assessment_BuildIndex( bool deleteIndexFirst = false )
+        public static void Assessment_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
         {
             List<AssessmentIndex> list = new List<Models.Elastic.AssessmentIndex>();
-            if ( deleteIndexFirst && EC.IndexExists( AssessmentIndex ).Exists )
-                EC.DeleteIndex( AssessmentIndex );
-            if ( !EC.IndexExists( AssessmentIndex ).Exists )
+			bool indexInitialized = false;
+			if ( deleteIndexFirst && EC.IndexExists( AssessmentIndex ).Exists )
+			{
+				EC.DeleteIndex( AssessmentIndex );
+			}
+			if ( !EC.IndexExists( AssessmentIndex ).Exists )
+			{
+				AssessmentInitializeIndex();
+				indexInitialized = true;
+			}
+
+			if ( indexInitialized || updatingIndexRegardless )
             {
                 try
                 {
                     new ActivityServices().AddActivity( new SiteActivity()
                     { ActivityType = "AssessmentProfile", Activity = "Elastic", Event = "Build Index" }
                     );
-                    AssessmentInitializeIndex();
+					
 
-                    list = ElasticManager.Assessment_SearchForElastic( "( base.EntityStateId = 3 )" );
+					list = ElasticManager.Assessment_SearchForElastic( "( base.EntityStateId = 3 )" );
                 }
                 catch ( Exception ex )
                 {
@@ -1565,7 +1823,7 @@ namespace workIT.Services
                 }
                 finally
                 {
-                    if ( list != null && list.Count > 100 )
+                    if ( list != null && list.Count > 10 )
                     {
                         var results = EC.Bulk( b => b.IndexMany( list, ( d, document ) => d.Index( AssessmentIndex ).Document( document ).Id( document.Id.ToString() ) ) );
                         if ( results.ToString().IndexOf( "Valid NEST response built from a successful low level cal" ) == -1 )
@@ -1604,14 +1862,26 @@ namespace workIT.Services
                                     .Name( nn => nn.AssessesCompetencies )
                                     .AutoMap()
                                 )
-                                .Nested<IndexReferenceFramework>( n => n
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Industries )
+									.AutoMap()
+								)
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Occupations )
+									.AutoMap()
+								)
+								.Nested<IndexReferenceFramework>( n => n
                                     .Name( nn => nn.Classifications )
                                     .AutoMap()
                                 )
                                 .Nested<Models.Elastic.Address>( n => n
                                     .Name( nn => nn.Addresses )
                                     .AutoMap()
-                                )
+								) //AgentRelationshipForEntity will replace IndexQualityAssurance
+								 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+									.Name( nn => nn.AgentRelationshipsForEntity )
+									.AutoMap()
+								)
                                 .Nested<IndexQualityAssurance>( n => n
                                     .Name( nn => nn.QualityAssurance )
                                     .AutoMap()
@@ -1686,21 +1956,71 @@ namespace workIT.Services
 
         }
 
-
-        public static List<string> AssessmentAutoComplete( string keyword, int maxTerms, ref int pTotalRows, int widgetId = 0 )
+        public static List<PM.AssessmentProfile> AssessmentSimpleSearch( MainSearchInput query, ref int pTotalRows )
         {
-            WidgetQueryFilters widgetQuery = new WidgetQueryFilters();
-            #region Handle Widget Mode queries
-            //WidgetFilter<AssessmentIndex>( widgetQuery, widgetId );
+          var list = new List<PM.AssessmentProfile>();
+            if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+            {
 
-            #endregion
-            var query = string.Format( "*{0}*", keyword.ToLower() );
+                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+                {
+                    var text = filter.AsText();
+                    if ( string.IsNullOrWhiteSpace( text ) )
+                        continue;
+                    //this doesn't work:
+                    //temp
+                    query.Keywords += " " + text;
 
-            var search = EC.Search<AssessmentIndex>( i => i.Index( AssessmentIndex ).Query( q => widgetQuery.OwningOrgsQuery
-            && widgetQuery.LocationQuery
-            && widgetQuery.CountryQuery
-            && widgetQuery.CityQuery
-            && q.MultiMatch( m => m
+                }
+
+            }
+            var sort = new SortDescriptor<AssessmentIndex>();
+
+            var sortOrder = query.SortOrder;
+            if ( sortOrder == "alpha" )
+                sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+            else if ( sortOrder == "newest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Descending );
+            else if ( sortOrder == "oldest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+            else if ( sortOrder == "relevance" )
+                sort.Descending( SortSpecialField.Score );
+            else
+                sort.Ascending( s => s.Name );
+            if ( query.StartPage < 1 )
+                query.StartPage = 1;
+            var search = EC.Search<AssessmentIndex>( i => i.Index( AssessmentIndex ).Query( q =>
+                 q.MultiMatch( m => m
+                                 .Fields( f => f
+                                  .Field( ff => ff.Name )
+                                  .Field( ff => ff.OwnerOrganizationName )
+                 )
+                 .Type( TextQueryType.PhrasePrefix )
+                 .Query( query.Keywords )
+                 .MaxExpansions( 10 ) ) )
+                 .Sort( s => sort )
+                     //.From( query.StartPage - 1 )
+                     .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+                     .Skip( ( query.StartPage - 1 ) * query.PageSize )
+                     .Size( query.PageSize ) );
+
+            pTotalRows = ( int )search.Total;
+
+            if ( pTotalRows > 0 )
+            {
+                //map results
+                list = ElasticManager.Assessment_MapFromElastic( ( List<AssessmentIndex> )search.Documents );
+
+                LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.AssessmentSearch. found: {0} records", pTotalRows ) );
+            }
+            //stats
+            query.Results = pTotalRows;
+            return list;
+        }
+        public static List<string> AssessmentAutoComplete( string keyword, int maxTerms, ref int pTotalRows)
+        {
+          
+            var search = EC.Search<AssessmentIndex>( i => i.Index( AssessmentIndex ).Query( q => q.MultiMatch( m => m
                            .Fields( f => f
                                .Field( ff => ff.Name )
                                .Field( ff => ff.Description )
@@ -1729,7 +2049,9 @@ namespace workIT.Services
             QueryContainer asmtUseTypesQuery = null;
             QueryContainer deliveryTypesQuery = null;
             QueryContainer scoringMethodsQuery = null;
-            QueryContainer classificationsQuery = null;
+			QueryContainer occupationsQuery = null;
+			QueryContainer industriesQuery = null;
+			QueryContainer classificationsQuery = null;
             QueryContainer relationshipIdQuery = null;
             QueryContainer qualityAssurancesQuery = null;
 			QueryContainer languagesQuery = null;
@@ -1754,18 +2076,21 @@ namespace workIT.Services
             if ( query.FiltersV2.Any( x => x.Name == "competencies" ) )
             {
                 var competencies = new List<string>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "competencies" ) )
-                {
-                    var text = filter.AsText();
-                    try
-                    {
-                        if ( text.IndexOf( " - " ) > -1 )
-                            text = text.Substring( text.IndexOf( " -- " ) + 4 );
-                    }
-                    catch { }
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "competencies" ) )
+				{
+					var text = filter.AsText();
+					try
+					{
+						if ( text.IndexOf( " - " ) > -1 )
+							text = text.Substring( text.IndexOf( " -- " ) + 4 );
+					}
+					catch { }
 
-                    if ( text.Trim().Length > 2 )
-                        competencies.Add( text.Trim() );
+					if ( text.Trim().Length > 2 )
+					{
+						text = SearchServices.SearchifyWord( text );
+						competencies.Add( text.Trim() );
+					}
                 }
 
                 if ( competencies.Any() )
@@ -1801,12 +2126,23 @@ namespace workIT.Services
                 } );
                 //subjectsQuery = Query<AssessmentIndex>.Nested( n => n.Path( p => p.SubjectAreas ).Query( q => qc ).IgnoreUnmapped() );
             }
+			//keywords from widget
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+				{
+					//append to any other keywords
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					query.Keywords += " " + text;
+				}
+			}
+			#endregion
 
-            #endregion
+			#region Properties
 
-            #region Properties
-
-            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
             {
                 string searchCategories = UtilityManager.GetAppKeyValue( "asmtSearchCategories", "21,37," );
                 var categoryIds = new List<int>();
@@ -1834,8 +2170,8 @@ namespace workIT.Services
                 foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
                 {
                     var item = filter.AsCodeItem();
-                    if ( filter.Name == "reports" )
-                        reportIds.Add( item.Id );
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
+						reportIds.Add( item.Id );
 
                     //if ( categoryIds.Contains( item.CategoryId ) ) propertyValueIds.Add( item.Id );
                     if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
@@ -1858,10 +2194,7 @@ namespace workIT.Services
                 }
 
                 if ( asmtMethodsIds.Any() )
-                {
                     asmtMethodTypesQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.AssessmentMethodTypeIds ).Terms<int>( asmtMethodsIds.ToArray() ) );
-
-                }
                 if ( asmtUseIds.Any() )
                     asmtUseTypesQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.AssessmentUseTypeIds ).Terms<int>( asmtUseIds.ToArray() ) );
                 if ( deliveryTypeIds.Any() )
@@ -1873,7 +2206,7 @@ namespace workIT.Services
 
                 if ( relationshipTypeIds.Any() )
                     //qualityAssuranceQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.QualityAssurances ).Terms<int>( relationshipTypeIds.ToArray() ) );
-                    relationshipIdQuery = Query<AssessmentIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Terms( t => t.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Terms<int>( relationshipTypeIds.ToArray() ) ) ) );
+                    relationshipIdQuery = Query<AssessmentIndex>.Nested( n => n.Path( p => p.AgentRelationshipsForEntity ).Query( q => q.Terms( t => t.Field( f => f.AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms<int>( relationshipTypeIds.ToArray() ) ) ) );
 
                 if ( reportIds.Any() )
                 {
@@ -1908,45 +2241,37 @@ namespace workIT.Services
 
 			#region QualityAssurance
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
+			qualityAssurancesQuery = CommonQualityAssurance<AssessmentIndex>( query );
+			#endregion
+			#region Assessment Ids list
+			QueryContainer asmtIdListQuery = null;
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-            {
-                var assurances = new List<CodeItem>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
-                {
-                    assurances.Add( filter.AsQaItem() );
-                }
+			{
+				var idsList = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
+				{
+					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+				}
 
-                if ( assurances.Any() )
-                    assurances.ForEach( x =>
-                    {
-                        qualityAssurancesQuery |= Query<AssessmentIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Query( x.RelationshipId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId ).Query( x.Id.ToString() ) ) ) ) ).IgnoreUnmapped() );
-                    } );
-            }
-            #endregion
+				if ( idsList.Any() )
+				{
+					idsList.ForEach( x =>
+					{
+						asmtIdListQuery |= Query<CredentialIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( idsList ) );
+					} );
+				}
+			}
+			#endregion
+			#region Occupations
+			occupationsQuery = CommonOccupations<AssessmentIndex>( query );
+			#endregion
 
-            #region Classifications
-            if ( query.FiltersV2.Any( x => x.Name == "instructionalprogramtype" ) )
-            {
-                var CIPNames = new List<string>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "instructionalprogramtype" ) )
-                {
-                    var text = filter.AsText();
-                    if ( string.IsNullOrWhiteSpace( text ) )
-                        continue;
-                    CIPNames.Add( text );
-                }
+			#region Industries
+			industriesQuery = CommonIndustries<AssessmentIndex>( query );
+			#endregion
 
-                QueryContainer qc = null;
-                CIPNames.ForEach( name =>
-                {
-                    qc |= Query<AssessmentIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().CodeTitle, 70 ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
-                    qc |= Query<AssessmentIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().Name, 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
-
-                } );
-
-                if ( qc != null )
-                    classificationsQuery = Query<AssessmentIndex>.Nested( n => n.Path( p => p.Classifications ).Query( q => qc ).IgnoreUnmapped() );
-            }
+			#region Classifications
+			classificationsQuery = CommonCip<AssessmentIndex>( query );
 			#endregion
 
 			#region Languages
@@ -1999,15 +2324,18 @@ namespace workIT.Services
                    .Index( AssessmentIndex )
                    .Query( q =>
                         competenciesQuery
-                      && widgetQuery.OwningOrgsQuery
-                      && subjectsQuery
+                      && widgetQuery.OwningOrgsQuery  //?????
+					  && asmtIdListQuery
+					  && subjectsQuery
                       && asmtMethodTypesQuery
                       && asmtUseTypesQuery
                       && audienceTypeQuery
                       && deliveryTypesQuery
                       && scoringMethodsQuery
-                      && connectionsQuery
-                      && classificationsQuery
+                      && connectionsQuery   
+					  && occupationsQuery
+					  && industriesQuery
+					  && classificationsQuery
                       && relationshipIdQuery
                       && qualityAssurancesQuery
 					  && languagesQuery
@@ -2023,7 +2351,7 @@ namespace workIT.Services
                                .Field( ff => ff.ListTitle, 90 )
                                .Field( ff => ff.Description, 75 )
                                .Field( ff => ff.SubjectWebpage, 25 )
-                               .Field( ff => ff.Organization, 80 )
+                               .Field( ff => ff.OwnerOrganizationName, 80 )
                                .Field( ff => ff.TextValues, 45 )
                                .Field( ff => ff.CodedNotation, 40 )
                                .Field( ff => ff.SubjectAreas, 50 ) //??
@@ -2040,7 +2368,7 @@ namespace workIT.Services
                                .Field( ff => ff.ListTitle, 90 )
                                .Field( ff => ff.Description, 75 )
                                .Field( ff => ff.SubjectWebpage, 25 )
-                               .Field( ff => ff.Organization, 80 )
+                               .Field( ff => ff.OwnerOrganizationName, 80 )
                                .Field( ff => ff.TextValues, 45 )
                                .Field( ff => ff.CodedNotation, 40 )
                                .Field( ff => ff.SubjectAreas, 50 ) //??
@@ -2085,19 +2413,25 @@ namespace workIT.Services
         #endregion
 
         #region Learning Opportunities
-        public static void LearningOpp_BuildIndex( bool deleteIndexFirst = false )
+        public static void LearningOpp_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
         {
             try
             {
-                if ( deleteIndexFirst && EC.IndexExists( LearningOppIndex ).Exists )
+				bool indexInitialized = false;
+				if ( deleteIndexFirst && EC.IndexExists( LearningOppIndex ).Exists )
                     EC.DeleteIndex( LearningOppIndex );
 
-                if ( !EC.IndexExists( LearningOppIndex ).Exists )
-                {
+				if ( !EC.IndexExists( LearningOppIndex ).Exists )
+				{
+					LearningOppInitializeIndex();
+					indexInitialized = true;
+				}
+
+				if ( indexInitialized || updatingIndexRegardless )
+				{
                     new ActivityServices().AddActivity( new SiteActivity()
                     { ActivityType = "LearningOpportunity", Activity = "Elastic", Event = "Build Index" }
                     );
-                    LearningOppInitializeIndex();
 
                     var list = ElasticManager.LearningOpp_SearchForElastic( "( base.EntityStateId = 3 )" );
 
@@ -2134,14 +2468,26 @@ namespace workIT.Services
                                     .Name( nn => nn.TeachesCompetencies )
                                     .AutoMap()
                                 )
-                                .Nested<IndexReferenceFramework>( n => n
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Industries )
+									.AutoMap()
+								)
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Occupations )
+									.AutoMap()
+								)
+								.Nested<IndexReferenceFramework>( n => n
                                     .Name( nn => nn.Classifications )
                                     .AutoMap()
                                )
                                 .Nested<Models.Elastic.Address>( n => n
                                     .Name( nn => nn.Addresses )
                                     .AutoMap()
-                                )
+								) //AgentRelationshipForEntity will replace IndexQualityAssurance
+								 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+									.Name( nn => nn.AgentRelationshipsForEntity )
+									.AutoMap()
+								)
                                 .Nested<IndexQualityAssurance>( n => n
                                     .Name( nn => nn.QualityAssurance )
                                     .AutoMap()
@@ -2208,20 +2554,72 @@ namespace workIT.Services
 
         }
 
-
-        public static List<string> LearningOppAutoComplete( string keyword, int maxTerms, ref int pTotalRows, int widgetId = 0 )
+        public static List<PM.LearningOpportunityProfile> LearningOppSimpleSearch( MainSearchInput query, ref int pTotalRows )
         {
-            WidgetQueryFilters widgetQuery = new WidgetQueryFilters();
-            #region Handle Widget Mode queries
-            //WidgetFilter<LearningOppIndex>( widgetQuery, widgetId );
+            var list = new List<PM.LearningOpportunityProfile>();
+            if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+            {
 
-            #endregion
+                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+                {
+                    var text = filter.AsText();
+                    if ( string.IsNullOrWhiteSpace( text ) )
+                        continue;
+                    //this doesn't work:
+                    //temp
+                    query.Keywords += " " + text;
+
+                }
+
+            }
+            var sort = new SortDescriptor<LearningOppIndex>();
+
+            var sortOrder = query.SortOrder;
+            if ( sortOrder == "alpha" )
+                sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+            else if ( sortOrder == "newest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Descending );
+            else if ( sortOrder == "oldest" )
+                sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+            else if ( sortOrder == "relevance" )
+                sort.Descending( SortSpecialField.Score );
+            else
+                sort.Ascending( s => s.Name );
+            if ( query.StartPage < 1 )
+                query.StartPage = 1;
+            var search = EC.Search<LearningOppIndex>( i => i.Index( LearningOppIndex ).Query( q =>
+                 q.MultiMatch( m => m
+                                 .Fields( f => f
+                               .Field( ff => ff.Name )
+                               .Field( ff => ff.Description )
+                               .Field( ff => ff.SubjectWebpage )
+                           )
+                 .Type( TextQueryType.PhrasePrefix )
+                 .Query( query.Keywords )
+                 .MaxExpansions( 10 ) ) )
+                 .Sort( s => sort )
+                     //.From( query.StartPage - 1 )
+                     .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+                     .Skip( ( query.StartPage - 1 ) * query.PageSize )
+                     .Size( query.PageSize ) );
+
+            pTotalRows = ( int )search.Total;
+
+            if ( pTotalRows > 0 )
+            {
+                //map results
+                list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> )search.Documents );
+
+                LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.OrganizationSearch. found: {0} records", pTotalRows ) );
+            }
+            //stats
+            query.Results = pTotalRows;
+            return list;
+        }
+        public static List<string> LearningOppAutoComplete( string keyword, int maxTerms, ref int pTotalRows )
+        {
             var query = string.Format( "*{0}*", keyword.ToLower() );
-            var search = EC.Search<LearningOppIndex>( i => i.Index( LearningOppIndex ).Query( q => widgetQuery.OwningOrgsQuery
-            && widgetQuery.LocationQuery
-            && widgetQuery.CountryQuery
-            && widgetQuery.CityQuery
-            && q.MultiMatch( m => m
+            var search = EC.Search<LearningOppIndex>( i => i.Index( LearningOppIndex ).Query( q => q.MultiMatch( m => m
               .Fields( f => f
               .Field( ff => ff.Name )
               .Field( ff => ff.Description )
@@ -2249,7 +2647,9 @@ namespace workIT.Services
             QueryContainer connectionsQuery = null;
             QueryContainer methodTypesQuery = null;
             QueryContainer deliveryTypesQuery = null;
-            QueryContainer classificationsQuery = null;
+			QueryContainer occupationsQuery = null;
+			QueryContainer industriesQuery = null;
+			QueryContainer classificationsQuery = null;
             QueryContainer relationshipIdQuery = null;
             QueryContainer qualityAssurancesQuery = null;
 			QueryContainer languagesQuery = null;
@@ -2283,9 +2683,12 @@ namespace workIT.Services
                     }
                     catch { }
 
-                    if ( text.Trim().Length > 2 )
-                        competencies.Add( text.Trim() );
-                }
+					if ( text.Trim().Length > 2 )
+					{
+						text = SearchServices.SearchifyWord( text );
+						competencies.Add( text.Trim() );
+					}
+				}
                 if ( competencies.Any() )
                     competencies.ForEach( x =>
                     {
@@ -2317,12 +2720,23 @@ namespace workIT.Services
                     subjectsQuery |= Query<LearningOppIndex>.Match( m => m.Field( f => f.SubjectAreas ).Query( x ) );
                 } );
             }
+			//keywords from widget
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "keywords" ) )
+				{
+					//append to any other keywords
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					query.Keywords += " " + text;
+				}
+			}
+			#endregion
 
-            #endregion
+			#region MethodTypes, QualityAssurance, Connections
 
-            #region MethodTypes, QualityAssurance, Connections
-
-            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
             {
                 string searchCategories = UtilityManager.GetAppKeyValue( "loppSearchCategories", "21,37," );
                 var categoryIds = new List<int>();
@@ -2348,8 +2762,8 @@ namespace workIT.Services
                 foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
                 {
                     var item = filter.AsCodeItem();
-                    if ( filter.Name == "reports" )
-                        reportIds.Add( item.Id );
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
+						reportIds.Add( item.Id );
 
                     if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_Learning_Method_Type )
                         learningMethodTypesIds.Add( item.Id );
@@ -2378,7 +2792,7 @@ namespace workIT.Services
 
                 if ( relationshipTypeIds.Any() )
                 {
-                    relationshipIdQuery = Query<LearningOppIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Terms( t => t.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Terms<int>( relationshipTypeIds.ToArray() ) ) ) );
+                    relationshipIdQuery = Query<LearningOppIndex>.Nested( n => n.Path( p => p.AgentRelationshipsForEntity ).Query( q => q.Terms( t => t.Field( f => f.AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms<int>( relationshipTypeIds.ToArray() ) ) ) );
                 }
 
                 if ( audienceTypeIds.Any() )
@@ -2417,45 +2831,36 @@ namespace workIT.Services
 
 			#region QualityAssurance
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
+			qualityAssurancesQuery = CommonQualityAssurance<LearningOppIndex>( query );
+			#endregion
+
+			#region Lopp Ids list
+			QueryContainer loppIdListQuery = null;
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-            {
-                var assurances = new List<CodeItem>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
-                {
-                    assurances.Add( filter.AsQaItem() );
-                }
+			{
+				var idsList = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
+				{
+					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+				}
 
-                if ( assurances.Any() )
-                    assurances.ForEach( x =>
-                    {
-                        qualityAssurancesQuery |= Query<LearningOppIndex>.Nested( n => n.Path( p => p.QualityAssurance ).Query( q => q.Bool( mm => mm.Must( mu => mu.Match( m => m.Field( f => f.QualityAssurance.First().RelationshipTypeId ).Query( x.RelationshipId.ToString() ) ) && mu.Match( m => m.Field( f => f.QualityAssurance.First().AgentRelativeId ).Query( x.Id.ToString() ) ) ) ) ) );
-                    } );
-            }
-            #endregion
+				if ( idsList.Any() )
+				{
+					idsList.ForEach( x =>
+					{
+						loppIdListQuery |= Query<CredentialIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( idsList ) );
+					} );
+				}
+			}
+			#endregion
 
-            #region Classifications
-            if ( query.FiltersV2.Any( x => x.Name == "instructionalprogramtype" ) )
-            {
-                var CIPNames = new List<string>();
-                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "instructionalprogramtype" ) )
-                {
-                    var text = filter.AsText();
-                    if ( string.IsNullOrWhiteSpace( text ) )
-                        continue;
-                    CIPNames.Add( text );
-                }
+			#region Occupations, Industries, Classifications
 
-                QueryContainer qc = null;
-                CIPNames.ForEach( name =>
-                {
-                    qc |= Query<LearningOppIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().CodeTitle ) ).Type( TextQueryType.PhrasePrefix ).Query( name ) );
-
-                    qc |= Query<LearningOppIndex>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Classifications.First().Name ) ).Type( TextQueryType.BestFields ).Query( name ) );
-                } );
-
-                if ( qc != null )
-                    classificationsQuery = Query<LearningOppIndex>.Nested( n => n.Path( p => p.Classifications ).Query( q => qc ).IgnoreUnmapped() );
-            }
+			occupationsQuery = CommonOccupations<LearningOppIndex>( query );
+			
+			industriesQuery = CommonIndustries<LearningOppIndex>( query );
+			
+			classificationsQuery = CommonCip<LearningOppIndex>( query );
 			#endregion
 
 			#region Languages
@@ -2509,11 +2914,14 @@ namespace workIT.Services
                    .Index( LearningOppIndex )
                    .Query( q =>
                       competenciesQuery
-                      && widgetQuery.OwningOrgsQuery
-                      && subjectsQuery
+                      && widgetQuery.OwningOrgsQuery //??
+					  && loppIdListQuery
+					  && subjectsQuery
                       && methodTypesQuery
                       && deliveryTypesQuery
-                      && classificationsQuery
+					  && occupationsQuery
+					  && industriesQuery
+					  && classificationsQuery
                       && connectionsQuery
                       && audienceTypeQuery
                       && relationshipIdQuery
@@ -2531,7 +2939,7 @@ namespace workIT.Services
                               .Field( ff => ff.ListTitle, 90 )
                               .Field( ff => ff.Description, 75 )
                               .Field( ff => ff.SubjectWebpage, 25 )
-                              .Field( ff => ff.Organization, 80 )
+                              .Field( ff => ff.OwnerOrganizationName, 80 )
                               .Field( ff => ff.TextValues, 45 )
                               .Field( ff => ff.Subject, 50 )
                               .Field( ff => ff.SubjectAreas, 50 ) //??
@@ -2548,7 +2956,7 @@ namespace workIT.Services
                               .Field( ff => ff.Name, 90 )
                               .Field( ff => ff.Description, 50 )
                               .Field( ff => ff.SubjectWebpage, 25 )
-                              .Field( ff => ff.Organization, 80 )
+                              .Field( ff => ff.OwnerOrganizationName, 80 )
                               .Field( ff => ff.TextValues, 60 )
                               .Field( ff => ff.Subject, 50 )
                               .Field( ff => ff.SubjectAreas, 50 ) //??
@@ -2751,3 +3159,4 @@ namespace workIT.Services
 
     }
 }
+#endregion

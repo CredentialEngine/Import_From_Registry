@@ -47,7 +47,13 @@ namespace workIT.Models.ProfileModels
 
 			AssessesCompetencies = new List<CredentialAlignmentObjectProfile>();
 			RequiresCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
-            InstructionalProgramType = new Enumeration();
+			Occupation = new Enumeration();
+			OccupationType = new Enumeration();
+			OtherIndustries = new List<TextValueProfile>();
+			OtherOccupations = new List<TextValueProfile>();
+			Industry = new Enumeration();
+			IndustryType = new Enumeration();
+			InstructionalProgramType = new Enumeration();
 			Region = new List<JurisdictionProfile>();
 			JurisdictionAssertions = new List<JurisdictionProfile>();
 			ScoringMethodType = new Enumeration();
@@ -232,9 +238,48 @@ namespace workIT.Models.ProfileModels
         public int FinancialAidCount { get; set; }
         public string ListTitle { get; set; }
         public CredentialConnectionsResult CredentialsList { get; set; }
-        public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; }
+		public Enumeration Industry { get; set; }
+		public Enumeration IndustryType
+		{
+			get
+			{
+				return new Enumeration()
+				{
+					Items = new List<EnumeratedItem>()
+					.Concat( Industry.Items )
+					//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
+				    //.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) )
+					.ToList()
+				};
+			}
+			set { Industry = value; }
+		} //Used for publishing
+		public List<TextValueProfile> OtherIndustries { get; set; }
+		public Enumeration Occupation { get; set; }
+		public Enumeration OccupationType
+		{
+			get
+			{
+				return new Enumeration()
+				{
+					Items = new List<EnumeratedItem>()
+					.Concat( Occupation.Items )
+					//.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
+					//.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) )
+					.ToList()
+				};
+			}
+			set { Occupation = value; }
+		} //Used for publishing
+		public List<TextValueProfile> OtherOccupations { get; set; }
+		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
+		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		public List<string> Naics { get; set; }
+		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; }
 		public Enumeration InstructionalProgramType { get; set; }
-        public CodeItemResult InstructionalProgramClassification{ get; set; } = new CodeItemResult();
+		public CodeItemResult IndustryResults { get; set; } = new CodeItemResult();
+		public CodeItemResult OccupationResults { get; set; } = new CodeItemResult();
+		public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
         public Enumeration AssessmentMethodType { get; set; }
 		public string AssessmentOutput { get; set; }
         public Enumeration AudienceType { get; set; } = new Enumeration();
@@ -271,6 +316,7 @@ namespace workIT.Models.ProfileModels
         public CodeItemResult AssessmentUseTypes { get; set; } = new CodeItemResult();
         public CodeItemResult ScoringMethodTypes { get; set; } = new CodeItemResult();
         public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
+		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
 		public AgentRelationshipResult QualityAssurance { get; set; }
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
     }

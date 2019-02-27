@@ -38,7 +38,10 @@ namespace workIT.Factories
 					//efEntity.ResourcePublicKey = entity.ResourcePublicKey;
 					
 					efEntity.DownloadDate = System.DateTime.Now;
+					efEntity.IsMostRecentDownload = true;
 
+					//set any existing downloads for this entity to not most recent
+					ResetIsMostRecentDownload( efEntity.Ctid );
 
 					context.Import_Staging.Add( efEntity );
 
@@ -71,6 +74,32 @@ namespace workIT.Factories
 			}
 
 			return entity.Id;
+		}//
+
+
+		public static void ResetIsMostRecentDownload( string ctid )
+		{
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> list = context.Import_Staging
+						.Where( s => s.Ctid == ctid && s.IsMostRecentDownload == true )
+						.ToList();
+					if ( list != null && list.Count > 0 )
+					{
+						foreach ( DBEntity item in list )
+						{
+							item.IsMostRecentDownload = false;
+							context.SaveChanges();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".ResetIsMostRecentDownload. For CTID: " + ctid );
+			}
 		}
 
         /// <summary>
@@ -146,6 +175,7 @@ namespace workIT.Factories
 							Ctid = dbentity.Ctid,
 							EntityTypedId = dbentity.EntityTypedId,
 							Payload = dbentity.Payload,
+							IsMostRecentDownload = dbentity.IsMostRecentDownload ?? false,
 							DownloadDate = dbentity.DownloadDate
 						};
 						if ( dbentity.DocumentUpdatedAt != null )

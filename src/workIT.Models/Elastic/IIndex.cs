@@ -15,6 +15,9 @@ namespace workIT.Models.Elastic
         DateTime Created { get; set; }
         List<string> Keyword { get; set; }
 		List<IndexQualityAssurance> QualityAssurance { get; set; }
+		List<IndexReferenceFramework> Occupations { get; set; }
+		List<IndexReferenceFramework> Industries { get; set; }
+		List<IndexReferenceFramework> Classifications { get; set; } 
 		List<string> TextValues { get; set; } 
 		List<string> PremiumValues { get; set; } 
 	}

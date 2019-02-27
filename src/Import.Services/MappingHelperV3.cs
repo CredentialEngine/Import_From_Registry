@@ -10,9 +10,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Linq;
 
-using MJ = RA.Models.JsonV3;
-using BNode = RA.Models.JsonV3.BlankNode;
-using InputAddress = RA.Models.JsonV3.Place;
+using MJ = RA.Models.JsonV2;
+using BNode = RA.Models.JsonV2.BlankNode;
+using InputAddress = RA.Models.JsonV2.Place;
 using workIT.Models;
 using MC = workIT.Models.Common;
 using WPM = workIT.Models.ProfileModels;
@@ -499,14 +499,16 @@ namespace Import.Services
             foreach ( MJ.CredentialAlignmentObject item in input )
             {
 				string targetNodeName = HandleLanguageMap( item.TargetNodeName, currentBaseObject, "TargetNodeName", ref lastLanguageMapString, false );
-				if ( item != null && ( item.TargetNode != null && !string.IsNullOrEmpty( targetNodeName ) ) )
+				//18-12-06 mp - not sure if we should skip if targetNode is missing? We don't do anything with it directly.
+				//item.TargetNode != null &&
+				if ( item != null && (  !string.IsNullOrEmpty( targetNodeName ) ) )
 				{
-                    
-                    entity = new MC.CredentialAlignmentObjectProfile()
-                    {
-                        TargetNode = item.TargetNode,
-                        CodedNotation = item.CodedNotation,
-                        FrameworkName = HandleLanguageMap( item.FrameworkName, currentBaseObject, "FrameworkName" ),
+
+					entity = new MC.CredentialAlignmentObjectProfile()
+					{
+						TargetNode = item.TargetNode ?? "",
+						CodedNotation = item.CodedNotation ?? "",
+						FrameworkName = HandleLanguageMap( item.FrameworkName, currentBaseObject, "FrameworkName" ),
                         //won't know if url or registry uri
                         //SourceUrl = item.Framework,
                         Weight = item.Weight
@@ -538,50 +540,103 @@ namespace Import.Services
             return output;
         }
 
-        //seems same as MapCAOListToCAOProfileList, so using latter
+		public List<MC.CredentialAlignmentObjectProfile> AppendLanguageMapListToCAOProfileList( MJ.LanguageMapList input, string languageCode = "en" )
+		{
+			List<MC.CredentialAlignmentObjectProfile> output = new List<workIT.Models.Common.CredentialAlignmentObjectProfile>();
+			MC.CredentialAlignmentObjectProfile entity = new MC.CredentialAlignmentObjectProfile();
 
-        //public List<MC.CredentialAlignmentObjectProfile> MapCAOListToCompetencies( List<MJ.CredentialAlignmentObject> input )
-        //{
-        //    List<MC.CredentialAlignmentObjectProfile> output = new List<workIT.Models.Common.CredentialAlignmentObjectProfile>();
-        //    MC.CredentialAlignmentObjectProfile cao = new MC.CredentialAlignmentObjectProfile();
+			if ( input == null || input.Count == 0 )
+				return output;
+			int cntr = 0;
+			MC.EntityLanguageMap elm = new MC.EntityLanguageMap();
+			if ( input.Count > 1 )
+				elm.HasMultipleLanguages = true;
 
-        //    if ( input == null || input.Count == 0 )
-        //        return output;
+			List<string> properties = input.ToList( languageCode );
+			//focus on default language
+			if ( properties != null && properties.Count > 0 )
+			{
+				foreach ( var item in properties )
+				{
+					if ( string.IsNullOrWhiteSpace( item ) )
+						continue;
+					entity = new MC.CredentialAlignmentObjectProfile()
+					{
+						TargetNodeName = item
+					};
+					output.Add( entity );
+				}
+			}
+			else
+			{
+				foreach ( var item in input )
+				{
+					cntr++;
+					if ( cntr == 1 )
+					{
+						properties = item.Value;
+						foreach ( var c in properties )
+						{
+							if ( string.IsNullOrWhiteSpace( c ) )
+								continue;
+							entity = new MC.CredentialAlignmentObjectProfile()
+							{
+								TargetNodeName = c
+							};
+							output.Add( entity );
+						}
+						input.Remove( item.Key );
+						break;
+					}
+				}
+			}
+			return output;
+		}	//
 
-        //    foreach ( MJ.CredentialAlignmentObject item in input )
-        //    {
-        //        if ( item != null && !string.IsNullOrEmpty( item.TargetNodeName ) )
-        //        {
-        //            cao = new MC.CredentialAlignmentObjectProfile()
-        //            {
-        //                TargetNodeName = item.TargetNodeName,
-        //                TargetNodeDescription = item.TargetNodeDescription,
-        //                TargetNode = item.TargetNode,
-        //                CodedNotation = item.CodedNotation,
-        //                FrameworkName = item.FrameworkName,
-        //                //FrameworkUrl = item.Framework,
-        //                Weight = item.Weight
-        //                //Weight = StringtoDecimal(item.Weight)
-        //            };
-        //            //Framework willl likely be a registry url, so should be saved as FrameworkUri. The SourceUrl will be added from a download of the actual framework
-        //            if ( !string.IsNullOrWhiteSpace( item.Framework ) )
-        //            {
-        //                if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1 )
-        //                {
-        //                    cao.SourceUrl = item.Framework;
-        //                }
-        //                else
-        //                {
-        //                    cao.FrameworkUri = item.Framework;
-        //                }
-        //            }
-        //            output.Add( cao );
-        //        }
+		//seems same as MapCAOListToCAOProfileList, so using latter
 
-        //    }
-        //    return output;
-        //}
-        public List<WPM.TextValueProfile> MapCAOListToTextValueProfile( List<MJ.CredentialAlignmentObject> input, int categoryId )
+		//public List<MC.CredentialAlignmentObjectProfile> MapCAOListToCompetencies( List<MJ.CredentialAlignmentObject> input )
+		//{
+		//    List<MC.CredentialAlignmentObjectProfile> output = new List<workIT.Models.Common.CredentialAlignmentObjectProfile>();
+		//    MC.CredentialAlignmentObjectProfile cao = new MC.CredentialAlignmentObjectProfile();
+
+		//    if ( input == null || input.Count == 0 )
+		//        return output;
+
+		//    foreach ( MJ.CredentialAlignmentObject item in input )
+		//    {
+		//        if ( item != null && !string.IsNullOrEmpty( item.TargetNodeName ) )
+		//        {
+		//            cao = new MC.CredentialAlignmentObjectProfile()
+		//            {
+		//                TargetNodeName = item.TargetNodeName,
+		//                TargetNodeDescription = item.TargetNodeDescription,
+		//                TargetNode = item.TargetNode,
+		//                CodedNotation = item.CodedNotation,
+		//                FrameworkName = item.FrameworkName,
+		//                //FrameworkUrl = item.Framework,
+		//                Weight = item.Weight
+		//                //Weight = StringtoDecimal(item.Weight)
+		//            };
+		//            //Framework willl likely be a registry url, so should be saved as FrameworkUri. The SourceUrl will be added from a download of the actual framework
+		//            if ( !string.IsNullOrWhiteSpace( item.Framework ) )
+		//            {
+		//                if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1 )
+		//                {
+		//                    cao.SourceUrl = item.Framework;
+		//                }
+		//                else
+		//                {
+		//                    cao.FrameworkUri = item.Framework;
+		//                }
+		//            }
+		//            output.Add( cao );
+		//        }
+
+		//    }
+		//    return output;
+		//}
+		public List<WPM.TextValueProfile> MapCAOListToTextValueProfile( List<MJ.CredentialAlignmentObject> input, int categoryId )
         {
             List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
             if ( input == null || input.Count == 0 )
@@ -983,13 +1038,20 @@ namespace Import.Services
                 {
                     var node = GetBlankNode( target );
                     //if type present,can use
-                    return ResolveOrgBaseToGuid( node, ref status, ref isResolved );
+                    return ResolveOrgBlankNodeToGuid( node, ref status, ref isResolved );
                 }
             }
 
             return orgRef;
         }
 
+		/// <summary>
+		/// Map Organization references from a list of strings to a list of Guids.
+		/// The input will likely be a registry Url, or a blank node identifier. 
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
         public List<Guid> MapOrganizationReferenceGuids( List<string> input, ref SaveStatus status )
         {
             //not sure if isResolved is necessary
@@ -1017,7 +1079,7 @@ namespace Import.Services
                 else if ( target.StartsWith( "_:" ) )
                 {
                     var node = GetBlankNode( target );
-                    orgRef = ResolveOrgBaseToGuid( node, ref status, ref isResolved );
+                    orgRef = ResolveOrgBlankNodeToGuid( node, ref status, ref isResolved );
                 }
                 if ( BaseFactory.IsGuidValid( orgRef ) )
                     orgRefs.Add( orgRef );
@@ -1037,14 +1099,14 @@ namespace Import.Services
         }
 
         /// <summary>
-        /// Analyze a base organization: check if exists, by subject webpage. 
+        /// Analyze a organization in a blank node: check if exists, by subject webpage. 
         /// If found return Guid, otherwise create new base
         /// </summary>
         /// <param name="input"></param>
         /// <param name="status"></param>
         /// <param name="isResolved"></param>
         /// <returns></returns>
-        private Guid ResolveOrgBaseToGuid( BNode input, ref SaveStatus status, ref bool isResolved )
+        private Guid ResolveOrgBlankNodeToGuid( BNode input, ref SaveStatus status, ref bool isResolved )
         {
             Guid entityRef = new Guid();
             int start = status.Messages.Count;
@@ -1188,7 +1250,7 @@ namespace Import.Services
             if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
                 entityRefId = ResolveBaseEntityAsCredential( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
-                entityRefId = ResolveBaseEntityAsOrganization( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsOrganization( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
                 entityRefId = ResolveBaseEntityAsAssessment( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
@@ -1329,7 +1391,7 @@ namespace Import.Services
             if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
                 entityRefId = ResolveBaseEntityAsCredential( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
-                entityRefId = ResolveBaseEntityAsOrganization( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsOrganization( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
                 entityRefId = ResolveBaseEntityAsAssessment( input, ref entityRef, ref status );
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
@@ -1379,7 +1441,7 @@ namespace Import.Services
 
             return entityRefId;
         }
-        private int ResolveBaseEntityAsOrganization( BNode input, ref Guid entityUid, ref SaveStatus status )
+        private int ResolveBlankNodeAsOrganization( BNode input, ref Guid entityUid, ref SaveStatus status )
         {
             int entityRefId = 0;
             string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );

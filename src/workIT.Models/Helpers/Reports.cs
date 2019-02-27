@@ -123,9 +123,11 @@ namespace workIT.Models.Helpers.Reports
 		public List<CodeItem> SOC_Groups { get; set; }
 		public List<CodeItem> OrgIndustry_Groups { get; set; }
 		public List<CodeItem> CredentialIndustry_Groups { get; set; }
-
+		//
+		public List<CodeItem> CredentialCIP_Groups { get; set; }
 		public List<CodeItem> AssessmentCIP_Groups { get; set; }
 		public List<CodeItem> LoppCIP_Groups { get; set; }
+		//public Enumeration CredentialStatusType { get; set; }
 		public List<CodeItem> GetVocabularyItems( string categorySchema, bool includeEmpty = false )
 		{
 			if ( categorySchema == "ceterms:AgentServiceType" )
@@ -147,22 +149,13 @@ namespace workIT.Models.Helpers.Reports
 
 
 
-		/// <summary>
-		/// first try to use GetStatistics
-		/// </summary>
-		/// <param name="categorySchema"></param>
-		/// <param name="idPrefix"></param>
-		/// <param name="tags"></param>
-		/// <param name="includeEmpty"></param>
-		/// <param name="allowSearchability"></param>
-		/// <returns></returns>
-		//public List<Statistic> GetStatisticsBySocGroup( string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = false, bool allowSearchability = true )
-		//{
-		//	return GetVocabularyItems( "ctdl:SocGroup", includeEmpty )
-		//		.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
-		//		.ToList();
-		//}
 
+		public List<Statistic> GetStatisticsByEntity( int entityTypeId, string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = true, bool allowSearchability = true )
+		{
+			var list = PropertiesTotalsByEntity.Where( m => m.EntityTypeId == entityTypeId && m.CategorySchema == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
+			return list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
+				.ToList();
+		}
 		public List<Statistic> GetStatisticsByEntity( string entityType, string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = true, bool allowSearchability = true )
 		{
 			var list = PropertiesTotalsByEntity.Where( m => m.EntityType == entityType && m.CategorySchema == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
@@ -179,7 +172,7 @@ namespace workIT.Models.Helpers.Reports
 
 		public Statistic GetSingleStatistic( string schemaName, string idPrefix, List<string> tags, bool allowSearchability, string title = "", string description = "", bool includeEmpty = false )
 		{
-			var m = PropertiesTotals.Concat( PropertiesTotalsByEntity ).SingleOrDefault( x => x.SchemaName == schemaName.Trim() && x.Totals > ( includeEmpty ? -1 : 0 ) );
+			var m = PropertiesTotals.Concat( PropertiesTotalsByEntity ).FirstOrDefault( x => x.SchemaName == schemaName.Trim() && x.Totals > ( includeEmpty ? -1 : 0 ) );
 			if ( m == null ) return new Statistic();
 			else return new Statistic(
 					string.IsNullOrWhiteSpace( title ) ? m.Name : title,
@@ -239,6 +232,7 @@ namespace workIT.Models.Helpers.Reports
 		public int EntityTypeId { get; set; }
 		public int CreatedCount { get; set; }
 		public int UpdatedCount { get; set; }
+        public int DeletedCount { get; set; }
 		public string Description { get; set; }
 
 	}

@@ -19,5 +19,6 @@ namespace workIT.Data.Tables
         public int EntityTypeId { get; set; }
         public int CreatedTotal { get; set; }
         public int UpdatedTotal { get; set; }
+        public int DeletedTotal { get; set; }
     }
 }

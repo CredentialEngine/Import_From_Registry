@@ -233,5 +233,7 @@ namespace workIT.Models.Common
 		public string ReverseSchemaName { get; set; }
 
         public string LanguageMapString { get; set; }
-    }
+		public string CodeGroup { get; set; }
+		public int CategoryId { get; set; }
+	}
 }

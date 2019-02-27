@@ -12,8 +12,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.OrganizationServices;
 using InputEntity = RA.Models.Json.Agent;
 
-using InputEntityV3 = RA.Models.JsonV3.Agent;
-using BNodeV3 = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.Agent;
+using BNodeV3 = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.Common.Organization;
 using workIT.Models.Common;
 using workIT.Factories;
@@ -474,10 +474,12 @@ namespace Import.Services
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
             EntityServices mgr = new EntityServices();
-            MappingHelperV3 helper = new MappingHelperV3();
-            helper.entityBlankNodes = bnodes;
+			MappingHelperV3 helper = new MappingHelperV3
+			{
+				entityBlankNodes = bnodes
+			};
 
-            string ctid = input.Ctid;
+			string ctid = input.Ctid;
             string referencedAtId = input.CtdlId;
 
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );

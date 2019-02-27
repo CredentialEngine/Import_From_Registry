@@ -19,6 +19,7 @@ using DBEntity = workIT.Data.Tables.Entity_Property;
 using ViewContext = workIT.Data.Views.workITViews;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using workIT.Data.Tables;
+using workIT.Utilities;
 using System.Linq.Expressions;
 
 namespace workIT.Factories
@@ -50,9 +51,9 @@ namespace workIT.Factories
         public static int PROPERTY_CATEGORY_AUDIENCE_TYPE = 14;
         public static int PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE = 15;
         public static int PROPERTY_CATEGORY_ASSESSMENT_TYPE = 16;
-        //[Obsolete]
-        //public static int PROPERTY_CATEGORY_MODALITY_TYPE = 18;
-        public static int PROPERTY_CATEGORY_ENROLLMENT_TYPE = 19;
+
+		public static int PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE = 18;
+		public static int PROPERTY_CATEGORY_ENROLLMENT_TYPE = 19;
         public static int PROPERTY_CATEGORY_RESIDENCY_TYPE = 20;
 
         public static int PROPERTY_CATEGORY_DELIVERY_TYPE = 21;
@@ -330,7 +331,8 @@ namespace workIT.Factories
 							val.Totals = item.Totals ?? 0;
                             if ( IsDevEnv() )
                                 val.Name += string.Format( " ({0})", val.Totals );
-                            entity.Items.Add( val );
+							if (getAll || val.Totals > 0)
+								entity.Items.Add( val );
                         }
                     }
                 }
@@ -338,6 +340,160 @@ namespace workIT.Factories
 
             return entity;
         }
+		#endregion
+		#region Counts.EntityStatistic
+		public void UpdateEntityStatistic( int entityTypeId, string schemaName, int total )
+		{
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var efEntity = context.Counts_EntityStatistic.SingleOrDefault( s => s.EntityTypeId == entityTypeId
+					&& s.SchemaName == schemaName );
+					if ( efEntity != null && efEntity.Id > 0 )
+					{
+
+						efEntity.Totals = total;
+
+						if ( HasStateChanged( context ) )
+						{
+							int count = context.SaveChanges();
+
+							if ( count >= 0 )
+							{
+
+							}
+							else
+							{
+
+							}
+						}
+					}
+				}
+			}
+
+			catch ( Exception ex )
+			{
+				string message = FormatExceptions( ex );
+				LoggingHelper.LogError( ex, string.Format( "CodesManager.UpdateEntityStatistic. entityTypeId: {0}, schemaName: {1}", entityTypeId, schemaName ) );
+			}
+		}
+
+		public static List<CodeItem> GetAllEntityStatistics()
+		{
+			List<CodeItem> list = new List<CodeItem>();
+			CodeItem code;
+			using ( var context = new EntityContext() )
+			{
+				List<Counts_EntityStatistic> results = context.Counts_EntityStatistic.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+
+					foreach ( var item in results )
+					{
+						code = new CodeItem
+						{
+							Id = ( int )item.Id,
+							CategoryId = ( int )( item.CategoryId ?? 0 ),
+							Title = item.Title,
+							SchemaName = item.SchemaName,
+							Description = item.Description,
+						};
+						code.Description = item.Description;
+						code.Totals = item.Totals ?? 0;
+
+						list.Add( code );
+					}
+				}
+			}
+			return list;
+		}
+		public static CodeItem GetEntityStatisticBySchema( int categoryId, string schemaName )
+		{
+			CodeItem code = new CodeItem();
+
+			using ( var context = new EntityContext() )
+			{
+
+				var item = context.Counts_EntityStatistic
+					.FirstOrDefault( s => s.CategoryId == categoryId
+							&& s.SchemaName.Trim() == schemaName.Trim() );
+				if ( item != null && item.Id > 0 )
+				{
+					//could have an additional check that the returned category is correct - no guarentees though
+					code = new CodeItem();
+					code.Id = ( int )item.Id;
+					code.CategoryId = (int)(item.CategoryId ?? 0);
+					code.Title = item.Title;
+					code.Description = item.Description;
+					code.SchemaName = item.SchemaName;
+					code.Totals = item.Totals ?? 0;
+				}
+			}
+			return code;
+		}
+
+
+		public static Enumeration GetEntityStatisticsAsEnumeration( int entityTypeId, bool getAll = true )
+        {
+            Enumeration enumeration = new Enumeration();
+
+            using ( var context = new EntityContext() )
+            {
+                //
+                if ( entityTypeId == 0 )
+                {
+                    enumeration.Id = 0; //??
+                    enumeration.Name = "All Entities";
+                    enumeration.Description = "All";
+                    enumeration.SchemaName = "All";
+                }
+                var entity = context.Codes_EntityTypes
+                            .FirstOrDefault( s => s.Id == entityTypeId && s.IsActive == true );
+
+                if ( entity != null && entity.Id > 0 )
+                {
+                    enumeration.Id = entity.Id;
+                    enumeration.Name = entity.Title;
+                    enumeration.Description = entity.Description;
+                    enumeration.SchemaName = entity.SchemaName;
+                    enumeration.Items = new List<EnumeratedItem>();
+
+                    var results = context.Counts_EntityStatistic
+                            .Where( s => s.EntityTypeId == entityTypeId
+                                 && ( getAll || s.Totals > 0 ) )
+                            .OrderBy( p => p.Title )
+                            .ToList();
+
+                    if ( results != null && results.Count > 0 )
+                    {
+                        EnumeratedItem val = new EnumeratedItem();
+                        foreach ( var item in results )
+                        {
+                            val = new EnumeratedItem
+                            {
+                                Id = item.Id,
+                                CodeId = 0, //??
+                                ParentId = entity.Id, //??
+                                Name = item.Title,
+                                Value = item.Title,
+								CategoryId = item.CategoryId ?? 0,
+                                Totals = item.Totals ?? 0
+                            };
+                            if ( IsDevEnv() )
+                                val.Name += string.Format( " ({0})", val.Totals );
+
+                            if ( getAll || val.Totals > 0 )
+                                enumeration.Items.Add( val );
+                        }
+                    }
+                }
+            }
+
+            return enumeration;
+        }
+
         #endregion
 
         #region Condition profile type
@@ -649,33 +805,33 @@ namespace workIT.Factories
         #endregion
 
         #region Codes_PropertyCategory and values
-        public static CodeItem Codes_PropertyCategory_Get( int categoryId )
-        {
-            CodeItem code = new CodeItem();
-            using ( var context = new EntityContext() )
-            {
-                List<Codes_PropertyCategory> results = context.Codes_PropertyCategory
-                    .Where( s => s.PropertyTableName == "Codes.PropertyValue"
-                        && s.IsActive == true )
-                            .ToList();
+        //public static CodeItem Codes_PropertyCategory_Get( int categoryId )
+        //{
+        //    CodeItem code = new CodeItem();
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        List<Codes_PropertyCategory> results = context.Codes_PropertyCategory
+        //            .Where( s => s.PropertyTableName == "Codes.PropertyValue"
+        //                && s.IsActive == true )
+        //                    .ToList();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( Codes_PropertyCategory item in results )
-                    {
-                        code = new CodeItem();
-                        code.Id = ( int )item.Id;
-                        code.Title = item.Title;
-                        code.Description = item.Description;
-                        code.URL = item.SchemaUrl;
-                        code.SchemaName = item.SchemaName;
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( Codes_PropertyCategory item in results )
+        //            {
+        //                code = new CodeItem();
+        //                code.Id = ( int )item.Id;
+        //                code.Title = item.Title;
+        //                code.Description = item.Description;
+        //                code.URL = item.SchemaUrl;
+        //                code.SchemaName = item.SchemaName;
 
-                        break;
-                    }
-                }
-            }
-            return code;
-        }
+        //                break;
+        //            }
+        //        }
+        //    }
+        //    return code;
+        //}
         public static List<CodeItem> Property_GetValues( string categoryCodeName, bool insertSelectTitle, bool getAll = true )
         {
             using ( var context = new EntityContext() )
@@ -1361,50 +1517,50 @@ namespace workIT.Factories
         /// <param name="pageSize"></param>
         /// <param name="sortField">Description or SOC_code</param>
         /// <returns></returns>
-        public static List<CodeItem> SOC_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0, string sortField = "Description" )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            keyword = keyword.Trim();
-            if ( pageSize == 0 )
-                pageSize = 100;
+        //public static List<CodeItem> SOC_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0, string sortField = "Description" )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity = new CodeItem();
+        //    keyword = keyword.Trim();
+        //    if ( pageSize == 0 )
+        //        pageSize = 100;
 
-            using ( var context = new ViewContext() )
-            {
-                var Query = from P in context.ONET_SOC
-                            .Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
-                        && ( keyword == ""
-                        || s.OnetSocCode.Contains( keyword )
-                        || s.Title.Contains( keyword ) ) )
-                            select P;
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        var Query = from P in context.ONET_SOC
+        //                    .Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
+        //                && ( keyword == ""
+        //                || s.OnetSocCode.Contains( keyword )
+        //                || s.Title.Contains( keyword ) ) )
+        //                    select P;
 
-                if ( sortField == "SOC_code" )
-                {
-                    Query = Query.OrderBy( p => p.SOC_code );
-                }
-                else
-                {
-                    Query = Query.OrderBy( p => p.Title );
-                }
-                var count = Query.Count();
-                var results = Query.Take( pageSize )
-                    .ToList();
+        //        if ( sortField == "SOC_code" )
+        //        {
+        //            Query = Query.OrderBy( p => p.SOC_code );
+        //        }
+        //        else
+        //        {
+        //            Query = Query.OrderBy( p => p.Title );
+        //        }
+        //        var count = Query.Count();
+        //        var results = Query.Take( pageSize )
+        //            .ToList();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( ONET_SOC item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = item.Id;
-                        entity.Name = item.Title;
-                        entity.Description = " ( " + item.OnetSocCode + " )" + item.Title;
-                        list.Add( entity );
-                    }
-                }
-            }
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( ONET_SOC item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = item.Id;
+        //                entity.Name = item.Title;
+        //                entity.Description = " ( " + item.OnetSocCode + " )" + item.Title;
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
         public static List<CodeItem> SOC_Categories( string sortField = "Description", bool includeCategoryCode = false )
         {
@@ -1454,35 +1610,6 @@ namespace workIT.Factories
             return list;
         }
 
-        public static List<CodeItem> SOC_CategoriesInUse( string sortField = "Description" )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            //CodeItem code;
-
-
-
-
-            //using ( var context = new ViewContext() )
-            //{
-            //	var results = context.Entity_FrameworkOccupationGroupSummary
-            //				.OrderBy(x => x.FrameworkGroupTitle)
-            //				.ToList();
-
-            //	if ( results != null && results.Count > 0 )
-            //	{
-            //		foreach ( Views.Entity_FrameworkOccupationGroupSummary item in results )
-            //		{
-            //			code = new CodeItem();
-            //			code.Id = (int)item.CodeGroup;
-            //			code.Title = item.FrameworkGroupTitle;
-            //			code.Totals = ( int ) ( item.groupCount ?? 0 );
-            //			code.CategorySchema = "ctdl:SocGroup";
-            //			list.Add( code );
-            //		}
-            //	}
-            //}
-            return list;
-        }
         #endregion
 
 
@@ -2131,11 +2258,46 @@ namespace workIT.Factories
         //	return list;
         //}
         #endregion
-        /// <summary>
-        /// Get real-time counts for properties across multiple entity types.
-        /// </summary>
-        /// <param name="categoryId"></param>
-        /// <returns></returns>
+
+
+        
+        public void UpdateEntityTypes(int id, int total )
+        {
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    var efEntity = context.Codes_EntityTypes.SingleOrDefault( s => s.Id == id );
+                    if ( efEntity != null && efEntity.Id > 0 )
+                    {
+
+                        efEntity.Totals = total;
+
+                        if ( HasStateChanged( context ) )
+                        {
+
+                            int count = context.SaveChanges();
+
+                            if ( count >= 0 )
+                            {
+
+                            }
+                            else
+                            {
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            catch ( Exception ex )
+            {
+                string message = FormatExceptions( ex );
+                LoggingHelper.LogError( ex, string.Format( "CodesManager.UpdateEntityTypes id: {0}", id ) );
+            }
+        }
+
         public static List<CodeItem> Property_GetTotalsByEntity( int categoryId = 0 )
         {
             List<CodeItem> list = new List<CodeItem>();
@@ -2178,7 +2340,7 @@ namespace workIT.Factories
             }
             return list;
         }
-
+        
         public static List<HistoryTotal> GetHistoryTotal( int entityTypeId )
         {
             var list = new List<HistoryTotal>();
@@ -2196,6 +2358,7 @@ namespace workIT.Factories
                     record.Period = item.Period;
                     record.CreatedCount = item.CreatedTotal;
                     record.UpdatedCount = item.UpdatedTotal;
+                    record.DeletedCount = item.DeletedTotal;
                     record.EntityTypeId = item.EntityTypeId;
                     list.Add( record );
                 }
@@ -2215,7 +2378,7 @@ namespace workIT.Factories
             using ( var context = new EntityContext() )
             {
                 List<Codes_EntityTypes> results = context.Codes_EntityTypes
-                    .Where( s => s.Id < 4 || s.Id == 7 )
+                    .Where( s => s.Id < 4 || s.Id == 7 || s.Id==10)
                             .OrderBy( s => s.Id )
                             .ToList();
 
@@ -2248,40 +2411,39 @@ namespace workIT.Factories
         public static List<CodeItem> CodeEntity_GetCountsSiteTotals()
         {
             List<CodeItem> list = new List<CodeItem>();
-            //CodeItem code;
+			CodeItem code;
 
-            //using ( var context = new ViewContext() )
-            //{
-            //	List<Counts_SiteTotals> results = context.Counts_SiteTotals
-            //				.OrderBy( s => s.CategoryId )
-            //				.ThenBy (x => x.EntityTypeId)
-            //				.ThenBy (y => y.CodeId)
-            //				.ToList();
+			using ( var context = new EntityContext() )
+			{
+				List<Counts_SiteTotals> results = context.Counts_SiteTotals
+							.OrderBy( s => s.CategoryId )
+							.ThenBy( x => x.EntityTypeId )
+							.ThenBy( y => y.CodeId )
+							.ToList();
 
-            //	if ( results != null && results.Count > 0 )
-            //	{
+				if ( results != null && results.Count > 0 )
+				{
 
-            //		foreach ( Counts_SiteTotals item in results )
-            //		{
-            //			code = new CodeItem();
-            //			code.Id = item.Id;
-            //			code.CategoryId = item.CategoryId;
-            //			//?? - need entity type for filtering
-            //			code.EntityTypeId = item.EntityTypeId;
-            //			code.EntityType = item.EntityTypeId.ToString();
+					foreach ( Counts_SiteTotals item in results )
+					{
+						code = new CodeItem();
+						code.Id = item.Id;
+						code.CategoryId = item.CategoryId;
+						//?? - need entity type for filtering
+						code.EntityTypeId = item.EntityTypeId;
+						code.EntityType = item.EntityTypeId.ToString();
 
-            //			code.Code = item.CodeId.ToString();
-            //			code.Title = item.Description;
-            //			code.Totals = ( int ) item.Totals;
+						code.CodeGroup = item.CodeId.ToString();
+						code.Title = item.Title;
+						code.Totals = ( int ) item.Totals;
 
-            //			code.Description = item.Description;
-            //			list.Add( code );
-            //		}
-            //	}
+						list.Add( code );
+					}
+				}
 
 
-            //}
-            return list;
+			}
+			return list;
         }
 
         #endregion

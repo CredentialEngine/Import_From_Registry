@@ -28,5 +28,14 @@ namespace workIT.Models.Elastic
 		public string StatusMessage { get; set; }
 		public List<string> InLanguage { get; set; } = new List<string>();
 
+		public int PrimaryOrganizationId { get; set; }
+
+		public string PrimaryOrganizationName { get; set; }
+
+		public string PrimaryOrganizationCTID { get; set; }
+		public List<int> AgentRelationships { get; set; } = new List<int>();
+		public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+
+		public List<string> TextValues { get; set; } = new List<string>();
 	}
 }

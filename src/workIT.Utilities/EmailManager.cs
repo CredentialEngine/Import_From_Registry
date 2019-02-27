@@ -43,7 +43,7 @@ namespace workIT.Utilities
 		/// <returns></returns>
 		public static bool SendSiteEmail( string subject, string message )
 		{
-			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.mparsons@ad.siu.edu" );
+			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.mparsons@email.com" );
 			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 

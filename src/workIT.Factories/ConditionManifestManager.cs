@@ -26,8 +26,7 @@ namespace workIT.Factories
 		static string thisClassName = "Factories.ConditionManifestManager";
 		EntityManager entityMgr = new EntityManager();
 
-		string statusMessage = "";
-		#region === -Persistance ==================
+		#region === Persistance ==================
 		/// <summary>
 		/// Persist ConditionManifest
 		/// </summary>

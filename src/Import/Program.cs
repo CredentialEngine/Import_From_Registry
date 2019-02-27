@@ -33,8 +33,8 @@ namespace CTI.Import
             // Demonstrate ToLocalTime and ToUniversalTime.
             DateTime local = zone.ToLocalTime( DateTime.Now );
             DateTime universal = zone.ToUniversalTime( DateTime.Now );
-            Console.WriteLine( "Local time: " + local );
-            Console.WriteLine( "Universal time: " + universal );
+			LoggingHelper.DoTrace( 1, "Local time: " + local );
+			LoggingHelper.DoTrace( 1, "Universal time: " + universal );
 
             //need to determine how to get last start date
             //may be run multiple times during day, so use a schedule type
@@ -104,8 +104,22 @@ namespace CTI.Import
             {
                 startingDate = UtilityManager.GetAppKeyValue( "startingDate", "" );
                 endingDate = UtilityManager.GetAppKeyValue( "endingDate", "" );
-                //LoggingHelper.DoTrace( 1, string.Format( " - Updates from: {0} to {1} ", startingDate, endingDate ) );
-                importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates from: {0} to {1} ", startingDate, endingDate ) );
+				DateTime dtcheck = System.DateTime.Now;				//LoggingHelper.DoTrace( 1, string.Format( " - Updates from: {0} to {1} ", startingDate, endingDate ) );
+				
+				if ( usingUTC_ForTime )
+				{
+					if ( DateTime.TryParse( startingDate, out dtcheck ) )
+					{
+						startingDate = zone.ToUniversalTime( dtcheck ).ToString( "yyyy-MM-ddTHH:mm:ss" );
+					}
+					if ( DateTime.TryParse( endingDate, out dtcheck ) )
+					{
+						endingDate = zone.ToUniversalTime( dtcheck ).ToString( "yyyy-MM-ddTHH:mm:ss" );
+					}
+					//no end date?
+					//endingDate = "";
+				}
+				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates from: {0} to {1} ", startingDate, endingDate ) );
             }
             else if ( scheduleType == "hourly" )
 			{

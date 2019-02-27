@@ -303,11 +303,7 @@ namespace CTI.Import
 
 				// If required by the server, set the credentials.
 				request.Credentials = CredentialCache.DefaultCredentials;
-
-				//Get the response.
 				HttpWebResponse response = ( HttpWebResponse ) request.GetResponse();
-
-				// Get the stream containing content returned by the server.
 				Stream dataStream = response.GetResponseStream();
 
 				// Open the stream using a StreamReader for easy access.

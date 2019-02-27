@@ -29,6 +29,7 @@ namespace workIT.Models.Search
         public string Keywords { get; set; }
         public string CompetenciesKeywords { get; set; }
         public string SortOrder { get; set; }
+        public bool UseSimpleSearch { get; set; }
         public List<MainSearchFilter> Filters { get; set; }
         public List<MainSearchFilterV2> FiltersV2 { get; set; }
 
@@ -94,6 +95,7 @@ namespace workIT.Models.Search
         public MainSearchFilterV2Types Type { get; set; }
         public string Name { get; set; }
         public Dictionary<string, object> Values { get; set; }
+		public string CustomJSON { get; set; }
 
         //Convenience Methods
         public string GetValueOrDefault( string key, string defaultValue = "" )
@@ -125,7 +127,23 @@ namespace workIT.Models.Search
             catch { }
             return defaultValue;
         }
-        public decimal GetValueOrDefault( string key, decimal defaultValue = 0m )
+		public List<int> GetListOrDefault( string key  )
+		{
+			List<int> defaultValue = new List<int>();
+			try
+			{
+				var item = ( List<int> ) Values[ key ];
+				
+				//var list = JsonConvert.DeserializeObject<List<int>>( item );
+				return item ;
+			}
+			catch (Exception ex)
+			{
+			}
+		
+			return defaultValue;
+		}
+		public decimal GetValueOrDefault( string key, decimal defaultValue = 0m )
         {
             try
             {
@@ -244,7 +262,27 @@ namespace workIT.Models.Search
                 return new CodeItem();
             }
         }
-        public Models.Common.BoundingBox AsBoundaries()
+
+		public CodeItem AsOrgRolesItem()
+		{
+			try
+			{
+				var item = new CodeItem()
+				
+				{
+					IdsList = GetListOrDefault( "RelationshipId"),
+					
+					Id = GetValueOrDefault( "AgentId", 0 )
+				};
+				item.ItemList = "[" + String.Join( ", ", item.IdsList.ToArray() ) + "]";
+				return item;
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
+		public Models.Common.BoundingBox AsBoundaries()
         {
             try
             {

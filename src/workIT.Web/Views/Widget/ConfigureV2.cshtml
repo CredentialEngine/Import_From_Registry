@@ -16,21 +16,37 @@
 		userOrganizations = user.Organizations.ConvertAll( m => new ValueItem( m.Name, m.CTID ) );
 	}
 
+	var searchFiltersCheckbox = new List<ValueItem>()
+	{
+		 new ValueItem( "Credential", "FindCredential" ),
+		 new ValueItem( "Organization ", "FindOrganization" ),
+		 new ValueItem( "Assessment ", "FindAssessment" ),
+		 new ValueItem( "Learning Opportunity ", "FindLearningOpportunity" ),
+		 new ValueItem( "Competency Framework ", "FindCompetencyFrameworks" ),
+	};
+
 	var credentialCheckboxFilters = new List<ValueItem>()
 	{
 		new ValueItem( "Credential Types", "CredentialTypes" ),
 		new ValueItem( "Audience Level Types", "AudienceLevelTypes" ),
 		new ValueItem( "Audience Types", "AudienceTypes" ),
 		new ValueItem( "Credential Connections", "CredentialConnections" ),
+		new ValueItem( "Assessment Delivery Types", "AssessmentDeliveryTypes" ),
+		new ValueItem( "Learning Delivery Types", "LearningDeliveryTypes" ),
 		new ValueItem( "Quality Assurance", "QualityAssurance" ),
-		new ValueItem( "Reports", "Reports" )
+		new ValueItem( "Credential Status", "CredentialStatus" ),
+		new ValueItem( "Languages", "Languages" ),
+		new ValueItem( "Other Filters", "OtherFilters" )
 	};
+
 	var credentialStringFilters = new List<ValueItem>()
 	{
 		new ValueItem( "Competencies", "Competencies" ),
-		new ValueItem( "Subject Areas/Keywords", "Subjects" ),
+		new ValueItem( "Subject Areas", "Subjects" ),
+		//new ValueItem( "Keywords", "Keywords" ),
 		new ValueItem( "Occupations", "Occupations" ),
-		new ValueItem( "Industries", "Industries" )
+		new ValueItem( "Industries", "Industries" ),
+		new ValueItem( "Instructional Programs", "InstructionalProgramTypes")
 	};
 
 	var organizationCheckboxFilters = new List<ValueItem>()
@@ -40,8 +56,9 @@
 		new ValueItem( "Sector Types", "SectorTypes" ),
 		new ValueItem( "Claim Types", "ClaimTypes" ),
 		new ValueItem( "Quality Assurance", "QualityAssurance" ),
-		new ValueItem( "Reports", "Reports" )
+		new ValueItem( "Other Filters", "OtherFilters" )
 	};
+
 	var organizationStringFilters = new List<ValueItem>()
 	{
 		new ValueItem( "Industries", "Industries" )
@@ -49,36 +66,39 @@
 
 	var assessmentCheckboxFilters = new List<ValueItem>()
 	{
+		new ValueItem( "Assessment Connections", "AssessmentConnections" ),
 		new ValueItem( "Assessment Method Types", "AssessmentMethodTypes" ),
 		new ValueItem( "Assessment Use Types", "AssessmentUseTypes" ),
+		new ValueItem( "Scoring Method Types", "ScoringMethodTypes" ),
 		new ValueItem( "Delivery Method Types", "DeliveryMethodTypes" ),
 		new ValueItem( "Audience Types", "AudienceTypes" ),
-		new ValueItem( "Scoring Method Types", "ScoringMethodTypes" ),
-		new ValueItem( "Assessment Connections", "AssessmentConnections" ),
 		new ValueItem( "Quality Assurance", "QualityAssurance" ),
-		new ValueItem( "Reports", "Reports" )
+		new ValueItem( "Other Filters", "OtherFilters" )
 	};
 	var assessmentStringFilters = new List<ValueItem>()
 	{
 		new ValueItem( "Competencies", "Competencies" ),
-		new ValueItem( "Subject Areas/Keywords", "Subjects" ),
-		new ValueItem( "Classifications", "InstructionalProgramTypes" ),
+		new ValueItem( "Subject Areas", "Subjects" ),
+		//new ValueItem( "Keywords", "Keywords" ),
+		new ValueItem( "Instructional Programs", "InstructionalProgramTypes" ),
 	};
 
 	var learningOpportunityCheckboxFilters = new List<ValueItem>()
 	{
+		new ValueItem( "Learning Opportunity Connections", "LearningOpportunityConnections" ),
 		new ValueItem( "Learning Method Types", "LearningMethodTypes" ),
 		new ValueItem( "Delivery Method Types", "DeliveryMethodTypes" ),
 		new ValueItem( "Audience Types", "AudienceTypes" ),
-		new ValueItem( "Learning Opportunity Connections", "LearningOpportunityConnections" ),
 		new ValueItem( "Quality Assurance", "QualityAssurance" ),
-		new ValueItem( "Reports", "Reports" )
+		new ValueItem( "Other Filters", "OtherFilters" )
 	};
+
 	var learningOpportunityStringFilters = new List<ValueItem>()
 	{
 		new ValueItem( "Competencies", "Competencies" ),
-		new ValueItem( "Subject Areas/Keywords", "Subjects" ),
-		new ValueItem( "Classifications", "InstructionalProgramTypes" ),
+		new ValueItem( "Subject Areas", "Subjects" ),
+		//new ValueItem( "Keywords", "Keywords" ),
+		new ValueItem( "Instructional Programs", "InstructionalProgramTypes" ),
 	};
 
 	var searchFeatures = new List<ValueItem>()
@@ -90,7 +110,7 @@
 	};
 }
 @functions {
-	public enum FormItemType { Text, TextArea, Select, Boolean, CheckBoxList, TextList, Hidden, DisplayOnly }
+	public enum FormItemType { Text, TextArea, Select, Boolean, CheckBoxList, TextList, Hidden, DisplayOnly, SummerNote }
 	public class ValueItem
 	{
 		public ValueItem() { }
@@ -106,79 +126,98 @@
 @helper RenderFormItem( string label, string property, FormItemType type, List<ValueItem> values = null, bool isRequired = false, string helpText = "", string cssClass = "" )
 {
 	values = values ?? new List<ValueItem>();
-	<div class="formItem @cssClass">
-		@if ( type == FormItemType.Hidden )
-		{
-			<input type="hidden" data-property="@property" data-type="@FormItemType.Hidden.ToString()" />
-		}
-		else if ( type == FormItemType.Boolean )
-		{
-			<div class="label"></div>
-			<div class="value">
-				<label class="checkboxLabel">
-					<input type="checkbox" data-property="@property" data-type="@type.ToString()" />
-					<span>@label</span>
-					<span class="infoBubble @( string.IsNullOrWhiteSpace( helpText ) ? " hidden" : "" )" data-tooltip="@helpText"><i class="fa fa-info-circle"></i></span>
-				</label>
-			</div>
-		}
-		else
-		{
-			<div class="label">
-				<div class="labelText">@Html.Raw( label )</div>
-				<div class="required @( isRequired ? " " : " hidden" )">*</div>
-				<div class="infoBubble @( string.IsNullOrWhiteSpace( helpText ) ? " hidden" : "" )" data-tooltip="@helpText"><i class="fa fa-info-circle"></i></div>
-			</div>
-			<div class="value">
-				@switch ( type )
+<div class="formItem @cssClass">
+	@if ( type == FormItemType.Hidden )
+	{
+		<input type="hidden" data-property="@property" data-type="@FormItemType.Hidden.ToString()" />
+	}
+	else if ( type == FormItemType.Boolean )
+	{
+		<div class="label"></div>
+		<div class="value">
+			<label class="checkboxLabel">
+				<input type="checkbox" data-property="@property" data-type="@type.ToString()" />
+				<span>@label</span>
+				<span class="infoBubble @( string.IsNullOrWhiteSpace( helpText ) ? " hidden" : "" )" data-tooltip="@helpText"><i class="fa fa-info-circle"></i></span>
+			</label>
+		</div>
+	}
+	@*else if ( type == FormItemType.SummerNote )
+	{
+		<div class="label">
+			<div class="labelText">@Html.Raw( label )</div>
+			<div class="required @( isRequired ? " " : " hidden" )">*</div>
+			<div class="infoBubble @( string.IsNullOrWhiteSpace( helpText ) ? " hidden" : "" )" data-tooltip="@helpText"><i class="fa fa-info-circle"></i></div>
+		</div>
+		<div class="summerNoteWrapper" data-forproperty="@property">
+			<div class="summerNoteSpinner"><i class="fas fa-spin fa-spinner"></i></div>
+			<textarea data-property="@property" data-type="@type.ToString()" data-tooltip="@helpText"></textarea>
+		</div>
+	}*@
+	else
+	{
+		<div class="label">
+			<div class="labelText">@Html.Raw( label )</div>
+			<div class="required @( isRequired ? " " : " hidden" )">*</div>
+			<div class="infoBubble @( string.IsNullOrWhiteSpace( helpText ) ? " hidden" : "" )" data-tooltip="@helpText"><i class="fa fa-info-circle"></i></div>
+		</div>
+		<div class="value">
+			@switch ( type )
+			{
+				case FormItemType.Text:
 				{
-					case FormItemType.Text:
-					{
-						<input type="text" data-property="@property" data-type="@type.ToString()" />		break;
-					}
-					case FormItemType.DisplayOnly:
-					{
-						<input type="text" class="valueDisplay" data-property="@property" readonly="readonly" data-type="@FormItemType.Text.ToString()" />		break;
-					}
-					case FormItemType.TextArea:
-					{
-						<textarea data-property="@property" data-type="@type.ToString()"></textarea>		break;
-					}
-					case FormItemType.Select:
-					{
-						<select data-property="@property" data-type="@type.ToString()">
-							@foreach ( var item in values )
-							{
-								<option value="@item.Value">@item.Label</option>		}
-						</select>		break;
-					}
-					case FormItemType.CheckBoxList:
-					{
-						<div class="checkboxlist" data-property="@property" data-type="@type.ToString()">
-							@foreach ( var item in values )
-							{
-								<label class="checkboxLabel"><input type="checkbox" value="@item.Value" /> @item.Label</label>		}
-						</div>		break;
-					}
-					case FormItemType.TextList:
-					{
-						<div class="textListEntry columns" data-property="@property" data-type="textList">
-							<div class="column entryBox">
-								<div class="columnLabel">Type a word or phrase below and press <b>Enter</b> to add it:</div>
-								<input type="text" data-entryproperty="Keywords" />
-							</div>
-							<div class="column selectedBox">
-								<div class="columnLabel">Selected Items:</div>
-								<div class="selectedList"></div>
-							</div>
-						</div>		break;
-					}
-					default:
-					break;
+					<input type="text" data-property="@property" data-type="@type.ToString()" /> break;
 				}
-			</div>
-		}
-	</div>
+				case FormItemType.DisplayOnly:
+				{
+					<input type="text" class="valueDisplay" data-property="@property" readonly="readonly" data-type="@FormItemType.Text.ToString()" /> break;
+				}
+				case FormItemType.TextArea:
+				{
+					<textarea data-property="@property" data-type="@type.ToString()"></textarea> break;
+				}
+				case FormItemType.SummerNote:
+				{
+					<div class="summerNoteWrapper" data-forproperty="@property">
+						<div class="summerNoteSpinner"><i class="fas fa-spin fa-spinner"></i></div>
+						<textarea data-property="@property" data-type="@type.ToString()" data-tooltip="@helpText"></textarea>
+					</div>break;
+				}
+				case FormItemType.Select:
+				{
+					<select data-property="@property" data-type="@type.ToString()">
+						@foreach ( var item in values )
+						{
+							<option value="@item.Value">@item.Label</option>}
+					</select> break;
+				}
+				case FormItemType.CheckBoxList:
+				{
+					<div class="checkboxlist" data-property="@property" data-type="@type.ToString()">
+						@foreach ( var item in values )
+						{
+							<label class="checkboxLabel"><input type="checkbox" value="@item.Value" /> @item.Label</label>}
+					</div> break;
+				}
+				case FormItemType.TextList:
+				{
+					<div class="textListEntry columns" data-property="@property" data-type="textList">
+						<div class="column entryBox">
+							<div class="columnLabel">Type a word or phrase below and press <b>Enter</b> to add it:</div>
+							<input type="text" data-entryproperty="Keywords" />
+						</div>
+						<div class="column selectedBox">
+							<div class="columnLabel">Selected Items:</div>
+							<div class="selectedList"></div>
+						</div>
+					</div>break;
+				}
+				default:
+					break;
+			}
+		</div>
+	}
+</div>
 }
 @helper RenderHeader( string tag, string title, string id, string isChildOf, string cssClass = "" )
 {
@@ -240,15 +279,16 @@
 		</div>
 	</div>
 }
-@helper RenderMicrosearchSelector( string title, string columnTitle, string property, string controller, string method, string helpText, string uniqueFilterField, object staticQueryData = null, string resultTemplate = "#template_microsearch_result_organization", string selectedTemplate = "#template_microsearch_result_organization" )
+@helper RenderMicrosearchSelector( string title, string columnTitle, string property, string controller, string method, string helpText, string uniqueFilterField, object staticQueryData = null, string searchType = "Organization", string resultTemplate = "#template_microsearch_result_organization", string selectedTemplate = "#template_microsearch_result_organization" )
 {
 staticQueryData = staticQueryData ?? new { };
+
 	<div class="formItem">
 		<div class="label simpleLabel">
 			<div class="labelText">@title</div>
 		</div>
 		<div class="value">
-			<div class="columnWrapper microsearchSelector" data-property="@property" data-type="microsearchSelector" data-controller="@controller" data-method="@method" data-resulttemplate="@resultTemplate" data-selectedtemplate="@selectedTemplate" data-uniquefilterfield="@uniqueFilterField">
+			<div class="columnWrapper microsearchSelector" data-property="@property" data-type="microsearchSelector" data-controller="@controller" data-method="@method" data-resulttemplate="@resultTemplate" data-selectedtemplate="@selectedTemplate" data-uniquefilterfield="@uniqueFilterField" data-searchtype="@searchType">
 				<script type="application/json" class="staticQueryData">
 					@Html.Raw( JsonConvert.SerializeObject( staticQueryData ) )
 				</script>
@@ -322,10 +362,17 @@ staticQueryData = staticQueryData ?? new { };
 		</div>
 	</div>
 }
-
+@helper RenderInfoIcon()
+    {
+    <i class="fas fa-info-circle"></i>
+    }
 
 @Html.Partial( "~/Views/Shared/_Ajax.cshtml" )
 @Html.Partial( "~/Views/Shared/_ToolTipsV2.cshtml" )
+
+<link rel="stylesheet" type="text/css" href="@Url.Content( "~/content/plugins/summernote/summernote-lite.css" )" />
+<link rel="stylesheet" type="text/css" href="@Url.Content( "~/content/plugins/summernote/summernote-lite-tweaks.css" )" />
+<script type="text/javascript" src="@Url.Content( "~/content/plugins/summernote/summernote-lite.js" )"></script>
 
 <script type="text/javascript">
 	$(document).ready(function () {
@@ -337,6 +384,7 @@ staticQueryData = staticQueryData ?? new { };
 		setupIframePreview();
 		setupStandalonePreview();
 		setupEditor();
+		setupSummernote();
 	});
 	//
 
@@ -346,13 +394,71 @@ staticQueryData = staticQueryData ?? new { };
 			var toggle = box.find("> .collapseToggle");
 			var content = box.find("> .collapseContent");
 			toggle.on("click", function () {
-				box.attr("data-collapsed", function (i, value) { return value == "true" ? "false" : "true" });
+                box.attr("data-collapsed", function (i, value) { return value == "true" ? "false" : "true" });
 			});
-			box.attr("data-collapsed", "true");
+            box.attr("data-collapsed", "true");
+            
 		});
 	}
 	//
 
+	function setupSummernote() {
+		$(".summerNoteWrapper").each(function () {
+			var wrapper = $(this);
+			var box = wrapper.find("textarea");
+			box.summernote({
+				fontNames: ["Gilroy", "Courier New"],
+				fontNamesIgnoreCheck: ["Gilroy"],
+				fontSizes: ["12", "14", "16", "18", "24", "36", "48"],
+				toolbar: [
+					["paragraph", ["style", "ol", "ul", "paragraph"]],
+                    ["style", ["bold", "italic", "underline", "strikethrough", "clear"]],
+                    ['color', ['color']],
+					["insert", ["link", "picture", "table", "hr"]],
+					["misc", ["undo", "redo", "codeview", "help"]]
+				],
+				followingToolbar: false, //Disable automatic position:fixed; assignment
+				maximumImageFileSize: 256000 //250kb
+			});
+			//Fixes
+			var note = wrapper.find(".note-editable");
+			note.html(cleanseHTML(note.html()));
+			box.summernote("fontName", "Gilroy");
+			box.summernote("fontSize", "16");
+			wrapper.find(".summerNoteSpinner").remove();
+            box.addClass("summernoteInitialized");
+		});
+	}
+	//
+
+	function cleanseSummernoteEditors() {
+		$(".summerNoteWrapper .note-editable").each(function () {
+			var note = $(this);
+			note.html(cleanseHTML(note.html()));
+		});
+	}
+	//
+
+	function cleanseHTML(html) {
+		var temp = $("<div>" + html.replace(/<head[\s\S]*<\/head>/g, "").replace(/<style[\s\S]*<\/style>/g, "").replace(/<xml[\s\S]*<\/xml>/g, "").replace(/<body.*>/g, "").replace(/<\/body>/g, "") + "</div>");
+		temp.find("*").not("img").not("br").not("hr").filter(function (index, element) { return $(element).html().trim().length == 0 }).remove();
+		temp.find("style").remove();
+		temp.find("script").remove();
+		temp.find("xml").remove();
+		var cleanseStyles = ["font-family", "font-size", /*"color", "background-color",*/ "margin-top", "margin-bottom", "margin-left", "margin-right", "margin", "line-height"];
+		cleanseStyles.forEach(function (style) {
+			cleanseStyle(temp, style);
+		});
+		temp.find("[style='']").removeAttr("style");
+		temp.find("[dir]").removeAttr("dir");
+		return temp.html();
+	}
+	//
+
+	function cleanseStyle(container, style) {
+		container.find("[style*='" + style + "']").css(style, "");
+	}
+	//
 </script>
 <script type="text/javascript">
 	/* Development */
@@ -381,7 +487,7 @@ staticQueryData = staticQueryData ?? new { };
 			setTimeout(function () {
 				(function () {
 					console.log("checking results");
-					box.find(".microsearchResults [data-action='addItem']").each(function(){
+					box.find(".microsearchResults [data-action='addItem']").each(function () {
 						if (Math.random() > 0.75) {
 							console.log("Adding result", this);
 							$(this).trigger("click");
@@ -392,9 +498,9 @@ staticQueryData = staticQueryData ?? new { };
 		});
 		Editor.EditForm.Box.find(".textListEntry").each(function () {
 			var values = [];
-			for (var i = 0; i < Math.ceil(Math.random() * 5) ; i++) {
+			for (var i = 0; i < Math.ceil(Math.random() * 5); i++) {
 				var value = "";
-				for (var j = 0; j < Math.ceil(Math.random() * 5) ; j++) {
+				for (var j = 0; j < Math.ceil(Math.random() * 5); j++) {
 					value += getRandomItem(lorem) + " ";
 				}
 				values.push(value.trim());
@@ -421,7 +527,7 @@ staticQueryData = staticQueryData ?? new { };
 	}
 	//
 
-	function getRandomItem(values){
+	function getRandomItem(values) {
 		return values[Math.ceil(Math.random() * values.length - 1)];
 	}
 	//
@@ -456,7 +562,7 @@ staticQueryData = staticQueryData ?? new { };
 		Editor.CurrentWidget = { Id: 0 };
 		Editor.WidgetSelector = Editor.setupWidgetSelector(Editor, Editor.Box.find(".widgetSelector"));
 		Editor.EditForm = {};
-		Editor.EditForm.Box = Editor.Box.find(".widgetEditor");
+        Editor.EditForm.Box = Editor.Box.find(".widgetEditor");
 		Editor.SaveButton = Editor.EditForm.Box.find("[data-action='saveform']");
 		Editor.TestWidgetButton = Editor.EditForm.Box.find("[data-action='testwidget']");
 		//Functionality
@@ -468,7 +574,8 @@ staticQueryData = staticQueryData ?? new { };
 		});
 
 		//Initialize
-		Editor.selectWidget(Editor, null);
+        Editor.selectWidget(Editor, null);
+   
 	}
 	//
 
@@ -484,12 +591,15 @@ staticQueryData = staticQueryData ?? new { };
 		$(window).trigger("Event_CurrentWidgetUpdated");
 		if ((data && data.Id > 0)) {
 			$("#previewWidget").attr("href", "/widget/searchwidget?widgetId=" + data.Id);
-			$("#previewWidget").show();
+            $("#previewWidget").show();
+            
 		}
 	}
 	//
 
 	Editor.saveWidget = function (Editor) {
+		//Cleanse summernote HTML
+		cleanseSummernoteEditors();
 		var data = ajax.readForm(Editor.Box, Editor.CurrentWidget);
 		//Hack
 		data.OrganizationName = $("[data-property='OrganizationCTID'] option:selected").text(); //Don't do this
@@ -500,7 +610,7 @@ staticQueryData = staticQueryData ?? new { };
 	}
 	Editor.success_saveWidget = function (Editor, message, passThrough) {
 		if (message.valid) {
-			ajax.alert("Your changes have been saved.", "success");
+			ajax.alert("Your changes have been saved.", "success", 5);
 			Editor.selectWidget(Editor, message.data);
 			Editor.getWidgetsForOrganization(Editor, Editor.WidgetSelector);
 		}
@@ -516,11 +626,11 @@ staticQueryData = staticQueryData ?? new { };
 		var Selector = {};
 		Selector.Box = box;
 		Selector.OrganizationSelector = Selector.Box.find("[data-property='OrganizationCTID']");
-		Selector.WidgetListBox = Selector.Box.find(".widgetsList");
+        Selector.WidgetListBox = Selector.Box.find(".widgetsList");
 		Selector.SaveButton = Selector.Box.find("[data-action='saveAndSelectWidget']");
 		Selector.WidgetListItemTemplate = $("#template_editor_widget_list_item").html();
 		Selector.NewWidgetButton = Selector.Box.find("[data-action='newWidget']");
-
+        
 		//Functionality
 		Selector.OrganizationSelector.on("change", function () {
 			Editor.selectOrganization(Editor, Selector);
@@ -540,7 +650,7 @@ staticQueryData = staticQueryData ?? new { };
 		Editor.CurrentOrganization = { CTID: option.val(), Name: option.text() };
 		Editor.selectWidget(Editor, null);
 		Selector.WidgetListBox.html("<p class=\"widgetListMessage\"><i class=\"fa fa-spin fa-spinner\"></i></p>");
-		Editor.getWidgetsForOrganization(Editor, Selector);
+        Editor.getWidgetsForOrganization(Editor, Selector);      
 	}
 	//
 
@@ -599,44 +709,21 @@ staticQueryData = staticQueryData ?? new { };
 
 	//Handle custom JSON, including updating from WidgetV1
 	Editor.loadCustomJSON = function (Editor, customJSON) {
-		try{
-			custom = JSON.parse( customJSON || "{}");
+		try {
+			custom = JSON.parse(customJSON || "{}");
 			console.log("Applying Custom JSON for this widget:", custom);
-			//WidgetV1 compatibility
-			/*
-			if (custom.CredFilters) {
-				for (var i in custom.CredFilters) {
-					(function(prop, val){
-						if (val) {
-							var match = $("[data-property='CredentialFilters'] [data-property='HideFilters'] input[value*='" + prop.replace(/Hide/, "").replace(/Applicable/, "").replace(/Area/, "") + "']");
-				 			if (match.length > 0) {
-								match.prop("checked", true);
-							}
-						}
-					})(i, custom.CredFilters[i]);
-				}
-				if (custom.CredFilters.Keywords && custom.CredFilters.Keywords.length > 0) {
-					$("[data-property='CredentialFilters'] [data-property='Subjects']")[0].setValue(custom.CredFilters.Keywords.split(","));
-				}
-			}
-			if (custom.SearchFilters) {
-				$("[data-property='SearchFeatures'] input[value='HideSearchResultDescriptions']").prop("checked", custom.SearchFilters.HideDescriptions);
-				$("[data-property='SearchFeatures'] input[value='HideSearchResultAttributes']").prop("checked", custom.SearchFilters.HideGrayButtons);
-			}
-			*/
-			//
 		}
-		catch(e){ }
-		}
+		catch (e) { }
+	}
 	//
 
-	Editor.synchronizeCustomJSON = function(Editor, customJSON) {
-		try{
-			custom = JSON.parse( customJSON || "{}");
+	Editor.synchronizeCustomJSON = function (Editor, customJSON) {
+		try {
+			custom = JSON.parse(customJSON || "{}");
 			//WidgetV1 compatibility
 			if (custom.CredFilters) {
 				for (var i in custom.CredFilters) {
-					(function(prop, val){
+					(function (prop, val) {
 						if (val) {
 							var match = $("[data-property='CredentialFilters'] [data-property='HideFilters'] input[value*='" + prop.replace(/Hide/, "").replace(/Applicable/, "").replace(/Area/, "") + "']");
 							if (match.length > 0) {
@@ -645,19 +732,34 @@ staticQueryData = staticQueryData ?? new { };
 						}
 					})(i, custom.CredFilters[i]);
 				}
+				if (custom.CredFilters.Subjects) {
+					custom.CredFilters.Subjects = $("[data-property='CredentialFilters'] [data-property='Subjects']")[0].getValue().join(",");
+				}
 				if (custom.CredFilters.Keywords) {
-					custom.CredFilters.Keywords = $("[data-property='CredentialFilters'] [data-property='Subjects']")[0].getValue().join(",");
+					custom.CredFilters.Keywords = $("[data-property='CredentialFilters'] [data-property='Keywords']")[0].getValue().join(",");
 				}
 			}
 			if (custom.SearchFilters) {
 				custom.SearchFilters.HideDescriptions = $("[data-property='SearchFeatures'] input[value='HideSearchResultDescriptions']").prop("checked");
 				custom.SearchFilters.HideGrayButtons = $("[data-property='SearchFeatures'] input[value='HideSearchResultAttributes']").prop("checked");
-			}
+            }
+            if (custom.HideGlobalSearchFilters) {
+                for (var i in custom.HideGlobalSearchFilters) {
+                    (function (prop, val) {
+                        if (val) {
+                            var match = $("[data-property='HideGlobalFilters'] input[value*='" + prop.replace(/Hide/, "") + "']");
+                            if (match.length > 0) {
+                                custom.HideGlobalSearchFilters[prop] = match.prop("checked");
+                            }
+                        }
+                    })(i, custom.HideGlobalSearchFilters[i]);
+                }
+            }
 			//
 			Editor.CurrentWidget.CustomJSON = JSON.stringify(custom);
 			console.log("Updated Custom JSON for this widget:", custom);
 		}
-		catch(e) { }
+		catch (e) { }
 	}
 
 	//Editor.testWidget = function (Editor) {
@@ -671,6 +773,27 @@ staticQueryData = staticQueryData ?? new { };
 
 
 	//
+
+    function uploadLogoImage() {
+        var formData = new FormData();
+            formData.append("imageFile", $("#imageFile").file);
+            formData.append('widgetId',2);
+
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("Widget", "UploadLogo")',
+                data: formData,
+                dataType: 'json',
+                contentType: "multipart/form-data",
+                processData: false,
+                success: function (response) {
+                    ajax.alert(response.responseText);
+                },
+                error: function (error) {
+                    ajax.alert(error.responseText);
+                }
+            });
+    }
 </script>
 <script type="text/javascript">
 	/* Microsearch Selector Functions */
@@ -692,13 +815,15 @@ staticQueryData = staticQueryData ?? new { };
 			Selector.Controller = Selector.Box.attr("data-controller");
 			Selector.Method = Selector.Box.attr("data-method");
 			Selector.UniqueFilterField = Selector.Box.attr("data-uniquefilterfield");
-			Selector.CurrentPageSize = 5;
+			Selector.SearchType = Selector.Box.attr("data-searchtype");
+			Selector.CurrentPageSize = 10;
 			Selector.CurrentPageNumber = 1;
 			Selector.CurrentTotalResults = 0;
 			Selector.CurrentResults = [];
 			Selector.CurrentSelectedItems = [];
 
 			//Functionality
+			//?? there is no search for keywords, but this is used for occupations, industries, etc.
 			Selector.KeywordsInput.on("keyup", function () {
 				clearTimeout(Selector.Timeout);
 				Selector.Timeout = setTimeout(function () {
@@ -716,7 +841,38 @@ staticQueryData = staticQueryData ?? new { };
 		//return Selector.CurrentSelectedItems.map(function (m) { return m[Selector.UniqueFilterField] });
 		//Save data
 		//Note: CTID exists in either the root level (previously loaded object) or in the Properties object (for things that came from search results)
-		return Selector.CurrentSelectedItems.map(function (m) { return { Name: m.Name, Description: m.Description, Id: m.RecordId || m.Id, CTID: m.CTID || m.Properties.ctid } });
+		return Selector.CurrentSelectedItems.map(function (m) {
+			//Be very careful not to wipe out data
+			m = m || {};
+			var toSave = {
+				Name: m.Name || "Unknown Name",
+				Description: m.Description || "Unknown Description"
+			};
+
+			try {
+				toSave.Id = m.RecordId || m.Id;
+				toSave.CTID = m.CTID || (m.Properties ? m.Properties.ctid : "");
+			}
+			catch (e) {
+				console.log("Error saving referenced data for a microsearch:", { error: e, microsearch: Selector, data: m });
+			}
+
+			try{
+				if (m.Properties) {
+					toSave.Properties = {
+						SearchType: m.Properties.SearchType || "",
+						ctid: m.Properties.ctid || "", //Just in case
+						Owner: m.Properties.Owner || "",
+						OwnerId: m.Properties.OwnerId || 0
+					}
+				}
+			}
+			catch (e) {
+				console.log("Error adding Properties object to referenced data in a microsearch:", { error: e, microsearch: Selector, data: m });
+			}
+
+			return toSave;
+		});
 	}
 	//
 
@@ -725,8 +881,8 @@ staticQueryData = staticQueryData ?? new { };
 		items.forEach(function (item) {
 			item.RecordId = item.RecordId || item.Id; //Fix the differential between RecordId and Id from two different sources
 		});
-		console.log("Updating organization relationship", Selector);
-		console.log("With items", items);
+		//console.log("Updating organization relationship", Selector);
+		//console.log("With items", items);
 		items = Array.isArray(items) ? items : [];
 		Selector.ResultsBox.html("");
 		Selector.SelectedBox.html("");
@@ -780,7 +936,10 @@ staticQueryData = staticQueryData ?? new { };
 		var currentQuery = {
 			Keywords: Selector.KeywordsInput.val().trim(),
 			PageSize: Selector.CurrentPageSize,
-			PageNumber: Selector.CurrentPageNumber
+            PageNumber: Selector.CurrentPageNumber,
+            UseSimpleSearch: true,
+            SortOrder : "alpha",
+			SearchType: Selector.SearchType
 		};
 		var query = Object.assign({}, Selector.StaticQueryData, currentQuery);
 		Selector.StatusBox.html("Searching... <i class=\"fa fa-spin fa-spinner\"></i>");
@@ -876,6 +1035,7 @@ staticQueryData = staticQueryData ?? new { };
 			var Entry = {};
 			Entry.Box = $(this);
 			Entry.Keywords = Entry.Box.find("[data-entryproperty='Keywords']");
+			Entry.Subjects = Entry.Box.find("[data-entryproperty='Subjects']");
 			Entry.SelectedBox = Entry.Box.find(".selectedList");
 			Entry.Template = $("#template_textlist_item").html();
 			Entry.CurrentItems = [];
@@ -884,6 +1044,11 @@ staticQueryData = staticQueryData ?? new { };
 			Entry.Keywords.on("keyup", function (e) {
 				if (e.which == 13 || e.keyCode == 13) {
 					TextLists.addItem(Entry, Entry.Keywords.val().trim());
+				}
+			});
+			Entry.Subjects.on("keyup", function (e) {
+				if (e.which == 13 || e.keyCode == 13) {
+					TextLists.addItem(Entry, Entry.Subjects.val().trim());
 				}
 			});
 			Entry.Box[0].getEntity = function () { return Entry; }
@@ -1199,7 +1364,7 @@ staticQueryData = staticQueryData ?? new { };
 			if (Picker.SelectedItems.length == 0) {
 				Picker.Selector.find("option[value='-1']").prop("selected", true);
 			}
-			else if(Picker.SelectedItems.length == 1) {
+			else if (Picker.SelectedItems.length == 1) {
 				Picker.Selector.find("option[value='" + Picker.SelectedItems[0].Value + "']").prop("selected", true);
 			}
 			Locations.updateSelection(Selector, Picker);
@@ -1217,7 +1382,7 @@ staticQueryData = staticQueryData ?? new { };
 	Locations.success_updatePickerOptions = function (Selector, message, passThrough) {
 		var Picker = passThrough.Picker;
 		if (message.valid) {
-			var items = message.data.map(function (m) { return m.Name; } )
+			var items = message.data.map(function (m) { return m.Name; })
 			Locations.resetPickerSelector(Selector, Picker);
 			items.forEach(function (item) {
 				Picker.Selector.append("<option value=\"" + item + "\">" + item + "</option>");
@@ -1406,9 +1571,13 @@ staticQueryData = staticQueryData ?? new { };
 	/* Common Stuff */
 	.section { margin-bottom: 25px; }
 	.guidanceText { background-color: rgba(69,160,133,0.03); margin: 5px 10px; position: relative; padding: 5px 5px 5px 40px; min-height: 45px; }
-	.guidanceText::before { content: '\f05a'; font-size: 25px; padding: 10px; font-family: FontAwesome; position: absolute; top: 0; left: 0; width: 30px; height: 30px; }
+    .guidanceText .fa-info-circle {  font-size: 25px; padding: 10px; position: absolute; top: 0; left: 0; width: 30px; height: 30px; }
 	.guidanceText p { padding: 0; margin: 5px; }
-	.helpText { padding: 0 5px; } /* More downplayed than guidanceText */
+	.helpText { padding: 0 5px; }
+	#mainSiteFooter {display: none;}
+	#globalButtons { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background-color: #555; border-top: 1px solid #333; padding: 2px 10px; z-index: 50; font-size: 0; }
+
+	/* More downplayed than guidanceText */
 	.removableValue { display: inline-flex; align-items: center; padding: 2.5px; border: 1px solid rgba(0,0,0,0.05); margin: 2.5px; white-space: nowrap; }
 	.removableValue .value { flex: 100% 1 1; padding: 0 5px; }
 	.removableValue button { flex: 25px 0 0; margin-left: 5px; }
@@ -1420,10 +1589,12 @@ staticQueryData = staticQueryData ?? new { };
 	.formItem { display: flex; align-items: baseline; margin-bottom: 15px; }
 	.formItem .label { flex: 250px 0 0; display: flex; align-items: baseline; }
 	.formItem .label .labelText { flex: 100% 1 1; text-align: right; }
-	.formItem .label.simpleLabel { margin-right: 40px; } /* Labels without a required marker or info bubble */
+	.formItem .label.simpleLabel { margin-right: 40px; }
+	/* Labels without a required marker or info bubble */
 	.formItem .label .required { flex: 20px 0 0; text-align: center; color: #D33; font-weight: bold; }
 	.formItem .label .infoBubble { flex: 20px 0 0; text-align: center; }
-	.formItem .label .hidden { opacity: 0; } /* Keep consistent spacing between the label text and the input field */
+	.formItem .label .hidden { opacity: 0; }
+	/* Keep consistent spacing between the label text and the input field */
 	.formItem .label .infoBubble.hidden { opacity: 0; }
 	.formItem .value { flex: 100% 1 1; display: flex; }
 	.formItem .value input[type='text'], .formItem .value select, .formItem .value textarea { display: block; width: 100%; }
@@ -1458,6 +1629,7 @@ staticQueryData = staticQueryData ?? new { };
 	.widgetsBox .widgetsListBox .newWidgetButton { display: block; width: 100%; padding: 5px; }
 	.widgetsBox .widgetBasicData { flex: 50% 0 0; }
 	.widgetsBox .widgetBasicData .buttons { text-align: right; }
+    .widgetBanner { position: relative; right: 70px; }
 
 	/* Location Filter */
 	.locationSelector { flex: 100% 1 1; }
@@ -1478,6 +1650,7 @@ staticQueryData = staticQueryData ?? new { };
 	.microsearchSelector .microsearchStatus { text-align: center; padding: 5px; }
 	.microsearchSelector .microresult { display: flex; background-color: #FFF; border-top: 1px solid rgba(0,0,0,0.1); margin-bottom: 2.5px; padding: 5px; }
 	.microsearchSelector .microresult .resultData { flex: 100% 1 1; }
+	.microsearchSelector .microresult .resultData .owner { font-style: italic; padding: 1px 5px; font-size: 14px; }
 	.microsearchSelector .microresult .buttons { flex: 150px 0 0; margin-left: 10px; }
 	.microsearchSelector .microresult .buttons button { display: block; width: 100%; }
 	.microsearchSelector .microresult .description { font-size: 12px; height: 50px; overflow: hidden; position: relative; }
@@ -1539,12 +1712,32 @@ staticQueryData = staticQueryData ?? new { };
 	/* Miscellaneous */
 	.bigSaveButton { display: block; width: 100%; padding: 15px; font-size: 18px; }
 </style>
+<style type="text/css">
+	textarea { min-height: 8em; }
+	.summerNoteWrapper { width: 100%; }
+	.summerNoteWrapper .note-editor * { font-family: Gilroy, Tahoma, sans-serif; }
+	.summerNoteWrapper textarea { display: none; }
+	.summerNoteWrapper .summerNoteSpinner { padding: 5px; text-align: center; background-color: rgba(0,0,0,0.05); }
 
-<div class="editorBox" data-type="formObject" data-mode="selectWidget">
+	/* Keep in sync with custom page */
+	.summerNoteWrapper h1, .summerNoteWrapper h2, .summerNoteWrapper h3, .summerNoteWrapper h4, .summerNoteWrapper h5, .summerNoteWrapper h6 { color: rgba(0,0,50,1); font-weight: normal; margin: 0; padding: 0; font-family: 'Titillium Web', Gilroy, Tahoma, Arial, sans-serif; }
+	.summerNoteWrapper h1 { font-size: 50px; margin-bottom: 25px; }
+	.summerNoteWrapper h2 { font-size: 38px; margin: 25px 0 15px 0; }
+	.summerNoteWrapper h3 { font-size: 30px; }
+	.summerNoteWrapper h4 { font-size: 24px; }
+	.summerNoteWrapper h5 { font-size: 20px; }
+	.summerNoteWrapper h6 { font-size: 18px; }
+	.summerNoteWrapper p, .summerNoteWrapper ul, .summerNoteWrapper ol, .summerNoteWrapper dl { font-size: 16px; line-height: 1.5em; }
+	.summerNoteWrapper a { color: #45A085; }
+	.summerNoteWrapper a:hover, .summerNoteWrapper a:focus { color: #55B095; }
+	/* End sync */
+
+</style>
+<div class="editorBox" data-type="formObject" data-mode="selectWidget" >
 	@* Widget Selector *@
 	<div class="widgetSelector" data-visible="true">
 		@RenderHeader( "h2", "Create or Edit a Widget", "create", "" )
-		<div class="guidanceText">
+		<div class="guidanceText">@RenderInfoIcon()
 			<p>This tool allows you to customize a search widget for use by your staff and customers.</p>
 			<ul>
 				<li>To create a new widget, enter the name of the widget and click on save button.</li>
@@ -1592,35 +1785,54 @@ staticQueryData = staticQueryData ?? new { };
 	</div>
 
 	@* Widget Editor *@
-	<div class="widgetEditor" data-visible="false">
-		@RenderHeader( "h2", "Search and Filtering", "filters", "" )
+    <div class="widgetEditor" data-visible="false">
 
-		@* Location Filters *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Location Filters", "locationfilters", "filters" )
-			<div class="collapseContent">
-				<div class="guidanceText">
-					<p>Select locations at the desired level of specificity. You may select multiple countries, or one country and multiple regions, or one country, one region, and multiple cities.</p>
-				</div>
-				@RenderLocationSelector( "Limit Search Locations", "Locations", countries )
-			</div>
-		</div>
+        @RenderHeader( "h2", "Configure Available Searches", "filters", "" )
 
-		@* Credential Filters *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Credential Filters", "credentialfilters", "filters" )
+        @RenderFormItem( "Hide Searches", "HideGlobalFilters", FormItemType.CheckBoxList, searchFiltersCheckbox, false, "Select search types to hide in the widget." )
+
+        @* Widget Banner*@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Widget Banner", "WidgetBanner", "Banners" )
+            <div class="collapseContent">
+                <div class="guidanceText"> @RenderInfoIcon()
+                                <p>If you would like to display custom text in the widget banner, enter here.</p>
+                            </div>
+                <div class="widgetBanner">
+                    @RenderFormItem( "Widget Banner Text", "BannerText", FormItemType.SummerNote, null, false, "Provide information that you wish to present at the top of the widget." )
+                </div>
+            </div>
+        </div>
+
+        @* Location Filters *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Location Filters", "locationfilters", "filters" )
+            <div class="collapseContent">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Select locations at the desired level of specificity. You may select multiple countries, or one country and multiple regions, or one country, one region, and multiple cities.</p>
+                            </div>
+                @RenderLocationSelector( "Limit Search Locations", "Locations", countries )
+            </div>
+        </div>
+
+        @* Credential Filters *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Credential Filters", "credentialfilters", "filters" )
 			<div class="collapseContent" data-property="CredentialFilters" data-type="formObject">
-				<div class="guidanceText">
-					<p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
-				</div>
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
+                            </div>
 
 				@RenderHeader( "h4", "Connections", "credential_connections", "credentialfilters" )
-				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to credentials that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "Credential" } )
-				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to credentials that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Credential" } )
-				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to credentials that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Credential" } )
-				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to credentials that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Credential" } )
-				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to credentials that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Credential" } )
+				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "RelatedEntitySearch", "Limit search results to credentials that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "Credential" } )
+				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "RelatedEntitySearch", "Limit search results to credentials that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Credential" } )
+				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "RelatedEntitySearch", "Limit search results to credentials that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "AccreditedBy", RelatedTo = "Credential" } )
+				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "RelatedEntitySearch", "Limit search results to credentials that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "ApprovedBy", RelatedTo = "Credential" } )
+				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "RelatedEntitySearch", "Limit search results to credentials that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "RegulatedBy", RelatedTo = "Credential" } )
 
+				@RenderHeader( "h4", "Specific Credentials", "credential_list", "credentialfilters" )
+				@RenderMicrosearchSelector( "Allowed Credentials", "Credentials", "PotentialResults", "Widget", "RelatedEntitySearch", "If this widget should only show specific credentials, use this search to find and select the target credentials.", "RecordId", new { }, "Credential", "#template_microsearch_result_nonorganization", "#template_microsearch_result_nonorganization" )
+				
 				@RenderHeader( "h4", "Tags", "credential_tags", "credentialfilters" )
 				@foreach ( var filter in credentialStringFilters )
 				{
@@ -1628,23 +1840,30 @@ staticQueryData = staticQueryData ?? new { };
 				}
 
 				@RenderHeader( "h4", "Filters", "credential_filters", "credentialfilters" )
+
+				<h5>Hiding the filters</h5>
+				<pre>A common reason to hide filters would be that there is no data specific to the current widget. That is no results are returned when selecting any of the options for a filter with your active widget.</pre>
+				<pre><b>For example:</b>if you were to preview your widget, and if none of the Credential Learning Delivery Type filters return results, then you should select to hide the latter filter.</pre>
 				@RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, credentialCheckboxFilters.Concat( credentialStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the credential search." )
 
 			</div>
-		</div>
+        </div>
 
-		@* Organization Filters *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Organization Filters", "organizationfilters", "filters" )
-			<div class="collapseContent" data-property="OrganizationFilters" data-type="formObject">
-				<div class="guidanceText">
-					<p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
-				</div>
+        @* Organization Filters *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Organization Filters", "organizationfilters", "filters" )
+            <div class="collapseContent" data-property="OrganizationFilters" data-type="formObject">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
+                            </div>
 
 				@RenderHeader( "h4", "Connections", "organization_connections", "organizationfilters" )
-				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to organizations that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Organization" } )
-				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to organizations that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Organization" } )
-				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to organizations that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Organization" } )
+				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "RelatedEntitySearch", "Limit search results to organizations that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "AccreditedBy", RelatedTo = "Organization" } )
+				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "RelatedEntitySearch", "Limit search results to organizations that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "ApprovedBy", RelatedTo = "Organization" } )
+				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "RelatedEntitySearch", "Limit search results to organizations that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "RegulatedBy", RelatedTo = "Organization" } )
+			
+					@RenderHeader( "h4", "Specific Organizations", "organization_list", "organizationfilters" )
+				@RenderMicrosearchSelector( "Allowed Organizations", "Organizations", "PotentialResults", "Widget", "RelatedEntitySearch", "If this widget should only show specific organizations, use this search to find and select the target organizations.", "RecordId", new { }, "Organization" )
 
 				@RenderHeader( "h4", "Tags", "organization_tags", "organizationfilters" )
 				@foreach ( var filter in organizationStringFilters )
@@ -1652,188 +1871,218 @@ staticQueryData = staticQueryData ?? new { };
 					@RenderFormItem( filter.Label, filter.Value, FormItemType.TextList )
 				}
 
-				@RenderHeader( "h4", "Filters", "organization_filters", "organizationfilters" )
-				@RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, organizationCheckboxFilters.Concat( organizationStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the organization search." )
-			</div>
-		</div>
+                @RenderHeader( "h4", "Filters", "organization_filters", "organizationfilters" )
+                <h5>Hiding the filters</h5>
+                <pre>The main reason to hide filters would be that, there is no data specific to the current widget. That is no results are returned when selecting any of the options for a filter with your active widget.</pre>
+                <pre><b>For example:</b>if you were to preview your widget, none of the Credential Learning Delivery types result in results,and then you should select to hide the latter filter</pre>
+                @RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, organizationCheckboxFilters.Concat( organizationStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the organization search." )
+            </div>
+        </div>
 
-		@* Assessment Filters *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Assessment Filters", "assessmentfilters", "filters" )
-			<div class="collapseContent" data-property="AssessmentFilters" data-type="formObject">
-				<div class="guidanceText">
-					<p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
-				</div>
+        @* Assessment Filters *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Assessment Filters", "assessmentfilters", "filters" )
+            <div class="collapseContent" data-property="AssessmentFilters" data-type="formObject">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
+                            </div>
 
 				@RenderHeader( "h4", "Connections", "assessment_connections", "assessmentfilters" )
-				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to assessments that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "Assessment" } )
-				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to assessments that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
-				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to assessments that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
-				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to assessments that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
-				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to assessments that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
-
+				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "RelatedEntitySearch", "Limit search results to assessments that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "Assessment" } )
+				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "RelatedEntitySearch", "Limit search results to assessments that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
+				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "RelatedEntitySearch", "Limit search results to assessments that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
+				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "RelatedEntitySearch", "Limit search results to assessments that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
+				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "RelatedEntitySearch", "Limit search results to assessments that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "Assessment" } )
+				
+		
+					@RenderHeader( "h4", "Specific Assessments", "assessment_list", "assessmentfilters" )
+					@RenderMicrosearchSelector( "Allowed Assessments", "Assessments", "PotentialResults", "Widget", "RelatedEntitySearch", "If this widget should only show specific assessments, use this search to find and select the target assessments", "RecordId", new { }, "Assessment" )
+				
 				@RenderHeader( "h4", "Tags", "assessment_tags", "assessmentfilters" )
 				@foreach ( var filter in assessmentStringFilters )
 				{
 					@RenderFormItem( filter.Label, filter.Value, FormItemType.TextList )
 				}
 
-				@RenderHeader( "h4", "Filters", "assessment_filters", "assessmentfilters" )
-				@RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, assessmentCheckboxFilters.Concat( assessmentStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the assessment search." )
+                @RenderHeader( "h4", "Filters", "assessment_filters", "assessmentfilters" )
+                <h5>Hiding the filters</h5>
+                <pre>The main reason to hide filters would be that, there is no data specific to the current widget. That is no results are returned when selecting any of the options for a filter with your active widget.</pre>
+                <pre><b>For example:</b>if you were to preview your widget, none of the Credential Learning Delivery types result in results,and then you should select to hide the latter filter</pre>
+                @RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, assessmentCheckboxFilters.Concat( assessmentStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the assessment search." )
 
-			</div>
-		</div>
+            </div>
+        </div>
 
-		@* Learning Opportunity Filters *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Learning Opportunity Filters", "learningopportunityfilters", "filters" )
+        @* Learning Opportunity Filters *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Learning Opportunity Filters", "learningopportunityfilters", "filters" )
 			<div class="collapseContent" data-property="LearningOpportunityFilters" data-type="formObject">
-				<div class="guidanceText">
-					<p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
-				</div>
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Select the filters to apply to the widget. Every search performed by a user of the widget will have these filters combined with the choices the user makes.</p>
+                            </div>
 
 				@RenderHeader( "h4", "Connections", "learningopportunity_connections", "learningopportunityfilters" )
-				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to learning opportunities that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "LearningOpportunity" } )
-				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to learning opportunities that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
-				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to learning opportunities that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
-				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to learning opportunities that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
-				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "OrganizationConnectionSearch", "Limit search results to learning opportunities that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
+				@RenderMicrosearchSelector( "Owned By Organizations", "Organizations", "OwnedBy", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are <b>owned by</b> the organizations you select here.", "RecordId", new { Relationship = "OwnedBy", RelatedTo = "LearningOpportunity" } )
+				@RenderMicrosearchSelector( "Offered By Organizations", "Organizations", "OfferedBy", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are <b>offered by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
+				@RenderMicrosearchSelector( "Accredited By Organizations", "Organizations", "AccreditedBy", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are <b>accredited by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
+				@RenderMicrosearchSelector( "Approved By Organizations", "Organizations", "ApprovedBy", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are <b>approved by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
+				@RenderMicrosearchSelector( "Regulated By Organizations", "Organizations", "RegulatedBy", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are <b>regulated by</b> the organizations you select here.", "RecordId", new { Relationship = "OfferedBy", RelatedTo = "LearningOpportunity" } )
 
-				@RenderHeader( "h4", "Tags", "learningopportunity_tags", "learningopportunityfilters" )
-				@foreach ( var filter in learningOpportunityStringFilters )
-				{
-					@RenderFormItem( filter.Label, filter.Value, FormItemType.TextList )
-				}
+					@RenderHeader( "h4", "Specific Learning Opportunities", "learningopportunity_list", "learningopportunityfilters" )
+					@RenderMicrosearchSelector( "Allowed Learning Opportunities", "Learning Opportunities", "PotentialResults", "Widget", "RelatedEntitySearch", "Limit search results to learning opportunities that are in the list of learning opportunities you select here.", "RecordId", new { }, "LearningOpportunity" )
+				
 
-				@RenderHeader( "h4", "Filters", "learningopportunity_filters", "learningopportunityfilters" )
-				@RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, learningOpportunityCheckboxFilters.Concat( learningOpportunityStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the learning opportunity search." )
+                @RenderHeader( "h4", "Tags", "learningopportunity_tags", "learningopportunityfilters" )
+                @foreach ( var filter in learningOpportunityStringFilters )
+                {
+                    @RenderFormItem( filter.Label, filter.Value, FormItemType.TextList )
+                }
 
-			</div>
-		</div>
-
-		@* Search Features *@
-		@RenderHeader( "h2", "Features", "features", "" )
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Search Features", "searchfeatures", "features" )
-			<div class="collapseContent">
-				<div class="guidanceText">
-					<p>Here you can customize a selection of features to be displayed and offered by your search widget.</p>
-				</div>
-
-				<div class="inputBox">
-					@RenderFormItem( "Logo URL", "LogoUrl", FormItemType.Text, null, false, "A URL to your website's logo. Must be publicly accessible." )
-					@RenderFormItem( "Toggle Search Features", "SearchFeatures", FormItemType.CheckBoxList, searchFeatures )
-					@RenderFormItem( "Custom CSS URL", "CustomCssUrl", FormItemType.Text )
-				</div>
-				<div class="exampleBox">
-
-				</div>
-			</div>
-		</div>
-
-		@* Colors *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Colors", "colors", "features" )
-			<div class="collapseContent">
-				<div class="guidanceText">
-					<p>Here you can customize the colors used by the search widget to help it blend in with your site.</p>
-				</div>
-
-				<div class="colors colorPairList" data-property="WidgetColors" data-type="colorpairlist">
-					@RenderColorSelector( "Header and Filters", "SiteHeader", "#FFFFFF", "#0F3E63", "These colors are used for the header and filters sections." )
-					@RenderColorSelector( "Search Result Links", "SearchResultLink", "#1C73B5", "transparent", "These colors are used for the titles of each search result." )
-					@RenderColorSelector( "Search Result Buttons", "SearchResultButton", "#3D4443", "#DDDDDD", "These colors are used for the search button." )
-					@RenderColorSelector( "Logo Box", "LogoBox", "#FFFFFF", "#FFFFFF", "These colors are used to surround the logo." )
-				</div>
-			</div>
-		</div>
-
-		@* Standalone Widget Preview *@
-		@RenderHeader( "h2", "Preview", "preview", "" )
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Standalone Widget", "standalonewidget", "preview" )
-			<div class="collapseContent">
-				<div class="guidanceText">
-					<p>Here you can give your search widget a customized URL. Use this if you intend to link directly to the widget instead of embedding it in your website.</p>
-				</div>
-
-				<div class="formItem customURLBox">
-					<div class="label simpleLabel">
-						<div class="labelText">Preview Widget</div>
-					</div>
-					<div class="value">
-						<a id="previewWidget" href="@Url.Content("~/")widget/searchwidget?widgetId=1" target="preview" style="display: none;">Preview Widget in new Window</a>
-					</div>
-				</div>
-				<div class="formItem customURLBox">
-					<div class="label simpleLabel">
-						<div class="labelText">Custom URL</div>
-					</div>
-					<div class="value">
-						<div class="standalonePreview urlNameBox">
-							<div class="urlPrefix">@( "https://" + Request.Url.Authority + "/w/" )</div>
-							<input type="text" data-property="UrlName" data-type="@FormItemType.Text.ToString()" />
-							@*<div class="buttons">
-								<button data-action="updatePreview">Preview without saving</button>
-							</div>*@
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		@* Iframe Widget Preview *@
-		<div class="collapseBox section" data-collapsed="true">
-			@RenderCollapseHeader( "Widget in a Frame", "iframewidget", "preview" )
-			<div class="collapseContent">
-				<div class="guidanceText">
-					<p>This tool will help you envision the widget as it would appear if embedded into your website, and to preview the changes you've made above.  The settings here do not affect the widget itself.</p>
-				</div>
-
-				<div class="iframePreviewBox">
-					<div class="iframeConfig">
-						<div class="configItem configWidth">
-							<div class="configTextBox">
-								<div class="label">Width (Pixels)</div>
-								<input type="text" data-subproperty="Width" value="400" />
-							</div>
-							<label class="checkboxLabel">
-								<input type="checkbox" data-subproperty="UseAutoPageWidth" checked="checked" />
-								<span>Use 100% page width</span>
-							</label>
-						</div>
-						<div class="configItem configHeight">
-							<div class="configTextBox">
-								<div class="label">Height (Pixels)</div>
-								<input type="text" data-subproperty="Height" value="400" />
-							</div>
-							<label class="checkboxLabel">
-								<input type="checkbox" data-subproperty="UseAutoPageHeight" />
-								<span>Enable dynamic height (requires Javascript)</span>
-							</label>
-						</div>
-						<div class="buttons">
-							<button data-action="updatePreview">Preview without saving</button>
-							@*<button class="greenButton" data-action="saveWidget">Save changes</button>*@
-						</div>
-					</div>
-					<div class="iframeEmbedCodeBox">
-						<div class="label">Embed Code</div>
-						<input type="text" readonly="readonly" data-subproperty="EmbedCode" />
-					</div>
-					<div class="iframeWrapper">
-						<iframe class="previewFrame"></iframe>
-					</div>
-				</div>
+                @RenderHeader( "h4", "Filters", "learningopportunity_filters", "learningopportunityfilters" )
+                <h5>Hiding the filters</h5>
+                <pre>The main reason to hide filters would be that, there is no data specific to the current widget. That is no results are returned when selecting any of the options for a filter with your active widget.</pre>
+                <pre><b>For example:</b>if you were to preview your widget, none of the Credential Learning Delivery types result in results,and then you should select to hide the latter filter</pre>
+                @RenderFormItem( "Hide Filters", "HideFilters", FormItemType.CheckBoxList, learningOpportunityCheckboxFilters.Concat( learningOpportunityStringFilters ).ToList().ConvertAll( m => new ValueItem( "Hide " + m.Label, m.Value ) ).ToList(), false, "Select filters to hide in the learning opportunity search." )
 
 			</div>
-		</div>
+        </div>
 
-		@RenderHeader( "h2", "Save and Apply Changes", "save", "" )
-		<button class="greenButton bigSaveButton" data-action="saveform">Save and Apply Changes</button>
+        @* Search Features *@
+        @RenderHeader( "h2", "Features", "features", "" )
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Search Features", "searchfeatures", "features" )
+            <div class="collapseContent">
+                <div class="guidanceText">
+                    @RenderInfoIcon()
+                <p>Here you can customize a selection of features to be displayed and offered by your search widget.</p>
+            </div>
 
-	</div>
-</div>
+            <div class="inputBox">
+                @RenderFormItem( "Logo URL", "LogoUrl", FormItemType.Text, null, false, "A URL to your website's logo. Must be publicly accessible." )
+                @RenderFormItem( "Toggle Search Features", "SearchFeatures", FormItemType.CheckBoxList, searchFeatures )
+                @RenderFormItem( "Custom CSS URL", "CustomCssUrl", FormItemType.Text )
+            </div>
+            <div class="previewInput" style="display: none;">
+                @using ( Ajax.BeginForm( "UploadLogo", "Widget",new AjaxOptions {
+                    HttpMethod = "POST",
+                    InsertionMode = InsertionMode.Replace,
+                } , new { id = "imageUploadForm", enctype = "multipart/form-data" } ) )
+                {
+                    <input type="file" name="imgFileUpload" style="margin-top:12px;" accept=".png,.jpg,.jpeg,.gif">
+                    <input type="submit" id="btnLogoUpload" value="Upload" onclick="uploadLogoImage()" />
+                }
+            </div>
+            <div class="exampleBox">
+
+            </div>
+            </div>
+        </div>
+
+        @* Colors *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Colors", "colors", "features" )
+            <div class="collapseContent">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Here you can customize the colors used by the search widget to help it blend in with your site.</p>
+                            </div>
+
+                <div class="colors colorPairList" data-property="WidgetColors" data-type="colorpairlist">
+                    @RenderColorSelector( "Header and Filters", "SiteHeader", "#FFFFFF", "#0F3E63", "These colors are used for the header and filters sections." )
+                    @RenderColorSelector( "Search Result Links", "SearchResultLink", "#1C73B5", "transparent", "These colors are used for the titles of each search result." )
+                    @RenderColorSelector( "Search Result Buttons", "SearchResultButton", "#3D4443", "#DDDDDD", "These colors are used for the search button." )
+                    @RenderColorSelector( "Logo Box", "LogoBox", "#FFFFFF", "#FFFFFF", "These colors are used to surround the logo." )
+                </div>
+            </div>
+        </div>
+
+        @* Standalone Widget Preview *@
+        @RenderHeader( "h2", "Preview", "preview", "" )
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Standalone Widget", "standalonewidget", "preview" )
+            <div class="collapseContent">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>Here you can give your search widget a customized URL. Use this if you intend to link directly to the widget instead of embedding it in your website. <br/> Just enter the custom name you prefer for your widget, and click the Save button below. The system will only allow unique values for the widget name. </p>
+                            </div>
+
+                <div class="formItem customURLBox">
+                    <div class="label simpleLabel">
+                        <div class="labelText">Preview Widget</div>
+                    </div>
+                    <div class="value">
+                        <a id="previewWidget" href="@Url.Content("~/")widget/searchwidget?widgetId=1" target="preview" style="display: none;">Preview Widget in new Window</a>
+                    </div>
+                </div>
+                <div class="formItem customURLBox">
+                    <div class="label simpleLabel">
+                        <div class="labelText">Custom URL</div>
+                    </div>
+                    <div class="value">
+                        <div class="standalonePreview urlNameBox">
+                            <div class="urlPrefix">@( "https://" + Request.Url.Authority + "/w/" )</div>
+                            <input type="text" data-property="UrlName" data-type="@FormItemType.Text.ToString()" />
+                            @*<div class="buttons">
+                                <button data-action="updatePreview">Preview without saving</button>
+                            </div>*@
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Iframe Widget Preview *@
+        <div class="collapseBox section" data-collapsed="true">
+            @RenderCollapseHeader( "Widget in a Frame", "iframewidget", "preview" )
+            <div class="collapseContent">
+                <div class="guidanceText">@RenderInfoIcon()
+                                <p>This tool will help you envision the widget as it would appear if embedded into your website, and to preview the changes you've made above.  The settings here do not affect the widget itself.</p>
+                            </div>
+
+                <div class="iframePreviewBox">
+                    <div class="iframeConfig">
+                        <div class="configItem configWidth">
+                            <div class="configTextBox">
+                                <div class="label">Width (Pixels)</div>
+                                <input type="text" data-subproperty="Width" value="400" />
+                            </div>
+                            <label class="checkboxLabel">
+                                <input type="checkbox" data-subproperty="UseAutoPageWidth" checked="checked" />
+                                <span>Use 100% page width</span>
+                            </label>
+                        </div>
+                        <div class="configItem configHeight">
+                            <div class="configTextBox">
+                                <div class="label">Height (Pixels)</div>
+                                <input type="text" data-subproperty="Height" value="400" />
+                            </div>
+                            <label class="checkboxLabel">
+                                <input type="checkbox" data-subproperty="UseAutoPageHeight" />
+                                <span>Enable dynamic height (requires Javascript)</span>
+                            </label>
+                        </div>
+                        <div class="buttons">
+                            <button data-action="updatePreview">Preview without saving</button>
+                            @*<button class="greenButton" data-action="saveWidget">Save changes</button>*@
+                        </div>
+                    </div>
+                    <div class="iframeEmbedCodeBox">
+                        <div class="label">Embed Code</div>
+                        <input type="text" readonly="readonly" data-subproperty="EmbedCode" />
+                    </div>
+                    <div class="iframeWrapper">
+                        <iframe class="previewFrame"></iframe>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div style="margin-top:60px;">
+        </div>
+        <div id="globalButtons">
+            @*@RenderHeader( "h2", "Save and Apply Changes", "save", "" )*@
+            <button class="greenButton bigSaveButton" data-action="saveform">Save and Apply Changes</button>
+        </div>
+    </div>
+        </div>
 
 <div id="templates" style="display:none;">
 
@@ -1859,27 +2108,43 @@ staticQueryData = staticQueryData ?? new { };
 		</div>
 	</script>
 
-	@* Microsearch Result - Organization *@
-	<script type="text/template" id="template_microsearch_result_organization">
-		<div class="microresult organization" data-ctid="{Properties.ctid}" data-uniquefilter="{RecordId}">
-			<div class="resultData">
-				<div class="name"><a href="@Url.Content( "~/organization/" ){RecordId}" target="_blank">{Name}</a></div>
-				<div class="description">{Description}</div>
-			</div>
-			<div class="buttons">
-				<button class="greenButton" data-action="addItem">Add Organization</button>
-				<button class="redButton" data-action="removeItem">Remove</button>
-			</div>
-		</div>
-	</script>
+            @* Microsearch Result - Organization *@
+            <script type="text/template" id="template_microsearch_result_organization">
+                <div class="microresult organization" data-ctid="{Properties.ctid}" data-uniquefilter="{RecordId}">
+                    <div class="resultData">
+                        <div class="name"><a href="@Url.Content( "~/organization/" ){RecordId}" target="_blank">{Name}</a></div>
+                        <div class="description">{Description}</div>
+                    </div>
+                    <div class="buttons">
+                        <button class="greenButton" data-action="addItem">Add Result</button>
+                        <button class="redButton" data-action="removeItem">Remove</button>
+                    </div>
+                </div>
+            </script>
 
-	@* Text List Item *@
-	<script type="text/template" id="template_textlist_item">
-		<div class="textListItem removableValue" data-value="">
-			<div class="value"></div>
-			<button class="redButton" data-action="remove">X</button>
-		</div>
-	</script>
+			@* Microsearch Result - Credential *@
+            <script type="text/template" id="template_microsearch_result_nonorganization">
+                <div class="microresult credential" data-ctid="{Properties.ctid}" data-uniquefilter="{RecordId}">
+                    <div class="resultData">
+                        <div class="name"><a href="@Url.Content( "~/" ){Properties.SearchType}/{RecordId}" target="_blank">{Name}</a></div>
+						<div class="owner"><a href="@Url.Content( "~/organization/" ){Properties.OwnerId}">{Properties.Owner}</a></div>
+                        <div class="description">{Description}</div>
+                    </div>
+                    <div class="buttons">
+                        <button class="greenButton" data-action="addItem">Add Result</button>
+                        <button class="redButton" data-action="removeItem">Remove</button>
+                    </div>
+                </div>
+            </script>
+
+
+            @* Text List Item *@
+            <script type="text/template" id="template_textlist_item">
+                <div class="textListItem removableValue" data-value="">
+                    <div class="value"></div>
+                    <button class="redButton" data-action="remove">X</button>
+                </div>
+            </script>
 
 	@* Location Selector - Picker value *@
 	<script type="text/template" id="template_locationselector_picker_value">

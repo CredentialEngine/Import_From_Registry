@@ -146,7 +146,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
             {
-                return ElasticServices.OrganizationAutoComplete( keyword, maxTerms, ref totalRows, widgetId );
+                return ElasticServices.OrganizationAutoComplete( keyword, maxTerms, ref totalRows );
             }
             else
             {

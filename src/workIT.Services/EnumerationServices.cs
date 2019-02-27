@@ -28,7 +28,13 @@ namespace workIT.Services
             e.ShowOtherValue = showOtherValue;
             return e;
         }
-        public MC.Enumeration GetEnumerationForRadioButtons( string dataSource, int preselectId = -1, bool getAll = true )
+		public MC.Enumeration EntityStatisticGetEnumeration( int entityTypeId, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = true )
+		{
+			MC.Enumeration e = CodesManager.GetEntityStatisticsAsEnumeration( entityTypeId, getAll );
+			e.InterfaceType = interfaceType;
+			return e;
+		}
+		public MC.Enumeration GetEnumerationForRadioButtons( string dataSource, int preselectId = -1, bool getAll = true )
         {
             MC.Enumeration e = CodesManager.GetEnumeration( dataSource, getAll );
             e.InterfaceType = MC.EnumerationType.SINGLE_SELECT;
@@ -100,8 +106,16 @@ namespace workIT.Services
             e.InterfaceType = interfaceType;
             return e;
         }
-        //
-        public MC.Enumeration GetEducationCredentialType( MC.EnumerationType interfaceType, bool getAll = true )
+		public MC.Enumeration GetCredentialStatusType( MC.EnumerationType interfaceType, bool getAll = true )
+		{
+
+			MC.Enumeration e = CodesManager.GetEnumeration( "credentialStatusType", getAll );
+			e.ShowOtherValue = true;
+			e.InterfaceType = interfaceType;
+			return e;
+		}
+		//
+		public MC.Enumeration GetEducationCredentialType( MC.EnumerationType interfaceType, bool getAll = true )
         {
 
             MC.Enumeration e = CodesManager.GetEnumeration( "credentialType", getAll, true );
@@ -125,13 +139,7 @@ namespace workIT.Services
             e.ShowOtherValue = true;
             return e;
         }
-        public MC.Enumeration GetAudienceTypes( MC.EnumerationType interfaceType, int entityTypeId, bool getAll = true )
-        {
-            MC.Enumeration e = CodesManager.GetSiteTotalsAsEnumeration( CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, entityTypeId, getAll );
-            e.InterfaceType = interfaceType;
-            e.ShowOtherValue = true;
-            return e;
-        }
+
         public MC.Enumeration GetSiteTotals( MC.EnumerationType interfaceType, int categoryId, int entityTypeId, bool getAll = true )
         {
 			MC.Enumeration e = CodesManager.GetSiteTotalsAsEnumeration( categoryId, entityTypeId, getAll );
@@ -422,46 +430,27 @@ namespace workIT.Services
             //return CodesManager.SOC_Search( headerId, keyword, pageNumber, pageSize,  ref totalRows, getAll );
             return CodesManager.ReferenceFramework_SearchInUse( 11, 1, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
         }
-        /// <summary>
-        /// SOC Search
-        /// TODO - need to include the parentId, so search will not return items already selected
-        /// </summary>
-        /// <param name="keyword"></param>
-        /// <param name="maxTerms"></param>
-        /// <returns></returns>
-        //public static List<CodeItem> SOC_Search( int headerId = 0, string keyword = "", int pageNumber = 1, int maxRows = 25 )
+       
+        //public static MC.Enumeration SOC_Categories_Enumeration( bool getAll = true )
         //{
-        //	int totalRows = 0;
-        //	return CodesManager.SOC_Search( headerId, keyword, pageNumber, maxRows, ref totalRows );
-        //}
-        public static List<CodeItem> SOC_Autocomplete( int credentialId, int headerId = 0, string keyword = "", int maxRows = 25 )
-        {
-            return CodesManager.SOC_Autocomplete( headerId, keyword, maxRows );
-        }
-        public static List<CodeItem> SOC_Categories()
-        {
-            return CodesManager.SOC_Categories();
-        }
-        public static MC.Enumeration SOC_Categories_Enumeration( bool getAll = true )
-        {
-            var data = new List<CodeItem>();
-            if ( getAll )
-                data = CodesManager.SOC_Categories();
-            else
-            {
-                //show all until the custom one is fixed
-                //data = CodesManager.SOC_Categories();
-                data = CodesManager.SOC_CategoriesInUse();
-            }
+        //    var data = new List<CodeItem>();
+        //    if ( getAll )
+        //        data = CodesManager.SOC_Categories();
+        //    else
+        //    {
+        //        //show all until the custom one is fixed
+        //        //data = CodesManager.SOC_Categories();
+        //        data = CodesManager.SOC_CategoriesInUse();
+        //    }
 
-            var result = new MC.Enumeration()
-            {
-                Id = 11,
-                Name = "Standard Occupation Codes (SOC)",
-                Items = ConvertCodeItemsToEnumeratedItems( data )
-            };
-            return result;
-        }
+        //    var result = new MC.Enumeration()
+        //    {
+        //        Id = 11,
+        //        Name = "Standard Occupation Codes (SOC)",
+        //        Items = ConvertCodeItemsToEnumeratedItems( data )
+        //    };
+        //    return result;
+        //}
 
         #endregion
         #region NAICS

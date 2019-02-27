@@ -8,7 +8,7 @@ namespace workIT.Models.Elastic
         {
             AssessesCompetencies = new List<IndexCompetency>();
             RequiresCompetencies = new List<IndexCompetency>();
-            TextValues = new List<string>();            
+              
             RelationshipTypes = new List<int>();
             SubjectAreas = new List<string>();
            // SubjectAreas1 = new List<string>();
@@ -18,9 +18,21 @@ namespace workIT.Models.Elastic
         }
 
 		public int NameIndex { get; set; }
-		public int OwnerOrganizationId { get; set; }
-		public string Organization { get; set; }    //rename
-
+		public int OwnerOrganizationId
+		{
+			get { return PrimaryOrganizationId; }
+			set { this.PrimaryOrganizationId = value; }
+		}
+		public string OwnerOrganizationName
+		{
+			get { return PrimaryOrganizationName; }
+			set { this.PrimaryOrganizationName = value; }
+		}
+		public string OwnerOrganizationCTID
+		{
+			get { return PrimaryOrganizationCTID; }
+			set { this.PrimaryOrganizationCTID = value; }
+		}
 		//public int EntityTypeId { get; set; } = 3;
 		//public int Id { get; set; }
 		//public Guid RowId { get; set; }
@@ -84,7 +96,7 @@ namespace workIT.Models.Elastic
 		/// Subject
 		/// Keyword
 		/// </summary>
-		public List<string> TextValues { get; set; } = new List<string>();
+		//public List<string> TextValues { get; set; } = new List<string>();
 		public List<string> PremiumValues { get; set; } = new List<string>();
 		public List<int> ReportFilters { get; set; } = new List<int>();
         //public string Subject { get; set; }
@@ -96,21 +108,26 @@ namespace workIT.Models.Elastic
         public List<int> AssessmentUseTypeIds { get; set; } = new List<int>();
         public List<int> ScoringMethodTypeIds { get; set; } = new List<int>();
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
+		public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
 
-        public List<IndexProperty> AssessmentMethodTypes { get; set; } = new List<IndexProperty>();
-        public List<IndexProperty> AssessmentUseTypes { get; set; } = new List<IndexProperty>();
-        public List<IndexProperty> ScoringMethodTypes { get; set; } = new List<IndexProperty>();
+  //      public List<IndexProperty> AssessmentMethodTypes { get; set; } = new List<IndexProperty>();
+  //      public List<IndexProperty> AssessmentUseTypes { get; set; } = new List<IndexProperty>();
+  //      public List<IndexProperty> ScoringMethodTypes { get; set; } = new List<IndexProperty>();
+  //      public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
+		//public List<IndexProperty> AudienceTypes { get; set; } = new List<IndexProperty>();
+		public List<IndexProperty> AssessmentProperties { get; set; } = new List<IndexProperty>();
 
-        public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
-        public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
+		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
-        public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
+		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
 
         //QAAgentAndRoles - List actual orgIds and names for roles
         public string Org_QAAgentAndRoles { get; set; }
-        public List<int> QualityAssurances { get; set; } = new List<int>();
+        //public List<int> QualityAssurances { get; set; } = new List<int>();
 
-        public List<IndexQualityAssurance> QualityAssurance { get; set; }
+		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+		public List<IndexQualityAssurance> QualityAssurance { get; set; }
        // public string Org_QAAgentAndRoles { get; set; }
 
         public string CodedNotation { get; set; }
@@ -135,7 +152,9 @@ namespace workIT.Models.Elastic
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
         public int ProcessProfilesCount { get; set; }
-        public int HasCIP { get; set; }
+		public bool HasOccupations { get; set; }
+		public bool HasIndustries { get; set; }
+		public bool HasInstructionalPrograms { get; set; }
 
         //-actual connection type (no credential info)
         public string ConnectionsList { get; set; }

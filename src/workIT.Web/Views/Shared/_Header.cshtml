@@ -157,24 +157,25 @@
 
             <div class="headerMenu column" id="headerMenuSearch">
                 <button class="headerMenuTitle"><i class="fa fa-search"></i> Search <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
-                <div class="headerMenuList">
-                    @if ( widgetId > 0 )
-                    {
-                        <a href="@Url.Content( "~/search?searchtype=credential&widgetId="+widgetId )">Credentials</a>
-                        <a href="@Url.Content( "~/search?searchtype=organization&widgetId="+widgetId)">Organizations</a>
-                        <a href="@Url.Content( "~/search?searchtype=assessment&widgetId="+widgetId )">Assessments</a>
-                        <a href="@Url.Content( "~/search?searchtype=learningopportunity&widgetId="+widgetId )">Learning Opportunities</a>
-                        <a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
-                    }
-                    else
-                    {
-                        <a href="@Url.Content( "~/search?searchtype=credential" )">Credentials</a>
-                        <a href="@Url.Content( "~/search?searchtype=organization" )">Organizations</a>
-                        <a href="@Url.Content( "~/search?searchtype=assessment" )">Assessments</a>
-                        <a href="@Url.Content( "~/search?searchtype=learningopportunity" )">Learning Opportunities</a>
-                        <a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
-                    }
-                </div>
+				<div class="headerMenuList">
+					@if ( widgetId > 0 )
+					{
+						<a href="@Url.Content( "~/search?searchtype=credential&widgetId="+widgetId )">Credentials</a>
+						<a href="@Url.Content( "~/search?searchtype=organization&widgetId="+widgetId)">Organizations</a>
+						<a href="@Url.Content( "~/search?searchtype=assessment&widgetId="+widgetId )">Assessments</a>
+						<a href="@Url.Content( "~/search?searchtype=learningopportunity&widgetId="+widgetId )">Learning Opportunities</a>
+						<a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
+					}
+					else
+					{
+						<a href="@Url.Content( "~/search?searchtype=credential" )">Credentials</a>
+						<a href="@Url.Content( "~/search?searchtype=organization" )">Organizations</a>
+						<a href="@Url.Content( "~/search?searchtype=assessment" )">Assessments</a>
+						<a href="@Url.Content( "~/search?searchtype=learningopportunity" )">Learning Opportunities</a>
+						<a href="@Url.Content( "~/search?searchtype=competencyframework" )">Competency Frameworks</a>
+						@*<a class="blueButton" href="@Url.Content( "~/Reports" )"></a>*@
+					}
+				</div>
             </div>
 
 			<div class="headerMenu column" id="headerMenuAbout">

@@ -24,8 +24,7 @@ namespace workIT.Models.Common
 
         public string FrameworkUri { get; set; }
         public string FrameworkCtid { get; set; }
-        //this will be replace with SourceUrl eventually
-        public string FrameworkUrl { get; set; }
+
         public string SourceUrl { get; set; }
         public string FrameworkName { get; set; }
 
@@ -64,12 +63,24 @@ namespace workIT.Models.Common
 		/// Url for the framework
         /// TODO - inconsistancies between the urls???
 		/// </summary>
-		public string FrameworkUrl { get; set; }
+		//public string FrameworkUrl { get; set; }
         public string SourceUrl { get; set; }
         public string FrameworkUri { get; set; }
         public string FrameworkCtid { get; set; }
 		public string CaSSViewerUrl { get; set; }
-
+		public bool IsARegistryFrameworkUrl
+		{
+			get
+			{
+				if ( string.IsNullOrWhiteSpace( FrameworkUri ) )
+					return false;
+				else if ( FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) > -1
+					|| FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) > -1 )
+					return true;
+				else
+					return false;
+			}
+		}
 		public RegistryImport FrameworkPayload { get; set; } = new RegistryImport();
 
         public List<CredentialAlignmentObjectItem> Items { get; set; }

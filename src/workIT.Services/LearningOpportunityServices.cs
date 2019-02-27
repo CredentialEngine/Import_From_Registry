@@ -196,7 +196,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticServices.LearningOppAutoComplete( keyword, maxTerms, ref totalRows, widgetId );
+                return ElasticServices.LearningOppAutoComplete( keyword, maxTerms, ref totalRows );
             }
             else
             {

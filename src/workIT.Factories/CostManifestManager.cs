@@ -24,7 +24,6 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Factories.CostManifestManager";
 		EntityManager entityMgr = new EntityManager();
-		string statusMessage = "";
 
 		#region === -Persistance ==================
 		/// <summary>

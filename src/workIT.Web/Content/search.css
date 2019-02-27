@@ -112,6 +112,8 @@
 .result.organization .resultImageBox .resultImage { border: 1px solid #CAD9DB; background-image: linear-gradient(#CCC, #EEE); }
 .result.assessment .resultImageBox { display: none; }
 .result.learningopportunity .resultImageBox { display: none; }
+.result.competencyframework .resultImageBox { display: none; }
+.result.competencyframework .compareButton { display: none; }
 .result .resultDataBox { -webkit-flex: 100% 1 1; flex: 100% 1 1; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; padding: 0 10px; }
 .result .resultDataBox .resultHeader { position: relative; padding-right: 135px; min-height: 45px; }
 .result .resultDataBox .resultHeader .resultName { display: table; font-size: 24px; font-weight: bold; color: #607171; }
@@ -147,6 +149,7 @@
 .result .resultTagsBox .tagSetList:not(.selected) { display: none; }
 .result .resultTagsBox .tagSetList .guidance { padding: 5px; font-style: italic; }
 .result .resultTagsBox .tagSetItem { padding: 5px; margin: 2px; }
+
 /* Map */
 #mapBox { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; position: absolute; top: 0; right: 0; width: 50%; height: calc(100vh - 40px); background-color: #CCC; }
 #mapBox #mapHeader { background-color: #F5F5F5; min-height: 75px; padding: 5px 0; }

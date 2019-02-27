@@ -81,5 +81,6 @@ namespace workIT.Data.Tables
         public virtual DbSet<Widget> Widget { get; set; }
         public virtual DbSet<Entity_Cache> Entity_Cache { get; set; }
         public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
+        public virtual DbSet<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
     }
 }

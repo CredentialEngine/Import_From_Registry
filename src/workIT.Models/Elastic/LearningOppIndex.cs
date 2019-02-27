@@ -12,7 +12,6 @@ namespace workIT.Models.Elastic
         {
             TeachesCompetencies = new List<IndexCompetency>();
             RequiresCompetencies = new List<IndexCompetency>();
-            TextValues = new List<string>();
             RelationshipTypes = new List<int>();
             SubjectAreas = new List<string>();
             Classifications = new List<IndexReferenceFramework>();
@@ -48,8 +47,21 @@ namespace workIT.Models.Elastic
 
         public int NameIndex { get; set; }
         public string IdentificationCode { get; set; }
-        public int OwnerOrganizationId { get; set; }
-        public string Organization { get; set; }
+		public int OwnerOrganizationId
+		{
+			get { return PrimaryOrganizationId; }
+			set { this.PrimaryOrganizationId = value; }
+		}
+		public string OwnerOrganizationName
+		{
+			get { return PrimaryOrganizationName; }
+			set { this.PrimaryOrganizationName = value; }
+		}
+		public string OwnerOrganizationCTID
+		{
+			get { return PrimaryOrganizationCTID; }
+			set { this.PrimaryOrganizationCTID = value; }
+		}
         
         //public DateTime Created { get; set; }
         //public DateTime LastUpdated { get; set; }
@@ -75,22 +87,25 @@ namespace workIT.Models.Elastic
 		/// Subject
 		/// Keyword
 		/// </summary>
-		public List<string> TextValues { get; set; } = new List<string>();
+		//public List<string> TextValues { get; set; } = new List<string>();
 		public List<string> PremiumValues { get; set; } = new List<string>();
 		public List<string> SubjectAreas { get; set; }
         public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
-        public List<IndexProperty> LearningMethodTypes { get; set; } = new List<IndexProperty>();
-        public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
+        //public List<IndexProperty> LearningMethodTypes { get; set; } = new List<IndexProperty>();
+        //public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
+		public List<IndexProperty> LoppProperties { get; set; } = new List<IndexProperty>();
+		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
-        public List<IndexReferenceFramework> Classifications { get; set; }
+		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		public List<IndexReferenceFramework> Classifications { get; set; }
         //QAAgentAndRoles - List actual orgIds and names for roles
         public string Org_QAAgentAndRoles { get; set; }
-        public List<int> QualityAssurances { get; set; } = new List<int>();
+        //public List<int> QualityAssurances { get; set; } = new List<int>();
         public List<IndexQualityAssurance> QualityAssurance { get; set; }
-        //public string Org_QAAgentAndRoles { get; set; }
 
-        public string CodedNotation { get; set; }
+		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+		public string CodedNotation { get; set; }
      
         public int CompetenciesCount { get; set; }
         public string ListTitle { get; set; }
@@ -114,7 +129,9 @@ namespace workIT.Models.Elastic
 		public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 		public string TypesResults { get; set; }
 		public List<string> Keyword { get; set; } = new List<string>();
-
+		public bool HasOccupations { get; set; }
+		public bool HasIndustries { get; set; }
+		public bool HasInstructionalPrograms { get; set; }
 		#region counts
 		//connections
 		public int RequiresCount { get; set; }

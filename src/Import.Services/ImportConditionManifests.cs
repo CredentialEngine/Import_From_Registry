@@ -11,8 +11,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.ConditionManifestServices;
 using InputEntity = RA.Models.Json.ConditionManifest;
 
-using InputEntityV3 = RA.Models.JsonV3.ConditionManifest;
-using BNodeV3 = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.ConditionManifest;
+using BNodeV3 = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.Common.ConditionManifest;
 using workIT.Factories;
 using workIT.Models;

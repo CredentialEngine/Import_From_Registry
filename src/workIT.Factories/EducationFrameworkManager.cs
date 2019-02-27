@@ -103,50 +103,56 @@ namespace workIT.Factories
 			int count = 0;
 
 			DBEntity efEntity = new DBEntity();
-			using ( var context = new EntityContext() )
+			try
 			{
-
-				if ( ValidateProfile( entity, ref status ) == false )
+				using ( var context = new EntityContext() )
 				{
-					return false;
-				}
 
-				if ( entity.Id == 0 )
-				{
-					//add
-					efEntity = new DBEntity();
-					MapToDB( entity, efEntity );
-
-					efEntity.Created = DateTime.Now;
-					efEntity.RowId = Guid.NewGuid();
-
-					context.EducationFramework.Add( efEntity );
-
-					count = context.SaveChanges();
-
-					entity.Id = efEntity.Id;
-					entity.RowId = efEntity.RowId;
-					if ( count == 0 )
+					if ( ValidateProfile( entity, ref status ) == false )
 					{
-						status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.FrameworkName ) ? "no description" : entity.FrameworkName ) );
+						return false;
 					}
-				}
-				else
-				{
 
-					efEntity = context.EducationFramework.SingleOrDefault( s => s.Id == entity.Id );
-					if ( efEntity != null && efEntity.Id > 0 )
+					if ( entity.Id == 0 )
 					{
-						entity.RowId = efEntity.RowId;
-						//update
+						//add
+						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
-						//has changed?
-						if ( HasStateChanged( context ) )
+
+						efEntity.Created = DateTime.Now;
+						efEntity.RowId = Guid.NewGuid();
+
+						context.EducationFramework.Add( efEntity );
+
+						count = context.SaveChanges();
+
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						if ( count == 0 )
 						{
-							count = context.SaveChanges();
+							status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.FrameworkName ) ? "no description" : entity.FrameworkName ) );
+						}
+					}
+					else
+					{
+
+						efEntity = context.EducationFramework.SingleOrDefault( s => s.Id == entity.Id );
+						if ( efEntity != null && efEntity.Id > 0 )
+						{
+							entity.RowId = efEntity.RowId;
+							//update
+							MapToDB( entity, efEntity );
+							//has changed?
+							if ( HasStateChanged( context ) )
+							{
+								count = context.SaveChanges();
+							}
 						}
 					}
 				}
+			}catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, "EducationFrameworkManager.Save()" );
 			}
 
 			return isValid;
@@ -242,8 +248,9 @@ namespace workIT.Factories
 				return 0;
 			SaveStatus status = new SaveStatus();
 			entity.FrameworkName = frameworkName;
-            //this could an external Url, or a registry Uri
-            if (frameworkUrl.ToLower().IndexOf("credentialengineregistry.org/resources/") > -1 )
+			//this could an external Url, or a registry Uri
+			if ( frameworkUrl.ToLower().IndexOf( "credentialengineregistry.org/resources/" ) > -1
+					|| frameworkUrl.ToLower().IndexOf( "credentialengineregistry.org/graph/" ) > -1 )
 			    entity.FrameworkUri = frameworkUrl;
             else
                 entity.SourceUrl = frameworkUrl;
@@ -288,12 +295,15 @@ namespace workIT.Factories
 			//to.Id = from.Id;
 
 			to.FrameworkName = from.FrameworkName;
-            //will want to extract from FrameworkUri (for now)
-            if (!string.IsNullOrWhiteSpace(from.CTID) && from.CTID.Length == 39 )
+			to.SourceUrl = from.SourceUrl ?? "";
+			to.FrameworkUri = from.FrameworkUri ?? "";
+			//will want to extract from FrameworkUri (for now)
+			if (!string.IsNullOrWhiteSpace(from.CTID) && from.CTID.Length == 39 )
                 to.CTID = from.CTID;
             else
             {
-                if ( from.FrameworkUri.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") > -1 )
+                if ( to.FrameworkUri.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") > -1 
+					|| to.FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) > -1 )
                 {
                     to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
 
@@ -303,11 +313,7 @@ namespace workIT.Factories
                 //    to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
                 //}
             }
-            to.SourceUrl = from.SourceUrl;
-            to.FrameworkUri = from.FrameworkUri;
 
-            //soon to be obsolete
-            //to.FrameworkUrl = from.FrameworkUrl;
 		} //
 
 		public static void MapFromDB( DBEntity from, ThisEntity to)

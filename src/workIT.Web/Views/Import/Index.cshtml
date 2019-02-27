@@ -56,7 +56,7 @@
 @if ( Model.DetailPageUrl != null && Model.DetailPageUrl.Length > 0 )
 {
 	<h3>Detail Page</h3>
-	<a href="@Url.Content(@Model.DetailPageUrl)" class="detailWindow">View Detail Page</a>
+	<a href="@Url.Content(@Model.DetailPageUrl)" class="detailWindow" target="detail">View Detail Page</a>
 }
 @if ( Model.Messages != null && Model.Messages.Count > 0 )
 {

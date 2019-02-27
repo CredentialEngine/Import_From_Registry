@@ -231,6 +231,22 @@
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="CreatedTotal" Type="int" Nullable="false" />
           <Property Name="UpdatedTotal" Type="int" Nullable="false" />
+          <Property Name="DeletedTotal" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Counts_EntityStatistic">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="Title" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="2000" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="IsActive" Type="bit" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="Totals" Type="int" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="CategoryId" Type="int" />
         </EntityType>
         <EntityType Name="Counts_SiteTotals">
           <Key>
@@ -566,6 +582,7 @@
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="AverageMinutes" Type="int" />
+          <Property Name="DurationSummary" Type="nvarchar" MaxLength="200" />
         </EntityType>
         <EntityType Name="Entity_FinancialAlignmentProfile">
           <Key>
@@ -840,6 +857,7 @@
           <Property Name="DocumentUpdatedAt" Type="datetime" />
           <Property Name="ResourcePublicKey" Type="varchar(max)" />
           <Property Name="Payload" Type="varchar(max)" Nullable="false" />
+          <Property Name="IsMostRecentDownload" Type="bit" />
         </EntityType>
         <EntityType Name="LearningOpportunity">
           <Key>
@@ -954,6 +972,18 @@
             </Principal>
             <Dependent Role="Codes_PropertyValue">
               <PropertyRef Name="CategoryId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Counts_EntityStatistic_Codes_EntityTypes">
+          <End Role="Codes_EntityTypes" Type="Self.Codes_EntityTypes" Multiplicity="1" />
+          <End Role="Counts_EntityStatistic" Type="Self.Counts_EntityStatistic" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_EntityTypes">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Counts_EntityStatistic">
+              <PropertyRef Name="EntityTypeId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -1648,6 +1678,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="ConditionManifest" EntityType="Self.ConditionManifest" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="CostManifest" EntityType="Self.CostManifest" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Counts_EntityMonthlyTotals" EntityType="Self.Counts_EntityMonthlyTotals" Schema="dbo" Table="Counts.EntityMonthlyTotals" store:Type="Tables" />
+          <EntitySet Name="Counts_EntityStatistic" EntityType="Self.Counts_EntityStatistic" Schema="dbo" Table="Counts.EntityStatistic" store:Type="Tables" />
           <EntitySet Name="Counts_SiteTotals" EntityType="Self.Counts_SiteTotals" Schema="dbo" Table="Counts.SiteTotals" store:Type="Tables" />
           <EntitySet Name="Credential" EntityType="Self.Credential" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Credential_SummaryCache" EntityType="Self.Credential_SummaryCache" Schema="dbo" Table="Credential.SummaryCache" store:Type="Tables" />
@@ -1695,6 +1726,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_Codes_TagValue_Codes_TagCategory" Association="Self.FK_Codes_TagValue_Codes_TagCategory">
             <End Role="Codes_PropertyCategory" EntitySet="Codes_PropertyCategory" />
             <End Role="Codes_PropertyValue" EntitySet="Codes_PropertyValue" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Counts_EntityStatistic_Codes_EntityTypes" Association="Self.FK_Counts_EntityStatistic_Codes_EntityTypes">
+            <End Role="Codes_EntityTypes" EntitySet="Codes_EntityTypes" />
+            <End Role="Counts_EntityStatistic" EntitySet="Counts_EntityStatistic" />
           </AssociationSet>
           <AssociationSet Name="FK_Credential_SummaryCache_Credential1" Association="Self.FK_Credential_SummaryCache_Credential1">
             <End Role="Credential" EntitySet="Credential" />
@@ -2154,6 +2189,11 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Entity_Cache" EntitySet="Entity_Cache" />
           </AssociationSet>
           <EntitySet Name="Counts_EntityMonthlyTotals" EntityType="workITModel.Counts_EntityMonthlyTotals" />
+          <EntitySet Name="Counts_EntityStatistic" EntityType="workITModel.Counts_EntityStatistic" />
+          <AssociationSet Name="FK_Counts_EntityStatistic_Codes_EntityTypes" Association="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes">
+            <End Role="Codes_EntityTypes" EntitySet="Codes_EntityTypes" />
+            <End Role="Counts_EntityStatistic" EntitySet="Counts_EntityStatistic" />
+          </AssociationSet>
         </EntityContainer>
         <EntityType Name="ActivityLog">
           <Key>
@@ -2301,6 +2341,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="Created" Type="DateTime" Precision="3" />
           <Property Name="Totals" Type="Int32" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_Codes_EntityType" FromRole="Codes_EntityTypes" ToRole="Entity" />
+          <NavigationProperty Name="Counts_EntityStatistic" Relationship="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" FromRole="Codes_EntityTypes" ToRole="Counts_EntityStatistic" />
         </EntityType>
         <EntityType Name="Codes_PropertyCategory">
           <Key>
@@ -2777,6 +2818,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="AverageMinutes" Type="Int32" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_DurationProfile_Entity1" FromRole="Entity_DurationProfile" ToRole="Entity" />
+          <Property Name="DurationSummary" Type="String" MaxLength="200" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityType Name="Entity_FinancialAlignmentProfile">
           <Key>
@@ -3052,6 +3094,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="ResourcePublicKey" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="Payload" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="Import_Message" Relationship="workITModel.FK_Import_Message_Import_Staging" FromRole="Import_Staging" ToRole="Import_Message" />
+          <Property Name="IsMostRecentDownload" Type="Boolean" />
         </EntityType>
         <EntityType Name="LearningOpportunity">
           <Key>
@@ -3878,7 +3921,36 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
           <Property Name="CreatedTotal" Type="Int32" Nullable="false" />
           <Property Name="UpdatedTotal" Type="Int32" Nullable="false" />
+          <Property Name="DeletedTotal" Type="Int32" Nullable="false" />
         </EntityType>
+        <EntityType Name="Counts_EntityStatistic">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="Title" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="IsActive" Type="Boolean" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Codes_EntityTypes" Relationship="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" FromRole="Counts_EntityStatistic" ToRole="Codes_EntityTypes" />
+          <Property Name="CategoryId" Type="Int32" />
+        </EntityType>
+        <Association Name="FK_Counts_EntityStatistic_Codes_EntityTypes">
+          <End Type="workITModel.Codes_EntityTypes" Role="Codes_EntityTypes" Multiplicity="1" />
+          <End Type="workITModel.Counts_EntityStatistic" Role="Counts_EntityStatistic" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_EntityTypes">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Counts_EntityStatistic">
+              <PropertyRef Name="EntityTypeId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -4443,6 +4515,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Entity_DurationProfile">
             <EntityTypeMapping TypeName="workITModel.Entity_DurationProfile">
               <MappingFragment StoreEntitySet="Entity_DurationProfile">
+                <ScalarProperty Name="DurationSummary" ColumnName="DurationSummary" />
                 <ScalarProperty Name="AverageMinutes" ColumnName="AverageMinutes" />
                 <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
                 <ScalarProperty Name="Created" ColumnName="Created" />
@@ -4723,6 +4796,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Import_Staging">
             <EntityTypeMapping TypeName="workITModel.Import_Staging">
               <MappingFragment StoreEntitySet="Import_Staging">
+                <ScalarProperty Name="IsMostRecentDownload" ColumnName="IsMostRecentDownload" />
                 <ScalarProperty Name="Payload" ColumnName="Payload" />
                 <ScalarProperty Name="ResourcePublicKey" ColumnName="ResourcePublicKey" />
                 <ScalarProperty Name="DocumentUpdatedAt" ColumnName="DocumentUpdatedAt" />
@@ -4871,10 +4945,27 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Counts_EntityMonthlyTotals">
             <EntityTypeMapping TypeName="workITModel.Counts_EntityMonthlyTotals">
               <MappingFragment StoreEntitySet="Counts_EntityMonthlyTotals">
+                <ScalarProperty Name="DeletedTotal" ColumnName="DeletedTotal" />
                 <ScalarProperty Name="UpdatedTotal" ColumnName="UpdatedTotal" />
                 <ScalarProperty Name="CreatedTotal" ColumnName="CreatedTotal" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="Period" ColumnName="Period" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_EntityStatistic">
+            <EntityTypeMapping TypeName="workITModel.Counts_EntityStatistic">
+              <MappingFragment StoreEntitySet="Counts_EntityStatistic">
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="IsActive" ColumnName="IsActive" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>
             </EntityTypeMapping>

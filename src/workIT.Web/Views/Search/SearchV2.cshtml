@@ -4,76 +4,82 @@
 @using workIT.Utilities;
 @using Newtonsoft.Json;
 @{
-    ViewBag.Title = "Search";
+	ViewBag.Title = "Search";
 
-    var enumServices = new EnumerationServices();
-    var isUserSiteStaff = AccountServices.IsUserSiteStaff();
-    var showReports = isUserSiteStaff || Request.Params[ "ShowReports" ] == "true";
-    var googleMapsKey = new ThirdPartyApiServices().GetGoogleMapsApiKey();
+	var enumServices = new EnumerationServices();
+	var isUserSiteStaff = AccountServices.IsUserSiteStaff();
+	var showReports = isUserSiteStaff || Request.Params[ "ShowReports" ] == "true";
+	var googleMapsKey = new ThirdPartyApiServices().GetGoogleMapsApiKey();
 
-    var credentialTypes = enumServices.GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
-	var credLanguages = enumServices.GetSiteTotals ( EnumerationType.MULTI_SELECT, 65, 1, false );    
+	var credentialTypes = enumServices.GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
+	var credStatusTypes = enumServices.GetCredentialStatusType( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
+	var credLanguages = enumServices.GetSiteTotals ( EnumerationType.MULTI_SELECT, 65, 1, false );
 	var asmtLanguages = enumServices.GetSiteTotals ( EnumerationType.MULTI_SELECT, 65, 3, false );
 	var loppLanguages = enumServices.GetSiteTotals ( EnumerationType.MULTI_SELECT, 65, 7, false );
-    var asmtQA = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 3, false );
-    var asmtConnections = enumServices.GetAssessmentsConditionProfileTypes( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
-    var loppQA = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 7, false );
-    var loppConnections = enumServices.GetLearningOppsConditionProfileTypes( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
+	var asmtQA = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 3, false );
+	var asmtConnections = enumServices.GetAssessmentsConditionProfileTypes( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
+	var loppQA = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 7, false );
+	var loppConnections = enumServices.GetLearningOppsConditionProfileTypes( workIT.Models.Common.EnumerationType.MULTI_SELECT, false );
 
-    var asmtDeliveryMethods = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 3, false );
-    var loppDeliveryMethods = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 7, false );
-    var credAudienceTypes = enumServices.GetAudienceTypes( EnumerationType.MULTI_SELECT, 1, false );
-    var asmtAudienceTypes = enumServices.GetAudienceTypes( EnumerationType.MULTI_SELECT, 3, false );
-    var loppAudienceTypes = enumServices.GetAudienceTypes( EnumerationType.MULTI_SELECT, 7, false );
+	var credAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 1, false );
+	var credLoppDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 1, false );
+	var asmtDeliveryMethods = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 3, false );
+	var loppDeliveryMethods = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 7, false );
+	
 
-    var searchType = Request.Params[ "searchType" ] ?? "credential";
-    var viewMode = Request.Params[ "viewMode" ] ?? "list";
-    var sortOrder = Request.Params[ "sortOrder" ] ?? "newest";
-    var elastic = Request.Params[ "elastic" ] ?? "false";
-    var custom = Request.Params[ "custom" ] ?? "{}";
-
-    Widget widget = new Widget();
-    int widgetId = 0;
-    var haveWidget = false;
-    var searchTarget = "detailWindow";
-    var widgetAlias = ViewContext.RouteData.Values[ "widgetAlias" ];
-    if ( widgetAlias != null && !string.IsNullOrWhiteSpace( widgetAlias.ToString() ) )
-    {
-        widget = WidgetServices.GetByAlias( widgetAlias.ToString() );
-        widgetId = widget.Id;
-    }
-    else
-    {
-        widgetId = FormHelper.GetRequestKeyValue( "widgetId", 0 );
-        if ( widgetId > 0 )
-        {
-            widget = WidgetServices.Get( widgetId );
-
-        }
-    }
-    if ( widget != null && widget.Id > 0 )
-    {
-        haveWidget = true;
-        searchTarget = "_self";
-
-    }
+	var credAudienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 1, false );
+	var asmtAudienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 3, false );
+	var loppAudienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 7, false );
 
 
+	var searchType = Request.Params[ "searchType" ] ?? "credential";
+	var viewMode = Request.Params[ "viewMode" ] ?? "list";
+	var sortOrder = Request.Params[ "sortOrder" ] ?? "newest";
+	var elastic = Request.Params[ "elastic" ] ?? "false";
+	var custom = Request.Params[ "custom" ] ?? "{}";
 
-    var preselectedKeywords = ( Request.Params[ "keywords" ] ?? "" ).Replace( "\"", "" );
-    var preselectedFilters = new Dictionary<int, List<int>>();
-    try
-    {
-        var filterString = string.IsNullOrWhiteSpace( Request.Params[ "filters" ] ) ? "" : Request.Params[ "filters" ];
-        foreach ( var filterchunk in filterString.Split( '_' ) )
-        {
-            var chunkParts = filterchunk.Split( '-' );
-            var categoryID = int.Parse( chunkParts[ 0 ] );
-            var filterIDs = chunkParts[ 1 ].Split( ',' ).Select( int.Parse ).ToList();
-            preselectedFilters.Add( categoryID, filterIDs );
-        }
-    }
-    catch { }
+	Widget widget = new Widget();
+	int widgetId = 0;
+	var haveWidget = false;
+	var searchTarget = "detailWindow";
+	var widgetAlias = ViewContext.RouteData.Values[ "widgetAlias" ];
+	if ( widgetAlias != null && !string.IsNullOrWhiteSpace( widgetAlias.ToString() ) )
+	{
+		widget = WidgetServices.GetByAlias( widgetAlias.ToString() );
+		widgetId = widget.Id;
+	}
+	else
+	{
+		widgetId = FormHelper.GetRequestKeyValue( "widgetId", 0 );
+		if ( widgetId > 0 )
+		{
+			widget = WidgetServices.Get( widgetId );
+
+		}
+	}
+	if ( widget != null && widget.Id > 0 )
+	{
+		haveWidget = true;
+		searchTarget = "_self";
+
+	}
+
+
+
+	var preselectedKeywords = ( Request.Params[ "keywords" ] ?? "" ).Replace( "\"", "" );
+	var preselectedFilters = new Dictionary<int, List<int>>();
+	try
+	{
+		var filterString = string.IsNullOrWhiteSpace( Request.Params[ "filters" ] ) ? "" : Request.Params[ "filters" ];
+		foreach ( var filterchunk in filterString.Split( '_' ) )
+		{
+			var chunkParts = filterchunk.Split( '-' );
+			var categoryID = int.Parse( chunkParts[ 0 ] );
+			var filterIDs = chunkParts[ 1 ].Split( ',' ).Select( int.Parse ).ToList();
+			preselectedFilters.Add( categoryID, filterIDs );
+		}
+	}
+	catch { }
 
 }
 
@@ -180,6 +186,8 @@
     </div>
 }
 
+@Html.Partial( "~/views/detail/_competencyframeworksharedv2.cshtml" )
+
 @*@helper RenderFrameworkFilter( MicroSearchFilterSettings settings )
     {
         <div class="filterV2 frameworkFilter microSearchFilter microSearchFilterBox"
@@ -260,7 +268,10 @@
         custom: $.parseJSON(JSON.stringify(@Html.Raw( custom ))),
         preselectedKeywords: "@preselectedKeywords",
     	elastic: "@elastic",
-    	isIframeMode: window != window.top
+    	isIframeMode: window != window.top,
+    	competencyFrameworks: {}, //Store AJAX-loaded competency frameworks
+    	organizations: {}, //Store AJAX-loaded organizations
+    	conceptSchemes: {} //Store AJAX-loaded concept schemes
     };
 </script>
 <script type="text/javascript">
@@ -758,10 +769,6 @@
             DownloadButton: Search.Box.find("[data-action='downloadReport']"),
             Cache: []
         };
-		//Reports.ReportButton.on("click", function(){
-		//	downloadReport();
-		//	Reports.ReportSpinner.css("display", "inline");
-        //});
 
         Search.Reports.DownloadButton.on("click", function () {
             downloadReport();
@@ -781,18 +788,7 @@
 		//global.pageSize = 9999;
 		//doSearch(false, success_downloadReport);
 	}
-
-	//function success_downloadReport(message, extra){
-	//	global.searchStatus.searching = false;
-	//	global.pageSize = Reports.OldPageSize;
-	//	if(message.valid){
-	//		renderReport(message.data.Results);
-	//	}
-	//	else{
-	//		setSearchStatus(message.status);
- //       }
- //       Reports.ReportSpinner.css("display", "none");
-	//}
+	//
 
     function success_downloadReportPage(message, passThrough) {
         Search.Current.Searching = false;
@@ -818,49 +814,13 @@
             Search.Reports.Box.hide();
         }
     }
+	//
 
     //Set the status for the search
     function setStatus(message, status) {
         Search.Render.StatusBox.attr("data-status", status).html(message);
     }
 	//
-	@*function renderReport(data){
-		//Build tables
-        var rows = [["Id", "Name", "CTID", "Owner", "Detail", "Updated"]]; //Initialize with header row
-		for(var i in data){
-			(function(item){
-				var p = item.Properties;
-				var urlBase = "https://@( Request.Url.Authority )" + "/" + global.searchType + "/";
-                var row = [p.RecordId, p.Name, p.ctid, p.Owner, urlBase + p.RecordId, p.LastUpdated];
-				rows.push(row);
-			})(data[i]);
-		}
-
-		//Convert to CSV
-		var output = "";
-		for(var i in rows){
-			(function(row){
-				var text = JSON.stringify(row);
-				text = text
-					.substring(1, text.length - 1) //Remove [ and ]
-					.replace(/\\n/g, "\n") //Replace encoded line breaks with raw line breaks
-					.replace(/\\"/g, '""') //Quotes in CSVs need to be escaped with quotes, e.g. "line in \"json\"" becomes "line in ""json"""
-					+ "\n"; //Add new row
-				output += text;
-			})(rows[i]);
-		}
-
-		//Prompt download
-		console.log("Saving Data...", rows);
-
-		var link = $("<a style=\"display:none;\" download=\"" + global.searchType + " " + new Date().toJSON().split("T")[0] + ".csv\"></a>").appendTo("body"); //Create link
-		var data = window.URL.createObjectURL(new Blob([output], { type: "text/csv" }), { oneTimeOnly: true }); //Create data blob
-		link.attr("href", data); //Assign data blob to link
-		link[0].click(); //Click the link
-		window.URL.revokeObjectURL(data); //Clean up to avoid RAM leak
-		link.remove(); //Remove link
-		Reports.ReportSpinner.css("display", "none");
-	}*@
 
     function downloadCSV(){
 			//console.log("Downloaded Data", Search.Reports.Cache);
@@ -957,7 +917,10 @@
             handleResultImage(result);
             handleResultLocations(result, results[i]);
             renderTags(result, results[i].TagsV2);
+            results[i].Box = result;
+            //handleCompetencyFrameworkData(result, results[i]);
         }
+        handleCompetencyFrameworkResultSet(results);
 
     	//Add paging buttons if in iframe mode
         if(global.isIframeMode){
@@ -1021,6 +984,279 @@
         catch(e) { }
     }
     //
+
+    function handleCompetencyFrameworkResultSet(results){
+    	if(global.searchType.toLowerCase() != "competencyframework"){
+    		return;
+    	}
+
+    	//Prepare data
+    	results.forEach(function(result){
+    		result.TagSections = {
+    			ButtonsBox: result.Box.find(".resultTagButtons"),
+    			ItemsBox: result.Box.find(".resultTagContent")
+    		}
+    		createCompetencyFrameworkItemsSection(result, "Competencies", "Competencies", "competencies");
+    		createCompetencyFrameworkItemsSection(result, "ConceptSchemes", "Concept Schemes", "conceptschemes");
+    		createCompetencyFrameworkItemsSection(result, "Credentials", "Credentials", "credentials");
+    		createCompetencyFrameworkItemsSection(result, "Assessments", "Assessments", "assessments");
+    		createCompetencyFrameworkItemsSection(result, "LearningOpportunities", "Learning Opportunities", "learningopportunities");
+    		createCompetencyFrameworkItemsSection(result, "AlignedFrameworks", "Aligned Frameworks", "alignedframeworks");
+    		createCompetencyFrameworkItemsSection(result, "AlignedCompetencies", "Aligned Competencies", "alignedcompetencies");
+    	});
+
+    	var frameworkCTIDs = results.map(function(m){ return m.Properties.CTID });
+    	CompetencyFrameworks.getAllFrameworkData(frameworkCTIDs, [], {
+    		PerFrameworkLimits: {
+    			Organizations: 10,
+				Concepts: 10,
+				Credentials: 10,
+				Assessments: 10,
+				LearningOpportunities: 10,
+				AlignedFrameworks: 10,
+				AlignedCompetencies: 10
+    		},
+    		Frameworks: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				updateCompetencyFrameworkItemsSection(result.TagSections.Competencies, frameworkData.Competencies.length, frameworkData.Competencies, "Competenc{ies}", "ceasn:competencyText", "competency", frameworkData.Framework["ceterms:ctid"], frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		Organizations: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+					//Find the owner in the list of loaded organizations by converting the publisher and creator properties to CTIDs and comparing them to the owner's CTID
+    				var owner = CompetencyFrameworks.allOrganizations().filter(function(m){ return CompetencyFrameworks.flatten((frameworkData.Framework["ceasn:publisher"] || []).concat(frameworkData.Framework["ceasn:creator"] || [])).map(function(n){ return CompetencyFrameworks.URItoCTID(n) }).filter(function(n){ return n.toLowerCase() == m["ceterms:ctid"].toLowerCase() }).length > 0 })[0];
+    				if(owner){
+    					result.Box.find(".resultOwner").attr("href", "@Url.Content( "~/organization/" )" + owner["ceterms:ctid"]).html(CompetencyFrameworks.getEnglish(owner["ceterms:name"]));
+    				}
+    				else{
+    					result.Box.find(".resultOwner").hide();
+    				}
+    			});
+    		},
+    		ConceptSchemes: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				//Get all of the concepts used by all of the competencies for the framework
+    				var conceptURIs = Array.from(new Set(CompetencyFrameworks.getValuesForProperties(frameworkData.Competencies, ["ceasn:conceptTerm", "ceasn:complexityLevel"])));
+    				var conceptSchemes = [];
+    				//Boil them down to the relevant concept schemes
+    				conceptURIs.forEach(function(uri){
+    					var concept = CompetencyFrameworks.get(CompetencyFrameworks.allConcepts(), "@@id", uri);
+    					//var scheme = CompetencyFrameworks.ConceptSchemes.filter(function(m){ return m["@@id"] == concept["skos:inScheme"] })[0];
+    					var scheme = CompetencyFrameworks.findMatches(CompetencyFrameworks.ConceptSchemes, concept["skos:inScheme"])[0];
+    					if(CompetencyFrameworks.findMatches(conceptSchemes, scheme["@@id"]).length == 0){
+    						conceptSchemes.push(scheme.Scheme);
+    					}
+    				});
+    				//Populate the tag section
+    				updateCompetencyFrameworkItemsSection(result.TagSections.ConceptSchemes, conceptSchemes.length, conceptSchemes, "Concept Scheme{s}", "ceasn:name", "competencyframework", frameworkData.Framework["ceterms:ctid"], frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		Credentials: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				updateCompetencyFrameworkItemsSection(result.TagSections.Credentials, frameworkData.TotalCredentials, frameworkData.Credentials, "Credential{s}", "ceterms:name", "credential", frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		Assessments: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				updateCompetencyFrameworkItemsSection(result.TagSections.Assessments, frameworkData.TotalAssessments, frameworkData.Assessments, "Assessment{s}", "ceterms:name", "assessment", frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		LearningOpportunities: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				updateCompetencyFrameworkItemsSection(result.TagSections.LearningOpportunities, frameworkData.TotalLearningOpportunities, frameworkData.LearningOpportunities, "Learning Opportunit{ies}", "ceterms:name", "learningopportunity", frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		AlignedFrameworks: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				//Get the aligned frameworks
+    				var alignedFrameworkURIs = Array.from(new Set(CompetencyFrameworks.flatten(CompetencyFrameworks.getValuesForProperties([frameworkData.Framework], ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"]))));
+    				var alignedFrameworks = CompetencyFrameworks.AlignedFrameworks.filter(function(m){ return alignedFrameworkURIs.indexOf(m["@@id"]) > -1 }).map(function(m){ return m["@@graph"][0] });
+    				//Populate the tag section
+    				updateCompetencyFrameworkItemsSection(result.TagSections.AlignedFrameworks, alignedFrameworkURIs.length, alignedFrameworks, "Aligned Framework{s}", "ceasn:name", "competencyframework", frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		},
+    		AlignedCompetencies: function() {
+    			runForEachResultAndItsFramework(results, function(result, frameworkData){
+    				//Get the aligned frameworks
+    				var alignedCompetencyURIs = Array.from(new Set(CompetencyFrameworks.flatten(CompetencyFrameworks.getValuesForProperties(frameworkData.Competencies, ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"]))));
+    				var alignedCompetencies = CompetencyFrameworks.allAlignedCompetencies().filter(function(m){ return alignedCompetencyURIs.indexOf(m["@@id"]) > -1 }).map(function(m){ return m["@@graph"][0] });
+    				//Populate the tag section
+    				updateCompetencyFrameworkItemsSection(result.TagSections.AlignedCompetencies, alignedCompetencyURIs.length, alignedCompetencies, "Aligned Competenc{ies}", "ceasn:competencyText", "competencyframework", frameworkData.Framework["ceterms:ctid"], frameworkData.Framework["ceterms:ctid"]);
+    			});
+    		}
+    	});
+
+    }
+	function createCompetencyFrameworkItemsSection(result, name, label, queryName){
+		result.TagSections[name] = createItemsSection({SearchQueryType: "competencyframework", Name: queryName, Display: "<i class=\"fas fa-spin fa-spinner\"></i> Loading " + label }, result.TagSections.ButtonsBox, result.TagSections.ItemsBox);
+	}
+	function updateCompetencyFrameworkItemsSection(section, totalItems, items, buttonLabel, nameProperty, detailPageType, frameworkCTID, detailPageOverrideCTID){
+		if(items.length == 0){
+			section.Button.hide();
+			return;
+		}
+
+		section.Button.find(".label").html(totalItems + " " + (totalItems == 1 ? buttonLabel.replace("{ies}", "y").replace("{s}", "") : buttonLabel.replace("{ies}", "ies").replace("{s}", "s")) );
+		for(var i = 0; i < 10 && i < items.length; i++){
+			try{
+				var name = CompetencyFrameworks.getEnglish(items[i][nameProperty]) || "View Data";
+				$("<a class=\"whiteButton linkButton tagItemButton\" href=\"@Url.Content( "~/" )" + detailPageType + "/" + (detailPageOverrideCTID || items[i]["ceterms:ctid"]) + "\" target=\"_blank\">" + name + "</a>").appendTo(section.ItemsBox);
+			}
+			catch(e){
+				console.log("Error rendering TagItem for data:", { item: items[i], nameProperty: nameProperty });
+				$("<a class=\"whiteButton linkButton tagItemButton\" href=\"@Url.Content( "~/" )" + detailPageType + "/" + detailPageOverrideCTID + "\" target=\"_blank\">View Data</a>").appendTo(section.ItemsBox);
+			}
+		}
+		if(items.length > 10){
+			$("<a class=\"whiteButton linkButton tagItemButton viewMore\" href=\"@Url.Content( "~/" )" + "competencyframework/" + frameworkCTID + "\" target=\"_blank\">View More</a>").appendTo(section.ItemsBox);
+		}
+	}
+	function runForEachResultAndItsFramework(results, method){
+		results.forEach(function(result){
+			try{
+				var framework = CompetencyFrameworks.get(CompetencyFrameworks.Frameworks, "ceterms:ctid", result.Properties.CTID);
+				if(framework && !framework.hasLoadError){
+					method(result, framework);
+				}
+				else{
+					console.log("Error loading data for framework", { CTID: result.Properties.CTID, result: result, data: framework });
+				}
+			}
+			catch(e){
+				console.log("Error rendering result:", { error: e, result: result, method: method });
+			}
+		});
+	}
+	//
+
+    function renderCompetencies(results){
+    	results.forEach(function(result){
+    		var frameworkData = global.CompetencyFrameworks[result.Properties.CTID];
+    		if(frameworkData){
+    			var tagItemTemplate = $("#template_tagItem").html();
+    			var buttonsBox = result.Box.find(".resultTagButtons");
+    			var itemsBox = result.Box.find(".resultTagContent");
+
+				//Setup the button and items box
+    			var CompetenciesItems = createItemsSection({ SearchQueryType: "competencyframework", Name: "competencies", Display: "<i class=\"fas fa-spin fa-spinner\"></i> Loading Competencies" }, buttonsBox, itemsBox);
+    			CompetenciesItems.Button.find(".label").html(competencies.length + " Competencies");
+				//Render the first 10 competencies
+    			for(var i = 0; i < 10 && i < framework.Competencies.length; i++){
+    				var competencyDataBox = $("<a class=\"whiteButton linkButton tagItemButton\" href=\"@Url.Content( "~/competencyframework/" )" + frameworkData.Framework["ceterms:ctid"] + "\" target=\"_blank\">" + getEnglish(framework.Competencies[i]["ceasn:competencyText"]) + "</a>").appendTo(CompetenciesItems.ItemsBox);
+    			}
+				//Add a View More link
+    			if(frameworkData.Competencies.length > 10){
+    				$(autoFillTemplate(tagItemTemplate, { Display: "<a href=\"@Url.Content( "~/competencyframework/" )" + frameworkData.Framework["ceterms:ctid"] + "\" target=\"_blank\">View More</a>" })).appendTo(CompetenciesItems.ItemsBox);
+				}
+
+    		}
+    		else{
+    			console.log("Error finding competency framework for result", result);
+    		}
+    	});
+    }
+	//
+
+    function handleCompetencyFrameworkData(result, data){
+    	if(global.searchType.toLowerCase() != "competencyframework"){
+    		return;
+    	}
+
+    	result.find(".resultOwner").html("<i class=\"fas fa-spin fa-spinner\"></i>");
+    	var tagItemTemplate = $("#template_tagItem").html();
+    	var buttonsBox = result.find(".resultTagButtons");
+    	var itemsBox = result.find(".resultTagContent");
+
+    	//Get and render competencies for framework
+    	var CompetenciesItems = createItemsSection({ SearchQueryType: "competencyframework", Name: "competencies", Display: "<i class=\"fas fa-spin fa-spinner\"></i> Loading Competencies" }, buttonsBox, itemsBox);
+    	doAjax("Detail", "GetRegistryData", { ctid: data.Properties.CTID }, function(frameworkMessage){
+			//Handle errors
+    		var graph = frameworkMessage["@@graph"];
+    		if(!graph){
+    			console.log("Error reading framework", frameworkMessage);
+    			CompetenciesItems.Button.find(".label").html("Unable to load competencies for this Framework");
+    			return;
+    		}
+			//Extract data from the graph
+    		var framework = graph.filter(function(m){ return m["@@type"] == "ceasn:CompetencyFramework" })[0];
+    		var competencies = graph.filter(function(m){ return m["@@type"] == "ceasn:Competency" });
+			//Update the button
+    		CompetenciesItems.Button.find(".label").html(competencies.length + " Competencies");
+			//Render the data
+    		for(var i = 0; i < 10 && i < competencies.length; i++){
+    			var competencyDataBox = $("<a class=\"whiteButton linkButton tagItemButton\" href=\"@Url.Content( "~/competencyframework/" )" + framework["ceterms:ctid"] + "\" target=\"_blank\">" + getEnglish(competencies[i]["ceasn:competencyText"]) + "</a>").appendTo(CompetenciesItems.ItemsBox);
+    		}
+    		if(competencies.length > 10){
+    			$(autoFillTemplate(tagItemTemplate, { Display: "<a href=\"@Url.Content( "~/competencyframework/" )" + framework["ceterms:ctid"] + "\" target=\"_blank\">View More</a>" })).appendTo(CompetenciesItems.ItemsBox);
+    		}
+
+    		//Get and render publisher
+    		var publisherID = (framework["ceasn:publisher"] || framework["ceasn:creator"] || [""])[0];
+    		if(publisherID){
+    			doAjax("Detail", "GetRegistryData", { uri: publisherID.replace("/resources/", "/graph/") }, function(publisherMessage){
+					//Handle errors
+    				var publisherGraph = publisherMessage["@@graph"];
+    				if(!publisherGraph){
+    					console.log("Error finding publisher/creator for framework", publisherMessage);
+    					result.find(".resultOwner").replaceWith("<div class=\"resultOwner\">Unable to find Publisher/Creator for this Framework</div>");
+    					return;
+    				}
+    				//Extract data from the graph
+    				result.find(".resultOwner").attr("href", "@Url.Content( "~/organization/" )" + publisherGraph[0]["ceterms:ctid"]).html(getEnglish(publisherGraph[0]["ceterms:name"]));
+    			});
+    		}
+
+    		//Get and render related credentials
+    		var competencyCTIDs = competencies.map(function(m){ return m["ceterms:ctid"]});
+    		doAjax("Detail", "GetCredentialsForCompetencies", { competencyCTIDs: competencyCTIDs }, function(credentialsMessage){
+				//Render credentials similarly to how competencies are rendered, but without showing the button before the data is loaded
+    			if(credentialsMessage.valid && credentialsMessage.data.length > 0){
+    				var credentials = credentialsMessage.data.map(function (m) { return JSON.parse(m) });
+    				var CredentialsItems = createItemsSection({ SearchQueryType: "credential", Name: "connections", Display: credentials.length + " Related Credential" + (credentials.length > 1 ? "s" : "") }, buttonsBox, itemsBox);
+    				for(var i = 0; i < 10 && i < credentials.length; i++){
+    					var credentialDataBox = $(autoFillTemplate(tagItemTemplate, { Display: "<a href=\"@Url.Content( "~/credential/" )" + framework["ceterms:ctid"] + "\" target=\"_blank\">" + getEnglish(credentials[i]["ceterms:name"]) + "</a>" })).appendTo(CredentialsItems.ItemsBox);
+    				}
+    				if(credentials.length > 10){
+    					$(autoFillTemplate(tagItemTemplate, { Display: "<a href=\"@Url.Content( "~/competencyframework/" )" + framework["ceterms:ctid"] + "\" target=\"_blank\">View More</a>" })).appendTo(CredentialsItems.ItemsBox);
+    				}
+    			}
+    		});
+
+    	});
+    }
+	//
+
+	function createItemsSection(buttonTemplateData, buttonsContainer, itemsContainer){
+		var Result = {};
+		Result.Button = $(autoFillTemplate($("#template_tagButton").html(), buttonTemplateData)).appendTo(buttonsContainer);
+		Result.ItemsBox = $("<div class=\"itemsBox\"></div>").appendTo(itemsContainer);
+
+		Result.ItemsBox.hide();
+		Result.Button.on("click", function() {
+			itemsContainer.find(".itemsBox").not(Result.ItemsBox).hide();
+			Result.ItemsBox.toggle();
+		});
+
+		return Result;
+	}
+	//
+
+	function framework_renderCompetencies(message, passThrough){
+		console.log(message);
+	}
+	//
+
+    function getEnglish(map){
+    	var codes = ["en-US", "en-us", "en", Object.keys(map)[0]];
+    	var value = "";
+    	codes.forEach(function(code){
+    		if(map[code]){
+    			value = map[code];
+    		}
+    	});
+    	return value.toString();
+    }
+	//
 
     //Add gray boxes
     function renderTags(result, tags){
@@ -1773,7 +2009,7 @@
     //
 </script>
 
-<link rel="stylesheet" href="~/Content/search.css" type="text/css" />
+<link rel="stylesheet" href="~/Content/search.css?v=2" type="text/css" />
 
 @*<link rel="stylesheet" href="~/Content/SiteColors.css" type="text/css" />*@
 @*/* added sitecolor and search classes*/*@
@@ -1799,6 +2035,9 @@
     #searchPagingButtons { padding: 10px; text-align: center; }
         #searchPagingButtons button { font-size: 18px; padding: 10px 20px; }
     .noMoreResults { font-size: 20px; font-style: italic; padding: 10px; background-color: rgba(0,0,0,0.1); }
+	/* allow use from reports page ,but hide on search page */
+	/*.credentialstatustypes { position: absolute; left: -99999px; }*/
+
 </style>
 
 <style type="text/css">
@@ -1820,7 +2059,8 @@
 .tagSetButton[data-name=connections] { background-image: url('@Url.Content( "~/images/icons/cti_icon_connections.png" )'); }
 .tagSetButton[data-name*=own] { background-image: url('@Url.Content( "~/images/icons/cti_icon_owns.png" )'); }
 .tagSetButton[data-name*=quality], .tagSetButton[data-name*=orgQuality] { background-image: url('@Url.Content( "~/images/icons/cti_icon_quality.png" )'); }
-.tagSetButton[data-name=level] { background-image: url('@Url.Content( "~/images/icons/cti_icon_levels.png" )'); }
+.tagSetButton[data-name=audience_level] { background-image: url('@Url.Content( "~/images/icons/cti_icon_levels.png" )'); }
+.tagSetButton[data-name=audience_type] { background-image: url('@Url.Content( "~/images/icons/cti_icon_servicetype.png" )'); }
 .tagSetButton[data-name=occupations] { background-image: url('@Url.Content( "~/images/icons/cti_icon_occupations.png" )'); }
 .tagSetButton[data-name=industries] { background-image: url('@Url.Content( "~/images/icons/cti_icon_industries.png" )'); }
 .tagSetButton[data-name=subjects] { background-image: url('@Url.Content( "~/images/icons/cti_icon_subjects.png" )'); }
@@ -1835,6 +2075,7 @@
 .tagSetButton[data-name=assessment_use_types] { background-image: url('@Url.Content( "~/images/icons/cti_icon_assessmentusetype.png" )'); }
 .tagSetButton[data-name=assessment_method_types] { background-image: url('@Url.Content( "~/images/icons/cti_icon_assessmentmethodtype.png" )'); }
 .tagSetButton[data-name=scoring_methods] { background-image: url('@Url.Content( "~/images/icons/cti_icon_scoringmethodtype.png" )'); }
+.tagSetButton[data-name=asmnt_deliver_methods] { background-image: url('@Url.Content( "~/images/icons/cti_icon_deliverymethodtype.png" )'); }
 .tagSetButton[data-name=deliver_methods] { background-image: url('@Url.Content( "~/images/icons/cti_icon_deliverymethodtype.png" )'); }
 .tagSetButton[data-name=instructionalprogramtype] { background-image: url('@Url.Content( "~/images/icons/cti_icon_cip.png" )'); }
 .tagSetButton[data-name=learning_methods] { background-image: url('@Url.Content( "~/images/icons/cti_icon_learningmethodtype.png" )'); }
@@ -1860,6 +2101,9 @@
             .reportsBox .reportsProgressWrapper .reportsProgressBar { width: 0%; background-color: #3D4; height: 100%; transition: width 0.2s; border-radius: 4px; }
 
     #resultsSettings button { max-height: 40px; }
+
+	.lastDownloaded { text-align: right; font-size: small; color: #97a0a0; }
+	.result.competencyframework .lastDownloaded { display: none; }
 </style>
 
 
@@ -1874,7 +2118,8 @@
                     <option value="credential" @( searchType == "credential" ? "selected=\"selected\"" : "" )>Credentials</option>
                     <option value="organization" @( searchType == "organization" ? "selected=\"selected\"" : "" )>Organizations</option>
                     <option value="assessment" @( searchType == "assessment" ? "selected=\"selected\"" : "" )>Assessments</option>
-                    <option value="learningopportunity" @( searchType == "learningopportunity" ? "selected=\"selected\"" : "" )>Learning Opportunities</option>
+					<option value="learningopportunity" @( searchType == "learningopportunity" ? "selected=\"selected\"" : "" )>Learning Opportunities</option>
+                    <option value="competencyframework" @( searchType == "competencyframework" ? "selected=\"selected\"" : "" )>Competency Frameworks</option>
                 </select>
             </div>
         </div>
@@ -1904,50 +2149,30 @@
             <div id="filtersList">
                 @* Credential *@
 				<div class="filterList" data-searchType="credential">
-					@if ( !widget.WidgetFilters.CredFilters.HideCredentialTypes )
+					@RenderFilterListItem( "credential", "CredentialTypes", "Credential Types" );
+					@RenderFilterListItem( "credential", "AudienceLevelTypes", "Audience Level Types" )
+					@RenderFilterListItem( "credential", "AudienceTypes", "Applicable Audience Types" )
+					@RenderFilterListItem( "credential", "CredentialConnections", "Credential Connections" )
+					@RenderFilterListItem( "credential", "Competencies", "Competencies" )
+					@RenderFilterListItem( "credential", "Subjects", "Subject Areas" )
+					@RenderFilterListItem( "credential", "Occupations", "Occupations" )
+					@RenderFilterListItem( "credential", "Industries", "Industries" )
+					@RenderFilterListItem( "credential", "InstructionalProgramType", "Instructional Programs" )
+					@if ( credAsmtDeliveryTypes.HasItems() && credAsmtDeliveryTypes.Items.Count() > 1 )
 					{
-						@RenderFilterListItem( "credential", "CredentialTypes", "Credential Types" );
+						@RenderFilterListItem( "credential", "AssessmentDeliveryTypes", "Assessment Delivery Types" )
 					}
-					@if ( !widget.WidgetFilters.CredFilters.HideAudienceLevelTypes )
+					@if ( credLoppDeliveryTypes.HasItems() && credLoppDeliveryTypes.Items.Count() > 1 )
 					{
-						@RenderFilterListItem( "credential", "AudienceLevelTypes", "Audience Level Types" )
+						@RenderFilterListItem( "credential", "LearningDeliveryTypes", "Learning Delivery Types" )
 					}
-					@if ( credAudienceTypes.HasItems() && !widget.WidgetFilters.CredFilters.HideApplicableAudienceTypes )
-					{
-						@RenderFilterListItem( "credential", "AudienceTypes", "Applicable Audience Types" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideCredentialConnections )
-					{
-						@RenderFilterListItem( "credential", "CredentialConnections", "Credential Connections" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideCompetencies )
-					{
-						@RenderFilterListItem( "credential", "Competencies", "Competencies" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideSubjectArea )
-					{
-						@RenderFilterListItem( "credential", "Subjects", "Subject Areas" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideOccupations )
-					{
-						@RenderFilterListItem( "credential", "Occupations", "Occupations" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideIndustries )
-					{
-						@RenderFilterListItem( "credential", "Industries", "Industries" )
-					}
-					@if ( !widget.WidgetFilters.CredFilters.HideQualityAssuarance )
-					{
-						@RenderFilterListItem( "credential", "QualityAssurance", "Quality Assurance" )
-					}
+					@RenderFilterListItem( "credential", "QualityAssurance", "Quality Assurance" )
+					@RenderFilterListItem( "credential", "CredentialStatusTypes", "Credential Status" )
 					@if ( credLanguages.HasItems() && credLanguages.Items.Count() > 1 )
 					{
 						@RenderFilterListItem( "credential", "Languages", "Languages" )
 					}
-					@if ( widget.Id <= 0 )
-					{
-						@RenderFilterListItem( "credential", "Reports", "Other Filters" )
-					}
+					@RenderFilterListItem( "credential", "Reports", "Other Filters" )
 				</div>
 
                 @* Organization *@
@@ -1972,11 +2197,13 @@
 					@RenderFilterListItem( "assessment", "AssessmentUseTypes", "Assessment Use Types" )
 					@RenderFilterListItem( "assessment", "ScoringMethodTypes", "Scoring Method Types" )
 					@RenderFilterListItem( "assessment", "DeliveryMethodTypes", "Delivery Method Types" )
-					@RenderFilterListItem( "assessment", "InstructionalProgramType", "Instructional Program Classification" )
 					@if ( asmtAudienceTypes.HasItems() )
 					{
 						@RenderFilterListItem( "assessment", "AudienceTypes", "Applicable Audience Types" )
 					}
+					@RenderFilterListItem( "assessment", "Occupations", "Occupations" )
+					@RenderFilterListItem( "assessment", "Industries", "Industries" )
+					@RenderFilterListItem( "assessment", "InstructionalProgramType", "Instructional Programs" )
 					@RenderFilterListItem( "assessment", "QualityAssurance", "Quality Assurance", asmtQA )
 					@if ( asmtLanguages.HasItems() && asmtLanguages.Items.Count() > 1 )
 					{
@@ -1992,11 +2219,13 @@
 					@RenderFilterListItem( "learningopportunity", "LearningOpportunityConnections", "Learning Opportunity Connections", loppConnections )
 					@RenderFilterListItem( "learningopportunity", "LearningMethodTypes", "Learning Method Types" )
 					@RenderFilterListItem( "learningopportunity", "DeliveryMethodTypes", "Delivery Method Types" )
-					@RenderFilterListItem( "learningopportunity", "InstructionalProgramType", "Instructional Program Classification" )
 					@if ( loppAudienceTypes.HasItems() )
 					{
 						@RenderFilterListItem( "learningopportunity", "AudienceTypes", "Applicable Audience Types" )
 					}
+					@RenderFilterListItem( "learningopportunity", "Occupations", "Occupations" )
+					@RenderFilterListItem( "learningopportunity", "Industries", "Industries" )
+					@RenderFilterListItem( "learningopportunity", "InstructionalProgramType", "Instructional Programs" )
 					@RenderFilterListItem( "learningopportunity", "QualityAssurance", "Quality Assurance", loppQA )
 					@if ( loppLanguages.HasItems() && loppLanguages.Items.Count() > 1 )
 					{
@@ -2005,95 +2234,88 @@
 					@RenderFilterListItem( "learningopportunity", "Reports", "Other Filters" )
 				</div>
 
+				@* Competency Framework *@
+				<div class="filterList" data-searchtype="competencyframework">
+					@RenderFilterListItem( "competencyframework", "DefaultFilter", "Competency Framework" )
+				</div>
+
             </div>
-            <div id="filters">
-                @* Credential *@
-                @RenderCodeFilter( "credential", "CredentialTypes", "", "Select the credential type(s).", "Credential Type", credentialTypes, true, false, new List<string>() { "ceterms:QualityAssuranceCredential", "ceterms:DigitalBadge", "ceterms:OpenBadge" }, new Dictionary<string, List<string>>() { { "ceterms:Badge", new List<string>() { "ceterms:DigitalBadge", "ceterms:OpenBadge" } } } )
-                @RenderCodeFilter( "credential", "AudienceLevelTypes", "", "Select the educational level(s).", "Audience Level Type", enumServices.GetAudienceLevel( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true )
+			<div id="filters">
+				@* Credential *@
+				@RenderCodeFilter( "credential", "CredentialTypes", "", "Select the credential type(s).", "Credential Type", credentialTypes, true, false, new List<string>() { "ceterms:QualityAssuranceCredential", "ceterms:DigitalBadge", "ceterms:OpenBadge" }, new Dictionary<string, List<string>>() { { "ceterms:Badge", new List<string>() { "ceterms:DigitalBadge", "ceterms:OpenBadge" } } } )
+				@RenderCodeFilter( "credential", "AudienceLevelTypes", "", "Select the educational level(s).", "Audience Level Type", enumServices.GetAudienceLevel( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true )
 
-                @RenderCodeFilter( "credential", "AudienceTypes", "", "Select the applicable audience types that are the target of credentials. Note that many credentials will not have specific audience types.", "Audience Type", credAudienceTypes, true )
+				@RenderCodeFilter( "credential", "AudienceTypes", "", "Select the applicable audience types that are the target of credentials. Note that many credentials will not have specific audience types.", "Audience Type", credAudienceTypes, true )
 
-                @RenderCodeFilter( "credential", "CredentialConnections", "", "Select the connection type(s) to filter credentials:", "Credential Connection", enumServices.GetCredentialConnectionsFilters( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true, true )
-                @RenderTextFilter( "credential", "Competencies", "Competencies", "Enter a term(s) to show credentials with relevant competencies.", "Competency" )
-                @RenderTextFilter( "credential", "Subjects", "Subject Areas", "Enter a term(s) to show credentials with relevant subjects.", "Subject" )
-                @if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
-                {
-                    @RenderTextFilter( "credential", "Occupations", "Occupations", "Find and select the occupation(s) to filter relevant credentials.", "Occupation" )
-                }
-                else
-                {
-                    @RenderFrameworkFilter( "credential", "Occupations", "OccupationSearch", "", "Find and select the occupation(s) to filter relevant credentials.", "Occupation", "Find Occupations", "Selected Occupations", EnumerationServices.SOC_Categories_Enumeration( false ), "Select an Occupation Category" )
-                }
-                @if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
-                {
-                    @RenderTextFilter( "credential", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
-                }
-                else
-                {
-                    @RenderFrameworkFilter( "credential", "Industries", "IndustrySearch", "", "Find and select industries to filter relevant credentials.", "Industry", "Find Industries", "Selected Industries", EnumerationServices.NAICS_CategoriesInUse_Enumeration( 1 ), "Select an Industry Category" )
-                }
+				@RenderCodeFilter( "credential", "CredentialConnections", "", "Select the connection type(s) to filter credentials:", "Credential Connection", enumServices.GetCredentialConnectionsFilters( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true, true )
+				@RenderTextFilter( "credential", "Competencies", "Competencies", "Enter a term(s) to show credentials with relevant competencies.", "Competency" )
+				@RenderTextFilter( "credential", "Subjects", "Subject Areas", "Enter a term(s) to show credentials with relevant subjects.", "Subject" )
+				@*@if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
+		{*@
+				@RenderTextFilter( "credential", "Occupations", "Occupations", "Find and select the occupation(s) to filter relevant credentials.", "Occupation" )
+				@*}
+		else
+		{
+			@RenderFrameworkFilter( "credential", "Occupations", "OccupationSearch", "", "Find and select the occupation(s) to filter relevant credentials.", "Occupation", "Find Occupations", "Selected Occupations", EnumerationServices.SOC_Categories_Enumeration( false ), "Select an Occupation Category" )
+		}*@
 
-                @RenderCodeFilter( "credential", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant credentials.", "Quality Assurance", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 1, false ) )
+				@RenderTextFilter( "credential", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
+				@RenderTextFilter( "credential", "InstructionalProgramType", "Classifications", "Find and select the classification(s) of instructional programs to filter credentials.", "InstructionalProgramType" )
+				@RenderCodeFilter( "credential", "AssessmentDeliveryTypes", "", "Select the type of Assessment delivery method(s).", "Assessment Delivery Types", credAsmtDeliveryTypes )
+				@RenderCodeFilter( "credential", "LearningDeliveryTypes", "", "Select the type of Learning Opportunity delivery method(s).", "Learning Delivery Types", credLoppDeliveryTypes )
+				@RenderCodeFilter( "credential", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant credentials.", "Quality Assurance", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 1, false ) )
 				@RenderCodeFilter( "credential", "Languages", "", "Select one or more languages to display credentials for those languages", "Languages", credLanguages )
-                @RenderCodeFilter( "credential", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.GetEnumeration( "CredentialReports", EnumerationType.SINGLE_SELECT, false ), true )
+				@RenderCodeFilter( "credential", "CredentialStatusTypes", "", "Select one or more status to display credentials for those Credential Status", "Credential Status", credStatusTypes )
 
-                @* Organization *@
-                @RenderCodeFilter( "organization", "OrganizationTypes", "", "Select the organization type(s)", "Organization Type", enumServices.GetOrganizationType( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true )
-                @if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
-                {
-                    @RenderTextFilter( "organization", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
-                }
-                else
-                {
-                    @RenderFrameworkFilter( "organization", "Industries", "IndustrySearch", "", "Find and select industries to filter relevant organizations.", "Industry", "Find Industries", "Selected Industries", EnumerationServices.NAICS_CategoriesInUse_Enumeration( 2 ), "Select an Industry Category" )
-                }
-                @RenderCodeFilter( "organization", "ServiceTypes", "", "Select a service(s) offered by an organization.", "Service Type", enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, false ), true )
-                @RenderCodeFilter( "organization", "SectorTypes", "", "Select the type of sector for an organization.", "Sector Type", enumServices.GetEnumeration( "orgSectorType", EnumerationType.SINGLE_SELECT, false ) )
-                @RenderCodeFilter( "organization", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant organizations.", "Quality Assurance", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false ) )
-                @RenderCodeFilter( "organization", "QAPerformed", "", "Select one or more types of quality assurance to display credentials that have performed those types of assurance.", "Quality Assurance Performed", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false,true ) )
-                @RenderCodeFilter( "organization", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Condition Manifest' and 'Has Cost Manifest' will show organizations that have condition manifest(s) or cost manifest(s).", "Report", enumServices.GetEnumeration( "OrganizationReports", EnumerationType.SINGLE_SELECT, false ), true )
-                @RenderCodeFilter( "organization", "ClaimTypes", "", "Select the type of claim for an organization.", "Claim Type", enumServices.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, false ) )
+				@RenderCodeFilter( "credential", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.EntityStatisticGetEnumeration( 1, EnumerationType.MULTI_SELECT, false ), true )
 
-                @* Assessment *@
-                @RenderTextFilter( "assessment", "Competencies", "Competencies", "Enter a term(s) to show assessments with relevant competencies.", "Competency" )
-                @RenderTextFilter( "assessment", "Subjects", "Subject Areas", "Enter a term(s) to show assessments with relevant subjects.", "Subject" )
-                @RenderCodeFilter( "assessment", "AssessmentConnections", "", "Select the connection type(s) to filter Assessments:", "Assessment Connection", asmtConnections, true, true )
-                @RenderCodeFilter( "assessment", "AssessmentMethodTypes", "", "Select the assessment method(s) type.", "Assessment Method Type", enumServices.GetEnumeration( "assessmentMethodType", EnumerationType.CUSTOM, false, false ) )
-                @RenderCodeFilter( "assessment", "AssessmentUseTypes", "", "Select the type(s) of assessment uses.", "Assessment Use Type", enumServices.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, false ) )
-                @RenderCodeFilter( "assessment", "ScoringMethodTypes", "", "Select the type of scoring method(s).", "Scoring Method Type", enumServices.GetEnumerationForRadioButtons( "scoringMethod", -1, false ) )
-                @RenderCodeFilter( "assessment", "DeliveryMethodTypes", "", "Select the type of delivery method(s).", "Delivery Method", asmtDeliveryMethods )
-                @if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
-                {
-                    @RenderTextFilter( "assessment", "InstructionalProgramType", "Classifications", "Find and select the classification(s) of instructional programs to filter assessments.", "InstructionalProgramType" )
-                }
-                else
-                {
-                    @RenderFrameworkFilter( "assessment", "InstructionalProgramType", "CIPSearch", "", "Find and select the classification(s) of instructional programs to filter assessments.", "Instructional Program Classification", "Find Classifications", "Selected Classifications", EnumerationServices.CIPS_CategoriesInUse_Enumeration( 3 ), "Select an Instructional Program Classification Category" )
-                }
-                @RenderCodeFilter( "assessment", "AudienceTypes", "", "Select the applicable audience types that are the target of assessments. Note that many assessments will not have specific audience types.", "Audience Type", asmtAudienceTypes, true )
-                @RenderCodeFilter( "assessment", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant assessments.", "Quality Assurance", asmtQA )
+				@* Organization *@
+				@RenderCodeFilter( "organization", "OrganizationTypes", "", "Select the organization type(s)", "Organization Type", enumServices.GetOrganizationType( workIT.Models.Common.EnumerationType.MULTI_SELECT, false ), true )
+
+				@RenderTextFilter( "organization", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
+
+				@RenderCodeFilter( "organization", "ServiceTypes", "", "Select a service(s) offered by an organization.", "Service Type", enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, false ), true )
+				@RenderCodeFilter( "organization", "SectorTypes", "", "Select the type of sector for an organization.", "Sector Type", enumServices.GetEnumeration( "orgSectorType", EnumerationType.SINGLE_SELECT, false ) )
+				@RenderCodeFilter( "organization", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant organizations.", "Quality Assurance", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false ) )
+				@RenderCodeFilter( "organization", "QAPerformed", "", "Select one or more types of quality assurance to display credentials that have performed those types of assurance.", "Quality Assurance Performed", enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false, true ) )
+				@RenderCodeFilter( "organization", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Condition Manifest' and 'Has Cost Manifest' will show organizations that have condition manifest(s) or cost manifest(s).", "Report", enumServices.EntityStatisticGetEnumeration( 2, EnumerationType.MULTI_SELECT, false ), true )
+				@RenderCodeFilter( "organization", "ClaimTypes", "", "Select the type of claim for an organization.", "Claim Type", enumServices.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, false ) )
+
+				@* Assessment *@
+				@RenderTextFilter( "assessment", "Competencies", "Competencies", "Enter a term(s) to show assessments with relevant competencies.", "Competency" )
+				@RenderTextFilter( "assessment", "Subjects", "Subject Areas", "Enter a term(s) to show assessments with relevant subjects.", "Subject" )
+				@RenderCodeFilter( "assessment", "AssessmentConnections", "", "Select the connection type(s) to filter Assessments:", "Assessment Connection", asmtConnections, true, true )
+				@RenderCodeFilter( "assessment", "AssessmentMethodTypes", "", "Select the assessment method(s) type.", "Assessment Method Type", enumServices.GetEnumeration( "assessmentMethodType", EnumerationType.CUSTOM, false, false ) )
+				@RenderCodeFilter( "assessment", "AssessmentUseTypes", "", "Select the type(s) of assessment uses.", "Assessment Use Type", enumServices.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, false ) )
+				@RenderCodeFilter( "assessment", "ScoringMethodTypes", "", "Select the type of scoring method(s).", "Scoring Method Type", enumServices.GetEnumerationForRadioButtons( "scoringMethod", -1, false ) )
+				@RenderCodeFilter( "assessment", "DeliveryMethodTypes", "", "Select the type of delivery method(s).", "Delivery Method", asmtDeliveryMethods )
+				@RenderCodeFilter( "assessment", "AudienceTypes", "", "Select the applicable audience types that are the target of assessments. Note that many assessments will not have specific audience types.", "Audience Type", asmtAudienceTypes, true )
+				@RenderTextFilter( "assessment", "Occupations", "Occupations", "Find and select the occupation(s) to filter relevant credentials.", "Occupation" )
+				@RenderTextFilter( "assessment", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
+				@RenderTextFilter( "assessment", "InstructionalProgramType", "Classifications", "Find and select the classification(s) of instructional programs to filter assessments.", "InstructionalProgramType" )
+				@RenderCodeFilter( "assessment", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant assessments.", "Quality Assurance", asmtQA )
 				@RenderCodeFilter( "assessment", "Languages", "", "Select one or more languages to display assessments for those languages", "Languages", asmtLanguages )
-                @RenderCodeFilter( "assessment", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.GetEnumeration( "AssessmentReports", EnumerationType.SINGLE_SELECT, false ), true )
+				@RenderCodeFilter( "assessment", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.EntityStatisticGetEnumeration( 3, EnumerationType.MULTI_SELECT, false ), true )
 
-                @* Learning Opportunity *@
-                @RenderTextFilter( "learningopportunity", "Competencies", "Competencies", "Enter a term(s) to show learning opportunities with relevant competencies.", "Competency" )
-                @RenderTextFilter( "learningopportunity", "Subjects", "Subject Areas", "Enter a term(s) to show learning opportunities with relevant subjects.", "Subject" )
-                @RenderCodeFilter( "learningopportunity", "LearningOpportunityConnections", "", "Select the connection type(s) to filter Learning Opportunity:", "Learning Opportunity Connection", loppConnections, true, true )
-                @RenderCodeFilter( "learningopportunity", "LearningMethodTypes", "", "Select the type(s) of learning method.", "Learning Method Type", enumServices.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false ), true )
-                @RenderCodeFilter( "learningopportunity", "DeliveryMethodTypes", "", "Select the type(s) of delivery method(s).", "Delivery Method", loppDeliveryMethods )
-                @if ( workIT.Utilities.UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
-                {
-                    @RenderTextFilter( "learningopportunity", "InstructionalProgramType", "Classifications", "Find and select the classification(s) of instructional programs to filter assessments.", "InstructionalProgramType" )
-                }
-                else
-                {
-                    @RenderFrameworkFilter( "learningopportunity", "InstructionalProgramType", "CIPSearch", "", "Find and select the classification(s) of instructional programs to filter assessments.", "Instructional Program Classification", "Find Classifications", "Selected Classifications", EnumerationServices.CIPS_CategoriesInUse_Enumeration( 3 ), "Select an Instructional Program Classification Category" )
-                }
-                @RenderCodeFilter( "learningopportunity", "AudienceTypes", "", "Select the applicable audience types that are the target of learning opportunities. Note that many learning opportunities will not have specific audience types.", "Audience Type", loppAudienceTypes, true )
-                @RenderCodeFilter( "learningopportunity", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant learning opportunities. ", "Quality Assurance", loppQA )
+				@* Learning Opportunity *@
+				@RenderTextFilter( "learningopportunity", "Competencies", "Competencies", "Enter a term(s) to show learning opportunities with relevant competencies.", "Competency" )
+				@RenderTextFilter( "learningopportunity", "Subjects", "Subject Areas", "Enter a term(s) to show learning opportunities with relevant subjects.", "Subject" )
+				@RenderCodeFilter( "learningopportunity", "LearningOpportunityConnections", "", "Select the connection type(s) to filter Learning Opportunity:", "Learning Opportunity Connection", loppConnections, true, true )
+				@RenderCodeFilter( "learningopportunity", "LearningMethodTypes", "", "Select the type(s) of learning method.", "Learning Method Type", enumServices.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false ), true )
+				@RenderCodeFilter( "learningopportunity", "DeliveryMethodTypes", "", "Select the type(s) of delivery method(s).", "Delivery Method", loppDeliveryMethods )
+				@RenderCodeFilter( "learningopportunity", "AudienceTypes", "", "Select the applicable audience types that are the target of learning opportunities. Note that many learning opportunities will not have specific audience types.", "Audience Type", loppAudienceTypes, true )
+				@RenderTextFilter( "learningopportunity", "Occupations", "Occupations", "Find and select the occupation(s) to filter relevant credentials.", "Occupation" )
+				@RenderTextFilter( "learningopportunity", "Industries", "Industries", "Find and select the industries to filter relevant credentials.", "Industry" )
+				@RenderTextFilter( "learningopportunity", "InstructionalProgramType", "Classifications", "Find and select the classification(s) of instructional programs to filter assessments.", "InstructionalProgramType" )
+				@RenderCodeFilter( "learningopportunity", "QualityAssurance", "", "Select the type(s) of quality assurance to filter relevant learning opportunities. ", "Quality Assurance", loppQA )
 				@RenderCodeFilter( "learningopportunity", "Languages", "", "Select one or more languages to display learningopportunities for those languages", "Languages", loppLanguages )
-                @RenderCodeFilter( "learningopportunity", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.GetEnumeration( "LOPPReports", EnumerationType.SINGLE_SELECT, false ), true )
-            </div>
+				@RenderCodeFilter( "learningopportunity", "Reports", "", "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show assessments that have cost profile(s) or financial assistance.", "Report", enumServices.EntityStatisticGetEnumeration( 7, EnumerationType.SINGLE_SELECT, false ), true )
+
+				@* Competency Framework *@
+				<div class="filter" data-searchtype="competencyframework" data-filtername="defaultfilter" data-dislayprefix="Competency Framework" data-filtertype="text">
+					<p>There are no filters currently available for Competency Frameworks.</p>
+				</div>
+			</div>
         </div>
     </div>
     <div id="searchSelectedTags" data-totalTags="0">
@@ -2215,7 +2437,7 @@
                 <div class="resultTagsBox">
                     <data class="resultTagButtons"></data>
                     <data class="resultTagContent"></data>
-                    <div style="text-align: right;font-size: small;color: #97a0a0;">Last Downloaded:{LastUpdated}</div>
+                    <div class="lastDownloaded">Last Downloaded:{LastUpdated}</div>
                 </div>
 
             </div>

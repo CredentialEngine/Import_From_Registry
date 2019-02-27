@@ -28,75 +28,79 @@ namespace workIT.Web.Controllers
             //return Configure();
 
         }
-        public ActionResult Guidance()
-        {
-            return View();
-        }
-        //public ActionResult Show( string widgetAlias )
-        //{
-        //    if ( !string.IsNullOrWhiteSpace( widgetAlias) )
-        //    {
-        //        var widget = WidgetServices.GetByAlias( widgetAlias );
-        //        //if not found, display message somewhere - console message?
-        //        if ( widget == null || widget.Id == 0 )
-        //        {
-        //            workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = "ERROR - the requested Widget record was not found ", MessageType = "error" };
-        //            Session[ "SystemMessage" ] = msg;
-        //            return RedirectToAction( "Index", "Message" );
-        //        }
-        //        else
-        //        {
-        //            string message = "";
-        //            //may already be in session, so remove and readd
-        //            //don't want this any longer
-        //            if ( !WidgetServices.Activate( widget, message ) )
-        //            {
-        //                workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = message, MessageType = "error" };
-        //                Session[ "SystemMessage" ] = msg;
-        //                return RedirectToAction( "Index", "Message" );
-        //            }
+		#region widget V1 methods - obsolete, will remove
+		//public ActionResult Guidance()
+		//{
+		//    return View();
+		//}
 
-        //            return RedirectToAction( "Index", "Home" );
-        //        }
-        //    }
+		//public ActionResult Show( string widgetAlias )
+		//{
+		//    if ( !string.IsNullOrWhiteSpace( widgetAlias) )
+		//    {
+		//        var widget = WidgetServices.GetByAlias( widgetAlias );
+		//        //if not found, display message somewhere - console message?
+		//        if ( widget == null || widget.Id == 0 )
+		//        {
+		//            workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = "ERROR - the requested Widget record was not found ", MessageType = "error" };
+		//            Session[ "SystemMessage" ] = msg;
+		//            return RedirectToAction( "Index", "Message" );
+		//        }
+		//        else
+		//        {
+		//            string message = "";
+		//            //may already be in session, so remove and readd
+		//            //don't want this any longer
+		//            if ( !WidgetServices.Activate( widget, message ) )
+		//            {
+		//                workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = message, MessageType = "error" };
+		//                Session[ "SystemMessage" ] = msg;
+		//                return RedirectToAction( "Index", "Message" );
+		//            }
 
-        //    return RedirectToAction( "Index", "Home" );
-        //}
-        //public ActionResult Activate( int widgetId )
-        //{
-        //    if ( widgetId > 0 )
-        //    {
-        //        var widget = WidgetServices.Get( widgetId );
-        //        //if not found, display message somewhere - console message?
-        //        if ( widget == null || widget.Id == 0 )
-        //        {
-        //            workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = "ERROR - the requested Widget record was not found ", MessageType = "error" };
-        //            Session[ "SystemMessage" ] = msg;
-        //            return RedirectToAction( "Index", "Message" );
-        //        }
-        //        else
-        //        {
-        //            string message = "";
-        //            //may already be in session, so remove and readd
-        //            if ( !WidgetServices.Activate( widget, message ) )
-        //            {
-        //                workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = message, MessageType = "error" };
-        //                Session[ "SystemMessage" ] = msg;
-        //                return RedirectToAction( "Index", "Message" );
-        //            }
+		//            return RedirectToAction( "Index", "Home" );
+		//        }
+		//    }
 
-        //            return RedirectToAction( "Index", "Home" );
-        //        }
-        //    }
+		//    return RedirectToAction( "Index", "Home" );
+		//}
+		//public ActionResult Activate( int widgetId )
+		//{
+		//    if ( widgetId > 0 )
+		//    {
+		//        var widget = WidgetServices.Get( widgetId );
+		//        //if not found, display message somewhere - console message?
+		//        if ( widget == null || widget.Id == 0 )
+		//        {
+		//            workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = "ERROR - the requested Widget record was not found ", MessageType = "error" };
+		//            Session[ "SystemMessage" ] = msg;
+		//            return RedirectToAction( "Index", "Message" );
+		//        }
+		//        else
+		//        {
+		//            string message = "";
+		//            //may already be in session, so remove and readd
+		//            if ( !WidgetServices.Activate( widget, message ) )
+		//            {
+		//                workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = message, MessageType = "error" };
+		//                Session[ "SystemMessage" ] = msg;
+		//                return RedirectToAction( "Index", "Message" );
+		//            }
 
-        //    return RedirectToAction( "Index", "Home" );
-        //}
-        public ActionResult Remove()
+		//            return RedirectToAction( "Index", "Home" );
+		//        }
+		//    }
+
+		//    return RedirectToAction( "Index", "Home" );
+		//}
+		[Obsolete] //verify
+		public ActionResult Remove()
         {
             WidgetServices.RemoveCurrentWidget();
             return RedirectToAction( "Index", "Home" );
         }
-        public ActionResult TestWidget( int widgetId )
+		[Obsolete] //verify
+		public ActionResult TestWidget( int widgetId )
         {
             ViewBag.widgetid = widgetId;
             return View();
@@ -220,23 +224,110 @@ namespace workIT.Web.Controllers
             return JsonResponse( widgetData, true, "success", new { isFileUploaded = isFileUploaded, fileUploadStatus = fileUploadStatus } );
         }
 
-
         [HttpPost]
-        public ActionResult DeleteWidget( int id )
+        public string UploadLogo( HttpPostedFileBase file, int? widgetId )
         {
-            WidgetServices widgetService = new WidgetServices();
-            List<string> messages = new List<string>();
-            string message = string.Empty;
-            if ( !widgetService.Delete( id, ref message ) )
+            var uploadedLogoUrl = string.Empty;
+            string []filesSupported= new string[]{ ".png", ".jpg", ".jpeg", ".gif" };
+            try
             {
-                messages.Add( message );
-                return JsonResponse( new object(), false, "", messages );
+                if ( file != null && file.ContentLength > 0 && filesSupported.Contains(Path.GetExtension( file.FileName ).ToLowerInvariant()))
+                {
+
+                    var logoUploadPath = ConfigurationManager.AppSettings[ "styleUploadPath" ] + "widgetlogo" + widgetId
+                        + Path.GetExtension( file.FileName );
+
+                    file.SaveAs( logoUploadPath );
+                    return Path.GetFileName( logoUploadPath );
+                }
+            }
+            catch
+            {
+
             }
 
-            return JsonResponse( new object(), true, "success", null );
+
+                    return uploadedLogoUrl;
         }
 
-        [HttpGet]
+		[Obsolete] //verify
+		private bool UploadStyle( HttpPostedFileBase file, Widget widget )
+		{
+			try
+			{
+				if ( file != null && file.ContentLength > 0 && Path.GetExtension( file.FileName ).ToLowerInvariant() == ".css" )
+				{
+					int widgetId = 0;
+					if ( widget != null )
+					{
+						widgetId = widget.Id;
+					}
+					var styleUploadPath = ConfigurationManager.AppSettings[ "styleUploadPath" ] + "widget" + widgetId
+						+ Path.GetExtension( file.FileName );
+
+					file.SaveAs( styleUploadPath );
+					widget.CustomStylesFileName = Path.GetFileName( styleUploadPath );
+
+					return true;
+				}
+
+				return false;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex.Message, "Upload file style css failed" );
+				return false;
+			}
+		}
+		[Obsolete] //verify
+		public bool ParseAndCreateUserStyleTemplate( Widget widget, ControllerContext controller, string tempFilePath, string template, ref List<string> messages )
+		{
+			LoggingHelper.DoTrace( 6, "WidgetController.ParseAndCreateUserStyleTemplate." );
+			try
+			{
+				var sb = new StringWriter();
+				ViewDataDictionary viewData = new ViewDataDictionary();
+				Dictionary<string, string> pathMapDictionary = new Dictionary<string, string>();
+
+				pathMapDictionary.Add( tempFilePath, template ); // Add template to dictionary which virtual path provider will access
+
+				var styleUploadPath = ConfigurationManager.AppSettings[ "styleUploadPath" ] + "widget" + widget.Id + ".css";
+
+				var tempData = new TempDataDictionary();
+				viewData.Model = widget.WidgetStyles;
+				var razor = new RazorView( controller, "~/UserStyleTemplate.cshtml", null, false, null );
+				var viewContext = new ViewContext( controller, razor, viewData, tempData, sb );
+				razor.Render( viewContext, sb );
+				System.IO.File.WriteAllText( styleUploadPath, sb.ToString() );
+				widget.CustomStylesFileName = Path.GetFileName( styleUploadPath );
+				return true;
+			}
+			catch ( Exception ex )
+			{
+				messages.Add( ex.Message );
+				LoggingHelper.LogError( ex, "WidgetController.ParseAndCreateUserStyleTemplate" );
+				return false;
+			}
+		}
+
+		#endregion
+
+
+		[HttpPost]
+		public ActionResult DeleteWidget( int id )
+		{
+			WidgetServices widgetService = new WidgetServices();
+			List<string> messages = new List<string>();
+			string message = string.Empty;
+			if ( !widgetService.Delete( id, ref message ) )
+			{
+				messages.Add( message );
+				return JsonResponse( new object(), false, "", messages );
+			}
+
+			return JsonResponse( new object(), true, "success", null );
+		}
+		[HttpGet]
         public JsonResult GetWidget( int widgetId )
         {
             Widget widget = WidgetServices.Get( widgetId );
@@ -374,65 +465,6 @@ namespace workIT.Web.Controllers
 
 
 
-        private bool UploadStyle( HttpPostedFileBase file, Widget widget )
-        {
-            try
-            {
-                if ( file != null && file.ContentLength > 0 && Path.GetExtension( file.FileName ).ToLowerInvariant() == ".css" )
-                {
-                    int widgetId = 0;
-                    if ( widget != null )
-                    {
-                        widgetId = widget.Id;
-                    }
-                    var styleUploadPath = ConfigurationManager.AppSettings[ "styleUploadPath" ] + "widget" + widgetId
-                        + Path.GetExtension( file.FileName );
-
-                    file.SaveAs( styleUploadPath );
-                    widget.CustomStylesFileName = Path.GetFileName( styleUploadPath );
-
-                    return true;
-                }
-
-                return false;
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.LogError( ex.Message, "Upload file style css failed" );
-                return false;
-            }
-        }
-
-        public bool ParseAndCreateUserStyleTemplate( Widget widget, ControllerContext controller, string tempFilePath, string template, ref List<string> messages )
-        {
-            LoggingHelper.DoTrace( 6, "WidgetController.ParseAndCreateUserStyleTemplate." );
-            try
-            {
-                var sb = new StringWriter();
-                ViewDataDictionary viewData = new ViewDataDictionary();
-                Dictionary<string, string> pathMapDictionary = new Dictionary<string, string>();
-
-                pathMapDictionary.Add( tempFilePath, template ); // Add template to dictionary which virtual path provider will access
-
-                var styleUploadPath = ConfigurationManager.AppSettings[ "styleUploadPath" ] + "widget" + widget.Id + ".css";
-
-                var tempData = new TempDataDictionary();
-                viewData.Model = widget.WidgetStyles;
-                var razor = new RazorView( controller, "~/UserStyleTemplate.cshtml", null, false, null );
-                var viewContext = new ViewContext( controller, razor, viewData, tempData, sb );
-                razor.Render( viewContext, sb );
-                System.IO.File.WriteAllText( styleUploadPath, sb.ToString() );
-                widget.CustomStylesFileName = Path.GetFileName( styleUploadPath );
-                return true;
-            }
-            catch ( Exception ex )
-            {
-                messages.Add( ex.Message );
-                LoggingHelper.LogError( ex, "WidgetController.ParseAndCreateUserStyleTemplate" );
-                return false;
-            }
-        }
-
 
 		#region Widget V2 Methods
 
@@ -441,6 +473,9 @@ namespace workIT.Web.Controllers
 		{
 			var widget = WidgetServices.Get( widgetID ) ?? new Widget();
 			var vm = JsonConvert.DeserializeObject<WidgetV2>( widget.CustomStyles ?? "{}", new JsonSerializerSettings() { Error = IgnoreDeserializationErrors } );
+            //vm.Created = widget.Created;
+            //vm.LastUpdated = widget.LastUpdated;
+
 			return View( "~/views/widget/searchwidget.cshtml", vm );
 		}
 		//
@@ -476,7 +511,10 @@ namespace workIT.Web.Controllers
 					//Try to convert old data to new format
 					result = V1toV2( widget );
 				}
+                if(result.Id == 44)
+                {
 
+                }
 				results.Add( result );
 			}
 
@@ -485,23 +523,31 @@ namespace workIT.Web.Controllers
 		//
 
 		//Search for organizations related to some entity type
-		public JsonResult OrganizationConnectionSearch( ConnectionQuery query )
+		public JsonResult RelatedEntitySearch( SelectionQuery query )
 		{
 			/* Temporary */
 			//TODO - Determine whether or not this needs to be replaced with a method that cares about the Relationship type (perhaps limit results to QA orgs?)
-			return OrgSearch( new MainSearchInput() { SearchType = "organization", StartPage = query.PageNumber, PageSize = query.PageSize, Keywords = query.Keywords } );
+			var searchQuery = new MainSearchInput() { SearchType = query.SearchType.ToLower(), StartPage = query.PageNumber, PageSize = query.PageSize, Keywords = query.Keywords , UseSimpleSearch  = query.UseSimpleSearch, SortOrder = query.SortOrder} ;
 
+
+			searchQuery.IncludingReferenceObjects = true;
+			MainSearchResults results = searchServices.MainSearch( searchQuery, ref valid, ref status );
+
+			return JsonHelper.GetJsonWithWrapper( results, valid, status, null );
 			/* End Temporary */
 		}
-		public class ConnectionQuery
+
+		public class SelectionQuery
 		{
-			public enum RelationshipTypes { OfferedBy, AccreditedBy, ApprovedBy, RegulatedBy }
+			public string SearchType { get; set; }
 			public string Keywords { get; set; }
 			public string RelatedTo { get; set; }
-			public RelationshipTypes Relationship { get; set; }
 			public int PageSize { get; set; }
 			public int PageNumber { get; set; }
-		}
+            public bool UseSimpleSearch { get; set; }
+            public string SortOrder { get; set; }
+
+        }
 		//
 
 		public JsonResult GetOrganizationDataForSelectedMicrosearchItems( List<int> organizationIDs )
@@ -544,8 +590,14 @@ namespace workIT.Web.Controllers
 			//Copy key properties from newly-saved widget (such as ID) to the V2 widget
 			var saved = WidgetServices.Get( toSave.Id );
 			result = JsonConvert.DeserializeObject<WidgetV2>( saved.CustomStyles );
-			SimpleUpdate( saved, result );
-			result.UrlName = saved.WidgetAlias;
+            result.Created = saved.Created;
+            result.LastUpdated = saved.LastUpdated;
+            result.RowId = saved.RowId;
+            result.Id = saved.Id;
+            result.CreatedById = saved.CreatedById;
+            result.LastUpdatedById = saved.LastUpdatedById;
+			//SimpleUpdate( saved, result );
+			//result.UrlName = saved.WidgetAlias;
 			
 			//Save again to ensure the V2 data has the correct key properties
 			saved.CustomStyles = JsonConvert.SerializeObject( result );
@@ -646,6 +698,33 @@ namespace workIT.Web.Controllers
 			e.ErrorContext.Handled = true;
 		}
 
+		public JsonResult GetAccountGroups()
+		{
+			var list = new List<AccountGroup>();
+			//TBD
+
+			return JsonResponse( list, true, "success", null );
+		}
+		public JsonResult GetGroupOrganizations(string groupUid)
+		{
+			var list = new List<GroupOrganization>();
+			//TBD
+
+			return JsonResponse( list, true, "success", null );
+		}
 		#endregion
+
+		public class AccountGroup
+		{
+			public string GroupName { get; set; }
+			public string AccountGroupUid { get; set; }
+			public List<GroupOrganization> Organizations { get; set; } = new List<GroupOrganization>();
+		}
+		public class GroupOrganization
+		{
+			public string Name { get; set; }
+			public string CTID { get; set; }
+		}
+
 	}
 }

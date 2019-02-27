@@ -36,6 +36,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<int> AverageMinutes { get; set; }
+        public string DurationSummary { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

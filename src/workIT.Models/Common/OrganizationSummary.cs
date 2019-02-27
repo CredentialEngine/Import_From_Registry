@@ -17,7 +17,7 @@ namespace workIT.Models.Common
 
 		public int QARolesCount { get; set; }
 		public List<string> Subjects { get; set; }
-        public CodeItemResult NaicsResults { get; set; } = new CodeItemResult();
+        public CodeItemResult IndustryResults { get; set; } = new CodeItemResult();
 		//public CodeItemResult IndustryOtherResults { get; set; }
 
 		public CodeItemResult OwnedByResults { get; set; } = new CodeItemResult();

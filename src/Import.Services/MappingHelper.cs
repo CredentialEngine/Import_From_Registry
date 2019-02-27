@@ -221,7 +221,7 @@ namespace Import.Services
                     if ( !string.IsNullOrWhiteSpace( item.Framework ) )
                     {
 						if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1
-							|| item.Framework.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) == -1 )
+							&& item.Framework.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) == -1 )
 						{
                             entity.SourceUrl = item.Framework;
                         }

@@ -836,32 +836,32 @@ namespace workIT.Factories
           /// </summary>
           /// <param name="entityReferenceId"></param>
           /// <returns></returns>
-        public static ThisEntity Get( int entityReferenceId )
-        {
-            ThisEntity entity = new ThisEntity();
-            if ( entityReferenceId == 0 )
-            {
-                return entity;
-            }
-            try
-            {
-                using ( var context = new ViewContext() )
-                {
-                    Entity_Reference_Summary item = context.Entity_Reference_Summary
-                            .SingleOrDefault( s => s.EntityReferenceId == entityReferenceId );
+        //public static ThisEntity Get( int entityReferenceId )
+        //{
+        //    ThisEntity entity = new ThisEntity();
+        //    if ( entityReferenceId == 0 )
+        //    {
+        //        return entity;
+        //    }
+        //    try
+        //    {
+        //        using ( var context = new ViewContext() )
+        //        {
+        //            Entity_Reference_Summary item = context.Entity_Reference_Summary
+        //                    .SingleOrDefault( s => s.EntityReferenceId == entityReferenceId );
 
-                    if ( item != null && item.EntityReferenceId > 0 )
-                    {
-                        MapFromDB( item, entity );
-                    }
-                }
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.LogError( ex, thisClassName + ".Entity_Get" );
-            }
-            return entity;
-        }//
+        //            if ( item != null && item.EntityReferenceId > 0 )
+        //            {
+        //                MapFromDB( item, entity );
+        //            }
+        //        }
+        //    }
+        //    catch ( Exception ex )
+        //    {
+        //        LoggingHelper.LogError( ex, thisClassName + ".Entity_Get" );
+        //    }
+        //    return entity;
+        //}//
         private static void MapToDB( ThisEntity from, DBEntity to )
         {
             //want to ensure fields from create are not wiped

@@ -107,6 +107,7 @@ namespace workIT.Factories
                 // submit the change to database
                 int count = context.SaveChanges();
                 newId = efEntity.Id;
+				//assertions are by the current org, so a separate request to reindex should not be necessary!
             }
 
             return newId;
@@ -463,7 +464,82 @@ namespace workIT.Factories
             return list;
         }
 
-        public static List<OrganizationRoleProfile> GetAllCombinedForOrganization( Guid agentUid )
+		public static void FillCountsForOrganizationQAPerformed( Organization org, ref int totalRecords )
+		{
+
+			Entity agentEntity = EntityManager.GetEntity( org.RowId );
+			using ( var context = new ViewContext() )
+			{
+				//first check how long this step takes
+				DateTime start = DateTime.Now;
+				LoggingHelper.DoTrace( 4, "FillCountsForOrganizationQAPerformed start" );
+				//List<Views.Organization_CombinedQAPerformed> agentRoles = context.Organization_CombinedQAPerformed
+				//	.Where( s => s.OrgUid == org.RowId
+				//		 && s.IsQARole == true
+				//		 && s.TargetEntityStateId > 1 )
+				//		 .OrderBy( s => s.TargetEntityTypeId )
+				//		 .ThenBy( s => s.TargetOwningOrganizationName )
+				//		 .ThenBy( s => s.TargetEntityName )
+				//		 .ThenBy( s => s.AgentToSourceRelationship )
+				//		 .ThenBy( s => s.roleSource )
+				//	.ToList();
+
+
+
+				//if ( agentRoles != null && agentRoles.Count() > 0 )
+				//{
+				//	//
+				//	totalRecords = agentRoles.Count();
+				//	//may want a fudge factor?
+				//	org.QAPerformedOnCredentialsCount = agentRoles.Where( s => s.TargetEntityTypeId == 1 ).Distinct().Count();
+				//	org.QAPerformedOnOrganizationsCount = agentRoles.Where( s => s.TargetEntityTypeId == 2 ).Distinct().Count();
+				//	org.QAPerformedOnAssessmentsCount = agentRoles.Where( s => s.TargetEntityTypeId == 3 ).Distinct().Count();
+				//	org.QAPerformedOnLoppsCount = agentRoles.Where( s => s.TargetEntityTypeId == 7 ).Distinct().Count();
+
+				//}
+				
+				
+
+
+				var query = from qa in context.Organization_CombinedQAPerformed
+					.Where( s => s.OrgUid == org.RowId
+						 && s.IsQARole == true
+						 && s.TargetEntityStateId > 1 )
+						 .OrderBy( s => s.TargetEntityTypeId )
+						 .ThenBy( s => s.TargetOwningOrganizationName )
+						 .ThenBy( s => s.TargetEntityName )
+						 .ThenBy( s => s.AgentToSourceRelationship )
+						 .ThenBy( s => s.roleSource )
+							select new
+							{
+								qa.TargetEntityTypeId,
+								qa.TargetEntityBaseId
+							};
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+				LoggingHelper.DoTrace( 4, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
+
+				var results = query.Distinct().ToList();
+				if ( results != null && results.Count() > 0 )
+				{
+					//
+					totalRecords = results.Count();
+					//may want a fudge factor?
+					org.QAPerformedOnCredentialsCount = results.Where( s => s.TargetEntityTypeId == 1 ).Distinct().Count();
+					org.QAPerformedOnOrganizationsCount = results.Where( s => s.TargetEntityTypeId == 2 ).Distinct().Count();
+					org.QAPerformedOnAssessmentsCount = results.Where( s => s.TargetEntityTypeId == 3 ).Distinct().Count();
+					org.QAPerformedOnLoppsCount = results.Where( s => s.TargetEntityTypeId == 7 ).Distinct().Count();
+
+					DateTime listEnd = DateTime.Now;
+					elasped = listEnd.Subtract( end ).TotalSeconds;
+					LoggingHelper.DoTrace( 4, string.Format( "FillCountsForOrganizationQAPerformed loaded list seconds: {0}", elasped ) );
+				}
+			}
+
+
+		} //
+
+		public static List<OrganizationRoleProfile> GetAllCombinedForOrganization( Guid agentUid, ref int totalRecords, int maxRecords = 25 )
         {
             OrganizationRoleProfile orp = new OrganizationRoleProfile();
             List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
@@ -473,9 +549,16 @@ namespace workIT.Factories
             string prevRoleSource = "";
             int prevRoleTypeId = 0;
             Entity agentEntity = EntityManager.GetEntity( agentUid );
-
+			if ( UtilityManager.GetAppKeyValue( "envType" ) == "production" )
+			{
+				//show all for now in production
+				//maxRecords = 0;
+			}
             using ( var context = new ViewContext() )
             {
+				//first check how long this step takes
+				DateTime start = DateTime.Now;
+				LoggingHelper.DoTrace( 4, "GetAllCombinedForOrganization start" );
                 List<Views.Organization_CombinedQAPerformed> agentRoles = context.Organization_CombinedQAPerformed
                     .Where( s => s.OrgUid == agentUid
                          && s.IsQARole == true
@@ -487,8 +570,21 @@ namespace workIT.Factories
                          .ThenBy( s => s.roleSource )
                     .ToList();
 
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+				LoggingHelper.DoTrace( 4, string.Format("GetAllCombinedForOrganization retrieve seconds: {0}", elasped) );
+
+				if (agentRoles != null && agentRoles.Count() > 0)
+				{
+					//
+					totalRecords = agentRoles.Count();
+					//may want a fudge factor?
+
+				}
+				int cntr = 0;
                 foreach ( var entity in agentRoles )
                 {
+					cntr++;
                     //loop until change in entity type?
                     if ( prevTargetUid != entity.TargetEntityUid )
                     {
@@ -497,7 +593,11 @@ namespace workIT.Factories
                         {
                             orp.AgentRole.Items.Add( eitem );
                             list.Add( orp );
-                        }
+							if ( maxRecords > 0 && cntr >= maxRecords )
+							{
+								break;
+							}
+						}
 
                         prevTargetUid = entity.TargetEntityUid;
                         prevRoleSource = entity.roleSource;
@@ -596,7 +696,7 @@ namespace workIT.Factories
 
                     //               orp.AgentRole.Items.Add( eitem );
 
-                }
+                } //end
                 //check for remaining
                 if ( IsGuidValid( prevTargetUid ) && orp.AgentRole.Items.Count > 0 )
                 {
@@ -604,7 +704,10 @@ namespace workIT.Factories
                     list.Add( orp );
                 }
 
-            }
+				DateTime listEnd = DateTime.Now;
+				elasped = listEnd.Subtract( end ).TotalSeconds;
+				LoggingHelper.DoTrace( 4, string.Format( "GetAllCombinedForOrganization loaded list seconds: {0}", elasped ) );
+			}
             return list;
 
         } //

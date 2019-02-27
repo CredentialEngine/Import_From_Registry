@@ -24,7 +24,7 @@ namespace workIT.Models.Common
 			EstimatedCosts = new List<CostProfile>();
 		    FinancialAssistance = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
-			RenewalFrequency = new DurationItem();
+            RenewalFrequency = new DurationItem();
 			HasPartIds = new List<int>();
 			
 			Id = 0;
@@ -202,8 +202,8 @@ namespace workIT.Models.Common
 		public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
 
 		public List<DurationProfile> EstimatedDuration { get; set; }
-		//always single, 
-		public DurationItem RenewalFrequency { get; set; }
+        //always single, 
+        public DurationItem RenewalFrequency { get; set; }
 
 		public Enumeration CredentialTypeEnum { get; set; }
 	
@@ -215,8 +215,10 @@ namespace workIT.Models.Common
 
 		public Enumeration AudienceLevelType { get; set; }
         public Enumeration AudienceType { get; set; } = new Enumeration();
-        
-        public Enumeration CredentialStatusType { get; set; }
+		public Enumeration AssessmentDeliveryType { get; set; } = new Enumeration();
+		public Enumeration LearningDeliveryType { get; set; } = new Enumeration();
+
+		public Enumeration CredentialStatusType { get; set; }
 		public List<Credential> EmbeddedCredentials { get; set; } //bundled/sub-credentials
 		public List<Credential> IsPartOf { get; set; } //pseudo-"parent" credentials that this credential is a part of or included with (could be multiple)
 		public List<int> HasPartIds { get; set; }
@@ -270,6 +272,10 @@ namespace workIT.Models.Common
 			set { Occupation = value; }
 		} //Used for publishing
 		public List<TextValueProfile> OtherOccupations { get; set; }
+
+		public Enumeration InstructionalProgramType { get; set; } = new Enumeration();
+		//confirm if necessary
+		//public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
 		public Enumeration MilitaryOccupation { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
@@ -281,7 +287,7 @@ namespace workIT.Models.Common
 		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
 		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
 		public List<string> Naics { get; set; }
-
+		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
 		public List<Guid> AccreditedBy { get; set; }
 		public List<Guid> OwnedBy { get; set; }
 

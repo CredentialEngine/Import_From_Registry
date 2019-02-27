@@ -584,81 +584,81 @@ namespace workIT.Factories
         /// <param name="orgId"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool Delete( int orgId, ref string statusMessage )
-        {
-            bool isValid = true;
-            bool doingVirtualDelete = true;
-            if ( orgId == 0 )
-            {
-                statusMessage = "Error - missing an identifier for the Organization";
-                return false;
-            }
-            using ( var context = new EntityContext() )
-            {
-                try
-                {
-                    //ensure exists
-                    DBEntity efEntity = context.Organization
-                                .FirstOrDefault( s => s.Id == orgId );
+        //public bool Delete( int orgId, ref string statusMessage )
+        //{
+        //    bool isValid = true;
+        //    bool doingVirtualDelete = true;
+        //    if ( orgId == 0 )
+        //    {
+        //        statusMessage = "Error - missing an identifier for the Organization";
+        //        return false;
+        //    }
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        try
+        //        {
+        //            //ensure exists
+        //            DBEntity efEntity = context.Organization
+        //                        .FirstOrDefault( s => s.Id == orgId );
 
-                    if ( efEntity != null && efEntity.Id > 0 )
-                    {
-                        if ( doingVirtualDelete )
-                        {
-                            statusMessage = string.Format( "Organization: {0}, Id:{1}", efEntity.Name, efEntity.Id );
+        //            if ( efEntity != null && efEntity.Id > 0 )
+        //            {
+        //                if ( doingVirtualDelete )
+        //                {
+        //                    statusMessage = string.Format( "Organization: {0}, Id:{1}", efEntity.Name, efEntity.Id );
 
-                            //context.Organization.Remove( efEntity );
-                            efEntity.LastUpdated = System.DateTime.Now;
+        //                    //context.Organization.Remove( efEntity );
+        //                    efEntity.LastUpdated = System.DateTime.Now;
 
-                        }
-                        else
-                        {
-                            Guid rowId = efEntity.RowId;
-                            int roleCount = 0;
-                            //check for any existing org roles, and reject delete if any found
-                            if ( Entity_AgentRelationshipManager.AgentEntityHasRoles( rowId, ref roleCount ) )
-                            {
-                                statusMessage = string.Format( "Error - this organization cannot be deleted as there are existing roles {0}.", roleCount );
-                                return false;
-                            }
-                            //16-10-19 mp - we have a 'before delete' trigger to remove the Entity
-                            //new EntityManager().Delete( rowId, ref statusMessage );
+        //                }
+        //                else
+        //                {
+        //                    Guid rowId = efEntity.RowId;
+        //                    int roleCount = 0;
+        //                    //check for any existing org roles, and reject delete if any found
+        //                    if ( Entity_AgentRelationshipManager.AgentEntityHasRoles( rowId, ref roleCount ) )
+        //                    {
+        //                        statusMessage = string.Format( "Error - this organization cannot be deleted as there are existing roles {0}.", roleCount );
+        //                        return false;
+        //                    }
+        //                    //16-10-19 mp - we have a 'before delete' trigger to remove the Entity
+        //                    //new EntityManager().Delete( rowId, ref statusMessage );
 
-                            context.Organization.Remove( efEntity );
-                        }
+        //                    context.Organization.Remove( efEntity );
+        //                }
 
 
-                        int count = context.SaveChanges();
-                        if ( count > 0 )
-                        {
-                            isValid = true;
+        //                int count = context.SaveChanges();
+        //                if ( count > 0 )
+        //                {
+        //                    isValid = true;
 
-                        }
-                    }
-                    else
-                    {
-                        statusMessage = "Error - delete failed, as record was not found.";
-                    }
-                }
-                catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
-                {
-                    string message = HandleDBValidationError( dbex, thisClassName + ".Save() ", "Organization" );
-                    statusMessage = "Error - the Delete was not successful. " + message;
-                }
-                catch ( Exception ex )
-                {
-                    statusMessage = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + ".Organization_Delete()" );
+        //                }
+        //            }
+        //            else
+        //            {
+        //                statusMessage = "Error - delete failed, as record was not found.";
+        //            }
+        //        }
+        //        catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+        //        {
+        //            string message = HandleDBValidationError( dbex, thisClassName + ".Save() ", "Organization" );
+        //            statusMessage = "Error - the Delete was not successful. " + message;
+        //        }
+        //        catch ( Exception ex )
+        //        {
+        //            statusMessage = FormatExceptions( ex );
+        //            LoggingHelper.LogError( ex, thisClassName + ".Organization_Delete()" );
 
-                    if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
-                    {
-                        statusMessage = "Error: this organization cannot be deleted as it is being referenced by other items, such as credentials. These associations must be removed before this organization can be deleted.";
-                    }
-                }
-            }
+        //            if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+        //            {
+        //                statusMessage = "Error: this organization cannot be deleted as it is being referenced by other items, such as credentials. These associations must be removed before this organization can be deleted.";
+        //            }
+        //        }
+        //    }
 
-            return isValid;
-        }
+        //    return isValid;
+        //}
 
         /// <summary>
         /// Delete by envelopeId, or ctid
@@ -706,9 +706,9 @@ namespace workIT.Factories
                         }
                         if ( efEntity.CTID.ToLower() == "ce-2ecc2ce8-b134-4a3a-8b17-863aa118f36e" )
                         {
-                            string msg2 = string.Format( "Request to delete Ball State University was encountered - ignoring. Organization. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
-                            EmailManager.NotifyAdmin( "Encountered Request to delete Ball State University", msg2 );
-                            return true;
+                            //string msg2 = string.Format( "Request to delete Ball State University was encountered - ignoring. Organization. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+                            //EmailManager.NotifyAdmin( "Encountered Request to delete Ball State University", msg2 );
+                            //return true;
                         }
                         //need to remove from Entity.
                         //-using before delete trigger - verify won't have RI issues
@@ -1188,7 +1188,7 @@ namespace workIT.Factories
                     //do we need service type??
                     item.ServiceType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
 
-                    item.NaicsResults = Fill_CodeItemResults( dr, "NaicsList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+                    item.IndustryResults = Fill_CodeItemResults( dr, "NaicsList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
                     //item.IndustryOtherResults = Fill_CodeItemResults( dr, "OtherIndustriesList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false, false );
 
                     item.OwnedByResults = Fill_CodeItemResults( dr, "OwnedByList", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
@@ -1497,19 +1497,30 @@ namespace workIT.Factories
                 //}
             }
 
-            //credentialing?
-            if ( includeCredentials )
+			//credentialing?
+			int totalCredentials = 0;
+			int totalAssessments = 0;
+			int totalLopps = 0;
+			if ( includeCredentials )
             {
-                to.CreatedCredentials = Entity_AgentRelationshipManager.Credentials_ForOwningOfferingOrg( to.RowId );
-                
+				//update to get the first few and a total 
+    //            to.CreatedCredentials = Entity_AgentRelationshipManager.Credentials_ForOwningOfferingOrg( to.RowId, ref totalCredentials );
+				//to.TotalCredentials = totalCredentials;
 
-                //this was preferred as sometimes we lost the relationship. However, now that we need both owns, and offers problably need to go back to the latter
-                //to.CreatedCredentials = CredentialManager.GetAllForOwningOrg( to.RowId );
-                if ( to.CreatedCredentials != null && to.CreatedCredentials.Count > 0 )
-                    to.IsACredentialingOrg = true;
-                to.OwnedAssessments = AssessmentManager.GetAllForOwningOrg( to.RowId );
-                to.OwnedLearningOpportunities = LearningOpportunityManager.GetAllForOwningOrg( to.RowId );
-            }
+    //            to.OwnedAssessments = AssessmentManager.GetAllForOwningOrg( to.RowId, ref totalAssessments );
+				//to.TotalAssessments = totalAssessments;
+				
+				//to.OwnedLearningOpportunities = LearningOpportunityManager.GetAllForOwningOrg( to.RowId, ref totalLopps );
+				//to.TotalLopps = totalLopps;
+
+				//replace with 
+				to.TotalCredentials = Entity_AgentRelationshipManager.CredentialCount_ForOwningOfferingOrg( to.RowId );
+				to.TotalAssessments = Entity_AgentRelationshipManager.AssessmentCount_ForOwningOfferingOrg( to.RowId );
+				to.TotalLopps = Entity_AgentRelationshipManager.LoppCount_ForOwningOfferingOrg( to.RowId );
+
+				if ( to.TotalCredentials > 0 )
+					to.IsACredentialingOrg = true;
+			}
             else
             {
                 //need to distinguish QA from non-QA credentials
@@ -1547,33 +1558,42 @@ namespace workIT.Factories
             //to.OrganizationRole_Recipient = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( to.RowId, true );
             to.OrganizationRole_Recipient = Entity_AssertionManager.GetAllCombinedForTarget( 2, to.Id );
 
-            //also want the inverses - where this org was providing the QA for asmts, etc. 
-            //18-10-08 this is used to display QA performed. 
-            //to.OrganizationRole_Actor = Entity_AgentRelationshipManager.GetAll_QATargets_ForAgent( to.RowId );
+			//also want the inverses - where this org was providing the QA for asmts, etc. 
+			//18-10-08 this is used to display QA performed. 
+			//to.OrganizationRole_Actor = Entity_AgentRelationshipManager.GetAll_QATargets_ForAgent( to.RowId );
 
-            //Use a combined view
-            to.OrganizationRole_Actor = Entity_AssertionManager.GetAllCombinedForOrganization( to.RowId );
-            
+			//Use a combined view
+			int totalRecords = 0;
+			//need to keep this call until detail page is changed to only use ActualActorRoleCount
+			to.OrganizationRole_Actor = Entity_AssertionManager.GetAllCombinedForOrganization( to.RowId, ref totalRecords, 10 );
+			if ( totalRecords > to.OrganizationRole_Actor.Count() )
+				to.ActualActorRoleCount = totalRecords;
+			else
+				to.ActualActorRoleCount = to.OrganizationRole_Actor.Count();
 
-            //We need to merge OrganizationRole_Actor with OrganizationAssertions
-            //to.OrganizationAssertions = Entity_AssertionManager.GetAll( to.RowId );
-            //foreach (var item in to.OrganizationAssertions)
-            //{
-            //    if (to.OrganizationRole_Actor.Exists(s => s.TargetCredential.Id == item.TargetCredential.Id ))
-            //    {
-            //        //check roles
-            //    }
-            //}
+			//eventually will just use this to get totals
+			Entity_AssertionManager.FillCountsForOrganizationQAPerformed( to, ref totalRecords );
+			to.ActualActorRoleCount = to.QAPerformedOnCredentialsCount + to.QAPerformedOnOrganizationsCount + to.QAPerformedOnAssessmentsCount + to.QAPerformedOnLoppsCount;
 
-            to.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
+			//We need to merge OrganizationRole_Actor with OrganizationAssertions
+			//to.OrganizationAssertions = Entity_AssertionManager.GetAll( to.RowId );
+			//foreach (var item in to.OrganizationAssertions)
+			//{
+			//    if (to.OrganizationRole_Actor.Exists(s => s.TargetCredential.Id == item.TargetCredential.Id ))
+			//    {
+			//        //check roles
+			//    }
+			//}
+
+			to.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
 
             //to.QualityAssuranceAction = Entity_QualityAssuranceActionManager.QualityAssuranceActionProfile_GetAll( to.RowId );
 
             //dept and subsiduaries ????
             Entity_AgentRelationshipManager.AgentRole_FillAllSubOrganizations( to, 0 );
-
-            //parent org 
-            Entity_AgentRelationshipManager.AgentRole_GetParentOrganization( to );
+			
+			//parent org 
+			Entity_AgentRelationshipManager.AgentRole_GetParentOrganization( to );
 
         }
         private static void MapProcessProfiles( DBEntity from, ThisEntity to )
@@ -1689,7 +1709,7 @@ namespace workIT.Factories
                 output.CTID = from.CTID;
 
                 //TODO
-                output.NaicsResults = new CodeItemResult();
+                output.IndustryResults = new CodeItemResult();
                 output.AgentType = new Enumeration();
                 output.OrganizationSectorType = new Enumeration();
                 output.AccreditedByResults = new CodeItemResult();

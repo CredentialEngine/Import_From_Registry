@@ -255,6 +255,9 @@ namespace workIT.Factories
         public static ThisEntity Get( int id )
         {
             ThisEntity entity = new ThisEntity();
+			if ( id < 1 )
+				return entity;
+
             using ( var context = new EntityContext() )
             {
                 DBEntity item = context.Widget
@@ -402,7 +405,7 @@ namespace workIT.Factories
 
 				to.WidgetStylesUrl = from.WidgetStylesUrl;
 
-				if ( from.OwningOrganizationIds.IndexOf( "workIT.Models" ) > -1 )
+				if ( ( from.OwningOrganizationIds ?? "" ).IndexOf( "workIT.Models" ) > -1 )
 					from.OwningOrganizationIds = null;
 				else if ( ( from.OwningOrganizationIds ?? "" ) == "0" )
 					from.OwningOrganizationIds = null;

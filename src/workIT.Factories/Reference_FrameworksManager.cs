@@ -340,7 +340,7 @@ namespace workIT.Factories
 
 
 		private static void MapFromDB( Views.Entity_ReferenceFramework_Summary from, EnumeratedItem to )
-		{
+		{			
 			to.Id = from.Id;
 			to.ParentId = ( int ) from.EntityId;
 			to.CodeId = from.ReferenceFrameworkId;
@@ -349,7 +349,8 @@ namespace workIT.Factories
 			to.Name = from.Name;
 			//to.Description = from.Description;
 			to.SchemaName = from.SchemaName;
-
+			to.CodeGroup = from.CodeGroup;
+			to.CategoryId = from.CategoryId;
             to.ItemSummary = from.Name;
             if ( !string.IsNullOrEmpty( from.CodedNotation ) )
                 to.ItemSummary = string.Format( "{0} ({1})", from.Name, from.CodedNotation );

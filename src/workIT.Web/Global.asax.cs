@@ -26,8 +26,22 @@ namespace workIT.Web
 
             AntiForgeryConfig.SuppressXFrameOptionsHeader = true;
         }
-
-        void Session_Start( object sender, EventArgs e )
+		/// <summary>
+		/// Prototype to force to https - doesn't work well
+		/// </summary>
+		//protected void Application_BeginRequest()
+		//{
+		//	if ( !Context.Request.IsSecureConnection
+		//		&& !Context.Request.IsLocal // to avoid switching to https when local testing
+		//		)
+		//	{
+		//		Response.Clear();
+		//		Response.Status = "301 Moved Permanently";
+		//		Response.AddHeader( "Location", Context.Request.Url.ToString().Insert( 4, "s" ) );
+		//		Response.End();
+		//	}
+		//}
+		void Session_Start( object sender, EventArgs e )
         {
             // Code that runs when a new session is started
             //apparantly can prevent error:

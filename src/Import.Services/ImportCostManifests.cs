@@ -11,8 +11,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.CostManifestServices;
 using InputEntity = RA.Models.Json.CostManifest;
 
-using InputEntityV3 = RA.Models.JsonV3.CostManifest;
-using BNodeV3 = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.CostManifest;
+using BNodeV3 = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.Common.CostManifest;
 using workIT.Factories;
 using workIT.Models;

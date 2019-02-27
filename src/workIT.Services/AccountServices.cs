@@ -624,9 +624,9 @@ namespace workIT.Services
 			bool isSecure = false;
 			if ( UtilityManager.GetAppKeyValue( "usingSSL", false ) )
 				isSecure = true;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
 			string subject = "Reset Password for your Credential Finder account";
 
 			string email = EmailManager.GetEmailText( "ForgotPassword" );
@@ -660,9 +660,9 @@ namespace workIT.Services
 
 			
 			//string toEmail = user.Email;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
 			string subject = "Confirm Your Credential Finder Account";
 			string email = EmailManager.GetEmailText( "ConfirmAccount" );
 			string eMessage = "";
@@ -688,9 +688,9 @@ namespace workIT.Services
 			AppUser user = GetUserByEmail( userEmail );
 			string subject = "Forgot password attempt with unconfirmed email";
 
-			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
 			//string subject = "Forgot Password";
 			string email = "User: {0} attempted Forgot Password, and email has not been confirmed.<br/>Email: {1}<br/>Created: {2}";
 			string eMessage = "";

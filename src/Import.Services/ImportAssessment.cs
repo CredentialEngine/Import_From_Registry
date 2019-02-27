@@ -11,8 +11,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.AssessmentServices;
 using InputEntity = RA.Models.Json.AssessmentProfile;
 
-using InputEntityV3 = RA.Models.JsonV3.AssessmentProfile;
-using BNode = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.AssessmentProfile;
+using BNode = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
 using workIT.Factories;
 using workIT.Models;
@@ -564,11 +564,36 @@ namespace Import.Services
             output.ScoringMethodExampleDescription = helper.HandleLanguageMap( input.ScoringMethodExampleDescription, output, "ScoringMethodExampleDescription" );
             output.ScoringMethodType = helper.MapCAOListToEnumermation( input.ScoringMethodType );
 
-            //TBD - a custom version
-            //output.InstructionalProgramType = helper.MapCAOListToEnumermation( input.InstructionalProgramType );
-            output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
+			//TBD - a custom version
+			//output.InstructionalProgramType = helper.MapCAOListToEnumermation( input.InstructionalProgramType );
+			//occupations
+			output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+			//just append alternative items. Ensure empty lists are ignored
+			output.Occupations.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeOccupationType ) );
 
-            output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+			//skip if no occupations
+			if ( output.Occupations.Count() == 0
+				&& UtilityManager.GetAppKeyValue( "skipCredImportIfNoOccupations", false ) )
+			{
+				//LoggingHelper.DoTrace( 2, string.Format( "		***Skipping Credential# {0}, {1} as it has no occupations and this is a special run.", output.Id, output.Name ) );
+				//return true;
+			}
+			//Industries
+			output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
+			output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
+			//naics
+			//output.Naics = input.Naics;
+
+			output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
+			output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
+			if ( output.InstructionalProgramTypes.Count() == 0 && UtilityManager.GetAppKeyValue( "skipAsmtImportIfNoCIP", false ) )
+			{
+				//skip
+				LoggingHelper.DoTrace( 2, string.Format( "		***Skipping asmt# {0}, {1} as it has no InstructionalProgramTypes and this is a special run.", output.Id, output.Name ) );
+				return true;
+			}
+
+			output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
             output.CreditHourValue = input.CreditHourValue;
             output.CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType );
             output.CreditUnitValue = input.CreditUnitValue;

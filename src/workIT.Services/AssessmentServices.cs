@@ -81,7 +81,7 @@ namespace workIT.Services
         //		}
         //		return codes;
         //}
-        public static List<string> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
+        public static List<string> Autocomplete( string keyword, int maxTerms = 25)
         {
 
             string where = "";
@@ -96,7 +96,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
             {
-                return ElasticServices.AssessmentAutoComplete( keyword, maxTerms, ref totalRows, widgetId );
+                return ElasticServices.AssessmentAutoComplete( keyword, maxTerms, ref totalRows );
             }
             else
             {

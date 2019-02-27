@@ -11,8 +11,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.CredentialServices;
 using InputEntity = RA.Models.Json.Credential;
 
-using InputEntityV3 = RA.Models.JsonV3.Credential;
-using BNode = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.Credential;
+using BNode = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.Common.Credential;
 using workIT.Factories;
 using workIT.Models;
@@ -552,9 +552,9 @@ namespace Import.Services
                 string ctid = input.Ctid;
                 string referencedAtId = input.CtdlId;
 
-                LoggingHelper.DoTrace( 6, "		name: " + input.Name.ToString() );
+                LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
                 LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-                LoggingHelper.DoTrace( 6, "		ctid: " + input.Ctid );
+                LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
                 LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
                 status.Ctid = ctid;
 
@@ -622,20 +622,27 @@ namespace Import.Services
                 //output.Occupation = helper.MapCAOListToEnumermation( input.OccupationType );
 				//actually used by import
                 output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+				//just append alternative items. Ensure empty lists are ignored
+				output.Occupations.AddRange(helper.AppendLanguageMapListToCAOProfileList( input.AlternativeOccupationType ));
+
 				//skip if no occupations
 				if ( output.Occupations.Count() == 0 
 					&& UtilityManager.GetAppKeyValue( "skipCredImportIfNoOccupations", false ))
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "		***Skipping Credential# {0}, {1} as it has no occupations and this is a special run.", output.Id, output.Name ) );
+					//LoggingHelper.DoTrace( 2, string.Format( "		***Skipping Credential# {0}, {1} as it has no occupations and this is a special run.", output.Id, output.Name ) );
 					//return true;
 				}
                 //Industries
-                //output.Industry = helper.MapCAOListToEnumermation( input.IndustryType );
                 output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
-                //naics
-                output.Naics = input.Naics;
+				output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
+				//naics
+				output.Naics = input.Naics;
 
-                output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+				output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
+				output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
+
+
+				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 
                 output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
                 //CopyrightHolder - expecting single; will need to expand
@@ -647,14 +654,18 @@ namespace Import.Services
                 output.DegreeConcentration = helper.MapCAOListToTextValueProfile( input.DegreeConcentration, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
                 output.DegreeMajor = helper.MapCAOListToTextValueProfile( input.DegreeMajor, CodesManager.PROPERTY_CATEGORY_DEGREE_MAJOR );
                 output.DegreeMinor = helper.MapCAOListToTextValueProfile( input.DegreeMinor, CodesManager.PROPERTY_CATEGORY_DEGREE_MINOR );
-                //EstimatedCost
-                //will need to format, all populate Entity.RelatedCosts (for bubble up) - actually this would be for asmts, and lopps
-                output.EstimatedCost = helper.FormatCosts( input.EstimatedCost, ref status );
+
+				output.AssessmentDeliveryType = helper.MapCAOListToEnumermation( input.AssessmentDeliveryType );
+				output.LearningDeliveryType = helper.MapCAOListToEnumermation( input.LearningDeliveryType );
+
+				//EstimatedCost
+				//will need to format, all populate Entity.RelatedCosts (for bubble up) - actually this would be for asmts, and lopps
+				output.EstimatedCost = helper.FormatCosts( input.EstimatedCost, ref status );
 
                 //EstimatedDuration
                 output.EstimatedDuration = helper.FormatDuration( input.EstimatedDuration, ref status );
                 output.RenewalFrequency = helper.FormatDurationItem( input.RenewalFrequency );
-
+               
                 //conditions
                 output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
                 output.Recommends = helper.FormatConditionProfile( input.Recommends, ref status );

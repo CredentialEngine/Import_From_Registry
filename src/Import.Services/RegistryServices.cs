@@ -511,9 +511,15 @@ namespace Import.Services
                     BaseObject = JsonConvert.DeserializeObject<RegistryBaseObject>( main );
                     CtdlType = BaseObject.CdtlType;
                     Ctid = BaseObject.Ctid;
-                    //not important to fully resolve yet
-                    Name = BaseObject.Name.ToString();
-                }
+					//not important to fully resolve yet
+					if ( BaseObject.Name != null )
+						Name = BaseObject.Name.ToString();
+					else if ( CtdlType == "ceasn:CompetencyFramework" )
+					{
+						Name = (BaseObject.CompetencyFrameworkName ?? "").ToString();
+					} else
+						Name = "?????";
+				}
                 else
                 {
                     //check if old resource or standalone resource
@@ -523,7 +529,8 @@ namespace Import.Services
                     Name = BaseObject.Name.ToString();
                 }
                 CtdlType = CtdlType.Replace( "ceterms:", "" );
-            }
+				CtdlType = CtdlType.Replace( "ceasn:", "" );
+			}
         }
 
         Dictionary<string, object> dictionary = new Dictionary<string, object>();
@@ -553,11 +560,17 @@ namespace Import.Services
         [JsonProperty( PropertyName = "ceterms:name" )]
         public object Name { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:description" )]
-        public object Description { get; set; }
+		[JsonProperty( PropertyName = "ceterms:description" )]
+		public object Description { get; set; }
+
+		[JsonProperty( PropertyName = "ceasn:name" )]
+		public object CompetencyFrameworkName { get; set; }
+
+		[JsonProperty( PropertyName = "ceasn:description" )]
+		public object FrameworkDescription { get; set; }
 
 
-        [JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
+		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
         public string SubjectWebpage { get; set; }
 
     }

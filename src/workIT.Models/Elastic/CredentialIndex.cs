@@ -7,16 +7,10 @@ namespace workIT.Models.Elastic
 		public CredentialIndex()
 		{
 			EntityTypeId = 1;
-			CompetenciesName = new List<string>();
-			CompetenciesTargetNode = new List<string>();
-			RelationshipTypes = new List<int>();
+			
 			Subjects = new List<IndexSubject>();
 			Competencies = new List<IndexCompetency>();
 			Addresses = new List<Address>();
-			OccupationCodeGroups = new List<string>();
-			OccupationCodeNotations = new List<string>();
-			IndustryCodeGroups = new List<string>();
-			IndustryCodeNotations = new List<string>();
 			QualityAssurance = new List<IndexQualityAssurance>();
 
 		}
@@ -38,9 +32,21 @@ namespace workIT.Models.Elastic
 
 		//public string SubjectWebpage { get; set; }
 
-		public int OwnerOrganizationId { get; set; }
-
-		public string OwnerOrganizationName { get; set; }
+		public int OwnerOrganizationId
+		{
+			get { return PrimaryOrganizationId; }
+			set { this.PrimaryOrganizationId = value; }
+		}
+		public string OwnerOrganizationName
+		{
+			get { return PrimaryOrganizationName; }
+			set { this.PrimaryOrganizationName = value; }
+		}
+		public string OwnerOrganizationCTID
+		{
+			get { return PrimaryOrganizationCTID; }
+			set { this.PrimaryOrganizationCTID = value; }
+		}
 
 		//MP Created a separate common class called BaseIndex
 		//public string CredentialRegistryId { get; set; }
@@ -58,6 +64,7 @@ namespace workIT.Models.Elastic
 
 		public string CredentialTypeSchema { get; set; }
 		public string CredentialStatus { get; set; }
+		public int CredentialStatusId { get; set; }
 
 		public decimal TotalCost { get; set; }
 
@@ -84,6 +91,7 @@ namespace workIT.Models.Elastic
 
 		public int RequiresCompetenciesCount { get; set; }
 
+		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
 		public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
 		// public string QARolesResults { get; set; }
 		public string AgentAndRoles { get; set; }
@@ -94,7 +102,7 @@ namespace workIT.Models.Elastic
 		//QAAgentAndRoles - List actual orgIds and names for roles
 		public string Org_QAAgentAndRoles { get; set; }
 
-		public List<int> RelationshipTypes { get; set; }
+		//public List<int> RelationshipTypes { get; set; } = new List<int>();
 
 		#region counts
 		//public int QARolesCount { get; set; }
@@ -124,7 +132,6 @@ namespace workIT.Models.Elastic
 		public int EntryConditionCount { get; set; }
 		public int CommonCostsCount { get; set; }
 		public int CommonConditionsCount { get; set; }
-		//public decimal TotalCostCount { get; set; }
 		public int FinancialAidCount { get; set; }
 		public int EmbeddedCredentialsCount { get; set; }
 
@@ -137,15 +144,15 @@ namespace workIT.Models.Elastic
 		public int BadgeClaimsCount { get; set; }
 		public int ProcessProfilesCount { get; set; }
 		public int RevocationProfilesCount { get; set; }
-
-		public int HasOccupationsCount { get; set; }
-		public int HasIndustriesCount { get; set; }
+		public bool HasOccupations { get; set; }
+		public bool HasIndustries { get; set; }
+		public bool HasInstructionalPrograms { get; set; }
 
 		#endregion
 		public List<Connection> Connections { get; set; } = new List<Connection>();
 
-		public string LevelsResults { get; set; }
-		public string TypesResults { get; set; }
+		//public string LevelsResults { get; set; }
+		//public string TypesResults { get; set; }
 
 
 		//-actual connection type (no credential info)
@@ -163,32 +170,24 @@ namespace workIT.Models.Elastic
 		//public string Subject { get; set; }
 		public List<IndexSubject> Subjects { get; set; }
 
-		//public string NaicsResults { get; set; }
-
-		//public string IndustryOtherResults { get; set; }
-
-		//public string OccupationResults { get; set; }
-		//public string OccupationOtherResults { get; set; }
-
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexCompetency> Competencies { get; set; }
-		public List<string> CompetenciesName { get; set; }
-		public List<string> CompetenciesTargetNode { get; set; }
+		//public List<string> CompetenciesName { get; set; } = new List<string>();
+		//public List<string> CompetenciesTargetNode { get; set; }
 
 		//public Address Addresses { get; set; }
 		public List<Address> Addresses { get; set; }
 
 		//public List<string> AddressLocations { get { return Addresses.Select( x => x.AddressRegion ).ToList(); } }
 
-		public List<string> OccupationCodeGroups { get; set; }
-		public List<string> OccupationCodeNotations { get; set; }
-		public List<string> IndustryCodeGroups { get; set; }
-		public List<string> IndustryCodeNotations { get; set; }
-
-
+		//public List<string> OccupationCodeGroups { get; set; }
+		//public List<string> OccupationCodeNotations { get; set; }
+		//public List<string> IndustryCodeGroups { get; set; }
+		//public List<string> IndustryCodeNotations { get; set; }
 
 		public int NumberOfCostProfileItems { get; set; }
 
@@ -213,16 +212,20 @@ namespace workIT.Models.Elastic
 		/// - CredentialRegistryId
 		/// - CTID
 		/// </summary>
-		public List<string> TextValues { get; set; } = new List<string>();
+		//public List<string> TextValues { get; set; } = new List<string>();
+		/// <summary>
+		/// Use for specialilzed queries, where want to limit to 'premium' text values, rather than all
+		/// The question remains how to take advantage of these in searches? Perhaps giving an higher wieght.
+		/// </summary>
 		public List<string> PremiumValues { get; set; } = new List<string>();
-		public List<string> CodedNotation { get; set; } = new List<string>();
+		public List<int> ReportFilters { get; set; } = new List<int>();
 
 		//public List<int> PropertyValues { get; set; }
 		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
 		public List<int> AudienceTypeIds { get; set; } = new List<int>();
-		public List<int> ReportFilters { get; set; } = new List<int>();
-
-
+		public List<int> AsmntDeliveryMethodTypeIds { get; set; } = new List<int>();
+		public List<int>LearningDeliveryMethodTypeIds { get; set; } = new List<int>();
+		public List<IndexProperty> CredentialProperties { get; set; } = new List<IndexProperty>();
 	}
 
 }

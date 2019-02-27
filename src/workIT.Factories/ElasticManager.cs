@@ -25,7 +25,7 @@ namespace workIT.Factories
 		public static List<CredentialIndex> Credential_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new CredentialIndex();
+			var index = new CredentialIndex();
 			var list = new List<CredentialIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 7, "Credential_SearchForElastic - Starting. filter\r\n " + filter );
@@ -63,11 +63,11 @@ namespace workIT.Factories
 					catch ( Exception ex )
 					{
 						LoggingHelper.DoTrace( 2, "Credential_SearchForElastic - Exception:\r\n " + ex.Message );
-						item = new CredentialIndex();
-						item.Name = "EXCEPTION ENCOUNTERED";
-						item.Description = ex.Message;
-						//item.CredentialTypeSchema = "error";
-						list.Add( item );
+						index = new CredentialIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						//index.CredentialTypeSchema = "error";
+						list.Add( index );
 
 						return list;
 					}
@@ -86,10 +86,10 @@ namespace workIT.Factories
 					foreach ( DataRow dr in result.Rows )
 					{
 						cntr++;
-						if ( cntr % 100 == 0 )
+						if ( cntr % 200 == 0 )
 							LoggingHelper.DoTrace( 2, string.Format( " loading record: {0}", cntr ) );
 						//avgMinutes = 0;
-						item = new CredentialIndex
+						index = new CredentialIndex
 						{
 							EntityTypeId = 1,
 							Id = GetRowColumn( dr, "Id", 0 ),
@@ -100,127 +100,128 @@ namespace workIT.Factories
 							EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 ),
 							Name = dr[ "Name" ].ToString()
 						};
-						if ( item.Id == 342 )
+						if ( index.Id == 342 )
 						{
 
 						}
 						if ( !string.IsNullOrWhiteSpace( dr[ "AlternateName" ].ToString() ) )
-							item.AlternateNames.Add( dr[ "AlternateName" ].ToString() );
+							index.AlternateNames.Add( dr[ "AlternateName" ].ToString() );
 
-						item.FriendlyName = FormatFriendlyTitle( item.Name );
+						index.FriendlyName = FormatFriendlyTitle( index.Name );
 
-						item.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
+						index.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
 
 						string rowId = dr[ "EntityUid" ].ToString();
-						item.RowId = new Guid( rowId );
+						index.RowId = new Guid( rowId );
 
-						item.Description = dr[ "Description" ].ToString();
+						index.Description = dr[ "Description" ].ToString();
 
-						//item.OwnerOrganizationId = GetRowPossibleColumn( dr, "OwningOrganizationId", 0 );
-						item.OwnerOrganizationId = Int32.Parse( dr[ "OwningOrganizationId" ].ToString() );
+						//index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OwningOrganizationId", 0 );
+						index.OwnerOrganizationId = Int32.Parse( dr[ "OwningOrganizationId" ].ToString() );
 
-						item.OwnerOrganizationName = dr[ "OwningOrganization" ].ToString();
-						if ( item.OwnerOrganizationName.Length > 0 )
-							item.ListTitle = item.Name + " (" + item.OwnerOrganizationName + ")";
+						index.OwnerOrganizationName = dr[ "OwningOrganization" ].ToString();
+						if ( index.OwnerOrganizationName.Length > 0 )
+							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
 						else
-							item.ListTitle = item.Name;
+							index.ListTitle = index.Name;
+						//add helpers
+						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
+						//index.PrimaryOrganizationId = index.OwnerOrganizationId;
+						//index.PrimaryOrganizationName = index.OwnerOrganizationName;
 
-						item.CTID = dr[ "CTID" ].ToString();
+						index.CTID = dr[ "CTID" ].ToString();
+						//
+						index.CredentialType = dr[ "CredentialType" ].ToString();
 
-						item.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
+						index.CredentialTypeSchema = dr[ "CredentialTypeSchema" ].ToString();
+						index.CredentialStatus = dr[ "CredentialStatus" ].ToString();
+						if ( !string.IsNullOrWhiteSpace( index.CredentialStatus )
+							&& index.CredentialStatus != "Active" && index.Name.IndexOf( index.CredentialStatus ) == -1 )
+						{
+							index.Name += string.Format( " ({0})", index.CredentialStatus );
+						}
+						index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
+
+						index.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
+						index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
 
 						string date = GetRowColumn( dr, "EffectiveDate", "" );
 						if ( IsValidDate( date ) )
-							item.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
+							index.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
 						else
-							item.DateEffective = "";
+							index.DateEffective = "";
 						date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
-							item.Created = DateTime.Parse( date );
+							index.Created = DateTime.Parse( date );
 						date = GetRowColumn( dr, "LastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
 						date = GetRowColumn( dr, "EntityLastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
-						//
-						item.CredentialType = dr[ "CredentialType" ].ToString();
+							index.LastUpdated = DateTime.Parse( date );
+						
+						index.AvailableOnlineAt = dr[ "AvailableOnlineAt" ].ToString();
 
-						item.CredentialTypeSchema = dr[ "CredentialTypeSchema" ].ToString();
-						item.CredentialStatus = dr[ "CredentialStatus" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( item.CredentialStatus )
-							&& item.CredentialStatus != "Active" )
-						{
-							item.Name += string.Format( " ({0})", item.CredentialStatus );
-						}
-						//item.CredentialTypeId = GetRowPossibleColumn( dr, "CredentialTypeId", 0 );
-						item.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
-						item.AvailableOnlineAt = dr[ "AvailableOnlineAt" ].ToString();
-
-						// item.NumberOfCostProfileItems = GetRowColumn( dr, "NumberOfCostProfileItems", 0 );
-						item.TotalCost = GetRowPossibleColumn( dr, "TotalCost", 0 );
+						// index.NumberOfCostProfileItems = GetRowColumn( dr, "NumberOfCostProfileItems", 0 );
+						index.TotalCost = GetRowPossibleColumn( dr, "TotalCost", 0 );
 						//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
 
-						item.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
-						//item.EstimatedTimeToEarn = Int32.Parse( dr[ "AverageMinutes" ].ToString() );
-						item.IsAQACredential = GetRowColumn( dr, "IsAQACredential", false );
+						index.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
+						//index.EstimatedTimeToEarn = Int32.Parse( dr[ "AverageMinutes" ].ToString() );
+						index.IsAQACredential = GetRowColumn( dr, "IsAQACredential", false );
 
-						item.RequiresCompetenciesCount = Int32.Parse( dr[ "RequiresCompetenciesCount" ].ToString() );
-						item.LearningOppsCompetenciesCount = Int32.Parse( dr[ "LearningOppsCompetenciesCount" ].ToString() );
-						item.AssessmentsCompetenciesCount = Int32.Parse( dr[ "AssessmentsCompetenciesCount" ].ToString() );
-						item.HasPartCount = Int32.Parse( dr[ "HasPartCount" ].ToString() );
-						item.IsPartOfCount = Int32.Parse( dr[ "IsPartOfCount" ].ToString() );
-						item.RequiresCount = Int32.Parse( dr[ "RequiresCount" ].ToString() );
-						item.RecommendsCount = Int32.Parse( dr[ "RecommendsCount" ].ToString() );
-						item.EntryConditionCount = Int32.Parse( dr[ "EntryConditionCount" ].ToString() );
+						index.RequiresCompetenciesCount = Int32.Parse( dr[ "RequiresCompetenciesCount" ].ToString() );
+						index.LearningOppsCompetenciesCount = Int32.Parse( dr[ "LearningOppsCompetenciesCount" ].ToString() );
+						index.AssessmentsCompetenciesCount = Int32.Parse( dr[ "AssessmentsCompetenciesCount" ].ToString() );
+						index.HasPartCount = Int32.Parse( dr[ "HasPartCount" ].ToString() );
+						index.IsPartOfCount = Int32.Parse( dr[ "IsPartOfCount" ].ToString() );
+						index.RequiresCount = Int32.Parse( dr[ "RequiresCount" ].ToString() );
+						index.RecommendsCount = Int32.Parse( dr[ "RecommendsCount" ].ToString() );
+						index.EntryConditionCount = Int32.Parse( dr[ "EntryConditionCount" ].ToString() );
 
-						item.RequiredForCount = Int32.Parse( dr[ "isRequiredForCount" ].ToString() );
-						item.IsRecommendedForCount = Int32.Parse( dr[ "IsRecommendedForCount" ].ToString() );
-						item.RenewalCount = Int32.Parse( dr[ "RenewalCount" ].ToString() );
-						item.IsAdvancedStandingForCount = Int32.Parse( dr[ "IsAdvancedStandingForCount" ].ToString() );
-						item.AdvancedStandingFromCount = Int32.Parse( dr[ "AdvancedStandingFromCount" ].ToString() );
-						item.PreparationForCount = Int32.Parse( dr[ "isPreparationForCount" ].ToString() );
+						index.RequiredForCount = Int32.Parse( dr[ "isRequiredForCount" ].ToString() );
+						index.IsRecommendedForCount = Int32.Parse( dr[ "IsRecommendedForCount" ].ToString() );
+						index.RenewalCount = Int32.Parse( dr[ "RenewalCount" ].ToString() );
+						index.IsAdvancedStandingForCount = Int32.Parse( dr[ "IsAdvancedStandingForCount" ].ToString() );
+						index.AdvancedStandingFromCount = Int32.Parse( dr[ "AdvancedStandingFromCount" ].ToString() );
+						index.PreparationForCount = Int32.Parse( dr[ "isPreparationForCount" ].ToString() );
 
-						item.PreparationFromCount = Int32.Parse( dr[ "isPreparationFromCount" ].ToString() );
-
-
+						index.PreparationFromCount = Int32.Parse( dr[ "isPreparationFromCount" ].ToString() );
 
 						costProfilesCount = Int32.Parse( dr[ "costProfilesCount" ].ToString() );
-						//
+					
+						index.CommonConditionsCount = Int32.Parse( dr[ "CommonConditionsCount" ].ToString() );
+						index.CommonCostsCount = Int32.Parse( dr[ "CommonCostsCount" ].ToString() );
+						index.FinancialAidCount = Int32.Parse( dr[ "FinancialAidCount" ].ToString() );
+						index.EmbeddedCredentialsCount = Int32.Parse( dr[ "EmbeddedCredentialsCount" ].ToString() );
 
-						//
-						item.CommonConditionsCount = Int32.Parse( dr[ "CommonConditionsCount" ].ToString() );
-						item.CommonCostsCount = Int32.Parse( dr[ "CommonCostsCount" ].ToString() );
-						item.FinancialAidCount = Int32.Parse( dr[ "FinancialAidCount" ].ToString() );
-						item.EmbeddedCredentialsCount = Int32.Parse( dr[ "EmbeddedCredentialsCount" ].ToString() );
+						index.RequiredAssessmentsCount = Int32.Parse( dr[ "RequiredAssessmentsCount" ].ToString() );
+						index.RequiredCredentialsCount = Int32.Parse( dr[ "RequiredCredentialsCount" ].ToString() );
+						index.RequiredLoppCount = Int32.Parse( dr[ "RequiredLoppCount" ].ToString() );
 
-						item.RequiredAssessmentsCount = Int32.Parse( dr[ "RequiredAssessmentsCount" ].ToString() );
-						item.RequiredCredentialsCount = Int32.Parse( dr[ "RequiredCredentialsCount" ].ToString() );
-						item.RequiredLoppCount = Int32.Parse( dr[ "RequiredLoppCount" ].ToString() );
+						index.RecommendedAssessmentsCount = Int32.Parse( dr[ "RecommendedAssessmentsCount" ].ToString() );
+						index.RecommendedCredentialsCount = Int32.Parse( dr[ "RecommendedCredentialsCount" ].ToString() );
+						index.RecommendedLoppCount = Int32.Parse( dr[ "RecommendedLoppCount" ].ToString() );
 
-						item.RecommendedAssessmentsCount = Int32.Parse( dr[ "RecommendedAssessmentsCount" ].ToString() );
-						item.RecommendedCredentialsCount = Int32.Parse( dr[ "RecommendedCredentialsCount" ].ToString() );
-						item.RecommendedLoppCount = Int32.Parse( dr[ "RecommendedLoppCount" ].ToString() );
-
-						item.BadgeClaimsCount = Int32.Parse( dr[ "badgeClaimsCount" ].ToString() );
-						item.RevocationProfilesCount = Int32.Parse( dr[ "RevocationProfilesCount" ].ToString() );
-						item.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
-						item.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
-						item.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
+						index.BadgeClaimsCount = Int32.Parse( dr[ "badgeClaimsCount" ].ToString() );
+						index.RevocationProfilesCount = Int32.Parse( dr[ "RevocationProfilesCount" ].ToString() );
+						index.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
+						//index.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
+						//index.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
 						//-actual connection type (no credential info), with the schema name, and number of connections
 						// 8~Is Preparation For~ceterms:isPreparationFor~2
-						item.ConnectionsList = dr[ "ConnectionsList" ].ToString();
+						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
 
 						//connection type, plus Id, and name of credential
 						//8~Is Preparation For~136~MSSC Certified Production Technician (CPT©)~| 8~Is Preparation For~272~MSSC Certified Logistics Technician (CLT©)~
-						item.CredentialsList = dr[ "CredentialsList" ].ToString();
-						item.IsPartOfList = dr[ "IsPartOfList" ].ToString();
-						item.HasPartsList = dr[ "HasPartsList" ].ToString();
+						index.CredentialsList = dr[ "CredentialsList" ].ToString();
+						index.IsPartOfList = dr[ "IsPartOfList" ].ToString();
+						index.HasPartsList = dr[ "HasPartsList" ].ToString();
 						if ( includingHasPartIsPartWithConnections )
 						{
-							item.CredentialsList += item.IsPartOfList;
-							item.CredentialsList += item.HasPartsList;
+							index.CredentialsList += index.IsPartOfList;
+							index.CredentialsList += index.HasPartsList;
 						}
 						string credentialConnections = dr[ "CredentialConnections" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
@@ -230,7 +231,7 @@ namespace workIT.Factories
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								conn = new Connection();
-								conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+								conn.ConnectionType = ( string ) child.Attribute( "ConnectionType" ) ?? "";
 								conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
 								//do something with counts for this type
@@ -239,66 +240,54 @@ namespace workIT.Factories
 								if ( conn.CredentialId > 0 )
 								{
 									//add credential
-									conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+									conn.Credential = ( string ) child.Attribute( "CredentialName" ) ?? "";
 									//??????
 									conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-									conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+									conn.CredentialOrganization = ( string ) child.Attribute( "credOrganization" ) ?? "";
 								}
 								conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
 								if ( conn.AssessmentId > 0 )
 								{
-									conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+									conn.Assessment = ( string ) child.Attribute( "AssessmentName" ) ?? "";
 									conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-									conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+									conn.AssessmentOrganization = ( string ) child.Attribute( "asmtOrganization" ) ?? "";
 								}
 								conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
 								if ( conn.LoppId > 0 )
 								{
-									conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+									conn.LearningOpportunity = ( string ) child.Attribute( "LearningOpportunityName" ) ?? "";
 									conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-									conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+									conn.LearningOpportunityOrganization = ( string ) child.Attribute( "loppOrganization" ) ?? "";
 								}
 
-								item.Connections.Add( conn );
+								index.Connections.Add( conn );
 							}
 						}
-						//try
-						//                  {
-
-						//                  }
-						//                  catch ( Exception ex )
-						//                  {
-						//                      LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on CredentialConnections id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
-						//                  }
 
 
 						#region QualityAssurance
-						//                  try
-						//                  {
-						//}
-						//catch ( Exception ex )
-						//{
-						//	LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on QualityAssurance id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
-						//}
+
+						HandleAgentRelationshipsForEntity( dr, index );
+
 						//2|7|6|10|11
-						string relationshipTypes = dr[ "RelationshipTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( relationshipTypes ) )
-						{
-							foreach ( var name in relationshipTypes.Split( '|' ) )
-							{
-								if ( !string.IsNullOrWhiteSpace( name ) )
-									item.RelationshipTypes.Add( int.Parse( name ) );
-							}
-						}
+						//string relationshipTypes = dr[ "RelationshipTypes" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( relationshipTypes ) )
+						//{
+						//	foreach ( var name in relationshipTypes.Split( '|' ) )
+						//	{
+						//		if ( !string.IsNullOrWhiteSpace( name ) )
+						//			index.AgentRelationships.Add( int.Parse( name ) );
+						//	}
+						//}
 
 						//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
 						//QARolesList: includes roleId, roleName
 						//1~Accredited~1~Credential| 2~Approved~1~Credential
-						//item.QARolesResults = dr[ "QARolesList" ].ToString();
+						//index.QARolesResults = dr[ "QARolesList" ].ToString();
 
 						//AgentAndRoles: includes roleId, roleName, OrgId, and orgName
 						//1~Accredited~3~National Commission for Certifying Agencies (NCCA) [ reference ]~Credential
-						item.AgentAndRoles = dr[ "AgentAndRoles" ].ToString();
+						index.AgentAndRoles = dr[ "AgentAndRoles" ].ToString();
 
 						//QA on owning org
 						//This should be combined with the credential QA - see publisher
@@ -306,12 +295,12 @@ namespace workIT.Factories
 						//QAOrgRolesList: includes roleId, roleName, number of organizations in role
 						//10~Recognized~2~Organization| 12~Regulated~2~Organization
 						//replacing the source
-						//item.Org_QARolesList = GetRowPossibleColumn( dr, "QAOrgRolesList" );
-						item.Org_QARolesList = dr[ "Org_QARolesList" ].ToString();
+						//index.Org_QARolesList = GetRowPossibleColumn( dr, "QAOrgRolesList" );
+						index.Org_QARolesList = dr[ "Org_QARolesList" ].ToString();
 
 						//QAAgentAndRoles - List actual orgIds and names for roles
 						//10~Owning Org is Recognized~1105~Accrediting Commission for Community and Junior Colleges - updated~Organization| 10~Owning Org is Recognized~64~AdvancED~Organization| 12~Owning Org is Regulated~55~TESTING_American National Standards Institute (ANSI)~Organization| 12~Owning Org is Regulated~64~AdvancED~Organization
-						item.Org_QAAgentAndRoles = dr[ "Org_QAAgentAndRoles" ].ToString();
+						index.Org_QAAgentAndRoles = dr[ "Org_QAAgentAndRoles" ].ToString();
 
 						qualityAssurance = dr[ "QualityAssurance" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( qualityAssurance ) )
@@ -324,27 +313,27 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( qualityAssurance );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
-								string relationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "";
+								string agentName = ( string ) child.Attribute( "AgentName" ) ?? "";
+								string relationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "";
 								bool isQARole = false;
 								bool.TryParse( ( string )child.Attribute( "IsQARole" ) ?? "", out isQARole );
 
 								if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationship ) )
 								{
-									item.QualityAssurance.Add( new IndexQualityAssurance
+									index.QualityAssurance.Add( new IndexQualityAssurance
 									{
 										AgentRelativeId = int.Parse( child.Attribute( "AgentRelativeId" ).Value ),
 										RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
-										SourceToAgentRelationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "",
-										AgentToSourceRelationship = ( string )child.Attribute( "AgentToSourceRelationship" ) ?? "",
-										AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
-										AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+										SourceToAgentRelationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "",
+										AgentToSourceRelationship = ( string ) child.Attribute( "AgentToSourceRelationship" ) ?? "",
+										AgentUrl = ( string ) child.Attribute( "AgentUrl" ) ?? "",
+										AgentName = ( string ) child.Attribute( "AgentName" ) ?? "",
 										EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
 										IsQARole = isQARole,
 									} );
 									//add phrase. ex Accredited by microsoft
 									if ( !string.IsNullOrWhiteSpace( relationship ) && !string.IsNullOrWhiteSpace( agentName ) )
-										item.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
+										index.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
 								}
 							}
 						}
@@ -380,9 +369,9 @@ namespace workIT.Factories
 									if ( Int32.TryParse( referenceBaseId.Value, out outputId ) )
 										cs.ReferenceBaseId = outputId;
 
-								item.Subjects.Add( cs );
+								index.Subjects.Add( cs );
 							}
-							//item.Subject = string.Join( "|", item.Subjects.Select( x => x.Name ) );
+							//index.Subject = string.Join( "|", index.Subjects.Select( x => x.Name ) );
 						}
 						#endregion
 
@@ -396,24 +385,24 @@ namespace workIT.Factories
 							xDoc = XDocument.Parse( addresses );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string region = ( string )child.Attribute( "Region" ) ?? "";
-								string city = ( string )child.Attribute( "City" ) ?? "";
-								item.Addresses.Add( new Address
+								string region = ( string ) child.Attribute( "Region" ) ?? "";
+								string city = ( string ) child.Attribute( "City" ) ?? "";
+								index.Addresses.Add( new Address
 								{
-									Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-									Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-									Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-									Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-									City = ( string )child.Attribute( "City" ) ?? "",
-									AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-									PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-									Country = ( string )child.Attribute( "Country" ) ?? ""
+									Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+									Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+									Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+									Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
+									City = ( string ) child.Attribute( "City" ) ?? "",
+									AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
+									PostalCode = ( string ) child.Attribute( "PostalCode" ) ?? "",
+									Country = ( string ) child.Attribute( "Country" ) ?? ""
 								} );
-								AddTextValue( item, city );
-								AddTextValue( item, region );
+								AddTextValue( index, city );
+								AddTextValue( index, region );
 							}
 						}
-						if ( item.Addresses.Count == 0 )
+						if ( index.Addresses.Count == 0 )
 						{
 							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
 							var orgAddresses = dr[ "OrgAddresses" ].ToString();
@@ -424,29 +413,29 @@ namespace workIT.Factories
 									var xDoc = new XDocument();
 									xDoc = XDocument.Parse( orgAddresses );
 									//actually will only focus on regions
-									
+
 									//if ( xDoc.Root.Elements().Count() == 1)
 									//{
 									foreach ( var child in xDoc.Root.Elements() )
 									{
-										string region = ( string )child.Attribute( "Region" ) ?? "";
-										string city = ( string )child.Attribute( "City" ) ?? "";
+										string region = ( string ) child.Attribute( "Region" ) ?? "";
+										string city = ( string ) child.Attribute( "City" ) ?? "";
 										if ( prevRegion != region )
 										{
-											item.Addresses.Add( new Address
+											index.Addresses.Add( new Address
 											{
-												Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-												Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-												Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-												Address2 = ( string )child.Attribute( "Address2" ) ?? "",
+												Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+												Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+												Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+												Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
 												//City = ( string )child.Attribute( "City" ) ?? "",
-												AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
+												AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
 												//PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-												Country = ( string )child.Attribute( "Country" ) ?? ""
+												Country = ( string ) child.Attribute( "Country" ) ?? ""
 											} );
 											prevRegion = region;
-											AddTextValue( item, city );
-											AddTextValue( item, region );
+											AddTextValue( index, city );
+											AddTextValue( index, region );
 										}
 										//should only be one, just in case some change in future
 										//break;
@@ -456,13 +445,49 @@ namespace workIT.Factories
 							}
 							catch ( Exception ex )
 							{
-								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 							}
 						}
 						#endregion
 
-						if ( item.BadgeClaimsCount > 0 )
-							item.HasVerificationType_Badge = true;  //Update this with appropriate source data
+						if ( index.BadgeClaimsCount > 0 )
+							index.HasVerificationType_Badge = true;  //Update this with appropriate source data
+
+						#region CrendentialProperties
+						try
+						{
+							var credentialProperties = dr[ "CredentialProperties" ].ToString();
+							if ( !string.IsNullOrEmpty( credentialProperties ) )
+							{
+								credentialProperties = credentialProperties.Replace( "&", " " );
+								var xDoc = XDocument.Parse( credentialProperties );
+								foreach ( var child in xDoc.Root.Elements() )
+								{
+									var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
+									var propertyValueId = int.Parse( child.Attribute( "PropertyValueId" ).Value );
+									var property = child.Attribute( "Property" ).Value;
+									
+									index.CredentialProperties.Add( new IndexProperty {
+										CategoryId = categoryId,
+										Id = propertyValueId,
+										Name = property
+									} );
+									if ( categoryId == (int)CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+										index.LearningDeliveryMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == (int)CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE )
+										index.AsmntDeliveryMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
+										index.AudienceTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
+										index.AudienceLevelTypeIds.Add( propertyValueId );
+								}
+							}
+						}
+						catch ( Exception ex )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on CrendentialProperties id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+						}
+						#endregion
 
 						#region TextValues, CodedNotation
 						try
@@ -479,81 +504,87 @@ namespace workIT.Factories
 									var textValue = child.Attribute( "TextValue" );
 									if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
 									{
-										item.TextValues.Add( textValue.Value );
+										index.TextValues.Add( textValue.Value );
 
 										if ( textValue.Value.IndexOf( "-" ) > -1 )
-											item.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+											index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
 
 										if ( categoryId == 35 )
-											item.Keyword.Add( textValue.Value );
+											index.Keyword.Add( textValue.Value );
 									}
 									//source is just direct/indirect, more want the sourceEntityType
 									var codeNotation = child.Attribute( "CodedNotation" );
 									if ( codeNotation != null && !string.IsNullOrWhiteSpace( codeNotation.Value ) )
 									{
-										item.TextValues.Add( codeNotation.Value );
+										index.TextValues.Add( codeNotation.Value );
 										if ( codeNotation.Value.IndexOf( "-" ) > -1 )
-											item.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
+											index.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
 									}
 								}
 							}
 
 
-							if ( !string.IsNullOrWhiteSpace( item.AvailableOnlineAt ) )
-								item.TextValues.Add( item.AvailableOnlineAt );
+							if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
+								index.TextValues.Add( index.AvailableOnlineAt );
 
-							item.TextValues.Add( item.CredentialType );
+							index.TextValues.Add( index.CredentialType );
 							//properties to add to textvalues
 
 							string url = dr[ "AvailabilityListing" ].ToString();
 							if ( !string.IsNullOrWhiteSpace( url ) )
-								item.TextValues.Add( url );
+								index.TextValues.Add( url );
 
-							if ( !string.IsNullOrWhiteSpace( item.CredentialRegistryId ) )
-								item.TextValues.Add( item.CredentialRegistryId );
+							if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
+								index.TextValues.Add( index.CredentialRegistryId );
 							string indexField = dr[ "CredentialId" ].ToString();
 							if ( !string.IsNullOrWhiteSpace( indexField ) )
-								item.TextValues.Add( indexField );
+								index.TextValues.Add( indexField );
 
-							item.TextValues.Add( item.Id.ToString() );
-							item.TextValues.Add( item.CTID );
+							index.TextValues.Add( index.Id.ToString() );
+							index.TextValues.Add( index.CTID );
 						}
 						catch ( Exception ex )
 						{
-							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on TextValues, CodedNotation id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on TextValues, CodedNotation id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 						}
 						#endregion
+
 						#region Audience levels and Audience types
 
 						//not sure we need level list with AudienceLevelTypeIds?
 						//37~Masters Degree Level| 38~Doctoral Degree Level
-						item.LevelsResults = dr[ "LevelsList" ].ToString();
+						//index.LevelsResults = dr[ "LevelsList" ].ToString();
 						//37|38
 						//string propertyValues = dr[ "AudienceLevelTypeIds" ].ToString();
 						//if ( !string.IsNullOrWhiteSpace( propertyValues ) )
 						//{
 						//	foreach ( var propertyValueId in propertyValues.Split( '|' ) )
 						//	{
-						//		item.AudienceLevelTypeIds.Add( int.Parse( propertyValueId ) );
+						//		index.AudienceLevelTypeIds.Add( int.Parse( propertyValueId ) );
 						//	}
 						//}
-						item.AudienceLevelTypeIds = GetIntegerList( dr, "AudienceLevelTypeIds" );
+						//index.AudienceLevelTypeIds = GetIntegerList( dr, "AudienceLevelTypeIds" );
 						//TODO - this may be duplicate if already in Entity.SearchIndex
-						if ( !string.IsNullOrWhiteSpace( item.LevelsResults ) )
-							item.TextValues.Add( item.LevelsResults );
+						//if ( !string.IsNullOrWhiteSpace( index.LevelsResults ) )
+						//index.TextValues.Add( index.LevelsResults );
 
-						item.TypesResults = dr[ "TypesList" ].ToString();
+						//index.TypesResults = dr[ "TypesList" ].ToString();
 						//string AudienceTypes = dr[ "AudienceTypeIds" ].ToString();
 						//if ( !string.IsNullOrWhiteSpace( AudienceTypes ) )
 						//{
 						//	foreach ( var propertyValueId in AudienceTypes.Split( '|' ) )
 						//	{
-						//		item.AudienceTypeIds.Add( int.Parse( propertyValueId ) );
+						//		index.AudienceTypeIds.Add( int.Parse( propertyValueId ) );
 						//	}
 						//}
-						item.AudienceTypeIds = GetIntegerList( dr, "AudienceTypeIds" );
-						item.InLanguage = GetLanguages( dr );
+						//index.AudienceTypeIds = GetIntegerList( dr, "AudienceTypeIds" );
+
 						#endregion
+
+						#region Languages
+						index.InLanguage = GetLanguages( dr );
+						#endregion
+
 						#region Competencies
 						//these are competencies from condition profiles
 						//not sure we want these in the index
@@ -571,16 +602,16 @@ namespace workIT.Factories
 							{
 								var competency = new IndexCompetency
 								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									Description = ( string ) child.Attribute( "Description" ) ?? ""
 								};
 
-								item.Competencies.Add( competency );
+								index.Competencies.Add( competency );
 							}
 						}
 						#endregion
 
-						#region Reference Frameworks - industries,and occupations
+						#region Reference Frameworks - industries, occupations and classifications
 						string frameworks = dr[ "Frameworks" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( frameworks ) )
 						{
@@ -592,120 +623,146 @@ namespace workIT.Factories
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+									SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+									CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? "",
 								};
 
-								//item.Frameworks.Add( framework );
+								//index.Frameworks.Add( framework );
 								if ( framework.CategoryId == 11 )
-									item.Occupations.Add( framework );
+									index.Occupations.Add( framework );
 								if ( framework.CategoryId == 10 )
-									item.Industries.Add( framework );
+									index.Industries.Add( framework );
+								if ( framework.CategoryId == 23 )
+									index.Classifications.Add( framework );
 							}
+							if( index.Occupations.Count > 0)
+								index.HasOccupations = true;
+							if ( index.Industries.Count > 0 )
+								index.HasIndustries = true;
+							if ( index.Classifications.Count > 0 )
+								index.HasInstructionalPrograms = true;
+
 						}
+						//var InstructionalProgramCount = GetRowPossibleColumn( dr, "InstructionalProgramCount", 0 );
+						//if ( InstructionalProgramCount > 0 )
+						//{
+						//	index.Classifications = Reference_FrameworksManager.FillEnumeration( index.RowId, CodesManager.PROPERTY_CATEGORY_CIP ).Items.Select( x => new IndexReferenceFramework
+						//	{
+						//		CategoryId = x.CategoryId,
+						//		ReferenceFrameworkId = x.CodeId,
+						//		Name = x.Name,
+						//		CodeGroup = x.CodeGroup,
+						//		SchemaName = x.SchemaName,
+						//		CodedNotation = x.Value,
+						//	} ).ToList();
+
+						//}
 						#endregion
 
 						#region Custom Reports
 						int propertyId = 0;
 
-						if ( !string.IsNullOrWhiteSpace( item.AvailableOnlineAt ) )
+						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
 							if ( GetPropertyId( 58, "credReport:AvailableOnline", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						//var EmbeddedCredentialsCount = GetRowPossibleColumn( dr, "EmbeddedCredentialsCount", 0 );
 						//if ( EmbeddedCredentialsCount > 0 )
 						//    if ( GetPropertyId( 58, "credReport:HasEmbeddedCredentials", ref propertyId ) )
-						//        item.ReportFilters.Add( propertyId );
-						if ( item.EmbeddedCredentialsCount > 0 )
+						//        index.ReportFilters.Add( propertyId );
+						if ( index.EmbeddedCredentialsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasEmbeddedCredentials", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						if ( costProfilesCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasCostProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.CommonConditionsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.CommonConditionsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:ReferencesCommonConditions", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.CommonCostsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.CommonCostsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:ReferencesCommonCosts", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.FinancialAidCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.FinancialAidCount > 0 )
 							if ( GetPropertyId( 58, "credReport:FinancialAid", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RequiredAssessmentsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RequiredAssessmentsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RequiresAssessment", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RequiredCredentialsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RequiredCredentialsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RequiresCredential", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RequiredLoppCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RequiredLoppCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RequiresLearningOpportunity", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RecommendedAssessmentsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RecommendedAssessmentsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RecommendsAssessment", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RecommendedCredentialsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RecommendedCredentialsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RecommendsCredential", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RecommendedLoppCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RecommendedLoppCount > 0 )
 							if ( GetPropertyId( 58, "credReport:RecommendsLearningOpportunity", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.BadgeClaimsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.BadgeClaimsCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasVerificationBadges", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RevocationProfilesCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RevocationProfilesCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasRevocation", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.ProcessProfilesCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ProcessProfilesCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasProcessProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.HasOccupationsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasOccupations  )
 							if ( GetPropertyId( 58, "credReport:HasOccupations", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.HasIndustriesCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasIndustries  )
 							if ( GetPropertyId( 58, "credReport:HasIndustries", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.IsPartOfCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasInstructionalPrograms )
+							if ( GetPropertyId( 58, "credReport:HasCIP", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.IsPartOfCount > 0 )
 							if ( GetPropertyId( 58, "credReport:IsPartOfCredential", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.HasPartCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasPartCount > 0 )
 							if ( GetPropertyId( 58, "credReport:HasEmbeddedCredentials", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.Addresses.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 58, "credReport:HasAddresses", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
-						if ( item.RequiresCompetenciesCount > 0 )
+						if ( index.RequiresCompetenciesCount > 0 )
 						{
 							if ( GetPropertyId( 58, "credReport:RequiresCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.RequiresCompetenciesCount > 0 || item.AssessmentsCompetenciesCount > 0 || item.LearningOppsCompetenciesCount > 0 )
+						if ( index.RequiresCompetenciesCount > 0 || index.AssessmentsCompetenciesCount > 0 || index.LearningOppsCompetenciesCount > 0 )
 						{
 							if ( GetPropertyId( 58, "credReport:HasCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						var HasConditionProfileCount = GetRowPossibleColumn( dr, "HasConditionProfileCount", 0 );
 						if ( HasConditionProfileCount > 0 )
 						{
 							if ( GetPropertyId( 58, "credReport:HasConditionProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
 						if ( DurationProfileCount > 0 )
 						{
 
 							if ( GetPropertyId( 58, "credReport:HasDurationProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						#endregion
 
-						list.Add( item );
+						list.Add( index );
 					}
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last Row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, item.Id, ex.Message ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last Row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 				}
 				finally
 				{
@@ -744,10 +801,10 @@ namespace workIT.Factories
 
 			foreach ( var ci in credentials )
 			{
-				var item = new CM.CredentialSummary();
+				var index = new CM.CredentialSummary();
 
 				//avgMinutes = 0;
-				item = new CM.CredentialSummary
+				index = new CM.CredentialSummary
 				{
 					Id = ci.Id,
 					Name = ci.Name,
@@ -763,9 +820,6 @@ namespace workIT.Factories
 					Created = ci.Created,
 					//define LastUpdated to be EntityLastUpdated
 					LastUpdated = ci.LastUpdated,
-					//Version = ci.Version,
-					//LatestVersionUrl = ci.LatestVersionUrl,
-					//PreviousVersion = ci.PreviousVersion,
 					CredentialType = ci.CredentialType,
 					CredentialTypeSchema = ci.CredentialTypeSchema,
 					TotalCost = ci.TotalCost,
@@ -795,50 +849,54 @@ namespace workIT.Factories
 
 				//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
 				//if ( ci.EstimatedTimeToEarn > 0 )
-				item.EstimatedTimeToEarn = DurationProfileManager.GetAll( item.RowId );
+				index.EstimatedTimeToEarn = DurationProfileManager.GetAll( index.RowId );
 
 				if ( ci.Industries != null && ci.Industries.Count > 0 )
-					item.NaicsResults = Fill_CodeItemResults( ci.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+					index.IndustryResults = Fill_CodeItemResults( ci.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 
 				if ( ci.Occupations != null && ci.Occupations.Count > 0 )
-					item.OccupationResults = Fill_CodeItemResults( ci.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
+					index.OccupationResults = Fill_CodeItemResults( ci.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 
-				//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
-				item.LevelsResults = Fill_CodeItemResults( ci.LevelsResults, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+				if ( ci.Classifications != null && ci.Classifications.Count > 0 )
+					index.InstructionalProgramClassification = Fill_CodeItemResults( ci.Classifications.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
+			
+				index.Org_QARolesResults = Fill_CodeItemResults( ci.Org_QARolesList, 130, false, true );
+				index.Org_QAAgentAndRoles = Fill_AgentRelationship( ci.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
+				index.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
 
-				//   item.QARolesResults = Fill_CodeItemResults( ci.QARolesResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, true );
-				//  item.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true );
-
-				item.Org_QARolesResults = Fill_CodeItemResults( ci.Org_QARolesList, 130, false, true );
-				item.Org_QAAgentAndRoles = Fill_AgentRelationship( ci.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
-				item.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
-
-				item.ConnectionsList = Fill_CodeItemResults( ci.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
+				index.ConnectionsList = Fill_CodeItemResults( ci.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
 
 				if ( includingHasPartIsPartWithConnections )
 				{
 					//manually add other connections
 					if ( ci.HasPartCount > 0 )
 					{
-						item.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Includes", SchemaName = "hasPart", Totals = ci.HasPartCount } );
+						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Includes", SchemaName = "hasPart", Totals = ci.HasPartCount } );
 					}
 					if ( ci.IsPartOfCount > 0 )
 					{
-						item.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Included With", SchemaName = "isPartOf", Totals = ci.IsPartOfCount } );
+						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Included With", SchemaName = "isPartOf", Totals = ci.IsPartOfCount } );
 					}
 				}
 
-				item.HasPartsList = Fill_CredentialConnectionsResult( ci.HasPartsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.HasPartsList = Fill_CredentialConnectionsResult( ci.HasPartsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-				item.IsPartOfList = Fill_CredentialConnectionsResult( ci.IsPartOfList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.IsPartOfList = Fill_CredentialConnectionsResult( ci.IsPartOfList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-				item.CredentialsList = Fill_CredentialConnectionsResult( ci.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-				item.ListTitle = ci.ListTitle;
-				item.Subjects = ci.Subjects.Select( x => x.Name ).Distinct().ToList();
+				index.CredentialsList = Fill_CredentialConnectionsResult( ci.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.ListTitle = ci.ListTitle;
+				index.Subjects = ci.Subjects.Select( x => x.Name ).Distinct().ToList();
+
+				index.AssessmentDeliveryType = Fill_CodeItemResults( ci.CredentialProperties.Where(x=> x.CategoryId == (int) CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE).ToList(), CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, false );
+				index.LearningDeliveryType = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+
+				//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
+				index.AudienceLevelsResults = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+				index.AudienceTypesResults = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
 
 				//addressess                
 
-				item.Addresses = ci.Addresses.Select( x => new CM.Address
+				index.Addresses = ci.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -850,7 +908,7 @@ namespace workIT.Factories
 					Country = x.Country
 				} ).ToList();
 
-				list.Add( item );
+				list.Add( index );
 			}
 
 			return list;
@@ -863,7 +921,7 @@ namespace workIT.Factories
 		public static List<OrganizationIndex> Organization_SearchForElastic( string filter )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new OrganizationIndex();
+			var index = new OrganizationIndex();
 			var list = new List<OrganizationIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
@@ -897,10 +955,10 @@ namespace workIT.Factories
 					}
 					catch ( Exception ex )
 					{
-						item = new OrganizationIndex();
-						item.Name = "EXCEPTION ENCOUNTERED";
-						item.Description = ex.Message;
-						list.Add( item );
+						index = new OrganizationIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
 
 						return list;
 					}
@@ -912,90 +970,94 @@ namespace workIT.Factories
 					foreach ( DataRow dr in result.Rows )
 					{
 						cntr++;
-						if ( cntr % 50 == 0 )
+						if ( cntr % 100 == 0 )
 							LoggingHelper.DoTrace( 2, string.Format( " Organization loading record: {0}", cntr ) );
 						if ( cntr == 33 )
 						{
 
 						}
 
-						item = new OrganizationIndex();
-						item.EntityTypeId = 2;
-						item.Id = GetRowColumn( dr, "Id", 0 );
-						item.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
-						item.NameIndex = cntr * 1000;
-						item.Name = GetRowColumn( dr, "Name", "missing" );
-						item.FriendlyName = FormatFriendlyTitle( item.Name );
-						item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index = new OrganizationIndex();
+						index.EntityTypeId = 2;
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.FriendlyName = FormatFriendlyTitle( index.Name );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
-							item.RowId = new Guid( rowId );
+							index.RowId = new Guid( rowId );
 
-						item.Description = GetRowColumn( dr, "Description", "" );
-						item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = index.CTID;
+						index.PrimaryOrganizationId = index.Id;
+						index.PrimaryOrganizationName = index.Name;
+						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						string date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
-							item.Created = DateTime.Parse( date );
+							index.Created = DateTime.Parse( date );
 						date = GetRowColumn( dr, "LastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
 						date = GetRowColumn( dr, "EntityLastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 
-						item.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
+						index.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
 						if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
-							item.IsACredentialingOrg = true;
-						item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
-						//item.MainPhoneNumber = CM.PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
+							index.IsACredentialingOrg = true;
+						index.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
+						//index.MainPhoneNumber = CM.PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
 
-						item.OwnedByResults = dr[ "OwnedByList" ].ToString();
+						index.OwnedByResults = dr[ "OwnedByList" ].ToString();
 
-						item.OfferedByResults = dr[ "OfferedByList" ].ToString();
+						index.OfferedByResults = dr[ "OfferedByList" ].ToString();
 
-						item.AsmtsOwnedByResults = dr[ "AsmtsOwnedByList" ].ToString();
-						item.LoppsOwnedByResults = dr[ "LoppsOwnedByList" ].ToString();
-						item.ApprovedByResults = dr[ "ApprovedByList" ].ToString();
-						item.AccreditedByResults = dr[ "AccreditedByList" ].ToString();
-						item.RecognizedByResults = dr[ "RecognizedByList" ].ToString();
-						item.RegulatedByResults = dr[ "RegulatedByList" ].ToString();
-						item.VerificationProfilesCount = GetRowPossibleColumn( dr, "VerificationProfilesCount", 0 );
-						item.CostManifestsCount = GetRowPossibleColumn( dr, "CostManifestsCount", 0 );
-						item.ConditionManifestsCount = GetRowPossibleColumn( dr, "ConditionManifestsCount", 0 );
-						item.SubsidiariesCount = GetRowPossibleColumn( dr, "SubsidiariesCount", 0 );
-						item.DepartmentsCount = GetRowPossibleColumn( dr, "DepartmentsCount", 0 );
-						item.HasIndustriesCount = GetRowPossibleColumn( dr, "HasIndustriesCount", 0 );
+						index.AsmtsOwnedByResults = dr[ "AsmtsOwnedByList" ].ToString();
+						index.LoppsOwnedByResults = dr[ "LoppsOwnedByList" ].ToString();
+						index.ApprovedByResults = dr[ "ApprovedByList" ].ToString();
+						index.AccreditedByResults = dr[ "AccreditedByList" ].ToString();
+						index.RecognizedByResults = dr[ "RecognizedByList" ].ToString();
+						index.RegulatedByResults = dr[ "RegulatedByList" ].ToString();
+						index.VerificationProfilesCount = GetRowPossibleColumn( dr, "VerificationProfilesCount", 0 );
+						index.CostManifestsCount = GetRowPossibleColumn( dr, "CostManifestsCount", 0 );
+						index.ConditionManifestsCount = GetRowPossibleColumn( dr, "ConditionManifestsCount", 0 );
+						index.SubsidiariesCount = GetRowPossibleColumn( dr, "SubsidiariesCount", 0 );
+						index.DepartmentsCount = GetRowPossibleColumn( dr, "DepartmentsCount", 0 );
+						index.HasIndustriesCount = GetRowPossibleColumn( dr, "HasIndustriesCount", 0 );
 
 						#region Addresses
 						var addresses = dr[ "Addresses" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( addresses ) )
 						{
-							//item.Addresses = addresses;
+							//index.Addresses = addresses;
 							var xDoc = new XDocument();
-							//item.AddressesCount = xDoc.Root.Elements().Count();
+							//index.AddressesCount = xDoc.Root.Elements().Count();
 							xDoc = XDocument.Parse( addresses );
 
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string region = ( string )child.Attribute( "Region" ) ?? "";
-								string city = ( string )child.Attribute( "City" ) ?? "";
-								item.Addresses.Add( new Address
+								string region = ( string ) child.Attribute( "Region" ) ?? "";
+								string city = ( string ) child.Attribute( "City" ) ?? "";
+								index.Addresses.Add( new Address
 								{
-									Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-									Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-									Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-									Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-									City = ( string )child.Attribute( "City" ) ?? "",
-									AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-									PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-									Country = ( string )child.Attribute( "Country" ) ?? ""
+									Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+									Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+									Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+									Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
+									City = ( string ) child.Attribute( "City" ) ?? "",
+									AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
+									PostalCode = ( string ) child.Attribute( "PostalCode" ) ?? "",
+									Country = ( string ) child.Attribute( "Country" ) ?? ""
 								} );
-								AddTextValue( item, city );
-								AddTextValue( item, region );
+								AddTextValue( index, city );
+								AddTextValue( index, region );
 							}
 
 						}
@@ -1010,7 +1072,7 @@ namespace workIT.Factories
 						//    foreach ( var text in textValues.Split( '|' ) )
 						//    {
 						//        if ( !string.IsNullOrWhiteSpace( text ) )
-						//            item.TextValues.Add( text );
+						//            index.TextValues.Add( text );
 						//    }
 						//}
 						var textValues = dr[ "TextValues" ].ToString();
@@ -1020,20 +1082,20 @@ namespace workIT.Factories
 
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( textValues );
-							//item.Addresses = xDoc.Root.Elements().Count();
+							//index.Addresses = xDoc.Root.Elements().Count();
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
 								var textValue = child.Attribute( "TextValue" );
 								if ( textValue != null )
 								{
-									item.TextValues.Add( textValue.Value );
+									index.TextValues.Add( textValue.Value );
 
 									if ( textValue.Value.IndexOf( "-" ) > -1 )
-										item.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+										index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
 
 									if ( categoryId == 35 )
-										item.Keyword.Add( textValue.Value );
+										index.Keyword.Add( textValue.Value );
 								}
 							}
 						}
@@ -1044,9 +1106,9 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( alternatesNames );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? "";
+								string textValue = ( string ) ( child.Attribute( "TextValue" ) ) ?? "";
 								if ( !string.IsNullOrWhiteSpace( textValue ) )
-									item.TextValues.Add( textValue );
+									index.TextValues.Add( textValue );
 							}
 						}
 
@@ -1056,22 +1118,22 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( identifiers );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string title = ( string )( child.Attribute( "Title" ) ) ?? "";
-								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? "";
+								string title = ( string ) ( child.Attribute( "Title" ) ) ?? "";
+								string textValue = ( string ) ( child.Attribute( "TextValue" ) ) ?? "";
 								if ( !string.IsNullOrWhiteSpace( title ) && !string.IsNullOrWhiteSpace( textValue ) )
-									item.TextValues.Add( title + " " + textValue.Replace( "-", "" ) );
+									index.TextValues.Add( title + " " + textValue.Replace( "-", "" ) );
 							}
 						}
 
 						////properties to add to textvalues
 						string url = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
 						if ( !string.IsNullOrWhiteSpace( url ) )
-							item.TextValues.Add( url );
-						if ( !string.IsNullOrWhiteSpace( item.CredentialRegistryId ) )
-							item.TextValues.Add( item.CredentialRegistryId );
-						item.TextValues.Add( item.Id.ToString() );
-						if ( !string.IsNullOrWhiteSpace( item.CTID ) )
-							item.TextValues.Add( item.CTID );
+							index.TextValues.Add( url );
+						if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
+							index.TextValues.Add( index.CredentialRegistryId );
+						index.TextValues.Add( index.Id.ToString() );
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+							index.TextValues.Add( index.CTID );
 
 						#endregion
 
@@ -1087,31 +1149,31 @@ namespace workIT.Factories
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" ),
-									SchemaName = ( string )child.Attribute( "PropertySchemaName" )
+									Name = ( string ) child.Attribute( "Property" ),
+									SchemaName = ( string ) child.Attribute( "PropertySchemaName" )
 								};
 								if ( prop.CategoryId == 6 )
 								{
-									item.OrganizationServiceTypes.Add( prop );
-									item.OrganizationServiceTypeIds.Add( prop.Id );
+									index.OrganizationServiceTypes.Add( prop );
+									index.OrganizationServiceTypeIds.Add( prop.Id );
 								}
 								if ( prop.CategoryId == 7 )
 								{
-									item.OrganizationTypes.Add( prop );
-									item.OrganizationTypeIds.Add( prop.Id );
+									index.OrganizationTypes.Add( prop );
+									index.OrganizationTypeIds.Add( prop.Id );
 								}
 								if ( prop.CategoryId == 30 )
 								{
-									item.OrganizationSectorTypes.Add( prop );
-									item.OrganizationSectorTypeIds.Add( prop.Id );
+									index.OrganizationSectorTypes.Add( prop );
+									index.OrganizationSectorTypeIds.Add( prop.Id );
 								}
 								if ( prop.CategoryId == 41 )
 								{
-									item.OrganizationClaimTypes.Add( prop );
-									item.OrganizationClaimTypeIds.Add( prop.Id );
+									index.OrganizationClaimTypes.Add( prop );
+									index.OrganizationClaimTypeIds.Add( prop.Id );
 								}
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
+								if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+									index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
 							}
 						}
 
@@ -1125,15 +1187,15 @@ namespace workIT.Factories
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" ),
-									SchemaName = ( string )child.Attribute( "PropertySchemaName" )
+									Name = ( string ) child.Attribute( "Property" ),
+									SchemaName = ( string ) child.Attribute( "PropertySchemaName" )
 								};
 
-								item.OrganizationClaimTypes.Add( prop );
-								item.OrganizationClaimTypeIds.Add( prop.Id );
+								index.OrganizationClaimTypes.Add( prop );
+								index.OrganizationClaimTypeIds.Add( prop.Id );
 
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
+								if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+									index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
 							}
 						}
 						#endregion
@@ -1155,31 +1217,66 @@ namespace workIT.Factories
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+									SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+									CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? ""
 								};
 
 								if ( framework.CategoryId == 10 )
-									item.ReferenceFrameworks.Add( framework );
+									index.Industries.Add( framework );
 							}
 						}
 						#endregion
 
 						#region AgentRelationships
-						string agentRelations = GetRowPossibleColumn( dr, "AgentRelationships" );
-						if ( !string.IsNullOrWhiteSpace( agentRelations ) )
-						{
-							var xDoc = new XDocument();
-							xDoc = XDocument.Parse( agentRelations );
-							foreach ( var child in xDoc.Root.Elements() )
-								item.AgentRelationships.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
-						}
+						//string agentRelations = GetRowPossibleColumn( dr, "AgentRelationships" );
+						//if ( !string.IsNullOrWhiteSpace( agentRelations ) )
+						//{
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( agentRelations );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//		index.AgentRelationships.Add( int.Parse( ( string ) child.Attribute( "RelationshipTypeId" ) ) );
+						//}
 						#endregion
 
-						#region QualityAssurance
+						#region AgentRelationshipsForEntity
+						//TODO replacing: QualityAssurance with AgentRelationshipsForEntity
+						HandleAgentRelationshipsForEntity( dr, index );
 
+						//string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
+						//if ( !string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( agentRelationshipsForEntity ) )
+						//	{
+						//		agentRelationshipsForEntity = Regex.Replace( agentRelationshipsForEntity, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	agentRelationshipsForEntity = agentRelationshipsForEntity.Replace( "&", " " );
+						//	var xDoc = XDocument.Parse( agentRelationshipsForEntity );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
+						//		string relationship = ( string )child.Attribute( "RelationshipTypeIds" ) ?? "";
+
+						//		if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationship ) )
+						//		{
+						//			index.AgentRelationshipsForEntity.Add( new AgentRelationshipForEntity
+						//			{
+						//				OrgId = int.Parse( child.Attribute( "OrgId" ).Value ),
+						//				//todo get/split list of ids
+						//				//RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
+						//				AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
+						//				AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+						//				EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value )
+						//			} );
+						//			//add phrase. ex Accredited by microsoft
+						//			if ( !string.IsNullOrWhiteSpace( relationship ) && !string.IsNullOrWhiteSpace( agentName ) )
+						//				index.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
+						//		}
+						//	}
+						//}
+						#endregion
+						#region QualityAssurance 
 						string qualityAssurance = GetRowPossibleColumn( dr, "QualityAssurance" );
 						if ( !string.IsNullOrWhiteSpace( qualityAssurance ) )
 						{
@@ -1191,68 +1288,104 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( qualityAssurance );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
-								string relationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "";
+								string agentName = ( string ) child.Attribute( "AgentName" ) ?? "";
+								string relationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "";
 								bool isQARole = false;
-								if ( ( ( string )child.Attribute( "IsQARole" ) ?? "" ) == "1" )
+								if ( ( ( string ) child.Attribute( "IsQARole" ) ?? "" ) == "1" )
 									isQARole = true;
 								if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationship ) )
 								{
-									item.QualityAssurance.Add( new IndexQualityAssurance
+									index.QualityAssurance.Add( new IndexQualityAssurance
 									{
 										AgentRelativeId = int.Parse( child.Attribute( "AgentRelativeId" ).Value ),
 										RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
-										SourceToAgentRelationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "",
-										AgentToSourceRelationship = ( string )child.Attribute( "AgentToSourceRelationship" ) ?? "",
-										AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
-										AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+										SourceToAgentRelationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "",
+										AgentToSourceRelationship = ( string ) child.Attribute( "AgentToSourceRelationship" ) ?? "",
+										AgentUrl = ( string ) child.Attribute( "AgentUrl" ) ?? "",
+										AgentName = ( string ) child.Attribute( "AgentName" ) ?? "",
 										EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
 										IsQARole = isQARole,
 									} );
 									//add phrase. ex Accredited by microsoft
 									if ( !string.IsNullOrWhiteSpace( relationship ) && !string.IsNullOrWhiteSpace( agentName ) )
-										item.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
+										index.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
 								}
 							}
 						}
 						#endregion
 
-						#region QualityAssuranceCombined
-						string qualityAssurancePerformed = GetRowPossibleColumn( dr, "QualityAssuranceCombined" );
-						if ( !string.IsNullOrWhiteSpace( qualityAssurancePerformed ) )
+						#region QualityAssuranceCombined //Obsolete
+						//string qualityAssurancePerformed = GetRowPossibleColumn( dr, "QualityAssuranceCombined" );
+						//if ( !string.IsNullOrWhiteSpace( qualityAssurancePerformed ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( qualityAssurancePerformed ) )
+						//	{
+						//		qualityAssurancePerformed = Regex.Replace( qualityAssurancePerformed, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	qualityAssurancePerformed = qualityAssurancePerformed.Replace( "&", " " );
+						//	var xDoc = XDocument.Parse( qualityAssurancePerformed );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		string targetName = ( string ) child.Attribute( "TargetEntityName" ) ?? "";
+						//		string assertion = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "";
+						//		string entityStatId = ( string ) child.Attribute( "TargetEntityStateId" ) ?? "";
+						//		var entityStateId = 0;
+						//		int.TryParse( entityStatId, out entityStateId );
+						//		if ( entityStateId > 1 )
+						//		{
+						//			index.QualityAssurancePerformed.Add( new IndexQualityAssurancePerformed
+						//			{
+						//				TargetEntityBaseId = int.Parse( child.Attribute( "TargetEntityBaseId" ).Value ),
+						//				TargetEntityTypeId = int.Parse( child.Attribute( "TargetEntityTypeId" ).Value ),
+						//				AssertionTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ) ,
+						//				SourceToAgentRelationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "",
+						//				AgentToSourceRelationship = ( string ) child.Attribute( "AgentToSourceRelationship" ) ?? "",
+						//				TargetEntitySubjectWebpage = ( string ) child.Attribute( "TargetEntitySubjectWebpage" ) ?? "",
+						//				TargetEntityName = ( string ) child.Attribute( "TargetEntityName" ) ?? "",
+						//				EntityStateId = entityStateId,
+						//				IsQARole = true,
+						//				RoleSource = ( string ) child.Attribute( "roleSource" ) ?? ""
+						//			} );
+
+						//			//add phrase. ex Accredited by microsoft
+						//			if ( !string.IsNullOrWhiteSpace( assertion ) && !string.IsNullOrWhiteSpace( targetName ) )
+						//				index.TextValues.Add( string.Format( "{0} {1}", assertion, targetName ) );
+						//		}
+						//	}
+						//}
+						#endregion
+
+						#region QualityAssurancePerformed
+						string qAPerformed = GetRowPossibleColumn( dr, "QualityAssurancePerformedCSV" );
+						if ( !string.IsNullOrWhiteSpace( qAPerformed ) )
 						{
-							if ( ContainsUnicodeCharacter( qualityAssurancePerformed ) )
+							if ( ContainsUnicodeCharacter( qAPerformed ) )
 							{
-								qualityAssurancePerformed = Regex.Replace( qualityAssurancePerformed, @"[^\u0000-\u007F]+", string.Empty );
+								qAPerformed = Regex.Replace( qAPerformed, @"[^\u0000-\u007F]+", string.Empty );
 							}
-							qualityAssurancePerformed = qualityAssurancePerformed.Replace( "&", " " );
-							var xDoc = XDocument.Parse( qualityAssurancePerformed );
+							qAPerformed = qAPerformed.Replace( "&", " " );
+							var xDoc = XDocument.Parse( qAPerformed );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string targetName = ( string )child.Attribute( "TargetEntityName" ) ?? "";
-								string assertion = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "";
-								string entityStatId = ( string )child.Attribute( "TargetEntityStateId" ) ?? "";
+								string targetName = ( string ) child.Attribute( "TargetEntityName" ) ?? "";
+								string entityStatId = ( string ) child.Attribute( "TargetEntityStateId" ) ?? "";
 								var entityStateId = 0;
 								int.TryParse( entityStatId, out entityStateId );
 								if ( entityStateId > 1 )
 								{
-									item.QualityAssurancePerformed.Add( new IndexQualityAssurancePerformed
+									var assertions = new List<int>();
+									foreach(var s in child.Attribute( "Assertions" ).Value.Split( new char[] { ',' } ) )
+									{
+										assertions.Add( int.Parse( s.Trim() ) );
+									}
+									index.QualityAssurancePerformed.Add( new QualityAssurancePerformed
 									{
 										TargetEntityBaseId = int.Parse( child.Attribute( "TargetEntityBaseId" ).Value ),
 										TargetEntityTypeId = int.Parse( child.Attribute( "TargetEntityTypeId" ).Value ),
-										AssertionTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
-										SourceToAgentRelationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "",
-										AgentToSourceRelationship = ( string )child.Attribute( "AgentToSourceRelationship" ) ?? "",
-										TargetEntitySubjectWebpage = ( string )child.Attribute( "TargetEntitySubjectWebpage" ) ?? "",
-										TargetEntityName = ( string )child.Attribute( "TargetEntityName" ) ?? "",
-										EntityStateId = entityStateId,
-										IsQARole = true,
-										RoleSource = ( string )child.Attribute( "roleSource" ) ?? ""
+										AssertionTypeIds = assertions,
+										TargetEntityName = ( string ) child.Attribute( "TargetEntityName" ) ?? "",
+										TargetEntityStateId = entityStateId,
 									} );
-
-									//add phrase. ex Accredited by microsoft
-									if ( !string.IsNullOrWhiteSpace( assertion ) && !string.IsNullOrWhiteSpace( targetName ) )
-										item.TextValues.Add( string.Format( "{0} {1}", assertion, targetName ) );
 								}
 							}
 						}
@@ -1260,61 +1393,61 @@ namespace workIT.Factories
 
 						#region Custom Reports
 						int propertyId = 0;
-						if ( item.VerificationProfilesCount > 0 )
+						if ( index.VerificationProfilesCount > 0 )
 						{
 							if ( GetPropertyId( 59, "orgReport:HasVerificationService", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						else
 						{
 							if ( GetPropertyId( 59, "orgReport:HasNoVerificationService", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.CostManifestsCount > 0 )
+						if ( index.CostManifestsCount > 0 )
 						{
 							if ( GetPropertyId( 59, "orgReport:HasCostManifest", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						else
 						{
 							if ( GetPropertyId( 59, "orgReport:HasNoCostManifests", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.ConditionManifestsCount > 0 )
+						if ( index.ConditionManifestsCount > 0 )
 						{
 							if ( GetPropertyId( 59, "orgReport:HasConditionManifest", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 						else
 						{
 							if ( GetPropertyId( 59, "orgReport:HasNoConditionManifests", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.SubsidiariesCount > 0 )
+						if ( index.SubsidiariesCount > 0 )
 						{
 							if ( GetPropertyId( 59, "orgReport:HasSubsidiary", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.DepartmentsCount > 0 )
+						if ( index.DepartmentsCount > 0 )
 						{
 							if ( GetPropertyId( 59, "orgReport:HasDepartment", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
-						if ( item.HasIndustriesCount > 0 )
+						if ( index.HasIndustriesCount > 0 )
 							if ( GetPropertyId( 59, "orgReport:HasIndustries", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
-						if ( item.Addresses.Count > 0 )
+						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 60, "orgReport:HasAddresses", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						#endregion
 
-						list.Add( item );
+						list.Add( index );
 					}
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic. Last Row: {0}, OrgId: {1} Exception: \r\n{2}", cntr, item.Id, ex.Message ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic. Last Row: {0}, OrgId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 				}
 				finally
 				{
@@ -1347,7 +1480,7 @@ namespace workIT.Factories
 
 			foreach ( var oi in organizations )
 			{
-				var item = new CM.OrganizationSummary
+				var index = new CM.OrganizationSummary
 				{
 					Id = oi.Id,
 					Name = oi.Name,
@@ -1363,21 +1496,21 @@ namespace workIT.Factories
 				};
 
 				if ( oi.ImageURL != null && oi.ImageURL.Trim().Length > 0 )
-					item.ImageUrl = oi.ImageURL;
+					index.ImageUrl = oi.ImageURL;
 				else
-					item.ImageUrl = null;
+					index.ImageUrl = null;
 
 				if ( IsValidDate( oi.Created ) )
-					item.Created = oi.Created;
+					index.Created = oi.Created;
 
 				if ( IsValidDate( oi.LastUpdated ) )
-					item.LastUpdated = oi.LastUpdated;
+					index.LastUpdated = oi.LastUpdated;
 
-				item.IsACredentialingOrg = oi.IsACredentialingOrg;
+				index.IsACredentialingOrg = oi.IsACredentialingOrg;
 
 				//addressess                
 
-				item.Addresses = oi.Addresses.Select( x => new CM.Address
+				index.Addresses = oi.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -1390,66 +1523,54 @@ namespace workIT.Factories
 				} ).ToList();
 
 				//these should be derived from the codes property
-				item.AgentType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
-				item.OrganizationSectorType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
-				//item.OrganizationClaimType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
-				item.ServiceType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
+				index.AgentType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
+				index.OrganizationSectorType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
+				//index.OrganizationClaimType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
+				index.ServiceType = EntityPropertyManager.FillEnumeration( index.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
 
-				if ( oi.ReferenceFrameworks != null && oi.ReferenceFrameworks.Count > 0 )
+				if ( oi.Industries != null && oi.Industries.Count > 0 )
 				{
-					item.NaicsResults = Fill_CodeItemResults( oi.ReferenceFrameworks.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+					index.IndustryResults = Fill_CodeItemResults( oi.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 				}
-				item.OwnedByResults = Fill_CodeItemResults( oi.OwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.OwnedByResults = Fill_CodeItemResults( oi.OwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.OfferedByResults = Fill_CodeItemResults( oi.OfferedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.OfferedByResults = Fill_CodeItemResults( oi.OfferedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.AsmtsOwnedByResults = Fill_CodeItemResults( oi.AsmtsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.AsmtsOwnedByResults = Fill_CodeItemResults( oi.AsmtsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.LoppsOwnedByResults = Fill_CodeItemResults( oi.LoppsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.LoppsOwnedByResults = Fill_CodeItemResults( oi.LoppsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.AccreditedByResults = Fill_CodeItemResults( oi.AccreditedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.AccreditedByResults = Fill_CodeItemResults( oi.AccreditedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.ApprovedByResults = Fill_CodeItemResults( oi.ApprovedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.ApprovedByResults = Fill_CodeItemResults( oi.ApprovedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.RecognizedByResults = Fill_CodeItemResults( oi.RecognizedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.RecognizedByResults = Fill_CodeItemResults( oi.RecognizedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.RegulatedByResults = Fill_CodeItemResults( oi.RegulatedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.RegulatedByResults = Fill_CodeItemResults( oi.RegulatedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				item.QualityAssurance = Fill_AgentRelationship( oi.QualityAssurance, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Organization" );
+				index.QualityAssurance = Fill_AgentRelationship( oi.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Organization" );
 
-				item.QualityAssurancePerformed = Fill_TargetAssertion( oi.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "" );
-
-				//var results = from record in oi.QualityAssurancePerformed
-
-				//              select new IndexQualityAssurancePerformed
-				//              {
-				//                  TargetEntityTypeId = record.TargetEntityTypeId,
-				//                  TargetEntityBaseId = record.TargetEntityBaseId,
-				//                  AssertionTypeId = record.AssertionTypeId
-				//              };
+				index.QualityAssurancePerformed = Fill_TargetQaAssertion( oi.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "" );
 				var results = oi.QualityAssurancePerformed.GroupBy( a => new
 				{
 					a.TargetEntityTypeId,
 					a.TargetEntityBaseId,
-					a.AssertionTypeId
+					a.AssertionTypeIds
 				} )
-					.Select( g => new IndexQualityAssurancePerformed
+					.Select( g => new QualityAssurancePerformed
 					{
 						TargetEntityTypeId = g.Key.TargetEntityTypeId,
 						TargetEntityBaseId = g.Key.TargetEntityBaseId,
-						AssertionTypeId = g.Key.AssertionTypeId
+						AssertionTypeIds = g.Key.AssertionTypeIds
 					} )
-					.OrderBy( a => a.TargetEntityTypeId ).ThenBy( s => s.TargetEntityBaseId ).ThenBy( s => s.AssertionTypeId )
+					.OrderBy( a => a.TargetEntityTypeId ).ThenBy( s => s.TargetEntityBaseId ).ThenBy( s => s.AssertionTypeIds )
 					.ToList();
 
 				//results = results.OrderBy(s => s.TargetEntityTypeId).ThenBy(s => s.TargetEntityBaseId).ThenBy(s => s.AssertionTypeId).Distinct().ToList();
 
-				item.QualityAssuranceCombinedTotal = results.Count();
+				index.QualityAssuranceCombinedTotal = results.Count();
 
-
-
-
-				list.Add( item );
+				list.Add( index );
 			}
 
 			return list;
@@ -1460,7 +1581,7 @@ namespace workIT.Factories
 		public static List<AssessmentIndex> Assessment_SearchForElastic( string filter )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new AssessmentIndex();
+			var index = new AssessmentIndex();
 			var list = new List<AssessmentIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
@@ -1492,15 +1613,16 @@ namespace workIT.Factories
 					}
 					catch ( Exception ex )
 					{
-						item = new AssessmentIndex();
-						item.Name = "EXCEPTION ENCOUNTERED";
-						item.Description = ex.Message;
-						//item.CredentialTypeSchema = "error";
-						list.Add( item );
+						index = new AssessmentIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						//index.CredentialTypeSchema = "error";
+						list.Add( index );
 						return list;
 					}
 				}
 				int costProfilesCount = 0;
+				int conditionProfilesCount = 0;
 				string assessesCompetencies = "";
 				try
 				{
@@ -1511,72 +1633,76 @@ namespace workIT.Factories
 						if ( cntr % 100 == 0 )
 							LoggingHelper.DoTrace( 2, string.Format( " loading record: {0}", cntr ) );
 
-						item = new AssessmentIndex();
-						item.Id = GetRowColumn( dr, "Id", 0 );
-						item.NameIndex = cntr * 1000;
-						if ( item.Id == 415 )
+						index = new AssessmentIndex();
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.NameIndex = cntr * 1000;
+						if ( index.Id == 415 )
 						{
 							//415,289,406,280 - had reference error in connections
 						}
-						item.Name = dr[ "Name" ].ToString();
+						index.Name = dr[ "Name" ].ToString();
 
-						item.FriendlyName = FormatFriendlyTitle( item.Name );
-						item.Description = dr[ "Description" ].ToString();
+						index.FriendlyName = FormatFriendlyTitle( index.Name );
+						index.Description = dr[ "Description" ].ToString();
 						string rowId = dr[ "RowId" ].ToString();
-						item.RowId = new Guid( rowId );
+						index.RowId = new Guid( rowId );
 
-						item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
 
-						item.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
-						item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						index.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
-						item.Organization = GetRowPossibleColumn( dr, "Organization", "" );
-						item.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
+						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
+						index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
 
-						if ( item.Organization.Length > 0 )
-							item.ListTitle = item.Name + " (" + item.Organization + ")";
+						if ( index.OwnerOrganizationName.Length > 0 )
+							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
 						else
-							item.ListTitle = item.Name;
+							index.ListTitle = index.Name;
+						//add helpers
+						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
 
 						var date = GetRowColumn( dr, "DateEffective", "" );
 						if ( IsValidDate( date ) )
-							item.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
+							index.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
 						else
-							item.DateEffective = "";
+							index.DateEffective = "";
 						date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
-							item.Created = DateTime.Parse( date );
+							index.Created = DateTime.Parse( date );
 						date = GetRowColumn( dr, "LastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
 						date = GetRowColumn( dr, "EntityLastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 
 						//don't thinks this is necessary!
-						//item.QARolesCount = GetRowColumn( dr, "QARolesCount", 0 );
+						//index.QARolesCount = GetRowColumn( dr, "QARolesCount", 0 );
 
-						item.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
-						item.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
-						item.IsRequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
-						item.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
-						item.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
-						item.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
-						item.IsPreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
-						item.PreparationFromCount = GetRowColumn( dr, "PreparationFromCount", 0 );
-						//item.TotalCostCount = GetRowPossibleColumn( dr, "TotalCostCount", 0M );
+						index.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
+						index.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
+						index.IsRequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
+						index.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
+						index.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
+						index.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
+						index.IsPreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
+						index.PreparationFromCount = GetRowColumn( dr, "PreparationFromCount", 0 );
+						//index.TotalCostCount = GetRowPossibleColumn( dr, "TotalCostCount", 0M );
 						costProfilesCount = GetRowPossibleColumn( dr, "CostProfilesCount", 0 );
-						item.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
-						item.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
-						item.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
-						item.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
-						item.HasCIP = GetRowPossibleColumn( dr, "HasCIPCount", 0 );
+						conditionProfilesCount = GetRowPossibleColumn( dr, "conditionProfilesCount", 0 );
+						//
+						index.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
+						index.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
+						index.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
+						index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						//index.HasInstructionalPrograms = GetRowPossibleColumn( dr, "HasCIPCount", 0 );
 						//-actual connection type (no credential info)
-						item.ConnectionsList = dr[ "ConnectionsList" ].ToString();
+						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
 						//connection type, plus Id, and name of credential
-						item.CredentialsList = dr[ "CredentialsList" ].ToString();
+						index.CredentialsList = dr[ "CredentialsList" ].ToString();
 						//change to use Connections
 						try
 						{
@@ -1588,7 +1714,7 @@ namespace workIT.Factories
 								foreach ( var child in xDoc.Root.Elements() )
 								{
 									conn = new Connection();
-									conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+									conn.ConnectionType = ( string ) child.Attribute( "ConnectionType" ) ?? "";
 									conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
 									//do something with counts for this type
@@ -1597,33 +1723,33 @@ namespace workIT.Factories
 									if ( conn.CredentialId > 0 )
 									{
 										//add credential
-										conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+										conn.Credential = ( string ) child.Attribute( "CredentialName" ) ?? "";
 										//??????
 										conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-										conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+										conn.CredentialOrganization = ( string ) child.Attribute( "credOrganization" ) ?? "";
 									}
 									conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
 									if ( conn.AssessmentId > 0 )
 									{
-										conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+										conn.Assessment = ( string ) child.Attribute( "AssessmentName" ) ?? "";
 										conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-										conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+										conn.AssessmentOrganization = ( string ) child.Attribute( "asmtOrganization" ) ?? "";
 									}
 									conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
 									if ( conn.LoppId > 0 )
 									{
-										conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+										conn.LearningOpportunity = ( string ) child.Attribute( "LearningOpportunityName" ) ?? "";
 										conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-										conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+										conn.LearningOpportunityOrganization = ( string ) child.Attribute( "loppOrganization" ) ?? "";
 									}
 
-									item.Connections.Add( conn );
+									index.Connections.Add( conn );
 								}
 							}
 						}
 						catch ( Exception ex )
 						{
-							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment Connections id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment Connections id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 						}
 
 						#region AssessesCompetencies
@@ -1636,7 +1762,7 @@ namespace workIT.Factories
 								if ( ContainsUnicodeCharacter( assessesCompetencies ) )
 								{
 									assessesCompetencies = Regex.Replace( assessesCompetencies, @"[^\u0000-\u007F]+", string.Empty );
-									
+
 								}
 								assessesCompetencies = assessesCompetencies.Replace( "&", " " );
 								var xDoc = new XDocument();
@@ -1645,16 +1771,16 @@ namespace workIT.Factories
 								{
 									var competency = new IndexCompetency
 									{
-										Name = ( string )child.Attribute( "Name" ) ?? "",
-										Description = ( string )child.Attribute( "Description" ) ?? ""
+										Name = ( string ) child.Attribute( "Name" ) ?? "",
+										Description = ( string ) child.Attribute( "Description" ) ?? ""
 									};
 
-									item.AssessesCompetencies.Add( competency );
+									index.AssessesCompetencies.Add( competency );
 								}
 							}
 							catch ( Exception ex )
 							{
-								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment AssessesCompetencies id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment AssessesCompetencies id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 							}
 						}
 
@@ -1678,16 +1804,16 @@ namespace workIT.Factories
 								{
 									var competency = new IndexCompetency
 									{
-										Name = ( string )child.Attribute( "Name" ) ?? "",
-										Description = ( string )child.Attribute( "Description" ) ?? ""
+										Name = ( string ) child.Attribute( "Name" ) ?? "",
+										Description = ( string ) child.Attribute( "Description" ) ?? ""
 									};
 
-									item.RequiresCompetencies.Add( competency );
+									index.RequiresCompetencies.Add( competency );
 								}
 							}
 							catch ( Exception ex )
 							{
-								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment RequiresCompetencies id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on Assessment RequiresCompetencies id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 							}
 						}
 
@@ -1701,58 +1827,58 @@ namespace workIT.Factories
 							textValues = textValues.Replace( "&", " " );
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( textValues );
-							//item.Addresses = xDoc.Root.Elements().Count();
+							//index.Addresses = xDoc.Root.Elements().Count();
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
-								//item.TextValues.Add( ( string )child.Attribute( "TextValue" ) ?? "" );
+								//index.TextValues.Add( ( string )child.Attribute( "TextValue" ) ?? "" );
 								var textValue = child.Attribute( "TextValue" );
 								if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
 								{
-									item.TextValues.Add( textValue.Value );
+									index.TextValues.Add( textValue.Value );
 
 									if ( textValue.Value.IndexOf( "-" ) > -1 )
-										item.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+										index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
 
 									if ( categoryId == 35 )
-										item.Keyword.Add( textValue.Value );
+										index.Keyword.Add( textValue.Value );
 								}
 								//source is just direct/indirect, more want the sourceEntityType
 								var codeNotation = child.Attribute( "CodedNotation" );
 								if ( codeNotation != null && !string.IsNullOrWhiteSpace( codeNotation.Value ) )
 								{
-									item.TextValues.Add( codeNotation.Value );
+									index.TextValues.Add( codeNotation.Value );
 									if ( codeNotation.Value.IndexOf( "-" ) > -1 )
-										item.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
+										index.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
 								}
 							}
 						}
 						//properties to add to textvalues
-						item.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
-						if ( !string.IsNullOrWhiteSpace( item.AvailableOnlineAt ) )
-							item.TextValues.Add( item.AvailableOnlineAt );
-						item.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
-						if ( !string.IsNullOrWhiteSpace( item.AvailabilityListing ) )
-							item.TextValues.Add( item.AvailabilityListing );
+						index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
+						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
+							index.TextValues.Add( index.AvailableOnlineAt );
+						index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+						if ( !string.IsNullOrWhiteSpace( index.AvailabilityListing ) )
+							index.TextValues.Add( index.AvailabilityListing );
 						string url = GetRowPossibleColumn( dr, "AssessmentExampleUrl", "" );
 						if ( !string.IsNullOrWhiteSpace( url ) )
-							item.TextValues.Add( url );
+							index.TextValues.Add( url );
 						url = GetRowPossibleColumn( dr, "ProcessStandards", "" );
 						if ( !string.IsNullOrWhiteSpace( url ) )
-							item.TextValues.Add( url );
+							index.TextValues.Add( url );
 						url = GetRowPossibleColumn( dr, "ScoringMethodExample", "" );
 						if ( !string.IsNullOrWhiteSpace( url ) )
-							item.TextValues.Add( url );
+							index.TextValues.Add( url );
 						url = GetRowPossibleColumn( dr, "ExternalResearch", "" );
 						if ( !string.IsNullOrWhiteSpace( url ) )
-							item.TextValues.Add( url );
+							index.TextValues.Add( url );
 						//	,base.
-						if ( !string.IsNullOrWhiteSpace( item.CredentialRegistryId ) )
-							item.TextValues.Add( item.CredentialRegistryId );
-						item.TextValues.Add( item.Id.ToString() );
-						item.TextValues.Add( item.CTID );
-						if ( !string.IsNullOrWhiteSpace( item.CodedNotation ) )
-							item.TextValues.Add( item.CodedNotation );
+						if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
+							index.TextValues.Add( index.CredentialRegistryId );
+						index.TextValues.Add( index.Id.ToString() );
+						index.TextValues.Add( index.CTID );
+						if ( !string.IsNullOrWhiteSpace( index.CodedNotation ) )
+							index.TextValues.Add( index.CodedNotation );
 						#endregion
 
 						#region SubjectAreas
@@ -1762,124 +1888,206 @@ namespace workIT.Factories
 						{
 							var xDoc = XDocument.Parse( subjectAreas );
 							foreach ( var child in xDoc.Root.Elements() )
-								item.SubjectAreas.Add( child.Attribute( "Subject" ).Value );
+								index.SubjectAreas.Add( child.Attribute( "Subject" ).Value );
 						}
 
 						#endregion
 
 						#region Properties
 						//TODO - change this to same as others
-						var methodTypes = dr[ "AssessmentMethodTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( methodTypes ) )
-						{
-							var xDoc = XDocument.Parse( methodTypes );
-							//foreach (var child in xDoc.Root.Elements())
-							//    item.AssessmentMethodTypes.Add(int.Parse((string)child.Attribute("PropertyValueId").Value));
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var prop = new IndexProperty
-								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.AssessmentMethodTypes.Add( prop );
-								item.AssessmentMethodTypeIds.Add( prop.Id );
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
-							}
-						}
+						//var methodTypes = dr[ "AssessmentMethodTypes" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( methodTypes ) )
+						//{
+						//	var xDoc = XDocument.Parse( methodTypes );
+						//	//foreach (var child in xDoc.Root.Elements())
+						//	//    index.AssessmentMethodTypes.Add(int.Parse((string)child.Attribute("PropertyValueId").Value));
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var prop = new IndexProperty
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Property" )
+						//		};
+						//		index.AssessmentMethodTypes.Add( prop );
+						//		index.AssessmentMethodTypeIds.Add( prop.Id );
+						//		if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+						//			index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
+						//	}
+						//}
 
-						var assessmentUseTypes = dr[ "AssessmentUseTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( assessmentUseTypes ) )
-						{
-							var xDoc = XDocument.Parse( assessmentUseTypes );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var prop = new IndexProperty
-								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.AssessmentUseTypes.Add( prop );
-								item.AssessmentUseTypeIds.Add( prop.Id );
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
-							}
-						}
+						//var assessmentUseTypes = dr[ "AssessmentUseTypes" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( assessmentUseTypes ) )
+						//{
+						//	var xDoc = XDocument.Parse( assessmentUseTypes );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var prop = new IndexProperty
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Property" )
+						//		};
+						//		index.AssessmentUseTypes.Add( prop );
+						//		index.AssessmentUseTypeIds.Add( prop.Id );
+						//		if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+						//			index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
+						//	}
+						//}
 
-						var scoringMethodTypes = dr[ "ScoringMethodTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( scoringMethodTypes ) )
-						{
-							var xDoc = XDocument.Parse( scoringMethodTypes );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var prop = new IndexProperty
-								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.ScoringMethodTypes.Add( prop );
-								item.ScoringMethodTypeIds.Add( prop.Id );
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
-							}
-						}
+						//var scoringMethodTypes = dr[ "ScoringMethodTypes" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( scoringMethodTypes ) )
+						//{
+						//	var xDoc = XDocument.Parse( scoringMethodTypes );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var prop = new IndexProperty
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Property" )
+						//		};
+						//		index.ScoringMethodTypes.Add( prop );
+						//		index.ScoringMethodTypeIds.Add( prop.Id );
+						//		if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+						//			index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
+						//	}
+						//}
 
-						var deliveryMethodTypes = dr[ "DeliveryMethodTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( deliveryMethodTypes ) )
-						{
-							var xDoc = XDocument.Parse( deliveryMethodTypes );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var prop = new IndexProperty
-								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.DeliveryMethodTypes.Add( prop );
-								item.DeliveryMethodTypeIds.Add( prop.Id );
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
-							}
-						}
+						//var deliveryMethodTypes = dr[ "DeliveryMethodTypes" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( deliveryMethodTypes ) )
+						//{
+						//	var xDoc = XDocument.Parse( deliveryMethodTypes );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var prop = new IndexProperty
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Property" )
+						//		};
+						//		index.DeliveryMethodTypes.Add( prop );
+						//		index.DeliveryMethodTypeIds.Add( prop.Id );
+						//		if ( !string.IsNullOrWhiteSpace( ( string ) child.Attribute( "Property" ) ) )
+						//			index.TextValues.Add( ( string ) child.Attribute( "Property" ) );
+						//	}
+						//}
+						//index.TypesResults = GetRowPossibleColumn( dr, "TypesList" );
+						//string AudienceTypes = GetRowPossibleColumn( dr, "AudienceTypeIds" );
+						//if ( !string.IsNullOrWhiteSpace( AudienceTypes ) )
+						//{
+						//	foreach ( var propertyValueId in AudienceTypes.Split( '|' ) )
+						//	{
+						//		index.AudienceTypeIds.Add( int.Parse( propertyValueId ) );
+						//	}
+						//}
+						//index.AudienceTypeIds = GetIntegerList( dr, "AudienceTypeIds" );
 
 						#endregion
 
-						#region Classifications
-
-						string classifications = GetRowPossibleColumn( dr, "Classifications" );
-						if ( !string.IsNullOrWhiteSpace( classifications ) )
+						#region AssessmentProperties
+						try
 						{
-							var xDoc = XDocument.Parse( classifications );
+							var assessmentProperties = dr[ "AssessmentProperties" ].ToString();
+							if ( !string.IsNullOrEmpty( assessmentProperties ) )
+							{
+								assessmentProperties = assessmentProperties.Replace( "&", " " );
+								var xDoc = XDocument.Parse( assessmentProperties );
+								foreach ( var child in xDoc.Root.Elements() )
+								{
+									var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
+									var propertyValueId = int.Parse( child.Attribute( "PropertyValueId" ).Value );
+									var property = child.Attribute( "Property" ).Value;
+
+									index.AssessmentProperties.Add( new IndexProperty
+									{
+										CategoryId = categoryId,
+										Id = propertyValueId,
+										Name = property
+									} );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
+										index.AssessmentMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE )
+										index.AssessmentUseTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Scoring_Method )
+										index.ScoringMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+										index.DeliveryMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
+										index.AudienceTypeIds.Add( propertyValueId );
+								}
+							}
+						}
+						catch ( Exception ex )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on AssessmentProperties id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+						}
+						#endregion
+
+						#region Reference Frameworks - industries, occupations and classifications
+						string frameworks = dr[ "Frameworks" ].ToString();
+						if ( !string.IsNullOrWhiteSpace( frameworks ) )
+						{
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( frameworks );
 							foreach ( var child in xDoc.Root.Elements() )
-								item.Classifications.Add( new IndexReferenceFramework
+							{
+								var framework = new IndexReferenceFramework
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
-								} );
-							//if( classifications.CategoryId == 23 ) item.Classifications.Add( classifications );
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+									SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+									CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? "",
+								};
+
+								if ( framework.CategoryId == 11 )
+									index.Occupations.Add( framework );
+								if ( framework.CategoryId == 10 )
+									index.Industries.Add( framework );
+								if ( framework.CategoryId == 23 )
+									index.Classifications.Add( framework );
+							}
+							if ( index.Occupations.Count > 0 )
+								index.HasOccupations = true;
+							if ( index.Industries.Count > 0 )
+								index.HasIndustries = true;
+							if ( index.Classifications.Count > 0 )
+								index.HasInstructionalPrograms = true;
 						}
+						//string classifications = GetRowPossibleColumn( dr, "Classifications" );
+						//if ( !string.IsNullOrWhiteSpace( classifications ) )
+						//{
+						//	var xDoc = XDocument.Parse( classifications );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//		index.Classifications.Add( new IndexReferenceFramework
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Name" ) ?? "",
+						//			CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+						//			SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+						//			CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? "",
+						//		} );
+						//	if( classifications.CategoryId == 23 ) index.Classifications.Add( classifications );
+						//}
 
 						#endregion
 
 						#region QualityAssurance
-						item.Org_QAAgentAndRoles = GetRowPossibleColumn( dr, "Org_QAAgentAndRoles" );
-						string qualityAssurances = GetRowPossibleColumn( dr, "QualityAssurances" );
-						if ( !string.IsNullOrWhiteSpace( qualityAssurances ) )
-						{
-							qualityAssurances = qualityAssurances.Replace( "&", " " );
-							var xDoc = XDocument.Parse( qualityAssurances );
-							foreach ( var child in xDoc.Root.Elements() )
-								item.QualityAssurances.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
-						}
+						index.Org_QAAgentAndRoles = GetRowPossibleColumn( dr, "Org_QAAgentAndRoles" );
+
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						//string relationshipTypes = GetRowPossibleColumn( dr, "RelationshipTypes" );
+						//if ( !string.IsNullOrWhiteSpace( relationshipTypes ) )
+						//{
+						//	relationshipTypes = relationshipTypes.Replace( "&", " " );
+						//	var xDoc = XDocument.Parse( relationshipTypes );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//		index.AgentRelationships.Add( int.Parse( ( string ) child.Attribute( "RelationshipTypeId" ) ) );
+						//}
 
 						string qualityAssurance = GetRowPossibleColumn( dr, "QualityAssurance" );
 						if ( !string.IsNullOrWhiteSpace( qualityAssurance ) )
@@ -1892,27 +2100,27 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( qualityAssurance );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
-								string relationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "";
+								string agentName = ( string ) child.Attribute( "AgentName" ) ?? "";
+								string relationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "";
 								bool isQARole = false;
-								if ( ( ( string )child.Attribute( "IsQARole" ) ?? "" ) == "1" )
+								if ( ( ( string ) child.Attribute( "IsQARole" ) ?? "" ) == "1" )
 									isQARole = true;
 								if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationship ) )
 								{
-									item.QualityAssurance.Add( new IndexQualityAssurance
+									index.QualityAssurance.Add( new IndexQualityAssurance
 									{
 										AgentRelativeId = int.Parse( child.Attribute( "AgentRelativeId" ).Value ),
 										RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
-										SourceToAgentRelationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "",
-										AgentToSourceRelationship = ( string )child.Attribute( "AgentToSourceRelationship" ) ?? "",
-										AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
-										AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+										SourceToAgentRelationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "",
+										AgentToSourceRelationship = ( string ) child.Attribute( "AgentToSourceRelationship" ) ?? "",
+										AgentUrl = ( string ) child.Attribute( "AgentUrl" ) ?? "",
+										AgentName = ( string ) child.Attribute( "AgentName" ) ?? "",
 										EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
 										IsQARole = isQARole,
 									} );
 									//add phrase. ex Accredited by microsoft
 									if ( !string.IsNullOrWhiteSpace( relationship ) && !string.IsNullOrWhiteSpace( agentName ) )
-										item.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
+										index.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
 								}
 							}
 						}
@@ -1923,30 +2131,30 @@ namespace workIT.Factories
 						var addresses = dr[ "Addresses" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( addresses ) )
 						{
-							//item.Addresses = addresses;
+							//index.Addresses = addresses;
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( addresses );
-							//item.AvailableAddresses = xDoc.Root.Elements().Count();
+							//index.AvailableAddresses = xDoc.Root.Elements().Count();
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string region = ( string )child.Attribute( "Region" ) ?? "";
-								string city = ( string )child.Attribute( "City" ) ?? "";
-								item.Addresses.Add( new Address
+								string region = ( string ) child.Attribute( "Region" ) ?? "";
+								string city = ( string ) child.Attribute( "City" ) ?? "";
+								index.Addresses.Add( new Address
 								{
-									Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-									Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-									Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-									Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-									City = ( string )child.Attribute( "City" ) ?? "",
-									AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-									PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-									Country = ( string )child.Attribute( "Country" ) ?? ""
+									Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+									Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+									Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+									Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
+									City = ( string ) child.Attribute( "City" ) ?? "",
+									AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
+									PostalCode = ( string ) child.Attribute( "PostalCode" ) ?? "",
+									Country = ( string ) child.Attribute( "Country" ) ?? ""
 								} );
-								AddTextValue( item, city );
-								AddTextValue( item, region );
+								AddTextValue( index, city );
+								AddTextValue( index, region );
 							}
 						}
-						if ( item.Addresses.Count == 0 )
+						if ( index.Addresses.Count == 0 )
 						{
 							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
 							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
@@ -1963,24 +2171,24 @@ namespace workIT.Factories
 									//{
 									foreach ( var child in xDoc.Root.Elements() )
 									{
-										string region = ( string )child.Attribute( "Region" ) ?? "";
-										string city = ( string )child.Attribute( "City" ) ?? "";
+										string region = ( string ) child.Attribute( "Region" ) ?? "";
+										string city = ( string ) child.Attribute( "City" ) ?? "";
 										if ( prevRegion != region )
 										{
-											item.Addresses.Add( new Address
+											index.Addresses.Add( new Address
 											{
-												Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-												Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-												Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-												Address2 = ( string )child.Attribute( "Address2" ) ?? "",
+												Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+												Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+												Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+												Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
 												//City = ( string )child.Attribute( "City" ) ?? "",
-												AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
+												AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
 												//PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-												Country = ( string )child.Attribute( "Country" ) ?? ""
+												Country = ( string ) child.Attribute( "Country" ) ?? ""
 											} );
 											prevRegion = region;
-											AddTextValue( item, city );
-											AddTextValue( item, region );
+											AddTextValue( index, city );
+											AddTextValue( index, region );
 										}
 										//should only be one, just in case some change in future
 										//break;
@@ -1989,76 +2197,75 @@ namespace workIT.Factories
 								}
 								catch ( Exception ex )
 								{
-									LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+									LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 								}
 							}
 						}
 						#endregion
 
-						#region Audience types, language
-						item.TypesResults = GetRowPossibleColumn( dr, "TypesList" );
-						//string AudienceTypes = GetRowPossibleColumn( dr, "AudienceTypeIds" );
-						//if ( !string.IsNullOrWhiteSpace( AudienceTypes ) )
-						//{
-						//	foreach ( var propertyValueId in AudienceTypes.Split( '|' ) )
-						//	{
-						//		item.AudienceTypeIds.Add( int.Parse( propertyValueId ) );
-						//	}
-						//}
-						item.AudienceTypeIds = GetIntegerList( dr, "AudienceTypeIds" );
-						item.InLanguage = GetLanguages( dr );
-	
+						#region language
+						index.InLanguage = GetLanguages( dr );
 						#endregion
+
 						#region custom reports
 
 						int propertyId = 0;
-						if ( !string.IsNullOrWhiteSpace( item.AvailableOnlineAt ) )
+						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
 							if ( GetPropertyId( 60, "asmtReport:AvailableOnline", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.AssessesCompetencies.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.AssessesCompetencies.Count > 0 )
 							if ( GetPropertyId( 60, "asmtReport:AssessesCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RequiresCompetencies.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RequiresCompetencies.Count > 0 )
 							if ( GetPropertyId( 60, "asmtReport:RequiresCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						if ( costProfilesCount > 0 )
 							if ( GetPropertyId( 60, "asmtReport:HasCostProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-
+								index.ReportFilters.Add( propertyId );
+						if ( conditionProfilesCount > 0 )
+							if ( GetPropertyId( 60, "asmtReport:HasConditionProfile", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						//
 						var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
 						if ( DurationProfileCount > 0 )
 						{
 							if ( GetPropertyId( 60, "asmtReport:HasDurationProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 
-						if ( item.CommonConditionsCount > 0 )
+						if ( index.CommonConditionsCount > 0 )
 							if ( GetPropertyId( 60, "asmtReport:ReferencesCommonConditions", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.CommonCostsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.CommonCostsCount > 0 )
 							if ( GetPropertyId( 60, "asmtReport:ReferencesCommonCosts", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.FinancialAidCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.FinancialAidCount > 0 )
 							if ( GetPropertyId( 60, "asmtReport:FinancialAid", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.ProcessProfilesCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ProcessProfilesCount > 0 )
 							if ( GetPropertyId( 60, "asmtReport:HasProcessProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.HasCIP > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasOccupations )
+							if ( GetPropertyId( 60, "asmtReport:HasOccupations", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasIndustries )
+							if ( GetPropertyId( 60, "asmtReport:HasIndustries", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasInstructionalPrograms )
 							if ( GetPropertyId( 60, "asmtReport:HasCIP", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.Addresses.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 60, "asmtReport:HasAddresses", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
-						list.Add( item );
+						list.Add( index );
 					}
 					#endregion
 
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic. Last Row: {0}, asmtId: {1} Exception: \r\n{2}", cntr, item.Id, ex.Message ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic. Last Row: {0}, asmtId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 				}
 				finally
 				{
@@ -2073,9 +2280,9 @@ namespace workIT.Factories
 			List<int> list = new List<int>();
 			if ( !string.IsNullOrWhiteSpace( delimitedList ) )
 			{
-				foreach ( var item in delimitedList.Split( '|' ) )
+				foreach ( var index in delimitedList.Split( '|' ) )
 				{
-					list.Add( int.Parse( item ) );
+					list.Add( int.Parse( index ) );
 				}
 			}
 			return list;
@@ -2110,10 +2317,10 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static bool GetPropertyId( int categoryId, string schemaName, ref int propertyId )
 		{
-			CodeItem item = CodesManager.GetPropertyBySchema( categoryId, schemaName );
-			if ( item != null && item.Id > 0 )
+			CodeItem index = CodesManager.GetEntityStatisticBySchema( categoryId, schemaName );
+			if ( index != null && index.Id > 0 )
 			{
-				propertyId = item.Id;
+				propertyId = index.Id;
 				return true;
 			}
 			return false;
@@ -2125,7 +2332,7 @@ namespace workIT.Factories
 
 			foreach ( var ai in assessments )
 			{
-				var item = new PM.AssessmentProfile
+				var index = new PM.AssessmentProfile
 				{
 					Id = ai.Id,
 					Name = ai.Name,
@@ -2157,9 +2364,9 @@ namespace workIT.Factories
 				};
 
 				if ( ai.OwnerOrganizationId > 0 )
-					item.OwningOrganization = new CM.Organization() { Id = ai.OwnerOrganizationId, Name = ai.Organization };
+					index.OwningOrganization = new CM.Organization() { Id = ai.OwnerOrganizationId, Name = ai.OwnerOrganizationName };
 				//addresses
-				item.Addresses = ai.Addresses.Select( x => new CM.Address
+				index.Addresses = ai.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -2171,21 +2378,29 @@ namespace workIT.Factories
 					Country = x.Country
 				} ).ToList();
 
-				item.EstimatedDuration = DurationProfileManager.GetAll( item.RowId );
-				item.QualityAssurance = Fill_AgentRelationship( ai.QualityAssurance, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Assessment" );
-				item.Org_QAAgentAndRoles = Fill_AgentRelationship( ai.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
-				item.AssessmentMethodTypes = Fill_CodeItemResults( ai.AssessmentMethodTypes, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
+				index.EstimatedDuration = DurationProfileManager.GetAll( index.RowId );
+				index.QualityAssurance = Fill_AgentRelationship( ai.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Assessment" );
+				index.Org_QAAgentAndRoles = Fill_AgentRelationship( ai.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
 
-				item.AssessmentUseTypes = Fill_CodeItemResults( ai.AssessmentUseTypes, CodesManager.PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE, false, false );
-				item.ScoringMethodTypes = Fill_CodeItemResults( ai.ScoringMethodTypes, CodesManager.PROPERTY_CATEGORY_Scoring_Method, false, false );
-				item.DeliveryMethodTypes = Fill_CodeItemResults( ai.DeliveryMethodTypes, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+				index.AssessmentMethodTypes = Fill_CodeItemResults( ai.AssessmentProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
+				index.AssessmentUseTypes = Fill_CodeItemResults( ai.AssessmentProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE, false, false );
+				index.ScoringMethodTypes = Fill_CodeItemResults( ai.AssessmentProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Scoring_Method ).ToList(), CodesManager.PROPERTY_CATEGORY_Scoring_Method, false, false );
+				index.DeliveryMethodTypes = Fill_CodeItemResults( ai.AssessmentProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+				index.AudienceTypes = Fill_CodeItemResults( ai.AssessmentProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(),CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+
+				if ( ai.Industries != null && ai.Industries.Count > 0 )
+					index.IndustryResults = Fill_CodeItemResults( ai.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+
+				if ( ai.Occupations != null && ai.Occupations.Count > 0 )
+					index.OccupationResults = Fill_CodeItemResults( ai.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
+
 				if ( ai.Classifications != null && ai.Classifications.Count > 0 )
-					item.InstructionalProgramClassification = Fill_CodeItemResults( ai.Classifications.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
+					index.InstructionalProgramClassification = Fill_CodeItemResults( ai.Classifications.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
 
-				item.CredentialsList = Fill_CredentialConnectionsResult( ai.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-				item.ListTitle = ai.ListTitle;
-				item.Subjects = ai.SubjectAreas;
-				list.Add( item );
+				index.CredentialsList = Fill_CredentialConnectionsResult( ai.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.ListTitle = ai.ListTitle;
+				index.Subjects = ai.SubjectAreas;
+				list.Add( index );
 			}
 
 			return list;
@@ -2198,7 +2413,7 @@ namespace workIT.Factories
 		public static List<LearningOppIndex> LearningOpp_SearchForElastic( string filter )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new LearningOppIndex();
+			var index = new LearningOppIndex();
 			var list = new List<LearningOppIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "LearningOpp_SearchForElastic - Starting. filter\r\n " + filter );
@@ -2230,11 +2445,11 @@ namespace workIT.Factories
 					}
 					catch ( Exception ex )
 					{
-						item = new LearningOppIndex();
-						item.Name = "EXCEPTION ENCOUNTERED";
-						item.Description = ex.Message;
-						//item.CredentialTypeSchema = "error";
-						list.Add( item );
+						index = new LearningOppIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						//index.CredentialTypeSchema = "error";
+						list.Add( index );
 						return list;
 					}
 				}
@@ -2248,67 +2463,69 @@ namespace workIT.Factories
 						if ( cntr % 100 == 0 )
 							LoggingHelper.DoTrace( 2, string.Format( " loading record: {0}", cntr ) );
 
-						item = new LearningOppIndex();
-						item.Id = GetRowColumn( dr, "Id", 0 );
-						item.NameIndex = cntr * 1000;
-						item.Name = GetRowColumn( dr, "Name", "missing" );
-						item.FriendlyName = FormatFriendlyTitle( item.Name );
-						item.Description = GetRowColumn( dr, "Description", "" );
-						if ( item.Id == 209 )
+						index = new LearningOppIndex();
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.FriendlyName = FormatFriendlyTitle( index.Name );
+						index.Description = GetRowColumn( dr, "Description", "" );
+						if ( index.Id == 209 )
 						{
 
 						}
 						string rowId = GetRowColumn( dr, "RowId" );
-						item.RowId = new Guid( rowId );
+						index.RowId = new Guid( rowId );
 
-						item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-
-
-						item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
 
 
-						item.Organization = GetRowPossibleColumn( dr, "Organization", "" );
-						item.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
-						if ( item.Organization.Length > 0 )
-							item.ListTitle = item.Name + " (" + item.Organization + ")";
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+
+						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
+						index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
+						if ( index.OwnerOrganizationName.Length > 0 )
+							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
 						else
-							item.ListTitle = item.Name;
+							index.ListTitle = index.Name;
+						//add helpers
+						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
 
 						var date = GetRowColumn( dr, "DateEffective", "" );
 						if ( IsValidDate( date ) )
-							item.DateEffective = DateTime.Parse( date ).ToShortDateString();
+							index.DateEffective = DateTime.Parse( date ).ToShortDateString();
 						else
-							item.DateEffective = "";
+							index.DateEffective = "";
 
-						item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
-						item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
+						index.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
+						index.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
 						//define LastUpdated to be EntityLastUpdated
 						date = GetRowColumn( dr, "EntityLastUpdated", "" );
 						if ( IsValidDate( date ) )
-							item.LastUpdated = DateTime.Parse( date );
+							index.LastUpdated = DateTime.Parse( date );
 
 						//competencies. either arbitrarily get all, or if filters exist, only return matching ones
-						item.CompetenciesCount = GetRowPossibleColumn( dr, "CompetenciesCount", 0 );
+						index.CompetenciesCount = GetRowPossibleColumn( dr, "CompetenciesCount", 0 );
 
-						item.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
-						item.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
-						item.IsRequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
-						item.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
-						item.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
-						item.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
-						item.IsPreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
-						item.PreparationFromCount = GetRowColumn( dr, "PreparationFromCount", 0 );
-						//item.TotalCostCount = GetRowPossibleColumn( dr, "TotalCostCount", 0M );
+						index.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
+						index.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
+						index.IsRequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
+						index.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
+						index.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
+						index.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
+						index.IsPreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
+						index.PreparationFromCount = GetRowColumn( dr, "PreparationFromCount", 0 );
+						//index.TotalCostCount = GetRowPossibleColumn( dr, "TotalCostCount", 0M );
 						costProfilesCount = GetRowPossibleColumn( dr, "CostProfilesCount", 0 );
-						item.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
-						item.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
-						item.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
-						item.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						index.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
+						index.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
+						index.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
+						index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
 						//-actual connection type (no credential info)
-						item.ConnectionsList = dr[ "ConnectionsList" ].ToString();
+						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
 						//connection type, plus Id, and name of credential
-						item.CredentialsList = dr[ "CredentialsList" ].ToString();
+						index.CredentialsList = dr[ "CredentialsList" ].ToString();
 						//change to use Connections
 						string credentialConnections = GetRowPossibleColumn( dr, "LoppConnections" );
 						if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
@@ -2318,7 +2535,7 @@ namespace workIT.Factories
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								conn = new Connection();
-								conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+								conn.ConnectionType = ( string ) child.Attribute( "ConnectionType" ) ?? "";
 								conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
 								//do something with counts for this type
@@ -2327,27 +2544,27 @@ namespace workIT.Factories
 								if ( conn.CredentialId > 0 )
 								{
 									//add credential
-									conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+									conn.Credential = ( string ) child.Attribute( "CredentialName" ) ?? "";
 									//??????
 									conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-									conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+									conn.CredentialOrganization = ( string ) child.Attribute( "credOrganization" ) ?? "";
 								}
 								conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
 								if ( conn.AssessmentId > 0 )
 								{
-									conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+									conn.Assessment = ( string ) child.Attribute( "AssessmentName" ) ?? "";
 									conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-									conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+									conn.AssessmentOrganization = ( string ) child.Attribute( "asmtOrganization" ) ?? "";
 								}
 								conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
 								if ( conn.LoppId > 0 )
 								{
-									conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+									conn.LearningOpportunity = ( string ) child.Attribute( "LearningOpportunityName" ) ?? "";
 									conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-									conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+									conn.LearningOpportunityOrganization = ( string ) child.Attribute( "loppOrganization" ) ?? "";
 								}
 
-								item.Connections.Add( conn );
+								index.Connections.Add( conn );
 							}
 						}
 
@@ -2367,11 +2584,11 @@ namespace workIT.Factories
 							{
 								var competency = new IndexCompetency
 								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									Description = ( string ) child.Attribute( "Description" ) ?? ""
 								};
 
-								item.TeachesCompetencies.Add( competency );
+								index.TeachesCompetencies.Add( competency );
 							}
 						}
 
@@ -2393,11 +2610,11 @@ namespace workIT.Factories
 							{
 								var competency = new IndexCompetency
 								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									Description = ( string ) child.Attribute( "Description" ) ?? ""
 								};
 
-								item.RequiresCompetencies.Add( competency );
+								index.RequiresCompetencies.Add( competency );
 							}
 						}
 
@@ -2410,7 +2627,7 @@ namespace workIT.Factories
 						{
 							var xDoc = XDocument.Parse( subjectAreas );
 							foreach ( var child in xDoc.Root.Elements() )
-								item.SubjectAreas.Add( child.Attribute( "Subject" ).Value );
+								index.SubjectAreas.Add( child.Attribute( "Subject" ).Value );
 						}
 
 						#endregion
@@ -2423,118 +2640,145 @@ namespace workIT.Factories
 							textValues = textValues.Replace( "&", " " );
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( textValues );
-							//item.Addresses = xDoc.Root.Elements().Count();
+							//index.Addresses = xDoc.Root.Elements().Count();
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
 								var textValue = child.Attribute( "TextValue" );
 								if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
 								{
-									item.TextValues.Add( textValue.Value );
+									index.TextValues.Add( textValue.Value );
 
 									if ( textValue.Value.IndexOf( "-" ) > -1 )
-										item.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+										index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
 
 									if ( categoryId == 35 )
-										item.Keyword.Add( textValue.Value );
+										index.Keyword.Add( textValue.Value );
 								}
 								//source is just direct/indirect, more want the sourceEntityType
 								var codeNotation = child.Attribute( "CodedNotation" );
 								if ( codeNotation != null && !string.IsNullOrWhiteSpace( codeNotation.Value ) )
 								{
-									item.TextValues.Add( codeNotation.Value );
+									index.TextValues.Add( codeNotation.Value );
 									if ( codeNotation.Value.IndexOf( "-" ) > -1 )
-										item.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
+										index.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
 								}
 							}
 						}
 						//properties to add to textvalues
-						item.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
-						AddTextValue( item, item.AvailableOnlineAt );
-						
+						index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
+						AddTextValue( index, index.AvailableOnlineAt );
+
 						string url = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
-						AddTextValue( item, url );
-						item.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
-						AddTextValue( item, item.CodedNotation );
+						AddTextValue( index, url );
+						index.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
+						AddTextValue( index, index.CodedNotation );
 
-						AddTextValue( item, item.CredentialRegistryId );
-						AddTextValue( item, item.Id.ToString() );
-						AddTextValue( item, item.CTID, true );
-						
+						AddTextValue( index, index.CredentialRegistryId );
+						AddTextValue( index, index.Id.ToString() );
+						AddTextValue( index, index.CTID, true );
+
 
 						#endregion
 
-						#region properties
-
-						var deliveryMethodTypes = dr[ "DeliveryMethodTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( deliveryMethodTypes ) )
+						#region LoppProperties
+						try
 						{
-							var xDoc = XDocument.Parse( deliveryMethodTypes );
-							foreach ( var child in xDoc.Root.Elements() )
+							var loppProperties = dr[ "LoppProperties" ].ToString();
+							if ( !string.IsNullOrEmpty( loppProperties ) )
 							{
-								var prop = new IndexProperty
+								loppProperties = loppProperties.Replace( "&", " " );
+								var xDoc = XDocument.Parse( loppProperties );
+								foreach ( var child in xDoc.Root.Elements() )
 								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.DeliveryMethodTypes.Add( prop );
-								item.DeliveryMethodTypeIds.Add( prop.Id );
+									var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
+									var propertyValueId = int.Parse( child.Attribute( "PropertyValueId" ).Value );
+									var property = child.Attribute( "Property" ).Value;
 
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
+									index.LoppProperties.Add( new IndexProperty
+									{
+										CategoryId = categoryId,
+										Id = propertyValueId,
+										Name = property
+									} );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Learning_Method_Type )
+										index.LearningMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+										index.DeliveryMethodTypeIds.Add( propertyValueId );
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
+										index.AudienceTypeIds.Add( propertyValueId );
+								}
 							}
 						}
-						var methodTypes = dr[ "LearningMethodTypes" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( methodTypes ) )
+						catch ( Exception ex )
 						{
-							var xDoc = XDocument.Parse( methodTypes );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var prop = new IndexProperty
-								{
-									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									Id = int.Parse( child.Attribute( "PropertyValueId" ).Value ),
-									Name = ( string )child.Attribute( "Property" )
-								};
-								item.LearningMethodTypes.Add( prop );
-								item.LearningMethodTypeIds.Add( prop.Id );
-
-								if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "Property" ) ) )
-									item.TextValues.Add( ( string )child.Attribute( "Property" ) );
-							}
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on LoppProperties id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 						}
 						#endregion
 
-						#region Classifications
-
-						string classifications = GetRowPossibleColumn( dr, "Classifications" );
-						if ( !string.IsNullOrWhiteSpace( classifications ) )
+						#region Reference Frameworks - industries, occupations and classifications
+						string frameworks = dr[ "Frameworks" ].ToString();
+						if ( !string.IsNullOrWhiteSpace( frameworks ) )
 						{
-							var xDoc = XDocument.Parse( classifications );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( frameworks );
 							foreach ( var child in xDoc.Root.Elements() )
-								item.Classifications.Add( new IndexReferenceFramework
+							{
+								var framework = new IndexReferenceFramework
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
-								} );
+									Name = ( string ) child.Attribute( "Name" ) ?? "",
+									CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+									SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+									CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? "",
+								};
+
+								if ( framework.CategoryId == 11 )
+									index.Occupations.Add( framework );
+								if ( framework.CategoryId == 10 )
+									index.Industries.Add( framework );
+								if ( framework.CategoryId == 23 )
+									index.Classifications.Add( framework );
+							}
+							if ( index.Occupations.Count > 0 )
+								index.HasOccupations = true;
+							if ( index.Industries.Count > 0 )
+								index.HasIndustries = true;
+							if ( index.Classifications.Count > 0 )
+								index.HasInstructionalPrograms = true;
 						}
+
+						//string classifications = GetRowPossibleColumn( dr, "Classifications" );
+						//if ( !string.IsNullOrWhiteSpace( classifications ) )
+						//{
+						//	var xDoc = XDocument.Parse( classifications );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//		index.Classifications.Add( new IndexReferenceFramework
+						//		{
+						//			CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//			ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+						//			Name = ( string ) child.Attribute( "Name" ) ?? "",
+						//			CodeGroup = ( string ) child.Attribute( "CodeGroup" ) ?? "",
+						//			SchemaName = ( string ) child.Attribute( "SchemaName" ) ?? "",
+						//			CodedNotation = ( string ) child.Attribute( "CodedNotation" ) ?? "",
+						//		} );
+						//}
 
 						#endregion
 
 						#region QualityAssurance
-						item.Org_QAAgentAndRoles = GetRowPossibleColumn( dr, "Org_QAAgentAndRoles" );
-						string qualityAssurances = GetRowPossibleColumn( dr, "QualityAssurances" );
-						if ( !string.IsNullOrWhiteSpace( qualityAssurances ) )
-						{
-							var xDoc = XDocument.Parse( qualityAssurances );
-							foreach ( var child in xDoc.Root.Elements() )
-								item.QualityAssurances.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
-						}
+						index.Org_QAAgentAndRoles = GetRowPossibleColumn( dr, "Org_QAAgentAndRoles" );
+
+						HandleAgentRelationshipsForEntity( dr, index );
+						//string relationshipTypes = GetRowPossibleColumn( dr, "RelationshipTypes" );
+						//if ( !string.IsNullOrWhiteSpace( relationshipTypes ) )
+						//{
+						//	relationshipTypes = relationshipTypes.Replace( "&", " " );
+						//	var xDoc = XDocument.Parse( relationshipTypes );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//		index.AgentRelationships.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
+						//}
 
 
 						string qualityAssurance = GetRowPossibleColumn( dr, "QualityAssurance" );
@@ -2548,28 +2792,28 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( qualityAssurance );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
-								string relationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "";
+								string agentName = ( string ) child.Attribute( "AgentName" ) ?? "";
+								string relationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "";
 								bool isQARole = false;
-								if ( ( ( string )child.Attribute( "IsQARole" ) ?? "" ) == "1" )
+								if ( ( ( string ) child.Attribute( "IsQARole" ) ?? "" ) == "1" )
 									isQARole = true;
 
 								if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationship ) )
 								{
-									item.QualityAssurance.Add( new IndexQualityAssurance
+									index.QualityAssurance.Add( new IndexQualityAssurance
 									{
 										AgentRelativeId = int.Parse( child.Attribute( "AgentRelativeId" ).Value ),
 										RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
-										SourceToAgentRelationship = ( string )child.Attribute( "SourceToAgentRelationship" ) ?? "",
-										AgentToSourceRelationship = ( string )child.Attribute( "AgentToSourceRelationship" ) ?? "",
-										AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
-										AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+										SourceToAgentRelationship = ( string ) child.Attribute( "SourceToAgentRelationship" ) ?? "",
+										AgentToSourceRelationship = ( string ) child.Attribute( "AgentToSourceRelationship" ) ?? "",
+										AgentUrl = ( string ) child.Attribute( "AgentUrl" ) ?? "",
+										AgentName = ( string ) child.Attribute( "AgentName" ) ?? "",
 										EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
 										IsQARole = isQARole,
 									} );
 									//add phrase. ex Accredited by microsoft
 									if ( !string.IsNullOrWhiteSpace( relationship ) && !string.IsNullOrWhiteSpace( agentName ) )
-										item.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
+										index.TextValues.Add( string.Format( "{0} {1}", relationship, agentName ) );
 								}
 							}
 						}
@@ -2580,31 +2824,31 @@ namespace workIT.Factories
 						var addresses = dr[ "Addresses" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( addresses ) )
 						{
-							//item.Addresses = addresses;
+							//index.Addresses = addresses;
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( addresses );
-							//item.AvailableAddresses = xDoc.Root.Elements().Count();
+							//index.AvailableAddresses = xDoc.Root.Elements().Count();
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string region = ( string )child.Attribute( "Region" ) ?? "";
-								string city = ( string )child.Attribute( "City" ) ?? "";
-								item.Addresses.Add( new Address
+								string region = ( string ) child.Attribute( "Region" ) ?? "";
+								string city = ( string ) child.Attribute( "City" ) ?? "";
+								index.Addresses.Add( new Address
 								{
-									Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-									Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-									Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-									Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-									City = ( string )child.Attribute( "City" ) ?? "",
-									AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-									PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-									Country = ( string )child.Attribute( "Country" ) ?? ""
+									Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+									Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+									Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+									Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
+									City = ( string ) child.Attribute( "City" ) ?? "",
+									AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
+									PostalCode = ( string ) child.Attribute( "PostalCode" ) ?? "",
+									Country = ( string ) child.Attribute( "Country" ) ?? ""
 								} );
-								AddTextValue( item, city );
-								AddTextValue( item, region );
+								AddTextValue( index, city );
+								AddTextValue( index, region );
 							}
 						}
 
-						if ( item.Addresses.Count == 0 )
+						if ( index.Addresses.Count == 0 )
 						{
 							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
 							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
@@ -2621,99 +2865,97 @@ namespace workIT.Factories
 									//{
 									foreach ( var child in xDoc.Root.Elements() )
 									{
-										string region = ( string )child.Attribute( "Region" ) ?? "";
-										string city = ( string )child.Attribute( "City" ) ?? "";
+										string region = ( string ) child.Attribute( "Region" ) ?? "";
+										string city = ( string ) child.Attribute( "City" ) ?? "";
 										if ( prevRegion != region )
 										{
-											item.Addresses.Add( new Address
+											index.Addresses.Add( new Address
 											{
-												Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-												Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-												Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-												Address2 = ( string )child.Attribute( "Address2" ) ?? "",
+												Latitude = double.Parse( ( string ) child.Attribute( "Latitude" ) ),
+												Longitude = double.Parse( ( string ) child.Attribute( "Longitude" ) ),
+												Address1 = ( string ) child.Attribute( "Address1" ) ?? "",
+												Address2 = ( string ) child.Attribute( "Address2" ) ?? "",
 												//City = ( string )child.Attribute( "City" ) ?? "",
-												AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
+												AddressRegion = ( string ) child.Attribute( "Region" ) ?? "",
 												//PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-												Country = ( string )child.Attribute( "Country" ) ?? ""
+												Country = ( string ) child.Attribute( "Country" ) ?? ""
 											} );
 											prevRegion = region;
-											AddTextValue( item, city );
-											AddTextValue( item, region );
+											AddTextValue( index, city );
+											AddTextValue( index, region );
 										}
 										//}
 									}
 								}
 								catch ( Exception ex )
 								{
-									LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, item.Id, ex.Message ) );
+									LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
 								}
 							}
 						}
 						#endregion
 
-
-						#region Audience types
-
-						item.TypesResults = GetRowPossibleColumn( dr, "TypesList" );
-						item.AudienceTypeIds = GetIntegerList( dr, "AudienceTypeIds" );
-						item.InLanguage = GetLanguages( dr );
+						#region Languages
+						index.InLanguage = GetLanguages( dr );
 						#endregion
 
 						#region custom reports
 
 						int propertyId = 0;
-						if ( !string.IsNullOrWhiteSpace( item.AvailableOnlineAt ) )
+						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
 							if ( GetPropertyId( 61, "loppReport:AvailableOnline", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.TeachesCompetencies.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.TeachesCompetencies.Count > 0 )
 							if ( GetPropertyId( 61, "loppReport:TeachesCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.RequiresCompetencies.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.RequiresCompetencies.Count > 0 )
 							if ( GetPropertyId( 61, "loppReport:RequiresCompetencies", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
 						var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
 						if ( DurationProfileCount > 0 )
 						{
 							if ( GetPropertyId( 61, "loppReport:HasDurationProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 						}
 
 						if ( costProfilesCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:HasCostProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
-						if ( item.CommonConditionsCount > 0 )
+						if ( index.CommonConditionsCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:ReferencesCommonConditions", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.CommonCostsCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.CommonCostsCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:ReferencesCommonCosts", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.FinancialAidCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.FinancialAidCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:FinancialAid", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						if ( item.ProcessProfilesCount > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ProcessProfilesCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:HasProcessProfile", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-
-						var HasCIPCount = GetRowPossibleColumn( dr, "HasCIPCount", 0 );
-						if ( HasCIPCount > 0 )
-						{
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasOccupations )
+							if ( GetPropertyId( 61, "loppReport:HasOccupations", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasIndustries )
+							if ( GetPropertyId( 61, "loppReport:HasIndustries", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasInstructionalPrograms )
 							if ( GetPropertyId( 61, "loppReport:HasCIP", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
-						}
-						if ( item.Addresses.Count > 0 )
+								index.ReportFilters.Add( propertyId );
+						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 61, "loppReport:HasAddresses", ref propertyId ) )
-								item.ReportFilters.Add( propertyId );
+								index.ReportFilters.Add( propertyId );
 
-						list.Add( item );
+						list.Add( index );
 					}
 					#endregion
 
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "LearningOpp_SearchForElastic. Last Row: {0}, LoppId: {1} Exception: \r\n{2}", cntr, item.Id, ex.Message ) );
+					LoggingHelper.DoTrace( 2, string.Format( "LearningOpp_SearchForElastic. Last Row: {0}, LoppId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 				}
 				finally
 				{
@@ -2729,7 +2971,7 @@ namespace workIT.Factories
 
 			foreach ( var li in learningOpps )
 			{
-				var item = new PM.LearningOpportunityProfile
+				var index = new PM.LearningOpportunityProfile
 				{
 					Id = li.Id,
 					Name = li.Name,
@@ -2760,11 +3002,11 @@ namespace workIT.Factories
 				};
 
 				if ( li.OwnerOrganizationId > 0 )
-					item.OwningOrganization = new CM.Organization() { Id = li.OwnerOrganizationId, Name = li.Organization };
+					index.OwningOrganization = new CM.Organization() { Id = li.OwnerOrganizationId, Name = li.OwnerOrganizationName };
 
 				//addressess                
 
-				item.Addresses = li.Addresses.Select( x => new CM.Address
+				index.Addresses = li.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -2775,23 +3017,97 @@ namespace workIT.Factories
 					PostalCode = x.PostalCode,
 					Country = x.Country
 				} ).ToList();
-				item.EstimatedDuration = DurationProfileManager.GetAll( item.RowId );
-				item.Org_QAAgentAndRoles = Fill_AgentRelationship( li.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
-				item.QualityAssurance = Fill_AgentRelationship( li.QualityAssurance, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "LearningOpportunity" );
-				item.CredentialsList = Fill_CredentialConnectionsResult( li.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-				item.Subjects = li.SubjectAreas;
+				index.EstimatedDuration = DurationProfileManager.GetAll( index.RowId );
+				index.Org_QAAgentAndRoles = Fill_AgentRelationship( li.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
+				index.QualityAssurance = Fill_AgentRelationship( li.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "LearningOpportunity" );
+				index.CredentialsList = Fill_CredentialConnectionsResult( li.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.Subjects = li.SubjectAreas;
+
+				if ( li.Industries != null && li.Industries.Count > 0 )
+					index.IndustryResults = Fill_CodeItemResults( li.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+
+				if ( li.Occupations != null && li.Occupations.Count > 0 )
+					index.OccupationResults = Fill_CodeItemResults( li.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 
 				if ( li.Classifications != null && li.Classifications.Count > 0 )
-					item.InstructionalProgramClassification = Fill_CodeItemResults( li.Classifications.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
+					index.InstructionalProgramClassification = Fill_CodeItemResults( li.Classifications.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
 
-				item.LearningMethodTypes = Fill_CodeItemResults( li.LearningMethodTypes, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, false, false );
-				item.DeliveryMethodTypes = Fill_CodeItemResults( li.DeliveryMethodTypes, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
-				item.ListTitle = li.ListTitle;
-				list.Add( item );
+				index.LearningMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Learning_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, false, false );
+				index.DeliveryMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+				index.AudienceTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+				index.ListTitle = li.ListTitle;
+				list.Add( index );
 			}
 
 			return list;
 		}
 		#endregion
+
+		public static void HandleAgentRelationshipsForEntity( DataRow dr, BaseIndex index)
+		{
+			//we may be able to remove this property
+			string agentRelations = GetRowPossibleColumn( dr, "AgentRelationships" );
+			if ( !string.IsNullOrWhiteSpace( agentRelations ) )
+			{
+				var xDoc = new XDocument();
+				xDoc = XDocument.Parse( agentRelations );
+				foreach ( var child in xDoc.Root.Elements() )
+					index.AgentRelationships.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
+			}
+
+			string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
+			if ( !string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
+			{
+				if ( ContainsUnicodeCharacter( agentRelationshipsForEntity ) )
+				{
+					agentRelationshipsForEntity = Regex.Replace( agentRelationshipsForEntity, @"[^\u0000-\u007F]+", string.Empty );
+				}
+				agentRelationshipsForEntity = agentRelationshipsForEntity.Replace( "&", " " );
+				var xDoc = XDocument.Parse( agentRelationshipsForEntity );
+				foreach ( var child in xDoc.Root.Elements() )
+				{
+					string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
+					string relationshipTypeIds = ( string )child.Attribute( "RelationshipTypeIds" ) ?? "";
+					string relationships = ( string )child.Attribute( "Relationships" ) ?? "";
+					string agentContextRoles = ( string )child.Attribute( "AgentContextRoles" ) ?? "";
+
+					if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationshipTypeIds ) )
+					{
+						var relationshipIds = new List<int>();
+						foreach ( var s in child.Attribute( "RelationshipTypeIds" ).Value.Split( new char[] { ',' } ) )
+						{
+							relationshipIds.Add( int.Parse( s.Trim() ) );
+						}
+						var relationshipsList = new List<string>();
+						foreach ( var s in child.Attribute( "Relationships" ).Value.Split( new char[] { ',' } ) )
+						{
+							if (!string.IsNullOrWhiteSpace(s))
+								relationshipsList.Add( s.Trim() );
+						}
+						var agentRelationshipsList = new List<string>();
+						foreach ( var s in child.Attribute( "AgentContextRoles" ).Value.Split( new char[] { ',' } ) )
+						{
+							if ( !string.IsNullOrWhiteSpace( s ) )
+								agentRelationshipsList.Add( s.Trim() );
+						}
+						index.AgentRelationshipsForEntity.Add( new AgentRelationshipForEntity
+						{
+							OrgId = int.Parse( child.Attribute( "OrgId" ).Value ),
+							//todo get/split list of ids
+							//RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
+							RelationshipTypeIds = relationshipIds,
+							AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
+							AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+							EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
+							Relationships = relationshipsList,
+							AgentRelationships = agentRelationshipsList
+						} );
+						//add phrase. ex Accredited by microsoft
+						if ( !string.IsNullOrWhiteSpace( relationships ) && !string.IsNullOrWhiteSpace( agentName ) )
+							index.TextValues.Add( string.Format( "{0} {1}", relationships, agentName ) );
+					}
+				}
+			}
+		}
 	}
 }

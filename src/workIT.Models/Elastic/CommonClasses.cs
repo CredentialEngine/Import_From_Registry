@@ -74,21 +74,45 @@ namespace workIT.Models.Elastic
         public int EntityStateId { get; set; }
 
     }
-    public class IndexQualityAssurancePerformed
+
+	public class AgentRelationshipForEntity
+	{
+		public int OrgId { get; set; }
+		public string AgentName { get; set; }
+		public string AgentUrl { get; set; }
+		public int EntityStateId { get; set; }
+
+		//includes all roles QA: 1,2,10,12, others: 6,7,11,13,20,21
+		public List<int> RelationshipTypeIds { get; set; } = new List<int>();
+		//relationships from the context of the parent entity. For example Accredited By
+		public List<string> Relationships { get; set; } = new List<string>();
+		//relationships from the context of the agent. For example Accredits
+		public List<string> AgentRelationships { get; set; } = new List<string>();
+	}
+
+	public class IndexQualityAssurancePerformed
     {
         public int AssertionTypeId { get; set; }
         public string SourceToAgentRelationship { get; set; }
         public string AgentToSourceRelationship { get; set; }
         public int TargetEntityTypeId { get; set; }
         public int TargetEntityBaseId { get; set; }
-       
         public string TargetEntityName { get; set; }
         public string TargetEntitySubjectWebpage { get; set; }
         public bool IsQARole { get; set; }
         public int EntityStateId { get; set; }
         public string RoleSource { get; set; }
     }
-    public class OrganizationRole
+	public class QualityAssurancePerformed
+	{
+		public int TargetEntityStateId { get; set; }
+		public int TargetEntityTypeId { get; set; }
+		public int TargetEntityBaseId { get; set; }
+		public string TargetEntityName { get; set; }
+		public List<int> AssertionTypeIds { get; set; } = new List<int>();
+
+	}
+	public class OrganizationRole
     {
         public int Id { get; set; }
         public string Name { get; set; }

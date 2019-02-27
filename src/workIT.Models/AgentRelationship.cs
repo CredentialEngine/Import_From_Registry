@@ -19,7 +19,12 @@ namespace workIT.Models
 
         public string Relationship { get; set; }
 
-        public int AgentId { get; set; }
+		//sometimes will have all of the relationships for an organization in this class.
+		//public List<int> RelationshipTypeIds { get; set; } = new List<int>();
+		//public List<string> Relationships { get; set; } = new List<string>();
+		//public List<string> AgentRelationships { get; set; } = new List<string>();
+
+		public int AgentId { get; set; }
         public System.Guid AgentUid { get; set; }
         public string Agent { get; set; }
         public string AgentUrl { get; set; }

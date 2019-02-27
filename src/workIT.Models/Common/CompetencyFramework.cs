@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Newtonsoft.Json;
+
 namespace workIT.Models.Common
 {
     public class CompetencyFrameworksGraph
@@ -193,7 +195,28 @@ namespace workIT.Models.Common
         public string weight { get; set; }
 
     }
+	//
 
-
+	public class CTDLAPICompetencyFrameworkResult
+	{
+		[JsonProperty( PropertyName = "@id" )]
+		public string _ID { get; set; }
+		[JsonProperty( PropertyName = "@type" )]
+		public string _Type { get; set; }
+		[JsonProperty( PropertyName = "ceasn:name" )]
+		public LanguageMap Name { get; set; }
+		[JsonProperty( PropertyName = "ceasn:description" )]
+		public LanguageMap Description { get; set; }
+		[JsonProperty( PropertyName = "ceterms:ctid" )]
+		public string CTID { get; set; }
+		[JsonProperty( PropertyName = "ceasn:creator" )]
+		public List<string> Creator { get; set; }
+		[JsonProperty( PropertyName = "ceasn:dateModified" )]
+		public DateTime DateModified { get; set; }
+		[JsonProperty( PropertyName = "ceasn:dateCreated" )]
+		public DateTime DateCreated { get; set; }
+		public string RawData { get; set; }
+	}
+	//
 
 }

@@ -11,6 +11,7 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Services;
 using workIT.Utilities;
+using Newtonsoft.Json;
 
 using ImportHelpers;
 
@@ -85,7 +86,8 @@ namespace workIT.Web.Controllers
             string refresh = Request.Params[ "refresh" ];
             bool skippingCache = FormHelper.GetRequestKeyValue( "skipCache", false );
             List<string> messages = new List<string>();
-                if ( int.TryParse( id, out orgId ) )
+
+			if ( int.TryParse( id, out orgId ) )
             {
                 entity = OrganizationServices.GetDetail( orgId, skippingCache );
             }
@@ -219,12 +221,84 @@ namespace workIT.Web.Controllers
 
             return View( "~/Views/Detail/Detail.cshtml", entity );
         }
+		//
 
-        //Used because HttpClient doesn't work in views for some reason
-        public static string MakeHttpGet( string url )
+		public ActionResult CompetencyFramework( string id, string name = "" )
+		{
+			//Competency Framework search is powered by the registry, so id will always be a CTID (for now?)
+			return View( "~/Views/Detail/CompetencyFramework.cshtml", model:id );
+		}
+		public string GetRegistryData( string ctid = "", string uri = "" )
+		{
+			try
+			{
+				if ( !string.IsNullOrWhiteSpace( uri ) )
+				{
+					return MakeHttpGet( uri );
+				}
+				else
+				{
+					var url = ConfigHelper.GetConfigValue( "credentialRegistryUrl", "https://credentialengineregistry.org/" ) + "graph/" + ctid;
+					return MakeHttpGet( url );
+				}
+			}
+			catch ( Exception ex )
+			{
+				return JsonConvert.SerializeObject( new { error = ex.Message } );
+			}
+		}
+		public JsonResult GetCredentialsForCompetencies( List<string> competencyCTIDs )
+		{
+			competencyCTIDs = competencyCTIDs ?? new List<string>();
+			var total = 0;
+			var data = CompetencyFrameworkServices.GetCredentialsForCompetencies( competencyCTIDs, 0, 50, ref total );
+			var results = data.ConvertAll( m => m.ToString( Newtonsoft.Json.Formatting.None ) );
+			return JsonResponse( results, true, "", null );
+		}
+		//
+
+		public JsonResult GetRegistryDataList( List<string> ctids = null, List<string> uris = null )
+		{
+			ctids = (ctids ?? new List<string>()).Where( m => !string.IsNullOrWhiteSpace( m ) ).Distinct().ToList();
+			uris = (uris ?? new List<string>()).Where( m => !string.IsNullOrWhiteSpace( m ) ).Distinct().ToList();
+			var results = new Dictionary<string, string>();
+			
+			foreach( var ctid in ctids )
+			{
+				Append( results, ctid, GetRegistryData( ctid, null ) );
+			}
+
+			foreach(var uri in uris )
+			{
+				Append( results, uri, GetRegistryData( null, uri ) );
+			}
+
+			return JsonResponse( results, true, "", null );
+		}
+		private void Append<T>( Dictionary<string, T> container, string key, T value )
+		{
+			if ( container.ContainsKey( key ) )
+			{
+				container[ key ] = value;
+			}
+			else
+			{
+				container.Add( key, value );
+			}
+		}
+
+		//Used because HttpClient doesn't work in views for some reason
+		public static string MakeHttpGet( string url )
         {
             return new HttpClient().GetAsync( url ).Result.Content.ReadAsStringAsync().Result;
         }
         //
+
+		public JsonResult MakeHttpRequest( string url )
+		{
+			var result = MakeHttpGet( url );
+			return JsonResponse( result, true, "okay", null );
+		}
+		//
     }
 }

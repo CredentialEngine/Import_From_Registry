@@ -29,7 +29,7 @@ namespace workIT.Web.Areas.Admin.Controllers
             var user = AccountServices.GetCurrentUser();
             if ( user != null && 
                 ( 
-                    user.Email == "mparsons@siuccwd.com" ||
+                    user.Email == "email@email.com" ||
                     user.Email == "nathan.argo@siuccwd.com"
                   )
                 )
@@ -38,7 +38,7 @@ namespace workIT.Web.Areas.Admin.Controllers
             } else 
             //if ( !User.Identity.IsAuthenticated
             //    || ( User.Identity.Name != "mparsons"
-            //    && User.Identity.Name != "mparsons@siuccwd.com"
+            //    && User.Identity.Name != "email@email.com"
             //    && User.Identity.Name != "nathan.argo@siuccwd.com" )
             //    )
             {

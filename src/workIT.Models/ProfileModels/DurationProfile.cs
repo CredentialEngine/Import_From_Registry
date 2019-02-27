@@ -16,6 +16,7 @@ namespace workIT.Models.ProfileModels
 			MaximumDuration = new DurationItem();
 			ExactDuration = new DurationItem();
 			ProfileName = "";
+			DurationSummary = "";
 		}
 
 		public int EntityId { get; set; }
@@ -33,7 +34,7 @@ namespace workIT.Models.ProfileModels
         public DurationItem MinimumDuration { get; set; }
 		public DurationItem MaximumDuration { get; set; }
 		public DurationItem ExactDuration { get; set; }
-
+		public string DurationSummary { get; set; } 
 		public int MinimumMinutes { get; set; }
 		public string MinimumDurationISO8601 { get; set; }
 		public int MaximumMinutes { get; set; }

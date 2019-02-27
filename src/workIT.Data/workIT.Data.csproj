@@ -144,6 +144,9 @@
     <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Counts_EntityStatistic.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Counts_SiteTotals.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>

@@ -308,6 +308,9 @@ namespace workIT.Factories
 			string list = GetRowPossibleColumn( dr, fieldName );
 			return Fill_AgentRelationship( list, categoryId, hasSchemaName, hasTotals, hasAnIdentifer, entityType );
 		}
+
+		//primarily for roles on owning org
+		//credential still uses old properties like: AgentAndRoles
 		public static AgentRelationshipResult Fill_AgentRelationship( string list, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true, string entityType = "" )
 		{
 			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
@@ -315,102 +318,190 @@ namespace workIT.Factories
 			AgentRelationship code = new AgentRelationship();
 
 			int id = 0;
-
-			if ( !string.IsNullOrWhiteSpace( list ) )
+			try
 			{
-				var codeGroup = list.Split( '|' );
-				foreach ( string codeSet in codeGroup )
+				if ( !string.IsNullOrWhiteSpace( list ) )
 				{
-					code = new AgentRelationship();
-
-					var codes = codeSet.Split( '~' );
-					//schema = "";
-
-					id = 0;
-					if ( hasAnIdentifer )
+					var codeGroup = list.Split( '|' );
+					foreach ( string codeSet in codeGroup )
 					{
-						Int32.TryParse( codes[ 0 ].Trim(), out id );
-						code.RelationshipId = id;
-						code.Relationship = codes[ 1 ].Trim();
+						code = new AgentRelationship();
 
-						Int32.TryParse( codes[ 2 ].Trim(), out id );
-						code.AgentId = id;
-						code.Agent = codes[ 3 ].Trim();
-						// code.AgentUrl = codes[4].Trim();
+						var codes = codeSet.Split( '~' );
+						//schema = "";
 
-						if ( codes.Length > 4 )
-							code.AgentUrl = codes[ 4 ].Trim();
+						id = 0;
+						if ( hasAnIdentifer )
+						{
+							Int32.TryParse( codes[ 0 ].Trim(), out id );
+							code.RelationshipId = id;
+							code.Relationship = codes[ 1 ].Trim();
 
-						if ( codes.Length > 5 )
-							if ( Int32.TryParse( codes[ 5 ].Trim(), out id ) )
+							Int32.TryParse( codes[ 2 ].Trim(), out id );
+							code.AgentId = id;
+							code.Agent = codes[ 3 ].Trim();
+							// code.AgentUrl = codes[4].Trim();
+
+							if ( codes.Length > 4 )
+								code.AgentUrl = codes[ 4 ].Trim();
+
+							if ( codes.Length > 5 )
+								if ( Int32.TryParse( codes[ 5 ].Trim(), out id ) )
+								{
+									code.EntityStateId = id;
+								}
+
+							//code.IsThirdPartyOrganization = false;
+							//if ( codes.Length > 6 )
+							//code.IsThirdPartyOrganization = codes[6].Trim() == "1";
+							if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
 							{
-								code.EntityStateId = id;
+								code.Agent += " [reference] ";
+								code.IsThirdPartyOrganization = true;
 							}
 
-						//code.IsThirdPartyOrganization = false;
-						//if ( codes.Length > 6 )
-						//code.IsThirdPartyOrganization = codes[6].Trim() == "1";
-						if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
-						{
-							code.Agent += " [reference] ";
-							code.IsThirdPartyOrganization = true;
+							if ( !string.IsNullOrEmpty( entityType ) )
+							{
+								code.EntityType = entityType.ToLower();
+								code.Relationship = entityType + " " + codes[ 1 ].Trim();
+							}
 						}
-
-						if ( !string.IsNullOrEmpty( entityType ) )
+						else
 						{
-							code.EntityType = entityType.ToLower();
-							code.Relationship = entityType + " " + codes[ 1 ].Trim();
+							//currently if no Id, assume only text value
+							//title = codes[ 0 ].Trim();
 						}
+						item.Results.Add( code );
 					}
-					else
-					{
-						//currently if no Id, assume only text value
-						//title = codes[ 0 ].Trim();
-					}
-					item.Results.Add( code );
 				}
 			}
-
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( " Fill_AgentRelationship( string list, int categoryId: {0}, bool hasSchemaName{1}", categoryId, hasSchemaName ) );
+			}
 			return item;
 		}
-
+		public static AgentRelationshipResult Fill_AgentRelationship( List<AgentRelationshipForEntity> list, int categoryId, string entityType, bool selectingQAOnly = true )
+		{
+			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
+			item.HasAnIdentifer = true; //????
+			AgentRelationship code = new AgentRelationship();
+			List<int> qaRoles = new List<int>() { 1, 2, 10, 12 };
+			List<int> nonQAaRoles = new List<int>() { 6,7,11,13 };
+			/*
+			 * AgentRelationshipForEntity will have multiple relationships for an org in each record.
+			 * 
+			 */
+			foreach ( var i in list )
+			{
+				//code.RelationshipId = i.RelationshipTypeIds.FirstOrDefault();
+				int cntr = -1;
+				string relationship = "";
+				foreach (var r in i.RelationshipTypeIds )
+				{
+					cntr++;
+					code = new AgentRelationship();
+					code.EntityType = entityType.ToLower();
+					code.AgentId = i.OrgId;
+					code.Agent = i.AgentName;
+					code.EntityStateId = i.EntityStateId;
+					if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
+					{
+						code.Agent += " [reference] ";
+						code.IsThirdPartyOrganization = true;
+					}
+					code.AgentUrl = i.AgentUrl;
+					code.RelationshipId = r;
+					if ( i.RelationshipTypeIds.Count() == i.Relationships.Count() )
+						relationship = i.Relationships[ cntr ];
+					else
+						relationship = "";
+					//code.Relationship = i.Relationships[ cntr ];
+					code.Relationship = entityType + " " + relationship;
+					if ( (!selectingQAOnly && nonQAaRoles.IndexOf( r ) > -1 ) 
+					|| ( selectingQAOnly  && qaRoles.IndexOf( r ) > -1 ))
+						item.Results.Add( code );
+				}
+			}
+			return item;
+		}
+		[Obsolete]
 		public static AgentRelationshipResult Fill_AgentRelationship( List<IndexQualityAssurance> list, int categoryId, string entityType, bool selectingQAOnly = true )
 		{
 			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
 			item.HasAnIdentifer = true; //????
 			AgentRelationship code = new AgentRelationship();
-
-			foreach ( var i in list )
+			try
 			{
-				code = new AgentRelationship();
-				if ( selectingQAOnly && i.IsQARole == false )
-					continue;
-
-				code.RelationshipId = i.RelationshipTypeId;
-				code.Relationship = i.SourceToAgentRelationship;
-
-				code.AgentId = i.AgentRelativeId;
-				code.Agent = i.AgentName;
-				code.EntityStateId = i.EntityStateId;
-				if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
+				
+				foreach ( var i in list )
 				{
-					code.Agent += " [reference] ";
-					code.IsThirdPartyOrganization = true;
-				}
-				code.AgentUrl = i.AgentUrl;
+					code = new AgentRelationship();
+					if ( selectingQAOnly && i.IsQARole == false )
+						continue;
 
-				if ( !string.IsNullOrEmpty( entityType ) )
-				{
-					code.EntityType = entityType.ToLower();
-					code.Relationship = entityType + " " + i.SourceToAgentRelationship;
-				}
+					code.RelationshipId = i.RelationshipTypeId;
+					code.Relationship = i.SourceToAgentRelationship;
 
-				item.Results.Add( code );
+					code.AgentId = i.AgentRelativeId;
+					code.Agent = i.AgentName;
+					code.EntityStateId = i.EntityStateId;
+					if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
+					{
+						code.Agent += " [reference] ";
+						code.IsThirdPartyOrganization = true;
+					}
+					code.AgentUrl = i.AgentUrl;
+
+					if ( !string.IsNullOrEmpty( entityType ) )
+					{
+						code.EntityType = entityType.ToLower();
+						code.Relationship = entityType + " " + i.SourceToAgentRelationship;
+					}
+
+					item.Results.Add( code );
+				}
+			} catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, string.Format(" Fill_AgentRelationship( List<IndexQualityAssurance> list, int categoryId: {0}, string entityType: {1}, bool selectingQAOnly = true )", categoryId, entityType) );
 			}
 			return item;
 		}
 
-		public static TargetAssertionResult Fill_TargetAssertion( List<IndexQualityAssurancePerformed> list, int categoryId, string entityType = "" )
+		//public static TargetAssertionResult Fill_TargetAssertion( List<IndexQualityAssurancePerformed> list, int categoryId, string entityType = "" )
+		//{
+		//	TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
+		//	item.HasAnIdentifer = true; //????
+		//	TargetAssertion code = new TargetAssertion();
+
+		//	foreach ( var i in list )
+		//	{
+		//		code = new TargetAssertion();
+
+		//		code.AssertionId = i.AssertionTypeId;
+		//		code.Assertion = i.SourceToAgentRelationship;
+
+		//		code.TargetId = i.TargetEntityBaseId;
+		//		code.Target = i.TargetEntityName;
+		//		code.EntityStateId = i.EntityStateId;
+		//		if ( code.EntityStateId == 2 && !IsProduction() && code.Target.IndexOf( "[reference]" ) == -1 )
+		//		{
+		//			code.Target += " [reference] ";
+		//			code.IsThirdPartyOrganization = true;
+		//		}
+		//		code.TargetEntitySubjectWebpage = i.TargetEntitySubjectWebpage;
+
+		//		if ( !string.IsNullOrEmpty( entityType ) )
+		//		{
+		//			code.EntityType = entityType.ToLower();
+		//			code.Assertion = entityType + " " + i.SourceToAgentRelationship;
+		//		}
+
+		//		item.Results.Add( code );
+		//	}
+		//	return item;
+		//}
+		public static TargetAssertionResult Fill_TargetQaAssertion( List<QualityAssurancePerformed> list, int categoryId, string entityType = "" )
 		{
 			TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
 			item.HasAnIdentifer = true; //????
@@ -420,23 +511,18 @@ namespace workIT.Factories
 			{
 				code = new TargetAssertion();
 
-				code.AssertionId = i.AssertionTypeId;
-				code.Assertion = i.SourceToAgentRelationship;
-
+				code.AssertionId = i.AssertionTypeIds.FirstOrDefault();
 				code.TargetId = i.TargetEntityBaseId;
 				code.Target = i.TargetEntityName;
-				code.EntityStateId = i.EntityStateId;
 				if ( code.EntityStateId == 2 && !IsProduction() && code.Target.IndexOf( "[reference]" ) == -1 )
 				{
 					code.Target += " [reference] ";
 					code.IsThirdPartyOrganization = true;
 				}
-				code.TargetEntitySubjectWebpage = i.TargetEntitySubjectWebpage;
 
 				if ( !string.IsNullOrEmpty( entityType ) )
 				{
 					code.EntityType = entityType.ToLower();
-					code.Assertion = entityType + " " + i.SourceToAgentRelationship;
 				}
 
 				item.Results.Add( code );

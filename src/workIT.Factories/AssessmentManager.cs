@@ -25,7 +25,6 @@ namespace workIT.Factories
     public class AssessmentManager : BaseFactory
     {
         static readonly string thisClassName = "AssessmentManager";
-        string statusMessage = "";
         EntityManager entityMgr = new EntityManager();
 
         #region Assessment - persistance ==================
@@ -34,7 +33,7 @@ namespace workIT.Factories
         /// - base only, caller will handle parts?
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="statusMessage"></param>
+        /// <param name="status"></param>
         /// <returns></returns>
         public bool Save( ThisEntity entity, ref SaveStatus status )
         {
@@ -155,7 +154,7 @@ namespace workIT.Factories
         /// add a Assessment
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="statusMessage"></param>
+        /// <param name="status"></param>
         /// <returns></returns>
         private int Add( ThisEntity entity, ref SaveStatus status )
         {
@@ -417,64 +416,64 @@ namespace workIT.Factories
         /// <param name="Id"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool Delete( int Id, ref string statusMessage )
-        {
-            bool isValid = false;
-            if ( Id == 0 )
-            {
-                statusMessage = "Error - missing an identifier for the Assessment";
-                return false;
-            }
-            using ( var context = new EntityContext() )
-            {
-                try
-                {
-                    context.Configuration.LazyLoadingEnabled = false;
-                    DBEntity efEntity = context.Assessment
-                                .SingleOrDefault( s => s.Id == Id );
+        //public bool Delete( int Id, ref string statusMessage )
+        //{
+        //    bool isValid = false;
+        //    if ( Id == 0 )
+        //    {
+        //        statusMessage = "Error - missing an identifier for the Assessment";
+        //        return false;
+        //    }
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        try
+        //        {
+        //            context.Configuration.LazyLoadingEnabled = false;
+        //            DBEntity efEntity = context.Assessment
+        //                        .SingleOrDefault( s => s.Id == Id );
 
-                    if ( efEntity != null && efEntity.Id > 0 )
-                    {
-                        Guid rowId = efEntity.RowId;
+        //            if ( efEntity != null && efEntity.Id > 0 )
+        //            {
+        //                Guid rowId = efEntity.RowId;
 
-                        //need to remove from Entity.
-                        //could use a pre-delete trigger?
-                        //what about roles
+        //                //need to remove from Entity.
+        //                //could use a pre-delete trigger?
+        //                //what about roles
 
-                        context.Assessment.Remove( efEntity );
-                        int count = context.SaveChanges();
-                        if ( count > 0 )
-                        {
-                            isValid = true;
-                            //add pending request 
-                            List<String> messages = new List<string>();
-                            new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, efEntity.Id, ref messages );
-                        }
-                    }
-                    else
-                    {
-                        statusMessage = "Error - delete failed, as record was not found.";
-                    }
-                }
-                catch ( Exception ex )
-                {
-                    LoggingHelper.LogError( ex, thisClassName + ".Assessment_Delete()" );
+        //                context.Assessment.Remove( efEntity );
+        //                int count = context.SaveChanges();
+        //                if ( count > 0 )
+        //                {
+        //                    isValid = true;
+        //                    //add pending request 
+        //                    List<String> messages = new List<string>();
+        //                    new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, efEntity.Id, ref messages );
+        //                }
+        //            }
+        //            else
+        //            {
+        //                statusMessage = "Error - delete failed, as record was not found.";
+        //            }
+        //        }
+        //        catch ( Exception ex )
+        //        {
+        //            LoggingHelper.LogError( ex, thisClassName + ".Assessment_Delete()" );
 
-                    if ( ex.InnerException != null && ex.InnerException.Message != null )
-                    {
-                        statusMessage = ex.InnerException.Message;
+        //            if ( ex.InnerException != null && ex.InnerException.Message != null )
+        //            {
+        //                statusMessage = ex.InnerException.Message;
 
-                        if ( ex.InnerException.InnerException != null && ex.InnerException.InnerException.Message != null )
-                            statusMessage = ex.InnerException.InnerException.Message;
-                    }
-                    if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
-                    {
-                        statusMessage = "Error: this assessment cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this assessment can be deleted.";
-                    }
-                }
-            }
-            return isValid;
-        }
+        //                if ( ex.InnerException.InnerException != null && ex.InnerException.InnerException.Message != null )
+        //                    statusMessage = ex.InnerException.InnerException.Message;
+        //            }
+        //            if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+        //            {
+        //                statusMessage = "Error: this assessment cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this assessment can be deleted.";
+        //            }
+        //        }
+        //    }
+        //    return isValid;
+        //}
 
 		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
 		{
@@ -487,7 +486,8 @@ namespace workIT.Factories
             }
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
-            using ( var context = new EntityContext() )
+			int orgId = 0;
+			using ( var context = new EntityContext() )
 			{
 				try
 				{
@@ -500,10 +500,14 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
 						Guid rowId = efEntity.RowId;
-
-                        //need to remove from Entity.
-                        //-using before delete trigger - verify won't have RI issues
-                        string msg = string.Format( " Assessment. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+						if ( IsValidGuid( efEntity.OwningAgentUid ) )
+						{
+							Organization org = OrganizationManager.GetBasics( ( Guid )efEntity.OwningAgentUid );
+							orgId = org.Id;
+						}
+						//need to remove from Entity.
+						//-using before delete trigger - verify won't have RI issues
+						string msg = string.Format( " Assessment. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
                         //18-04-05 mparsons - change to set inactive, and notify - seems to have been some incorrect deletes
                         //context.Assessment.Remove( efEntity );
                         efEntity.EntityStateId = 0;
@@ -523,7 +527,9 @@ namespace workIT.Factories
                             //add pending request 
                             List<String> messages = new List<string>();
                             new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, efEntity.Id, ref messages );
-                        }
+							//mark owning org for updates
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+						}
 					}
 					else
 					{
@@ -562,38 +568,18 @@ namespace workIT.Factories
 
             Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
             erfm.DeleteAll( relatedEntity, ref status );
-            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
+				isAllValid = false;
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
 				isAllValid = false;
 
-            //if ( entity.OwnerRoles == null || entity.OwnerRoles.Items.Count == 0 )
-            //{
-            //    //status.AddWarning( "Inconsistant request, no roles including the owing agent." );
-            //    //isAllValid = false;
-            //}
-            //else
-            //{
+			//TODO - handle Naics if provided separately
+			if ( erfm.NaicsSaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Naics, ref status ) == false )
+				isAllValid = false;
 
-            //    if ( entity.OwnerRoles.GetFirstItemId() != Entity_AgentRelationshipManager.ROLE_TYPE_OWNER )
-            //    {
-            //        //status.AddWarning( "Inconsistant request. The role \"Owned By\" must be one of the roles selected." );
-            //        //isAllValid = false;
-            //    }
-            //    else
-            //    {
-            //        OrganizationRoleProfile profile = new OrganizationRoleProfile
-            //        {
-            //            ParentUid = entity.RowId,
-            //            ActingAgentUid = entity.OwningAgentUid,
-            //            AgentRole = entity.OwnerRoles,
-            //            CreatedById = entity.LastUpdatedById,
-            //            LastUpdatedById = entity.LastUpdatedById
-            //        };
-            //        //TEMP
-            //        List<string> messages = new List<string>();
-            //        if ( !new Entity_AgentRelationshipManager().Save( profile, Entity_AgentRelationshipManager.VALID_ROLES_OWNER, ref status ) )
-            //            isAllValid = false;
-            //    }
-            //}
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+				isAllValid = false;
 
             Entity_ReferenceManager erm = new Entity_ReferenceManager();
             erm.DeleteAll( relatedEntity, ref status );
@@ -848,7 +834,7 @@ status );
 
             return entity;
         }
-        public static List<ThisEntity> GetAllForOwningOrg( Guid owningOrgUid )
+        public static List<ThisEntity> GetAllForOwningOrg( Guid owningOrgUid, ref int totalRecords, int maxRecords = 100 )
         {
             List<ThisEntity> list = new List<ThisEntity>();
             ThisEntity entity = new ThisEntity();
@@ -860,12 +846,16 @@ status );
                              .ToList();
                 if (results != null && results.Count > 0)
                 {
-                    foreach (DBEntity item in results)
+					totalRecords = results.Count();
+
+					foreach (DBEntity item in results)
                     {
                         entity = new ThisEntity();
                         MapFromDB_Basic( item, entity, false );
                         list.Add( entity );
-                    }
+						if ( maxRecords > 0 && list.Count >= maxRecords )
+							break;
+					}
                 }
             }
 
@@ -1322,9 +1312,11 @@ status );
                 //get competencies
                 MapFromDB_Competencies(to);
 
-                //to.InstructionalProgramType = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
-                to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration(to.RowId, CodesManager.PROPERTY_CATEGORY_CIP);
-                //to.OtherInstructionalProgramCategory = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+				to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+
+				to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+				to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration(to.RowId, CodesManager.PROPERTY_CATEGORY_CIP);
 
                 if ( includingRoles )
                 {

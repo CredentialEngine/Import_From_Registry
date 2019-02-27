@@ -32,8 +32,6 @@ namespace workIT.Factories
     {
         static string thisClassName = "Factories.CredentialManager";
         EntityManager entityMgr = new EntityManager();
-        string statusMessage = "";
-        //List<string> messages = new List<string>();
         #region Credential - presistance =======================
 
         /// <summary>
@@ -605,7 +603,6 @@ namespace workIT.Factories
         public bool UpdateParts( ThisEntity entity, bool isAdd, ref SaveStatus status )
         {
             bool isAllValid = true;
-            statusMessage = "";
 
             Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
             if ( relatedEntity == null || relatedEntity.Id == 0 )
@@ -805,7 +802,12 @@ namespace workIT.Factories
             if ( mgr.AddProperties( entity.CredentialStatusType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, false, ref status ) == false )
                 isAllValid = false;
 
-            return isAllValid;
+			if ( mgr.AddProperties( entity.AssessmentDeliveryType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, ref status ) == false )
+				isAllValid = false;
+			if ( mgr.AddProperties( entity.LearningDeliveryType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, ref status ) == false )
+				isAllValid = false;
+			//
+			return isAllValid;
         }
         public bool UpdateReferences( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
         {
@@ -818,11 +820,6 @@ namespace workIT.Factories
             erm.DeleteAll( relatedEntity, ref status );
             erfm.DeleteAll( relatedEntity, ref status );
 
-            //if ( efim.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
-            //             isAllValid = false;
-            //         if ( efim.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
-            //             isAllValid = false;
-
             if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
                 isAllValid = false;
             if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
@@ -834,8 +831,10 @@ namespace workIT.Factories
 			if ( erfm.NaicsSaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Naics, ref status ) == false )
                 isAllValid = false;
 
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+				isAllValid = false;
 
-            if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
+			if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
                 isAllValid = false;
 
             if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
@@ -918,45 +917,45 @@ namespace workIT.Factories
         /// <param name="id"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool Delete( int id, int userId, ref string statusMessage )
-        {
-            bool isValid = false;
-            if ( id == 0 )
-            {
-                statusMessage = "Error - missing an identifier for the Credential";
-                return false;
-            }
-            using ( var context = new EntityContext() )
-            {
-                EM.Credential efEntity = context.Credential
-                            .SingleOrDefault( s => s.Id == id );
+        //public bool Delete( int id, int userId, ref string statusMessage )
+        //{
+        //    bool isValid = false;
+        //    if ( id == 0 )
+        //    {
+        //        statusMessage = "Error - missing an identifier for the Credential";
+        //        return false;
+        //    }
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        EM.Credential efEntity = context.Credential
+        //                    .SingleOrDefault( s => s.Id == id );
 
-                if ( efEntity != null && efEntity.Id > 0 )
-                {
-                    statusMessage = string.Format( "Credential: {0}, Id:{1}", efEntity.Name, efEntity.Id );
+        //        if ( efEntity != null && efEntity.Id > 0 )
+        //        {
+        //            statusMessage = string.Format( "Credential: {0}, Id:{1}", efEntity.Name, efEntity.Id );
 
-                    //context.Credential.Remove( efEntity );
-                    efEntity.LastUpdated = System.DateTime.Now;
+        //            //context.Credential.Remove( efEntity );
+        //            efEntity.LastUpdated = System.DateTime.Now;
 
-                    int count = context.SaveChanges();
-                    if ( count > 0 )
-                    {
-                        isValid = true;
-                        //add pending request 
-                        List<String> messages = new List<string>();
-                        new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
-                    }
-                    else
-                        statusMessage = "Error - delete failed, but no message was provided.";
-                }
-                else
-                {
-                    statusMessage = "Error - delete failed, as record was not found.";
-                }
-            }
+        //            int count = context.SaveChanges();
+        //            if ( count > 0 )
+        //            {
+        //                isValid = true;
+        //                //add pending request 
+        //                List<String> messages = new List<string>();
+        //                new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
+        //            }
+        //            else
+        //                statusMessage = "Error - delete failed, but no message was provided.";
+        //        }
+        //        else
+        //        {
+        //            statusMessage = "Error - delete failed, as record was not found.";
+        //        }
+        //    }
 
-            return isValid;
-        }
+        //    return isValid;
+        //}
 
         /// <summary>
         /// Delete by envelopeId
@@ -975,6 +974,7 @@ namespace workIT.Factories
             }
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
+			int orgId = 0;
             using ( var context = new EntityContext() )
             {
                 try
@@ -988,6 +988,11 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
                     {
                         Guid rowId = efEntity.RowId;
+						if ( IsValidGuid( efEntity.OwningAgentUid ) )
+						{
+							Organization org = OrganizationManager.GetBasics( (Guid) efEntity.OwningAgentUid );
+							orgId = org.Id;
+						}
 
                         //if ( efEntity.OwningAgentUid.ToString().ToLower() == "ce-1abb6c52-0f8c-4b17-9f89-7e9807673106" )
                         //{
@@ -1003,10 +1008,10 @@ namespace workIT.Factories
                         //}
                         if ( efEntity.OwningAgentUid.ToString().ToLower() == "40357b53-9724-4f49-8c72-86dc3a49ec02" )
                         {
-                            string msg2 = string.Format( "******Request to delete Ball State University credential was encountered - ignoring. Organization. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
-                            LoggingHelper.DoTrace( 1, msg2 );
+                            //string msg2 = string.Format( "******Request to delete Ball State University credential was encountered - ignoring. Organization. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+                            //LoggingHelper.DoTrace( 1, msg2 );
                             //EmailManager.NotifyAdmin( "Encountered Request to delete Ball State University", msg2 );
-                            return true;
+                            //return true;
                         }
 
                         //need to remove from Entity.
@@ -1032,7 +1037,10 @@ namespace workIT.Factories
                             //add pending request 
                             List<String> messages = new List<string>();
                             new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
-                        }
+							//mark owning org for updates
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							//also check for any relationships
+						}
                     }
                     else
                     {
@@ -1616,7 +1624,7 @@ namespace workIT.Factories
 
                     //NAICS CSV
                     //16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
-                    item.NaicsResults = Fill_CodeItemResults( dr, "NaicsList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+                    item.IndustryResults = Fill_CodeItemResults( dr, "NaicsList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
                     item.IndustryOtherResults = Fill_CodeItemResults( dr, "OtherIndustriesList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false, false );
 
                     //OccupationsCSV
@@ -1624,9 +1632,15 @@ namespace workIT.Factories
                     item.OccupationOtherResults = Fill_CodeItemResults( dr, "OtherOccupationsList", CodesManager.PROPERTY_CATEGORY_SOC, false, false, false );
                     //education levels CSV
                     //16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
-                    item.LevelsResults = Fill_CodeItemResults( dr, "LevelsList", CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+                    item.AudienceLevelsResults = Fill_CodeItemResults( dr, "LevelsList", CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
 
-                    item.QARolesResults = Fill_CodeItemResults( dr, "QARolesList", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, true );
+					//item.AudienceTypesResults = Fill_CodeItemResults( dr, "CrendentialProperties", CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+
+					//item.AssessmentDeliveryType = Fill_CodeItemResults( dr, "CrendentialProperties", CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, false );
+
+					//item.LearningDeliveryType = Fill_CodeItemResults( dr, "CrendentialProperties", CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+
+					item.QARolesResults = Fill_CodeItemResults( dr, "QARolesList", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, true );
 
                     item.Org_QARolesResults = Fill_CodeItemResults( dr, "QAOrgRolesList", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, true );
 
@@ -1842,7 +1856,10 @@ namespace workIT.Factories
             to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
             to.AudienceType = EntityPropertyManager.FillEnumeration( to.RowId,CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
 
-            if ( cr.IsForProfileLinks ) //return minimum ===========
+			to.AssessmentDeliveryType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE );
+			to.LearningDeliveryType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE );
+
+			if ( cr.IsForProfileLinks ) //return minimum ===========
                 return;
             //===================================================================
 
@@ -1908,9 +1925,9 @@ namespace workIT.Factories
             EnumeratedItem statusItem = to.CredentialStatusType.GetFirstItem();
             if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
             {
-                if ( cr.IsForDetailView )
-                    to.Name += string.Format( " ({0})", statusItem.Name );
-            }
+				if ( cr.IsForDetailView && to.Name.IndexOf( statusItem.Name ) == -1 )
+					to.Name += string.Format( " ({0})", statusItem.Name );
+			}
 
             //properties ===========================================
             try
@@ -1956,17 +1973,16 @@ namespace workIT.Factories
                 if ( cr.IncludingDuration )
                     to.EstimatedDuration = DurationProfileManager.GetAll( to.RowId );
 
+                    to.RenewalFrequency = DurationProfileManager.GetRenewalDuration( to.RowId );
+                
                 if ( cr.IncludingFrameworkItems )
                 {
-                    //to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
                     to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-                    //to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-                    //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
                     to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-                    //to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
-                }
+					to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+				}
 
                 if ( cr.IncludingConnectionProfiles )
                 {

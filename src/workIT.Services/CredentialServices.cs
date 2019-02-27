@@ -50,7 +50,8 @@ namespace workIT.Services
                 {
                     ThreadPool.QueueUserWorkItem( UpdateCaches2, entity );
                     new SearchPendingReindexManager().Add( 1, entity.Id, 1, ref messages );
-                    if ( messages.Count > 0 )
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					if ( messages.Count > 0 )
                         status.AddWarningRange( messages );
                 }
                 else
@@ -127,7 +128,7 @@ namespace workIT.Services
         /// <param name="keyword"></param>
         /// <param name="maxTerms"></param>
         /// <returns></returns>
-        public static List<string> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
+        public static List<string> Autocomplete( string keyword, int maxTerms = 25)
         {
             int userId = 0;
             string where = "";
@@ -141,7 +142,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
             {
-                return ElasticServices.CredentialAutoComplete( keyword, maxTerms, ref pTotalRows, widgetId );
+                return ElasticServices.CredentialAutoComplete( keyword, maxTerms, ref pTotalRows );
             }
             else
             {
@@ -749,7 +750,7 @@ namespace workIT.Services
             ThisEntity entity = CredentialManager.GetForDetail( id, cr );
 
             DateTime end = DateTime.Now;
-            int elasped = ( end - start ).Seconds;
+			var elasped = end.Subtract( start ).TotalSeconds;
 			//Cache the output if more than specific seconds,
 			//NOTE need to be able to force it for imports
 			//&& elasped > 2

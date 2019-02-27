@@ -71,6 +71,8 @@ namespace workIT.Models.Common
         public LearningOpportunityFilters LoppFilters { get; set; } = new LearningOpportunityFilters();
 
         public SearchFilters SearchFilters { get; set; } = new SearchFilters();
+
+        public GlobalSearchFilters HideGlobalSearchFilters { get; set; } = new GlobalSearchFilters();
     }
     [Serializable]
     public class WidgetStyles
@@ -133,6 +135,16 @@ namespace workIT.Models.Common
             else
                 return false;
         }
+    }
+
+
+    [Serializable]
+    public class GlobalSearchFilters
+    {
+        public bool HideFindCredential { get; set; }
+        public bool HideFindOrganization { get; set; }
+        public bool HideFindAssessment { get; set; }
+        public bool HideFindLearningOpportunity { get; set; }        
     }
 
     [Serializable]

@@ -171,10 +171,14 @@ namespace workIT.Models.Common
 		/// roles where org is the actor, ie Accredits something
         /// this would be a third party assertion
 		/// </summary>
-		//[Obsolete]
 		public List<OrganizationRoleProfile> OrganizationRole_Actor { get; set; }
+		public int ActualActorRoleCount { get; set; }
+		public int QAPerformedOnAssessmentsCount { get; set; }
+		public int QAPerformedOnCredentialsCount { get; set; }
+		public int QAPerformedOnLoppsCount { get; set; }
+		public int QAPerformedOnOrganizationsCount { get; set; }
 
-        public List<OrganizationRoleProfile> OrganizationAssertions { get; set; } = new List<OrganizationRoleProfile>();
+		public List<OrganizationRoleProfile> OrganizationAssertions { get; set; } = new List<OrganizationRoleProfile>();
 
 
 		/// <summary>
@@ -191,6 +195,10 @@ namespace workIT.Models.Common
 		//Identifiers is saved as an OrganizationProperty
 		public Enumeration Identifiers { get; set; }
 		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
+
+		public int TotalCredentials { get; set; }
+		public int TotalAssessments { get; set; }
+		public int TotalLopps{ get; set; }
 
 		public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }

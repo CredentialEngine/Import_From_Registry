@@ -144,6 +144,8 @@ input.viewButton, button.viewButton, .linkButton.viewButton { background-color: 
 
 .greenButton, input.greenButton { background-color: #45A085; color: #FFFFFF; }
 
+.detailButton, input.detailButton { background-color: #45A085; color: #FFFFFF; }
+
 .redButton, input.redButton { background-color: #B55130; color: #FFFFFF; margin-right: 5px; }
 
 .yellowButton, input.yellowButton { background-color: #E0DB80; color: #3D4443; }

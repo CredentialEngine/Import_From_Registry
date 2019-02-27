@@ -10,8 +10,8 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.LearningOpportunityServices;
 using InputEntity = RA.Models.Json.LearningOpportunityProfile;
 
-using InputEntityV3 = RA.Models.JsonV3.LearningOpportunityProfile;
-using BNode = RA.Models.JsonV3.BlankNode;
+using InputEntityV3 = RA.Models.JsonV2.LearningOpportunityProfile;
+using BNode = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using workIT.Factories;
 using workIT.Models;
@@ -544,10 +544,36 @@ namespace Import.Services
             output.CreditUnitValue = input.CreditUnitValue;
             output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
 
-            // output.InstructionalProgramType = helper.MapCAOListToEnumermation( input.InstructionalProgramType );
-            output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
+			//occupations
+			//output.Occupation = helper.MapCAOListToEnumermation( input.OccupationType );
+			//actually used by import
+			output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+			//just append alternative items. Ensure empty lists are ignored
+			output.Occupations.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeOccupationType ) );
 
-            output.LearningMethodType = helper.MapCAOListToEnumermation( input.LearningMethodType );
+			//skip if no occupations
+			if ( output.Occupations.Count() == 0
+				&& UtilityManager.GetAppKeyValue( "skipCredImportIfNoOccupations", false ) )
+			{
+				//LoggingHelper.DoTrace( 2, string.Format( "		***Skipping lopp# {0}, {1} as it has no occupations and this is a special run.", output.Id, output.Name ) );
+				//return true;
+			}
+			//Industries
+			output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
+			output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
+			//naics
+			output.Naics = input.Naics;
+
+			output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
+			output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
+			if ( output.InstructionalProgramTypes.Count() == 0 && UtilityManager.GetAppKeyValue( "skipAsmtImportIfNoCIP", false ) )
+			{
+				//skip
+				//LoggingHelper.DoTrace( 2, string.Format( "		***Skipping lopp# {0}, {1} as it has no InstructionalProgramTypes and this is a special run.", output.Id, output.Name ) );
+				//return true;
+			}
+
+			output.LearningMethodType = helper.MapCAOListToEnumermation( input.LearningMethodType );
             output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
             output.VerificationMethodDescription = helper.HandleLanguageMap( input.VerificationMethodDescription, output, "VerificationMethodDescription" );

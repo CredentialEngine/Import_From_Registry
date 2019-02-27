@@ -22,6 +22,7 @@ namespace workIT.Models.Common
 		//Basic Data - Created, Last Updated, Id, and RowId are all inherited from BaseObject
 		public string Name { get; set; }
 		public string Description { get; set; }
+		public string BannerText { get; set; }
 		public string UrlName { get; set; }
 		public string LogoUrl { get; set; }
 		public string OrganizationName { get; set; }
@@ -36,9 +37,12 @@ namespace workIT.Models.Common
 		public FilterSet OrganizationFilters { get; set; }
 		public FilterSet AssessmentFilters { get; set; }
 		public FilterSet LearningOpportunityFilters { get; set; }
+        public FilterSet CompetencyFrameworkFilters { get; set; }
 
-		//Features
-		public List<string> SearchFeatures { get; set; }
+        public List<string> HideGlobalFilters { get; set; }
+
+        //Features
+        public List<string> SearchFeatures { get; set; }
 		public string CustomCssUrl { get; set; }
 		public List<ColorPair> WidgetColors { get; set; }
 
@@ -69,18 +73,22 @@ namespace workIT.Models.Common
 				InitializeLists( this );
 			}
 			//Relationships
-			public List<Organization> OwnedBy { get; set; } //May not be used
-			public List<Organization> OfferedBy { get; set; }
-			public List<Organization> AccreditedBy { get; set; }
-			public List<Organization> ApprovedBy { get; set; }
-			public List<Organization> RegulatedBy { get; set; }
+			public List<Reference> OwnedBy { get; set; } //May not be used
+			public List<Reference> OfferedBy { get; set; }
+			public List<Reference> AccreditedBy { get; set; }
+			public List<Reference> ApprovedBy { get; set; }
+			public List<Reference> RegulatedBy { get; set; }
+			public List<Reference> PotentialResults { get; set; } //Used to limit search results to items identified by this list
 
+            // Checkbox Searches
+            //public List<string> HideSearches { get; set; }
 			//Checkbox Filters
 			public List<string> HideFilters { get; set; }
 
 			//String Filters
 			public List<string> Competencies { get; set; }
 			public List<string> Subjects { get; set; }
+			public List<string> Keywords { get; set; }
 			public List<string> Industries { get; set; }
 			public List<string> Occupations { get; set; }
 			public List<string> InstructionalProgramTypes { get; set; }
@@ -98,12 +106,17 @@ namespace workIT.Models.Common
 		}
 		//
 
-		public class Organization
+		public class Reference
 		{
+			public Reference()
+			{
+				Properties = new Dictionary<string, object>();
+			}
 			public int Id { get; set; }
 			public string Name { get; set; }
 			public string Description { get; set; }
 			public string CTID { get; set; }
+			public Dictionary<string, object> Properties { get; set; }
 		}
 		//
 
@@ -119,9 +132,9 @@ namespace workIT.Models.Common
 			{
 				prop.SetValue( self, new List<int>() );
 			}
-			foreach ( var prop in properties.Where( m => m.PropertyType == typeof( List<Organization> ) ) )
+			foreach ( var prop in properties.Where( m => m.PropertyType == typeof( List<Reference> ) ) )
 			{
-				prop.SetValue( self, new List<Organization>() );
+				prop.SetValue( self, new List<Reference>() );
 			}
 		}
 	}

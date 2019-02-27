@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using JsonEntity = RA.Models.JsonV3.CompetencyFramework;
+using JsonEntity = RA.Models.JsonV2.CompetencyFramework;
 
 using EntityServices = workIT.Services.CompetencyFrameworkServices;
 using ThisEntity = workIT.Models.Common.CostManifest;
@@ -158,6 +158,10 @@ namespace CTI.Import
             if ( !string.IsNullOrWhiteSpace( importNote ) )
                 importResults += importNote;
 
+			if (cntr > 0)
+			{
+				mgr.UpdateCompetencyFrameworkReportTotals();
+			}
             return importResults;
         }
     }

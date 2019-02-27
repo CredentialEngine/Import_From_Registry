@@ -96,6 +96,7 @@
     <Compile Include="Elastic\CredentialIndex.cs" />
     <Compile Include="Elastic\OrganizationIndex.cs" />
     <Compile Include="Helpers\Compare.cs" />
+    <Compile Include="Helpers\CompetencyFrameworkHelpers.cs" />
     <Compile Include="Helpers\Reports.cs" />
     <Compile Include="Helpers\SearchTag.cs" />
     <Compile Include="Helpers\ToolTip.cs" />

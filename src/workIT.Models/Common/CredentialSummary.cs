@@ -14,11 +14,12 @@ namespace workIT.Models.Common
 		{
 			AgentAndRoles = new AgentRelationshipResult();
 			CredentialTypeSchema = "";
-			NaicsResults = new CodeItemResult();
+			IndustryResults = new CodeItemResult();
 			IndustryOtherResults = new CodeItemResult();
 			OccupationResults = new CodeItemResult();
 			OccupationOtherResults = new CodeItemResult();
-			LevelsResults = new CodeItemResult();
+			AudienceLevelsResults = new CodeItemResult();
+			AudienceTypesResults = new CodeItemResult();
 			QARolesResults = new CodeItemResult();
 			ConnectionsList = new CodeItemResult();
 			CredentialsList = new CredentialConnectionsResult();
@@ -90,18 +91,20 @@ namespace workIT.Models.Common
         public int FinancialAidCount { get; set; }
         public List<string> Subjects { get; set; }
 
-		public CodeItemResult NaicsResults { get; set; }
+		public CodeItemResult IndustryResults { get; set; }
 		public CodeItemResult IndustryOtherResults { get; set; }
 		public CodeItemResult OccupationResults { get; set; }
 		public CodeItemResult OccupationOtherResults { get; set; }
-		public CodeItemResult LevelsResults { get; set; }
-
+		public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
+		public CodeItemResult AudienceLevelsResults { get; set; }
+		public CodeItemResult AudienceTypesResults { get; set; }
         //QA roles on credential
 		public CodeItemResult QARolesResults { get; set; }
         public AgentRelationshipResult AgentAndRoles { get; set; }
-
-        //QA roles on owing org
-        public CodeItemResult Org_QARolesResults { get; set; }
+		public CodeItemResult AssessmentDeliveryType { get; set; } = new CodeItemResult();
+		public CodeItemResult LearningDeliveryType { get; set; } = new CodeItemResult();
+		//QA roles on owing org
+		public CodeItemResult Org_QARolesResults { get; set; }
         //actual roles and orgs with QA on owning org
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
 		

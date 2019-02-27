@@ -26,7 +26,7 @@ namespace workIT.Models
 		public string Message { get; set; }
 		public string ResourcePublicKey { get; set; }
 		public string Payload { get; set; }
-
+		public bool IsMostRecentDownload { get; set; }
 		public List<Import_Message> Messages{ get; set; }
 	}
 	public partial class Import_Message

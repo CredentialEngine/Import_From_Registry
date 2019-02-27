@@ -6,6 +6,11 @@ using System.Web;
 using System.Web.Mvc;
 using workIT.Utilities;
 
+using workIT.Services;
+using System.Threading;
+using workIT.Models.Helpers.CompetencyFrameworkHelpers;
+using Newtonsoft.Json.Linq;
+
 namespace workIT.Web.Controllers
 {
     public class RegistryController : BaseController
@@ -81,6 +86,126 @@ namespace workIT.Web.Controllers
             var body = data.Content.ReadAsStringAsync().Result;
             return JsonResponse(body, true, "", new { headers = headers });
         }
-        //
-    }
+		//
+
+		/* Update 2019 - Competency Framework handling */
+		public JsonResult GetRegistryDataList( List<string> ctids = null, List<string> uris = null )
+		{
+			ctids = (ctids ?? new List<string>()).Where( m => !string.IsNullOrWhiteSpace( m ) ).Distinct().ToList();
+			uris = (uris ?? new List<string>()).Where( m => !string.IsNullOrWhiteSpace( m ) ).Distinct().ToList();
+			var results = new Dictionary<string, string>();
+			var urlPrefix = ConfigHelper.GetConfigValue( "credentialRegistryUrl", "https://credentialengineregistry.org/" ) + "graph/";
+			WaitCallback getMethod = MakeHttpGet;
+			var ctidSet = new AsyncItemSet<RegistryGetItem>() { Items = ctids.ConvertAll( m => new RegistryGetItem() { Identifier = m, Url = urlPrefix + m, IsInProgress = true } ) };
+			var uriSet = new AsyncItemSet<RegistryGetItem>() { Items = uris.ConvertAll( m => new RegistryGetItem() { Identifier = m, Url = m, IsInProgress = true } ) };
+
+			foreach( var ctidItem in ctidSet.Items )
+			{
+				ThreadPool.QueueUserWorkItem( MakeHttpGet, ctidItem );
+			}
+
+			foreach( var uriItem in uriSet.Items )
+			{
+				ThreadPool.QueueUserWorkItem( MakeHttpGet, uriItem );
+			}
+
+			ctidSet.WaitUntilAllAreFinished();
+			uriSet.WaitUntilAllAreFinished();
+
+			foreach( var ctidItem in ctidSet.Items )
+			{
+				Append(results, ctidItem.Identifier, ctidItem.Result );
+			}
+
+			foreach(var uriItem in uriSet.Items )
+			{
+				Append(results, uriItem.Identifier, uriItem.Result );
+			}
+
+			return JsonResponse( results, true, "", null );
+		}
+		private static void MakeHttpGet( object registryGetItem )
+		{
+			var item = ( RegistryGetItem ) registryGetItem;
+			item.Result = new HttpClient().GetAsync( item.Url ).Result.Content.ReadAsStringAsync().Result;
+			item.IsInProgress = false;
+		}
+		private void Append<T>( Dictionary<string, T> container, string key, T value )
+		{
+			if ( container.ContainsKey( key ) )
+			{
+				container[ key ] = value;
+			}
+			else
+			{
+				container.Add( key, value );
+			}
+		}
+		//
+
+		public JsonResult GetCredentialsForFrameworks( List<FrameworkSearchItem> ctidMap )
+		{
+			//Deduplicate map and set processing method
+			var results = DoThreadedFrameworkSearch( ctidMap, CompetencyFrameworkServices.GetCredentialsForCompetencies );
+			return JsonResponse( results, true, "", null );
+		}
+		//
+
+		public JsonResult GetAssessmentsForFrameworks( List<FrameworkSearchItem> ctidMap )
+		{
+			//Deduplicate map and set processing method
+			var results = DoThreadedFrameworkSearch( ctidMap, CompetencyFrameworkServices.GetAssessmentsForCompetencies );
+			return JsonResponse( results, true, "", null );
+		}
+		//
+
+		public JsonResult GetLearningOpportunitiesForFrameworks( List<FrameworkSearchItem> ctidMap )
+		{
+			//Deduplicate map and set processing method
+			var results = DoThreadedFrameworkSearch( ctidMap, CompetencyFrameworkServices.GetLearningOpportunitiesForCompetencies );
+			return JsonResponse( results, true, "", null );
+		}
+		//
+
+		private List<FrameworkResultSet> DoThreadedFrameworkSearch( List<FrameworkSearchItem> items, FrameworkSearchMethod searchMethod, int skipResults = 0, int takeResults = 50 )
+		{
+			//Denullify
+			items = items ?? new List<FrameworkSearchItem>();
+			//Hold filtered items
+			var preparedItems = new List<FrameworkSearchItem>();
+			//Process items
+			foreach( var item in items )
+			{
+				//Filter out duplicate frameworks by CTID and assign the search method
+				if( preparedItems.FirstOrDefault( m => m.FrameworkCTID == item.FrameworkCTID ) == null )
+				{
+					item.ProcessMethod = searchMethod;
+					item.SkipResults = skipResults;
+					item.TakeResults = takeResults;
+					item.ClientIP = Request.UserHostAddress;
+					preparedItems.Add( item );
+				}
+			}
+			//Do the search
+			var searchResults = CompetencyFrameworkServices.ThreadedFrameworkSearch( preparedItems );
+			//Convert the results and return them
+			return searchResults.ConvertAll( m => new FrameworkResultSet( m ) );
+		}
+		//
+
+		public class FrameworkResultSet
+		{
+			public FrameworkResultSet( FrameworkSearchItem data )
+			{
+				FrameworkCTID = data.FrameworkCTID;
+				Results = data.Results.ConvertAll( m => m.ToString( Newtonsoft.Json.Formatting.None ) );
+				TotalResults = data.TotalResults;
+			}
+			public string FrameworkCTID { get; set; }
+			public List<string> Results { get; set; }
+			public int TotalResults { get; set; }
+		}
+		//
+
+	}
 }

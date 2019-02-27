@@ -31,16 +31,36 @@ namespace workIT.Services
             totals.AgentServiceTypes = new EnumerationServices().GetOrganizationServices(EnumerationType.MULTI_SELECT, false);
 
 			totals.PropertiesTotals = ReportServices.PropertyTotals();
+			//get totals from view: CodesProperty_Counts_ByEntity.
+			//	the latter has a union with Counts.SiteTotals
 			totals.PropertiesTotalsByEntity = CodesManager.Property_GetTotalsByEntity();
+            totals.PropertiesTotals.AddRange( CodesManager.GetAllEntityStatistics());
+            //using counts.SiteTotals - so based on the above, this should not be needed???
+            //var allSiteTotals = CodesManager.CodeEntity_GetCountsSiteTotals();
+            //totals.SOC_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 11 ).ToList();
+            //totals.CredentialIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 10 ).ToList();
+            //totals.CredentialCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
+            //totals.OrgIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 2 && s.CategoryId == 10 ).ToList();
+            //totals.AssessmentCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
+            //totals.LoppCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 7 && s.CategoryId == 23 ).ToList();
+            ////??
+            //totals.PropertiesTotals.AddRange( totals.SOC_Groups );
+            //totals.PropertiesTotals.AddRange( totals.CredentialIndustry_Groups );
+            //totals.PropertiesTotals.AddRange( totals.OrgIndustry_Groups );
+            //totals.PropertiesTotals.AddRange( totals.AssessmentCIP_Groups );
+            //totals.PropertiesTotals.AddRange( totals.LoppCIP_Groups );
 
-			totals.SOC_Groups = CodesManager.SOC_Categories();
-			//totals.NAICs_Groups = CodesManager.NAICS_Categories();
-			//totals.CIP_Groups = CodesManager.CIPS_Categories();
-			totals.PropertiesTotals.AddRange( CodesManager.SOC_Categories() );
-			totals.PropertiesTotals.AddRange( CodesManager.NAICS_Categories() );
-			totals.PropertiesTotals.AddRange( CodesManager.CIPS_Categories() );
-
-			return totals;
+            //totals.SOC_Groups = CodesManager.SOC_Categories();
+            //totals.CredentialIndustry_Groups = CodesManager.NAICS_Categories();
+            //totals.OrgIndustry_Groups = CodesManager.NAICS_Categories();
+            //totals.AssessmentCIP_Groups = CodesManager.CIPS_Categories();
+            //totals.LoppCIP_Groups = CodesManager.CIPS_Categories();
+            //totals.CredentialStatusType = new Enumeration().
+            //totals.PropertiesTotals = CodesManager.GetEnumeration ( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE );
+            //totals.PropertiesTotals.AddRange( CodesManager.SOC_Categories() );
+            //totals.PropertiesTotals.AddRange( CodesManager.NAICS_Categories() );
+            //totals.PropertiesTotals.AddRange( CodesManager.CIPS_Categories() );
+            return totals;
 		}
 
         public static List<HistoryTotal> HistoryReports( int entityTypeId )

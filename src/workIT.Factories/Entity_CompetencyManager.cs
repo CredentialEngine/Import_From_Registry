@@ -468,7 +468,8 @@ namespace workIT.Factories
                                     entity.FrameworkName = item.EducationFramework.FrameworkName;
                                     entity.FrameworkUri = item.EducationFramework.FrameworkUri;
                                     entity.SourceUrl = item.EducationFramework.SourceUrl;
-									if ( !string.IsNullOrWhiteSpace( viewerUrl ) )
+									//18-12-13 mp - can only use viewer, if a cer URL - although this may change for other sources
+									if ( !string.IsNullOrWhiteSpace( viewerUrl ) && entity.IsARegistryFrameworkUrl )
 									{
 										entity.CaSSViewerUrl = string.Format( viewerUrl, UtilityManager.GenerationMD5String( entity.FrameworkUri ) );
 									}

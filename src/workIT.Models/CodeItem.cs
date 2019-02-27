@@ -43,7 +43,6 @@ namespace workIT.Models
 		public bool IsActive { get; set; }
 		public int SortOrder { get; set; }
 		public int Totals { get; set; }
-
 		public int CategoryId { get; set; }
 		public string Category { get; set; }
 		public string CategorySchema { get; set; }
@@ -55,5 +54,8 @@ namespace workIT.Models
         public int RelationshipId { get; internal set; }
         public int AssertionId { get; internal set; }
         public string CodeTitle { get; set; }
-    }
+		public List<int> IdsList { get; set; } = new List<int>();
+		public string ItemList { get; set; } 
+
+	}
 }

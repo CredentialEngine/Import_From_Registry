@@ -408,55 +408,55 @@ namespace workIT.Factories
         /// <param name="Id"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool Delete( int Id, ref string statusMessage )
-        {
-            bool isValid = false;
-            if ( Id == 0 )
-            {
-                statusMessage = "Error - missing an identifier for the LearningOpportunity";
-                return false;
-            }
-            using ( var context = new EntityContext() )
-            {
-                try
-                {
-                    context.Configuration.LazyLoadingEnabled = false;
-                    DBEntity efEntity = context.LearningOpportunity
-                                .FirstOrDefault( s => s.Id == Id );
+        //public bool Delete( int Id, ref string statusMessage )
+        //{
+        //    bool isValid = false;
+        //    if ( Id == 0 )
+        //    {
+        //        statusMessage = "Error - missing an identifier for the LearningOpportunity";
+        //        return false;
+        //    }
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        try
+        //        {
+        //            context.Configuration.LazyLoadingEnabled = false;
+        //            DBEntity efEntity = context.LearningOpportunity
+        //                        .FirstOrDefault( s => s.Id == Id );
 
-                    if ( efEntity != null && efEntity.Id > 0 )
-                    {
-                        Guid rowId = efEntity.RowId;
+        //            if ( efEntity != null && efEntity.Id > 0 )
+        //            {
+        //                Guid rowId = efEntity.RowId;
 
-                        context.LearningOpportunity.Remove( efEntity );
-                        int count = context.SaveChanges();
-                        if ( count > 0 )
-                        {
-                            isValid = true;
-                            //add pending request 
-                            List<String> messages = new List<string>();
-                            new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, efEntity.Id, ref messages );
-                        }
-                    }
-                    else
-                    {
-                        statusMessage = "Error - delete failed, as record was not found.";
-                    }
-                }
-                catch ( Exception ex )
-                {
-                    statusMessage = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
+        //                context.LearningOpportunity.Remove( efEntity );
+        //                int count = context.SaveChanges();
+        //                if ( count > 0 )
+        //                {
+        //                    isValid = true;
+        //                    //add pending request 
+        //                    List<String> messages = new List<string>();
+        //                    new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, efEntity.Id, ref messages );
+        //                }
+        //            }
+        //            else
+        //            {
+        //                statusMessage = "Error - delete failed, as record was not found.";
+        //            }
+        //        }
+        //        catch ( Exception ex )
+        //        {
+        //            statusMessage = FormatExceptions( ex );
+        //            LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
 
-                    if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
-                    {
-                        statusMessage = "Error: this learning opportunity cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this learning opportunity can be deleted.";
-                    }
-                }
-            }
+        //            if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+        //            {
+        //                statusMessage = "Error: this learning opportunity cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this learning opportunity can be deleted.";
+        //            }
+        //        }
+        //    }
 
-            return isValid;
-        }
+        //    return isValid;
+        //}
 
         /// <summary>
         /// Delete by envelopeId
@@ -477,7 +477,8 @@ namespace workIT.Factories
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
 
-            using ( var context = new EntityContext() )
+			int orgId = 0;
+			using ( var context = new EntityContext() )
             {
                 try
                 {
@@ -490,10 +491,13 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
                     {
                         Guid rowId = efEntity.RowId;
-
-                        //need to remove from Entity.
-                        //-using before delete trigger - verify won't have RI issues
-                        string msg = string.Format( " Learning Opportunity. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+						{
+							Organization org = OrganizationManager.GetBasics( ( Guid )efEntity.OwningAgentUid );
+							orgId = org.Id;
+						}
+						//need to remove from Entity.
+						//-using before delete trigger - verify won't have RI issues
+						string msg = string.Format( " Learning Opportunity. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
 
                         //18-04-05 mparsons - change to set inactive, and notify - seems to have been some incorrect deletes
 
@@ -518,7 +522,9 @@ namespace workIT.Factories
                             //add pending request 
                             List<String> messages = new List<string>();
                             new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, efEntity.Id, ref messages );
-                        }
+							//mark owning org for updates
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+						}
                     }
                     else
                     {
@@ -557,7 +563,15 @@ namespace workIT.Factories
             Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
             erfm.DeleteAll( relatedEntity, ref status );
 
-            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
+				isAllValid = false;
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
+				isAllValid = false;
+
+			//TODO - handle Naics if provided separately
+			if ( erfm.NaicsSaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Naics, ref status ) == false )
+				isAllValid = false;
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
                 isAllValid = false;
 
             //not used by import
@@ -891,7 +905,7 @@ namespace workIT.Factories
             return entity;
         }
 
-        public static List<ThisEntity> GetAllForOwningOrg( Guid owningOrgUid )
+        public static List<ThisEntity> GetAllForOwningOrg( Guid owningOrgUid, ref int totalRecords, int maxRecords = 100 )
         {
             List<ThisEntity> list = new List<ThisEntity>();
             ThisEntity entity = new ThisEntity();
@@ -903,12 +917,16 @@ namespace workIT.Factories
                              .ToList();
                 if ( results != null && results.Count > 0 )
                 {
-                    foreach ( DBEntity item in results )
+					totalRecords = results.Count();
+
+					foreach ( DBEntity item in results )
                     {
                         entity = new ThisEntity();
                         MapFromDB_Basic( item, entity, false );
 
                         list.Add( entity );
+						if ( maxRecords > 0 && list.Count >= maxRecords )
+							break;
                     }
                 }
             }
@@ -1264,35 +1282,13 @@ namespace workIT.Factories
             else
                 to.DateEffective = "";
 
-            //if ( ( from.InLanguageId ?? 0 ) > 0 )
-            //{
-            //    to.InLanguageId = ( int )from.InLanguageId;
-            //    EnumeratedItem code = CodesManager.GetLanguage( to.InLanguageId );
-            //    if ( code.Id > 0 )
-            //    {
-            //        to.InLanguage = code.Name;
-            //        to.InLanguageCode = code.Value;
-            //    }
-            //}
-            //else
-            //{
-            //    to.InLanguageId = 0;
-            //    to.InLanguage = "";
-            //    to.InLanguageCode = "";
-            //}
-            //multiple languages, now in entity.reference
             to.InLanguageCodeList = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
-            //short term convenience
-            //if ( to.InLanguageCodeList != null && to.InLanguageCodeList.Count > 0 )
-            //    to.InLanguage = to.InLanguageCodeList[0].TextValue;
 
             to.CreditHourType = from.CreditHourType ?? "";
             to.CreditHourValue = ( from.CreditHourValue ?? 0M );
             to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
             to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
             to.CreditUnitValue = from.CreditUnitValue ?? 0M;
-
-
 
             to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
@@ -1377,19 +1373,13 @@ namespace workIT.Factories
 
             to.CommonCosts = Entity_CommonCostManager.GetAll( to.RowId );
 
-            //if ( includingProfiles )
-            //{
-            //to.InstructionalProgramType = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
-            to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
-            //to.OtherInstructionalProgramCategory = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+			to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-            //get as ennumerations
-            //to.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( to.RowId, true );
+			to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+			to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+
             to.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget(7, to.Id );
-
-
-            //to.QualityAssuranceAction = Entity_QualityAssuranceActionManager.QualityAssuranceActionProfile_GetAll( to.RowId );
-
 
             to.EstimatedDuration = DurationProfileManager.GetAll( to.RowId );
 

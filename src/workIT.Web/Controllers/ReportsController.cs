@@ -21,5 +21,16 @@ namespace workIT.Web.Controllers
 
 			return View( "~/Views/Reports/Reports.cshtml", vm );
         }
+        public ActionResult ReportsV1()
+        {
+            CommonTotals vm = new CommonTotals();
+
+
+            vm = ReportServices.SiteTotals();
+
+            return View( "~/Views/Reports/ReportsV1.cshtml", vm );
+        }
+
     }
+
 }
