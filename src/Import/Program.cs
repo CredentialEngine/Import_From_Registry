@@ -209,7 +209,9 @@ namespace CTI.Import
                 //may want to move this to services for use by other process, including adhoc imports
                 if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
                 {
-                    ElasticServices.UpdateElastic(true);
+					//update elastic if a elasticSearchUrl exists
+					if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
+						ElasticServices.UpdateElastic(true);
                     //procs have been updated to use the 
                     //new CacheManager().PopulateAllCaches();
                     ////
