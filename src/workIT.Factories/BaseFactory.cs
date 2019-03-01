@@ -26,7 +26,7 @@ namespace workIT.Factories
 		public static bool IsDevEnv()
 		{
 
-			if ( UtilityManager.GetAppKeyValue( "envType", "no" ) == "dev" )
+			if ( UtilityManager.GetAppKeyValue( "envType", "no" ) == "development" )
 				return true;
 			else
 				return false;
@@ -34,7 +34,7 @@ namespace workIT.Factories
 		public static bool IsProduction()
 		{
 
-			if ( UtilityManager.GetAppKeyValue( "envType", "dev" ) == "production" )
+			if ( UtilityManager.GetAppKeyValue( "envType", "development" ) == "production" )
 				return true;
 			else
 				return false;

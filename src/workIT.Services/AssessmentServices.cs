@@ -171,7 +171,7 @@ namespace workIT.Services
                 keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.Organization like '{0}'  ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.Organization like '{0}' OR base.Description like '{0}'   ) ";
 
             bool isCustomSearch = false;
             //for ctid, needs a valid ctid or guid

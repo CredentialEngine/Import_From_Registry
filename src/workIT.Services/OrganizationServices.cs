@@ -321,7 +321,7 @@ namespace workIT.Services
             if ( string.IsNullOrWhiteSpace( keywords ) )
                 return;
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}'  OR base.SubjectWebpage like '{0}' OR base.id in ( select EntityBaseId from Organization_AlternatesNames where TextValue like '{0}') ) ";
+            string text = " (base.name like '{0}'  OR base.SubjectWebpage like '{0}' OR base.Description like '{0}'   OR base.id in ( select EntityBaseId from Organization_AlternatesNames where TextValue like '{0}') ) ";
 
             string orgDepts = "( base.Id in (SELECT o.Id FROM dbo.Entity e INNER JOIN dbo.[Entity.AgentRelationship] ear ON e.Id = ear.EntityId INNER JOIN dbo.Organization o ON e.EntityUid = o.RowId WHERE ear.RelationshipTypeId = {0} AND o.StatusId < 4) )";
             bool isCustomSearch = false;

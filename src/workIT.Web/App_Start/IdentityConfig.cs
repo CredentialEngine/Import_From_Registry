@@ -99,7 +99,7 @@ namespace workIT.Web
 			if ( dataProtectionProvider != null )
 			{
 
-				if ( UtilityManager.GetAppKeyValue( "envType" ) == "dev" )
+				if ( UtilityManager.GetAppKeyValue( "envType" ) == "development" )
 				{
 					//controlling expiration - will this affect remembering day by day?
 					manager.UserTokenProvider =

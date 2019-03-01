@@ -1026,7 +1026,14 @@ namespace workIT.Services
 			session[ "user" ] = appUser;
 
 		} //
+		public static void RemoveUserFromSession()
+		{
+			if ( HttpContext.Current.Session[ "user" ] != null )
+			{
+				HttpContext.Current.Session.Remove( "user" );
+			}
 
+		} //
 
 		#endregion
 
@@ -1034,7 +1041,7 @@ namespace workIT.Services
 
 		public string Create_ForgotPasswordProxyId( int userId, ref string statusMessage )
 		{
-			int expiryDays = UtilityManager.GetAppKeyValue( "forgotPasswordExiryDays", 1 );
+			int expiryDays = UtilityManager.GetAppKeyValue( "forgotPasswordExpiryDays", 1 );
 			return new AccountManager().Create_ProxyLoginId( userId, "Forgot Password", expiryDays, ref statusMessage );
 		}
 
@@ -1062,7 +1069,7 @@ namespace workIT.Services
 		{
 			string statusMessage = "";
 
-			int expiryDays = UtilityManager.GetAppKeyValue( "forgotPasswordExiryDays", 1 );
+			int expiryDays = UtilityManager.GetAppKeyValue( "forgotPasswordExpiryDays", 1 );
 			return new AccountManager().Store_ProxyCode( proxyCode, userId, proxyType, expiryDays, ref statusMessage );
 
 		}

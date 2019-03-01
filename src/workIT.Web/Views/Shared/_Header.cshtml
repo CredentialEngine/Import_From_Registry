@@ -91,25 +91,13 @@
 
 }
 
-
-
-
 <script type="text/javascript">
     /* Initialization */
     $(document).ready(function () {
-        //if (window.location.href.indexOf("/sandbox/") > 0) {
-        //    $('#mainSiteHeader').css({ "background-color": "bisque" });
-        //} else if (window.location.href.indexOf("/ss/") > 0) {
-        //    $('#mainSiteHeader').css({ "background-color": "deeppink" });
-        ////} else if (window.location.href.indexOf("credfinder.siuccwd.com") > 0) {
-        ////    $('#mainSiteHeader').css({ "background-color": "aquamarine" });
-        //} else if (window.location.href.indexOf("//localhost") > 0) {
-        //    $('#mainSiteHeader').css({ "background-color": "plum" });
-        //}
+        if (window.location.href.indexOf("//localhost") > 0) {
+			$('#mainSiteHeader').css({ "background-color": "bisque" });
+        }
     });  //ready
-
-
-
 
 </script>
 <script type="text/javascript">
@@ -214,15 +202,13 @@
                 <div class="headerMenu column" id="headerMenuAccount">
                     <button class="headerMenuTitle"><i class="fa fa-user"></i> <div id="userName" title="@user.FullName()">@user.FullName()</div> <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
                     <div class="headerMenuList">
-                        <a href="@Url.Content( @accountsDashboard )" target="acctDashboard">My Dashboard</a>
-                        @*<a href="@Url.Content( "/Account/UserProfile" )" id="manageLink">@user.FullName()</a>
-                    <a href="@Url.Content( "/Manage/ChangePassword" )" id="manageLink">Change Password</a>*@
+                    @*<a href="@Url.Content( "/Manage/ChangePassword" )" id="manageLink">Change Password</a>*@
 
                         <form action="@Url.Content("~/account/LogOff")" method="post" id="logoutForm">
                             @Html.AntiForgeryToken()
                             <a href="javascript:document.getElementById('logoutForm').submit();" id="logoutLink">Logout</a>
                         </form>
-                        @*<a href="@Url.Content( "~/Account/LogOff" )" id="logoutLink">Logout 2</a>*@
+
 
                     </div>
                 </div>
@@ -231,15 +217,15 @@
             {
                 <div class="headerMenu column" id="headerMenuAdd">
                     <button class="headerMenuTitle"><i class="fa fa-user"></i> Login <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
-                    <div class="headerMenuList">
-                        <a href="@Url.Content( @loginApi )">Login</a>
-                        @if ( Request.Url.Host.ToLower().Contains( "localhost" ) )
-                        {
-                            <a href="@Url.Content( @loginUrl )">OLD Account Login</a>
-                        }
-                        @*<a href="@Url.Content( @registerUrl )">Register</a>*@
+					<div class="headerMenuList">
+						<a href="@Url.Content( @loginApi )">Login</a>
+						@if ( Request.Url.Host.ToLower().Contains( "localhost" ) )
+						{
+							@*<a href="@Url.Content( @loginUrl )">OLD Account Login</a>*@
+							<a href="@Url.Content( @registerUrl )">OLD Register</a>
+						}
 
-                    </div>
+					</div>
                 </div>
             }
             @*else

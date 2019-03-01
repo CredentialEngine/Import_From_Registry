@@ -828,6 +828,9 @@
     <Content Include="Views\Widget\Index.cshtml" />
     <Content Include="Views\Widget\SearchWidget.cshtml" />
     <Content Include="Views\Widget\TestWidget.cshtml" />
+    <Content Include="Views\Account\Register.cshtml" />
+    <Content Include="Views\Account\ResetPassword.cshtml" />
+    <Content Include="Views\Account\ResetPasswordConfirmation.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

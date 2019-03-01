@@ -280,7 +280,7 @@ namespace workIT.Services
             //OR CreatorOrgs like '{0}' 
             bool isCustomSearch = false;
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.AlternateName like '{0}' OR OwningOrganization like '{0}' OR base.Description like '{0}'   ) ";
             //for ctid, needs a valid ctid or guid
             if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
             {

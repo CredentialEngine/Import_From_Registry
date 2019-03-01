@@ -59,11 +59,15 @@ namespace workIT.Web
 			//   appId: "",
 			//   appSecret: "");
 
-			app.UseGoogleAuthentication( new GoogleOAuth2AuthenticationOptions()
+			var clientId = UtilityManager.GetAppKeyValue( "goggleClientId" );
+			if ( !string.IsNullOrWhiteSpace( clientId ) && clientId.IndexOf( "###" ) == -1 )
 			{
-				ClientId = UtilityManager.GetAppKeyValue( "goggleClientId" ),
-				ClientSecret = UtilityManager.GetAppKeyValue( "goggleClientSecret" )
-			} );
+				app.UseGoogleAuthentication( new GoogleOAuth2AuthenticationOptions()
+				{
+					ClientId = UtilityManager.GetAppKeyValue( "goggleClientId" ),
+					ClientSecret = UtilityManager.GetAppKeyValue( "goggleClientSecret" )
+				} );
+			}
 		}
     }
 }

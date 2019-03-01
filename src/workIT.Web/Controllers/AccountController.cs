@@ -218,7 +218,7 @@ namespace workIT.Web.Controllers
             try
             {
                 var password = UtilityManager.GetAppKeyValue( "CEAccountSystemStaticPassword", "" );
-                var environment = UtilityManager.GetAppKeyValue( "envType", "dev" ) == "production" ? "production" : "development";
+                var environment = UtilityManager.GetAppKeyValue( "envType", "development" ) == "production" ? "production" : "development";
 
                 var organizationsForUserURL = UtilityManager.GetAppKeyValue( "CEAccountOrganizationsForUserApi" );
                 var payload = new
@@ -288,6 +288,9 @@ namespace workIT.Web.Controllers
 		[AllowAnonymous]
 		public ActionResult LoginTest( string returnUrl = "" )
 		{
+			if ( returnUrl.ToLower().IndexOf( "returnurl" ) > -1 )
+				returnUrl = "";
+
 			ViewBag.ReturnUrl = returnUrl;
 			//return View();
 			return View( "~/Views/Account/Login.cshtml" );
@@ -387,6 +390,7 @@ namespace workIT.Web.Controllers
 						await SignInManager.SignInAsync( user, isPersistent: false, rememberBrowser: false );
 						//get user and add to session 
 						appUser = AccountServices.GetUserByKey( user.Id );
+						return RedirectToAction( "Index", "Home" );
 					}
 					else
 					{
@@ -596,7 +600,8 @@ namespace workIT.Web.Controllers
             finally
             {
                 Session.Abandon();
-            }
+				AccountServices.RemoveUserFromSession();
+			}
             return RedirectToAction( "Index", "Home" );
         }
         public ActionResult LogOut()
@@ -609,7 +614,8 @@ namespace workIT.Web.Controllers
             finally
             {
                 Session.Abandon();
-            }
+				AccountServices.RemoveUserFromSession();
+			}
             return RedirectToAction( "Index", "Home" );
         }
         //

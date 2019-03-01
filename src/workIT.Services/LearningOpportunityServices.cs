@@ -269,7 +269,7 @@ namespace workIT.Services
                 keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
             //OR base.Description like '{0}' 
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}'  OR base.Organization like '{0}'  ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}'  OR base.Organization like '{0}' OR base.Description like '{0}'   ) ";
             bool isCustomSearch = false;
             //use Entity.SearchIndex for all
             string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where (b.EntityTypeId = 3 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";

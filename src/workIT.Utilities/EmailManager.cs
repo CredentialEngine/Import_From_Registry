@@ -44,14 +44,14 @@ namespace workIT.Utilities
 		public static bool SendSiteEmail( string subject, string message )
 		{
 			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.mparsons@email.com" );
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
 
 		public static bool SendEmail( string toEmail, string subject, string message )
 		{
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
@@ -90,8 +90,8 @@ namespace workIT.Utilities
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
             MailMessage email = new MailMessage();
-            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@siuccwd.com" );
-			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
+            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
+			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail" );
 			if ( string.IsNullOrWhiteSpace( BCC ) )
 				BCC = systemAdminEmail;
 			else
@@ -103,36 +103,8 @@ namespace workIT.Utilities
 				if ( fromEmail.Trim().Length == 0 )
                     fromEmail = appEmail;
 
-				//10-04-06 mparsons - with our new mail server, we can't send emails where the from address is anything but @siuccwd.com
-				//									- also try to handle the aliases 
-				if ( fromEmail.IndexOf( "_siuccwd.com" ) > -1 )
-					fromEmail = HandleProxyEmails( fromEmail.Trim() );
-
-				if ( fromEmail.ToLower().IndexOf( "@siuccwd.com" ) == -1 )
-				{
-					//not this site so set to DoNotReply@ and switch
-					string orig = fromEmail;
-                    fromEmail = appEmail;
-					//insert as first
-                    //TODO - need a method parm to determine when should add to CC if at all. Should only show note on orginal sender
-                    //if ( CC.Trim().Length > 0 )
-                    //    CC = orig + "; " + CC;
-                    //else
-                    //    CC = orig;
-
-				}
-
 
                 maFrom = new MailAddress( fromEmail );
-
-				//check for overrides on the to email 
-				if ( UtilityManager.GetAppKeyValue( "usingTempOverrideEmail", "no" ) == "yes" )
-				{
-                    if ( toEmail.ToLower().IndexOf( "illinoisworknet.com" ) < 0 && toEmail.ToLower().IndexOf( "siuccwd.com" ) < 0 )
-					{
-						toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
-					}
-				}
 
 				if ( toEmail.Trim().EndsWith( ";" ) )
 					toEmail = toEmail.TrimEnd( Char.Parse( ";" ), Char.Parse( " " ) );
@@ -435,7 +407,7 @@ namespace workIT.Utilities
 		/// <returns>True id message was sent successfully, otherwise false</returns>
 		public static bool NotifyAdmin( string subject, string message )
 		{
-			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );	
+			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail" );	
 
 			return  NotifyAdmin( emailTo, subject, message );
         } 
@@ -451,8 +423,8 @@ namespace workIT.Utilities
 		{
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
-			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail", "TheWatcher@siuccwd.com" );
-			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@siuccwd.com" );
+			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail");
+			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail" );
             if ( emailTo == "" )
             {
                 emailTo = cc;

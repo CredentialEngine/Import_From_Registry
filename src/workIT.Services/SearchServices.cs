@@ -1829,8 +1829,8 @@ namespace workIT.Services
 			{
 				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ive^" ) );
 			}
-			bool isElasticSearch = true;
-			if ( isElasticSearch )
+
+			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ))
 			{
 				var env = UtilityManager.GetAppKeyValue( "envType" );
 				//not sure of this

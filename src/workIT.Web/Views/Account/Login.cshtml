@@ -10,7 +10,7 @@
 	}
 	else if ( Request.Url.IsLoopback )
 	{
-		forgotpassword = "https://localhost:44315/Account/ForgotYourPassword";
+		forgotpassword = "https://localhost:49353/Account/ForgotYourPassword";
 	}
 	var user = AccountServices.GetCurrentUser();
 }
@@ -47,7 +47,7 @@
 			</div>
 		}
 		<div id="helpLinks">
-			@*<a class="offscreen" href="@Url.Content( "~/Account/Register" )">Register a new account</a>*@
+			<a  href="@Url.Content( "~/Account/Register" )">Register a new account</a>
 			<a href="@Url.Content( @forgotpassword )">Forgot your password?</a>
 		</div>
 	</div>

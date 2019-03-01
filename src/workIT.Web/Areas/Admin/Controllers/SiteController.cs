@@ -30,7 +30,7 @@ namespace workIT.Web.Areas.Admin.Controllers
             if ( user != null && 
                 ( 
                     user.Email == "email@email.com" ||
-                    user.Email == "nathan.argo@siuccwd.com"
+                    user.Email == "email@email.com"
                   )
                 )
             {
@@ -38,8 +38,7 @@ namespace workIT.Web.Areas.Admin.Controllers
             } else 
             //if ( !User.Identity.IsAuthenticated
             //    || ( User.Identity.Name != "mparsons"
-            //    && User.Identity.Name != "email@email.com"
-            //    && User.Identity.Name != "nathan.argo@siuccwd.com" )
+            //    && User.Identity.Name != "email@email.com" )
             //    )
             {
                 SetSystemMessage( "Unauthorized Action", "You are not authorized to invoke NormalizeAddresses." );
