@@ -194,16 +194,23 @@ namespace workIT.Services
 		{
 			var mgr = new CodesManager();
 
-			mgr.UpdateEntityTypes( 10, GetCompetencyFrameworkTermTotal( null ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasEducationLevels", GetCompetencyFrameworkTermTotal( "ceasn:educationLevelType" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignFrom", GetCompetencyFrameworkTermTotal( "ceasn:alignFrom" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignTo", GetCompetencyFrameworkTermTotal( "ceasn:alignTo" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasBroadAlignment", GetCompetencyFrameworkTermTotal( "ceasn:broadAlignment" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasExactAlignment", GetCompetencyFrameworkTermTotal( "ceasn:exactAlignment" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMajorAlignment", GetCompetencyFrameworkTermTotal( "ceasn:majorAlignment" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMinorAlignment", GetCompetencyFrameworkTermTotal( "ceasn:minorAlignment" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasNarrowAlignment", GetCompetencyFrameworkTermTotal( "ceasn:narrowAlignment" ) );
-			mgr.UpdateEntityStatistic( 10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyFrameworkTermTotal( "ceasn:prerequisiteAlignment" ) );
+			try
+			{
+				mgr.UpdateEntityTypes( 10, GetCompetencyFrameworkTermTotal( null ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasEducationLevels", GetCompetencyFrameworkTermTotal( "ceasn:educationLevelType" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignFrom", GetCompetencyFrameworkTermTotal( "ceasn:alignFrom" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignTo", GetCompetencyFrameworkTermTotal( "ceasn:alignTo" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasBroadAlignment", GetCompetencyFrameworkTermTotal( "ceasn:broadAlignment" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasExactAlignment", GetCompetencyFrameworkTermTotal( "ceasn:exactAlignment" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMajorAlignment", GetCompetencyFrameworkTermTotal( "ceasn:majorAlignment" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMinorAlignment", GetCompetencyFrameworkTermTotal( "ceasn:minorAlignment" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasNarrowAlignment", GetCompetencyFrameworkTermTotal( "ceasn:narrowAlignment" ) );
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyFrameworkTermTotal( "ceasn:prerequisiteAlignment" ) );
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "Services.UpdateCompetencyFrameworkReportTotals" );
+			}
 		}
 		//
 

@@ -158,7 +158,7 @@ namespace CTI.Import
             if ( !string.IsNullOrWhiteSpace( importNote ) )
                 importResults += importNote;
 
-			if (cntr > 0)
+			if ( cntr > 0 && UtilityManager.GetAppKeyValue( "updateCompetencyFrameworkReportTotals", false ) == true )
 			{
 				mgr.UpdateCompetencyFrameworkReportTotals();
 			}
