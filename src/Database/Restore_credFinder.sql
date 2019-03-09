@@ -77,14 +77,12 @@ Declare
 set @wnTestBackupLoc  = 'C:\data\sql2016\backups\Adhoc\'                
 set @wnTestDataLoc    = 'C:\data\sql2016\'
 set @wnTestLogsLoc    = 'C:\data\sql2016\'
---
-
 -- 
 -- Actions:
 -- ======================================================================
--- Use List to list the contetns of the selected backup file
+-- Use List to list the contents of the selected backup file
 -- Use replace when restoring the backup from one db overtop another db (our typical scenario)
--- set @RestoreAction = 'recover'
+
  set @RestoreAction = 'replace'
 set @RestoreAction = 'list'
 
@@ -94,8 +92,7 @@ set @DestLogfile  = @DestDatabase + '_Log'
 
 -- set to the current locations===
 set @BackupDir 	= @wnTestBackupLoc
-set @DataLoc		= @wnTestDataLoc
-set @LogLoc			= @wnTestDataLoc
+
 
 set @BackupFile = 'credfinderTest190223.BAK'	--@DestDatabase + '.BAK'
 
@@ -114,8 +111,8 @@ else begin
 -- following should just be generic variables
 set @BackupPath = @BackupDir + @BackupFile
 
-set @DestDataPath = @DataLoc + @DestDatafile + '.mdf'
-set @DestLogPath  = @LogLoc  + @DestLogfile + '.ldf'
+set @DestDataPath = @wnTestDataLoc + @DestDatafile + '.mdf'
+set @DestLogPath  = @wnTestLogsLoc  + @DestLogfile + '.ldf'
 print '====== Restore request parameters ===================='
 print '        Action: ' + @RestoreAction
 print 'SOURCE:'
