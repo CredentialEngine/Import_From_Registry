@@ -11,9 +11,34 @@ Draft document to identify the steps and customization necessary to implement a 
 - The credential finder search uses Elastic. There is a separate search that uses native Sql server stored procedures. We have not been maintaining the sql search through code updates. However it should be good for prototyping.  
 - Elastic documentation will follow soon. Once the end user installs elastic, the code to build and update the search indices is fairly straightforward.
 
+## Code Base
+The code base for the import and finder can be found in github:
+https://github.com/CredentialEngine/Import_From_Registry
 
+# Import
+## Overview
+<table>
+  <tr><td width="65%" valign="top">
+The main project for the import is in the solution Import folder, CTI.Import.Key project files:
+    <ul><li>Program class is the startup, and calls separate classes for each type of import. </li>
+      <li>RegistryImport includes the code to retrieve data from the registry - in the registry envelope container</li></ul>
+The key app.config settings will be described below.     
+<h3>Import.Services</h3>
+<ul><li>NOTE: We are using the V3 import methods and the related MappingHelperV3 class. The original import methods have not been removed yet</li>
+<li>Handles mapping from the JSON-LD format from the registry to POCO classes</li>
+<li>After mapping the data successfully the appropriate related method from the workIT.Services project will be called to handle saving the data, marking data to be updated in elastic, and any caching methods. Example CredentialServices.Import( ThisEntity entity, ref SaveStatus status )</li></ul>
+<h3>workIT.Services</h3>
+<ul><li>Has all the business service layer code. There will be code used just by the import as well as by the credential finder</li>
+<li>All data CRUD code is in the workIt.Factories project</li>
+<li>We mostly use entity frameworks (database first) for interfacing with the database. workIT.Data contains the related edmx files. We used separate edmx files for tables and views. </li>
+<li>There are a few stored procedures in use, mostly for retrieving data to load into the elastic indices
+  <li>Most DTO classes are in the workIT.Models project</li></ul></td><td>
 
-<table class="c24"><tbody><tr class="c9"><td class="c29" colspan="1" rowspan="1"><p class="c1"><span class="c2">The main project for the import is in the solution Import folder, CTI.Import.Key project files </span></p><ul class="c4 lst-kix_khw0mux0l5aq-0 start"><li class="c1 c3"><span class="c2">Program class is the startup, and calls separate classes for each type of import. </span></li><li class="c1 c3"><span class="c2">RegistryImport includes the code to retrieve data from the registry - in the registry envelope container</span></li></ul><p class="c1 c10"><span class="c2"></span></p><p class="c1"><span class="c2">The key app.config settings will be described below. </span></p><p class="c1"><span class="c2">Import.Services</span></p><ul class="c4 lst-kix_qonykqrii362-0"><li class="c1 c3"><span class="c2">NOTE: We are using the V3 import methods and the related MappingHelperV3 class. The original import methods have not been removed yet</span></li><li class="c1 c3"><span class="c2">Handles mapping from the JSON-LD format from the registry to POCO classes</span></li><li class="c1 c3"><span class="c2">After mapping the data successfully the appropriate related method from the workIT.Services project will be called to handle saving the data, marking data to be updated in elastic, and any caching methods. <br>Example CredentialServices.Import( ThisEntity entity, ref SaveStatus status )</span></li></ul><p class="c1 c10"><span class="c2"></span></p><p class="c1"><span class="c2">workIT.Services</span></p><ul class="c4 lst-kix_nk7wm85q1lix-0 start"><li class="c1 c3"><span class="c2">Has all the business service layer code. There will be code used just by the import as well as by the credential finder</span></li><li class="c1 c3"><span class="c2">All data CRUD code is in the workIt.Factories project</span></li><li class="c1 c3"><span class="c2">We mostly use entity frameworks (database first) for interfacing with the database. workIT.Data contains the related edmx files. We used separate edmx files for tables and views. </span></li><li class="c1 c3"><span class="c2">There are a few stored procedures in use, mostly for retrieving data to load into the elastic indices</span></li><li class="c1 c3"><span class="c2">Most DTO classes are in the workIT.Models project</span></li></ul></td><td class="c39" colspan="1" rowspan="1"><p class="c1"><span style="overflow: hidden; display: inline-block; margin: 0.00px 0.00px; border: 0.00px solid #000000; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px); width: 263.09px; height: 646.50px;"><img alt="" src="images/image3.png" style="width: 263.09px; height: 646.50px; margin-left: 0.00px; margin-top: 0.00px; transform: rotate(0.00rad) translateZ(0px); -webkit-transform: rotate(0.00rad) translateZ(0px);" title=""></span></p></td></tr></tbody></table>
+![image](https://user-images.githubusercontent.com/26332112/54700479-1a4fd200-4b01-11e9-8092-30b2d68f14dd.png)
+      </td>
+</tr>
+</table>
+
 
 
 
