@@ -11,7 +11,7 @@ namespace workIT.Models.Elastic
 			Subjects = new List<IndexSubject>();
 			Competencies = new List<IndexCompetency>();
 			Addresses = new List<Address>();
-			QualityAssurance = new List<IndexQualityAssurance>();
+			//QualityAssurance = new List<IndexQualityAssurance>();
 
 		}
 		//      public int EntityTypeId { get; set; } = 1;
@@ -65,7 +65,7 @@ namespace workIT.Models.Elastic
 		public string CredentialTypeSchema { get; set; }
 		public string CredentialStatus { get; set; }
 		public int CredentialStatusId { get; set; }
-
+		public string ImageURL { get; set; }
 		public decimal TotalCost { get; set; }
 
 
@@ -92,7 +92,8 @@ namespace workIT.Models.Elastic
 		public int RequiresCompetenciesCount { get; set; }
 
 		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
-		public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
+		//public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
+		//public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
 		// public string QARolesResults { get; set; }
 		public string AgentAndRoles { get; set; }
 
@@ -167,8 +168,9 @@ namespace workIT.Models.Elastic
 		//credential name plus organization
 		public string ListTitle { get; set; }
 
-		//public string Subject { get; set; }
+		public bool HasSubjects { get; set; }
 		public List<IndexSubject> Subjects { get; set; }
+		//public List<string> SubjectAreas { get; set; }
 
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
@@ -176,10 +178,7 @@ namespace workIT.Models.Elastic
 		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexCompetency> Competencies { get; set; }
-		//public List<string> CompetenciesName { get; set; } = new List<string>();
-		//public List<string> CompetenciesTargetNode { get; set; }
 
-		//public Address Addresses { get; set; }
 		public List<Address> Addresses { get; set; }
 
 		//public List<string> AddressLocations { get { return Addresses.Select( x => x.AddressRegion ).ToList(); } }

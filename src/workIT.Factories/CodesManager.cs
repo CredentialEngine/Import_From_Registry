@@ -27,7 +27,7 @@ namespace workIT.Factories
     public class CodesManager : BaseFactory
     {
         #region constants - property categories
-        public static int PROPERTY_CATEGORY_JURISDICTION = 1;
+        //public static int PROPERTY_CATEGORY_JURISDICTION = 1;
         public static int PROPERTY_CATEGORY_CREDENTIAL_TYPE = 2;
         public static int PROPERTY_CATEGORY_CREDENTIAL_PURPOSE = 3;
         /// <summary>
@@ -43,8 +43,8 @@ namespace workIT.Factories
 
         public static int PROPERTY_CATEGORY_NAICS = 10;
         public static int PROPERTY_CATEGORY_SOC = 11;
-        public static int PROPERTY_CATEGORY_MOC = 12;
-        public static int PROPERTY_CATEGORY_CIP = 23;
+		public static int PROPERTY_CATEGORY_NAVY_RATING = 12;
+		public static int PROPERTY_CATEGORY_CIP = 23;
 
         public static int PROPERTY_CATEGORY_ENTITY_AGENT_ROLE = 13;
         public static int PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE = 13;
@@ -80,12 +80,11 @@ namespace workIT.Factories
         public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
         public static int PROPERTY_CATEGORY_CLAIM_TYPE = 41;
         public static int PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE = 42;
-        //      [Obsolete]
-        //      public static int PROPERTY_CATEGORY_PROCESS_METHOD = 43;
-        //      [Obsolete]
-        //      public static int PROPERTY_CATEGORY_STAFF_EVALUATION_METHOD = 44;
-        public static int PROPERTY_CATEGORY_QA_TARGET_TYPE = 45;
-        public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
+		public static int PROPERTY_CATEGORY_FINANCIAL_ASSISTANCE = 43;
+		//      [Obsolete]
+		//      public static int PROPERTY_CATEGORY_STAFF_EVALUATION_METHOD = 44;
+		public static int PROPERTY_CATEGORY_QA_TARGET_TYPE = 45;
+        //public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
         public static int PROPERTY_CATEGORY_OWNING_ORGANIZATION_TYPE = 47;
         public static int PROPERTY_CATEGORY_PRIMARY_EARN_METHOD = 48;
 
@@ -118,29 +117,33 @@ namespace workIT.Factories
         public static int ENTITY_TYPE_COST_PROFILE = 5;
         public static int ENTITY_TYPE_COST_PROFILE_ITEM = 6;
         public static int ENTITY_TYPE_LEARNING_OPP_PROFILE = 7;
-        public static int ENTITY_TYPE_TASK_PROFILE = 8;
+        public static int ENTITY_TYPE_PATHWAY = 8;
         public static int ENTITY_TYPE_PERSON = 9;
 
         public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;
+		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;
 
-        public static int ENTITY_TYPE_REVOCATION_PROFILE = 12;
+		public static int ENTITY_TYPE_REVOCATION_PROFILE = 12;
         public static int ENTITY_TYPE_VERIFICATION_PROFILE = 13;
         public static int ENTITY_TYPE_PROCESS_PROFILE = 14;
         public static int ENTITY_TYPE_CONTACT_POINT = 15;
         public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
         public static int ENTITY_TYPE_CASS_COMPETENCY_FRAMEWORK = 17;
-        //...see below
-        public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
+		public static int ENTITY_TYPE_JURISDICTION_PROFILE = 18;
+		public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
         public static int ENTITY_TYPE_COST_MANIFEST = 20;
-        /// <summary>
-        /// Placeholder for stats, will not actually have an entity
-        /// </summary>
-        public static int ENTITY_TYPE_JURISDICTION_PROFILE = 18;
-        public static int ENTITY_TYPE_DURATION_PROFILE = 22;
+		public static int ENTITY_TYPE_FINANCIAL_ASST_PROFILE = 21;
+		/// <summary>
+		/// Placeholder for stats, will not actually have an entity
+		/// </summary>
 
-        #endregion
-        #region constants - entity status
-        public static int ENTITY_STATUS_IN_PROGRESS = 1;
+		public static int ENTITY_TYPE_DURATION_PROFILE = 22;
+		
+		//not used
+		public static int ENTITY_TYPE_TASK_PROFILE = 25;
+		#endregion
+		#region constants - entity status
+		public static int ENTITY_STATUS_IN_PROGRESS = 1;
         public static int ENTITY_STATUS_PUBLISHED = 2;
 
         public static int ENTITY_STATUS_DELETED = 6;
@@ -433,8 +436,18 @@ namespace workIT.Factories
 			}
 			return code;
 		}
+		public static List<int> GetEntityStatisticBySchema( List<string> schemaNames )
+		{
+			var ids = new List<int>();
 
-
+			using ( var context = new EntityContext() )
+			{
+				var list = context.Counts_EntityStatistic.Where( s => schemaNames.Contains( s.SchemaName.Trim() ) );
+				foreach ( var item in list )
+					ids.Add( item.Id );
+			}
+			return ids;
+		}
 		public static Enumeration GetEntityStatisticsAsEnumeration( int entityTypeId, bool getAll = true )
         {
             Enumeration enumeration = new Enumeration();
@@ -479,7 +492,8 @@ namespace workIT.Factories
                                 Name = item.Title,
                                 Value = item.Title,
 								CategoryId = item.CategoryId ?? 0,
-                                Totals = item.Totals ?? 0
+                                Totals = item.Totals ?? 0,
+								SchemaName = item.SchemaName
                             };
                             if ( IsDevEnv() )
                                 val.Name += string.Format( " ({0})", val.Totals );
@@ -966,17 +980,19 @@ namespace workIT.Factories
                             && s.SchemaName.Trim() == schemaName.Trim() );
                 if ( item != null && item.Id > 0 )
                 {
-                    //could have an additional check that the returned category is correct - no guarentees though
-                    code = new CodeItem();
-                    code.Id = ( int )item.Id;
-                    code.CategoryId = item.CategoryId;
-                    code.Title = item.Title;
-                    code.Description = item.Description;
-                    code.URL = item.SchemaUrl;
-                    code.SchemaName = item.SchemaName;
-                    code.ParentSchemaName = item.ParentSchemaName;
-                    code.Totals = item.Totals ?? 0;
-                }
+					//could have an additional check that the returned category is correct - no guarentees though
+					code = new CodeItem
+					{
+						Id = ( int )item.Id,
+						CategoryId = item.CategoryId,
+						Title = item.Title,
+						Description = item.Description,
+						URL = item.SchemaUrl,
+						SchemaName = item.SchemaName,
+						ParentSchemaName = item.ParentSchemaName,
+						Totals = item.Totals ?? 0
+					};
+				}
             }
             return code;
         }
@@ -1448,10 +1464,40 @@ namespace workIT.Factories
 
             return val;
         }
-        #endregion
-        #region SOC
-
-        public static List<CodeItem> SOC_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+		#endregion
+		#region SOC
+		//may need to handle wild cards? Not yet. If suggested, then consider a job family option
+		public static List<CodeItem> SOC_Get( string code )
+		{
+			string search = code;
+			if (code.IndexOf(".") == -1)
+			{
+				//if exact is provided, with decimals, use it only, otherwise getall related
+				search = code.Replace( "-", "" );
+				search = search.Substring( 0, search.IndexOf( "." ) );
+			}
+			var list = new List<CodeItem>();
+			CodeItem item = new CodeItem();
+			using ( var context = new ViewContext() )
+			{
+				var records = context.ONET_SOC
+				.Where( s => s.OnetSocCode == search ).ToList();
+				foreach (var record in records)
+				{
+					if ( record != null && record.Id > 0 )
+					{
+						item.Id = record.Id;
+						item.Name = record.Title;
+						item.Description = record.Description;
+						item.Code = record.OnetSocCode;
+						item.URL = record.URL;
+						list.Add( item );
+					}
+				}
+			}
+			return list;
+		}
+		public static List<CodeItem> SOC_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
         {
             List<CodeItem> list = new List<CodeItem>();
             CodeItem entity = new CodeItem();
@@ -1509,58 +1555,7 @@ namespace workIT.Factories
 
             return list;
         }
-        /// <summary>
-        /// ONET SOC autocomplete
-        /// </summary>
-        /// <param name="headerId"></param>
-        /// <param name="keyword"></param>
-        /// <param name="pageSize"></param>
-        /// <param name="sortField">Description or SOC_code</param>
-        /// <returns></returns>
-        //public static List<CodeItem> SOC_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0, string sortField = "Description" )
-        //{
-        //    List<CodeItem> list = new List<CodeItem>();
-        //    CodeItem entity = new CodeItem();
-        //    keyword = keyword.Trim();
-        //    if ( pageSize == 0 )
-        //        pageSize = 100;
 
-        //    using ( var context = new ViewContext() )
-        //    {
-        //        var Query = from P in context.ONET_SOC
-        //                    .Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
-        //                && ( keyword == ""
-        //                || s.OnetSocCode.Contains( keyword )
-        //                || s.Title.Contains( keyword ) ) )
-        //                    select P;
-
-        //        if ( sortField == "SOC_code" )
-        //        {
-        //            Query = Query.OrderBy( p => p.SOC_code );
-        //        }
-        //        else
-        //        {
-        //            Query = Query.OrderBy( p => p.Title );
-        //        }
-        //        var count = Query.Count();
-        //        var results = Query.Take( pageSize )
-        //            .ToList();
-
-        //        if ( results != null && results.Count > 0 )
-        //        {
-        //            foreach ( ONET_SOC item in results )
-        //            {
-        //                entity = new CodeItem();
-        //                entity.Id = item.Id;
-        //                entity.Name = item.Title;
-        //                entity.Description = " ( " + item.OnetSocCode + " )" + item.Title;
-        //                list.Add( entity );
-        //            }
-        //        }
-        //    }
-
-        //    return list;
-        //}
 
         public static List<CodeItem> SOC_Categories( string sortField = "Description", bool includeCategoryCode = false )
         {
@@ -1925,18 +1920,43 @@ namespace workIT.Factories
             //}
             return list;
         }
-        #endregion
+		#endregion
 
 
-        #region CIPS
-        //public static List<CodeItem> CIPS_Search( int headerId = 0, string keyword = "", int pageNumber = 1, int pageSize = 0 )
-        //{
-        //	int totalRows = 0;
+		#region CIPS
+		public static List<CodeItem> CIP_Get( string code )
+		{
+			string search = code;
+			//for now, just exact
+			//if ( code.IndexOf( "." ) == -1 )
+			//{
+			//	//if exact is provided, with decimals, use it only, otherwise get all related
+			//	search = code.Replace( "-", "" );
+			//	search = search.Substring( 0, search.IndexOf( "." ) );
+			//}
+			var list = new List<CodeItem>();
+			CodeItem item = new CodeItem();
+			using ( var context = new ViewContext() )
+			{
+				var records = context.CIPCode2010
+				.Where( s => s.CIPCode == search ).ToList();
+				foreach ( var record in records )
+				{
+					if ( record != null && record.Id > 0 )
+					{
+						item.Id = record.Id;
+						item.Name = record.CIPTitle;
+						item.Description = record.CIPDefinition;
+						item.Code = record.CIPCode;
+						item.URL = record.Url;
+						list.Add( item );
+					}
+				}
+			}
+			return list;
+		}
 
-        //	return CIPS_Search( headerId, keyword, pageNumber, pageSize, ref totalRows );
-        //}		
-
-        public static List<CodeItem> CIPS_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+		public static List<CodeItem> CIPS_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
         {
             List<CodeItem> list = new List<CodeItem>();
             CodeItem entity = new CodeItem();
@@ -2446,7 +2466,46 @@ namespace workIT.Factories
 			return list;
         }
 
-        #endregion
+		public static List<CodeItem> GetEntityRegionTotals( int entityTypeId, string country = "")
+		{
+			List<CodeItem> list = new List<CodeItem>();
+			CodeItem code;
 
-    }
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Counts_RegionTotals
+					.Where( a => a.EntityTypeId == entityTypeId 
+						&& (country == "" || a.Country == country))
+							.OrderBy( s => s.Country )
+							.ThenBy( x => x.Region )
+							.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+
+					foreach ( var item in results )
+					{
+						code = new CodeItem();
+						code.Id = item.Id;
+						code.CategoryId = item.EntityTypeId;
+						//?? - need entity type for filtering
+						code.EntityTypeId = item.EntityTypeId;
+						code.EntityType = item.EntityTypeId.ToString();
+
+						code.CodeGroup = item.Country;
+						code.Title = item.Region;
+						code.Totals = ( int )item.Totals;
+
+						list.Add( code );
+					}
+				}
+
+
+			}
+			return list;
+		}
+
+		#endregion
+
+	}
 }

@@ -29,8 +29,8 @@ namespace Import.Services
         public string DefaultLanguage = "en";
         public List<MC.EntityLanguageMap> LanguageMaps = new List<MC.EntityLanguageMap>();
         public MC.EntityLanguageMap LastEntityLanguageMap = new MC.EntityLanguageMap();
-        string lastLanguageMapString = "";
-        string lastLanguageMapListString = "";
+        public string lastLanguageMapString = "";
+		public string lastLanguageMapListString = "";
         public MC.BaseObject currentBaseObject = new MC.BaseObject();
         public MappingHelperV3()
         {
@@ -45,10 +45,12 @@ namespace Import.Services
             var node = entityBlankNodes.FirstOrDefault( s => s.BNodeId == idurl );
             return node;
         }
-        public int GetBlankNodeEntityType( BNode node )
+        public int GetBlankNodeEntityType( BNode node, ref bool isQAOrgType )
         {
             int entityTypeId = 0;
-            switch ( node.Type.ToLower() )
+			isQAOrgType = false;
+
+			switch ( node.Type.ToLower() )
             {
                 case "ceterms:credentialorganization":
                     entityTypeId = 2;
@@ -56,7 +58,9 @@ namespace Import.Services
                 case "ceterms:qacredentialorganization":
                     //what distinctions do we need for QA orgs?
                     entityTypeId = 2;
-                    break;
+					isQAOrgType = true;
+
+					break;
                 case "ceterms:organization":
                     entityTypeId = 2;
                     break;
@@ -72,7 +76,13 @@ namespace Import.Services
                 case "ceterms:costmanifest":
                     entityTypeId = 20;
                     break;
-                default:
+				case "ceasn:competencyframework":
+					entityTypeId = 10;
+					break;
+				case "skos:conceptscheme":
+					entityTypeId = 11;
+					break;
+				default:
                     //default to credential
                     entityTypeId = 1;
                     break;
@@ -352,11 +362,48 @@ namespace Import.Services
 
             return output;
         }
-        #endregion
+		#endregion
 
+		public MC.QuantitativeValue HandleQuantitiveValue( List<MJ.QuantitativeValue> input, MC.BaseObject bo, string property )
+		{
+			MC.QuantitativeValue output = new MC.QuantitativeValue();
+			if ( input == null || input.Count == 0  )
+			{
+				return output;
+			}
+			//really only handling one item from the list
+			if ( input[0].Value == 0 && input[ 0 ].MinValue == 0 && input[ 0 ].MaxValue == 0
+				&& ( input[ 0 ].Description == null || input[ 0 ].Description.Count() == 0)
+				&& ( input[ 0 ].UnitText == null  ) //unitText should not be present by itself anyway
+				)
+			{
+				return output;
+			}
 
-        #region  mapping IdProperty
-        public string MapIdentityToString( MJ.IdProperty property )
+			foreach( var item in input)
+			{
+				output.Value = item.Value;
+				output.MinValue = item.MinValue;
+				output.MaxValue = item.MaxValue;
+				output.Description = HandleLanguageMap( item.Description, "CreditValue.Description");
+				output.CreditUnitType = MapCAOToEnumermation( item.UnitText );
+				if ( output.CreditUnitType.HasItems() )
+				{
+					output.UnitText = output.CreditUnitType.GetFirstItem().Name;
+				}
+				//end after one
+				break;
+			}
+			if ( input.Count > 1 )
+			{
+				//notify
+			}
+
+			return output;
+		}
+
+		#region  mapping IdProperty
+		public string MapIdentityToString( MJ.IdProperty property )
         {
             if ( property == null )
                 return "";
@@ -782,7 +829,7 @@ namespace Import.Services
                 if ( jp.AssertedBy != null )
                 {
                     //note CTDL has assertedBy as a list, but we are only taking the first one
-                    njp.AssertedByList = MapOrganizationReferenceGuids( jp.AssertedBy, ref status );
+                    njp.AssertedByList = MapOrganizationReferenceGuids( "JurisdictionProfile.AssertedBy", jp.AssertedBy, ref status );
                 }
 
                 //make sure there is data: one of description, global, or main jurisdiction
@@ -964,7 +1011,7 @@ namespace Import.Services
                 profile.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
 
                 //while the profiles is a list, we are only handling single
-                profile.ProcessingAgentUid = MapOrganizationReferencesGuid( input.ProcessingAgent, ref status );
+                profile.ProcessingAgentUid = MapOrganizationReferencesGuid( "ProcessProfile.ProcessingAgentUid", input.ProcessingAgent, ref status );
 
                 //targets
                 if ( input.TargetCredential != null && input.TargetCredential.Count > 0 )
@@ -1012,7 +1059,7 @@ namespace Import.Services
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public Guid MapOrganizationReferencesGuid( List<string> input, ref SaveStatus status )
+        public Guid MapOrganizationReferencesGuid( string property, List<string> input, ref SaveStatus status )
         {
             //not sure if isResolved is necessary
             bool isResolved = false;
@@ -1038,12 +1085,12 @@ namespace Import.Services
                 {
                     var node = GetBlankNode( target );
                     //if type present,can use
-                    return ResolveOrgBlankNodeToGuid( node, ref status, ref isResolved );
+                    return ResolveOrgBlankNodeToGuid( property, node, ref status, ref isResolved );
                 }
             }
 
             return orgRef;
-        }
+		}
 
 		/// <summary>
 		/// Map Organization references from a list of strings to a list of Guids.
@@ -1052,7 +1099,20 @@ namespace Import.Services
 		/// <param name="input"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-        public List<Guid> MapOrganizationReferenceGuids( List<string> input, ref SaveStatus status )
+		public List<Guid> MapOrganizationReferenceGuids( List<string> input, ref SaveStatus status )
+		{
+
+			return MapOrganizationReferenceGuids( "unknown", input, ref status );
+		}
+
+		/// <summary>
+		/// Map Organization references from a list of strings to a list of Guids.
+		/// The input will likely be a registry Url, or a blank node identifier. 
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+        public List<Guid> MapOrganizationReferenceGuids( string property, List<string> input, ref SaveStatus status )
         {
             //not sure if isResolved is necessary
             bool isResolved = false;
@@ -1079,8 +1139,13 @@ namespace Import.Services
                 else if ( target.StartsWith( "_:" ) )
                 {
                     var node = GetBlankNode( target );
-                    orgRef = ResolveOrgBlankNodeToGuid( node, ref status, ref isResolved );
-                }
+                    orgRef = ResolveOrgBlankNodeToGuid( property, node, ref status, ref isResolved );
+                } else
+				{
+					//unexpected
+					status.AddError( string.Format( "MapOrganizationReferenceGuids: Unhandled target  format found: {0} for property: {1}.",target, property ) );
+				}
+
                 if ( BaseFactory.IsGuidValid( orgRef ) )
                     orgRefs.Add( orgRef );
             }
@@ -1106,16 +1171,16 @@ namespace Import.Services
         /// <param name="status"></param>
         /// <param name="isResolved"></param>
         /// <returns></returns>
-        private Guid ResolveOrgBlankNodeToGuid( BNode input, ref SaveStatus status, ref bool isResolved )
+        private Guid ResolveOrgBlankNodeToGuid( string property, BNode input, ref SaveStatus status, ref bool isResolved )
         {
             Guid entityRef = new Guid();
             int start = status.Messages.Count;
             string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
             string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
             if ( string.IsNullOrWhiteSpace( name ) )
-                status.AddError( "Invalid OrganizationBase, missing name" );
+                status.AddError( "Invalid OrganizationBase, missing name for property: " + property );
             if ( string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
-                status.AddError( "Invalid OrganizationBase, missing SubjectWebpage" );
+                status.AddError( "Invalid OrganizationBase, missing SubjectWebpage for property: " + property );
             //any messages return
             if ( start < status.Messages.Count )
                 return entityRef;
@@ -1140,6 +1205,7 @@ namespace Import.Services
             };
             if ( input.Type.ToLower() == "ceterms:qacredentialorganization" )
             {
+				//we may want to add the OrgType as well. 
                 org.ISQAOrganization = true;
             }
             if ( new OrganizationManager().AddBaseReference( org, ref status ) > 0 )
@@ -1170,7 +1236,7 @@ namespace Import.Services
             int origEntityTypeId = entityTypeId;
             if ( entityTypeId == 0 )
             {
-                //don't always know the type, especially for org accrediting something.
+                //don't always know the type, especially for org accrediting/owning something.
             }
 
             //just take first one
@@ -1196,15 +1262,25 @@ namespace Import.Services
                     {
                         status.AddError( string.Format( "A Blank node was not found for bid of: {0}. ", target ));
                         continue;
-                        //return entityRefs;
-                    }
-                    if ( origEntityTypeId == 0 )
-                        entityTypeId = GetBlankNodeEntityType( node );
+						//return entityRefs;
+					}
+					bool isQAOrgType = false;
+					//OR determine a context (ie. property accredited by)
+					//NOTE: currently only called for org where is accredits etc.
+					if ( origEntityTypeId == 0 || origEntityTypeId == 2 )
+                        entityTypeId = GetBlankNodeEntityType( node, ref isQAOrgType );
                     //if type present,can use
-                    entityRef = ResolveEntityBaseToGuid( node, entityTypeId, ref status );
-                }
+                    entityRef = ResolveEntityBaseToGuid( node, entityTypeId, isQAOrgType, ref status );
+                } else
+				{
+					//???
+				}
                 if ( BaseFactory.IsGuidValid( entityRef ) )
                     entityRefs.Add( entityRef );
+				else
+				{
+
+				}
             }
 
             return entityRefs;
@@ -1221,7 +1297,7 @@ namespace Import.Services
             return entityRef;
         }
 
-        private Guid ResolveEntityBaseToGuid( BNode input, int entityTypeId, ref SaveStatus status )
+        private Guid ResolveEntityBaseToGuid( BNode input, int entityTypeId, bool isQAOrgType, ref SaveStatus status )
         {
             Guid entityRef = new Guid();
             int start = status.Messages.Count;
@@ -1452,6 +1528,8 @@ namespace Import.Services
                 entityUid = entity.RowId;
                 return entity.Id;
             }
+
+			//need type of org!!
             entity = new MC.Organization()
             {
                 Name = name,
@@ -1532,62 +1610,100 @@ namespace Import.Services
             foreach ( var input in profiles )
             {
 
-                var profile = new WPM.ConditionProfile
+                var output = new WPM.ConditionProfile
                 {
                     RowId = Guid.NewGuid()
                 };
-                profile.Name = HandleLanguageMap( input.Name, profile, "Name", true );
-                LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile Name " + ( profile.Name ?? "no name" ) );
-                profile.Description = HandleLanguageMap( input.Description, profile, "Description", true );
-                profile.SubjectWebpage = input.SubjectWebpage;
-                profile.AudienceLevelType = MapCAOListToEnumermation( input.AudienceLevelType );
-                profile.AudienceType = MapCAOListToEnumermation( input.AudienceType );
-                profile.DateEffective = MapDate( input.DateEffective, "DateEffective", ref status );
+                output.Name = HandleLanguageMap( input.Name, output, "Name", true );
+                LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile Name " + ( output.Name ?? "no name" ) );
+                output.Description = HandleLanguageMap( input.Description, output, "Description", true );
+                output.SubjectWebpage = input.SubjectWebpage;
+				output.AudienceLevelType = MapCAOListToEnumermation( input.AudienceLevelType );
+                output.AudienceType = MapCAOListToEnumermation( input.AudienceType );
+                output.DateEffective = MapDate( input.DateEffective, "DateEffective", ref status );
 
-                profile.Condition = MapToTextValueProfile( input.Condition, profile, "Condition", true );
-                profile.SubmissionOf = MapToTextValueProfile( input.SubmissionOf, profile, "SubmissionOf", true );
-        
-                //while the input is a list, we are only handling single
-                if ( input.AssertedBy != null && input.AssertedBy.Count > 0 )
+                output.Condition = MapToTextValueProfile( input.Condition, output, "Condition", true );
+				if ( input.SubmissionOf != null )
+				{
+					if ( input.SubmissionOf is List<string> )
+					{
+						output.SubmissionOf = MapToTextValueProfile( ( List<string> )input.SubmissionOf );
+
+					} else if ( input.SubmissionOf is MJ.LanguageMapList )
+					{
+						output.SubmissionOf = MapToTextValueProfile( ( MJ.LanguageMapList )input.SubmissionOf, output, "SubmissionOf", true );
+					}
+				}
+                
+
+				output.SubmissionOfDescription = HandleLanguageMap( input.SubmissionOfDescription, output, "SubmissionOfDescription", true );
+				//while the input is a list, we are only handling single
+				if ( input.AssertedBy != null && input.AssertedBy.Count > 0 )
                 {
-                    profile.AssertedByAgent = MapOrganizationReferenceGuids( input.AssertedBy, ref status );
+                    output.AssertedByAgent = MapOrganizationReferenceGuids( input.AssertedBy, ref status );
                 }
 
-                profile.Experience = input.Experience;
-                profile.MinimumAge = input.MinimumAge;
-                profile.YearsOfExperience = input.YearsOfExperience;
-                profile.Weight = input.Weight;
+                output.Experience = input.Experience;
+                output.MinimumAge = input.MinimumAge;
+                output.YearsOfExperience = input.YearsOfExperience;
+                output.Weight = input.Weight;
 
-                profile.CreditUnitTypeDescription = HandleLanguageMap( input.CreditUnitTypeDescription, profile, "CreditUnitTypeDescription", true );
-                profile.CreditUnitType = MapCAOToEnumermation( input.CreditUnitType );
-                profile.CreditUnitValue = input.CreditUnitValue;
-                profile.CreditHourType = HandleLanguageMap( input.CreditHourType, profile, "CreditHourType", true );
-                profile.CreditHourValue = input.CreditHourValue;
+				output.CreditValue = HandleQuantitiveValue( input.CreditValue, output, "ConditionProfile.CreditHourType" );
+				//
+				if ( !output.CreditValue.HasData() )
+				{
+					if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) )
+					{
+						//will not handle ranges
+						output.CreditValue = new workIT.Models.Common.QuantitativeValue
+						{
+							Value = input.CreditHourValue,
+							CreditUnitType = MapCAOToEnumermation( input.CreditUnitType ),
+							Description = HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" )
+						};
+						//what about hours?
+						//if there is hour data, can't be unit data, so assign
+						if ( input.CreditHourValue > 0 )
+						{
+							output.CreditValue.Value = input.CreditHourValue;
+							output.CreditValue.Description = HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+						}
+					}
+					else
+					{
+						//output.CreditHourType = HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+						//output.CreditHourValue = input.CreditHourValue;
 
-                if ( input.AlternativeCondition != null & input.AlternativeCondition.Count > 0 )
-                    profile.AlternativeCondition = FormatConditionProfile( input.AlternativeCondition, ref status );
+						output.CreditUnitType = MapCAOToEnumermation( input.CreditUnitType );
+						output.CreditUnitValue = input.CreditUnitValue;
+						output.CreditUnitTypeDescription = HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
+					}
+				}
+				//
+				if ( input.AlternativeCondition != null & input.AlternativeCondition.Count > 0 )
+                    output.AlternativeCondition = FormatConditionProfile( input.AlternativeCondition, ref status );
 
-                profile.EstimatedCosts = FormatCosts( input.EstimatedCost, ref status );
+                output.EstimatedCosts = FormatCosts( input.EstimatedCost, ref status );
 
                 //jurisdictions
-                profile.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
-                profile.ResidentOf = MapToJurisdiction( input.ResidentOf, ref status );
+                output.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
+                output.ResidentOf = MapToJurisdiction( input.ResidentOf, ref status );
 
                 //targets
                 if ( input.TargetCredential != null && input.TargetCredential.Count > 0 )
-                    profile.TargetCredentialIds = MapEntityReferences( input.TargetCredential, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
+                    output.TargetCredentialIds = MapEntityReferences( input.TargetCredential, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
                 if ( input.TargetAssessment != null && input.TargetAssessment.Count > 0 )
-                    profile.TargetAssessmentIds = MapEntityReferences( input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
+                    output.TargetAssessmentIds = MapEntityReferences( input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
                 if ( input.TargetLearningOpportunity != null && input.TargetLearningOpportunity.Count > 0 )
                 {
                     LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile. Has learning opportunities: " + input.TargetLearningOpportunity.Count.ToString() );
-                    profile.TargetLearningOpportunityIds = MapEntityReferences( input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
+                    output.TargetLearningOpportunityIds = MapEntityReferences( input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
-                    LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile. Has learning opportunities. Mapped to list: " + profile.TargetLearningOpportunityIds.Count.ToString() );
+                    LoggingHelper.DoTrace( 6, "MappingHelper.FormatConditionProfile. Has learning opportunities. Mapped to list: " + output.TargetLearningOpportunityIds.Count.ToString() );
                 }
 
-                profile.TargetCompetencies = MapCAOListToCAOProfileList( input.TargetCompetency );
-                list.Add( profile );
+                output.TargetCompetencies = MapCAOListToCAOProfileList( input.TargetCompetency );
+                list.Add( output );
             }
 
             return list;
@@ -1674,39 +1790,58 @@ namespace Import.Services
         #endregion
 
         #region  FinancialAlignmentObject
-        public List<MC.FinancialAlignmentObject> FormatFinancialAssistance( List<MJ.FinancialAlignmentObject> input, ref SaveStatus status )
-        {
-            if ( input == null || input.Count == 0 )
-                return null;
+        //public List<MC.FinancialAlignmentObject> FormatFinancialAssistance( List<MJ.FinancialAlignmentObject> input, ref SaveStatus status )
+        //{
+        //    if ( input == null || input.Count == 0 )
+        //        return null;
 
-            var list = new List<MC.FinancialAlignmentObject>();
-            foreach ( var item in input )
-            {
-                var profile = new MC.FinancialAlignmentObject
-                {
-                    RowId = Guid.NewGuid(),
-                    AlignmentType = item.AlignmentType,
-                    Framework = item.Framework ?? "",
-                    TargetNode = item.TargetNode ?? "",
-                    Weight = item.Weight
-                };
+        //    var list = new List<MC.FinancialAlignmentObject>();
+        //    foreach ( var item in input )
+        //    {
+        //        var profile = new MC.FinancialAlignmentObject
+        //        {
+        //            RowId = Guid.NewGuid(),
+        //            AlignmentType = item.AlignmentType,
+        //            Framework = item.Framework ?? "",
+        //            TargetNode = item.TargetNode ?? "",
+        //            Weight = item.Weight
+        //        };
 
-                profile.FrameworkName = HandleLanguageMap( item.FrameworkName, profile, "FrameworkName", true );
-                profile.TargetNodeDescription = HandleLanguageMap( item.TargetNodeDescription, profile, "TargetNodeDescription", true );
-                profile.TargetNodeName = HandleLanguageMap( item.TargetNodeName, profile, "TargetNodeName", true );
+        //        profile.FrameworkName = HandleLanguageMap( item.FrameworkName, profile, "FrameworkName", true );
+        //        profile.TargetNodeDescription = HandleLanguageMap( item.TargetNodeDescription, profile, "TargetNodeDescription", true );
+        //        profile.TargetNodeName = HandleLanguageMap( item.TargetNodeName, profile, "TargetNodeName", true );
 
-                profile.AlignmentDate = MapDate( item.AlignmentDate, "AlignmentDate", ref status );
-                profile.CodedNotation = item.CodedNotation;
-                list.Add( profile );
-            }
+        //        profile.AlignmentDate = MapDate( item.AlignmentDate, "AlignmentDate", ref status );
+        //        profile.CodedNotation = item.CodedNotation;
+        //        list.Add( profile );
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
+		public List<MC.FinancialAssistanceProfile> FormatFinancialAssistance( List<MJ.FinancialAssistanceProfile> input, ref SaveStatus status )
+		{
+			if ( input == null || input.Count == 0 )
+				return null;
 
-        #endregion
+			var list = new List<MC.FinancialAssistanceProfile>();
+			foreach ( var item in input )
+			{
+				var profile = new MC.FinancialAssistanceProfile();
 
-        #region  DurationProfile
-        public List<WPM.DurationProfile> FormatDuration( List<MJ.DurationProfile> input, ref SaveStatus status )
+				profile.Name = HandleLanguageMap( item.Name, profile, "Name", true );
+				profile.Description = HandleLanguageMap( item.Description, profile, "TargetNodeDescription", true );
+				profile.SubjectWebpage = item.SubjectWebpage;
+				profile.FinancialAssistanceType = MapCAOListToEnumermation( item.FinancialAssistanceType );
+
+				list.Add( profile );
+			}
+
+			return list;
+		}
+		#endregion
+
+		#region  DurationProfile
+		public List<WPM.DurationProfile> FormatDuration( List<MJ.DurationProfile> input, ref SaveStatus status )
         {
             if ( input == null || input.Count == 0 )
                 return null;
@@ -1811,7 +1946,7 @@ namespace Import.Services
 
                 //VerificationService is hidden in the publisher!
                 profile.VerificationServiceUrl = MapListToString( input.VerificationService );
-                profile.OfferedByAgentUid = MapOrganizationReferencesGuid( input.OfferedBy, ref status );
+                profile.OfferedByAgentUid = MapOrganizationReferencesGuid( "VerificationServiceProfile.OfferedByAgentUid", input.OfferedBy, ref status );
                 if ( input.TargetCredential != null && input.TargetCredential.Count > 0 )
                     profile.TargetCredentialIds = MapEntityReferences( input.TargetCredential, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
                 profile.VerificationDirectory = MapListToString( input.VerificationDirectory );

@@ -29,5 +29,7 @@ namespace workIT.Data.Views
         public string AgentDescription { get; set; }
         public string AgentUrl { get; set; }
         public string AgentImageUrl { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
+        public string AgentContextRoles { get; set; }
     }
 }

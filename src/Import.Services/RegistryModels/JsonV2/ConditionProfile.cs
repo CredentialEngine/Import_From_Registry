@@ -62,8 +62,14 @@ namespace RA.Models.JsonV2
         public LanguageMapList Condition { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:submissionOf" )]
-        public LanguageMapList SubmissionOf { get; set; }
+        //public List<string> SubmissionOf { get; set; }
+		public object SubmissionOf { get; set; }
 
+		[JsonIgnore]
+		public LanguageMapList SubmissionOfOld { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:submissionOfDescription" )]
+		public LanguageMap SubmissionOfDescription { get; set; }
 		/// <summary>
 		/// Organization that asserts this condition
 		/// NOTE: It must be serialized to a List
@@ -82,8 +88,11 @@ namespace RA.Models.JsonV2
 
         [JsonProperty( PropertyName = "ceterms:weight" )]
         public decimal Weight { get; set; }
-
-        [JsonProperty( PropertyName = "ceterms:creditHourType" )]
+		//
+		[JsonProperty( PropertyName = "ceterms:creditValue" )]
+		public List<QuantitativeValue> CreditValue { get; set; } = null;
+		//
+		[JsonProperty( PropertyName = "ceterms:creditHourType" )]
         public LanguageMap CreditHourType { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:creditHourValue" )]

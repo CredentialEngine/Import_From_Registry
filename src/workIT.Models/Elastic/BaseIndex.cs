@@ -35,7 +35,8 @@ namespace workIT.Models.Elastic
 		public string PrimaryOrganizationCTID { get; set; }
 		public List<int> AgentRelationships { get; set; } = new List<int>();
 		public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
-
+		public List<string> SubjectAreas { get; set; } = new List<string>();
 		public List<string> TextValues { get; set; } = new List<string>();
+
 	}
 }

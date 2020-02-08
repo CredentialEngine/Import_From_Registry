@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace RA.Models.JsonV2
 {
     /// <summary>
-    /// Common input class for all verification profiles
+    /// Common input class for Financial Assistance data
     /// </summary>
     public class FinancialAlignmentObject
     {

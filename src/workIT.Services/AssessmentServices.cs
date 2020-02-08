@@ -81,7 +81,7 @@ namespace workIT.Services
         //		}
         //		return codes;
         //}
-        public static List<string> Autocomplete( string keyword, int maxTerms = 25)
+        public static List<object> Autocomplete( string keyword, int maxTerms = 25)
         {
 
             string where = "";
@@ -171,7 +171,7 @@ namespace workIT.Services
                 keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.Organization like '{0}' OR base.Description like '{0}'   ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.Organization like '{0}'  ) ";
 
             bool isCustomSearch = false;
             //for ctid, needs a valid ctid or guid
@@ -430,7 +430,7 @@ namespace workIT.Services
 					{
 						LoggingHelper.DoTrace( 6, string.Format( "==={0}.GetDetail ****** Inserting new cached version of Asmt, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
 
-						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
 					}
 				}
 			}

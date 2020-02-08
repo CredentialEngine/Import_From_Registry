@@ -296,6 +296,11 @@ namespace Import.Services
             output.AgentPurposeDescription = input.AgentPurposeDescription;
 
             output.FoundingDate = input.FoundingDate;
+			if ((output.FoundingDate ?? "").Length > 20 )
+			{
+				status.AddError( "Organization Founding Date error - exceeds 20 characters: " + output.FoundingDate );
+				output.FoundingDate = output.FoundingDate.Substring( 0, 10 );
+			}
             output.AvailabilityListing = MappingHelper.MapListToString( input.AvailabilityListing );
             //future prep
             output.AvailabilityListings = input.AvailabilityListing;
@@ -432,8 +437,8 @@ namespace Import.Services
                         ctid, CodesManager.ENTITY_TYPE_ORGANIZATION,
                         output.RowId,
                         output.Id,
-                        false,
-                        ref messages,
+						( output.Id > 0 ),
+						ref messages,
                         output.Id > 0 );
 
             return importSuccessfull;
@@ -518,9 +523,10 @@ namespace Import.Services
             output.AvailabilityListings = input.AvailabilityListing;
 
             output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
-            output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
+            //output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
+			output.MissionAndGoalsStatementDescription = helper.HandleLanguageMap( input.MissionAndGoalsStatementDescription, output, "MissionAndGoalsStatementDescription" );
 
-            output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
+			output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
 			if ( UtilityManager.GetAppKeyValue( "skipOppImportIfNoShortRegions", false ) )
 			{
 				if ( output.Addresses.Count == 0 )
@@ -575,8 +581,14 @@ namespace Import.Services
                 output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
             if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
                 output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
-            //alternativeidentifier - should just be added to IdentificationCodes
-            output.AlternativeIdentifier = helper.MapIdentifierValueListToString( input.AlternativeIdentifier );
+			//
+			if ( !string.IsNullOrWhiteSpace( input.NcesID ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ncesID", TextValue = input.NcesID } );
+			//
+			if ( !string.IsNullOrWhiteSpace( input.ISICV4 ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:isicV4", TextValue = input.ISICV4 } );
+			//alternativeidentifier - should just be added to IdentificationCodes
+			output.AlternativeIdentifier = helper.MapIdentifierValueListToString( input.AlternativeIdentifier );
             output.AlternativeIdentifierList = helper.MapIdentifierValueList( input.AlternativeIdentifier );
 
             //email
@@ -594,7 +606,7 @@ namespace Import.Services
 
             //departments
             //not sure - MP - want to change how depts, and subs are handled
-            //output.ParentOrganization = helper.MapOrganizationReferenceGuids( input.ParentOrganization, ref status );
+            output.ParentOrganization = helper.MapOrganizationReferenceGuids( input.ParentOrganization, ref status );
             output.Departments = helper.MapOrganizationReferenceGuids( input.Department, ref status );
             output.SubOrganizations = helper.MapOrganizationReferenceGuids( input.SubOrganization, ref status );
 
@@ -610,12 +622,12 @@ namespace Import.Services
             output.AppealProcess = helper.FormatProcessProfile( input.AppealProcess, ref status );
 
             //BYs
-            output.AccreditedBy = helper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
-            output.ApprovedBy = helper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
-            output.RecognizedBy = helper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
-            output.RegulatedBy = helper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
-            //INs
-            output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
+			output.AccreditedBy = helper.MapOrganizationReferenceGuids( "Organization.AccreditedBy", input.AccreditedBy, ref status );
+			output.ApprovedBy = helper.MapOrganizationReferenceGuids( "Organization.ApprovedBy", input.ApprovedBy, ref status );
+			output.RecognizedBy = helper.MapOrganizationReferenceGuids( "Organization.RecognizedBy", input.RecognizedBy, ref status );
+			output.RegulatedBy = helper.MapOrganizationReferenceGuids( "Organization.RegulatedBy", input.RegulatedBy, ref status );
+			//INs
+			output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
             output.ApprovedIn = helper.MapToJurisdiction( input.ApprovedIn, ref status );
             output.RecognizedIn = helper.MapToJurisdiction( input.RecognizedIn, ref status );
             output.RegulatedIn = helper.MapToJurisdiction( input.RegulatedIn, ref status );

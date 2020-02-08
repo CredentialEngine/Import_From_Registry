@@ -292,7 +292,7 @@ namespace Import.Services
             output.CredentialRegistryId = envelopeIdentifier;
             output.SubjectWebpage = input.SubjectWebpage;
 
-            output.OwningAgentUid = helper.MapOrganizationReferencesGuid( input.ConditionManifestOf, ref status );
+            output.OwningAgentUid = helper.MapOrganizationReferencesGuid( "ConditionManifest.OwningAgentUid", input.ConditionManifestOf, ref status );
 
             output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
             output.Recommends = helper.FormatConditionProfile( input.Recommends, ref status );

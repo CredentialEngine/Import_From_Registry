@@ -40,9 +40,10 @@ DECLARE @StartPageIndex int, @PageSize int, @TotalRows int,@CurrentUserId	int
 set @CurrentUserId = 0
 set @SortOrder = ''
 
--- blind search 
-
-set @Filter = ''
+set @Filter = ' Activity <> ''Session'' '
+set @Filter = ' event = ''View'' '
+set @Filter = ' Activity = ''Import'' '
+--set @Filter = ''	-- blind search 
 set @StartPageIndex = 1
 set @PageSize = 55
 --set statistics time on       
@@ -72,7 +73,7 @@ Modifications
 
 */
 
-CREATE PROCEDURE [dbo].[Activity_Search]
+Alter PROCEDURE [dbo].[Activity_Search]
 		@Filter           varchar(5000)
 		,@SortOrder       varchar(100)
 		,@StartPageIndex  int
@@ -174,7 +175,9 @@ SELECT
       ,base.[IPAddress]
       ,base.[Referrer]
       ,base.[IsBot]
-
+	  ,base.EntityTypeId
+	 ,IsNull(base.OwningOrgId,0) As OwningOrgId
+	  ,IsNull(base.Organization,'') As Organization
 From #tempWorkTable work
 	Inner join Activity_Summary base on work.Id = base.Id
 

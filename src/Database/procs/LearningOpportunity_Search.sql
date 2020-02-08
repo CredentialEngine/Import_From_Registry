@@ -105,8 +105,8 @@ if @SortOrder = 'relevance' set @SortOrder = 'base.Name '
 else if @SortOrder = 'alpha' set @SortOrder = 'base.Name '
 else if @SortOrder = 'org_alpha' set @SortOrder = 'base.Organization, base.Name '
 else if @SortOrder = 'newest' set @SortOrder = 'base.lastUpdated Desc '
-else if @SortOrder = 'cost_highest' set @SortOrder = 'costs.TotalCost DESC'
-else if @SortOrder = 'cost_lowest' set @SortOrder = 'costs.TotalCost'
+--else if @SortOrder = 'cost_highest' set @SortOrder = 'costs.TotalCost DESC'
+--else if @SortOrder = 'cost_lowest' set @SortOrder = 'costs.TotalCost'
 else set @SortOrder = 'base.Name '
 
 if len(@SortOrder) > 0 
@@ -139,13 +139,7 @@ CREATE TABLE #tempWorkTable(
 
   print '@Filter len: '  +  convert(varchar,len(@Filter))
   set @SQL = 'SELECT  base.Id, base.Name , base.Organization  
-        from [LearningOpportunity_Summary] base 
-				--left join Entity_CostProfileTotal costs on base.RowId = costs.ParentEntityUid   
-				--not ideal, but doing a total
-					left join (
-					Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
-					) costs	on base.RowId = costs.ParentEntityUid 
-				'
+        from [LearningOpportunity_Summary] base 	'
         + @Filter
         
   if charindex( 'order by', lower(@Filter) ) = 0
@@ -201,7 +195,7 @@ SELECT
 	,base.LastUpdated 
 	,base.RowId
 
-	,isnull(costs.totalCost,0) As TotalCost
+	--,isnull(costs.totalCost,0) As TotalCost
 	--,base.RowId as EntityUid
 	,ea.Nbr as AvailableAddresses
 	
@@ -231,9 +225,9 @@ From #tempWorkTable work
 
 	--left join Entity_CostProfileTotal costs on base.RowId = costs.ParentEntityUid
 	--not ideal, but doing a total
-	left join (
-	Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
-	) costs	on base.RowId = costs.ParentEntityUid 
+	--left join (
+	--Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
+	--) costs	on base.RowId = costs.ParentEntityUid 
 
 WHERE RowNumber > @first_id
 order by RowNumber 

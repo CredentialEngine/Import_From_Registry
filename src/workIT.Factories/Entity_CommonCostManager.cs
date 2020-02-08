@@ -140,45 +140,45 @@ namespace workIT.Factories
 			//get all commonCosts, with parent CM
 			return isOK;
 		}
-		public bool Delete( Guid parentUid, int profileId, ref string statusMessage )
-		{
-			bool isValid = false;
-			if ( profileId == 0 )
-			{
-				statusMessage = "Error - missing an identifier for the Assessment to remove";
-				return false;
-			}
-			//need to get Entity.Id 
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				statusMessage = "Error - the parent entity was not found.";
-				return false;
-			}
+		//public bool Delete( Guid parentUid, int profileId, ref string statusMessage )
+		//{
+		//	bool isValid = false;
+		//	if ( profileId == 0 )
+		//	{
+		//		statusMessage = "Error - missing an identifier for the Assessment to remove";
+		//		return false;
+		//	}
+		//	//need to get Entity.Id 
+		//	Entity parent = EntityManager.GetEntity( parentUid );
+		//	if ( parent == null || parent.Id == 0 )
+		//	{
+		//		statusMessage = "Error - the parent entity was not found.";
+		//		return false;
+		//	}
 
-			using ( var context = new EntityContext() )
-			{
-				DBEntity efEntity = context.Entity_CommonCost
-								.SingleOrDefault( s => s.EntityId == parent.Id && s.CostManifestId == profileId );
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		DBEntity efEntity = context.Entity_CommonCost
+		//						.SingleOrDefault( s => s.EntityId == parent.Id && s.CostManifestId == profileId );
 
-				if ( efEntity != null && efEntity.Id > 0 )
-				{
-					context.Entity_CommonCost.Remove( efEntity );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						isValid = true;
-					}
-				}
-				else
-				{
-					statusMessage = "Warning - the record was not found - probably because the target had been previously deleted";
-					isValid = true;
-				}
-			}
+		//		if ( efEntity != null && efEntity.Id > 0 )
+		//		{
+		//			context.Entity_CommonCost.Remove( efEntity );
+		//			int count = context.SaveChanges();
+		//			if ( count > 0 )
+		//			{
+		//				isValid = true;
+		//			}
+		//		}
+		//		else
+		//		{
+		//			statusMessage = "Warning - the record was not found - probably because the target had been previously deleted";
+		//			isValid = true;
+		//		}
+		//	}
 
-			return isValid;
-		}
+		//	return isValid;
+		//}
         public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;

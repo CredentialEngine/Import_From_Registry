@@ -25,5 +25,6 @@ namespace workIT.Data.Tables
     
         public virtual Codes_AssertionType Codes_AssertionType { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual Codes_CredentialAgentRelationship Codes_CredentialAgentRelationship { get; set; }
     }
 }

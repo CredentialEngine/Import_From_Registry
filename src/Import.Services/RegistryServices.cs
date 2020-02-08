@@ -14,16 +14,220 @@ namespace Import.Services
 {
     public class RegistryServices
     {
-        /// <summary>
-        /// Retrieve an envelop from the registry and do import
-        /// </summary>
-        /// <param name="envelopeId"></param>
-        /// <param name="status"></param>
-        /// <returns></returns>
-        public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
+		public static string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "CredentialEngineAPIKey" );
+
+		public RegistryServices()
+		{
+			//Community
+		}
+		public string Community { get; set; }
+
+		#region Registry search
+		public static List<ReadEnvelope> Search( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community )
+		{
+
+			string document = "";
+			string filter = "";
+			//includes the question mark
+			string serviceUri = GetRegistrySearchUrl( community );
+			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
+			//resource_type=credential
+			if ( !string.IsNullOrWhiteSpace( type ) )
+				filter = string.Format( "resource_type={0}", type.ToLower() );
+
+			SetPaging( pageNbr, pageSize, ref filter );
+			SetDateFilters( startingDate, endingDate, ref filter );
+
+			serviceUri += filter.Length > 0 ? filter : "";
+			//future proof
+			
+			List<ReadEnvelope> list = new List<ReadEnvelope>();
+			try
+			{
+				WebRequest request = WebRequest.Create( serviceUri );
+
+				// If required by the server, set the credentials.
+				request.Credentials = CredentialCache.DefaultCredentials;
+
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
+
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+				Stream dataStream = response.GetResponseStream();
+
+				// Open the stream using a StreamReader for easy access.
+				StreamReader reader = new StreamReader( dataStream );
+				// Read the content.
+				document = reader.ReadToEnd();
+
+				// Cleanup the streams and the response.
+				reader.Close();
+				dataStream.Close();
+				response.Close();
+
+				//Link contains links for paging
+				var hdr2 = response.GetResponseHeader( "Link" );
+				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
+
+				//map to the list
+				list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
+
+			}
+			catch ( Exception exc )
+			{
+				LoggingHelper.LogError( exc, "RegistryServices.Search" );
+			}
+			return list;
+		}
+		public static string GetRegistrySearchUrl( string community = "" )
+		{
+			if ( string.IsNullOrWhiteSpace( community ) )
+			{
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			}
+			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+			serviceUri = string.Format( serviceUri, community );
+			return serviceUri;
+		}
+		public static string GetEnvelopeUrl(string envelopeId, string community = "")
+		{
+			if ( string.IsNullOrWhiteSpace( community ) )
+			{
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			}
+			string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
+
+			string registryEnvelopeUrl = string.Format( serviceUri, community, envelopeId );
+			return registryEnvelopeUrl;
+		}
+		public static string GetResourceUrl(string ctid, string community = "")
+		{
+			if ( string.IsNullOrWhiteSpace( community ) )
+			{
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			}
+			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
+
+			string registryUrl = string.Format( serviceUri, community, ctid );
+			//not sure about this anymore
+            //actually dependent on the purpose. If doing an import, then need graph
+			if ( UtilityManager.GetAppKeyValue( "usingGraphDocuments", true ) )
+			{
+                registryUrl = registryUrl.Replace( "/resources/", "/graph/" );
+			}
+			return registryUrl;
+		}
+		//public static string GetRegistryEnvelopeUrl(string community)
+		//{
+		//	//the app key should be changed to be more meaningful!!
+		//	string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
+		//	serviceUri = string.Format( serviceUri, community );
+		//	return serviceUri;
+		//}
+		public static string GetRegistryUrl(string appKey, string community)
+		{
+			//requires all urls to have a parameter?
+			//or, check if the default community exists
+			//also have to handle an absence community
+			string serviceUri = UtilityManager.GetAppKeyValue( appKey );
+			serviceUri = string.Format( serviceUri, community );
+			return serviceUri;
+		}
+
+		private static void SetPaging( int pageNbr, int pageSize, ref string where )
+		{
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = "&";
+
+			if ( pageNbr > 0 )
+			{
+				where = where + AND + string.Format( "page={0}", pageNbr );
+				AND = "&";
+			}
+			if ( pageSize > 0 )
+			{
+				where = where + AND + string.Format( "per_page={0}", pageSize );
+				AND = "&";
+			}
+		}
+		private static void SetSortOrder( ref string where )
+		{
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = "&";
+			where = where + AND + "sort_by=updated_at&sort_order=asc";
+		}
+
+		private static void SetDateFilters( string startingDate, string endingDate, ref string where )
+		{
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = "&";
+
+			string date = FormatDateFilter( startingDate );
+			if ( !string.IsNullOrWhiteSpace( date ) )
+			{
+				where = where + AND + string.Format( "from={0}", startingDate );
+				AND = "&";
+			}
+
+			date = FormatDateFilter( endingDate );
+			if ( !string.IsNullOrWhiteSpace( date ) )
+			{
+				where = where + AND + string.Format( "until={0}", endingDate );
+				AND = "&";
+			}
+			//if ( !string.IsNullOrWhiteSpace( endingDate ) && endingDate.Length == 10 )
+			//{
+			//	where = where + AND + string.Format( "until={0}T23:59:59", endingDate );
+			//}
+		}
+		private static string FormatDateFilter( string date )
+		{
+			string formatedDate = "";
+			if ( string.IsNullOrWhiteSpace( date ) )
+				return "";
+
+			//start by checking for just properly formatted date
+			if ( !string.IsNullOrWhiteSpace( date ) && date.Length == 10 )
+			{
+				formatedDate = string.Format( "{0}T00:00:00", date );
+			}
+			else if ( !string.IsNullOrWhiteSpace( date ) )
+			{
+				//check if in proper format - perhaps with time provided
+				if ( date.IndexOf( "T" ) > 8 )
+				{
+					formatedDate = string.Format( "{0}", date );
+				}
+				else
+				{
+					//not sure how to handle unexpected date except to ignore
+					//might be better to send actual DateTime field
+				}
+			}
+
+			return formatedDate;
+		}
+		#endregion
+
+		#region Registry Gets
+
+
+		/// <summary>
+		/// Retrieve an envelop from the registry and do import
+		/// </summary>
+		/// <param name="envelopeId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
         {
             //this is currently specific, assumes envelop contains a credential
-            //can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
+            //can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 
             if ( string.IsNullOrWhiteSpace( envelopeId ) )
             {
@@ -36,7 +240,15 @@ namespace Import.Services
             try
             {
                 ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
-                if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				if ( envelope == null || string.IsNullOrWhiteSpace(envelope.EnvelopeType))
+				{
+					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
+					if (defCommunity != community)
+						envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType, community );
+				}
+
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
                 {
                     LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByEnvelopeId ctdlType: {0}, EnvelopeId: {1} ", ctdlType, envelopeId ) );
                     ctdlType = ctdlType.Replace( "ceterms:", "" );
@@ -98,7 +310,14 @@ namespace Import.Services
             try
             {
                 payload = GetResourceByCtid( ctid, ref ctdlType, ref statusMessage );
-                if ( !string.IsNullOrWhiteSpace( payload ) )
+				if (string.IsNullOrWhiteSpace(payload))
+				{
+					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
+					if ( defCommunity != community )
+						payload = GetResourceByCtid( ctid, ref ctdlType, ref statusMessage, community );
+				}
+				if ( !string.IsNullOrWhiteSpace( payload ) )
                 {
                     LoggingHelper.WriteLogFile( 5, ctid + "_ImportByCtid.json", payload, "", false );
                     LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, ctid: {1} ", ctdlType, ctid ) );
@@ -151,12 +370,15 @@ namespace Import.Services
         /// <param name="statusMessage"></param>
         /// <param name="ctdlType"></param>
         /// <returns></returns>
-        public static ReadEnvelope GetEnvelope( string envelopeId, ref string statusMessage, ref string ctdlType )
+        public static ReadEnvelope GetEnvelope( string envelopeId, ref string statusMessage, ref string ctdlType, string community = "" )
         {
             string document = "";
-            string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryGet" );
+			//need to pass in an override community - eventually
+			if (string.IsNullOrWhiteSpace( community ) )
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			string serviceUri = GetEnvelopeUrl( envelopeId, community );
 
-            serviceUri = string.Format( serviceUri, envelopeId );
+			serviceUri = string.Format( serviceUri, envelopeId );
             LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeId: {0}, serviceUri: {1} ", envelopeId, serviceUri ) );
             ReadEnvelope envelope = new ReadEnvelope();
 
@@ -165,12 +387,16 @@ namespace Import.Services
 
                 // Create a request for the URL.         
                 WebRequest request = WebRequest.Create( serviceUri );
-
                 // If required by the server, set the credentials.
                 request.Credentials = CredentialCache.DefaultCredentials;
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
 
-                //Get the response.
-                HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+				//Get the response.
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 
                 // Get the stream containing content returned by the server.
                 Stream dataStream = response.GetResponseStream();
@@ -212,12 +438,20 @@ namespace Import.Services
         /// <param name="statusMessage"></param>
         /// <param name="ctdlType"></param>
         /// <returns></returns>
-        public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType )
+        public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType, string community = "")
         {
             string document = "";
+			//perhaps this should be done in the caller. It could check the default or previous import source
+			if ( string.IsNullOrWhiteSpace( community ) )
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			string additionalCommunity = UtilityManager.GetAppKeyValue( "additionalCommunity" );
 
-            string searchUrl = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
-            searchUrl = searchUrl + "ctid=" + ctid;
+			string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "CredentialEngineAPIKey" );
+			//
+
+			string searchUrl = GetRegistrySearchUrl( community );
+			searchUrl = searchUrl + "ctid=" + ctid.ToLower();
+
             LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.ImportByCtid ctid: {0}, searchUrl: {1} ", ctid, searchUrl ) );
             ReadEnvelope envelope = new ReadEnvelope();
             List<ReadEnvelope> list = new List<ReadEnvelope>();
@@ -227,7 +461,14 @@ namespace Import.Services
                 // Create a request for the URL.         
                 WebRequest request = WebRequest.Create( searchUrl );
                 request.Credentials = CredentialCache.DefaultCredentials;
-                HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
+
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
                 Stream dataStream = response.GetResponseStream();
 
                 // Open the stream using a StreamReader for easy access.
@@ -262,11 +503,7 @@ namespace Import.Services
             }
             return envelope;
         }
-        public static string GetEnvelopeUrl( string envelopeId )
-        {
-            string registryEnvelopeUrl = string.Format( UtilityManager.GetAppKeyValue( "credentialRegistryGet", "https://credentialengineregistry.org/ce-registry/envelopes/{0}" ), envelopeId );
-            return registryEnvelopeUrl;
-        }
+
 
         /// <summary>
         /// Retrieve a resource from the registry by ctid
@@ -274,17 +511,9 @@ namespace Import.Services
         /// <param name="ctid"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public static string GetResourceByCtid( string ctid, ref string ctdlType, ref string statusMessage )
+        public static string GetResourceByCtid( string ctid, ref string ctdlType, ref string statusMessage, string community = "")
         {
-            string resourceIdUrl = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
-            if ( UtilityManager.GetAppKeyValue( "usingGraphDocuments", true ) )
-            {
-                resourceIdUrl = resourceIdUrl.Replace( "/resources/", "/graph/" );
-                //or
-                //resourceIdUrl = UtilityManager.GetAppKeyValue( "credRegistryGraphUrl" );
-            }
-            //
-            resourceIdUrl = string.Format( resourceIdUrl, ctid );
+            string resourceIdUrl = GetResourceUrl( ctid, community );
             return GetResourceByUrl( resourceIdUrl, ref ctdlType, ref statusMessage );
         }
 
@@ -305,9 +534,14 @@ namespace Import.Services
 
                 // If required by the server, set the credentials.
                 request.Credentials = CredentialCache.DefaultCredentials;
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
 
-                //Get the response.
-                HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+				//Get the response.
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 
                 // Get the stream containing content returned by the server.
                 Stream dataStream = response.GetResponseStream();
@@ -392,46 +626,6 @@ namespace Import.Services
             ctdlType = ro.CtdlType;
             //ctdlType = ctdlType.Replace( "ceterms:", "" );
             return ctdlType;
-
-            //string template = "@type";
-            //string template2 = "ceterms:";
-            //string template3 = "ceasn:";
-
-            ////get first @type, then ceterms
-            //int startPos = payload.IndexOf( template );
-            //if ( startPos > 0 )
-            //{
-            //    int begin = startPos + template.Length;
-            //    if ( payload.IndexOf( template3, begin ) > -1 )
-            //    {
-            //        int template2Position = payload.IndexOf( template3, begin );
-            //        if ( template2Position > begin )
-            //        {
-            //            //now get type
-            //            int endPos = payload.IndexOf( "\"", template2Position );
-            //            if ( endPos > template2Position )
-            //            {
-            //                type = payload.Substring( template2Position + template3.Length, endPos - ( template2Position + template3.Length ) );
-            //            }
-            //        }
-            //    }
-            //    else
-            //    {
-            //        int template2Position = payload.IndexOf( template2, begin );
-            //        if ( template2Position > begin )
-            //        {
-            //            //now get type
-            //            int endPos = payload.IndexOf( "\"", template2Position );
-            //            if ( endPos > template2Position )
-            //            {
-            //                type = payload.Substring( template2Position + template2.Length, endPos - ( template2Position + template2.Length ) );
-            //            }
-            //        }
-            //    }
-            //}
-
-            //return ctdlType;
-
         }
 
         public string ImportPending()
@@ -486,11 +680,11 @@ namespace Import.Services
                 }
             }
         }
+		#endregion
+	}
 
-    }
 
-
-    public class RegistryObject
+	public class RegistryObject
     {
         public RegistryObject( string payload )
         {
@@ -516,8 +710,9 @@ namespace Import.Services
 						Name = BaseObject.Name.ToString();
 					else if ( CtdlType == "ceasn:CompetencyFramework" )
 					{
-						Name = (BaseObject.CompetencyFrameworkName ?? "").ToString();
-					} else
+						Name = ( BaseObject.CompetencyFrameworkName ?? "" ).ToString();
+					}
+					else
 						Name = "?????";
 				}
                 else

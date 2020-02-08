@@ -48,5 +48,6 @@ namespace workIT.Data.Views
         public int EntityStateId { get; set; }
         public Nullable<int> SourceEntityStateId { get; set; }
         public string SourceOwningOrganizationName { get; set; }
+        public Nullable<int> SourceOwningOrganizationId { get; set; }
     }
 }

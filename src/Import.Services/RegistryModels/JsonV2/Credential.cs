@@ -4,39 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using RA.Models.Json;
+
 
 namespace RA.Models.JsonV2
 {
-    //public class CredentialGraph
-    //{
-    //    [JsonIgnore]
-    //    public static string classType = "ceterms:Credential";
-    //    public CredentialGraph()
-    //    {
-    //        Type = classType;
-    //        Context = "http://credreg.net/ctdlasn/schema/context/json";
-    //    }
-    //    [JsonProperty("@context")]
-    //    public string Context { get; set; }
 
-
-    //    [JsonProperty("@id")]
-    //    public string CtdlId { get; set; }
-
-    //    /// <summary>
-    //    /// Main graph object
-    //    /// </summary>
-    //    [JsonProperty( "@graph" )]
-    //    public List<object> Graph { get; set; } = new List<object>();
-        
-    //    [JsonProperty("@type")]
-    //    public string Type { get; set; }
-
-    //    [JsonProperty("ceterms:ctid")]
-    //    public string CTID { get; set; }
-
-    //}
     public class Credential : JsonLDDocument
     {
 		[JsonIgnore]
@@ -47,7 +19,7 @@ namespace RA.Models.JsonV2
             SubjectWebpage = null;
 			HasPart = null;
 			IsPartOf = null;
-			AudienceLevel = new List<CredentialAlignmentObject>();
+			AudienceLevelType = new List<CredentialAlignmentObject>();
             AudienceType = new List<CredentialAlignmentObject>();
             AvailableOnlineAt = new List<string>();
             AvailabilityListing = new List<string>();
@@ -89,7 +61,7 @@ namespace RA.Models.JsonV2
 			ReviewProcess = new List<ProcessProfile>();
 			RevocationProcess = new List<ProcessProfile>();
 			
-			FinancialAssistance = new List<FinancialAlignmentObject>();
+			//FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
             CredentialStatusType = new CredentialAlignmentObject();
             AdvancedStandingFrom = new List<ConditionProfile>();
             IsAdvancedStandingFor = new List<ConditionProfile>();
@@ -134,6 +106,11 @@ namespace RA.Models.JsonV2
 
         [JsonProperty( PropertyName = "ceterms:image" )]
         public string Image { get; set; } //Image URL
+		/// <summary>
+		/// ISIC Revision 4 Code
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:isicV4" )]
+		public string IsicV4 { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
         public string SubjectWebpage { get; set; }
@@ -178,7 +155,16 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:previousVersion" )]
         public string PreviousVersion { get; set; } //URL
 
-        [JsonProperty( PropertyName = "ceterms:subject" )]
+		[JsonProperty( PropertyName = "ceterms:nextVersion" )]
+		public string NextVersion { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:supersededBy" )]
+		public string SupersededBy { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:supersedes" )]
+		public string Supersedes { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:subject" )]
         public List<CredentialAlignmentObject> Subject { get; set; }
 
 		//frameworks
@@ -214,7 +200,7 @@ namespace RA.Models.JsonV2
         public List<string> CopyrightHolder { get; set; } = null;
 		
 		[JsonProperty( PropertyName = "ceterms:audienceLevelType" )]
-        public List<CredentialAlignmentObject> AudienceLevel { get; set; }
+        public List<CredentialAlignmentObject> AudienceLevelType { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:audienceType" )]
         public List<CredentialAlignmentObject> AudienceType { get; set; }
@@ -246,8 +232,18 @@ namespace RA.Models.JsonV2
         public List<DurationProfile> EstimatedDuration { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:renewalFrequency" )]
-		public string RenewalFrequency { get; set; }
+		public string RenewalFrequency { get; set; } //duration item
 
+		/// <summary>
+		/// HasRating
+		/// Rating related to this resource.
+		/// URI to a Rating
+		/// </summary>
+		[JsonProperty( PropertyName = "navy:hasRating" )]
+		public List<string> HasRating { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:hasRatingType" )]
+		public List<CredentialAlignmentObject> HasRatingType { get; set; } = new List<CredentialAlignmentObject>();
 
 		#region Condition Profiles
 		[JsonProperty( PropertyName = "ceterms:requires" )]
@@ -291,10 +287,14 @@ namespace RA.Models.JsonV2
         public List<ProcessProfile> RevocationProcess { get; set; }
 		#endregion
 
-		[JsonProperty( PropertyName = "ceterms:financialAssistance" )]
-        public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
+		//[JsonIgnore]
+		//[JsonProperty( PropertyName = "ceterms:financialAssistanceOLD" )]
+  //      public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:credentialStatusType" )]
+		[JsonProperty( PropertyName = "ceterms:financialAssistance" )]
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:credentialStatusType" )]
         public CredentialAlignmentObject CredentialStatusType { get; set; }
 
 		#region Connections

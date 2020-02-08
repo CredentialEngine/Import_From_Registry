@@ -53,10 +53,10 @@ namespace workIT.Models.Common
 		public Enumeration JurisdictionAssertion { get; set; }
 		public Guid AssertedBy { get; set; }
         public List<Guid> AssertedByList { get; set; } = new List<Guid>();
-        /// <summary>
-        /// Inflate AssertedBy for display 
-        /// </summary>
-        public Organization AssertedByOrganization { get; set; }
+		/// <summary>
+		/// Inflate AssertedBy for display 
+		/// </summary>
+		public Organization AssertedByOrganization { get; set; } = new Organization();
 
 		public int AssertedInTypeId { get; set; }
 		public string AssertedInType { get; set; }

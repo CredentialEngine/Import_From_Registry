@@ -56,7 +56,7 @@ namespace workIT.Factories
         public static int ROLE_TYPE_Renews = 13;
         public static int ROLE_TYPE_DEPARTMENT = 20;
         public static int ROLE_TYPE_SUBSIDIARY = 21;
-        public static int ROLE_TYPE_PART_ORG = 22;
+        public static int ROLE_TYPE_PARENT_ORG = 22; //THIS IS NOT AN ACTUAL VALID ROLE?
         #endregion
 
 
@@ -132,7 +132,7 @@ namespace workIT.Factories
             }
             try
             {
-                //TODO - update this method
+                //TODO - update this method - can't exist, as all are deleted
                 if ( AgentEntityRoleExists( entityId, agentUid, roleId ) )
                 {
                     //status.AddError( "Error: the selected relationship already exists!" );
@@ -174,131 +174,41 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
                 string message = FormatExceptions( ex );
-                LoggingHelper.LogError( string.Format( thisClassName + ".Save(). entityId: {0}, agentUid: {1} ", entityId, agentUid ), true );
+                LoggingHelper.LogError( ex, string.Format( thisClassName + ".Save(). entityId: {0}, agentUid: {1}, roleId: {2} ", entityId, agentUid, roleId ), true );
                 status.AddError( thisClassName + string.Format( ".Save() Exception:  entityId: {0}, RoleId: {1}, and AgenUtid: {2}. Message: {3}", entityId, roleId, agentUid, message ) );
             }
             return newId;
-        }
+		}
 
 
+		/// <summary>
+		/// Delete all Entity_AgentRelationship for parent 
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
+		public bool DeleteAll( Guid parentUid, ref SaveStatus status )
+		{
+//			SaveStatus status = new SaveStatus();
+			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
+			Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				status.AddError( thisClassName + " - Error - the parent entity was not found." );
+				return false;
+			}
+			//do deletes - should this be done here, should be no other prior updates?
+			return DeleteAll( parent, ref status );
+		}
 
 
-        /// <summary>
-        /// Save roles
-        /// TODO - need to rewrite
-        /// </summary>
-        /// <param name="profile"></param>
-        /// <param name="contextRoles"></param>
-        /// <param name="status"></param>
-        /// <returns></returns>
-        public bool Save( OrganizationRoleProfile profile,
-                    string contextRoles,
-                    ref SaveStatus status )
-        {
-            bool isValid = true;
-            string statusMessage = "";
-
-            //not sure if will user isParentActor - will start with assuming parent is the recipient/acted upon
-            bool isParentActor = false;
-            bool isInverseRole = !isParentActor;
-
-            if ( !IsValidGuid( profile.ParentUid ) )
-            {
-                status.AddError( "Error: the parent identifier was not provided." );
-                return false;
-            }
-
-            //validate and get all roles
-            List<OrganizationRoleProfile> list = FillAllOrgRoles( profile, ref status, ref isValid );
-            if ( !isValid )
-                return false;
-
-            //17-03-20 re: requirement to show all asset roles at credential level
-            //	- need to handle this new approach and old approach, as still likely for orgs
-            //	- need to establish the subset of vald roleIds, so as not to delete roles from other contexts
-            int parentEntityId = 0;
-            Entity parent = EntityManager.GetEntity( profile.ParentUid );
-            //profile.ActedUponEntityId
-            Entity actedUponEntity = EntityManager.GetEntity( profile.ActedUponEntityId );
-            if ( actedUponEntity != null && actedUponEntity.Id > 0 )
-                parentEntityId = actedUponEntity.Id;
-            else
-                parentEntityId = parent.Id;
-
-            using ( var context = new EntityContext() )
-            {
-                //get all existing roles for the parent
-                //will need some context here
-                //also why it may be good to keep credential QA actions separate
-                var results = GetAllRolesForAgent( profile.ParentUid, profile.ActingAgentUid, isParentActor );
-
-                #region deletes/updates check
-
-                var deleteList = from existing in results
-                                 join item in list
-                                 on new { existing.ActingAgentUid, existing.RoleTypeId }
-                                 equals new { item.ActingAgentUid, item.RoleTypeId }
-                                 into joinTable
-                                 from result in joinTable.DefaultIfEmpty( new OrganizationRoleProfile { ActingAgentId = 0, ActingAgentUid = Guid.NewGuid(), ParentId = 0, Id = 0 } )
-                                 select new { ActingAgentUid = existing.ActingAgentUid, DeleteId = existing.Id, ItemId = ( result.RoleTypeId ), IsInverseRole = result.IsInverseRole };
-
-                foreach ( var v in deleteList )
-                {
-
-                    if ( v.ItemId == 0 )
-                    {
-                        //the item to be deleted must be in the context
-
-                        //delete item
-                        if ( Delete( v.DeleteId, contextRoles, ref statusMessage ) == false )
-                        {
-                            status.AddError( statusMessage );
-                            isValid = false;
-                        }
-
-                    }
-                }
-                #endregion
-
-                #region new items
-                //should only empty ids, where not in current list, so should be adds
-                var newList = from item in list
-                              join existing in results
-                                     on new { item.ActingAgentUid, item.RoleTypeId }
-                                 equals new { existing.ActingAgentUid, existing.RoleTypeId }
-                                    into joinTable
-                              from addList in joinTable.DefaultIfEmpty( new OrganizationRoleProfile { Id = 0, ActingAgentId = 0, ActingAgentUid = Guid.NewGuid(), RoleTypeId = 0 } )
-                              select new { ActingAgentUid = item.ActingAgentUid, RoleTypeId = item.RoleTypeId, ExistingId = addList.Id };
-                foreach ( var v in newList )
-                {
-                    if ( v.ExistingId == 0 )
-                    {
-                        bool isEmpty = false;
-                        if ( Add( parentEntityId,
-                                    profile.ActingAgentUid,
-                                    v.RoleTypeId,
-                                    profile.ActedUponEntityId,
-                                    isInverseRole,
-                                    ref status,
-                                    ref isEmpty ) == 0 )
-                        {
-                            if ( !isEmpty )
-                                isValid = false;
-                        }
-
-                    }
-                }
-                #endregion
-            }
-            return isValid;
-        }
-        /// <summary>
-        /// Delete all properties for parent (in preparation for import)
-        /// </summary>
-        /// <param name="parent"></param>
-        /// <param name="messages"></param>
-        /// <returns></returns>
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+		/// <summary>
+		/// Delete all Entity_AgentRelationship for parent (in preparation for import)
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
+		public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
             //Entity parent = EntityManager.GetEntity( parentUid );
@@ -788,11 +698,41 @@ namespace workIT.Factories
 
             return isValid;
         }
-        #endregion
+
+		/// <summary>
+		/// this seems incorrect!!!!
+		/// </summary>
+		/// <param name="pParentUid"></param>
+		public void ReindexAgentForDeletedArtifact( Guid pParentUid )
+		{
+			List<String> messages = new List<string>();
+			List<Views.Entity_Relationship_AgentSummary> roles = new List<Views.Entity_Relationship_AgentSummary>();
+			var reindexMgr = new SearchPendingReindexManager();
+			using ( var context = new ViewContext() )
+			{
+				roles = context.Entity_Relationship_AgentSummary
+						.Where( s => s.SourceEntityUid == pParentUid )
+						.ToList();
+
+				foreach ( Views.Entity_Relationship_AgentSummary entity in roles )
+				{
+					//just QA or all? - should be all
+					//if ( entity.IsQARole ?? false )
+					//{
+						//mark agent org for index updates
+						reindexMgr.Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.AgentRelativeId, 1, ref messages );
+					//}
+				}
+
+			}
 
 
-        #region == retrieval ==================
-        private static bool AgentEntityRoleExists( int entityId, Guid agentUid, int roleId )
+		} //
+		#endregion
+
+
+		#region == retrieval ==================
+		private static bool AgentEntityRoleExists( int entityId, Guid agentUid, int roleId )
         {
             EntityAgentRelationship item = new EntityAgentRelationship();
             using ( var context = new EntityContext() )
@@ -1652,14 +1592,144 @@ namespace workIT.Factories
 
         } //
 
-        /// <summary>
-        /// Get all departments and subsiduaries for the parent org
-        /// NOTE: the parent org is the agent in the relationships. The parent adds the child to the relationship, so the child is the entity, and the parent is the agent
-        /// </summary>
-        /// <param name="pParentUid"></param>
-        /// <param name="roleTypeId">If zero, get both otherwise get specific roles</param>
-        /// <returns></returns>
-        public static void AgentRole_FillAllSubOrganizations( Organization parent, int roleTypeId, bool forEditView = false )
+		public static void AgentRole_FillAllChildOrganizations( Organization parent )
+		{
+			OrganizationRoleProfile p = new OrganizationRoleProfile();
+			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+			parent.OrganizationRole_Dept = new List<OrganizationRoleProfile>();
+			parent.OrganizationRole_Subsidiary = new List<OrganizationRoleProfile>();
+			List<Views.Entity_Relationship_AgentSummary> roles = new List<DBentitySummary>();
+			List<Views.Entity_Relationship_AgentSummary> inverseRoles = new List<DBentitySummary>();
+			EnumeratedItem eitem = new EnumeratedItem();
+			using ( var context = new EntityContext() )
+			{
+				//get where current org is the target, so children are in org
+				var list1 = from org in context.Organization
+							join entity in context.Entity					on org.RowId equals entity.EntityUid
+							join agent in context.Entity_AgentRelationship	on entity.Id equals agent.EntityId
+							join codes in context.Codes_CredentialAgentRelationship on agent.RelationshipTypeId equals codes.Id
+							where agent.AgentUid == parent.RowId 
+								&& agent.RelationshipTypeId == 22 
+								&& org.EntityStateId > 1
+							select new
+							{
+								agent.RelationshipTypeId,
+								RelationshipType = codes.Title,
+								codes.ReverseRelation,
+								codes.SchemaTag,
+								codes.ReverseSchemaTag,
+								org.Id,
+								RowId = entity.EntityUid,
+								org.Name,
+								org.SubjectWebpage,
+								org.Description,
+								org.CTID,
+								org.ImageURL,
+								org.EntityStateId
+							} ;
+				var results = list1.ToList();
+				//get where current is the parent, and child orgs are the target
+				var list2 = from org in context.Organization
+							join agent in context.Entity_AgentRelationship on org.RowId equals agent.AgentUid
+							join codes in context.Codes_CredentialAgentRelationship on agent.RelationshipTypeId equals codes.Id
+							join entity in context.Entity on agent.EntityId equals entity.Id
+							where entity.EntityUid == parent.RowId 
+								&& (agent.RelationshipTypeId == 20 || agent.RelationshipTypeId == 21 ) 
+								&& org.EntityStateId > 1
+							select new
+							{
+								agent.RelationshipTypeId,
+								RelationshipType = codes.Title,
+								codes.ReverseRelation,
+								codes.SchemaTag,
+								codes.ReverseSchemaTag,
+								org.Id,
+								RowId = entity.EntityUid,
+								org.Name,
+								org.SubjectWebpage,
+								org.Description,
+								org.CTID,
+								org.ImageURL,
+								org.EntityStateId
+							};
+				var results2 = list2.ToList();
+
+				if ( results2 != null && results2.Count > 0 )
+				{
+					var newItems = results2.Where( x => !results.Any( y => x.Id == y.Id ) );
+					foreach ( var item in newItems )
+					{
+						results.Add( item );
+					}
+				}
+
+
+				foreach ( var entity in results )
+				{
+					p = new OrganizationRoleProfile();
+					p.Id = entity.RelationshipTypeId;
+					p.RoleTypeId = entity.RelationshipTypeId;
+					string relation = "Is Parent Of";
+					p.IsInverseRole = false;//???
+
+					p.ParentId = parent.Id;
+					p.ParentTypeId = 2;
+
+					p.ActingAgentUid = parent.RowId;
+					p.ParticipantAgent = new Organization()
+					{
+						Id = entity.Id,
+						RowId = entity.RowId,
+						Name = entity.Name,
+						SubjectWebpage = entity.SubjectWebpage,
+						Description = entity.Description,
+						ImageUrl = entity.ImageURL
+					};
+
+					p.ActingAgent = new Organization()
+					{
+						Id = entity.Id,
+						RowId = entity.RowId,
+						Name = entity.Name,
+						SubjectWebpage = entity.SubjectWebpage,
+						Description = entity.Description,
+						ImageUrl = entity.ImageURL
+					};
+
+					p.ProfileSummary = string.Format( "{0} {1} {2}", parent.Name, relation, entity.Name );
+
+					//???????????????
+					p.AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
+					p.AgentRole.ParentId = parent.Id;
+
+					p.AgentRole.Items = new List<EnumeratedItem>();
+					eitem = new EnumeratedItem();
+					eitem.Id = entity.RelationshipTypeId;
+					eitem.RowId = entity.RowId.ToString();
+					//not used here
+					//eitem.RecordId = entity.RelationshipTypeId;
+					//eitem.CodeId = entity.RelationshipTypeId;
+					eitem.Name = entity.RelationshipType;
+					eitem.SchemaName = entity.SchemaTag;
+					eitem.ReverseSchemaName = entity.ReverseSchemaTag;
+
+					p.AgentRole.Items.Add( eitem );
+
+					parent.OrganizationRole_Recipient.Add( p );
+				}
+			}
+
+
+		} //
+
+		/// <summary>
+		/// Get all departments and subsiduaries for the parent org
+		/// NOTE: the parent org is the agent in the relationships. The parent adds the child to the relationship, so the child is the entity, and the parent is the agent
+		/// </summary>
+		/// <param name="pParentUid"></param>
+		/// <param name="roleTypeId">If zero, get both otherwise get specific roles</param>
+		/// <returns></returns>
+		public static void AgentRole_FillAllSubOrganizations( Organization parent, int roleTypeId )
         {
             OrganizationRoleProfile p = new OrganizationRoleProfile();
             List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
@@ -1670,28 +1740,15 @@ namespace workIT.Factories
             EnumeratedItem eitem = new EnumeratedItem();
             using ( var context = new ViewContext() )
             {
-                //not sure if there will be a difference
-                if ( forEditView )
+
                 {
-                    //SourceEntityUid is OK
-                    roles = context.Entity_Relationship_AgentSummary
-                        .Where( s => s.SourceEntityUid == parent.RowId
+					//19-05-07 mp - shouldn't this be using ActingAgentUid
+					/*		( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
+					 */
+					roles = context.Entity_Relationship_AgentSummary
+                        .Where( s => s.ActingAgentUid == parent.RowId
                              && (
-                                    ( roleTypeId == 0
-                                    && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY ) )
-                                || ( s.RelationshipTypeId == roleTypeId )
-                                )
-                             )
-                             .OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
-                        .ToList();
-                }
-                else
-                {
-                    roles = context.Entity_Relationship_AgentSummary
-                        .Where( s => s.SourceEntityUid == parent.RowId
-                             && (
-                                    ( roleTypeId == 0
-                                    && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY ) )
+                                    ( roleTypeId == 0 && s.RelationshipTypeId == ROLE_TYPE_PARENT_ORG || s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
                                 || ( s.RelationshipTypeId == roleTypeId )
                                 )
                              )
@@ -1715,35 +1772,13 @@ namespace workIT.Factories
                         relation = entity.AgentToSourceRelationship;
                     }
                     p.IsInverseRole = entity.IsInverseRole ?? false;
-                    if ( p.IsInverseRole )
-                        relation = entity.SourceToAgentRelationship;
+                    //if ( p.IsInverseRole )
+                    //    relation = entity.SourceToAgentRelationship;
 
                     //HACK ALERT
                     //reversing the parent and agent for display
                     //16-10-31 mp - works for display, but still wrong for edit.
-                    //for edit, the acting agent is shown, and should be the parent entity being acted upon
-                    if ( forEditView )
-                    {
-                        p.ParentId = entity.EntityId;
-                        //p.ParentUid = entity.SourceEntityUid;
-                        p.ParentTypeId = entity.SourceEntityTypeId;
-
-                        p.ActingAgentUid = entity.ActingAgentUid;
-                        p.ActingAgent = new Organization()
-                        {
-                            Id = entity.AgentRelativeId,
-                            RowId = entity.ActingAgentUid,
-                            Name = entity.AgentName,
-                            SubjectWebpage = entity.AgentUrl,
-                            Description = entity.AgentDescription,
-                            ImageUrl = entity.AgentImageUrl,
-                            EntityStateId = entity.EntityStateId,
-                            CTID = entity.CTID
-                        };
-
-                        p.ProfileSummary = string.Format( "{0} {1} {2}", entity.SourceEntityName, relation, entity.AgentName );
-                    }
-                    else
+     
                     {
 
 
@@ -1761,57 +1796,67 @@ namespace workIT.Factories
                             Description = entity.AgentDescription,
                             ImageUrl = entity.AgentImageUrl
                         };
+						//actually want participant here - although we don't know actual acting agent
+						p.ParticipantAgent = new Organization()
+						{
+							Id = entity.SourceEntityBaseId,
+							RowId = entity.SourceEntityUid,
+							Name = entity.SourceEntityName,
+							SubjectWebpage = entity.SourceEntityUrl,
+							Description = entity.SourceEntityDescription,
+							ImageUrl = entity.SourceEntityImageUrl
+						};
 
-                        p.ProfileSummary = string.Format( "{0} {1} {2}", entity.SourceEntityName, relation, entity.AgentName );
+						p.ProfileSummary = string.Format( "{0} {1} {2}", entity.SourceEntityName, relation, entity.AgentName );
                     }
 
-                    if ( entity.RelationshipTypeId == ROLE_TYPE_DEPARTMENT )
-                    {
-                        parent.OrganizationRole_Dept.Add( p );
-                    }
-                    else if ( entity.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
-                    {
+                    //if ( entity.RelationshipTypeId == ROLE_TYPE_DEPARTMENT )
+                    //{
+                    //    parent.OrganizationRole_Dept.Add( p );
+                    //}
+                    //else 
+					if ( entity.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || entity.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY || entity.RelationshipTypeId == ROLE_TYPE_PARENT_ORG )
+					{
                         parent.OrganizationRole_Subsidiary.Add( p );
                     }
-                    if ( !forEditView )
+             
+
+                    //OR
+                    p.AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
+                    p.AgentRole.ParentId = entity.AgentRelativeId;
+
+                    p.AgentRole.Items = new List<EnumeratedItem>();
+                    eitem = new EnumeratedItem();
+                    eitem.Id = entity.EntityAgentRelationshipId;
+                    eitem.RowId = entity.RowId.ToString();
+                    //not used here
+                    eitem.RecordId = entity.EntityAgentRelationshipId;
+                    eitem.CodeId = entity.RelationshipTypeId;
+                    if ( p.IsInverseRole )
                     {
-
-                        //OR
-                        p.AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
-                        p.AgentRole.ParentId = entity.AgentRelativeId;
-
-                        p.AgentRole.Items = new List<EnumeratedItem>();
-                        eitem = new EnumeratedItem();
-                        eitem.Id = entity.EntityAgentRelationshipId;
-                        eitem.RowId = entity.RowId.ToString();
-                        //not used here
-                        eitem.RecordId = entity.EntityAgentRelationshipId;
-                        eitem.CodeId = entity.RelationshipTypeId;
-                        if ( !p.IsInverseRole )
-                        {
-                            eitem.Name = entity.AgentToSourceRelationship;
-                            eitem.SchemaName = entity.ReverseSchemaTag;
-                        }
-                        else
-                        {
-                            eitem.Name = entity.SourceToAgentRelationship;
-                            eitem.SchemaName = entity.SchemaTag;
-                        }
-                        //TODO - if needed	
-                        //eitem.Description = entity.RelationshipDescription;
-
-                        eitem.Selected = true;
-                        if ( ( bool )entity.IsQARole )
-                        {
-                            eitem.IsQAValue = true;
-                            if ( IsDevEnv() )
-                                eitem.Name += " (QA)";
-                        }
-
-                        p.AgentRole.Items.Add( eitem );
-
-                        parent.OrganizationRole_Recipient.Add( p );
+                        eitem.Name = entity.AgentToSourceRelationship;
+                        eitem.SchemaName = entity.ReverseSchemaTag;
                     }
+                    else
+                    {
+                        eitem.Name = entity.SourceToAgentRelationship;
+                        eitem.SchemaName = entity.SchemaTag;
+                    }
+                    //TODO - if needed	
+                    //eitem.Description = entity.RelationshipDescription;
+
+                    eitem.Selected = true;
+                    if ( ( bool )entity.IsQARole )
+                    {
+                        eitem.IsQAValue = true;
+                        if ( IsDevEnv() )
+                            eitem.Name += " (QA)";
+                    }
+
+                    p.AgentRole.Items.Add( eitem );
+
+                    parent.OrganizationRole_Recipient.Add( p );
+                    
                     //list.Add( p );
                 }
 
@@ -1825,45 +1870,46 @@ namespace workIT.Factories
         /// The dept/subsiduaries are handled by roles. 
         /// Whereever the interface creates a relationship, the current context (ex credential) is the parent, or source, and the selected agent is the acting agent. The opposite is actually true for depts/subs, but the same appoach was used. 
         /// Any code doing retrieval must accomodate this condition
-        /// 
+        /// Use case: a parent org was part of import for this org, but parent org didn't import with the child relationship
         /// </summary>
         /// <param name="child">Child org</param>
         /// <param name="forEditView"></param>
-        public static void AgentRole_GetParentOrganization( Organization child, bool forEditView = false )
+        public static void AgentRole_GetParentOrganization( Organization child)
         {
             OrganizationRoleProfile p = new OrganizationRoleProfile();
             List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
 
             child.ParentOrganizations = new List<OrganizationRoleProfile>();
 
-            List<Views.Entity_Relationship_AgentSummary> roles = new List<DBentitySummary>();
-
             EnumeratedItem eitem = new EnumeratedItem();
             using ( var context = new ViewContext() )
             {
-                //not sure if there will be a difference
-                if ( forEditView )
-                {
-                    //SourceEntityUid is OK
-                    roles = context.Entity_Relationship_AgentSummary
-                        .Where( s => s.ActingAgentUid == child.RowId
-                             && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
-                             )
-                             .OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
-                        .ToList();
-                }
-                else
-                {
-                    roles = context.Entity_Relationship_AgentSummary
-                        .Where( s => s.ActingAgentUid == child.RowId
-                             && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
-                             )
-                             .OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
-                        .ToList();
+				var childRoles = context.Entity_Relationship_AgentSummary
+						.Where( (s => (s.ActingAgentUid == child.RowId
+							 && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
+							 ) 
+							// || ( s.EntityId == child.EntityId && s.RelationshipTypeId == ROLE_TYPE_PARENT_ORG ) 
+							 )
+							
+							 ).Distinct()
+							 .OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
+						.ToList();
 
-                }
+				var hasParentRoles = context.Entity_Relationship_AgentSummary
+					.Where( ( s => s.EntityId == child.EntityId && s.RelationshipTypeId == ROLE_TYPE_PARENT_ORG ) )
+					.OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
+					.ToList();
+				if (hasParentRoles != null && hasParentRoles.Count() > 0)
+				{
+					var newItems = hasParentRoles.Where( x => !childRoles.Any( y => x.AgentRelativeId == y.SourceEntityBaseId ) );
+					foreach ( var item in newItems )
+					{
+						childRoles.Add( item );
+					}
+					//childRoles.AddRange( hasParentRoles );
+				}
 
-                foreach ( Views.Entity_Relationship_AgentSummary entity in roles )
+				foreach ( Views.Entity_Relationship_AgentSummary entity in childRoles )
                 {
                     if ( entity.EntityStateId < 2 )
                         continue;
@@ -1871,7 +1917,6 @@ namespace workIT.Factories
                     p = new OrganizationRoleProfile
                     {
                         Id = entity.EntityAgentRelationshipId,
-
                         RoleTypeId = entity.RelationshipTypeId
                     };
                     string relation = "";
@@ -1882,60 +1927,47 @@ namespace workIT.Factories
                     }
                     p.IsInverseRole = entity.IsInverseRole ?? false;
 
+                    p.ParentId = entity.EntityId;
+                    p.ParentTypeId = entity.SourceEntityTypeId;
 
-                    //HACK ALERT???
-                    //reversing the parent and agent for display
-                    //16-10-31 mp - works for display, but still wrong for edit.
-                    //for edit, the acting agent is shown, and should be the parent entity being acted upon
-                    if ( forEditView )
-                    {
-                        p.ParentId = entity.EntityId;
-                        p.ParentTypeId = entity.SourceEntityTypeId;
+                    //ActingAgent is the parent org, but comes from the source
+                    p.ActingAgentUid = entity.ActingAgentUid;
+					if ( entity.RelationshipTypeId == 22 )
+					{
+						p.ActingAgent = new Organization()
+						{
+							Id = entity.AgentRelativeId,
+							RowId = entity.ActingAgentUid,
+							Name = entity.AgentName,
+							SubjectWebpage = entity.AgentUrl,
+							Description = entity.AgentDescription,
+							ImageUrl = entity.AgentImageUrl
+						};
+						//note this is not always formated properly
+						p.ProfileSummary = string.Format( "{0} {1} {2}", p.ActingAgent.Name, relation, entity.AgentName );
+					}
+					else
+					{
+						p.ActingAgent = new Organization()
+						{
+							Id = entity.SourceEntityBaseId,
+							RowId = entity.SourceEntityUid,
+							Name = entity.SourceEntityName,
 
-                        //ActingAgent is the parent org, but comes from the source
-                        p.ActingAgentUid = entity.ActingAgentUid;
-                        p.ActingAgent = new Organization()
-                        {
-                            Id = entity.SourceEntityBaseId,
-                            RowId = entity.SourceEntityUid,
-                            Name = entity.SourceEntityName,
-                            EntityStateId = entity.EntityStateId,
-                            CTID = entity.CTID,
-
-                            SubjectWebpage = entity.SourceEntityUrl,
-                            Description = entity.SourceEntityDescription,
-                            ImageUrl = entity.SourceEntityImageUrl
-
-                        };
-
-                        p.ProfileSummary = string.Format( "{0} is {1} {2}", entity.AgentName, relation, p.ActingAgent.Name );
-                    }
-                    else
-                    {
-                        p.ParentId = entity.EntityId;
-                        p.ParentTypeId = entity.SourceEntityTypeId;
-
-                        //ActingAgent is the parent org, but comes from the source
-                        p.ActingAgentUid = entity.ActingAgentUid;
-                        p.ActingAgent = new Organization()
-                        {
-                            Id = entity.SourceEntityBaseId,
-                            RowId = entity.SourceEntityUid,
-                            Name = entity.SourceEntityName,
-
-                            SubjectWebpage = entity.SourceEntityUrl,
-                            Description = entity.SourceEntityDescription,
-                            ImageUrl = entity.SourceEntityImageUrl
-                        };
-
-                        p.ProfileSummary = string.Format( "{0} is {1} {2}", entity.AgentName, relation, p.ActingAgent.Name );
-                    }
-
-                    child.ParentOrganizations.Add( p );
+							SubjectWebpage = entity.SourceEntityUrl,
+							Description = entity.SourceEntityDescription,
+							ImageUrl = entity.SourceEntityImageUrl
+						};
+						p.ProfileSummary = string.Format( "{0} is {1} {2}", entity.AgentName, relation, p.ActingAgent.Name );
+					}
+					//add if not present
+					//if (child.se)
+					child.ParentOrganizations.Add( p );
 
                 }
+				child.ParentOrganizations = child.ParentOrganizations.Distinct().ToList();
 
-            }
+			}
 
         } //
 

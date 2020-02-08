@@ -12,11 +12,14 @@ namespace RA.Models.JsonV2
 	{   
 		public JsonLDDocument()
 		{
-			Context = "http://credreg.net/ctdl/schema/context/json";
+			Context = "https://credreg.net/ctdl/schema/context/json";
 		}
         [JsonIgnore]
         [JsonProperty( "@context" )]
 		public string Context { get; set; }
 		//public Dictionary<string, object> Context { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:dateModified" )]
+		public string LastUpdated { get; set; } = null;
 	}
 }

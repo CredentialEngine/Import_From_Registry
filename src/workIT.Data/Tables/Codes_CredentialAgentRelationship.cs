@@ -14,6 +14,12 @@ namespace workIT.Data.Tables
     
     public partial class Codes_CredentialAgentRelationship
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public Codes_CredentialAgentRelationship()
+        {
+            this.Entity_AgentRelationship = new HashSet<Entity_AgentRelationship>();
+        }
+    
         public int Id { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
@@ -34,5 +40,8 @@ namespace workIT.Data.Tables
         public Nullable<int> AssessmentTotals { get; set; }
         public Nullable<int> LoppTotals { get; set; }
         public Nullable<int> QAPerformedTotals { get; set; }
+    
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_AgentRelationship> Entity_AgentRelationship { get; set; }
     }
 }

@@ -81,6 +81,8 @@ namespace workIT.Models.Common
 					return false;
 			}
 		}
+		public bool ExistsInRegistry { get; set; }
+		public bool IsDeleted { get; set; }
 		public RegistryImport FrameworkPayload { get; set; } = new RegistryImport();
 
         public List<CredentialAlignmentObjectItem> Items { get; set; }

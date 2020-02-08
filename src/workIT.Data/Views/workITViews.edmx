@@ -10,13 +10,15 @@ warning 6002: The table/view 'credFinder.dbo.Activity_Summary' does not have a p
         <EntityType Name="Activity_Summary">
           <Key>
             <PropertyRef Name="Id" />
+            
             <PropertyRef Name="ActivityType" />
             <PropertyRef Name="Activity" />
             <PropertyRef Name="Event" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
-          <Property Name="CreatedDate" Type="datetime" />
+          <Property Name="CreatedDate" Type="datetime" Nullable="false" />
           <Property Name="ActivityType" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" />
           <Property Name="Activity" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Event" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Comment" Type="nvarchar(max)" />
@@ -25,6 +27,8 @@ warning 6002: The table/view 'credFinder.dbo.Activity_Summary' does not have a p
           <Property Name="ActionByUser" Type="varchar" MaxLength="101" />
           <Property Name="ActivityObjectId" Type="int" />
           <Property Name="ObjectRelatedId" Type="int" />
+          <Property Name="OwningOrgId" Type="int" />
+          <Property Name="Organization" Type="varchar" MaxLength="300" />
           <Property Name="RelatedTargetUrl" Type="varchar" MaxLength="500" />
           <Property Name="TargetObjectId" Type="int" />
           <Property Name="SessionId" Type="varchar" MaxLength="50" />
@@ -77,7 +81,9 @@ warning 6002: The table/view 'credFinder.dbo.Assessment_Summary' does not have a
             <PropertyRef Name="Name" />
             <PropertyRef Name="OrgId" />
             <PropertyRef Name="Organization" />
+            <PropertyRef Name="OwningOrganizationCtid" />
             <PropertyRef Name="CTID" />
+            
             <PropertyRef Name="RowId" />
             <PropertyRef Name="RequiresCount" />
             <PropertyRef Name="RecommendsCount" />
@@ -96,13 +102,14 @@ warning 6002: The table/view 'credFinder.dbo.Assessment_Summary' does not have a
           <Property Name="Description" Type="varchar(max)" />
           <Property Name="OrgId" Type="int" Nullable="false" />
           <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="OwningOrganizationCtid" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="OwningAgentUid" Type="uniqueidentifier" />
           <Property Name="DateEffective" Type="datetime" />
           <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
           <Property Name="EntityStateId" Type="int" />
           <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="CredentialRegistryId" Type="nvarchar" MaxLength="50" />
-          <Property Name="cerEnvelopeUrl" Type="nvarchar" MaxLength="153" />
+          <Property Name="cerEnvelopeUrl" Type="varchar" MaxLength="1" Nullable="false" />
           <Property Name="IdentificationCode" Type="varchar" MaxLength="50" />
           <Property Name="availableOnlineAt" Type="varchar" MaxLength="600" />
           <Property Name="AvailabilityListing" Type="varchar" MaxLength="600" />
@@ -249,8 +256,8 @@ warning 6002: The table/view 'credFinder.dbo.CodesProperty_Counts_ByEntity' does
             <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="CategoryId" />
             <PropertyRef Name="Category" />
-            <PropertyRef Name="PropertyId" />
             <PropertyRef Name="Property" />
+            <PropertyRef Name="PropertyId" />
           </Key>
           <Property Name="Entity" Type="varchar" MaxLength="100" />
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
@@ -358,6 +365,7 @@ warning 6002: The table/view 'credFinder.dbo.Entity.AgentRelationshipIdCSV' does
             <PropertyRef Name="AgentRelativeId" />
             <PropertyRef Name="AgentUid" />
             <PropertyRef Name="AgentName" />
+            
             <PropertyRef Name="Roles" />
           </Key>
           <Property Name="EntityId" Type="int" Nullable="false" />
@@ -370,11 +378,13 @@ warning 6002: The table/view 'credFinder.dbo.Entity.AgentRelationshipIdCSV' does
           <Property Name="AgentUid" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
           <Property Name="IsInverseRole" Type="bit" />
-          <Property Name="RoleIds" Type="nvarchar(max)" />
-          <Property Name="Roles" Type="nvarchar(max)" Nullable="false" />
-          <Property Name="AgentDescription" Type="varchar(max)" />
+          <Property Name="AgentDescription" Type="varchar" MaxLength="1" Nullable="false" />
           <Property Name="AgentUrl" Type="varchar" MaxLength="600" />
           <Property Name="AgentImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="EntityStateId" Type="int" />
+          <Property Name="RoleIds" Type="nvarchar(max)" />
+          <Property Name="Roles" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="AgentContextRoles" Type="nvarchar(max)" />
         </EntityType>
         <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder.dbo.Entity.FrameworkCIPCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
@@ -478,6 +488,7 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Assertion_Summary' does not 
           <Property Name="TargetCtdlType" Type="varchar" MaxLength="100" />
           <Property Name="TargetCTID" Type="varchar" MaxLength="50" />
           <Property Name="TargetOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="TargetOwningOrganizationId" Type="int" />
           <Property Name="AssertionTypeId" Type="int" Nullable="false" />
           <Property Name="IsPending" Type="bit" />
           <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
@@ -551,8 +562,8 @@ warning 6002: The table/view 'credFinder.dbo.Entity_ReferenceFramework_Summary' 
             <PropertyRef Name="EntityUid" />
             <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="CategoryId" />
-            <PropertyRef Name="PropertyCategory" />
             <PropertyRef Name="ReferenceFrameworkId" />
+            <PropertyRef Name="PropertyCategory" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="EntityId" Type="int" Nullable="false" />
@@ -560,6 +571,7 @@ warning 6002: The table/view 'credFinder.dbo.Entity_ReferenceFramework_Summary' 
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="EntityBaseId" Type="int" />
           <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="refCreated" Type="datetime" />
           <Property Name="PropertyCategory" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="SchemaName" Type="varchar" MaxLength="100" />
           <Property Name="ReferenceFrameworkId" Type="int" Nullable="false" />
@@ -623,6 +635,7 @@ warning 6002: The table/view 'credFinder.dbo.Entity_Relationship_AgentSummary' d
           <Property Name="SourceEntityImageUrl" Type="varchar" MaxLength="600" />
           <Property Name="SourceEntityStateId" Type="int" />
           <Property Name="SourceOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="SourceOwningOrganizationId" Type="int" />
           <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
           <Property Name="IsInverseRole" Type="bit" />
           <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
@@ -901,6 +914,7 @@ warning 6002: The table/view 'credFinder.dbo.Organization_CombinedQAPerformed' d
           <Property Name="TargetEntityImageUrl" Type="varchar" MaxLength="600" />
           <Property Name="TargetEntityStateId" Type="int" />
           <Property Name="TargetOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="TargetOwningOrganizationId" Type="int" />
           <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
           <Property Name="SourceToAgentRelationship" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="AgentToSourceRelationship" Type="varchar" MaxLength="100" />
@@ -980,6 +994,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Activity_Summary].[Id] AS [Id], 
     [Activity_Summary].[CreatedDate] AS [CreatedDate], 
     [Activity_Summary].[ActivityType] AS [ActivityType], 
+    [Activity_Summary].[EntityTypeId] AS [EntityTypeId], 
     [Activity_Summary].[Activity] AS [Activity], 
     [Activity_Summary].[Event] AS [Event], 
     [Activity_Summary].[Comment] AS [Comment], 
@@ -988,6 +1003,8 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Activity_Summary].[ActionByUser] AS [ActionByUser], 
     [Activity_Summary].[ActivityObjectId] AS [ActivityObjectId], 
     [Activity_Summary].[ObjectRelatedId] AS [ObjectRelatedId], 
+    [Activity_Summary].[OwningOrgId] AS [OwningOrgId], 
+    [Activity_Summary].[Organization] AS [Organization], 
     [Activity_Summary].[RelatedTargetUrl] AS [RelatedTargetUrl], 
     [Activity_Summary].[TargetObjectId] AS [TargetObjectId], 
     [Activity_Summary].[SessionId] AS [SessionId], 
@@ -1025,6 +1042,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Assessment_Summary].[Description] AS [Description], 
     [Assessment_Summary].[OrgId] AS [OrgId], 
     [Assessment_Summary].[Organization] AS [Organization], 
+    [Assessment_Summary].[OwningOrganizationCtid] AS [OwningOrganizationCtid], 
     [Assessment_Summary].[OwningAgentUid] AS [OwningAgentUid], 
     [Assessment_Summary].[DateEffective] AS [DateEffective], 
     [Assessment_Summary].[SubjectWebpage] AS [SubjectWebpage], 
@@ -1222,11 +1240,13 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_AgentRelationshipIdCSV].[AgentUid] AS [AgentUid], 
     [Entity_AgentRelationshipIdCSV].[AgentName] AS [AgentName], 
     [Entity_AgentRelationshipIdCSV].[IsInverseRole] AS [IsInverseRole], 
-    [Entity_AgentRelationshipIdCSV].[RoleIds] AS [RoleIds], 
-    [Entity_AgentRelationshipIdCSV].[Roles] AS [Roles], 
     [Entity_AgentRelationshipIdCSV].[AgentDescription] AS [AgentDescription], 
     [Entity_AgentRelationshipIdCSV].[AgentUrl] AS [AgentUrl], 
-    [Entity_AgentRelationshipIdCSV].[AgentImageUrl] AS [AgentImageUrl]
+    [Entity_AgentRelationshipIdCSV].[AgentImageUrl] AS [AgentImageUrl], 
+    [Entity_AgentRelationshipIdCSV].[EntityStateId] AS [EntityStateId], 
+    [Entity_AgentRelationshipIdCSV].[RoleIds] AS [RoleIds], 
+    [Entity_AgentRelationshipIdCSV].[Roles] AS [Roles], 
+    [Entity_AgentRelationshipIdCSV].[AgentContextRoles] AS [AgentContextRoles]
     FROM [dbo].[Entity.AgentRelationshipIdCSV] AS [Entity_AgentRelationshipIdCSV]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="Entity_FrameworkCIPCodeSummary" EntityType="Self.Entity_FrameworkCIPCodeSummary" store:Type="Views" store:Schema="dbo" store:Name="Entity.FrameworkCIPCodeSummary">
@@ -1300,6 +1320,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_Assertion_Summary].[TargetCtdlType] AS [TargetCtdlType], 
     [Entity_Assertion_Summary].[TargetCTID] AS [TargetCTID], 
     [Entity_Assertion_Summary].[TargetOwningOrganizationName] AS [TargetOwningOrganizationName], 
+    [Entity_Assertion_Summary].[TargetOwningOrganizationId] AS [TargetOwningOrganizationId], 
     [Entity_Assertion_Summary].[AssertionTypeId] AS [AssertionTypeId], 
     [Entity_Assertion_Summary].[IsPending] AS [IsPending], 
     [Entity_Assertion_Summary].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
@@ -1353,6 +1374,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_ReferenceFramework_Summary].[EntityTypeId] AS [EntityTypeId], 
     [Entity_ReferenceFramework_Summary].[EntityBaseId] AS [EntityBaseId], 
     [Entity_ReferenceFramework_Summary].[CategoryId] AS [CategoryId], 
+    [Entity_ReferenceFramework_Summary].[refCreated] AS [refCreated], 
     [Entity_ReferenceFramework_Summary].[PropertyCategory] AS [PropertyCategory], 
     [Entity_ReferenceFramework_Summary].[SchemaName] AS [SchemaName], 
     [Entity_ReferenceFramework_Summary].[ReferenceFrameworkId] AS [ReferenceFrameworkId], 
@@ -1390,6 +1412,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Entity_Relationship_AgentSummary].[SourceEntityImageUrl] AS [SourceEntityImageUrl], 
     [Entity_Relationship_AgentSummary].[SourceEntityStateId] AS [SourceEntityStateId], 
     [Entity_Relationship_AgentSummary].[SourceOwningOrganizationName] AS [SourceOwningOrganizationName], 
+    [Entity_Relationship_AgentSummary].[SourceOwningOrganizationId] AS [SourceOwningOrganizationId], 
     [Entity_Relationship_AgentSummary].[RelationshipTypeId] AS [RelationshipTypeId], 
     [Entity_Relationship_AgentSummary].[IsInverseRole] AS [IsInverseRole], 
     [Entity_Relationship_AgentSummary].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
@@ -1587,6 +1610,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
     [Organization_CombinedQAPerformed].[TargetEntityImageUrl] AS [TargetEntityImageUrl], 
     [Organization_CombinedQAPerformed].[TargetEntityStateId] AS [TargetEntityStateId], 
     [Organization_CombinedQAPerformed].[TargetOwningOrganizationName] AS [TargetOwningOrganizationName], 
+    [Organization_CombinedQAPerformed].[TargetOwningOrganizationId] AS [TargetOwningOrganizationId], 
     [Organization_CombinedQAPerformed].[RelationshipTypeId] AS [RelationshipTypeId], 
     [Organization_CombinedQAPerformed].[SourceToAgentRelationship] AS [SourceToAgentRelationship], 
     [Organization_CombinedQAPerformed].[AgentToSourceRelationship] AS [AgentToSourceRelationship], 
@@ -1826,7 +1850,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
             <PropertyRef Name="Event" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
-          <Property Name="CreatedDate" Type="DateTime" Precision="3" />
+          <Property Name="CreatedDate" Type="DateTime" Precision="3" Nullable="false" />
           <Property Name="ActivityType" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="Activity" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Event" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
@@ -1842,6 +1866,9 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="IPAddress" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="Referrer" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="IsBot" Type="Boolean" />
+          <Property Name="EntityTypeId" Type="Int32" />
+          <Property Name="OwningOrgId" Type="Int32" />
+          <Property Name="Organization" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="EntityProperty_Summary">
           <Key>
@@ -1956,6 +1983,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
             <PropertyRef Name="ConnectionsList" />
             <PropertyRef Name="CredentialsList" />
             <PropertyRef Name="Org_QAAgentAndRoles" />
+            <PropertyRef Name="OwningOrganizationCtid" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
           <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
@@ -1971,7 +1999,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="RowId" Type="Guid" Nullable="false" />
           <Property Name="SubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="cerEnvelopeUrl" Type="String" MaxLength="153" FixedLength="false" Unicode="true" />
+          <Property Name="cerEnvelopeUrl" Type="String" MaxLength="1" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="EntityStateId" Type="Int32" />
           <Property Name="AvailabilityListing" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="AssessmentExampleUrl" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
@@ -1990,6 +2018,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="CredentialsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="OwningAgentUid" Type="Guid" />
+          <Property Name="OwningOrganizationCtid" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
           <Key>
@@ -2134,6 +2163,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="EntityStateId" Type="Int32" Nullable="false" />
           <Property Name="SourceEntityStateId" Type="Int32" />
           <Property Name="SourceOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="SourceOwningOrganizationId" Type="Int32" />
         </EntityType>
         <EntityType Name="Credential_Assets_AgentRelationship_Totals">
           <Key>
@@ -2185,9 +2215,11 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="IsInverseRole" Type="Boolean" />
           <Property Name="RoleIds" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="Roles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="AgentDescription" Type="String" MaxLength="1" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="AgentUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="AgentImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="EntityStateId" Type="Int32" />
+          <Property Name="AgentContextRoles" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityType Name="Entity_FrameworkItemSummary">
           <Key>
@@ -2272,6 +2304,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
           <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="refCreated" Type="DateTime" Precision="3" />
         </EntityType>
         <EntityType Name="Entity_ReferenceFramework_Totals">
           <Key>
@@ -2453,6 +2486,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="Created" Type="DateTime" Precision="3" />
           <Property Name="AgentEntityStateId" Type="Int32" />
           <Property Name="TargetOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="TargetOwningOrganizationId" Type="Int32" />
         </EntityType>
         <EntityType Name="Organization_CombinedQAPerformed">
           <Key>
@@ -2493,6 +2527,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <Property Name="IsOwnerAgentRole" Type="Boolean" />
           <Property Name="AgentEntityStateId" Type="Int32" />
           <Property Name="TargetOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="TargetOwningOrganizationId" Type="Int32" />
         </EntityType>
         <EntityType Name="Query_IndianapolisCredentials">
           <Key>
@@ -2711,6 +2746,9 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Activity_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Activity_Summary">
               <MappingFragment StoreEntitySet="Activity_Summary">
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="OwningOrgId" ColumnName="OwningOrgId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="IsBot" ColumnName="IsBot" />
                 <ScalarProperty Name="Referrer" ColumnName="Referrer" />
                 <ScalarProperty Name="IPAddress" ColumnName="IPAddress" />
@@ -2807,6 +2845,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Assessment_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Assessment_Summary">
               <MappingFragment StoreEntitySet="Assessment_Summary">
+                <ScalarProperty Name="OwningOrganizationCtid" ColumnName="OwningOrganizationCtid" />
                 <ScalarProperty Name="OwningAgentUid" ColumnName="OwningAgentUid" />
                 <ScalarProperty Name="Org_QAAgentAndRoles" ColumnName="Org_QAAgentAndRoles" />
                 <ScalarProperty Name="CredentialsList" ColumnName="CredentialsList" />
@@ -2909,6 +2948,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Entity_Relationship_AgentSummary">
             <EntityTypeMapping TypeName="workITViewModels.Entity_Relationship_AgentSummary">
               <MappingFragment StoreEntitySet="Entity_Relationship_AgentSummary">
+                <ScalarProperty Name="SourceOwningOrganizationId" ColumnName="SourceOwningOrganizationId" />
                 <ScalarProperty Name="SourceOwningOrganizationName" ColumnName="SourceOwningOrganizationName" />
                 <ScalarProperty Name="SourceEntityStateId" ColumnName="SourceEntityStateId" />
                 <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
@@ -2971,6 +3011,8 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Entity_AgentRelationshipIdCSV">
             <EntityTypeMapping TypeName="workITViewModels.Entity_AgentRelationshipIdCSV">
               <MappingFragment StoreEntitySet="Entity_AgentRelationshipIdCSV">
+                <ScalarProperty Name="AgentContextRoles" ColumnName="AgentContextRoles" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
                 <ScalarProperty Name="AgentImageUrl" ColumnName="AgentImageUrl" />
                 <ScalarProperty Name="AgentUrl" ColumnName="AgentUrl" />
                 <ScalarProperty Name="AgentDescription" ColumnName="AgentDescription" />
@@ -3045,6 +3087,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Entity_ReferenceFramework_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Summary">
               <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Summary">
+                <ScalarProperty Name="refCreated" ColumnName="refCreated" />
                 <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="Description" ColumnName="Description" />
@@ -3186,6 +3229,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Entity_Assertion_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Entity_Assertion_Summary">
               <MappingFragment StoreEntitySet="Entity_Assertion_Summary">
+                <ScalarProperty Name="TargetOwningOrganizationId" ColumnName="TargetOwningOrganizationId" />
                 <ScalarProperty Name="TargetOwningOrganizationName" ColumnName="TargetOwningOrganizationName" />
                 <ScalarProperty Name="AgentEntityStateId" ColumnName="AgentEntityStateId" />
                 <ScalarProperty Name="Created" ColumnName="Created" />
@@ -3224,6 +3268,7 @@ warning 6002: The table/view 'credFinder.dbo.SiteTotalsSummary' does not have a 
           <EntitySetMapping Name="Organization_CombinedQAPerformed">
             <EntityTypeMapping TypeName="workITViewModels.Organization_CombinedQAPerformed">
               <MappingFragment StoreEntitySet="Organization_CombinedQAPerformed">
+                <ScalarProperty Name="TargetOwningOrganizationId" ColumnName="TargetOwningOrganizationId" />
                 <ScalarProperty Name="TargetOwningOrganizationName" ColumnName="TargetOwningOrganizationName" />
                 <ScalarProperty Name="AgentEntityStateId" ColumnName="AgentEntityStateId" />
                 <ScalarProperty Name="IsOwnerAgentRole" ColumnName="IsOwnerAgentRole" />

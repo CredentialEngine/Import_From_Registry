@@ -23,44 +23,55 @@ namespace ElasticIndexBuild
             } else
                 DisplayMessages("Skipping Populating of All Caches");
 
-            //set the related appKey to empty, to skip one of the loads
-            if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "credentialCollection", "")))
-			    LoadCredentialsIndex();
+			//set the related appKey to empty, to skip one of the loads
+			bool deletingIndexBeforeRebuild = UtilityManager.GetAppKeyValue( "deletingIndexBeforeRebuild", true );
 
-
-            if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "assessmentCollection", "")))
-                LoadAssessmentIndex();
+			if (!string.IsNullOrWhiteSpace(UtilityManager.GetAppKeyValue( "assessmentCollection", "")))
+                LoadAssessmentIndex( deletingIndexBeforeRebuild );
 
             if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "learningOppCollection", "" ) ) )
-                LoadLearningOpportunityIndex();
+                LoadLearningOpportunityIndex( deletingIndexBeforeRebuild );
 
             if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "organizationCollection", "" ) ) )
-                LoadOrganizationIndex();
+                LoadOrganizationIndex( deletingIndexBeforeRebuild );
 
-        }
+			if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "credentialCollection", "" ) ) )
+				 LoadCredentialsIndex( deletingIndexBeforeRebuild );
 
-        public static void LoadCredentialsIndex()
+
+		}
+
+		public static void LoadCredentialsIndex( bool deletingIndexBeforeRebuild )
 		{
-            DisplayMessages( "Starting LoadCredentialsIndex" );
-            try
+            DisplayMessages( "Starting LoadCredentialsIndex: " + UtilityManager.GetAppKeyValue( "credentialCollection", "missing credential" ) );
+			
+			try
             {
+				DateTime start = DateTime.Now;
+				ElasticServices.Credential_BuildIndex( deletingIndexBeforeRebuild, true );
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
 
-
-                ElasticServices.Credential_BuildIndex( true );
-            } catch (Exception ex)
+				DisplayMessages( string.Format("___Completed LoadCredentialsIndex. Elapsed Seconds: {0}", elasped ) );
+			} catch (Exception ex)
             {
                 LoggingHelper.LogError( ex, "LoadCredentialsIndex Failed", "ElasticIndex Build Exception" );
             }
 		}
 
 
-		public static void LoadOrganizationIndex()
+		public static void LoadOrganizationIndex( bool deletingIndexBeforeRebuild )
 		{
-            DisplayMessages( "Starting LoadOrganizationIndex" );
-            try
+            DisplayMessages( "Starting LoadOrganizationIndex: " + UtilityManager.GetAppKeyValue( "organizationCollection", "missing organizationCollection" ) );
+			try
             {
-                ElasticServices.Organization_BuildIndex( true );
-            }
+				DateTime start = DateTime.Now;
+				ElasticServices.Organization_BuildIndex( deletingIndexBeforeRebuild, true );
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+
+				DisplayMessages( string.Format( "___Completed LoadOrganizationIndex. Elapsed Seconds: {0}", elasped ) );
+			}
             catch ( Exception ex )
             {
                 LoggingHelper.LogError( ex, "LoadOrganizationIndex Failed", "ElasticIndex Build Exception" );
@@ -68,12 +79,18 @@ namespace ElasticIndexBuild
         }
 
 
-		public static void LoadAssessmentIndex()
+		public static void LoadAssessmentIndex( bool deletingIndexBeforeRebuild )
 		{
-            DisplayMessages( "Starting LoadAssessmentIndex" );
-            try
+            DisplayMessages( "Starting LoadAssessmentIndex: " + UtilityManager.GetAppKeyValue( "assessmentCollection", "missing assessmentCollection" ) );
+			try
             {
-                ElasticServices.Assessment_BuildIndex( true );
+				DateTime start = DateTime.Now;
+				ElasticServices.Assessment_BuildIndex( deletingIndexBeforeRebuild, true );
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+
+				DisplayMessages( string.Format( "___Completed LoadAssessmentIndex. Elapsed Seconds: {0}", elasped ) );
+				
             }
             catch ( Exception ex )
             {
@@ -82,13 +99,19 @@ namespace ElasticIndexBuild
         }
 
 
-		public static void LoadLearningOpportunityIndex()
+		public static void LoadLearningOpportunityIndex( bool deletingIndexBeforeRebuild )
 		{
-            DisplayMessages( "Starting LoadLearningOpportunityIndex" );
+            DisplayMessages( "Starting LoadLearningOpportunityIndex: " + UtilityManager.GetAppKeyValue( "learningOppCollection", "missing learningOppCollection" ) );
 
-            try
+			try
             {
-                ElasticServices.LearningOpp_BuildIndex( true );
+				DateTime start = DateTime.Now;
+				ElasticServices.LearningOpp_BuildIndex( deletingIndexBeforeRebuild, true );
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+
+				DisplayMessages( string.Format( "___Completed LoadLearningOpportunityIndex. Elapsed Seconds: {0}", elasped ) );
+				
             }
             catch ( Exception ex )
             {
@@ -98,8 +121,8 @@ namespace ElasticIndexBuild
 
         public static string DisplayMessages( string message )
         {
-            LoggingHelper.DoTrace( 1, System.DateTime.Now.ToString() + " - " + message );
-            Console.WriteLine( message );
+            LoggingHelper.DoTrace( 1, message );
+            //Console.WriteLine( message );
 
             return message;
         }

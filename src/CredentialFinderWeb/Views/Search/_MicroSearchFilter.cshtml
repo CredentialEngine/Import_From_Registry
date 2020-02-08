@@ -1,0 +1,55 @@
+﻿@model workIT.Models.Search.MicroSearchFilterSettings
+<div class="filter microSearchFilter microSearchFilterBox" data-microSearchName="microsearch_@Model.FilterName" data-searchtype="@Model.ParentSearchType" data-filtername="@Model.FilterName" data-categoryID="@Model.CategoryId" data-microSearchType="@Model.MicroSearchType" data-pageSize="@Model.PageSize" data-pageNumber="1" data-tagTitle="@Model.TagTitle" data-filterSchema="@Model.FilterSchema">
+    <div class="microSearchPrevious" style="display:none;"></div>
+    @if ( !string.IsNullOrWhiteSpace( Model.Guidance ) )
+    {
+        <p class="filterGuidance">@Html.Raw( Model.Guidance )</p>
+    }
+    <div class="microSearchFindBox">
+        <div class="microSearchTitle">@Model.InputTitle</div>
+        <div class="microSearchInputs">
+			@{ var count = 0; }
+            @foreach ( var filter in Model.Filters )
+            {
+                filter.SynthesizeItems();
+                switch ( filter.Type )
+                {
+                    case "text":
+                        <input type="text" data-filtername="@filter.FilterName" placeholder="@filter.Placeholder" />
+                        break;
+                        
+                    case "select":
+						<div class="selectWrapper">
+							<select data-filtername="@filter.FilterName">
+								@if ( filter.IncludeDefaultItem )
+								{
+									<option value="0">@filter.DefaultItemTitle</option>
+								}
+								@foreach ( var item in filter.Items )
+								{
+									<option value="@item.Key">@item.Value</option>
+								}
+							</select>
+							@*<button data-filtername="@filter.FilterName" class="selectButton" data-buttonID="@count">Select <i class="fa fa-caret-right"></i></button>*@
+						</div>
+						count++;
+						break;
+
+					default: break;
+				}
+			}
+            @if ( Model.IncludeKeywords )
+            {
+                <input type="text" data-filtername="Keywords" placeholder="Find..." />
+            }
+        </div>
+        <div class="microSearchStatus microSearchInputStatus"></div>
+        <div class="microSearchResults"></div>
+        <div class="microSearchPaging"></div>
+    </div>
+    <div class="microSearchSelectedBox">
+        <div class="microSearchTitle">@Model.SelectedTitle</div>
+        <div class="microSearchStatus microSearchSelectedStatus">No items selected.</div>
+        <div class="microSearchSelectedItems"></div>
+    </div>
+</div>

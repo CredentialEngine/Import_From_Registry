@@ -19,18 +19,20 @@ namespace workIT.Services
             var currentDate = DateTime.Now;
             currentDate = currentDate.AddDays( -2 );
 			CommonTotals totals = ActivityManager.SiteTotals_Get();
-			totals.MainEntityTotals = ReportServices.MainEntityTotals();
-            totals.CredentialHistory =ReportServices.HistoryReports( 1);
-            totals.OrganizationHistory = ReportServices.HistoryReports( 2 );
-            totals.AssessmentHistory = ReportServices.HistoryReports( 3 );
+			totals.MainEntityTotals = MainEntityTotals();
+            totals.CredentialHistory = HistoryReports( 1);
+            totals.OrganizationHistory = HistoryReports( 2 );
+            totals.AssessmentHistory = HistoryReports( 3 );
             totals.LearningOpportunityHistory = ReportServices.HistoryReports( 7 );
 
-            //vm.TotalDirectCredentials = list.FirstOrDefault( x => x.Id == 1 ).Totals;
-            //vm.TotalOrganizations = list.FirstOrDefault( x => x.Id == 2 ).Totals;
-            //vm.TotalQAOrganizations = list.FirstOrDefault( x => x.Id == 99 ).Totals;
-            totals.AgentServiceTypes = new EnumerationServices().GetOrganizationServices(EnumerationType.MULTI_SELECT, false);
+			totals.EntityRegionTotals = CodesManager.GetEntityRegionTotals( 1, "United States");
+			//vm.TotalDirectCredentials = list.FirstOrDefault( x => x.Id == 1 ).Totals;
+			//vm.TotalOrganizations = list.FirstOrDefault( x => x.Id == 2 ).Totals;
+			//vm.TotalQAOrganizations = list.FirstOrDefault( x => x.Id == 99 ).Totals;
+			totals.AgentServiceTypes = new EnumerationServices().GetOrganizationServices(EnumerationType.MULTI_SELECT, false);
 
-			totals.PropertiesTotals = ReportServices.PropertyTotals();
+			totals.PropertiesTotals = PropertyTotals();
+			//
 			//get totals from view: CodesProperty_Counts_ByEntity.
 			//	the latter has a union with Counts.SiteTotals
 			totals.PropertiesTotalsByEntity = CodesManager.Property_GetTotalsByEntity();
@@ -43,23 +45,7 @@ namespace workIT.Services
             //totals.OrgIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 2 && s.CategoryId == 10 ).ToList();
             //totals.AssessmentCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
             //totals.LoppCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 7 && s.CategoryId == 23 ).ToList();
-            ////??
-            //totals.PropertiesTotals.AddRange( totals.SOC_Groups );
-            //totals.PropertiesTotals.AddRange( totals.CredentialIndustry_Groups );
-            //totals.PropertiesTotals.AddRange( totals.OrgIndustry_Groups );
-            //totals.PropertiesTotals.AddRange( totals.AssessmentCIP_Groups );
-            //totals.PropertiesTotals.AddRange( totals.LoppCIP_Groups );
 
-            //totals.SOC_Groups = CodesManager.SOC_Categories();
-            //totals.CredentialIndustry_Groups = CodesManager.NAICS_Categories();
-            //totals.OrgIndustry_Groups = CodesManager.NAICS_Categories();
-            //totals.AssessmentCIP_Groups = CodesManager.CIPS_Categories();
-            //totals.LoppCIP_Groups = CodesManager.CIPS_Categories();
-            //totals.CredentialStatusType = new Enumeration().
-            //totals.PropertiesTotals = CodesManager.GetEnumeration ( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE );
-            //totals.PropertiesTotals.AddRange( CodesManager.SOC_Categories() );
-            //totals.PropertiesTotals.AddRange( CodesManager.NAICS_Categories() );
-            //totals.PropertiesTotals.AddRange( CodesManager.CIPS_Categories() );
             return totals;
 		}
 

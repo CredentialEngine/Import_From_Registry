@@ -299,6 +299,13 @@ namespace Import.Services
 			return newEntityId;
 		}
 
+		/// <summary>
+		/// Attempt to resolve an organization reference by either a registry URI or CTID
+		/// </summary>
+		/// <param name="referencedAtId">Registry URI or CTID</param>
+		/// <param name="status"></param>
+		/// <param name="isResolved"></param>
+		/// <returns></returns>
 		public static Guid ResolveOrgByRegistryAtId( string referencedAtId, ref SaveStatus status, ref bool isResolved )
 		{
 			Guid entityUid = new Guid();

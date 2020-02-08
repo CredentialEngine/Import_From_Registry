@@ -17,6 +17,7 @@ namespace RA.Models.JsonV2
 			InLanguage = new List<string>();
             //Keyword = new List<string>();
 
+			AudienceLevelType = new List<CredentialAlignmentObject>();
             AudienceType = new List<CredentialAlignmentObject>();
             AvailabilityListing = new List<string>();
             Subject = new List<CredentialAlignmentObject>();
@@ -25,7 +26,7 @@ namespace RA.Models.JsonV2
 			DeliveryType = new List<CredentialAlignmentObject>();
             EstimatedDuration = new List<DurationProfile>();
             EstimatedCost = new List<CostProfile>();
-            CreditUnitType = new CredentialAlignmentObject();
+            //CreditUnitType = new CredentialAlignmentObject();
             
             Requires = new List<ConditionProfile>();
             Corequisite = new List<ConditionProfile>();
@@ -59,7 +60,7 @@ namespace RA.Models.JsonV2
 
             CommonConditions = new List<string>();
             CommonCosts = new List<string>();
-            FinancialAssistance = new List<FinancialAlignmentObject>();
+          //  FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 
 			HasPart = new List<string>();
 			IsPartOf = new List<string>();
@@ -105,14 +106,16 @@ namespace RA.Models.JsonV2
         [JsonProperty( "@id" )]
         public string CtdlId { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:verificationMethodDescription" )] 
-        public LanguageMap VerificationMethodDescription { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:verificationMethodDescription" )] 
+        //public LanguageMap VerificationMethodDescription { get; set; }
         
         [JsonProperty( PropertyName = "ceterms:availabilityListing" )]
         public List<string> AvailabilityListing { get; set; } //URL
 
         [JsonProperty( PropertyName = "ceterms:availableOnlineAt" )] //URL
         public List<string> AvailableOnlineAt { get; set; }
+		[JsonProperty( PropertyName = "ceterms:audienceLevelType" )]
+        public List<CredentialAlignmentObject> AudienceLevelType { get; set; }
 
         [JsonProperty(PropertyName = "ceterms:audienceType")]
         public List<CredentialAlignmentObject> AudienceType { get; set; }
@@ -132,18 +135,21 @@ namespace RA.Models.JsonV2
 
         [JsonProperty( PropertyName = "ceterms:estimatedCost" )]
         public List<CostProfile> EstimatedCost { get; set; }
+		//
+		[JsonProperty( PropertyName = "ceterms:creditValue" )]
+		public List<QuantitativeValue> CreditValue { get; set; } = null;
+		//
+		//[JsonProperty( PropertyName = "ceterms:creditHourType" )]
+  //      public LanguageMap CreditHourType { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:creditHourType" )]
-        public LanguageMap CreditHourType { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:creditUnitType" )]
+        //public CredentialAlignmentObject CreditUnitType { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:creditUnitType" )]
-        public CredentialAlignmentObject CreditUnitType { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:creditHourValue" )]
+        //public decimal CreditHourValue { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:creditHourValue" )]
-        public decimal CreditHourValue { get; set; }
-
-        [JsonProperty( PropertyName = "ceterms:creditUnitValue" )]
-        public decimal CreditUnitValue { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:creditUnitValue" )]
+        //public decimal CreditUnitValue { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:creditUnitTypeDescription" )]
         public LanguageMap CreditUnitTypeDescription { get; set; }
@@ -158,8 +164,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
 
-		[JsonProperty( PropertyName = "ceterms:naics" )]
-		public List<string> Naics { get; set; } = new List<string>();
+		//[JsonProperty( PropertyName = "ceterms:naics" )]
+		//public List<string> Naics { get; set; } = new List<string>();
 
 		[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
 		public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
@@ -266,8 +272,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:availableAt" )]
 		public List<Place> AvailableAt { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:financialAssistance" )]
-        public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
+		//[JsonIgnore]
+		//[JsonProperty( PropertyName = "ceterms:financialAssistanceOLD" )]
+  //      public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:financialAssistance" )]
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
 		public List<IdentifierValue> VersionIdentifier { get; set; }

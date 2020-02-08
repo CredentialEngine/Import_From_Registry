@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using Nest;
+//using Nest;
 
 namespace workIT.Models.Elastic
 {
@@ -89,7 +89,7 @@ namespace workIT.Models.Elastic
         public List<string> AlternateNames { get; set; }
 
         public List<string> Keyword { get; set; }
-
+		//public List<string> SubjectAreas { get; set; } = new List<string>();
 		/// <summary>
 		/// Source will be Entity.SearchIndex, including:
 		/// NAICS        
@@ -124,14 +124,20 @@ namespace workIT.Models.Elastic
         public string OfferedByResults { get; set; }
         public string AsmtsOwnedByResults { get; set; }
         public string LoppsOwnedByResults { get; set; }
-        public string AccreditedByResults { get; set; }
+		public string FrameworksOwnedByResults { get; set; }
+		public string AccreditedByResults { get; set; }
         public string ApprovedByResults { get; set; }
         public string RecognizedByResults { get; set; }
         public string RegulatedByResults { get; set; }
 		
 
 		public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
-        public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
+		public bool HasQualityAssurancePerformed { get; set; }
+		public bool HasCredentialsQAPerformed { get; set; }
+		public bool HasOrganizationsQAPerformed { get; set; }
+		public bool HasAssessmentsQAPerformed { get; set; }
+		public bool HasLoppsQAPerformed { get; set; }
+		public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
@@ -144,7 +150,8 @@ namespace workIT.Models.Elastic
         public int DepartmentsCount { get; set; }
         public int HasIndustriesCount { get; set; }
         public List<int> ReportFilters { get; set; } = new List<int>();
-
-    }
+		//placeholder to satisfy IIndex
+		public bool IsAvailableOnline { get; }
+	}
 
 }

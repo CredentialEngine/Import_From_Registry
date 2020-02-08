@@ -155,7 +155,8 @@ namespace workIT.Factories
         public static ThisEntity GetByCtid( string ctid )
         {
             ThisEntity entity = new ThisEntity();
-
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+				return null;
             try
             {
                 using ( var context = new EntityContext() )
@@ -206,7 +207,8 @@ namespace workIT.Factories
 					{
 						efEntity = new ImportMessage();
 						efEntity.ParentId = parentId;
-						efEntity.Message = msg.Message;
+						if ( !string.IsNullOrWhiteSpace( msg.Message ) )
+							efEntity.Message = msg.Message.Substring( 0, (msg.Message.Length < 500 ? msg.Message.Length - 1 : 500) );
 						efEntity.Severity = msg.IsWarning ? 1 : 2;
 						efEntity.Created = System.DateTime.Now;
 
@@ -282,7 +284,7 @@ namespace workIT.Factories
                             LoggingHelper.DoTrace( 3, thisClassName + string.Format( ".Import_EntityResolutionAdd. Unexpected ctid in referencedAtId: {0}, referencedEntityTypeId: {1}, entityUid: {2} ", referencedAtId, referencedEntityTypeId, entityUid ) );
                         }
                         efEntity.Created = System.DateTime.Now;
-                        efEntity.ReferencedId = referencedAtId.ToLower();
+                        efEntity.ReferencedId = referencedAtId.Replace("/graph/","/resources").ToLower();
                         efEntity.ReferencedCtid = ( referencedCtid ?? "" ).ToLower();
                         efEntity.ReferencedEntityTypeId = referencedEntityTypeId;
                         efEntity.EntityBaseId = newEntityId;
@@ -354,6 +356,12 @@ namespace workIT.Factories
             }
 
         }
+		/// <summary>
+		/// Get record by provided URI
+		/// TODO - we should force all to be /resources
+		/// </summary>
+		/// <param name="referencedAtId"></param>
+		/// <returns></returns>
         public static EM.Import_EntityResolution Import_EntityResolution_GetById( string referencedAtId )
 		{
 			EM.Import_EntityResolution entity = new EM.Import_EntityResolution();
@@ -363,10 +371,13 @@ namespace workIT.Factories
 			}
 			//consider, although we already have a ctid lookp fall back
 			string altId = "";
-			if ( referencedAtId.ToLower().IndexOf( "/graph" ) > -1 )
-				altId = referencedAtId.Replace( "/graph", "/resources" );
+			if ( referencedAtId.ToLower().IndexOf( "/graph/ce" ) > -1 )
+				altId = referencedAtId.Replace( "/graph/", "/resources/" );
 			else
-				altId = referencedAtId.Replace( "/resources", "/graph" );
+			{
+				altId = referencedAtId.Trim();
+				//altId = referencedAtId.Replace( "/resources", "/graph" );
+			}
 			try
 			{
 				using ( var context = new EntityContext() )

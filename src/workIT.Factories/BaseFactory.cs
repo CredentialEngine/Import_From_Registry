@@ -234,6 +234,75 @@ namespace workIT.Factories
 
 			return item;
 		}
+
+		/// <summary>
+		/// Format a QuantitativeValue. 
+		/// There is no validation in this method, so expecting accurate data, or caller does validation on return.
+		/// </summary>
+		/// <param name="creditUnitTypeId"></param>
+		/// <param name="creditUnitValue"></param>
+		/// <param name="creditUnitMaxValue"></param>
+		/// <param name="description"></param>
+		/// <returns></returns>
+		public static QuantitativeValue FormatQuantitiveValue( int creditUnitTypeId, decimal creditUnitValue, decimal creditUnitMaxValue, string description )
+		{
+			QuantitativeValue qv = new QuantitativeValue()
+			{
+				Description = description ?? ""
+			};
+			if ( creditUnitMaxValue > 0 )
+			{
+				qv.MinValue = creditUnitValue;
+				qv.MaxValue = creditUnitMaxValue;
+			}
+			else
+			{
+				qv.Value = creditUnitValue;
+			}
+			if ( creditUnitTypeId > 0 )
+			{
+				qv.CreditUnitType = new Enumeration();
+				var match = CodesManager.GetEnumeration( "creditUnit" ).Items.FirstOrDefault( m => m.CodeId == creditUnitTypeId );
+				if ( match != null )
+				{
+					qv.CreditUnitType.Items.Add( match );
+					//??store schema name or label, or both?
+					qv.UnitText = match.SchemaName;
+					qv.Label = match.Name;
+				}
+			}
+			return qv;
+		}
+		public static QuantitativeValue FormatQuantitiveValue( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description )
+		{
+			QuantitativeValue qv = new QuantitativeValue()
+			{
+				Description = description ?? ""
+			};
+			if ( (creditUnitMaxValue ?? 0M) > 0 )
+			{
+				qv.MinValue = creditUnitValue ?? 0M;
+				qv.MaxValue = creditUnitMaxValue ?? 0M;
+			}
+			else
+			{
+				qv.Value = creditUnitValue ?? 0M;
+			}
+			if ( (creditUnitTypeId ?? 0) > 0 )
+			{
+				qv.CreditUnitType = new Enumeration();
+				var match = CodesManager.GetEnumeration( "creditUnit" ).Items.FirstOrDefault( m => m.CodeId == creditUnitTypeId );
+				if ( match != null )
+				{
+					qv.CreditUnitType.Items.Add( match );
+					//??store schema name or label, or both?
+					qv.UnitText = match.SchemaName;
+					qv.Label = match.Name;
+				}
+			}
+			return qv;
+		}
+
 		#region data retrieval
 
 		/// <summary>
@@ -929,7 +998,7 @@ namespace workIT.Factories
 		}
 		protected bool IsValidGuid( Guid? field )
 		{
-			if ( ( field == null || field.ToString() == DEFAULT_GUID ) )
+			if ( ( field == null || field == Guid.Empty ) )
 				return false;
 			else
 				return true;
@@ -946,7 +1015,7 @@ namespace workIT.Factories
 		}
 		public static bool IsGuidValid( Guid field )
 		{
-			if ( ( field == null || field.ToString() == DEFAULT_GUID ) )
+			if ( ( field == null || field == Guid.Empty ) )
 				return false;
 			else
 				return true;
@@ -954,7 +1023,7 @@ namespace workIT.Factories
 
 		public static bool IsGuidValid( Guid? field )
 		{
-			if ( ( field == null || field.ToString() == DEFAULT_GUID ) )
+			if ( ( field == null || field == Guid.Empty ) )
 				return false;
 			else
 				return true;

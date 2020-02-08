@@ -247,7 +247,7 @@ namespace workIT.Factories
 		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
 		/// </summary>
 		/// <param name="parentUid"></param>
-		public static List<ThisEntity> GetAll( Guid parentUid )
+		public static List<ThisEntity> GetAll( Guid parentUid, bool includingItems = true )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
@@ -256,7 +256,7 @@ namespace workIT.Factories
 			{
 				return list;
 			}
-			bool includingItems = true;
+			//bool includingItems = true;
 			try
 			{
 				using ( var context = new EntityContext() )

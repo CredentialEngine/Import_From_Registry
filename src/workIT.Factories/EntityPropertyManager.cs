@@ -98,13 +98,13 @@ namespace workIT.Factories
 						else
 						{
 							//document invalid schema
-							status.AddWarning( string.Format( thisClassName + ".AddProperties(). Invalid schema name encountered of: {0} for categoryId: {1}, parentTypeId: {2}. IGNORED  ", schemaName, categoryId, parentTypeId ) );
+							status.AddWarning( string.Format( thisClassName + ".AddProperties(). Invalid schema name encountered of: '{0}' for categoryId: {1}, parentTypeId: {2}. IGNORED  ", schemaName, categoryId, parentTypeId ) );
 							//isAllValid = false;
 						}
 					} else
 					{
 						//document invalid schema
-						status.AddWarning( string.Format( thisClassName + ".AddProperties(). Invalid to schema name encountered of: {0} for categoryId: {1}, parentTypeId: {2}  ", schemaName, categoryId, parentTypeId ) ); 
+						status.AddWarning( string.Format( thisClassName + ".AddProperties(). Invalid schema name encountered of: '{0}' for categoryId: {1}, parentTypeId: {2}  ", schemaName, categoryId, parentTypeId ) ); 
 						isAllValid = false;
 					}
 				}

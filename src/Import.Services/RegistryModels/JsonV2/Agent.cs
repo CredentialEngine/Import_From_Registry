@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Newtonsoft.Json;
-using RA.Models.Json;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
+using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-    public class Agent : JsonLDDocument
+	public class Agent : JsonLDDocument
 	{
 		[JsonIgnore]
 		public static string classType = "ceterms:CredentialOrganization";
@@ -104,7 +98,7 @@ namespace RA.Models.JsonV2
         public List<JurisdictionProfile> RegulatedIn { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:sameAs" )]
-		public List<string> SameAs { get; set; }
+		public List<string> SameAs { get; set; } //URL
 
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
 		public LanguageMapList AlternateName { get; set; }
@@ -145,7 +139,7 @@ namespace RA.Models.JsonV2
 		public string MissionAndGoalsStatement { get; set; } //URL
 
 		[JsonProperty( PropertyName = "ceterms:missionAndGoalsStatementDescription" )]
-		public string MissionAndGoalsStatementDescription { get; set; }
+		public LanguageMap MissionAndGoalsStatementDescription { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:agentPurpose" )]
 		public string AgentPurpose { get; set; } //URL
@@ -170,7 +164,13 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:leiCode" )]
         public string LEICode { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:email" )]
+		[JsonProperty( PropertyName = "ceterms:isicv4" )]
+		public string ISICV4 { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:ncesID" )]
+		public string NcesID { get; set; }
+		//
+		[JsonProperty( PropertyName = "ceterms:email" )]
 		public List<string> Email { get; set; }
 
 

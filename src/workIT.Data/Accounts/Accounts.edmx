@@ -140,7 +140,7 @@
           <Property Name="AccessDate" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'ctdlEditor.dbo.Account_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'credFinder_github.dbo.Account_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Account_Summary">
           <Key>
             <PropertyRef Name="Id" />

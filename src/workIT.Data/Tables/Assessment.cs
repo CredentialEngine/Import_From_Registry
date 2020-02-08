@@ -57,6 +57,7 @@ namespace workIT.Data.Tables
         public string ScoringMethodExampleDescription { get; set; }
         public Nullable<int> InLanguageId { get; set; }
         public string VersionIdentifier { get; set; }
+        public Nullable<decimal> CreditUnitMaxValue { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Assessment> Entity_Assessment { get; set; }

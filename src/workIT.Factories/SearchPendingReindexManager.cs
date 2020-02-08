@@ -61,7 +61,7 @@ namespace workIT.Factories
         /// <param name="entity"></param>
         /// <param name="messages"></param>
         /// <returns></returns>
-        public int Add( ThisEntity entity, ref List<String> messages )
+        private int Add( ThisEntity entity, ref List<String> messages )
         {
             DBEntity efEntity = new DBEntity();
 
@@ -308,7 +308,7 @@ namespace workIT.Factories
 
             return list;
         }
-        public static List<ThisEntity> GetAllPendingReindex()
+        public static List<ThisEntity> GetAllPendingReindex( ref List<String> messages, int entityTypeId = 0 )
         {
             List<ThisEntity> list = new List<ThisEntity>();
             ThisEntity entity = new ThisEntity();
@@ -316,7 +316,9 @@ namespace workIT.Factories
             {
 
                 List<DBEntity> results = context.SearchPendingReindex
-                        .Where( s => s.IsUpdateOrDeleteTypeId == 1 && s.StatusId == 1 )
+                        .Where( s => s.IsUpdateOrDeleteTypeId == 1 && s.StatusId == 1
+							&& ( entityTypeId == 0 || s.EntityTypeId == entityTypeId ) 
+							)
                         .OrderBy( s => s.EntityTypeId ).ThenBy( s => s.Created )
                         .ToList();
 

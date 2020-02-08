@@ -28,6 +28,11 @@ namespace workIT.Data.Tables
         public string FrameworkUrl { get; set; }
         public System.Guid RowId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<bool> ExistsInRegistry { get; set; }
+        public string OrganizationCTID { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
+        public string CredentialRegistryId { get; set; }
+        public int EntityStateId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }

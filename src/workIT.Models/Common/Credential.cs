@@ -22,7 +22,7 @@ namespace workIT.Models.Common
 			EmbeddedCredentials = new List<Credential>();
 
 			EstimatedCosts = new List<CostProfile>();
-		    FinancialAssistance = new List<FinancialAlignmentObject>();
+		    FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
             RenewalFrequency = new DurationItem();
 			HasPartIds = new List<int>();
@@ -148,42 +148,12 @@ namespace workIT.Models.Common
 		public string CredentialRegistryId { get; set; }
 		
 		public string LatestVersion { get; set; }
-		
-		//public List<TextValueProfile> Auto_LatestVersion
-		//{
-		//	get
-		//	{
-		//		var result = new List<TextValueProfile>();
-		//		if ( !string.IsNullOrWhiteSpace( LatestVersion ) )
-		//		{
-		//			result.Add( new TextValueProfile() { TextValue = LatestVersion } );
-		//		}
-		//		return result;
-		//	}
-		//}
+
 		public string PreviousVersion { get; set; }
-		//public List<TextValueProfile> Auto_PreviousVersion
-		//{
-		//	get
-		//	{
-		//		var result = new List<TextValueProfile>();
-		//		if ( !string.IsNullOrWhiteSpace( PreviousVersion ) )
-		//		{
-		//			result.Add( new TextValueProfile() { TextValue = PreviousVersion } );
-		//		}
-		//		return result;
-		//	}
-		//}
-
-
-		/// <summary>
-		/// 17-03-06 Apparantly can have both Url and subject webpage
-		/// </summary>
-		//public string Url { get; set; }
-
-		/// <summary>
-		/// rename Url to SubjectWebpage (Nov2016)
-		/// </summary>
+		public string NextVersion { get; set; } //URL
+		public string SupersededBy { get; set; } //URL
+		public string Supersedes { get; set; } //URL
+										
 		public string SubjectWebpage { get; set; }
 		
 
@@ -193,7 +163,10 @@ namespace workIT.Models.Common
 		public string AvailabilityListing { get; set; }
 		
 		public string ImageUrl { get; set; } //image URL
-
+		/// <summary>
+		/// ISIC Revision 4 Code
+		/// </summary>
+		public string ISICV4 { get; set; }
 		public List<Address> Addresses { get; set; }
 		
 		
@@ -274,6 +247,10 @@ namespace workIT.Models.Common
 		public List<TextValueProfile> OtherOccupations { get; set; }
 
 		public Enumeration InstructionalProgramType { get; set; } = new Enumeration();
+		//only used for display
+		public Enumeration NavyRating { get; set; } = new Enumeration();
+		//only used by import
+		public List<CredentialAlignmentObjectProfile> NavyRatingType { get; set; } = new List<CredentialAlignmentObjectProfile>();
 		//confirm if necessary
 		//public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
 		public Enumeration MilitaryOccupation { get; set; }
@@ -429,8 +406,8 @@ namespace workIT.Models.Common
 		//	get { return CostProfileMerged.FlattenCosts( EstimatedCosts ); }
 		//} //
 
-		public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
-
+		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
 		//public List<CredentialAlignmentObjectProfile> RequiresCompetencies { get; set; }
 
 

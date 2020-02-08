@@ -33,6 +33,9 @@ namespace workIT.Models.Common
 		//}
 		public bool CanViewRecord { get; set; }
 		public Guid RowId { get; set; }
+		/// <summary>
+		/// ParentId will typically be the Entity.Id related to the base class
+		/// </summary>
 		public int ParentId { get; set; }
 		public bool HasCompetencies { get; set; }
 		public bool ChildHasCompetencies { get; set; }
@@ -47,9 +50,10 @@ namespace workIT.Models.Common
 		public string LastUpdatedDisplay { get { return LastUpdated == null ? CreatedDisplay : LastUpdated.ToShortDateString(); } }
 		public int LastUpdatedById { get; set; }
 		public string LastUpdatedBy { get; set; }
+		public DateTime EntityLastUpdated { get; set; }
 
-        //store language map properties
-        public List<EntityLanguageMap> LanguageMaps { get; set; } = new List<EntityLanguageMap>();
+		//store language map properties
+		public List<EntityLanguageMap> LanguageMaps { get; set; } = new List<EntityLanguageMap>();
         public string FirstLanguage { get; set; }
     }
 	//

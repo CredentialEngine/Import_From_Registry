@@ -435,7 +435,8 @@ namespace workIT.Factories
 			List<CredentialAlignmentObjectFrameworkProfile> list = new List<CredentialAlignmentObjectFrameworkProfile>();
 			//var frameworksList = new Dictionary<string, RegistryImport>();
 			string viewerUrl = UtilityManager.GetAppKeyValue( "cassResourceViewerUrl" );
-            CredentialAlignmentObjectItem caoItem = new CredentialAlignmentObjectItem();
+			bool hidingFrameworksNotPublished = UtilityManager.GetAppKeyValue( "hideFrameworksNotPublished", false );
+			CredentialAlignmentObjectItem caoItem = new CredentialAlignmentObjectItem();
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -459,19 +460,43 @@ namespace workIT.Factories
 						{
 							if (prevName != item.FrameworkName)
 							{
-								if (!string.IsNullOrWhiteSpace( prevName ) )
-									list.Add( entity );
+								if ( !string.IsNullOrWhiteSpace( prevName ) )
+								{
+									//actually try handling in detail page - not working
+
+									if ( !entity.IsARegistryFrameworkUrl
+										|| !hidingFrameworksNotPublished
+										|| ( entity.IsARegistryFrameworkUrl && entity.ExistsInRegistry )
+										)
+									{
+										if (!entity.IsDeleted)
+											list.Add( entity );
+									}
+								}
 
 								entity = new CredentialAlignmentObjectFrameworkProfile();
                                 if ( item.EducationFramework != null && item.EducationFramework.Id > 0 )
                                 {
+									
                                     entity.FrameworkName = item.EducationFramework.FrameworkName;
                                     entity.FrameworkUri = item.EducationFramework.FrameworkUri;
                                     entity.SourceUrl = item.EducationFramework.SourceUrl;
+									if ( entity.IsARegistryFrameworkUrl
+										&& ( item.EducationFramework.ExistsInRegistry ?? false )
+										)
+									{
+										entity.ExistsInRegistry = true;
+										if ( item.EducationFramework.EntityStateId == 0 )
+										{
+											//need to skip - need more than this. A non-registry framework will not exist in registry
+											entity.IsDeleted = true;
+										}
+									}
+									
 									//18-12-13 mp - can only use viewer, if a cer URL - although this may change for other sources
 									if ( !string.IsNullOrWhiteSpace( viewerUrl ) && entity.IsARegistryFrameworkUrl )
 									{
-										entity.CaSSViewerUrl = string.Format( viewerUrl, UtilityManager.GenerationMD5String( entity.FrameworkUri ) );
+										entity.CaSSViewerUrl = string.Format( viewerUrl, UtilityManager.GenerateMD5String( entity.FrameworkUri ) );
 									}
                                     //if ( item.FrameworkUrl.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") == -1 )
                                     //    entity.SourceUrl = item.EducationFramework.SourceUrl;
@@ -488,6 +513,7 @@ namespace workIT.Factories
                                 }
                                 else
                                 {
+									//this should not happen - should log this
                                     entity.FrameworkName = item.FrameworkName;
                                     entity.SourceUrl = item.FrameworkUrl ?? "";
                                     //should we populate frameworkUri as well?
@@ -498,14 +524,22 @@ namespace workIT.Factories
                                 entity.ParentId = item.EducationFrameworkId ?? 0;
 								prevName = item.FrameworkName;
 							}
+
 							caoItem = new CredentialAlignmentObjectItem();
 							MapFromDB( item, caoItem );
 							entity.Items.Add( caoItem );
 							entity.HasCompetencies = true;
 						}
-                        //add last one
+						//add last one
 						if ( !string.IsNullOrWhiteSpace( prevName ) )
-							list.Add( entity );
+						{
+							if ( !entity.IsARegistryFrameworkUrl
+								|| !hidingFrameworksNotPublished
+								|| ( entity.IsARegistryFrameworkUrl && entity.ExistsInRegistry )
+								)
+								if ( !entity.IsDeleted )
+									list.Add( entity );
+						}
 					}
 				}
 			}

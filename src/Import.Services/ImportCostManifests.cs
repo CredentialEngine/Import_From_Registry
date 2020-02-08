@@ -282,7 +282,7 @@ namespace Import.Services
             output.CredentialRegistryId = envelopeIdentifier;
             output.CostDetails = input.CostDetails;
 
-            output.OwningAgentUid = helper.MapOrganizationReferencesGuid( input.CostManifestOf, ref status );
+            output.OwningAgentUid = helper.MapOrganizationReferencesGuid( "CostManifest.OwningAgentUid", input.CostManifestOf, ref status );
 
             output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
             output.EndDate = helper.MapDate( input.EndDate, "StartDate", ref status );

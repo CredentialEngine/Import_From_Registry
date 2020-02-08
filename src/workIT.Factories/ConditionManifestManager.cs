@@ -362,7 +362,7 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
 						Guid rowId = efEntity.RowId;
-
+						int orgId = efEntity.OrganizationId ?? 0;
                         //need to remove from Entity.
                         //-using before delete trigger - verify won't have RI issues
                         string msg = string.Format( " ConditionManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
@@ -372,17 +372,20 @@ namespace workIT.Factories
                         //efEntity.LastUpdated = System.DateTime.Now;
 
                         int count = context.SaveChanges();
-						if ( count > 0 )
+						if ( count >= 0 )
 						{
                             new ActivityManager().SiteActivityAdd( new SiteActivity()
                             {
                                 ActivityType = "ConditionManifest",
-                                Activity = "Management",
+                                Activity = "Import",
                                 Event = "Delete",
                                 Comment = msg
                             } );
                             isValid = true;
 						}
+						List<String> messages = new List<string>();
+						//mark owning org for updates 
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
 					}
 					else
 					{

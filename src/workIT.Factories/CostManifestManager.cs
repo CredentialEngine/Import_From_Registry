@@ -418,27 +418,30 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
 						Guid rowId = efEntity.RowId;
-
-                        //need to remove from Entity.
-                        //-using before delete trigger - verify won't have RI issues
-                        string msg = string.Format( " CostManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+						int orgId = efEntity.OrganizationId ?? 0;
+						//need to remove from Entity.
+						//-using before delete trigger - verify won't have RI issues
+						string msg = string.Format( " CostManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
                         //leaving as a delete
                         context.CostManifest.Remove( efEntity );
                         //efEntity.EntityStateId = 0;
                         //efEntity.LastUpdated = System.DateTime.Now;
 
                         int count = context.SaveChanges();
-						if ( count > 0 )
+						if ( count >= 0 )
 						{
                             new ActivityManager().SiteActivityAdd( new SiteActivity()
                             {
                                 ActivityType = "CostManifest",
-                                Activity = "Management",
+                                Activity = "Import",
                                 Event = "Delete",
                                 Comment = msg
                             } );
                             isValid = true;
 						}
+						List<String> messages = new List<string>();
+						//mark owning org for updates 
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
 					}
 					else
 					{

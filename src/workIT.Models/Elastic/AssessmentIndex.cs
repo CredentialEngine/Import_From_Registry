@@ -10,10 +10,10 @@ namespace workIT.Models.Elastic
             RequiresCompetencies = new List<IndexCompetency>();
               
             RelationshipTypes = new List<int>();
-            SubjectAreas = new List<string>();
+           // SubjectAreas = new List<string>();
            // SubjectAreas1 = new List<string>();
             
-            QualityAssurance = new List<IndexQualityAssurance>();
+            //QualityAssurance = new List<IndexQualityAssurance>();
             Addresses = new List<Address>();
         }
 
@@ -33,22 +33,17 @@ namespace workIT.Models.Elastic
 			get { return PrimaryOrganizationCTID; }
 			set { this.PrimaryOrganizationCTID = value; }
 		}
-		//public int EntityTypeId { get; set; } = 3;
-		//public int Id { get; set; }
-		//public Guid RowId { get; set; }
-		//public string CTID { get; set; }
-		//public int EntityStateId { get; set; }
-		//public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
-
-		// public string Name { get; set; }
-
-		//public string FriendlyName { get; set; }
-		//public string Description { get; set; }
-		//public string SubjectWebpage { get; set; }
-		//public string CredentialRegistryId { get; set; }
-
-		//public DateTime Created { get; set; }
-		//public DateTime LastUpdated { get; set; }
+		public string AvailableOnlineAt { get; set; }
+		public bool IsAvailableOnline
+		{
+			get
+			{
+				if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
+					return true;
+				else
+					return false;
+			}
+		}
 
 		public string DateEffective { get; set; }
         
@@ -73,17 +68,7 @@ namespace workIT.Models.Elastic
         public string IdentificationCode { get; set; }
 
 
-        public string AvailableOnlineAt { get; set; }
-        public bool IsAvailableOnline
-        {
-            get
-            {
-                if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
-                    return true;
-                else
-                    return false;
-            }
-        }
+
         public string AvailabilityListing { get; set; }
        
         
@@ -99,35 +84,36 @@ namespace workIT.Models.Elastic
 		//public List<string> TextValues { get; set; } = new List<string>();
 		public List<string> PremiumValues { get; set; } = new List<string>();
 		public List<int> ReportFilters { get; set; } = new List<int>();
-        //public string Subject { get; set; }
-        public List<string> SubjectAreas { get; set; }
+		public bool HasSubjects { get; set; }
+		//public List<string> SubjectAreas { get; set; }
         //SubjectAreas1 was the same as Classifications
-        // public List<string> SubjectAreas1 { get; set; }
+  //       public List<string> Subjects
+		//{
+		//	get { return SubjectAreas; }
+		//	set { SubjectAreas = value; }
+		//}
         
         public List<int> AssessmentMethodTypeIds { get; set; } = new List<int>();
         public List<int> AssessmentUseTypeIds { get; set; } = new List<int>();
         public List<int> ScoringMethodTypeIds { get; set; } = new List<int>();
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
+		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
 		public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
 
-  //      public List<IndexProperty> AssessmentMethodTypes { get; set; } = new List<IndexProperty>();
-  //      public List<IndexProperty> AssessmentUseTypes { get; set; } = new List<IndexProperty>();
-  //      public List<IndexProperty> ScoringMethodTypes { get; set; } = new List<IndexProperty>();
-  //      public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
-		//public List<IndexProperty> AudienceTypes { get; set; } = new List<IndexProperty>();
+
 		public List<IndexProperty> AssessmentProperties { get; set; } = new List<IndexProperty>();
 
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
 		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
-
-        //QAAgentAndRoles - List actual orgIds and names for roles
-        public string Org_QAAgentAndRoles { get; set; }
+		public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
+		//QAAgentAndRoles - List actual orgIds and names for roles
+		public string Org_QAAgentAndRoles { get; set; }
         //public List<int> QualityAssurances { get; set; } = new List<int>();
 
 		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
-		public List<IndexQualityAssurance> QualityAssurance { get; set; }
+		//public List<IndexQualityAssurance> QualityAssurance { get; set; }
        // public string Org_QAAgentAndRoles { get; set; }
 
         public string CodedNotation { get; set; }

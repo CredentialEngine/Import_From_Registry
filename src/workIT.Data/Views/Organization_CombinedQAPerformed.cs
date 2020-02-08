@@ -42,5 +42,6 @@ namespace workIT.Data.Views
         public Nullable<bool> IsOwnerAgentRole { get; set; }
         public Nullable<int> AgentEntityStateId { get; set; }
         public string TargetOwningOrganizationName { get; set; }
+        public Nullable<int> TargetOwningOrganizationId { get; set; }
     }
 }

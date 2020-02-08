@@ -2,7 +2,8 @@
 --use credFinder_ProdSync
 use credFinder
 GO
-
+--use staging_credFinder
+--go
 --populate [Entity.SearchIndex]
 -- ********* ACTUALLY SHOULD POPULATE SPECIFIC TO THE ENTITY
 --
@@ -36,8 +37,8 @@ INSERT INTO [dbo].[Entity.SearchIndex]
 		   )
 
 SELECT [EntityId]    ,[CategoryId] ,CodedNotation
-       ,Name
-      ,isnull([Description],'')
+       ,case when len(Name) > 200 then SUBSTRING(Name, 1,200) else Name end as Name
+	   ,case when len(IsNull([Description],'')) > 800 then SUBSTRING([Description], 1,800) else [Description] end as [Description]
   FROM dbo.Entity_ReferenceFramework_Summary
 where (EntityId = @EntityId OR @EntityId = 0)
 
@@ -55,7 +56,7 @@ INSERT INTO [dbo].[Entity.SearchIndex]
 SELECT [EntityId] 
 	,[CategoryId]
 	,''
-	,[TextValue]
+	,case when len([TextValue]) > 200 then SUBSTRING([TextValue], 1,200) else [TextValue] end as [TextValue]
 	,''
     ,[Created]
  
@@ -100,7 +101,7 @@ SELECT [EntityId]
        ,[CategoryId]
      -- ,[EntityBaseId]
 	 ,''
-      ,[Property]
+	  ,case when len([Property]) > 200 then SUBSTRING([Property], 1,200) else [Property] end as [Property]
 	  ,''
       ,[Created]
   FROM [dbo].[EntityProperty_Summary]
@@ -130,7 +131,7 @@ SELECT distinct  [EntityId]
 	  ,getdate()
       --,max([Created])
   FROM [dbo].[Entity.Address] a
-  Left Join [dbo].[Codes.States] b on a.Region = b.StateCode
+  Left Join [dbo].[Codes.State] b on a.Region = b.StateCode
 
 where (EntityId = @EntityId OR @EntityId = 0)
 group by EntityId, Region, b.StateCode, b.State
@@ -159,7 +160,7 @@ SELECT distinct  ce.Id AS [EntityId]
   inner join Entity ce on c.RowId = ce.EntityUid
   inner join Entity b on c.OwningAgentUid = b.EntityUid
   inner join [dbo].[Entity.Address] a on b.Id = a.EntityId
-  Left Join [dbo].[Codes.States] cs on a.Region = cs.StateCode
+  Left Join [dbo].[Codes.State] cs on a.Region = cs.StateCode
   left join [Entity.SearchIndex] esi on ce.Id = esi.EntityId
 
 where esi.Id is null
@@ -190,7 +191,7 @@ SELECT distinct  ce.Id AS [EntityId]
   inner join Entity ce on c.RowId = ce.EntityUid
   inner join Entity b on c.OwningAgentUid = b.EntityUid
   inner join [dbo].[Entity.Address] a on b.Id = a.EntityId
-  Inner Join [dbo].[Codes.States] cs on a.Region = cs.StateCode
+  Inner Join [dbo].[Codes.State] cs on a.Region = cs.StateCode
   left join [Entity.SearchIndex] esi on ce.Id = esi.EntityId
 
 where esi.Id is null
@@ -222,7 +223,7 @@ SELECT distinct  ce.Id AS [EntityId]
   inner join Entity ce on c.RowId = ce.EntityUid
   inner join Entity b on c.OwningAgentUid = b.EntityUid
   inner join [dbo].[Entity.Address] a on b.Id = a.EntityId
-  Left Join [dbo].[Codes.States] cs on a.Region = cs.StateCode
+  Left Join [dbo].[Codes.State] cs on a.Region = cs.StateCode
   left join [Entity.SearchIndex] esi on ce.Id = esi.EntityId
 
 where esi.Id is null

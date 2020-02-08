@@ -75,7 +75,10 @@ namespace workIT.Factories
                     else
                     {
                         MapToDB( entity, efEntity );
-
+						if ( IsValidGuid( entity.RowId ) )
+							efEntity.RowId = entity.RowId;
+						else
+							efEntity.RowId = Guid.NewGuid();
                         efEntity.CreatedById = userId;
                         efEntity.LastUpdatedById = userId;
                         efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
@@ -296,7 +299,7 @@ namespace workIT.Factories
             to.OrgCTID = from.OrgCTID;
             to.OrganizationName = from.OrganizationName;
             to.Name = from.Name;
-
+			to.RowId = from.RowId;
 			to.CreatedById = ( int )( from.CreatedById ?? 0 );
 			to.LastUpdatedById = ( int )( from.LastUpdatedById ?? 0 );
 
@@ -316,11 +319,15 @@ namespace workIT.Factories
                 to.WidgetStyles = new WidgetStyles();
 
 			if ( !string.IsNullOrWhiteSpace( to.CustomStylesFileName ) )
-				to.CustomStylesURL = UtilityManager.GetAppKeyValue( "customStylesUrl" ) + to.CustomStylesFileName;
+				to.CustomStylesURL = UtilityManager.GetAppKeyValue( "widgetResourceUrl" ) + to.CustomStylesFileName;
 			to.WidgetStylesUrl = from.WidgetStylesUrl;
-
-			//??
+			//LogoUrl is part of the json, so not acutally used?
 			to.LogoUrl = from.LogoUrl;
+			//to.LogoFileName = from.LogoFileName;
+			//not clear this is used since that latter is null
+			if ( !string.IsNullOrWhiteSpace( to.LogoFileName ) )
+				to.LogoUrl = UtilityManager.GetAppKeyValue( "widgetResourceUrl" ) + to.LogoFileName;
+
 			//old properties no longer used
 			to.CountryFilters = from.CountryFilters;
 			to.RegionFilters = from.RegionFilters;
@@ -367,6 +374,7 @@ namespace workIT.Factories
 			{
 				to.OrgCTID = from.OrgCTID;
 				to.OrganizationName = from.OrganizationName;
+
 			}
 
 			to.Name = from.Name;
@@ -380,42 +388,47 @@ namespace workIT.Factories
 
 			//??
 			to.WidgetAlias = from.WidgetAlias;
-			//??
+			//TODO delete from database
+			//to.LogoFileName = from.LogoFileName;
+
+			//LogoUrl is part of the json, so not acutally used? - confirm
 			to.LogoUrl = from.LogoUrl;
+
 			if ( !string.IsNullOrEmpty( from.SearchFilters ) )
 			{
 				to.SearchFilters = from.SearchFilters;
 			}
 
-			if ( IsDevEnv() )
-			{
-				//old properties no longer used
-				to.CountryFilters = from.CountryFilters;
-				to.RegionFilters = from.RegionFilters;
-				to.CityFilters = from.CityFilters;
-				to.IncludeIfAvailableOnline = from.IncludeIfAvailableOnline;
+
+			//if ( IsDevEnv() )
+			//{
+			//	//old properties no longer used
+			//	to.CountryFilters = from.CountryFilters;
+			//	to.RegionFilters = from.RegionFilters;
+			//	to.CityFilters = from.CityFilters;
+			//	to.IncludeIfAvailableOnline = from.IncludeIfAvailableOnline;
 
 
-				//are we assuming serialization is always done before here?
-				if ( string.IsNullOrWhiteSpace( from.SearchFilters ) && from.WidgetFilters != null )
-				{
-					from.SearchFilters = JsonConvert.SerializeObject( from.WidgetFilters );
-				}
-				to.SearchFilters = from.SearchFilters;
+			//	//are we assuming serialization is always done before here?
+			//	if ( string.IsNullOrWhiteSpace( from.SearchFilters ) && from.WidgetFilters != null )
+			//	{
+			//		from.SearchFilters = JsonConvert.SerializeObject( from.WidgetFilters );
+			//	}
+			//	to.SearchFilters = from.SearchFilters;
 
-				to.WidgetStylesUrl = from.WidgetStylesUrl;
+			//	to.WidgetStylesUrl = from.WidgetStylesUrl;
 
-				if ( ( from.OwningOrganizationIds ?? "" ).IndexOf( "workIT.Models" ) > -1 )
-					from.OwningOrganizationIds = null;
-				else if ( ( from.OwningOrganizationIds ?? "" ) == "0" )
-					from.OwningOrganizationIds = null;
+			//	if ( ( from.OwningOrganizationIds ?? "" ).IndexOf( "workIT.Models" ) > -1 )
+			//		from.OwningOrganizationIds = null;
+			//	else if ( ( from.OwningOrganizationIds ?? "" ) == "0" )
+			//		from.OwningOrganizationIds = null;
 
-				to.OwningOrganizationIds = from.OwningOrganizationIds;
-				if ( from.OwningOrganizationIdsList != null && from.OwningOrganizationIdsList.Count > 0 )
-				{
-					to.OwningOrganizationIds = string.Join( ",", from.OwningOrganizationIdsList.Select( n => n.ToString() ).ToArray() );
-				}
-			}
+			//	to.OwningOrganizationIds = from.OwningOrganizationIds;
+			//	if ( from.OwningOrganizationIdsList != null && from.OwningOrganizationIdsList.Count > 0 )
+			//	{
+			//		to.OwningOrganizationIds = string.Join( ",", from.OwningOrganizationIdsList.Select( n => n.ToString() ).ToArray() );
+			//	}
+			//}
         }
 
         #endregion

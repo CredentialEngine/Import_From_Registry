@@ -1,15 +1,13 @@
 /*
 Sample restore SQL to a SQL server 2016+ database
 
-The database has two users that will have to be created in the target database (or new users could be added, and replace those referenced by the apps. 
+The database has one user that will have to be created in the target database.
+20-02-06 - updated the code to only use one user to simplify setup.
 
 
 use master 
 go
-sp_addLogin 'ctiAdmin', '###PASSWORD###', master
-go
-
-sp_addLogin 'ctiReader', '###PASSWORD###', master
+sp_addLogin 'ceGithub', 'ce$Rocks2020', master
 go
 
 After completing the restore, run the following sql to 'associate' the named accounts in the backup file with the ones created on this server
@@ -18,10 +16,9 @@ Use credfinder_Github
 go
 sp_change_users_login 'report'
 go
-sp_change_users_login 'update_one', 'ctiAdmin','ctiAdmin'
+sp_change_users_login 'update_one', 'ceGithub','ceGithub'
 go
-sp_change_users_login 'update_one', 'ctiReader','ctiReader'
-go
+
 sp_change_users_login 'report'
 go
 
@@ -73,10 +70,12 @@ Declare
 
 
 -- ===============================================================
-
-set @wnTestBackupLoc  = 'C:\data\sql2016\backups\Adhoc\'                
-set @wnTestDataLoc    = 'C:\data\sql2016\'
-set @wnTestLogsLoc    = 'C:\data\sql2016\'
+-- change locations as needed
+-- the following assumes the back up will be placed in: 
+set @wnTestBackupLoc  = 'C:\data\SqlServer2016\backups\Adhoc\'    
+--the following assumes data and log file will be:
+set @wnTestDataLoc    = 'C:\data\SqlServer2016\'
+set @wnTestLogsLoc    = 'C:\data\SqlServer2016\'
 -- 
 -- Actions:
 -- ======================================================================

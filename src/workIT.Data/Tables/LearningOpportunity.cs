@@ -43,6 +43,7 @@ namespace workIT.Data.Tables
         public string DeliveryTypeDescription { get; set; }
         public string VerificationMethodDescription { get; set; }
         public Nullable<int> InLanguageId { get; set; }
+        public Nullable<decimal> CreditUnitMaxValue { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_LearningOpportunity> Entity_LearningOpportunity { get; set; }

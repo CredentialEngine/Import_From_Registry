@@ -1,0 +1,577 @@
+﻿<script type="text/javascript">
+	//Purely data-related competency framework functions
+	var CompetencyFrameworks = {
+		Frameworks: [],
+		Organizations: [],
+		ConceptSchemes: [],
+		AlignedFrameworks: [],
+		allFrameworks: function () { return CompetencyFrameworks.Frameworks.filter(function (m) { return !m.HasLoadError }).map(function (m) { return m.Framework }); },
+		allCompetencies: function () { return CompetencyFrameworks.flatten(CompetencyFrameworks.Frameworks.map(function (m) { return m.Competencies })); },
+		allConcepts: function () { return CompetencyFrameworks.flatten(CompetencyFrameworks.ConceptSchemes.map(function (m) { return m.Concepts })); },
+		allOrganizations: function () { return CompetencyFrameworks.Organizations.filter(function (m) { return !m.HasLoadError && m["@@graph"].length > 0 }).map(function (m) { return m["@@graph"][0] }); },
+		allAlignedCompetencies: function () { return CompetencyFrameworks.AlignedFrameworks.filter(function (m) { return !m.HasLoadError }).map(function (m) { return m.Framework }); }
+	};
+	//
+
+	//The main function to call
+	//Pass arguments like: 
+	//["ce-abc...","ce-123..."]
+	//["https://...", "https://..."]
+	//{ Frameworks: function() { ... }, Credentials: function() { ... } }
+	CompetencyFrameworks.getAllFrameworkData = function (frameworkCTIDs, frameworkURIs, onLoadFunctions) {
+		//Assign default limits and allow overrides
+		onLoadFunctions.PerFrameworkLimits = onLoadFunctions.PerFrameworkLimits || {};
+		var defaultPerFrameworkLimits = {
+			Organizations: -1,
+			Concepts: -1,
+			Credentials: 100,
+			Assessments: 100,
+			LearningOpportunities: 100,
+			AlignedFrameworks: -1,
+			AlignedCompetencies: -1
+		};
+		for (var i in defaultPerFrameworkLimits) {
+			(function (property, value) {
+				onLoadFunctions.PerFrameworkLimits[property] = onLoadFunctions.PerFrameworkLimits[property] || value;
+			})(i, defaultPerFrameworkLimits[i]);
+		}
+
+		//Get frameworks first
+		CompetencyFrameworks.getRegistryDataList(CompetencyFrameworks.Frameworks, frameworkCTIDs, frameworkURIs, function (messageData) {
+			//Use these to reference data for frameworks loaded in this transaction
+			var loadedFrameworks = [];
+			var allLoadedCompetencies = [];
+
+			//On successful load of frameworks...
+			Object.values(messageData).forEach(function (loadedFramework) {
+				//Handle errors
+				if (loadedFramework.HasLoadError) {
+					console.log("Error loading data for framework", loadedFramework);
+					return;
+				}
+
+				//Format the frameworks data
+				loadedFramework.Framework = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:CompetencyFramework" })[0];
+				loadedFramework.Competencies = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:Competency" });
+				loadedFramework.Credentials = [],
+				loadedFramework.Assessments = [],
+				loadedFramework.LearningOpportunities = [],
+				loadedFramework.TotalCredentials = 0,
+				loadedFramework.TotalAssessments = 0,
+				loadedFramework.TotalLearningOpportunities = 0
+
+				CompetencyFrameworks.append(CompetencyFrameworks.Frameworks, loadedFramework);
+
+				//Push data into the containers for this transaction
+				loadedFrameworks.push(loadedFramework);
+				allLoadedCompetencies = allLoadedCompetencies.concat(loadedFramework.Competencies);
+
+			});
+
+			//Run the function that needs to run now that frameworks are loaded (note that this will fire before the concept schemes, credentials, etc. are loaded!)
+			CompetencyFrameworks.run(onLoadFunctions.Frameworks, onLoadFunctions.Frameworks, loadedFrameworks);
+
+			//Next get related data, depending on what functions are present to handle it
+			//Organizations
+			CompetencyFrameworks.run(onLoadFunctions.Organizations, function () {
+				//Load organizations for publisher and creator
+				var organizationURIs = CompetencyFrameworks.getValuesForProperties(loadedFrameworks.map(function (m) { return m.Framework }), ["ceasn:publisher", "ceasn:creator"], onLoadFunctions.PerFrameworkLimits.Organizations);
+				CompetencyFrameworks.getRegistryDataList(CompetencyFrameworks.Organizations, [], organizationURIs, function (messageData) {
+					//On successful load of organizations...
+					Object.values(messageData).forEach(function (loadedOrganization) {
+						//Format the organization data
+						loadedOrganization.Organization = loadedOrganization["@@graph"][0];
+
+						//Append the organizations
+						var appended = CompetencyFrameworks.append(CompetencyFrameworks.Organizations, loadedOrganization);
+					});
+
+					//Call the function
+					onLoadFunctions.Organizations();
+				})
+			});
+
+			//Concept Schemes
+			CompetencyFrameworks.run(onLoadFunctions.ConceptSchemes, function () {
+				//For each framework
+				loadedFrameworks.forEach(function (Framework) {
+					//Get all of the concept URIs for all competencies in that framework
+					var conceptURIs = CompetencyFrameworks.getValuesForProperties(Framework.Competencies, ["ceasn:conceptTerm", "ceasn:complexityLevel"]);
+					//Load the data one concept at a time. The recursive function will filter the URIs each time to eliminate duplicates.
+					CompetencyFrameworks.loadRecursivelyViaChildren(CompetencyFrameworks.allConcepts(), conceptURIs, 0, onLoadFunctions.PerFrameworkLimits.Concepts, function(uris) {
+						return uris.filter(function (m) { return CompetencyFrameworks.allConcepts().filter(function (n) { return n["@@id"] == m }).length == 0 });
+					},function (messageData) {
+						//On successful load of schemes...
+						Object.values(messageData).forEach(function (loadedScheme) {
+							//Format the scheme data
+							loadedScheme.Scheme = loadedScheme["@@graph"].filter(function (m) { return m["@@type"] == "skos:ConceptScheme" })[0];
+							loadedScheme.Concepts = loadedScheme["@@graph"].filter(function (m) { return m["@@type"] == "skos:Concept" });
+
+							//Append the data
+							var appended = CompetencyFrameworks.append(CompetencyFrameworks.ConceptSchemes, loadedScheme);
+						});
+						//When all are finished...
+					}, function () {
+						//Call the function
+						onLoadFunctions.ConceptSchemes();
+					});
+				});
+
+				//Ensure the function gets called
+				if (loadedFrameworks.length == 0) {
+					onLoadFunctions.ConceptSchemes();
+				}
+			});
+
+			//Credentials, Assessments, and Learning Opportunities that reference the competencies in this framework
+			//Build objects representing all competency CTIDs for each freshly-loaded framework's CTID
+			var ctidMap = loadedFrameworks.map(function (m) { return { FrameworkCTID: m["ceterms:ctid"], CompetencyCTIDs: m.Competencies.map(function (n) { return n["ceterms:ctid"] }) } });
+
+			//Load and append resources
+			CompetencyFrameworks.getAndAppendResourceList(onLoadFunctions.Credentials, "GetCredentialsForFrameworks", ctidMap, "Credentials", onLoadFunctions.Credentials, onLoadFunctions.PerFrameworkLimits.Credentials);
+			CompetencyFrameworks.getAndAppendResourceList(onLoadFunctions.Assessments, "GetAssessmentsForFrameworks", ctidMap, "Assessments", onLoadFunctions.Assessments, onLoadFunctions.PerFrameworkLimits.Assessments);
+			CompetencyFrameworks.getAndAppendResourceList(onLoadFunctions.LearningOpportunities, "GetLearningOpportunitiesForFrameworks", ctidMap, "LearningOpportunities", onLoadFunctions.LearningOpportunities, onLoadFunctions.PerFrameworkLimits.LearningOpportunities);
+
+			//Do these last because they can be slow
+			//Aligned Frameworks
+			CompetencyFrameworks.run(onLoadFunctions.AlignedFrameworks, function () {
+				//Get data for all alignment-based properties
+				var alignedFrameworkURIs = CompetencyFrameworks.getValuesForProperties(loadedFrameworks, ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"], onLoadFunctions.PerFrameworkLimits.AlignedFrameworks);
+				CompetencyFrameworks.getRegistryDataList(CompetencyFrameworks.AlignedFrameworks, [], alignedFrameworkURIs, function (messageData) {
+					//On successful load of frameworks...
+					Object.values(messageData).forEach(function (loadedFramework) {
+						//Format the framework data
+						try {
+							loadedFramework.Framework = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:CompetencyFramework" })[0];
+							loadedFramework.Competencies = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:Competency" });
+							if (!loadedFramework || loadedFramework.HasLoadError) {
+								throw new Exception("Unable to parse framework");
+							}
+						}
+						catch (e) {
+							console.log(e, loadedFramework);
+							return;
+						}
+
+						//Append the data
+						CompetencyFrameworks.append(CompetencyFrameworks.AlignedFrameworks, loadedFramework);
+					});
+
+					//Call the function
+					onLoadFunctions.AlignedFrameworks();
+				});
+			});
+
+			//Aligned Competencies
+			CompetencyFrameworks.run(onLoadFunctions.AlignedCompetencies, function () {
+				//Roundabout handling for limits since they are per-framework, not per-competency
+				var aggregateCompetencyURIs = [];
+				//For each framework
+				loadedFrameworks.forEach(function (framework) {
+					//Get all of the alignment URIs for all competencies in that framework
+					var alignedCompetencyURIs = CompetencyFrameworks.getValuesForProperties(framework.Competencies, ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"]);
+					//Load the competencies one at a time. The recurisve function will filter the URIs each time to eliminate duplicates.
+					CompetencyFrameworks.loadRecursivelyViaChildren(CompetencyFrameworks.allAlignedCompetencies(), alignedCompetencyURIs, 0, onLoadFunctions.PerFrameworkLimits.AlignedCompetencies, function(uris){
+						return uris.filter(function (m) { return CompetencyFrameworks.allAlignedCompetencies().filter(function (n) { return n["@@id"] == m }).length == 0 });
+					}, function (messageData) {
+						//On successful load of frameworks...
+						Object.values(messageData).forEach(function (loadedFramework) {
+							//Format the framework data
+							try {
+								loadedFramework.Framework = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:CompetencyFramework" })[0];
+								loadedFramework.Competencies = loadedFramework["@@graph"].filter(function (m) { return m["@@type"] == "ceasn:Competency" });
+								if (!loadedFramework || loadedFramework.HasLoadError) {
+									throw new Exception("Unable to parse framework");
+								}
+							}
+							catch (e) {
+								console.log(e, loadedFramework);
+								return;
+							}
+
+							//Append the data
+							CompetencyFrameworks.append(CompetencyFrameworks.AlignedFrameworks, loadedFramework);
+						});
+						//When all are finished...
+					}, function () {
+						//Call the function
+						onLoadFunctions.AlignedCompetencies();
+					});
+
+				});
+
+				//Ensure the function gets called
+				if (loadedFrameworks.length == 0) {
+					onLoadFunctions.AlignedCompetencies();
+				}
+			});
+		});
+	}
+	//
+
+	CompetencyFrameworks.loadRecursivelyViaChildren = function (checkForDuplicatesIn, uris, count, limit, filter, onload, onAllFinished) {
+		try{
+			uris = filter(uris);
+		}
+		catch (e) {
+			console.log("Error filtering URIs during recursive load", { error: e, checkForDuplicatesIn: checkForDuplicatesIn, uris: uris, count: count, limit: limit, filter: filter, onload: onload, onAllFinished: onAllFinished })
+			uris = [];
+		}
+		if (uris.length > 0 && (limit > -1 ? count < limit : true)) {
+			var uri = uris.shift();
+			CompetencyFrameworks.getRegistryDataList(checkForDuplicatesIn, [], [uri], function (messageData) {
+				count++;
+				if (onload) {
+					onload(messageData);
+				}
+				CompetencyFrameworks.loadRecursivelyViaChildren(checkForDuplicatesIn, uris, count, limit, filter, onload, onAllFinished);
+			});
+		}
+		else {
+			onAllFinished();
+		}
+	}
+	//
+
+	CompetencyFrameworks.flatten = function(arrayOfArrays){
+		var result = [];
+		arrayOfArrays.forEach(function (item) {
+			if (Array.isArray(item)) {
+				result = result.concat(item);
+			}
+			else {
+				result.push(item);
+			}
+		});
+		return result;
+	}
+	//
+
+	CompetencyFrameworks.getValuesForProperties = function(searchIn, properties, limitPerItem){
+		var result = [];
+
+		searchIn.forEach(function (item) {
+			var counter = limitPerItem;
+			properties.forEach(function (property) {
+				if (item[property]) {
+					if(limitPerItem && limitPerItem > -1){
+						if (Array.isArray(item[property])) {
+							item[property].forEach(function (value) {
+								if (result.indexOf(value) == -1 && counter > 0) {
+									result.push(value);
+									counter--;
+								}
+							})
+						}
+						else {
+							if (result.indexOf(item[property]) == -1 && counter > 0) {
+								result.push(item[property]);
+								counter--;
+							}
+						}
+					}
+					else{
+						result.push(item[property]);
+					}
+				}
+			});
+		});
+
+		result = Array.from(new Set(CompetencyFrameworks.flatten(result)));
+		return result;
+	}
+	//
+
+	CompetencyFrameworks.appendList = function (appendTo, itemList) {
+		var result = [];
+		itemList.forEach(function (item) {
+			result.push(CompetencyFrameworks.append(appendTo, item));
+		});
+		return result.filter(function (m) { return m != null });
+	}
+	//
+
+	CompetencyFrameworks.append = function (appendTo, item) {
+		if (appendTo.filter(function (m) { return m["@@id"] == item["@@id"] }).length == 0) {
+			appendTo.push(item);
+			return item;
+		}
+		return null;
+	}
+	//
+
+	//Run a method if (another) method exists
+	CompetencyFrameworks.run = function(runCondition, methodToRun, arguments){
+		if (runCondition) {
+			methodToRun(arguments);
+		}
+	}
+	//
+
+	CompetencyFrameworks.URItoCTID = function (uri) {
+		var parts = (uri || "").split("/")
+		return parts.filter(function (m) { return m.toLowerCase().indexOf("ce-") == 0 })[0] || "";
+	}
+	//
+
+	CompetencyFrameworks.findMatches = function (searchIn, identifier) {
+		var ids = [identifier, identifier.replace("/graph/", "/resources/"), identifier.replace("/resources/", "/graph/")];
+		return searchIn.filter(function (m) {
+			return ids.indexOf(m["@@id"]) > -1 || m["ceterms:ctid"] == CompetencyFrameworks.URItoCTID(identifier);
+		});
+	}
+	//
+
+	//Get data back in an object where CTIDs are keys and the values are the data
+	CompetencyFrameworks.getRegistryDataList = function (checkForDuplicatesIn, ctids, uris, success) {
+		//Skip things that are already loaded and deduplicate identifiers
+		ctids = Array.from(new Set(CompetencyFrameworks.flatten((ctids || []).filter(function (m) { return checkForDuplicatesIn.filter(function (n) { return n["ceterms:ctid"] == m }).length == 0 }))));
+		uris = Array.from(new Set(CompetencyFrameworks.flatten((uris || []).filter(function (m) { return checkForDuplicatesIn.filter(function (n) { return n["@@id"] == m }).length == 0 }))));
+
+		//Ensure use of @@graph URIs
+		uris = uris.map(function(m){ return m.replace("/resources/", "/graph/"); });
+
+		//Don't send a request if all the data was already loaded
+		if (ctids.length == 0 && uris.length == 0) {
+			success({});
+			return;
+		}
+		//Load the data
+		CompetencyFrameworks.doAjax("Detail", "GetRegistryDataList", { ctids: ctids, uris: uris }, function (message) {
+			if (message.valid) {
+				for (var i in message.data) {
+					(function (identifier, rawData) {
+						try{
+							var parsed = typeof(rawData) == "object" ? rawData : JSON.parse(rawData);
+							message.data[identifier] = {
+								"ceterms:ctid": parsed["ceterms:ctid"] || (identifier.indexOf("ce-") == 0 ? identifier : ""),
+								"@@id": parsed["@@id"] || (identifier.indexOf("http") == 0 ? identifier : ""),
+								"@@graph": parsed["@@graph"] || [parsed],
+								"@@context": parsed["@@context"] || "",
+								"Raw": JSON.parse(JSON.stringify(parsed)), //Prevent any data from getting attached to this object
+								"Errors": parsed["errors"] || [],
+								"LoadedWithIdentifier": identifier
+							}
+							message.data[identifier].HasLoadError = message.data[identifier].Errors.length > 0;
+						}
+						catch (e) {
+							message.data[identifier] = {
+								"ceterms:ctid": identifier.indexOf("ce-") == 0 ? identifier : "",
+								"@@id": identifier.indexOf("http") == 0 ? identifier : "",
+								"@@graph": [],
+								"@@context": "",
+								"Raw": rawData,
+								"Errors": [e],
+								"LoadedWithIdentifier": identifier,
+								"HasLoadError": true
+							}
+						}
+					})(i, message.data[i]);
+				}
+				success(message.data);
+			}
+			else {
+				console.log("Error loading data", { message: message, ctids: ctids, uris: uris, success: success });
+			}
+		});
+	}
+	//
+
+	//Get back a simple list of search results and append it to the appropriate container
+	CompetencyFrameworks.getAndAppendResourceList = function (runCondition, method, ctidMap, dataType, onLoad, pageSize) {
+		CompetencyFrameworks.run(runCondition, function () {
+			pageSize = pageSize || 50;
+			//Load the data and process it
+			if (ctidMap.length > 0) {
+				CompetencyFrameworks.doAjax("Registry", method, { ctidMap: ctidMap, take: pageSize }, function (message) {
+					try {
+						if (message.valid) {
+							var updated = [];
+							message.data.forEach(function (frameworkResultItem) {
+								//Get the framework
+								var framework = CompetencyFrameworks.get(CompetencyFrameworks.Frameworks, "ceterms:ctid", frameworkResultItem.FrameworkCTID);
+								if (!framework) {
+									throw new Exception("Error: Unable to find framework or framework not loaded");
+								}
+
+								var parsed = [];
+								try {
+									frameworkResultItem.Results.forEach(function (frameworkResultItemString) {
+										try{
+											parsed.push(JSON.parse(frameworkResultItemString));
+										}
+										catch (e) {
+											console.log("Error parsing framework result item", { framework: framework, data: data, item: frameworkResultItemString });
+										}
+									});
+								}
+								catch (e) {
+									console.log("Error parsing data", { framework: framework, data: frameworkResultItem.Results })
+								}
+
+								framework[dataType] = parsed;
+								framework["Total" + dataType] = frameworkResultItem.TotalResults;
+								updated.push(framework);
+							});
+
+							//Call the success function
+							if (onLoad) {
+								onLoad(updated);
+							}
+						}
+						else {
+							throw new Exception("Error: Invalid AJAX transaction");
+						}
+					}
+					catch (e) {
+						console.log("Error loading data", { runCondition: runCondition, method: method, ctidMap: ctidMap, dataType: dataType, onLoad: onLoad });
+					}
+				});
+			}
+			else {
+				if (onLoad) {
+					onLoad([]);
+				}
+			}
+		});
+	}
+	//
+
+	//General purpose AJAX
+	CompetencyFrameworks.doAjax = function (controller, method, data, success, passThrough) {
+		$.ajax({
+			url: "@Url.Content( "~/" )" + controller + "/" + method,
+			headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+			dataType: "json",
+			type: "POST",
+			data: JSON.stringify(data)
+		}).always(function (message) {
+			console.log("Response received", message);
+			success(message, passThrough);
+		});
+	}
+	//
+
+	CompetencyFrameworks.get = function (list, field, value) {
+		return list.filter(function (m) { return m[field] == value })[0];
+	}
+	//
+</script>
+<script type="text/javascript">
+	//Rendering-related common competency framework functions
+	//Render a framework
+	CompetencyFrameworks.renderFramework = function (frameworkData, container, template) {
+		var Box = $(template).appendTo(container);
+		CompetencyFrameworks.writeFramework(frameworkData, Box);
+		return Box;
+	}
+	//
+
+	//Write framework data into an existing div
+	CompetencyFrameworks.writeFramework = function (frameworkData, Box) {
+		Box.find(".frameworkName").html(CompetencyFrameworks.getEnglish(frameworkData["ceasn:name"]));
+		Box.find(".frameworkDescription").html(CompetencyFrameworks.getEnglish(frameworkData["ceasn:description"]));
+		Box.find("a.frameworkSource").attr("href", frameworkData["ceasn:source"]).html("View Framework Source");
+	}
+	//
+
+	//Render a tree of competencies
+	CompetencyFrameworks.renderCompetencyTree = function (competencyData, container, template, afterCreate) {
+		var Rendered = CompetencyFrameworks.renderCompetency(competencyData, container, template, afterCreate);
+		var childrenIDs = competencyData["ceasn:hasChild"] || [];
+		childrenIDs.forEach(function (childID) {
+			var match = CompetencyFrameworks.allCompetencies().filter(function (m) { return m["@@id"] == childID })[0];
+			if (match) {
+				CompetencyFrameworks.renderCompetencyTree(match, Rendered.ChildrenBox, template, afterCreate);
+			}
+		});
+	}
+	//
+
+	//Render a competency (on its own - children are handled elsewhere)
+	CompetencyFrameworks.renderCompetency = function(competencyData, container, template, afterCreate){
+		template = template || $("#template_competencyframeworks_competency").html();
+		//Parts
+		var Rendered = {};
+		Rendered.Box = $(template).appendTo(container);
+		Rendered.ChildrenBox = Rendered.Box.find(".competencyChildren");
+
+		//Initialization
+		Rendered.Box.find(".competencyListID").html(competencyData["ceasn:listID"]);
+		Rendered.Box.find(".competencyCodedNotation").html(competencyData["ceasn:codedNotation"]);
+		Rendered.Box.find(".competencyCategory").html(CompetencyFrameworks.getEnglish(competencyData["ceasn:competencyCategory"]));
+		Rendered.Box.find(".competencyText").html(CompetencyFrameworks.getEnglish(competencyData["ceasn:competencyText"]));
+		Rendered.Box.find(".competencyComment").html(([CompetencyFrameworks.getEnglish(competencyData["ceasn:comment"]).toString()] || []).join("<br />"));
+		CompetencyFrameworks.renderTermList(competencyData["ceasn:conceptKeyword"], Rendered.Box.find("[data-scheme='ceasn:conceptKeyword']"));
+		CompetencyFrameworks.renderTermList(competencyData["ceasn:complexityLevel"], Rendered.Box.find("[data-scheme='ceasn:complexityLevel']"));
+		CompetencyFrameworks.renderTermList(competencyData["ceasn:conceptTerm"], Rendered.Box.find("[data-scheme='ceasn:conceptTerm']"));
+
+		//Handling
+		if (afterCreate) {
+			afterCreate(competencyData, Rendered, container, template);
+		}
+
+		return Rendered;
+	}
+
+	//Render a list of terms, attempting to find vocabulary matches along the way
+	CompetencyFrameworks.renderTermList = function(terms, container){
+		terms = terms || [];
+		var template = "<div class=\"concept\"></div>";
+		terms.forEach(function (term) {
+			var match = CompetencyFrameworks.allConcepts().filter(function (m) { return m["@@id"] == term || m["ceterms:ctid"] == CompetencyFrameworks.URItoCTID(term) })[0];
+			if (match) {
+				var Box = $(template).appendTo(container);
+				Box.addClass("withData");
+				Box.attr("title", CompetencyFrameworks.getEnglish(match["skos:definition"]));
+				Box.html(CompetencyFrameworks.getEnglish(match["skos:prefLabel"]));
+			}
+			else {
+				console.log("Unable to find term", term);
+			}
+		});
+	}
+	//
+
+	//Handle language maps
+	CompetencyFrameworks.getEnglish = function (languageMap, targetLanguage) {
+		return !languageMap ? "" : languageMap[targetLanguage] || languageMap["en"] || languageMap["en-us"] || languageMap["en-US"] || languageMap[Object.keys(languageMap)[0]] || "";
+	}
+	//
+</script>
+<script type="text/template" id="template_competencyframeworks_competency">
+	<div class="competency" data-ctid="" data-id="">
+		<div class="competencyContent">
+			<div class="competencyTitle">
+				<div class="competencyListID competencyTag"></div>
+				<div class="competencyCodedNotation competencyTag"></div>
+				<div class="competencyCategory competencyTag"></div>
+				<div class="competencyText"></div>
+			</div>
+			<div class="competencyComment"></div>
+			<div class="competencyConcepts">
+				<div class="conceptList" data-scheme="ceasn:conceptKeyword"></div>
+				<div class="conceptList" data-scheme="ceasn:complexityLevel"></div>
+				<div class="conceptList" data-scheme="ceasn:conceptTerm"></div>
+			</div>
+			<div class="alignedCompetencies"></div>
+		</div>
+		<div class="competencyChildren"></div>
+	</div>
+</script>
+
+
+<script type="text/javascript">
+	//Testing
+	$(document).ready(function () {
+		return;
+		CompetencyFrameworks.getAllFrameworkData(["ce-e3cad4b0-bf1a-4ee7-b1a5-1dca809dea86", "ce-10d011f9-cb08-4557-a8c3-5594c677139b", "ce-35238f16-aaa7-40ef-8003-c80115870c55", "ce-c62c336f-a76d-4d7f-a777-367e7cc72d17"], [], {
+			Frameworks: function (loaded) { console.log("Frameworks Loaded", loaded); },
+			Organizations: function (loaded) { console.log("Organizations Loaded", loaded); },
+			ConceptSchemes: function (loaded) { console.log("Concept Schemes Loaded", loaded); },
+			Credentials: function (loaded) { console.log("Credentials Loaded", loaded); },
+			Assessments: function (loaded) { console.log("Assessments Loaded", loaded); },
+			LearningOpportunities: function (loaded) { console.log("Learning Opportunities Loaded", loaded); },
+		});
+	});
+</script>

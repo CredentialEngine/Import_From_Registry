@@ -200,8 +200,8 @@ namespace RA.Models.Json
 		#endregion
 		[JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
         public List<DurationProfile> EstimatedDuration { get; set; }
-
-		[JsonProperty( PropertyName = "ceterms:renewalFrequency" )]
+        
+        [JsonProperty( PropertyName = "ceterms:renewalFrequency" )]
 		public string RenewalFrequency { get; set; }
 
 

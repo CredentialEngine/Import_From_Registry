@@ -133,7 +133,7 @@ namespace workIT.Services
 
             return Mgr.Search( filter, pOrderBy, pageNumber, pageSize, ref pTotalRows );
         }
-        public static List<string> Autocomplete( string keyword = "", int maxTerms = 25, int widgetId = 0 )
+        public static List<object> Autocomplete( string keyword = "", int maxTerms = 25, int widgetId = 0 )
         {
             int userId = 0;
             string where = "";
@@ -151,11 +151,11 @@ namespace workIT.Services
             else
             {
                 SetKeywordFilter( keyword, true, ref where );
-                //string keywords = ServiceHelper.HandleApostrophes( keyword );
-                //if ( keywords.IndexOf( "%" ) == -1 )
-                //	keywords = "%" + keywords.Trim() + "%";
-                //where = string.Format( " (base.name like '{0}') ", keywords );
-
+				//string keywords = ServiceHelper.HandleApostrophes( keyword );
+				//if ( keywords.IndexOf( "%" ) == -1 )
+				//	keywords = "%" + keywords.Trim() + "%";
+				//where = string.Format( " (base.name like '{0}') ", keywords );
+				
                 return EntityMgr.Autocomplete( where, 1, maxTerms, userId, ref totalRows );
             }
         }
@@ -321,7 +321,7 @@ namespace workIT.Services
             if ( string.IsNullOrWhiteSpace( keywords ) )
                 return;
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}'  OR base.SubjectWebpage like '{0}' OR base.Description like '{0}'   OR base.id in ( select EntityBaseId from Organization_AlternatesNames where TextValue like '{0}') ) ";
+            string text = " (base.name like '{0}'  OR base.SubjectWebpage like '{0}' OR base.id in ( select EntityBaseId from Organization_AlternatesNames where TextValue like '{0}') ) ";
 
             string orgDepts = "( base.Id in (SELECT o.Id FROM dbo.Entity e INNER JOIN dbo.[Entity.AgentRelationship] ear ON e.Id = ear.EntityId INNER JOIN dbo.Organization o ON e.EntityUid = o.RowId WHERE ear.RelationshipTypeId = {0} AND o.StatusId < 4) )";
             bool isCustomSearch = false;
@@ -495,7 +495,7 @@ namespace workIT.Services
                     {
                         LoggingHelper.DoTrace( 5, string.Format( "===OrganizationServices.GetDetail ****** Inserting new cached version of Organization, Id: {0}, {1}", entity.Id, entity.Name ) );
 
-                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
                     }
                 }
             }

@@ -6,24 +6,26 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.ProfileModels
 {
-	public class EducationFramework
+	public class EducationFramework : BaseProfile
 	{
 		public EducationFramework()
 		{
 		}
 
-		public int Id { get; set; }
+		public int EntityStateId { get; set; }
 		public string FrameworkName { get; set; }
         [Obsolete]
 		public string FrameworkUrl { get; set; }
-        //public string RepositoryUri { get; set; }
-        public string CTID { get; set; }
+		//public string RepositoryUri { get; set; }
+		public bool ExistsInRegistry { get; set; }
+		public string CredentialRegistryId { get; set; }
+		public string CTID { get; set; }
         public string FrameworkUri { get; set; }
         public string SourceUrl { get; set; }
 
-        public System.Guid RowId { get; set; }
-		public System.DateTime Created { get; set; }
-		//public int OwningOrganizationId { get; set; }
+        //public System.Guid RowId { get; set; }
+		//CTID for owning organization, where origin is registry
+		public string OrganizationCTID { get; set; }
 
 	}
 

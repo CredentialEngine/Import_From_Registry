@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Web;
 //using System.Web.Mvc;
 using System.Web.SessionState;
+using SystemWebHttpContext = System.Web.HttpContext;
 
 using workIT.Models;
 
@@ -624,9 +625,9 @@ namespace workIT.Services
 			bool isSecure = false;
 			if ( UtilityManager.GetAppKeyValue( "usingSSL", false ) )
 				isSecure = true;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
 			string subject = "Reset Password for your Credential Finder account";
 
 			string email = EmailManager.GetEmailText( "ForgotPassword" );
@@ -660,9 +661,9 @@ namespace workIT.Services
 
 			
 			//string toEmail = user.Email;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
 			string subject = "Confirm Your Credential Finder Account";
 			string email = EmailManager.GetEmailText( "ConfirmAccount" );
 			string eMessage = "";
@@ -688,9 +689,9 @@ namespace workIT.Services
 			AppUser user = GetUserByEmail( userEmail );
 			string subject = "Forgot password attempt with unconfirmed email";
 
-			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@email.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@email.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
 			//string subject = "Forgot Password";
 			string email = "User: {0} attempted Forgot Password, and email has not been confirmed.<br/>Email: {1}<br/>Created: {2}";
 			string eMessage = "";
@@ -775,6 +776,9 @@ namespace workIT.Services
 		public static AppUser SetUserByEmail( string email )
 		{
 			AppUser user = AccountManager.AppUser_GetByEmail( email );
+
+
+
 			AddUserToSession( HttpContext.Current.Session, user );
 			return user;
 		} //
@@ -1026,14 +1030,7 @@ namespace workIT.Services
 			session[ "user" ] = appUser;
 
 		} //
-		public static void RemoveUserFromSession()
-		{
-			if ( HttpContext.Current.Session[ "user" ] != null )
-			{
-				HttpContext.Current.Session.Remove( "user" );
-			}
 
-		} //
 
 		#endregion
 

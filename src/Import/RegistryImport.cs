@@ -19,6 +19,11 @@ namespace CTI.Import
 	public class RegistryImport
 	{
         static string thisClassName = "RegistryImport";
+		public RegistryImport( string community)
+		{
+			Community = community;
+		}
+		public string Community { get; set; }
         ImportCredential credImportMgr = new ImportCredential();
         ImportOrganization orgImportMgr = new ImportOrganization();
         ImportAssessment asmtImportMgr = new ImportAssessment();
@@ -68,17 +73,20 @@ namespace CTI.Import
             //will need to handle multiple calls - watch for time outs
             while ( pageNbr > 0 && !isComplete )
             {
-                list = RegistryImport.GetLatest( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
+				//19-09-22 chg to use RegistryServices to remove duplicate services
+                list = RegistryServices.Search( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, Community );
 
-                if ( list == null || list.Count == 0 )
+				//list = RegistryImport.GetLatest( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, Community );
+
+				if ( list == null || list.Count == 0 )
                 {
                     isComplete = true;
                     if ( pageNbr == 1 )
                     {
-                        importNote = registryEntityType + ": No records where found for date range ";
+                        //importNote = registryEntityType + ": No records where found for date range ";
 
                         //Console.WriteLine( thisClassName + importNote );
-                        LoggingHelper.DoTrace( 4, thisClassName + importNote );
+                        LoggingHelper.DoTrace( 4, registryEntityType + ": No records where found for date range. " );
                     }
                     break;
                 }
@@ -215,12 +223,13 @@ namespace CTI.Import
             return message;
         }
 
-        public static List<ReadEnvelope> GetLatest( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage )
+		//actually may want to pass community, to allow multiple calls
+        public static List<ReadEnvelope> GetLatest( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community)
 		{
 			string document = "";
 			string filter = "";
 			//includes the question mark
-			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+			string serviceUri = RegistryServices.GetRegistrySearchUrl( community );
 			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
 			//resource_type=credential
 			if ( !string.IsNullOrWhiteSpace( type ) )
@@ -233,7 +242,6 @@ namespace CTI.Import
 
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
 			//ReadEnvelope envelope = new ReadEnvelope();
-
 
 			try
 			{
@@ -277,11 +285,12 @@ namespace CTI.Import
 			return list;
 		}
 
-		public static List<ReadEnvelope> GetDeleted( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage )
+
+		public static List<ReadEnvelope> GetDeleted( string community, string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage )
 		{
 			string document = "";
 			string filter = "include_deleted=only";
-			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+			string serviceUri = RegistryServices.GetRegistrySearchUrl( community );
 			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
 			//resource_type=credential
 			if ( !string.IsNullOrWhiteSpace( type ) )
@@ -408,21 +417,4 @@ namespace CTI.Import
 			return formatedDate;
 		}
 	}
-
-	//public class ImportMonitor
-	//{
-	//	public ImportMonitor()
-	//	{
-	//		ImportSectionStatus = new List<string>();
-	//		DownloadOnly = false;
-	//	}
-
-	//	public List<string> ImportSectionStatus { get; set; }
-
-	//	public string StartingDate { get; set; }
-	//	public string EndingDate { get; set; }
-	//	public int MaxRecord { get; set; }
-
-	//	public bool DownloadOnly { get; set; }
-	//}
 }

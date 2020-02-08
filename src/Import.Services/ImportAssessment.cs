@@ -166,8 +166,10 @@ namespace Import.Services
 					}
 					else
                     {
-                        input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-                        return Import( input, "", status );
+						status.AddError( thisClassName + ".ImportByResourceUrl - 2019-05-01 ONLY GRAPH BASED IMPORTS ARE HANDLED" );
+						return false;
+						//input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
+      //                  return Import( input, "", status );
                     }
                 }
 				else
@@ -195,8 +197,10 @@ namespace Import.Services
 			}
 			else
             {
-                input = JsonConvert.DeserializeObject<InputEntity>( payload );
-                return Import( input, "", status );
+				status.AddError( thisClassName + ".ImportByResourceUrl - 2019-05-01 ONLY GRAPH BASED IMPORTS ARE HANDLED" );
+				return false;
+				//input = JsonConvert.DeserializeObject<InputEntity>( payload );
+    //            return Import( input, "", status );
             }
         }
 		#endregion
@@ -244,11 +248,14 @@ namespace Import.Services
             }
             else
             {
-                LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-                LoggingHelper.WriteLogFile( 1, "asmt_" + item.EnvelopeIdentifier, payload, "", false );
-                input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+				status.AddError( thisClassName + ".ImportByResourceUrl - 2019-05-01 ONLY GRAPH BASED IMPORTS ARE HANDLED" );
+				return false;
+				
+				//LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+    //            LoggingHelper.WriteLogFile( 1, "asmt_" + item.EnvelopeIdentifier, payload, "", false );
+    //            input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
 
-                return Import( input, envelopeIdentifier, status );
+    //            return Import( input, envelopeIdentifier, status );
             }
 		}
 		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
@@ -333,8 +340,8 @@ namespace Import.Services
 			//output.InstructionalProgramType = MappingHelper.MapCAOListToEnumermation( input.InstructionalProgramType );
 			output.InstructionalProgramTypes = MappingHelper.MapCAOListToFramework( input.InstructionalProgramType );
 
-			output.CreditHourType = input.CreditHourType;
-			output.CreditHourValue = input.CreditHourValue;
+			//output.CreditHourType = input.CreditHourType;
+			//output.CreditHourValue = input.CreditHourValue;
 			output.CreditUnitType = MappingHelper.MapCAOToEnumermation( input.CreditUnitType );
 			output.CreditUnitValue = input.CreditUnitValue;
 			output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
@@ -405,7 +412,7 @@ namespace Import.Services
 			output.RegulatedIn = MappingHelper.MapToJurisdiction( input.RegulatedIn, ref status );
 		
 			//FinancialAssistance ============================
-			output.FinancialAssistance = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+			output.FinancialAssistanceOLD = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 
 			//assesses compentencies
 			output.AssessesCompetencies = MappingHelper.MapCAOListToCompetencies( input.Assesses );
@@ -487,18 +494,18 @@ namespace Import.Services
             MappingHelperV3 helper = new MappingHelperV3();
             helper.entityBlankNodes = bnodes;
 
-            string ctid = input.Ctid;
+            string ctid = input.CTID;
             string referencedAtId = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
             status.Ctid = ctid;
 
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            if ( !DoesEntityExist( input.CTID, ref output ) )
             {
                 //set the rowid now, so that can be referenced as needed
                 output.RowId = Guid.NewGuid();
@@ -526,7 +533,7 @@ namespace Import.Services
             }
             output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
             output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-            output.CTID = input.Ctid;
+            output.CTID = input.CTID;
             output.CredentialRegistryId = envelopeIdentifier;
             output.DateEffective = input.DateEffective;
             output.SubjectWebpage = input.SubjectWebpage;
@@ -541,8 +548,10 @@ namespace Import.Services
             output.AssessmentMethodType = helper.MapCAOListToEnumermation( input.AssessmentMethodType );
 
             output.AudienceType = helper.MapCAOListToEnumermation( input.AudienceType );
+			//CAO
+			output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevelType );
 
-            output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
+			output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
             output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
 
             //To be looked
@@ -592,12 +601,40 @@ namespace Import.Services
 				LoggingHelper.DoTrace( 2, string.Format( "		***Skipping asmt# {0}, {1} as it has no InstructionalProgramTypes and this is a special run.", output.Id, output.Name ) );
 				return true;
 			}
+			//handle QuantitativeValue
+			output.CreditValue = helper.HandleQuantitiveValue( input.CreditValue, output, "CreditValue" );
+			//
+			if ( !output.CreditValue.HasData() )
+			{
+				//if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) )
+				//{
+					//will not handle ranges
+					//output.CreditValue = new workIT.Models.Common.QuantitativeValue
+					//{
+					//	Value = input.CreditHourValue,
+					//	CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType ),
+					//	Description = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" )
+					//};
+					////what about hours?
+					////output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+					////output.CreditHourValue = input.CreditHourValue;
+					////if there is hour data, can't be unit data, so assign
+					//if ( input.CreditHourValue > 0 )
+					//{
+					//	output.CreditValue.Value = input.CreditHourValue;
+					//	output.CreditValue.Description = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+					//}
+				//}
+				//else
+				//{
+				//	output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+				//	output.CreditHourValue = input.CreditHourValue;
 
-			output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
-            output.CreditHourValue = input.CreditHourValue;
-            output.CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType );
-            output.CreditUnitValue = input.CreditUnitValue;
-            output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
+				//	output.CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType );
+				//	output.CreditUnitValue = input.CreditUnitValue;
+				//	output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
+				//}
+			}
 
             output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
 
@@ -675,12 +712,12 @@ namespace Import.Services
             output.RegulatedIn = helper.MapToJurisdiction( input.RegulatedIn, ref status );
 
             //FinancialAssistance ============================
-            output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+            //output.FinancialAssistanceOLD = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+			output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 
 
-
-            //=== if any messages were encountered treat as warnings for now
-            if ( messages.Count > 0 )
+			//=== if any messages were encountered treat as warnings for now
+			if ( messages.Count > 0 )
                 status.SetMessages( messages, true );
             //just in case check if entity added since start
             if ( output.Id == 0 )
@@ -708,8 +745,8 @@ namespace Import.Services
                         CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE,
                         output.RowId,
                         output.Id,
-                        false,
-                        ref messages,
+						( output.Id > 0 ),
+						ref messages,
                         output.Id > 0 );
 
             return importSuccessfull;

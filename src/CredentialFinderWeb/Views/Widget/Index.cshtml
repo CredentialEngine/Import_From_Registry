@@ -1,0 +1,90 @@
+﻿@using Microsoft.AspNet.Identity
+@using workIT.Models;
+@using workIT.Models.Common;
+@using workIT.Utilities;
+@using workIT.Services;
+@{
+    ViewBag.Title = "Index";
+
+    var env = UtilityManager.GetAppKeyValue( "envType", "production" );
+
+    var url = Request.Url.PathAndQuery.ToLower();
+    var thisUrl = Request.Url.AbsoluteUri.Replace( Request.Url.PathAndQuery, "" );
+    var user = AccountServices.GetCurrentUser();
+
+    var clientToken = UtilityManager.GetAppKeyValue( "finderClientToken", "" );
+    var callbackUrl = UtilityManager.GetAppKeyValue( "finderCallbackUrl", "" );
+    var loginApi = UtilityManager.GetAppKeyValue( "accountsLogin", "" );
+    var loginUrl = "~/Account/Login?returnUrl=" + ( url.Contains( "/account" ) ? "" : url );
+    var registerUrl = "~/Account/Register";
+    var accountsRegister = UtilityManager.GetAppKeyValue( "accountsRegister", "" );
+    var nextUrl = "";
+    if ( Request.Url.Host.ToLower().Contains( "credfinder.siuccwd.com" )
+|| Request.Url.Host.ToLower().Contains( "localhost" )
+)
+    {
+        loginUrl = "~/Account/LoginTest?returnUrl=" + url;
+        registerUrl = "~/Account/RegisterTest";
+    }
+    if ( string.IsNullOrWhiteSpace( loginApi ) )
+    {
+        loginApi = loginUrl;
+    }
+    else
+    {
+        loginApi += "?ClientId=" + clientToken + "&callback=" + callbackUrl;
+        registerUrl = accountsRegister;
+        loginApi += "&nextUrl=" + "~/widget/ConfigureV2";
+    }
+
+}
+
+<div id="content" style="margin-bottom: 25px;">
+    <div class="section">
+        <h2>Credential Finder Widgets</h2>
+        <p>Customize the Credential Finder search as a widget that you can embed on your website.  Customizing the search, limits the search results to the credentials that you want your community to see and includes options for removing filters, setting other parameters, and changing colors to match your website. </p>
+    </div>
+
+    <div class="section">
+        <h3>Getting Started</h3>
+        <p>
+            Before being able to create a widget, you must be a registered user.
+            <br />To <a href="@Url.Content(@accountsRegister)">register, follow this link. </a>
+        </p>
+        <p>After registering, you will be prompted to create an organization. When creating an organization, you must specify at a minimum that under the consuming data section, you select the following:</p>
+        <ul><li>Customizing Credential Finder Widgets</li></ul>
+
+        <p>After the organization is approved, you can return here to create a widget. </p>
+
+
+        @if ( user != null && user.Id > 0 )
+        {
+            <h3>Widget Configuration</h3>
+            if ( user.Organizations.Count > 0 || AccountServices.IsUserSiteStaff( user ) )
+            {
+                <p><a href="@Url.Content( "~/widget/configureV2" )">Navigate to Widget Configuration.</a></p>
+                @*if ( env != "production" && env != "staging" )
+                {
+                    <ul>
+                        @foreach ( var org in user.Organizations )
+                        {
+                            if ( !string.IsNullOrWhiteSpace( org.CTID ) )
+                            {
+                                var item = string.Format( "", org.CTID, org.Name );
+                                <li>@item</li>
+                            }
+                        }
+                    </ul>
+                }*@
+            }
+            else
+            {
+                <p>Your account is not associated with any approved organizations with the approved consuming method: <b>Customizing Credential Finder Widgets.</b></p>
+            }
+        }
+        else
+        {
+            <p>If you already have a verified account, <a href="@Url.Content( @loginApi )">Login here.</a></p>
+        }
+    </div>
+</div>

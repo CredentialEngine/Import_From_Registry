@@ -153,7 +153,7 @@ namespace workIT.Services
                     {
                         LoggingHelper.DoTrace( 5, string.Format( "==={0}.GetDetail ****** Inserting new cached version of Lopp, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
 
-                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
                     }
                 }
             }
@@ -184,7 +184,7 @@ namespace workIT.Services
 		//	}
 		//	return codes;
 		//}
-		public static List<string> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
+		public static List<object> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
         {
             string where = "";
             int totalRows = 0;
@@ -269,7 +269,7 @@ namespace workIT.Services
                 keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
             //OR base.Description like '{0}' 
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}'  OR base.Organization like '{0}' OR base.Description like '{0}'   ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}'  OR base.Organization like '{0}'  ) ";
             bool isCustomSearch = false;
             //use Entity.SearchIndex for all
             string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where (b.EntityTypeId = 3 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";

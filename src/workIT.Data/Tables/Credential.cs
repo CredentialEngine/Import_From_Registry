@@ -47,6 +47,10 @@ namespace workIT.Data.Tables
         public string ProcessStandardsDescription { get; set; }
         public Nullable<System.Guid> CopyrightHolder { get; set; }
         public Nullable<int> InLanguageId { get; set; }
+        public string NextVersion { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
+        public string ISICV4 { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }

@@ -27,7 +27,7 @@ namespace workIT.Models.ProfileModels
 			Addresses = new List<Address>();
 			CommonCosts = new List<CostManifest>();
 			EstimatedCost = new List<CostProfile>();
-			FinancialAssistance = new List<FinancialAlignmentObject>();
+			FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			CommonConditions = new List<ConditionManifest>();
 
 			Requires = new List<ConditionProfile>();
@@ -95,6 +95,7 @@ namespace workIT.Models.ProfileModels
         }
 		public Enumeration OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
+		public string PrimaryOrganizationCTID { get; set; }
 
 		public string CTID { get; set; }
 		public string CredentialRegistryId { get; set; }
@@ -103,19 +104,27 @@ namespace workIT.Models.ProfileModels
 		//public string InLanguageCode { get; set; }
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
+		//not sure if will use this?
+		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+
+		[Obsolete]
 		public string CreditHourType { get; set; }
+		[Obsolete]
 		public decimal CreditHourValue { get; set; }
+
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public int CreditUnitTypeId { get; set; }
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
-
+		public decimal CreditUnitMinValue { get; set; }
+		public decimal CreditUnitMaxValue { get; set; }
+		public bool CreditValueIsRange { get; set; }
 		//=======================================
-	
+
 		public Enumeration AssessmentUseType { get; set; }
 		public Enumeration DeliveryType { get; set; }
 		public string DeliveryTypeDescription { get; set; }
-		public string VerificationMethodDescription { get; set; }
+		//public string VerificationMethodDescription { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
 		public List<ProcessProfile> AdministrationProcess { get; set; }
@@ -124,7 +133,8 @@ namespace workIT.Models.ProfileModels
 
 		public List<CostProfile> EstimatedCost { get; set; }
 	
-		public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
+		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
 
 		public List<DurationProfile> EstimatedDuration { get; set; }
         //public List<TextValueProfile> ResourceUrl { get; set; } = new List<TextValueProfile>();
@@ -283,7 +293,8 @@ namespace workIT.Models.ProfileModels
         public Enumeration AssessmentMethodType { get; set; }
 		public string AssessmentOutput { get; set; }
         public Enumeration AudienceType { get; set; } = new Enumeration();
-        public string ExternalResearch { get; set; }
+		public Enumeration AudienceLevelType { get; set; } = new Enumeration();
+		public string ExternalResearch { get; set; }
 		//public List<TextValueProfile> Auto_ExternalResearch
 		//{
 		//	get

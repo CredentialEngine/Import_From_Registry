@@ -301,8 +301,8 @@ namespace Import.Services
             output.VersionIdentifierList = MappingHelper.MapIdentifierValueList( input.VersionIdentifier );
 
             output.CodedNotation = input.CodedNotation;
-            output.CreditHourType = input.CreditHourType;
-            output.CreditHourValue = input.CreditHourValue;
+            //output.CreditHourType = input.CreditHourType;
+            //output.CreditHourValue = input.CreditHourValue;
             output.CreditUnitType = MappingHelper.MapCAOToEnumermation( input.CreditUnitType );
             output.CreditUnitValue = input.CreditUnitValue;
             output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
@@ -328,9 +328,9 @@ namespace Import.Services
             output.LearningMethodType = MappingHelper.MapCAOListToEnumermation( input.LearningMethodType );
             output.Subject = MappingHelper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
-            output.VerificationMethodDescription = input.VerificationMethodDescription;
+            //output.VerificationMethodDescription = input.VerificationMethodDescription;
             //financial assitance
-            output.FinancialAssistance = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+            output.FinancialAssistanceOLD = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 
             output.Jurisdiction = MappingHelper.MapToJurisdiction( input.Jurisdiction, ref status );
 
@@ -534,15 +534,44 @@ namespace Import.Services
             output.DeliveryTypeDescription = helper.HandleLanguageMap( input.DeliveryTypeDescription, output, "DeliveryTypeDescription" );
             //AudienceType
             output.AudienceType = helper.MapCAOListToEnumermation( input.AudienceType );
-            output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
+			//CAO
+			output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevelType );
+			output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
             output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
+			output.CodedNotation = input.CodedNotation;
+			//handle QuantitativeValue
+			output.CreditValue = helper.HandleQuantitiveValue( input.CreditValue, output, "CreditValue" );
+			//
+			if ( !output.CreditValue.HasData() )
+			{
+				//if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) )
+				//{
+				//	//will not handle ranges
+				//	output.CreditValue = new workIT.Models.Common.QuantitativeValue
+				//	{
+				//		Value = input.CreditHourValue,
+				//		CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType ),
+				//		Description = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" )
+				//	};
+				//	//what about hours?
+				//	//if there is hour data, can't be unit data, so assign
+				//	if ( input.CreditHourValue > 0 )
+				//	{
+				//		output.CreditValue.Value = input.CreditHourValue;
+				//		output.CreditValue.Description = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+				//	}
+				//}
+				//else
+				//{
+				//	output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
+				//	output.CreditHourValue = input.CreditHourValue;
 
-            output.CodedNotation = input.CodedNotation;
-            output.CreditHourType = helper.HandleLanguageMap( input.CreditHourType, output, "CreditHourType" );
-            output.CreditHourValue = input.CreditHourValue;
-            output.CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType );
-            output.CreditUnitValue = input.CreditUnitValue;
-            output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
+				//	output.CreditUnitType = helper.MapCAOToEnumermation( input.CreditUnitType );
+				//	output.CreditUnitValue = input.CreditUnitValue;
+				//	output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "CreditUnitTypeDescription" );
+				//}
+			}
+
 
 			//occupations
 			//output.Occupation = helper.MapCAOListToEnumermation( input.OccupationType );
@@ -562,7 +591,7 @@ namespace Import.Services
 			output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
 			output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
 			//naics
-			output.Naics = input.Naics;
+			//output.Naics = input.Naics;
 
 			output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
 			output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
@@ -576,7 +605,7 @@ namespace Import.Services
 			output.LearningMethodType = helper.MapCAOListToEnumermation( input.LearningMethodType );
             output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
-            output.VerificationMethodDescription = helper.HandleLanguageMap( input.VerificationMethodDescription, output, "VerificationMethodDescription" );
+            //output.VerificationMethodDescription = helper.HandleLanguageMap( input.VerificationMethodDescription, output, "VerificationMethodDescription" );
             //financial assitance
             output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 
@@ -688,8 +717,8 @@ namespace Import.Services
                         ctid, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE,
                         output.RowId,
                         output.Id,
-                        false,
-                        ref messages,
+						( output.Id > 0 ),
+						ref messages,
                         output.Id > 0 );
 
             return importSuccessfull;

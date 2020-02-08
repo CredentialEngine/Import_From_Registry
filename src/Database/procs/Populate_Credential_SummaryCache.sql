@@ -191,7 +191,8 @@ SELECT Distinct
 	,isnull(connectionsCsv.Profiles,'') As ConnectionsList
 	,isnull(connectionsCsv.CredentialsList,'') As CredentialsList
 	--====
-	,isnull(costs.totalCost,0)				As TotalCost
+	--,isnull(costs.totalCost,0)				As TotalCost
+	,0 as TotalCost
 	,isnull(allCostProfiles.Total,0)	as NumberOfCostProfileItems
 	,duration.AverageMinutes
 
@@ -209,10 +210,10 @@ SELECT Distinct
 
 -- ===
 	--not ideal, but doing a total
-	left join (
-	Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
-	) costs				
-		on base.EntityUid = costs.ParentEntityUid
+	--left join (
+	--Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
+	--) costs				
+	--	on base.EntityUid = costs.ParentEntityUid
 		-- ========== total cost items - just for credential, AND child items ========== 
 	left join (
 					Select condProfParentEntityBaseId, Sum(TotalCostItems) As Total from [CostProfile_SummaryForSearch] 

@@ -35,6 +35,7 @@ namespace ImportHelpers
             //, bool doPendingTask = false 
             LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by ctid: {0}", ctid ) );
 			Import.Services.RegistryServices mgr = new Import.Services.RegistryServices();
+			//TODO - update to check for alternate community if not found with the default community
             if ( mgr.ImportByCtid( ctid, status ))
             {
                 new RegistryServices().ImportPending();

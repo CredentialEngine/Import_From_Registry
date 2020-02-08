@@ -239,11 +239,13 @@ namespace workIT.Factories
 		#region retrieval
 
 
-		public static Entity GetEntity( Guid entityUid )
+		public static Entity GetEntity( Guid entityUid, bool includingAllChildren = true)
 		{
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
 			{
+				if ( includingAllChildren == false )
+					context.Configuration.LazyLoadingEnabled = false;
 				DBentity item = context.Entity
 						.FirstOrDefault( s => s.EntityUid == entityUid );
 
@@ -258,7 +260,7 @@ namespace workIT.Factories
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
 					entity.Created = (DateTime)item.Created;
-
+					entity.LastUpdated = item.LastUpdated != null ?( DateTime )item.LastUpdated : entity.Created;
 				}
 				return entity;
 			}

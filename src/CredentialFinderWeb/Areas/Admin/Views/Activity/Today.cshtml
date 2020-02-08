@@ -1,0 +1,63 @@
+﻿@{
+    ViewBag.Title = "Activity Listing";
+}
+
+<link href="https://code.jquery.com/ui/1.12.0-rc.2/themes/smoothness/jquery-ui.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/jqgrid/4.6.0/css/ui.jqgrid.css" rel="stylesheet" />
+
+<h1>WorkIT Activity Listing</h1>
+<br />
+<div style="width:90%">
+    <table id="jqGrid" align="center"></table>
+    <div id="jqGridPager"></div>
+    <br />
+</div>
+<div id="dialog" title="edit view" style="overflow: hidden;"></div>
+
+@section scripts{
+    <script src="https://cdn.jsdelivr.net/jqgrid/4.6.0/i18n/grid.locale-en.js"></script>
+    <script src="https://cdn.jsdelivr.net/jqgrid/4.6.0/jquery.jqGrid.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0-rc.2/jquery-ui.min.js"></script>
+    <script src="~/Scripts/jquery.unobtrusive-ajax.min.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var myGrid = $('#jqGrid');
+            myGrid.jqGrid({
+                url: '@Url.Content( "~/Admin/Activity/ActivityToday/" )',
+                datatype: "json",
+                contentType: "application/json; charset-utf-8",
+                mtype: 'GET',
+                colNames: ['Id', 'Created', 'Activity', 'Event', 'Comment', 'ActionByUser', 'Referrer'],
+                colModel: [
+                    { name: 'Id', key: true, width: 75 },
+                    { name: 'DisplayDate', key: true, width: 75 },
+                    { name: 'Activity', key: true, width: 75 },
+                    { name: 'Event', key: true, width: 75 },
+                    { name: 'Comment', key: true, width: 200 },
+                    { name: 'ActionByUser', key: true, width: 200 },
+                    {
+                        name: 'Referrer',
+                        edittype: 'select',
+                        formatter: 'showlink', //predefined formatter to display hyperlink
+                        formatoptions: { baseLinkUrl: '' }
+                    }
+
+                ],
+                autowidth: true,
+                height: 550,
+                rowNum: 20,
+                rowList: [10, 20, 50, 100, 500],
+                pager: '#jqGridPager',
+                gridview: true,
+                rownumbers: false,
+                viewrecords: true,
+                pagerpos: 'center'
+            });
+            $("#jqGrid").jqGrid('filterToolbar', { searchOperators: true });
+
+        });
+
+
+    </script>
+}

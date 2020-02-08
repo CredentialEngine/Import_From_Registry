@@ -16,7 +16,7 @@ namespace workIT.Models.ProfileModels
 			OwningOrganization = new Organization();
 
 			EstimatedCost = new List<CostProfile>();
-			FinancialAssistance = new List<FinancialAlignmentObject>();
+			FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
 			DeliveryType = new Enumeration();
             InstructionalProgramType = new Enumeration();
@@ -145,7 +145,8 @@ namespace workIT.Models.ProfileModels
 			}
         }
         public string OwnerOrganizationName { get; set; }
-        public Enumeration OwnerRoles { get; set; }
+		public string PrimaryOrganizationCTID { get; set; }
+		public Enumeration OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
 
 		/// <summary>
@@ -158,23 +159,29 @@ namespace workIT.Models.ProfileModels
 		//public string InLanguageCode { get; set; }
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
-
+		//not sure if will use this?
+		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		[Obsolete]
 		public string CreditHourType { get; set; }
+		[Obsolete]
 		public decimal CreditHourValue { get; set; }
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public int CreditUnitTypeId { get; set; }
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
+		public decimal CreditUnitMaxValue { get; set; }
+		public bool CreditValueIsRange { get; set; }
 
 		public List<DurationProfile> EstimatedDuration { get; set; }
 		
 		public Enumeration DeliveryType { get; set; }
         public Enumeration AudienceType { get; set; } = new Enumeration();
 		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
+		public Enumeration AudienceLevelType { get; set; } = new Enumeration();
 		//
 		public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
         public string DeliveryTypeDescription { get; set; }
-		public string VerificationMethodDescription { get; set; }
+		//public string VerificationMethodDescription { get; set; }
 
 		public Enumeration Industry { get; set; }
 		public Enumeration IndustryType
@@ -251,8 +258,10 @@ namespace workIT.Models.ProfileModels
         public CodeItemResult LearningMethodTypes { get; set; } = new CodeItemResult();
         public List<CostProfile> EstimatedCost { get; set; }
 
-		public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
-        public string ListTitle { get; set; }
+		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
+
+		public string ListTitle { get; set; }
 
         #region import 
         public List<int> HasPartIds { get; set; }

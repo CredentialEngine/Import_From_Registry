@@ -33,5 +33,6 @@ namespace workIT.Data.Tables
         public string RegionFilters { get; set; }
         public string CityFilters { get; set; }
         public Nullable<bool> IncludeIfAvailableOnline { get; set; }
+        public System.Guid RowId { get; set; }
     }
 }

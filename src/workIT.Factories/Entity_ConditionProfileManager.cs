@@ -412,8 +412,8 @@ namespace workIT.Factories
 				//status.AddWarning( "Error: At least one Learning Opportunity must be added to this condition profile." );
 			}
 
-			if ( item.CreditHourValue < 0 || item.CreditHourValue > 10000 )
-				status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
+			//if ( item.CreditHourValue < 0 || item.CreditHourValue > 10000 )
+			//	status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
 
 			if ( item.CreditUnitValue < 0 || item.CreditUnitValue > 1000 )
 				status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
@@ -422,8 +422,8 @@ namespace workIT.Factories
 			//can only have credit hours properties, or credit unit properties, not both
 			bool hasCreditHourData = false;
 			bool hasCreditUnitData = false;
-			if ( item.CreditHourValue > 0 || ( item.CreditHourType ?? "" ).Length > 0 )
-				hasCreditHourData = true;
+			//if ( item.CreditHourValue > 0 || ( item.CreditHourType ?? "" ).Length > 0 )
+			//	hasCreditHourData = true;
 			if (  item.CreditUnitTypeId > 0
 				|| (item.CreditUnitTypeDescription ?? "").Length > 0
 				|| item.CreditUnitValue > 0)
@@ -446,7 +446,7 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool isForCredentialDetail )
+		public static List<ThisEntity> GetAll( Guid parentUid, bool isForCredentialDetail, bool getMinimumOnly = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
@@ -473,8 +473,7 @@ namespace workIT.Factories
 						foreach ( DBEntity item in results )
 						{
 							entity = new ThisEntity();
-							MapFromDB( item, entity, true, true, isForCredentialDetail );
-
+							MapFromDB( item, entity, true, true, isForCredentialDetail, getMinimumOnly );
 
 							list.Add( entity );
 						}
@@ -527,130 +526,162 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		private static void MapToDB(ThisEntity from, DBEntity to)
+		private static void MapToDB(ThisEntity input, DBEntity output)
 		{
 
-			//want to ensure fields from create are not wiped
-			if ( to.Id < 1 )
+			//want output ensure fields input create are not wiped
+			if ( output.Id < 1 )
 			{
-				to.ConnectionTypeId = from.ConnectionProfileTypeId;
+				output.ConnectionTypeId = input.ConnectionProfileTypeId;
 				//we may not get the subtype back on update, so only set if > 0, otherwise leave as is???
-				if ( from.ConditionSubTypeId > 0 )
+				if ( input.ConditionSubTypeId > 0 )
 				{
-					to.ConditionSubTypeId = from.ConditionSubTypeId;
+					output.ConditionSubTypeId = input.ConditionSubTypeId;
 				}
 				else
 				{
-					if ( (to.ConditionSubTypeId ?? 0) == 0 )
+					if ( (output.ConditionSubTypeId ?? 0) == 0 )
 					{
-						if ( from.ConnectionProfileType == "CredentialConnections" )
-							to.ConditionSubTypeId = ConditionSubType_CredentialConnection;
-						else if ( from.ConnectionProfileType == "AssessmentsConnections" )
-							to.ConditionSubTypeId = ConditionSubType_Assessment;
-						else if ( from.ConnectionProfileType == "LearningOppConnections" )
-							to.ConditionSubTypeId = ConditionSubType_LearningOpportunity;
-						else if ( from.ConnectionProfileType == "AlternativeCondition" )
-							to.ConditionSubTypeId = ConditionSubType_Alternative;
-						else if ( from.ConnectionProfileType == "AdditionalCondition" )
-							to.ConditionSubTypeId = ConditionSubType_Additional;
+						//not sure we need specific conditionSub types for cred, asmt, and lopp as we know the parent
+						if ( input.ConnectionProfileType == "CredentialConnections" )
+							output.ConditionSubTypeId = ConditionSubType_CredentialConnection;
+						else if ( input.ConnectionProfileType == "AssessmentsConnections" )
+							output.ConditionSubTypeId = ConditionSubType_Assessment;
+						else if ( input.ConnectionProfileType == "LearningOppConnections" )
+							output.ConditionSubTypeId = ConditionSubType_LearningOpportunity;
+						else if ( input.ConnectionProfileType == "AlternativeCondition" )
+							output.ConditionSubTypeId = ConditionSubType_Alternative;
+						else if ( input.ConnectionProfileType == "AdditionalCondition" )
+							output.ConditionSubTypeId = ConditionSubType_Additional;
 						else
-							to.ConditionSubTypeId = 1;
+							output.ConditionSubTypeId = 1;
 					}
 				}
 
-				to.EntityId = from.ParentId;
+				output.EntityId = input.ParentId;
 			} else
 			{
-				if ( from.ConnectionProfileTypeId > 0 )
-					to.ConnectionTypeId = from.ConnectionProfileTypeId;
-				else if ( to.ConnectionTypeId < 1 )
-					to.ConnectionTypeId = 1;
+				if ( input.ConnectionProfileTypeId > 0 )
+					output.ConnectionTypeId = input.ConnectionProfileTypeId;
+				else if ( output.ConnectionTypeId < 1 )
+					output.ConnectionTypeId = 1;
 
-				//ConditionSubTypeId should be left as is from ADD
+				//ConditionSubTypeId should be left as is input ADD
 			}
 
-			to.Id = from.Id;
+			output.Id = input.Id;
 			
 			
 			//170316 mparsons - ProfileSummary is used in the edit interface for Name
-			if ( string.IsNullOrWhiteSpace( from.ProfileName ) )
-				from.ProfileName = from.ProfileSummary ?? "";
+			if ( string.IsNullOrWhiteSpace( input.ProfileName ) )
+				input.ProfileName = input.ProfileSummary ?? "";
 			
 			//check for wierd jquery addition
-			int pos2 = from.ProfileName.ToLower().IndexOf( "jquery" );
+			int pos2 = input.ProfileName.ToLower().IndexOf( "jquery" );
 			if ( pos2 > 1 )
 			{
-				from.ProfileName = from.ProfileName.Substring( 0, pos2 );
+				input.ProfileName = input.ProfileName.Substring( 0, pos2 );
 			}
 
 			//check for <span class=
-			pos2 = from.ProfileName.ToLower().IndexOf( "</span>" );
-			if ( from.ProfileName.ToLower().IndexOf( "</span>" ) > -1 )
+			pos2 = input.ProfileName.ToLower().IndexOf( "</span>" );
+			if ( input.ProfileName.ToLower().IndexOf( "</span>" ) > -1 )
 			{
-				from.ProfileName = from.ProfileName.Substring( pos2 + 7 );
+				input.ProfileName = input.ProfileName.Substring( pos2 + 7 );
 			}
 
-			to.Name = GetData( from.ProfileName );
-			to.Description = GetData( from.Description );
-			
+			output.Name = GetData( input.ProfileName );
+			output.Description = GetData( input.Description );
+			output.SubmissionOfDescription = GetData( input.SubmissionOfDescription );
 
-			if (from.AssertedByAgentUid == null || from.AssertedByAgentUid.ToString() == DEFAULT_GUID)
+			if (input.AssertedByAgentUid == null || input.AssertedByAgentUid.ToString() == DEFAULT_GUID)
 			{
-				to.AgentUid = null;//			
+				output.AgentUid = null;//			
 			}
 			else
 			{
-				to.AgentUid = from.AssertedByAgentUid;
+				output.AgentUid = input.AssertedByAgentUid;
 			}
 
-			to.Experience = GetData(from.Experience);
-			to.SubjectWebpage = from.SubjectWebpage;
+			output.Experience = GetData(input.Experience);
+			output.SubjectWebpage = input.SubjectWebpage;
 
-			if ( from.MinimumAge > 0 )
-				to.MinimumAge = from.MinimumAge;
+			if ( input.MinimumAge > 0 )
+				output.MinimumAge = input.MinimumAge;
 			else
-				to.MinimumAge = null;
-			if ( from.YearsOfExperience > 0 )
-				to.YearsOfExperience = from.YearsOfExperience;
+				output.MinimumAge = null;
+			if ( input.YearsOfExperience > 0 )
+				output.YearsOfExperience = input.YearsOfExperience;
 			else
-				to.YearsOfExperience = null;
-			if ( from.Weight > 0 )
-				to.Weight = from.Weight;
+				output.YearsOfExperience = null;
+			if ( input.Weight > 0 )
+				output.Weight = input.Weight;
 			else
-				to.Weight = null;
-			to.CreditHourType = GetData( from.CreditHourType );
-			to.CreditHourValue = SetData(from.CreditHourValue, 0.5M);
-			//to.CreditUnitTypeId = SetData(from.CreditUnitTypeId, 1);
-			if ( from.CreditUnitType != null && from.CreditUnitType.HasItems() )
+				output.Weight = null;
+			//======================================================================
+			if ( input.CreditValue.HasData() )
 			{
-				//get Id if available
-				EnumeratedItem item = from.CreditUnitType.GetFirstItem();
-				if ( item != null && item.Id > 0 )
-					to.CreditUnitTypeId = item.Id;
-				else
+				if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
 				{
-					//if not get by schema
-					CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-					to.CreditUnitTypeId = code.Id;
+					//get Id if available
+					EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
+					if ( item != null && item.Id > 0 )
+						output.CreditUnitTypeId = item.Id;
+					else
+					{
+						//if not get by schema
+						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+						output.CreditUnitTypeId = code.Id;
+					}
 				}
+				output.CreditUnitValue = input.CreditValue.Value;
+				output.CreditUnitMaxValue = input.CreditValue.MaxValue;
+				if ( input.CreditValue.MaxValue > 0 )
+					output.CreditUnitValue = input.CreditValue.MinValue;
+				output.CreditUnitTypeDescription = input.CreditValue.Description;
 			}
-			to.CreditUnitTypeDescription = GetData(from.CreditUnitTypeDescription);
-			to.CreditUnitValue = SetData(from.CreditUnitValue, 0.5M);
+			else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
+			{
 
-			if (IsValidDate(from.DateEffective))
-				to.DateEffective = DateTime.Parse(from.DateEffective);
+				//output.CreditHourType = GetData( input.CreditHourType, null );
+				//output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
+				//output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
+				if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
+				{
+					//get Id if available
+					EnumeratedItem item = input.CreditUnitType.GetFirstItem();
+					if ( item != null && item.Id > 0 )
+						output.CreditUnitTypeId = item.Id;
+					else
+					{
+						//if not get by schema
+						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+						output.CreditUnitTypeId = code.Id;
+					}
+				}
+				output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
+				output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
+			}
+
+			if (IsValidDate(input.DateEffective))
+				output.DateEffective = DateTime.Parse(input.DateEffective);
 			else
-				to.DateEffective = null;
+				output.DateEffective = null;
 
 		}
 
 		public static void MapFromDB(DBEntity from, ThisEntity to
 				, bool includingProperties
 				, bool incudingResources
-				, bool isForCredentialDetails )
+				, bool isForCredentialDetails
+				, bool getMinimumOnly = false //will be true for link checker
+			) 
 		{
 			MapFromDB_Basics( from, to, isForCredentialDetails );
+			to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
 
+			if ( getMinimumOnly )
+				return;
 			//========================================================
 			//TODO - determine what is really needed for the detail page for conditions
 
@@ -659,13 +690,38 @@ namespace workIT.Factories
 			to.YearsOfExperience = GetField(from.YearsOfExperience, 0m);
 			to.Weight = GetField( from.Weight, 0m );
 
-			to.CreditHourType = from.CreditHourType ?? "";
-			to.CreditHourValue = (from.CreditHourValue ?? 0M);
-			to.CreditUnitTypeId = (from.CreditUnitTypeId ?? 0);
-			to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
-			to.CreditUnitValue = from.CreditUnitValue ?? 0M;
+			//=========================================================
+			//populate QV
+			to.CreditValue = FormatQuantitiveValue( to.CreditUnitTypeId, to.CreditUnitValue, to.CreditUnitMaxValue, to.CreditUnitTypeDescription );
+			if ( to.CreditValue.HasData() )
+			{
+				to.CreditUnitType = to.CreditValue.CreditUnitType;
+				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
+				to.CreditUnitTypeDescription = to.CreditValue.Description;
 
-			if (IsValidDate(from.DateEffective))
+				to.CreditUnitValue = to.CreditValue.Value;
+				to.CreditUnitMaxValue = to.CreditValue.MaxValue;
+			}
+			else
+			{
+				//check for old
+				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
+				to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
+				to.CreditUnitValue = from.CreditUnitValue ?? 0M;
+				to.CreditUnitMaxValue = from.CreditUnitMaxValue ?? 0M;
+				//temp handling of clock hpurs
+				//to.CreditHourType = from.CreditHourType ?? "";
+				//to.CreditHourValue = ( from.CreditHourValue ?? 0M );
+				//if ( to.CreditHourValue > 0 )
+				//{
+				//	to.CreditUnitValue = to.CreditHourValue;
+				//	to.CreditUnitTypeDescription = to.CreditHourType;
+				//}
+			}
+
+			//======================================================================
+
+			if ( IsValidDate(from.DateEffective))
 				to.DateEffective = ((DateTime)from.DateEffective).ToShortDateString();
 			else
 				to.DateEffective = "";
@@ -674,9 +730,9 @@ namespace workIT.Factories
 			to.Condition = Entity_ReferenceManager.GetAll(to.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM);
 
 			to.SubmissionOf = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM );
-
-            //to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
-            var frameworksList = new Dictionary<string, RegistryImport>();
+			to.SubmissionOfDescription = from.SubmissionOfDescription;
+			//to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
+			var frameworksList = new Dictionary<string, RegistryImport>();
             to.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( to.RowId, ref frameworksList);
             if ( to.RequiresCompetenciesFrameworks.Count > 0 )
             {
@@ -684,7 +740,7 @@ namespace workIT.Factories
                 to.FrameworkPayloads = frameworksList;
             }
 
-            to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
+            
 
 			if (includingProperties)
 			{

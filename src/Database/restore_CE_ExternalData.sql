@@ -6,10 +6,10 @@ The database has two users that will have to be created in the target database (
 
 use master 
 go
-sp_addLogin 'ctiAdmin', '###PASSWORD###', master
+sp_addLogin 'ceGithub', '###PASSWORD###', master
 go
 
-sp_addLogin 'ctiReader', '###PASSWORD###', master
+sp_addLogin 'ceGithub', '###PASSWORD###', master
 go
 
 After completing the restore, run the following sql to 'associate' the named accounts in the backup file with the ones created on this server
@@ -18,9 +18,9 @@ Use CE_ExternalData
 go
 sp_change_users_login 'report'
 go
-sp_change_users_login 'update_one', 'ctiAdmin','ctiAdmin'
+sp_change_users_login 'update_one', 'ceGithub','ceGithub'
 go
-sp_change_users_login 'update_one', 'ctiReader','ctiReader'
+sp_change_users_login 'update_one', 'ceGithub','ceGithub'
 go
 sp_change_users_login 'report'
 go

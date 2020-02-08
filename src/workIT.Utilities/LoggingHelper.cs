@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Web;
 
 namespace workIT.Utilities
@@ -173,26 +174,33 @@ namespace workIT.Utilities
                     string datePrefix1 = System.DateTime.Today.ToString("u").Substring(0, 10);
                     string datePrefix = System.DateTime.Today.ToString("yyyy-dd");
                     string logFile = UtilityManager.GetAppKeyValue("path.error.log", "");
-                    if (!string.IsNullOrWhiteSpace(logFile))
+					if ( !string.IsNullOrWhiteSpace( logFile ) )
+					{
+						string outputFile = logFile.Replace( "[date]", datePrefix );
+						if ( File.Exists( outputFile ) )
+						{
+							if ( File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month )
+								File.Delete( outputFile );
+						}
+						else
+						{
+							System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
+							f.Directory.Create(); // If the directory already exists, this method does nothing.
+
+						}
+
+						StreamWriter file = File.AppendText( outputFile );
+						file.WriteLine( DateTime.Now + ": " + message );
+						file.WriteLine( "---------------------------------------------------------------------" );
+						file.Close();
+					}
+
+					if (notifyAdmin)
                     {
-                        string outputFile = logFile.Replace("[date]", datePrefix);
-                        if (File.Exists(outputFile))
-                        {
-                            if (File.GetLastWriteTime(outputFile).Month != DateTime.Now.Month)
-                                File.Delete(outputFile);
-                        }
-
-                        StreamWriter file = File.AppendText(outputFile);
-                        file.WriteLine(DateTime.Now + ": " + message);
-                        file.WriteLine("---------------------------------------------------------------------");
-                        file.Close();
-
-                        if (notifyAdmin)
-                        {
-                            if (ShouldMessagesBeSkipped(message) == false)
-                                EmailManager.NotifyAdmin(subject, message);
-                        }
+                        if (ShouldMessagesBeSkipped(message) == false)
+                            EmailManager.NotifyAdmin(subject, message);
                     }
+                   
                 }
                 catch ( Exception ex )
                 {
@@ -265,68 +273,74 @@ namespace workIT.Utilities
             DoTrace( appTraceLevel, message, true );
         }
 
-        /// <summary>
-        /// Handle trace requests - typically during development, but may be turned on to track code flow in production.
-        /// </summary>
-        /// <param name="level"></param>
-        /// <param name="message"></param>
-        public static void DoTrace( int level, string message )
-        {
-            DoTrace( level, message, true );
-        }
 
-        /// <summary>
-        /// Handle trace requests - typically during development, but may be turned on to track code flow in production.
-        /// </summary>
-        /// <param name="level"></param>
-        /// <param name="message"></param>
-        /// <param name="showingDatetime">If true, precede message with current date-time, otherwise just the message> The latter is useful for data dumps</param>
-        public static void DoTrace( int level, string message, bool showingDatetime )
-        {
-            //TODO: Future provide finer control at the control level
-            string msg = "";
-            int appTraceLevel = 0;
-            //bool useBriefFormat = true;
+		/// <summary>
+		/// Handle trace requests - typically during development, but may be turned on to track code flow in production.
+		/// </summary>
+		/// <param name="level"></param>
+		/// <param name="message"></param>
+		/// <param name="showingDatetime">If true, precede message with current date-time, otherwise just the message> The latter is useful for data dumps</param>
+		public static void DoTrace( int level, string message, bool showingDatetime = true )
+		{
+			//TODO: Future provide finer control at the control level
+			string msg = "";
+			int appTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 6 );
+			//bool useBriefFormat = true;
+			const int NumberOfRetries = 4;
+			const int DelayOnRetry = 1000;
+			if ( showingDatetime )
+				msg = "\n " + System.DateTime.Now.ToString() + " - " + message;
+			else
+				msg = "\n " + message;
+			string datePrefix1 = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
+			string datePrefix = System.DateTime.Today.ToString( "yyyy-dd" );
+			string logFile = UtilityManager.GetAppKeyValue( "path.trace.log", "" );
 
-            try
-            {
-                appTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 6 );
+			//Allow if the requested level is <= the application thresh hold
+			if ( string.IsNullOrWhiteSpace( logFile ) || level > appTraceLevel )
+			{
+				return;
+			}
+			string outputFile = "";
 
-                //Allow if the requested level is <= the application thresh hold
-                if ( level <= appTraceLevel )
-                {
-                    if ( showingDatetime )
-                        msg = "\n " + System.DateTime.Now.ToString() + " - " + message;
-                    else
-                        msg = "\n " + message;
+			//added retries where log file is in use
+			for ( int i = 1; i <= NumberOfRetries; ++i )
+			{
+				try
+				{
+					outputFile = logFile.Replace( "[date]", datePrefix + ( i < 3 ? "" : "_" + i.ToString() ) );
 
+					if ( File.Exists( outputFile ) )
+					{
+						if ( File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month )
+							File.Delete( outputFile );
+					}
+					else
+					{
+						System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
+						f.Directory.Create(); // If the directory already exists, this method does nothing.
+											 
+					}
 
-                    string datePrefix1 = System.DateTime.Today.ToString("u").Substring(0, 10);
-                    string datePrefix = System.DateTime.Today.ToString("yyyy-dd");
-                    string logFile = UtilityManager.GetAppKeyValue( "path.trace.log", "" );
-                    if (!string.IsNullOrWhiteSpace(logFile))
-                    {
-                        string outputFile = logFile.Replace("[date]", datePrefix);
-                        if (File.Exists(outputFile))
-                        {
-                            if (File.GetLastWriteTime(outputFile).Month != DateTime.Now.Month)
-                                File.Delete(outputFile);
-                        }
+					StreamWriter file = File.AppendText( outputFile );
 
-                        StreamWriter file = File.AppendText(outputFile);
-
-                        file.WriteLine(msg);
-                        file.Close();
-                    }
-					Console.WriteLine( message );
+					file.WriteLine( msg );
+					file.Close();
+					Console.WriteLine( msg );
+					break;
 				}
-            }
-            catch
-            {
-                //ignore errors
-            }
-
-        }
+				catch ( IOException e ) when ( i <= NumberOfRetries )
+				{
+					// You may check error code to filter some exceptions, not every error
+					// can be recovered.
+					Thread.Sleep( DelayOnRetry );
+				}
+				catch ( Exception ex )
+				{
+					//ignore errors
+				}
+			}
+		}
 		public static void WriteLogFile( int level, string filename, string message, 
 			string datePrefixOverride = "", 
 			bool appendingText = true )
@@ -352,7 +366,9 @@ namespace workIT.Utilities
                         outputFile = outputFile.Replace( "csv.txt", "csv" );
                     else if ( outputFile.IndexOf( "csv.json" ) > 1 )
                         outputFile = outputFile.Replace( "csv.json", "csv" );
-                    else if ( outputFile.IndexOf( "json.txt" ) > 1 )
+					else if ( outputFile.IndexOf( "html.json" ) > 1 )
+						outputFile = outputFile.Replace( "html.json", "html" );
+					else if ( outputFile.IndexOf( "json.txt" ) > 1 )
                         outputFile = outputFile.Replace( "json.txt", "json" );
                     else if ( outputFile.IndexOf( "json.json" ) > 1 )
                         outputFile = outputFile.Replace( "json.json", "json" );
@@ -407,8 +423,13 @@ namespace workIT.Utilities
                             if (File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month)
                                 File.Delete( outputFile );
                         }
+						else
+						{
+							System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
+							f.Directory.Create(); // If the directory already exists, this method does nothing.
+						}
 
-                        StreamWriter file = File.AppendText( outputFile );
+						StreamWriter file = File.AppendText( outputFile );
 
                         file.WriteLine( msg );
                         file.Close();
@@ -419,109 +440,6 @@ namespace workIT.Utilities
 			{
 				//ignore errors
 			}
-
-		}
-        /// <summary>
-        /// Record a page visit, either to file or to the database 
-        /// </summary>
-        /// <param name="sessionId">Session Id</param>
-        /// <param name="isPostBack">Was this a page postback</param>
-        /// <param name="template">MCMS Template</param>
-        /// <param name="queryString">Request URL</param>
-        /// <param name="parmString">Request Parameters (if any)</param>
-        /// <param name="userid">Userid of current user (guest if not logged in)</param>
-        /// <param name="partner">Partner name</param>
-        /// <param name="comment">Comment</param>
-        /// <param name="remoteIP">client IP address</param>
-        /// <remarks>06/09/15 mparsons - added remoteIP</remarks>
-		public static void LogPageVisit( string sessionId, string template, string queryString, string parmString, bool isPostBack, string userid, string partner, string comment, string remoteIP, string lwia )
-        {
-            System.DateTime visitDate = System.DateTime.Now;
-
-            string pathway = "";
-            string lang = "";
-            string mainChannel = "";
-           // string currentZip = "";
-            //skip startup records
-            if ( sessionId.ToLower().IndexOf( "worknet" ) > -1
-                || comment.ToLower().StartsWith( "session " ) )
-            { //skip these records
-
-            }
-            else
-            {
-                try
-                {
-                    //pathway = GetPathTitle();
-                    //lang = getLanguage();
-                    //mainChannel = getPathChannel();
-                    //currentZip = GetDefaultZipcode();
-                }
-                catch
-                {
-                    //ignore
-                }
-            }
-
-            string logEntry = sessionId + ","
-                + visitDate.ToString() + ","
-                + pathway + ","
-                + lang + ","
-                + mainChannel + ","
-                + template + ","
-                + queryString + ",'"
-                + parmString + "',"
-                + isPostBack + ","
-                + userid + ","
-                + partner
-                + ",Lwia:" + lwia
-                + ",'" + comment + "',"
-                + remoteIP + "";
-
-            LogPageVisit( logEntry );
-            
-
-        } //
-
-        /// <summary>
-        /// Log a page visit. Output is to a file.
-        /// </summary>
-        /// <param name="message"></param>
-        private static void LogPageVisit( string message )
-        {
-
-            string msg = "";
-            string outputPath = "";
-			string logFileAppKey = "path.trace.log"; //"path.visitor.log"
-            try
-            {
-				msg = "**** Visitor.log: " + message;
-
-                string datePrefix = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
-
-				string logFile = UtilityManager.GetAppKeyValue( logFileAppKey, "C:\\VOS_LOGS.txt" );
-
-                string outputFile = logFile.Replace( "[date]", datePrefix );
-
-                outputPath = outputFile;
-
-                StreamWriter file = File.AppendText( outputPath );
-                file.WriteLine( msg );
-                file.Close();
-
-            }
-            catch ( Exception ex )
-            {
-                //ignore errors
-                LogError( "UtilityManager.LogPageVisit: " + ex.ToString(), false );
-            }
-
-        } //
-        private static string GetServerPath( string fileName )
-        {
-            System.Web.HttpApplication swh = new System.Web.HttpApplication();
-            return swh.Server.MapPath( fileName );
-
         } //
 
 

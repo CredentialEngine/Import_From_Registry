@@ -90,19 +90,19 @@ namespace workIT.Models.Elastic
 		public List<string> AgentRelationships { get; set; } = new List<string>();
 	}
 
-	public class IndexQualityAssurancePerformed
-    {
-        public int AssertionTypeId { get; set; }
-        public string SourceToAgentRelationship { get; set; }
-        public string AgentToSourceRelationship { get; set; }
-        public int TargetEntityTypeId { get; set; }
-        public int TargetEntityBaseId { get; set; }
-        public string TargetEntityName { get; set; }
-        public string TargetEntitySubjectWebpage { get; set; }
-        public bool IsQARole { get; set; }
-        public int EntityStateId { get; set; }
-        public string RoleSource { get; set; }
-    }
+	//public class IndexQualityAssurancePerformed
+ //   {
+ //       public int AssertionTypeId { get; set; }
+ //       public string SourceToAgentRelationship { get; set; }
+ //       public string AgentToSourceRelationship { get; set; }
+ //       public int TargetEntityTypeId { get; set; }
+ //       public int TargetEntityBaseId { get; set; }
+ //       public string TargetEntityName { get; set; }
+ //       public string TargetEntitySubjectWebpage { get; set; }
+ //       public bool IsQARole { get; set; }
+ //       public int EntityStateId { get; set; }
+ //       public string RoleSource { get; set; }
+ //   }
 	public class QualityAssurancePerformed
 	{
 		public int TargetEntityStateId { get; set; }

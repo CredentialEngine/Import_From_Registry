@@ -592,6 +592,9 @@ namespace workIT.Factories
             };
             foreach ( var test in addressesToTry )
             {
+				if ( string.IsNullOrWhiteSpace( test ) || test.Trim().Length < 5 )
+					continue;
+
                 results = TryGetAddress( test, ref hasLatLng );
                 if ( hasLatLng )
                 {

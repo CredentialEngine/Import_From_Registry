@@ -10,7 +10,7 @@ GO
 
 
 /*
-USE [ctdlEditor]
+USE [credFinder_github]
 GO
 
 exec [Credentials_Export] 'dab7aeae-d843-4c46-a013-9cbdc8e1cc44'

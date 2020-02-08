@@ -1,0 +1,98 @@
+﻿@using CredentialFinderWeb.Models;
+@model FormItem
+@{ 
+	Model.Items = Model.Items ?? new List<ValueItem>();
+}
+	<div class="formItem @Model.ExtraCssClasses">
+		@if ( Model.InterfaceType == FormItem.InterfaceTypes.Hidden )
+		{
+			<input type="hidden" data-property="@Model.Property" data-type="@FormItem.InterfaceTypes.Hidden.ToString()" />
+		}
+		else if ( Model.InterfaceType == FormItem.InterfaceTypes.Boolean )
+		{
+			<div class="label"></div>
+			<div class="value">
+				<label class="checkboxLabel">
+					<input type="checkbox" data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()" />
+					<span>@Model.Label</span>
+					<span class="infoBubble @( string.IsNullOrWhiteSpace( Model.HelpText ) ? " hidden" : "" )" data-tooltip="@Model.HelpText"><i class="fa fa-info-circle"></i></span>
+				</label>
+			</div>
+		}
+		else
+		{
+			<div class="label">
+				<div class="labelText">@Html.Raw( Model.Label )</div>
+				<div class="required @( Model.IsRequired ? " " : " hidden" )">*</div>
+				<div class="infoBubble @( string.IsNullOrWhiteSpace( Model.HelpText ) ? " hidden" : "" )" data-tooltip="@Model.HelpText"><i class="fa fa-info-circle"></i></div>
+			</div>
+			<div class="value">
+				@switch ( Model.InterfaceType )
+				{
+					case FormItem.InterfaceTypes.Text:
+					{
+						<input type="text" data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()" /> break;
+					}
+					case FormItem.InterfaceTypes.DisplayOnly:
+					{
+						<input type="text" class="valueDisplay" data-property="@Model.Property" readonly="readonly" data-type="@FormItem.InterfaceTypes.Text.ToString()" /> break;
+					}
+					case FormItem.InterfaceTypes.TextArea:
+					{
+						<textarea data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()"></textarea> break;
+					}
+					case FormItem.InterfaceTypes.SummerNote:
+					{
+						<div class="summerNoteWrapper" data-forproperty="@Model.Property">
+							<div class="summerNoteSpinner"><i class="fas fa-spin fa-spinner"></i></div>
+							<textarea data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()" data-tooltip="@Model.HelpText"></textarea>
+						</div>break;
+					}
+					case FormItem.InterfaceTypes.Select:
+					{
+						<select data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()">
+							@foreach ( var item in Model.Items )
+							{
+								<option value="@item.Value">@item.Label</option>}
+						</select> break;
+					}
+					case FormItem.InterfaceTypes.CheckBoxList:
+					{
+						<div class="checkboxlist" data-property="@Model.Property" data-type="@Model.InterfaceType.ToString()">
+							@foreach ( var item in Model.Items )
+							{
+							<label class="checkboxLabel"><input type="checkbox" data-tagid ="@item.TagId" value="@item.Value" /> @item.Label<div class="infoBubble @( string.IsNullOrWhiteSpace( item.HelpText ) ? " hidden" : "" )" data-tooltip="@item.HelpText"><i class="fa fa-info-circle"></i></div></label>}
+						</div> break;
+					}
+					case FormItem.InterfaceTypes.TextList:
+					{
+						<div class="textListEntry columns" data-property="@Model.Property" data-type="textList">
+							<div class="column entryBox">
+								<div class="columnLabel">Type a word or phrase below and press <b>Enter</b> to add it:</div>
+								<input type="text" data-entryproperty="Keywords" />
+							</div>
+							<div class="column selectedBox">
+								<div class="columnLabel">Selected Items:</div>
+								<div class="selectedList"></div>
+							</div>
+						</div>break;
+					}
+					case FormItem.InterfaceTypes.FileReference:
+					case FormItem.InterfaceTypes.FileReferenceList:
+					{
+						<div class="fileUpload @Model.ExtraCssClasses" data-property="@Model.Property" data-type="@( Model.InterfaceTypeString.ToLower() )" data-allowmultiple="@( Model.InterfaceType == FormItem.InterfaceTypes.FileReferenceList ? "true" : "false" )">
+							<div class="fileInputWrapper">
+								<input class="fileInput" @Html.Raw( Model.InterfaceType == FormItem.InterfaceTypes.FileReferenceList ? "multiple=\"multiple\"" : "" ) type="file" />
+								<div class="fileInputDisplay"><i class="fas fa-upload fileIcon"></i> Click Here or Drop File to Upload</div>
+							</div>
+							<div class="fileStatus"></div>
+							<div class="loadedFiles"></div>
+						</div>
+						break;
+					}
+					default:
+					break;
+				}
+			</div>
+		}
+	</div>

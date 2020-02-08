@@ -231,7 +231,7 @@ namespace workIT.Factories
 			{
 				var results = context.Reference_Frameworks
 							.Where( s => s.CategoryId == categoryId 
-							&& ( s.Name.ToLower() ==  name )
+							&& ( s.Name.ToLower() ==  name.ToLower() )
 							&& ( s.CodedNotation == codedNotation )
 							)
 							.OrderBy( p => p.Name )

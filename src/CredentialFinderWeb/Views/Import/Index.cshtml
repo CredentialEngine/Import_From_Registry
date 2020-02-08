@@ -1,0 +1,116 @@
+﻿@using workIT.Models.Common;
+@model workIT.Models.SaveStatus
+@{
+	ViewBag.Title = "Import Home";
+}
+
+@{
+	bool isUserAnAdmin = AccountServices.IsUserAnAdmin();
+	var pageHeading = "Site Message";
+	var pageMessage = "";
+	if ( Session[ "siteMessage" ] != null )
+	{
+		//should we assume message will include a title
+		pageMessage = Session[ "siteMessage" ].ToString();
+
+		Session.Remove( "siteMessage" );
+	}
+	else if ( Session[ "SystemMessage" ] != null )
+	{
+		//should we assume message will include a title
+		SiteMessage msg = ( SiteMessage )Session[ "SystemMessage" ];
+		pageHeading = msg.Title;
+		pageMessage = msg.Message;
+
+		Session.Remove( "SystemMessage" );
+	}
+
+	   List<SelectListItem> listItems= new List<SelectListItem>();
+   listItems.Add(new SelectListItem
+        {
+          Text = "Default",
+          Value = "",
+		  Selected = true
+        });
+   listItems.Add(new SelectListItem
+        {
+            Text = "Navy",
+            Value = "navy"
+            
+        });
+  
+}
+@section css{
+	<link href="~/Styles/bootstrap.min.css" rel="stylesheet" />
+	@*<link href="~/Content/DataTables/css/dataTables.bootstrap.min.css" rel="stylesheet" />*@
+	<link href="~/Content/bootstrap-multiselect.css" rel="stylesheet" />
+	@*<link href="~/Content/DataTables/css/buttons.dataTables.min.css" rel="stylesheet" />*@
+	<link href="~/Content/Site.css" rel="stylesheet" />
+	@*<link href="~/Content/font-awesome.min.css" rel="stylesheet" />*@
+
+}
+<h2>Import</h2>
+@using ( Html.BeginForm( "DoImport", "Import", FormMethod.Post, new { @class = "form-horizontal", role = "form" } ) )
+{
+	@Html.AntiForgeryToken()
+	<h4>Enter EnvelopeId or Ctid</h4>
+	<hr />
+	@Html.ValidationSummary( "", new { @class = "text-danger" } )
+
+<div class="form-group">
+	<label class="col-md-2 control-label hideInProduction">Community</label>
+	@*@Html.DropDownListFor( m => m.Community, new SelectList( new List<string>() { "Default", "Navy" }, "Community", "Community" ), new { @class = "form-control" } )*@
+	@*@Html.DropDownListFor(m=> m.Communities, listItems, "-- Select Status --")*@
+	<div class="col-md-10">
+		<select id="community">
+			<option value="">Default Community</option>
+			<option value="navy">Navy</option>
+		</select>
+	</div>
+</div>
+
+	<div class="form-group">
+		@Html.LabelFor( m => m.EnvelopeId, new { @class = "col-md-2 control-label" } )
+		<div class="col-md-10">
+			@Html.TextBoxFor( m => m.EnvelopeId, new { @class = "form-control", @style = "max-width:400px;" } )
+		</div>
+	</div>
+	<div class="form-group">
+		@Html.LabelFor( m => m.Ctid, new { @class = "col-md-2 control-label" } )
+		<div class="col-md-10">
+			@Html.TextBoxFor( m => m.Ctid, new { @class = "form-control", @style = "max-width:400px;" } )
+		</div>
+	</div>
+	<div class="form-group">
+		<div class="col-md-offset-2 col-md-10">
+			<input type="submit" class="btn btn-action" value="Start Import" />
+		</div>
+	</div>
+}
+
+
+@if ( Model.DetailPageUrl != null && Model.DetailPageUrl.Length > 0 )
+{
+	<h3>Detail Page</h3>
+	<a href="@Url.Content(@Model.DetailPageUrl)" class="detailWindow" target="detail">View Detail Page</a>
+}
+@if ( Model.Messages != null && Model.Messages.Count > 0 )
+{
+	if ( isUserAnAdmin )
+	{
+		<h3>Messages</h3>
+		<ul>
+			@foreach ( var item in Model.Messages )
+			{
+				<li>@item.Message</li>
+			}
+		</ul>
+	}
+	<div style="display:none;">	</div>
+
+
+}
+else if ( !string.IsNullOrWhiteSpace( pageMessage ) )
+{
+	<p>@Html.Raw( pageMessage )</p>
+}

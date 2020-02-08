@@ -23,8 +23,10 @@ namespace workIT.Models.Common
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public string BannerText { get; set; }
+		public FileReferenceData LogoImage { get; set; }
 		public string UrlName { get; set; }
 		public string LogoUrl { get; set; }
+		public string LogoFileName { get; set; }
 		public string OrganizationName { get; set; }
 		public string OrganizationCTID { get; set; }
 		public string CustomJSON { get; set; }
@@ -75,16 +77,18 @@ namespace workIT.Models.Common
 			//Relationships
 			public List<Reference> OwnedBy { get; set; } //May not be used
 			public List<Reference> OfferedBy { get; set; }
-			public List<Reference> AccreditedBy { get; set; }
-			public List<Reference> ApprovedBy { get; set; }
-			public List<Reference> RegulatedBy { get; set; }
+			//public List<Reference> AccreditedBy { get; set; }
+			//public List<Reference> ApprovedBy { get; set; }
+			//public List<Reference> RegulatedBy { get; set; }
 			public List<Reference> PotentialResults { get; set; } //Used to limit search results to items identified by this list
 
             // Checkbox Searches
             //public List<string> HideSearches { get; set; }
 			//Checkbox Filters
 			public List<string> HideFilters { get; set; }
-
+			public OrganizationRole QualityAssurance { get; set; }
+			public OrganizationRole Provider { get; set; }
+			
 			//String Filters
 			public List<string> Competencies { get; set; }
 			public List<string> Subjects { get; set; }
@@ -119,7 +123,18 @@ namespace workIT.Models.Common
 			public Dictionary<string, object> Properties { get; set; }
 		}
 		//
+		public class OrganizationRole
+		{
+			public OrganizationRole()
+			{
+				RoleIds = new List<int>();
+				Organizations = new List<Reference>();
+			}
+			 public List<int> RoleIds { get; set; }
+			 public List<Reference> Organizations { get; set; }
 
+		}
+		//
 		//Utility
 		public static void InitializeLists( object self )
 		{
@@ -135,6 +150,10 @@ namespace workIT.Models.Common
 			foreach ( var prop in properties.Where( m => m.PropertyType == typeof( List<Reference> ) ) )
 			{
 				prop.SetValue( self, new List<Reference>() );
+			}
+			foreach ( var prop in properties.Where( m => m.PropertyType == typeof( OrganizationRole ) ) )
+			{
+				prop.SetValue( self, new OrganizationRole() );
 			}
 		}
 	}

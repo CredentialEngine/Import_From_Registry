@@ -1,0 +1,724 @@
+﻿@using Newtonsoft.Json;
+@using Newtonsoft.Json.Linq;
+@* Competency Framework's CTID *@
+@model string
+@{
+    ViewBag.Title = "Competency Framework";
+    var data = CompetencyFrameworkServices.GetCompetencyFrameworkDescriptionSet(Model);
+    var mainResult = data.Results.FirstOrDefault();
+    var rawFrameworkGraph = "";
+    var rawConceptSchemeGraphs = new List<string>();
+    try
+    {
+        rawFrameworkGraph = GetData(data.Results.FirstOrDefault()._ID.Replace("/resources/", "/graph/"));
+        rawConceptSchemeGraphs = new List<string>();
+        foreach (JObject item in data.RelatedItems.Where(m => (string)((JObject)m).Property("@type").Value == "skos:ConceptScheme").ToList())
+        {
+            rawConceptSchemeGraphs.Add(GetData(((string)item.Property("@id").Value).Replace("/resources/", "/graph/")));
+        }
+    }
+    catch { }
+}
+@functions{
+    public string GetData(string uri)
+    {
+        return new CredentialFinderWeb.Controllers.DetailController().GetRegistryData("", uri);
+    }
+}
+
+@if (mainResult == null)
+{
+    <div style="padding:50px; text-align:center;">Error: There was an error loading the framework data.</div>
+    return;
+}
+
+@Html.Partial("~/views/detail/_competencyframeworksharedv3.cshtml")
+<script type="text/javascript">
+	var Modals = {
+		Windows: []
+	};
+	var DSP = {
+		Framework: @Html.Raw( JsonConvert.SerializeObject( data.Results.FirstOrDefault() ) ),
+		RelatedItems: @Html.Raw( data.RelatedItems.ToString() )
+	};
+	var AlignmentTypes = [
+			{ property: "ceasn:alignFrom", label: "Aligns from" },
+			{ property: "ceasn:alignTo", label: "Aligns to" },
+			{ property: "ceasn:broadAlignment", label: "Broad Alignment with" },
+			{ property: "ceasn:exactAlignment", label: "Exact Alignment with" },
+			{ property: "ceasn:majorAlignment", label: "Major Alignment with" },
+			{ property: "ceasn:minorAlignment", label: "Minor Alignment with" },
+			{ property: "ceasn:narrowAlignment", label: "Narrow Alignment with" },
+			{ property: "ceasn:prerequisiteAlignment", label: "Prerequisite Alignment with" }
+	];
+	var rawFrameworkGraph = @Html.Raw( rawFrameworkGraph );
+	var rawConceptSchemeGraphs = @Html.Raw( "[" + string.Join( ",", rawConceptSchemeGraphs ) + "]" );
+
+	$(document).ready(function () {
+		setupFramework();
+	});
+
+	function setupFramework() {
+		console.log(DSP);
+		//Setup data
+		DSP.Framework.RawCTDL = JSON.parse(DSP.Framework.RawData);
+		CompetencyFrameworkDSP.getRelatedItemsForResults([DSP.Framework], DSP.RelatedItems, function(){
+			//Basic Data
+			$(".frameworkName").html(getEnglish(DSP.Framework.RawCTDL["ceasn:name"]));
+			$(".frameworkDescription").html(getEnglish(DSP.Framework.RawCTDL["ceasn:description"]));
+			if(DSP.Framework.RawCTDL["ceasn:source"]){
+				var frameworkSourceBox = $(".frameworkSourceBox");
+				DSP.Framework.RawCTDL["ceasn:source"].forEach(function(url){
+					frameworkSourceBox.append("<a class=\"linkButton greenButton frameworkSource\" href=\"" + url + "\" target=\"_blank\">Source</a>")
+				});
+			}
+
+			//Framework Status
+			if (DSP.Framework.RawCTDL["ceasn:publicationStatusType"]) {
+				var statuses = ["Published", "Draft", "Deprecated"];
+				$(".frameworkStatus").html(statuses.filter(function (m) { return DSP.Framework.RawCTDL["ceasn:publicationStatusType"].toLowerCase().indexOf(m.toLowerCase()) })[0] || "Unknown"); //cheat
+			}
+			else{
+				$(".frameworkStatus").html("Unavailable");
+			}
+
+			//Date modified
+			if(DSP.Framework.RawCTDL["ceasn:dateModified"]){
+				try{
+					var date = new Date(DSP.Framework.RawCTDL["ceasn:dateModified"]);
+					$(".frameworkDateModified").html(new Date(date).toString());
+				}
+				catch(e){}
+			}
+			else{
+				$(".frameworkDateModified").html( "Unknown" )
+			}
+
+			//Owner
+			var owner = DSP.Framework.RelatedItems.Owner[0];// || DSP.RelatedItems.filter(function(m){ return m["@@type"].indexOf("Organization") > -1 })[0];
+			if(owner){
+				$(".ownerBox").html("<a href=\"@Url.Content( "~/organization/" )" + owner["ceterms:ctid"] + "\" target=\"_blank\">" + getEnglish(owner["ceterms:name"]) + "</a>");
+			}
+
+			//License
+			var license = DSP.Framework.RawCTDL["ceasn:license"];
+			if (license) {
+				$(".frameworkLicense").html("<a href=\"" + license + "\" target=\"_blank\">" + license + "</a>");
+			}
+			else {
+				$(".frameworkLicense").html("Unavailable");
+			}
+
+			//Render the competencies
+			var container = $(".frameworkCompetencies");
+			if(DSP.Framework.RawCTDL["ceasn:hasTopChild"]){
+				DSP.Framework.RawCTDL["ceasn:hasTopChild"].forEach(function(childURI){
+					var match = CompetencyFrameworkDSP.match(DSP.Framework.RelatedItems.Competencies, "@@id", childURI)[0];
+					renderCompetency(match, container);
+				});
+			}
+			else{
+				DSP.Framework.RelatedItems.Competencies.forEach(function(comp){
+					renderCompetnecy(comp, container);
+				})
+			}
+
+
+			//Related data
+			renderRelatedItems(DSP.Framework.RelatedItems.Credentials, "credential", $(".relatedCredentials"), "Credentials");
+			renderRelatedItems(DSP.Framework.RelatedItems.Assessments, "assessment", $(".relatedAssessments"), "Assessments");
+			renderRelatedItems(DSP.Framework.RelatedItems.LearningOpportunities, "learningopportunity", $(".relatedLearningOpportunities"), "Learning Opportunities");
+			renderRelatedItems(DSP.Framework.RelatedItems.AlignedFrameworks, "competencyframework", $(".alignedFrameworks"), "Competency Frameworks");
+
+			//Render JSON modal for the framework
+			var JSONModal = createModal($(".rawJSONFrameworkButton"), $(".rawJSONModals"));
+			var JSONBox = $($("#template_rawjson").html()).appendTo(JSONModal.ContentBox);
+			var graphURI = DSP.Framework.RawCTDL["@@id"].replace("/resources/", "/graph/");
+
+			JSONModal.ToggleButton.html($("#template_jsonldmodalbutton").html());
+			JSONModal.ToggleButton.find(".label").html(getEnglish(DSP.Framework.RawCTDL["ceasn:name"]) + "<br />Raw Metadata");
+			JSONModal.LabelBox.html(getEnglish(DSP.Framework.RawCTDL["ceasn:name"]));
+			JSONBox.find(".ctid").html(DSP.Framework.RawCTDL["ceterms:ctid"]);
+			JSONBox.find(".registryURI").attr("href", graphURI).html(graphURI);
+			JSONBox.find(".rawData").html(JSON.stringify(rawFrameworkGraph, null, "\t"));
+
+			$(".rawJSONBox").removeClass("hidden");
+
+			//Render JSON modals for the concept schemes
+			DSP.Framework.RelatedItems.ConceptSchemes.forEach(function(scheme){
+				var graphURI = scheme["@@id"].replace("/resources/","/graph/");
+				var JSONModal = createModal($(".rawJSONConceptButtons"), $(".rawJSONModals"));
+				var match = rawConceptSchemeGraphs.filter(function(m){ return m["@@id"] == graphURI })[0] || {};
+				var scheme = match["@@graph"].filter(function(m){ return m["@@type"] == "skos:ConceptScheme" })[0];
+				var concepts = match["@@graph"].filter(function(m){ return m["@@type"] == "skos:Concept" });
+
+				JSONModal.ToggleButton.html($("#template_jsonldmodalbutton").html());
+				JSONModal.ToggleButton.find(".label").html(getEnglish(scheme["ceasn:name"]) + "<br />Raw Metadata");
+				JSONModal.LabelBox.html(getEnglish(scheme["ceasn:name"]));
+				var jsonBox = $($("#template_rawjson").html()).appendTo(JSONModal.ContentBox);
+				jsonBox.find(".ctid").html(scheme["ceterms:ctid"]);
+				jsonBox.find(".registryURI").attr("href", graphURI).html(graphURI);
+				jsonBox.find(".rawData").html(JSON.stringify(match, null, "\t"));
+
+				$(".conceptSchemesBox").removeClass("hidden");
+
+				var DisplayModal = createModal($(".conceptSchemesButtons"), $(".conceptSchemesModals"));
+				DisplayModal.ToggleButton.html($("#template_conceptschemebutton").html());
+				DisplayModal.ToggleButton.find(".label").html(getEnglish(scheme["ceasn:name"]));
+				DisplayModal.LabelBox.html(getEnglish(scheme["ceasn:name"]));
+				var jsonBox = $($("#template_conceptscheme").html()).appendTo(DisplayModal.ContentBox);
+				jsonBox.find(".description").html(getEnglish(scheme["ceasn:description"]));
+
+				var itemsBox = jsonBox.find(".conceptList");
+				scheme["skos:hasTopConcept"].forEach(function(uri){
+					var concept = concepts.filter(function(m){ return m["@@id"] == uri })[0];
+					renderConcept(concept, itemsBox, concepts);
+				});
+
+			});
+		});
+
+	}
+	function renderConcept(concept, container, allConcepts){
+		if(!concept){
+			return;
+		}
+
+		//Basic data
+		var Box = $($("#template_concept").html()).appendTo(container);
+		Box.find(".conceptLabel").html(getEnglish(concept["skos:prefLabel"]));
+		Box.find(".conceptDefinition").html(getEnglish(concept["skos:definition"]));
+		var childBox = Box.find(".conceptChildren");
+		if(concept["skos:narrower"]){
+			concept["skos:narrower"].forEach(function(uri){
+				var match = allConcepts.filter(function(m){ return m["@@id"] == uri })[0];
+				renderConcept(match, childBox, allConcepts);
+			});
+		}
+	}
+	//
+
+	function renderCompetency(competency, container){
+		if(!competency){
+			return;
+		}
+
+		//Basic data
+		var Box = $($("#template_competency").html()).appendTo(container);
+		Box.attr("data-ctid", competency["ceterms:ctid"]).attr("data-id", competency["@@id"]);
+		Box.find(".competencyListID").html(competency["ceasn:listID"]);
+		Box.find(".competencyCodedNotation").html(competency["ceasn:codedNotation"]);
+		Box.find(".competencyCategory").html(getEnglish(competency["ceasn:CompetencyCategory"]));
+		Box.find(".competencyLabel").html(getEnglish(competency["ceasn:competencyLabel"]));
+		Box.find(".competencyText").html(getEnglish(competency["ceasn:competencyText"]));
+		Box.find(".competencyComment").html(getEnglish(competency["ceasn:comment"]));
+
+		//Embedded data
+		renderConceptReference("Keywords", competency["ceasn:conceptKeyword"], Box.find(".conceptList[data-scheme='ceasn:conceptKeyword']"), true);
+		renderConceptReference("Complexity Level", competency["ceasn:complexityLevel"], Box.find(".conceptList[data-scheme='ceasn:complexityLevel']"));
+		renderConceptReference("Concept Term", competency["ceasn:conceptTerm"], Box.find(".conceptList[data-scheme='ceasn:conceptTerm']"));
+
+		//Children
+		var childrenBox = Box.find(".competencyChildren");
+		if(competency["ceasn:hasChild"]){
+			competency["ceasn:hasChild"].forEach(function(childURI){
+				var match = CompetencyFrameworkDSP.match(DSP.RelatedItems, "@@id", childURI)[0];
+				renderCompetency(match, childrenBox);
+			});
+		}
+
+		//References
+		var AlignmentsBox = Box.find(".alignedCompetencies");
+		AlignmentTypes.forEach(function(type){
+			if(competency[type.property]){
+				competency[type.property].forEach(function(alignedURI){
+					var match = DSP.RelatedItems.filter(function(m){ return m["@@id"] == alignedURI })[0];
+					if(match){
+						AlignmentsBox.append("<div class=\"alignedCompetency\">" + type.label + " <a href=\"@Url.Content( "~/competencyframework/" )\" target=\"_blank\">" + match["ceterms:ctid"] + "</a>:" + getEnglish(match["ceasn:competencyText"]) + "</div>");
+					}
+				});
+			}
+		});
+	}
+	//
+
+	function renderConceptReference(header, data, container, isDirectValue){
+		if(!data || data.length == 0){
+			return;
+		}
+
+		data.forEach(function(item){
+			var render = { label: "", text: "" };
+			if(isDirectValue){
+				render.label = item;
+			}
+			else{
+				var match = DSP.RelatedItems.filter(function(m){ return m["@@id"] == item })[0];
+				if(match){
+					render.label = getEnglish(match["skos:prefLabel"]);
+					render.text = getEnglish(match["skos:definition"]);
+				}
+			}
+			if(render.label.length > 0){
+				container.append("<div class=\"concept\" title=\"" + render.text + "\">" + render.label + "</div>");
+			}
+		});
+	}
+	//
+
+	function renderRelatedItems(items, type, container, label){
+		container.html("");
+		if(items && items.length > 0){
+			items.forEach(function(item){
+				var Box = $($("#template_relatedItem").html()).appendTo(container);
+				Box.addClass(type);
+				Box.find(".name").attr("href", "@Url.Content("~/")" + type + "/" + item["ceterms:ctid"]).html(getEnglish(item["ceterms:name"] || item["ceasn:name"]));
+				Box.find(".description").html(getEnglish(item["ceterms:description"] || item["ceasn:description"]));
+			});
+		}
+		else{
+			container.html("<div class=\"noItems\">No " + label + "</div>");
+		}
+	}
+	//
+
+	function getEnglish(languageMap){
+		return CompetencyFrameworkDSP.getEnglish(languageMap);
+	}
+	//
+
+	function createModal(buttonContainer, windowContainer) {
+		var Modal = {};
+		Modal.ToggleButton = $("<button class=\"modalButton blueButton\"></button>").appendTo(buttonContainer);
+		Modal.Window = $($("#template_modalwindow").html()).appendTo(windowContainer);
+		Modal.CloseButton = Modal.Window.find(".closeButton");
+		Modal.LabelBox = Modal.Window.find(".modalTitle .label");
+		Modal.ContentBox = Modal.Window.find(".modalContent");
+
+		Modal.ToggleButton.on("click", function (e) {
+			e.stopPropagation();
+			Modal.Window.toggleClass("hidden");
+			Modals.Windows.filter(function (m) { return m != Modal }).forEach(function (item) {
+				item.Window.addClass("hidden");
+			});
+		});
+		Modal.CloseButton.on("click", function () {
+			Modal.Window.addClass("hidden");
+		});
+		Modal.Window.on("click", function (e) {
+			e.stopPropagation();
+		})
+		$("html").not(Modal.ToggleButton, Modal.Window).on("click", function () {
+			Modal.Window.addClass("hidden");
+		});
+
+		Modals.Windows.push(Modal);
+		return Modal;
+	}
+	//
+</script>
+<style type="text/css">
+    .section.hidden {
+        display: none;
+    }
+
+    .banner {
+        padding: 15px 1vw;
+        margin: 0 -5vw;
+        background-color: #0F3E63;
+        color: #FFF;
+    }
+
+        .banner * {
+            color: inherit;
+        }
+
+    .areaHeader {
+        background-color: #F5F5F5;
+        padding: 5px 5vw;
+        margin: 0 -5vw;
+    }
+
+    .header {
+        padding: 5px 0;
+        margin-top: 5px;
+    }
+
+    .ownerBox {
+        padding: 0 25px;
+    }
+
+        .ownerBox a, .ownerBox a:hover, .ownerBox a:focus {
+            color: #FFF;
+        }
+
+    .frameworkDescription {
+        padding: 10px;
+    }
+
+    .frameworkSource {
+        padding: 5px 10px;
+    }
+
+    .frameworkCompetencies {
+        padding: 10px;
+    }
+
+    .frameworkInfo .moreInfoBox {
+        margin-bottom: 10px;
+    }
+
+        .frameworkInfo .moreInfoBox .frameworkReference {
+            padding: 5px 10px;
+        }
+
+        .frameworkInfo .moreInfoBox .ctdl, .frameworkInfo .moreInfoBox .ctdlasn {
+            margin-bottom: 5px;
+        }
+
+    .frameworkInfo .frameworkSourceBox {
+        display: flex;
+        padding: 5px;
+    }
+
+        .frameworkInfo .frameworkSourceBox a {
+            margin-right: 10px;
+        }
+
+    .competency .competencyContent {
+        padding: 5px;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .frameworkCompetencies > .competency:first-child > .competencyContent {
+        border: none;
+    }
+
+    .competency .competencyLabel {
+        font-weight: bold;
+        padding: 0 5px;
+        margin-right: 10px;
+    }
+
+        .competency .competencyLabel:empty {
+            display: none;
+        }
+
+    .competency .competencyTitle {
+        display: flex;
+        align-items: baseline;
+    }
+
+    .competency .competencyTag {
+        padding: 1px 5px;
+        background-color: rgba(0,0,0,0.05);
+        font-weight: lighter;
+        margin: 1px 2px;
+    }
+
+        .competency .competencyTag:empty {
+            display: none;
+        }
+
+    .competency .competencyChildren {
+        padding-left: 25px;
+    }
+
+    .competency .competencyComment {
+        padding: 5px 10px;
+        font-weight: lighter;
+    }
+
+        .competency .competencyComment:empty {
+            padding: 0;
+        }
+
+    .competency .competencyConcepts {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+        .competency .competencyConcepts .conceptList {
+            display: flex;
+        }
+
+            .competency .competencyConcepts .conceptList .concept {
+                margin: 1.5px 2.5px;
+                padding: 2px 5px;
+                background: rgba(0,0,0,0.1);
+                cursor: help;
+            }
+
+    .concept {
+        padding: 5px;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .conceptList > .concept:first-child {
+        border: none;
+    }
+
+    .concept .conceptLabel {
+    }
+
+    .concept .conceptChildren {
+        padding-left: 25px;
+    }
+
+    .concept .conceptDefinition {
+        font-weight: lighter;
+        padding: 5px 15px;
+    }
+
+        .concept .conceptDefinition:empty {
+            display: none;
+        }
+
+    .modalButtons {
+        display: flex;
+        padding: 10px;
+    }
+
+        .modalButtons.rawJSONButtons {
+            justify-content: flex-end;
+        }
+
+        .modalButtons .buttonList {
+            display: flex;
+        }
+
+        .modalButtons button {
+            display: flex;
+            align-items: center;
+            margin: 2.5px 5px;
+        }
+
+            .modalButtons button .label {
+                padding: 5px;
+            }
+
+            .modalButtons button .expandIcon {
+                margin-left: 10px;
+                font-size: 24px;
+            }
+
+    .modalWindows .modal {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 5vh;
+        bottom: 10vh;
+        left: 10vw;
+        right: 10vw;
+        border: 1px solid #CCC;
+        box-shadow: 0 0 50px rgba(0,0,0,0.3);
+        z-index: 10000;
+    }
+
+        .modalWindows .modal.hidden {
+            display: none;
+        }
+
+        .modalWindows .modal .modalTitle {
+            display: flex;
+            align-items: center;
+            background-color: #CAD9DB;
+            min-height: 45px;
+            font-size: 20px;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+            .modalWindows .modal .modalTitle .closeButton {
+                margin-left: auto;
+                width: 30px;
+                height: 30px;
+            }
+
+        .modalWindows .modal .modalContentWrapper {
+            flex: auto 1 1;
+            overflow-y: scroll;
+            padding: 5px;
+            background-color: #F5F5F5;
+        }
+
+            .modalWindows .modal .modalContentWrapper .modalContent {
+                background-color: #FCFCFC;
+                border: 1px solid #CAD9DB;
+            }
+
+                .modalWindows .modal .modalContentWrapper .modalContent .label {
+                    padding: 5px;
+                    font-weight: bold;
+                    padding: 5px;
+                    background-color: #CAD9DB;
+                }
+
+                    .modalWindows .modal .modalContentWrapper .modalContent .label.midLabel {
+                        background-color: #DDD;
+                    }
+
+                .modalWindows .modal .modalContentWrapper .modalContent .modalSection {
+                    padding: 5px 5px 10px 5px;
+                }
+
+        .modalWindows .modal .rawData {
+            font-family: Consolas, 'Courier New', monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+            padding: 5px;
+        }
+
+        .modalWindows .modal dl {
+            padding: 5px;
+            margin: 0;
+        }
+
+            .modalWindows .modal dl dt {
+                font-weight: bold;
+                padding: 2.5px 10px;
+            }
+
+            .modalWindows .modal dl dd {
+                margin: 0 10px 5px 40px;
+            }
+
+    .noItems {
+        font-style: italic;
+        opacity: 0.7;
+    }
+</style>
+
+<div class="frameworkBox">
+    <div class="section banner">
+        <h1 class="frameworkName">Competency Framework Loading <i class="fas fa-spin fa-spinner"></i></h1>
+        <div class="ownerBox"></div>
+    </div>
+    <div class="section frameworkInfo">
+        <h3 class="areaHeader">Description</h3>
+        <div class="descriptionBox">
+            <div class="frameworkDescription"></div>
+            <div class="frameworkSourceBox"></div>
+        </div>
+        <div class="moreInfoBox">
+            <h4 class="header">Publication Status</h4>
+            <div class="frameworkReference frameworkStatus"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">Date Modified</h4>
+            <div class="frameworkReference frameworkDateModified"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">License</h4>
+            <div class="frameworkReference frameworkLicense"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">Credentials that Reference this Framework</h4>
+            <div class="frameworkReference relatedCredentials"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">Assessments that Reference this Framework</h4>
+            <div class="frameworkReference relatedAssessments"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">Learning Opportunities that Reference this Framework</h4>
+            <div class="frameworkReference relatedLearningOpportunities"><i class="fas fa-spin fa-spinner"></i></div>
+            <h4 class="header">Frameworks that reference this Framework</h4>
+            <div class="frameworkReference alignedFrameworks"><i class="fas fa-spin fa-spinner"></i></div>
+        </div>
+    </div>
+    <div class="section conceptSchemesBox hidden">
+        <h4 class="header">Concept Schemes</h4>
+        <div class="conceptSchemesButtons modalButtons"></div>
+        <div class="conceptSchemesModals modalWindows"></div>
+    </div>
+    <div class="section competenciesBox">
+        <h3 class="areaHeader">Competencies</h3>
+        <div class="frameworkCompetencies"></div>
+    </div>
+    <div class="section rawJSONBox hidden">
+        <h3 class="areaHeader">Registry Data</h3>
+        <div class="rawJSONButtons modalButtons">
+            <div class="rawJSONConceptButtons buttonList"></div>
+            <div class="rawJSONFrameworkButton buttonList"></div>
+        </div>
+        <div class="rawJSONModals modalWindows"></div>
+    </div>
+</div>
+
+<div class="templates">
+
+    <script type="text/template" id="template_competency">
+        <div class="competency" data-ctid="" data-id="">
+            <div class="competencyContent">
+                <div class="competencyTitle">
+                    <div class="competencyCategory competencyTag"></div>
+                    <div class="competencyListID competencyTag"></div>
+                    <div class="competencyCodedNotation competencyTag"></div>
+                    <div class="competencyLabel"></div>
+                    <div class="competencyText"></div>
+                </div>
+                <div class="competencyComment"></div>
+                <div class="competencyConcepts">
+                    <div class="conceptList" data-scheme="ceasn:conceptKeyword"></div>
+                    <div class="conceptList" data-scheme="ceasn:complexityLevel"></div>
+                    <div class="conceptList" data-scheme="ceasn:conceptTerm"></div>
+                </div>
+                <div class="alignedCompetencies"></div>
+            </div>
+            <div class="competencyChildren"></div>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_relatedItem">
+        <div class="relatedItem">
+            <a class="name"></a>
+            <div class="description"></div>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_modalwindow">
+        <div class="modal hidden">
+            <div class="modalTitle">
+                <div class="label"></div>
+                <button class="closeButton"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modalContentWrapper">
+                <div class="modalContent"></div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_rawjson">
+        <div>
+            <div class="label">Registry Information</div>
+            <div class="modalSection">
+                <div><b>URI:</b> <a class="registryURI" target="_blank"></a></div>
+                <div><b>CTID:</b> <span class="ctid"></span></div>
+            </div>
+            <div class="label midLabel">Raw Metadata</div>
+            <div class="modalSection">
+                <div class="rawData"></div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_conceptscheme">
+        <div>
+            <div class="label">Description</div>
+            <div class="modalSection">
+                <div class="description"></div>
+            </div>
+            <div class="label midLabel">Concepts</div>
+            <dl class="conceptList"></dl>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_conceptschemebutton">
+        <div class="label"></div>
+        <i class="fas fa-arrows-alt expandIcon"></i>
+    </script>
+
+    <script type="text/template" id="template_concept">
+        <div class="concept">
+            <div class="conceptLabel"></div>
+            <div class="conceptDefinition"></div>
+            <div class="conceptChildren"></div>
+        </div>
+    </script>
+
+    <script type="text/template" id="template_jsonldmodalbutton">
+        <img src="@Url.Content( "~/images/icons/icon_jsonld.png" )" />
+        <div class="label"></div>
+    </script>
+</div>

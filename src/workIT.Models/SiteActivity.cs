@@ -15,6 +15,7 @@ namespace workIT.Models
 		{
 			CreatedDate = System.DateTime.Now;
 			ActivityType = "Audit";
+			IPAddress = "127.1.1.1";
 		}
 		//public int Id { get; set; }
 		public DateTime CreatedDate {
@@ -48,5 +49,8 @@ namespace workIT.Models
 		public string IPAddress { get; set; }
 		public string Referrer { get; set; }
 		public Nullable<bool> IsBot { get; set; }
+		public Nullable<int> EntityTypeId { get; set; }
+		public Nullable<int> OwningOrgId { get; set; }
+		public string Organization { get; set; }
 	}
 }

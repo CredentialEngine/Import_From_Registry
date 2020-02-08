@@ -168,7 +168,8 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                string message = thisClassName + string.Format( ".Add(), CredentialId: {0} to parent entityId: {1} ", credentialId, parent.Id );
+				string fullMessage = FormatExceptions( ex );
+				string message = thisClassName + string.Format( ".Add(), CredentialId: {0} to parent entityId: {1} ", credentialId, parent.Id ) + fullMessage;
                 LoggingHelper.LogError( ex, message );
                 status.AddError( message );
             }

@@ -1,0 +1,746 @@
+﻿@using workIT.Models.Common;
+@using workIT.Models.ProfileModels;
+@using workIT.Models.Helpers;
+@model CompareItemSummary
+@{
+    ViewBag.Title = "Comparing Information";
+
+    //Forced bubbling - only one layer for now(?)
+    foreach ( var cred in Model.Credentials )
+    {
+        //Costs
+        cred.EstimatedCost = cred.EstimatedCost
+            .Concat( cred.Requires.SelectMany( m => m.TargetAssessment ).SelectMany( m => m.EstimatedCost ) )
+            .Concat( cred.Requires.SelectMany( m => m.TargetLearningOpportunity ).SelectMany( m => m.EstimatedCost ) ).ToList();
+
+        //Duration
+        cred.EstimatedDuration = cred.EstimatedDuration
+            .Concat( cred.Requires.SelectMany( m => m.TargetAssessment ).SelectMany( m => m.EstimatedDuration ) )
+            .Concat( cred.Requires.SelectMany( m => m.TargetLearningOpportunity ).SelectMany( m => m.EstimatedDuration ) ).ToList();
+    }
+
+    //Dynamic assignment
+    DynamicCredentials = Model.Credentials.ConvertAll( m => ( dynamic )m );
+    DynamicOrganizations = Model.Organizations.ConvertAll( m => ( dynamic )m );
+    DynamicAssessments = Model.Assessments.ConvertAll( m => ( dynamic )m );
+    DynamicLearningOpportunities = Model.LearningOpportunities.ConvertAll( m => ( dynamic )m );
+}
+@functions
+{
+    List<dynamic>
+    DynamicCredentials
+    { get; set; }
+    List<dynamic>
+        DynamicOrganizations
+    { get; set; }
+    List<dynamic>
+        DynamicAssessments
+    { get; set; }
+    List<dynamic>
+        DynamicLearningOpportunities
+    { get; set; }
+
+    public bool HasText( string data )
+    {
+        return !string.IsNullOrWhiteSpace( data );
+    }
+    //
+
+    public object GetData( dynamic data, string property )
+    {
+        return data == null ? null : data.GetType().GetProperty( property ).GetValue( data, null );
+    }
+}
+@helper RenderNoData()
+{
+    <div class="noData">No Data</div>
+}
+@helper RenderText( dynamic data, string property )
+{
+var text = ( ( string )GetData( data, property ) ).Trim();
+if ( HasText( text ) )
+{
+        @text;
+}
+else
+{
+        @RenderNoData()
+}
+}
+@helper RenderRow( string name, string cssClass, HelperResult html )
+{
+    <div class="row @cssClass">
+        <button class="rowHeader">@name <i class="fa fa-caret-down"></i><i class="fa fa-caret-right"></i></button>
+        <div class="rowContent">@html</div>
+    </div>
+}
+@helper RenderCompareHeaders( List<dynamic>
+                    items, string type )
+{
+    <div class="row header">
+        <div class="rowContent">
+            @foreach ( var item in items )
+            {
+                <div class="cell header" data-id="@item.Id">
+                    <a href="@Url.Content(" ~/")@type/@item.Id" target="compareItemWindow">@item.Name</a>
+                    <button class="redButton fa fa-trash" data-id="@item.Id" onclick="removeItem(@item.Id, '@type', this);"></button>
+                </div>
+            }
+        </div>
+    </div>
+}
+@helper RenderCells_Owner( List<dynamic>
+                        items )
+{
+foreach ( var item in items.Where( m => m != null ).ToList() )
+{
+        <div class="cell" data-id="@item.Id">
+            @try
+            {
+                var owner = ( ( List<OrganizationRoleProfile>
+                    )item.OrganizationRole )
+                    .Where( m => m.AgentRole.Items.Where( n => n.SchemaName.Contains( "owned" ) ).Count() > 0 )
+                    .FirstOrDefault( m => m.ActingAgent != null && m.ActingAgent.Id > 0 )
+                    .ActingAgent;
+                <a href="@Url.Content(" ~/")organization/@owner.Id" target="compareItemWindow">@owner.Name</a>
+            }
+            catch
+            {
+                @RenderNoData()
+            }
+        </div>
+}
+}
+@helper RenderCells_Text( List<dynamic> items, string propertyName, bool preformatted = false )
+{
+foreach ( var item in items )
+{
+        <div class="cell @( preformatted ? "preformatted" : "" ) textCell" data-id="@item.Id" data-property="@propertyName">
+            <span class="textContent">@RenderText( item, propertyName )</span>
+            <button class="truncateButton">Show/Hide</button>
+        </div>
+}
+}
+@helper RenderCells_Enumeration( List<dynamic> items, string propertyName )
+{
+foreach ( var item in items )
+{
+    var list = ( Enumeration )GetData( item, propertyName );
+        <div class="cell" data-id="@item.Id" data-property="@propertyName">
+            @if ( list.Items.Where( m => m != null && m.Id > 0 ).Count() > 0 )
+            {
+                <ul class="enumeration">
+                    @foreach ( var enumItem in list.Items.Where( m => m != null && m.Id > 0 ).ToList() )
+                    {
+                        <li>@enumItem.Name</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                @RenderNoData()
+            }
+        </div>
+}
+}
+@helper RenderCells_Cost( List<dynamic>
+                                    items, string propertyName )
+{
+foreach ( var item in items )
+{
+    var costList = ( List<CostProfile>
+        )GetData( item, propertyName );
+    var validItems = costList.Where( m => m != null && m.Id > 0 && m.Items != null && m.Items.Where( n => n != null && n.Id > 0 ).Count() > 0 ).ToList();
+        <div class="cell" data-id="@item.Id" data-property="@propertyName">
+            @foreach ( var costProfile in validItems )
+            {
+                <div class="costProfile miniItem">
+                    <div class="miniItemHeader">@costProfile.ProfileName</div>
+                    <div class="miniItemContent">
+                        @foreach ( var costItem in costProfile.Items.Where( m => m != null && m.Id > 0 ) )
+                        {
+                            <div class="costItem miniItem">
+                                <div class="price">@Html.Raw( costProfile.CurrencySymbol )@costItem.Price</div>
+                                <div class="details">
+                                    @RenderMiniEnumeration( costItem.DirectCostType )
+                                    @RenderMiniEnumeration( costItem.ApplicableAudienceType )
+                                    @RenderMiniEnumeration( costItem.ResidencyType )
+                                </div>
+                                <div class="description">@costProfile.Description</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if ( validItems.Count() == 0 )
+            {
+                @RenderNoData()
+            }
+        </div>
+}
+}
+@helper RenderMiniEnumeration( Enumeration data )
+{
+if ( data != null && data.Items != null && data.Items.Where( m => m != null && m.Id > 0 ).Count() > 0 )
+{
+    foreach ( var item in data.Items.Where( m => m != null && m.Id > 0 ).ToList() )
+    {
+            <div class="miniEnumerationItem">@item.Name</div>
+    }
+}
+}
+@helper RenderCells_Duration( List<dynamic>
+                                            items, string propertyName )
+{
+foreach ( var item in items )
+{
+    var durationList = ( List<DurationProfile>
+        )GetData( item, propertyName );
+    var validItems = durationList.Where( m => m != null && m.Id > 0 ).ToList();
+        <div class="cell" data-id="@item.Id" data-property="@propertyName">
+            @foreach ( var durationProfile in validItems )
+            {
+                <div class="durationProfile miniItem">
+                    @*<div class="miniItemHeader">@durationProfile.ProfileName</div>*@
+                    <div class="durationItem miniItemContent">
+                        @RenderMiniDuration( "Approximate:", durationProfile.ExactDuration )
+                        @RenderMiniDuration( "Minimum:", durationProfile.MinimumDuration )
+                        @RenderMiniDuration( "Maximum:", durationProfile.MaximumDuration )
+                        <div>@durationProfile.Description</div>
+                    </div>
+                </div>
+            }
+            @if ( validItems.Count() == 0 )
+            {
+                @RenderNoData()
+            }
+        </div>
+}
+}
+@helper RenderMiniDuration( string prefix, DurationItem item )
+{
+var text = item.Print().Trim();
+if ( !string.IsNullOrWhiteSpace( text ) )
+{
+        <div><b>@prefix</b> @text</div>
+}
+}
+@helper RenderCells_VerificationServiceProfiles( List<dynamic>
+                                                    items, string propertyName )
+{
+foreach ( var item in items )
+{
+    var data = ( List<VerificationServiceProfile>
+        )GetData( item, propertyName );
+    var validProfiles = data.Where( m => m != null && m.Id > 0 && ( !string.IsNullOrWhiteSpace( m.Description ) || ( m.ClaimType != null && m.ClaimType.Items.Count() > 0 ) ) ).ToList();
+        <div class="cell" data-id="@item.Id" data-property="@propertyName">
+            @foreach ( var profile in validProfiles )
+            {
+                <div class="verificationServiceProfile miniItem">
+                    <div class="miniItemHeader">@profile.ProfileName</div>
+                    <div class="description">@profile.Description</div>
+                    <div class="verificationType">@RenderMiniEnumeration( profile.ClaimType )</div>
+                </div>
+            }
+            @if ( validProfiles.Count() == 0 )
+            {
+                @RenderNoData()
+            }
+        </div>
+}
+}
+<script type="text/javascript">
+    $(document).ready(function () {
+        setupForcedFormatting();
+        setupButtons();
+        setupCollapsers();
+        setupTruncation();
+        $(window).trigger("resize");
+    });
+    //
+
+    function setupForcedFormatting() {
+        var sizer = $("#compareZone");
+        var typeBoxes = $(".compareType");
+        typeBoxes.each(function () {
+            var box = $(this);
+            var headersWrapper = box.find(".compareHeadersWrapper");
+            var headers = box.find(".compareHeaders");
+            var contentWrapper = box.find(".compareContentWrapper");
+            var content = box.find(".compareContent");
+            var rowHeaders = box.find(".rowHeader");
+            $(window).on("resize", function () {
+                try {
+                    var headerHeight = headersWrapper.height();
+                    contentWrapper.css("height", sizer.height() - headerHeight).css("top", headerHeight);
+                    content.css("width", content[0].scrollWidth);
+                }
+                catch (e) { }
+            }).trigger("resize");
+            contentWrapper.on("scroll", function () {
+                try {
+                    var scrollLeft = contentWrapper.scrollLeft();
+                    headers.css("margin-left", scrollLeft * -1);
+                    rowHeaders.css("padding-left", scrollLeft + 10);
+                }
+                catch (e) { }
+            });
+        });
+    }
+    //
+
+    function setupButtons() {
+        var buttons = $("#compareOptions button");
+        var typeBoxes = $(".compareType");
+        var win = $(window);
+        buttons.on("click", function () {
+            var target = $(this).attr("data-type");
+            buttons.removeClass("selected").filter("[data-type=" + target + "]").addClass("selected");
+            typeBoxes.removeClass("selected").filter("[data-type=" + target + "]").addClass("selected");
+            win.trigger("resize");
+        });
+        buttons.first().trigger("click");
+        buttons.each(function () {
+            var button = $(this);
+            if (button.attr("data-count") != "0") {
+                button.trigger("click");
+                return;
+            }
+        });
+    }
+    //
+
+    function setupCollapsers() {
+        $(".row").each(function () {
+            var row = $(this);
+            row.find(".rowHeader").on("click", function () {
+                row.toggleClass("expanded");
+            });
+        });
+        $(".row.owner, .row.description").addClass("expanded");
+    }
+    //
+
+    function removeItem(id, type, button){
+        compare.removeItem(id, type, button);
+        $("[data-type=" + type + "] .cell[data-id=" + id + "]").remove();
+        var button = $("#compareOptions button[data-type=" + type + "]");
+        button.attr("data-count", parseFloat(button.attr("data-count")) - 1);
+        button.find(".count").html(button.attr("data-count"));
+        //Thrash the DOM
+        $(".compareContent").css("width", "auto");
+        $(window).trigger("resize");
+        $(".compareContentWrapper").trigger("scroll");
+    }
+    //
+
+    function setupTruncation() {
+        var textCells = $(".textCell");
+        textCells.each(function () {
+            var cell = $(this);
+            if(cell.find(".textContent").outerHeight() >= 300){
+                cell.addClass("truncated");
+            }
+            cell.find(".truncateButton").on("click", function() {
+                cell.toggleClass("expanded");
+            });
+        });
+    }
+    //
+
+</script>
+<style type="text/css">
+    #mainSiteFooter {
+        display: none;
+    }
+
+    #compareContainer {
+        display: -webkit-flex;
+        display: flex;
+        width: calc(100% + 10vw);
+        margin: 0 -5vw 0 -5vw;
+        height: calc(100vh - 100px);
+        -webkit-flex-direction: column;
+        flex-direction: column;
+        -webkit-align-items: stretch;
+        align-items: stretch;
+        background-color: #F5F5F5;
+    }
+
+    #compareHeader {
+        background-color: #0F3E63;
+        -webkit-flex: 100px 1 0;
+        flex: 100px 1 0;
+        padding: 0 5vw 5px 5vw;
+    }
+
+        #compareHeader h1 {
+            color: #FFF;
+            font-size: 36px;
+            padding: 5px;
+            margin: 0;
+        }
+
+        #compareHeader #compareOptions {
+            padding: 0 5px;
+        }
+
+    #compareOptions button {
+        padding: 10px;
+        margin: 2px;
+    }
+
+        #compareOptions button.selected {
+            background-color: #CCC;
+        }
+
+    #compareZone {
+        -webkit-flex: 100% 1 1;
+        flex: 100% 1 1;
+        padding: 0 1vw;
+    }
+
+    .compareType {
+        position: relative;
+    }
+
+        .compareType .emptyBox {
+            text-align: center;
+            padding: 5vh 5vw;
+            font-style: italic;
+            opacity: 0.7;
+        }
+
+        .compareType:not(.selected) {
+            z-index: -99;
+        }
+
+    .compareHeadersWrapper {
+        overflow: hidden;
+        min-height: 50px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: #CAD9DB;
+        padding: 5px;
+    }
+
+    .compareHeaders {
+        font-size: 20px;
+    }
+
+    .compareContentWrapper {
+        overflow: auto;
+        position: absolute;
+        top: 50px;
+        left: 0;
+        width: 100%;
+        background-color: #FFF;
+        padding: 5px;
+    }
+
+    .row {
+        margin-bottom: 5px;
+    }
+
+    .rowContent {
+        display: -webkit-flex;
+        display: flex;
+        -webkit-flex-direction: row;
+        flex-direction: row;
+    }
+
+        .rowContent .cell {
+            width: 500px;
+            min-width: 500px;
+            max-width: 85vw;
+            padding: 10px;
+        }
+
+    .row:not(.expanded):not(.header) .rowContent {
+        display: none;
+    }
+
+    .row:not(.expanded) .rowHeader .fa-caret-down {
+        display: none;
+    }
+
+    .row.expanded .rowHeader .fa-caret-right {
+        display: none;
+    }
+
+    .noData {
+        text-align: center;
+        opacity: 0.6;
+        font-style: italic;
+        padding: 10px;
+    }
+
+    .rowHeader {
+        display: block;
+        width: calc(100% - 5px);
+        background-color: #E2E4E4;
+        color: #607171;
+        text-align: left;
+        padding: 5px 10px;
+        font-weight: bold;
+    }
+
+    .row .cell {
+        border-right: 1px solid #CCC;
+    }
+
+        .row .cell.header {
+            border-color: #9BA8B9;
+            position: relative;
+            padding: 10px 30px 10px 10px;
+        }
+
+        .row .cell:last-child {
+            border-right: none;
+        }
+
+        .row .cell .fa-trash {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+    .textCell.preformatted .textContent {
+        white-space: pre-wrap;
+    }
+
+    .miniItem {
+        margin-bottom: 5px;
+        padding: 5px;
+    }
+
+    .miniItemHeader {
+        font-weight: bold;
+    }
+
+    .miniItemContent {
+        padding: 5px;
+    }
+
+    .miniEnumerationItem {
+        display: inline-block;
+        padding: 2px 5px;
+        margin: 1px;
+        background-color: #F5F5F5;
+    }
+
+    .costItem {
+        display: -webkit-flex;
+        display: flex;
+        -webkit-flex-wrap: wrap;
+        flex-wrap: wrap;
+        -webkit-align-items: center;
+        align-items: center;
+        background-color: #FCFCFD;
+    }
+
+        .costItem .price {
+            font-weight: bold;
+            -webkit-flex: 125px 0 0;
+            flex: 125px 0 0;
+        }
+
+        .costItem .details {
+            -webkit-flex: 50% 1 1;
+            flex: 50% 1 1;
+        }
+
+        .costItem .description {
+            -webkit-flex: 100% 0 0;
+            flex: 100% 0 0;
+        }
+
+    .durationItem {
+        background-color: #FCFCFD;
+    }
+
+    .textCell {
+        position: relative;
+    }
+
+    .truncateButton, .truncateButton:hover, .truncateButton:focus {
+        border: none;
+        background-color: transparent;
+        font-weight: bold;
+        padding: 2px;
+    }
+
+    .textCell:not(.truncated) .truncateButton {
+        display: none;
+    }
+
+    .textCell.truncated {
+        max-height: 300px;
+        overflow: hidden;
+    }
+
+        .textCell.truncated::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-image: linear-gradient(rgba(255,255,255,0),rgba(255,255,255,1));
+        }
+
+        .textCell.truncated .truncateButton {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            z-index: 10;
+        }
+
+        .textCell.truncated.expanded {
+            max-height: none;
+            overflow: visible;
+            padding-bottom: 25px;
+        }
+
+            .textCell.truncated.expanded::after {
+                height: 20px;
+            }
+
+    @@media (max-width: 1000px) {
+        #compareHeader h1 {
+            font-size: 20px;
+        }
+
+        #compareOptions button {
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        #compareZone * {
+            font-size: 14px;
+        }
+    }
+
+    @@media (max-width: 500px) {
+        #compareHeader h1 {
+            font-size: 16px;
+        }
+
+        #compareOptions button {
+            font-size: 12px;
+            padding: 2px 5px;
+        }
+
+        #compareZone * {
+            font-size: 12px;
+        }
+    }
+</style>
+<div id="compareContainer">
+    <div id="compareHeader">
+        <h1>Comparing Information</h1>
+        <div id="compareOptions">
+            <button class="whiteButton" data-count="@Model.Credentials.Count()" data-type="credential"><span class="count">@Model.Credentials.Count()</span> Credentials</button>
+            <button class="whiteButton" data-count="@Model.Organizations.Count()" data-type="organization"><span class="count">@Model.Organizations.Count()</span> Organizations</button>
+            <button class="whiteButton" data-count="@Model.Assessments.Count()" data-type="assessment"><span class="count">@Model.Assessments.Count()</span> Assessments</button>
+            <button class="whiteButton" data-count="@Model.LearningOpportunities.Count()" data-type="learningopportunity"><span class="count">@Model.LearningOpportunities.Count()</span> Learning Opportunities</button>
+        </div>
+    </div>
+    <div id="compareZone">
+        <div class="compareType" data-type="credential">
+            <div class="compareHeadersWrapper">
+                <div class="compareHeaders">@RenderCompareHeaders( DynamicCredentials, "credential" )</div>
+            </div>
+            <div class="compareContentWrapper">
+                <div class="compareContent">
+                    @if ( Model.Credentials.Count() > 0 )
+                    {
+                        @RenderRow( "Owner", "owner", RenderCells_Owner( DynamicCredentials ) )
+                        @RenderRow( "Description", "description", RenderCells_Text( DynamicCredentials, "Description", true ) )
+                        @RenderRow( "Credential Type", "credentialtype", RenderCells_Enumeration( DynamicCredentials, "CredentialTypeEnum" ) )
+                        @RenderRow( "Audience Level", "audiencelevel", RenderCells_Enumeration( DynamicCredentials, "AudienceLevelType" ) )
+                        @RenderRow( "Industries", "industries", RenderCells_Enumeration( DynamicCredentials, "IndustryType" ) )
+                        @RenderRow( "Occupations", "occupations", RenderCells_Enumeration( DynamicCredentials, "OccupationType" ) )
+                        @RenderRow( "Estimated Costs", "estimatedcosts", RenderCells_Cost( DynamicCredentials, "EstimatedCost" ) )
+                        @RenderRow( "Estimated Time to Earn", "estimatedduration", RenderCells_Duration( DynamicCredentials, "EstimatedDuration" ) )
+                    }
+                    else
+                    {
+                        <div class="emptyBox">Nothing to Compare</div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="compareType" data-type="organization">
+            <div class="compareHeadersWrapper">
+                <div class="compareHeaders">@RenderCompareHeaders( DynamicOrganizations, "organization" )</div>
+            </div>
+            <div class="compareContentWrapper">
+                <div class="compareContent">
+                    @if ( Model.Organizations.Count() > 0 )
+                    {
+                        @RenderRow( "Description", "description", RenderCells_Text( DynamicOrganizations, "Description", true ) )
+                        @RenderRow( "Organization Type", "organizationtype", RenderCells_Enumeration( DynamicOrganizations, "OrganizationType" ) )
+                        @RenderRow( "Organization Sector", "organizationsector", RenderCells_Enumeration( DynamicOrganizations, "AgentSectorType" ) )
+                        @RenderRow( "Industries", "industries", RenderCells_Enumeration( DynamicOrganizations, "IndustryType" ) )
+                        @RenderRow( "Services Offered", "services", RenderCells_Enumeration( DynamicOrganizations, "ServiceType" ) )
+                        @RenderRow( "Verification Services", "verificationservices", RenderCells_VerificationServiceProfiles( DynamicOrganizations, "VerificationServiceProfiles" ) )
+                    }
+                    else
+                    {
+                        <div class="emptyBox">Nothing to Compare</div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="compareType" data-type="assessment">
+            <div class="compareHeadersWrapper">
+                <div class="compareHeaders">@RenderCompareHeaders( DynamicAssessments, "assessment" )</div>
+            </div>
+            <div class="compareContentWrapper">
+                <div class="compareContent">
+                    @if ( Model.Assessments.Count() > 0 )
+                    {
+                        @RenderRow( "Owner", "owner", RenderCells_Owner( DynamicAssessments ) )
+                        @RenderRow( "Description", "description", RenderCells_Text( DynamicAssessments, "Description", true ) )
+                        @RenderRow( "Method Type", "assessmentmethodtype", RenderCells_Enumeration( DynamicAssessments, "AssessmentMethodType" ) )
+                        @RenderRow( "Delivery Type", "assessmentdeliverytype", RenderCells_Enumeration( DynamicAssessments, "DeliveryType" ) )
+                        @RenderRow( "Estimated Costs", "estimatedcosts", RenderCells_Cost( DynamicAssessments, "EstimatedCost" ) )
+                        @RenderRow( "Estimated Time to Earn", "estimatedduration", RenderCells_Duration( DynamicAssessments, "EstimatedDuration" ) )
+                    }
+                    else
+                    {
+                        <div class="emptyBox">Nothing to Compare</div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="compareType" data-type="learningopportunity">
+            <div class="compareHeadersWrapper">
+                <div class="compareHeaders">@RenderCompareHeaders( DynamicLearningOpportunities, "learningopportunity" )</div>
+            </div>
+            <div class="compareContentWrapper">
+                <div class="compareContent">
+                    @if ( Model.LearningOpportunities.Count() > 0 )
+                    {
+                        @RenderRow( "Owner", "owner", RenderCells_Owner( DynamicLearningOpportunities ) )
+                        @RenderRow( "Description", "description", RenderCells_Text( DynamicLearningOpportunities, "Description", true ) )
+                        @RenderRow( "Learning Type", "learningmethodtype", RenderCells_Enumeration( DynamicLearningOpportunities, "LearningMethodType" ) )
+                        @RenderRow( "Delivery Type", "learningdeliverytype", RenderCells_Enumeration( DynamicLearningOpportunities, "DeliveryType" ) )
+                        @RenderRow( "Estimated Costs", "estimatedcosts", RenderCells_Cost( DynamicLearningOpportunities, "EstimatedCost" ) )
+                        @RenderRow( "Estimated Time to Earn", "estimatedduration", RenderCells_Duration( DynamicLearningOpportunities, "EstimatedDuration" ) )
+                    }
+                    else
+                    {
+                        <div class="emptyBox">Nothing to Compare</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@Html.Partial( "~/Views/Compare/_CompareCore.cshtml" )

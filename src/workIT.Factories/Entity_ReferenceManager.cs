@@ -405,9 +405,9 @@ namespace workIT.Factories
 
             if ( profile.CategoryId == CodesManager.PROPERTY_CATEGORY_REFERENCE_URLS ||
                  profile.CategoryId == CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA ||
-                 profile.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_URLS ||
-                 profile.CategoryId == CodesManager.PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS )
-            {
+                 profile.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_URLS
+				 )
+			{
 
                 if ( ( profile.TextValue ?? "" ).Length > maxReferenceUrlLength )
                 {
@@ -435,7 +435,8 @@ namespace workIT.Factories
                 if ( !string.IsNullOrWhiteSpace( profile.TextValue ) && profile.TextValue.Length > maxKeywordLength )
                 {
                     status.AddWarning( string.Format( "Error - the subject must be less than {0} characters.", maxKeywordLength ) );
-                }
+					profile.TextValue = profile.TextValue.Substring( 0, maxKeywordLength );
+				}
             } //
             else
             if ( profile.CategoryId == CodesManager.PROPERTY_CATEGORY_SOC )
@@ -711,9 +712,9 @@ namespace workIT.Factories
         /// <param name="keyword"></param>
         /// <param name="maxTerms"></param>
         /// <returns></returns>
-        public static List<string> QuickSearch_Subjects( int entityTypeId, string keyword, int maxTerms = 0 )
+        public static List<object> QuickSearch_Subjects( int entityTypeId, string keyword, int maxTerms = 0 )
         {
-            List<string> list = new List<string>();
+            List<object> list = new List<object>();
 
             keyword = keyword.Trim();
 
@@ -721,7 +722,7 @@ namespace workIT.Factories
 
             using ( var context = new ViewContext() )
             {
-                list = context.Entity_Subjects.Where( s => s.EntityTypeId == entityTypeId && s.Subject.Contains( keyword ) ).OrderBy( s => s.Subject ).Take( maxTerms ).Select( x => x.Subject ).Distinct().ToList();
+                list = context.Entity_Subjects.Where( s => s.EntityTypeId == entityTypeId && s.Subject.Contains( keyword ) ).OrderBy( s => s.Subject ).Take( maxTerms ).Select( x => x.Subject ).Distinct().ToList().Cast<object>().ToList();
 
                 //if ( results != null && results.Count > 0 )
                 //{
@@ -780,9 +781,9 @@ namespace workIT.Factories
         //    return list;
         //}
 
-        public static List<string> QuickSearch_ReferenceFrameworks( int entityTypeId, int categoryId, string headerId, string keyword, int maxTerms = 0 )
+        public static List<object> QuickSearch_ReferenceFrameworks( int entityTypeId, int categoryId, string headerId, string keyword, int maxTerms = 0 )
         {
-            var list = new List<string>();
+            var list = new List<object>();
 
             keyword = keyword.Trim();
             var coded = keyword.Replace( "-", "" ).Replace( " ", "" );

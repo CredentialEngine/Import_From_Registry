@@ -16,14 +16,15 @@ using Import.Services;
 
 namespace CTI.Import
 {
-    public class CompetencyFramesworksImport : RegistryImport
+    public class CompetencyFramesworksImport //: RegistryImport
     {
         int entityTypeId = CodesManager.ENTITY_TYPE_CASS_COMPETENCY_FRAMEWORK;
         ImportCompetencyFramesworks entityImportMgr = new ImportCompetencyFramesworks();
         ImportServiceHelpers importMgr = new ImportServiceHelpers();
         static string thisClassName = "CompetencyFramesworksImport";
+		public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
 
-        public string Import( string startingDate, string endingDate, int maxRecords, bool downloadOnly = false )
+		public string Import( string startingDate, string endingDate, int maxRecords, string community, bool downloadOnly = false)
         {
 			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_competency_frameworks", true );
 			if ( !importingThisType )
@@ -63,7 +64,9 @@ namespace CTI.Import
             //will need to handle multiple calls - watch for time outs
             while ( pageNbr > 0 && !isComplete )
             {
-                list = GetLatest( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
+				list = RegistryServices.Search( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, community );
+
+				//list = GetLatest( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, community );
 
                 if ( list == null || list.Count == 0 )
                 {
@@ -71,8 +74,7 @@ namespace CTI.Import
                     if ( pageNbr == 1 )
                     {
                         importNote = "Competency Frameworks: No records where found for date range ";
-
-                        Console.WriteLine( thisClassName + importNote );
+                        //Console.WriteLine( thisClassName + importNote );
                         LoggingHelper.DoTrace( 4, thisClassName + importNote );
                     }
                     break;
@@ -90,7 +92,7 @@ namespace CTI.Import
 
                     try
                     {
-                        Console.WriteLine( string.Format( "{0}. Competency Frameswork EnvelopeIdentifier {1} ", cntr, item.EnvelopeIdentifier ) );
+                        //Console.WriteLine( string.Format( "{0}. Competency Frameswork Envelope Identifier {1} ", cntr, item.EnvelopeIdentifier ) );
 
 
                         importSuccessfull = entityImportMgr.ProcessEnvelope( mgr, item, status );
@@ -108,7 +110,8 @@ namespace CTI.Import
                             LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), false, "CredentialFinder Import exception" );
                             status.AddError( ex.Message );
                             importError = ex.Message;
-                        }
+							LoggingHelper.DoTrace( 1, " show exception to use getting related envelopeId " + ex.Message );
+						}
 
                         //make continue on exceptions an option
                         exceptionCtr++;
@@ -147,10 +150,11 @@ namespace CTI.Import
                 } //end foreach 
 
                 pageNbr++;
-                if ( ( maxRecords > 0 && cntr > maxRecords ) || cntr > pTotalRows )
+                if ( ( maxRecords > 0 && cntr > maxRecords ) || cntr == pTotalRows )
                 {
                     isComplete = true;
-                    LoggingHelper.DoTrace( 2, string.Format( "CompetencyFramesworkImport EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows ) );
+					if ( cntr < pTotalRows )
+						LoggingHelper.DoTrace( 2, string.Format( "CompetencyFramesworkImport EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows ) );
 
                 }
             } //
@@ -158,7 +162,8 @@ namespace CTI.Import
             if ( !string.IsNullOrWhiteSpace( importNote ) )
                 importResults += importNote;
 
-			if ( cntr > 0 && UtilityManager.GetAppKeyValue( "updateCompetencyFrameworkReportTotals", false ) == true )
+			//always call, as deletes are not tracked
+			if ( UtilityManager.GetAppKeyValue( "updateCompetencyFrameworkReportTotals", false ) == true )
 			{
 				mgr.UpdateCompetencyFrameworkReportTotals();
 			}

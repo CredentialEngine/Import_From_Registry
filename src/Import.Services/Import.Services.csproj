@@ -9,12 +9,13 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Import.Services</RootNamespace>
     <AssemblyName>Import.Services</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -33,10 +34,18 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Staging|AnyCPU'">
+    <OutputPath>bin\Staging\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\packages\Newtonsoft.Json.10.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -60,7 +69,9 @@
     <Compile Include="ImportServiceHelpers.cs" />
     <Compile Include="MappingHelper.cs" />
     <Compile Include="MappingHelperV3.cs" />
+    <Compile Include="NavyServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RegistryModels\CredentialDescriptionSet.cs" />
     <Compile Include="RegistryModels\JsonV2\Agent.cs" />
     <Compile Include="RegistryModels\JsonV2\AssessmentProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\Competency.cs" />
@@ -73,9 +84,9 @@
     <Compile Include="RegistryModels\JsonV2\CostProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\Credential.cs" />
     <Compile Include="RegistryModels\JsonV2\CredentialAlignmentObject.cs" />
-    <Compile Include="RegistryModels\JsonV2\DirectCostType.cs" />
     <Compile Include="RegistryModels\JsonV2\DurationProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\FinancialAlignmentObject.cs" />
+    <Compile Include="RegistryModels\JsonV2\FinancialAssistanceProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\HelpersClass.cs" />
     <Compile Include="RegistryModels\JsonV2\JsonLDDocument.cs" />
     <Compile Include="RegistryModels\JsonV2\JurisdictionProfile.cs" />
@@ -84,6 +95,7 @@
     <Compile Include="RegistryModels\JsonV2\OrganizationBase.cs" />
     <Compile Include="RegistryModels\JsonV2\Place.cs" />
     <Compile Include="RegistryModels\JsonV2\ProcessProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\QuantitativeValue.cs" />
     <Compile Include="RegistryModels\JsonV2\VerificationServiceProfile.cs" />
     <Compile Include="RegistryModels\Json\Agent.cs" />
     <Compile Include="RegistryModels\Json\AssessmentProfile.cs" />
@@ -106,6 +118,7 @@
     <Compile Include="RegistryModels\Json\Place.cs" />
     <Compile Include="RegistryModels\Json\ProcessProfile.cs" />
     <Compile Include="RegistryModels\Json\VerificationServiceProfile.cs" />
+    <Compile Include="RegistryModels\Navy\Json\Rating.cs" />
     <Compile Include="RegistryServices.cs" />
     <Compile Include="ResolutionServices.cs" />
   </ItemGroup>

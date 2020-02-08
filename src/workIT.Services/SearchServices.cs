@@ -19,24 +19,24 @@ namespace workIT.Services
 	{
 		//private static readonly object LoggingHelper;
 
-		public MainSearchResults MainSearch( MainSearchInput data, ref bool valid, ref string status )
+		public MainSearchResults MainSearch(MainSearchInput data, ref bool valid, ref string status)
 		{
 			//Sanitize input
-			data.Keywords = string.IsNullOrWhiteSpace( data.Keywords ) ? "" : data.Keywords;
-			data.Keywords = ServiceHelper.CleanText( data.Keywords );
-			data.Keywords = ServiceHelper.HandleApostrophes( data.Keywords );
+			data.Keywords = string.IsNullOrWhiteSpace(data.Keywords) ? "" : data.Keywords;
+			data.Keywords = ServiceHelper.CleanText(data.Keywords);
+			data.Keywords = ServiceHelper.HandleApostrophes(data.Keywords);
 			data.Keywords = data.Keywords.Trim();
 
 			//Sanitize input
 			var validSortOrders = new List<string>() { "newest", "oldest", "relevance", "alpha", "cost_lowest", "cost_highest", "duration_shortest", "duration_longest", "org_alpha" };
-			if ( !validSortOrders.Contains( data.SortOrder ) )
+			if (!validSortOrders.Contains(data.SortOrder))
 			{
 				data.SortOrder = validSortOrders.First();
 			}
 
 			//Determine search type
 			var searchType = data.SearchType;
-			if ( string.IsNullOrWhiteSpace( searchType ) )
+			if (string.IsNullOrWhiteSpace(searchType))
 			{
 				valid = false;
 				status = "Unable to determine search mode";
@@ -45,102 +45,109 @@ namespace workIT.Services
 
 			//Do the search
 			var totalResults = 0;
-			switch ( searchType )
-			{
-				case "credential":
-				{
-					var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
-                    if(data.UseSimpleSearch )
-                    {
-                        var results = ElasticServices.CredentialSimpleSearch( data, ref totalResults );
-                        return ConvertCredentialResults( results, totalResults, searchType );
-                    }
-                    else
-                    {
-                        var results = CredentialServices.Search( data, ref totalResults );
-                        return ConvertCredentialResults( results, totalResults, searchType );
-                    }
-					
-					
-				}
-				case "organization":
-				{
-					var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
-                    if ( data.UseSimpleSearch )
-                    {
-                        var results = ElasticServices.OrganizationSimpleSearch( data, ref totalResults );
-                        return ConvertOrganizationResults( results, totalResults, searchType );
-                    }
-                    else
-                    {
-                        var results = OrganizationServices.Search( data, ref totalResults );
-                        return ConvertOrganizationResults( results, totalResults, searchType );
-                    }
-                }
-                case "assessment":
-                {
-                    if ( data.UseSimpleSearch )
-                    {
-                        var results = ElasticServices.AssessmentSimpleSearch( data, ref totalResults );
-                        return ConvertAssessmentResults( results, totalResults, searchType );
-                    }
-                    else
-                    {
-                        var results = AssessmentServices.Search( data, ref totalResults );
-                        return ConvertAssessmentResults( results, totalResults, searchType );
-                    }
-                }
-                case "learningopportunity":
-                {
-                    if ( data.UseSimpleSearch )
-                    {
-                        var results = ElasticServices.LearningOppSimpleSearch( data, ref totalResults );
-                        return ConvertLearningOpportunityResults( results, totalResults, searchType );
-                    }
-                    else
-                    {
-                        var results = LearningOpportunityServices.Search( data, ref totalResults );
-                        return ConvertLearningOpportunityResults( results, totalResults, searchType );
-                    }
-                }
-				case "competencyframework":
-				{
-					var results = CompetencyFrameworkServices.SearchViaRegistry( data, ref totalResults );
-					return ConvertCompetencyFrameworkResults( results, totalResults, searchType );
-				}
-                default:
-                {
-                    valid = false;
-                    status = "Unknown search mode: " + searchType;
-                    return null;
-                }
-            }
-        }
-
-		//Do an autocomplete
-		public static List<string> DoAutoComplete( string text, string context, string searchType, int widgetId = 0 )
-		{
-			var results = new List<string>();
-
-			switch ( searchType.ToLower() )
+			switch (searchType)
 			{
 				case "credential":
 					{
-						switch ( context.ToLower() )
+						if (data.UseSimpleSearch)
+						{
+							var results = ElasticServices.CredentialSimpleSearch(data, ref totalResults);
+							return ConvertCredentialResults(results, totalResults, searchType);
+						}
+						else
+						{
+							var results = CredentialServices.Search(data, ref totalResults);
+							return ConvertCredentialResults(results, totalResults, searchType);
+						}
+
+
+					}
+				case "organization":
+					{
+						if (data.UseSimpleSearch)
+						{
+							var results = ElasticServices.OrganizationSimpleSearch(data, ref totalResults);
+							return ConvertOrganizationResults(results, totalResults, searchType);
+						}
+						else
+						{
+							var results = OrganizationServices.Search(data, ref totalResults);
+							return ConvertOrganizationResults(results, totalResults, searchType);
+						}
+					}
+				case "assessment":
+					{
+						if (data.UseSimpleSearch)
+						{
+							var results = ElasticServices.AssessmentSimpleSearch(data, ref totalResults);
+							return ConvertAssessmentResults(results, totalResults, searchType);
+						}
+						else
+						{
+							var results = AssessmentServices.Search(data, ref totalResults);
+							return ConvertAssessmentResults(results, totalResults, searchType);
+						}
+					}
+				case "learningopportunity":
+					{
+						if (data.UseSimpleSearch)
+						{
+							var results = ElasticServices.LearningOppSimpleSearch(data, ref totalResults);
+							return ConvertLearningOpportunityResults(results, totalResults, searchType);
+						}
+						else
+						{
+							var results = LearningOpportunityServices.Search(data, ref totalResults);
+							return ConvertLearningOpportunityResults(results, totalResults, searchType);
+						}
+					}
+				case "competencyframeworkold":
+					{
+						var results = CompetencyFrameworkServices.SearchViaRegistry(data, false);
+						return ConvertCompetencyFrameworkResults(results, searchType);
+					}
+				case "competencyframework":
+				case "competencyframeworks":
+				case "competencyframeworkdsp":
+					{
+						var results = CompetencyFrameworkServices.SearchViaRegistry(data, true);
+						return ConvertCompetencyFrameworkResults(results, searchType);
+					}
+				default:
+					{
+						valid = false;
+						status = "Unknown search mode: " + searchType;
+						return null;
+					}
+			}
+		}
+
+		//Do an autocomplete
+		public static List<object> DoAutoComplete(string text, string context, string searchType, int widgetId = 0)
+		{
+			var results = new List<object>();
+
+			switch (searchType.ToLower())
+			{
+				case "credential":
+					{
+						switch (context.ToLower())
 						{
 							//case "mainsearch": return CredentialServices.Autocomplete( text, 10 ).Select( m => m.Name ).ToList();
 							case "mainsearch":
-								return CredentialServices.Autocomplete( text, 15/*, widgetId*/ );
+								return CredentialServices.Autocomplete(text, 15/*, widgetId*/ );
 							//case "competencies":
 							//	return CredentialServices.AutocompleteCompetencies( text, 10 );
 							case "subjects":
-								return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
+								return Autocomplete_Subjects(CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10);
 							case "occupations":
-								return Autocomplete_Occupations( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
+								return Autocomplete_Occupations(CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10);
 							case "industries":
-								return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
-							case "instructionalprogramtype":
-								return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
+								return Autocomplete_Industries(CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10);
+							case "instructionalprogramtypes":
+								return Autocomplete_Cip(CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10);
+							case "organizations":
+								return ElasticServices.OrganizationQAAutoComplete(text, 1);
 							default:
 								break;
 						}
@@ -148,12 +155,14 @@ namespace workIT.Services
 					}
 				case "organization":
 					{
-						switch ( context.ToLower() )
+						switch (context.ToLower())
 						{
 							case "mainsearch":
-								return OrganizationServices.Autocomplete( text, 10, widgetId );
+								return OrganizationServices.Autocomplete(text, 10, widgetId);
 							case "industries":
-								return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_ORGANIZATION, text, 10 );
+								return Autocomplete_Industries(CF.CodesManager.ENTITY_TYPE_ORGANIZATION, text, 10);
+							case "organizations":
+								return ElasticServices.OrganizationQAAutoComplete(text, 2);
 							default:
 								break;
 						}
@@ -161,16 +170,18 @@ namespace workIT.Services
 					}
 				case "assessment":
 					{
-						switch ( context.ToLower() )
+						switch (context.ToLower())
 						{
 							case "mainsearch":
-								return AssessmentServices.Autocomplete( text, 15/*, widgetId */);
+								return AssessmentServices.Autocomplete(text, 15/*, widgetId */);
 							//case "competencies":
 							//	return AssessmentServices.Autocomplete( text, "competencies", 10 );
 							case "subjects":
-								return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
-							case "instructionalprogramtype":
-								return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 );
+								return Autocomplete_Subjects(CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10);
+							case "instructionalprogramtypes":
+								return Autocomplete_Cip(CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10);
+							case "organizations":
+								return ElasticServices.OrganizationQAAutoComplete(text, 3);
 							default:
 								break;
 						}
@@ -178,16 +189,18 @@ namespace workIT.Services
 					}
 				case "learningopportunity":
 					{
-						switch ( context.ToLower() )
+						switch (context.ToLower())
 						{
 							case "mainsearch":
-								return LearningOpportunityServices.Autocomplete( text, 15, widgetId );
+								return LearningOpportunityServices.Autocomplete(text, 15, widgetId);
 							//case "competencies":
 							//	return LearningOpportunityServices.Autocomplete( text, "competencies", 10 );
 							case "subjects":
-								return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
-							case "instructionalprogramtype":
-								return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
+								return Autocomplete_Subjects(CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10);
+							case "instructionalprogramtypes":
+								return Autocomplete_Cip(CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10);
+							case "organizations":
+								return ElasticServices.OrganizationQAAutoComplete(text, 7);
 							default:
 								break;
 						}
@@ -200,28 +213,28 @@ namespace workIT.Services
 			return results;
 		}
 		//
-		public static List<CredentialAlignmentObjectItem> EntityCompetenciesList( string searchType, int artifactId, int maxRecords = 10 )
+		public static List<CredentialAlignmentObjectItem> EntityCompetenciesList(string searchType, int artifactId, int maxRecords = 10)
 		{
 			var results = new List<CredentialAlignmentObjectItem>();
 			string filter = "";
 			int pTotalRows = 0;
-			switch ( searchType.ToLower() )
+			switch (searchType.ToLower())
 			{
 				case "credential":
 					{
 						//not sure if will be necessary to include alignment type (ie teaches, and assesses, but not required)
-						filter = string.Format( "(CredentialId = {0})", artifactId );
-						return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
+						filter = string.Format("(CredentialId = {0})", artifactId);
+						return CF.EducationFrameworkManager.Search(filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				case "assessment":
 					{
-						return CF.Entity_CompetencyManager.GetAll( 3, artifactId, maxRecords );
+						return CF.Entity_CompetencyManager.GetAll(3, artifactId, maxRecords);
 						//filter = string.Format( "(SourceEntityTypeId = 3 AND [SourceId] = {0})", artifactId );
 						//return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
 					}
 				case "learningopportunity":
 					{
-						return CF.Entity_CompetencyManager.GetAll( 7, artifactId, maxRecords );
+						return CF.Entity_CompetencyManager.GetAll(7, artifactId, maxRecords);
 						//filter = string.Format( "(SourceEntityTypeId = 7 AND [SourceId] = {0})", artifactId );
 						//return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
 					}
@@ -232,28 +245,28 @@ namespace workIT.Services
 			return results;
 		}
 
-		public static List<CostProfileItem> EntityCostsList( string searchType, int entityId, int maxRecords = 10 )
+		public static List<CostProfileItem> EntityCostsList(string searchType, int entityId, int maxRecords = 10)
 		{
 			var results = new List<CostProfileItem>();
 			string filter = "";
 			int pTotalRows = 0;
 
-			switch ( searchType.ToLower() )
+			switch (searchType.ToLower())
 			{
 				case "credential":
 					{
 						filter = "";
-						return CF.CostProfileItemManager.Search( 1, entityId, filter, "", 1, maxRecords, ref pTotalRows );
+						return CF.CostProfileItemManager.Search(1, entityId, filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				case "assessment":
 					{
 						filter = "";
-						return CF.CostProfileItemManager.Search( 3, entityId, filter, "", 1, maxRecords, ref pTotalRows );
+						return CF.CostProfileItemManager.Search(3, entityId, filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				case "learningopportunity":
 					{
 						filter = "";
-						return CF.CostProfileItemManager.Search( 7, entityId, filter, "", 1, maxRecords, ref pTotalRows );
+						return CF.CostProfileItemManager.Search(7, entityId, filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				default:
 					break;
@@ -261,28 +274,28 @@ namespace workIT.Services
 
 			return results;
 		}
-		public static List<CredentialAlignmentObjectItem> EntityQARolesList( string searchType, int entityId, int maxRecords = 10 )
+		public static List<CredentialAlignmentObjectItem> EntityQARolesList(string searchType, int entityId, int maxRecords = 10)
 		{
 			var results = new List<CredentialAlignmentObjectItem>();
 			string filter = "";
 			int pTotalRows = 0;
-			switch ( searchType.ToLower() )
+			switch (searchType.ToLower())
 			{
 				case "credential":
 					{
 						//not sure if will be necessary to include alignment type (ie teaches, and assesses, but not required)
-						filter = string.Format( "(CredentialId = {0})", entityId );
-						return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
+						filter = string.Format("(CredentialId = {0})", entityId);
+						return CF.EducationFrameworkManager.Search(filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				case "assessment":
 					{
-						filter = string.Format( "(SourceEntityTypeId = 3 AND [SourceId] = {0})", entityId );
-						return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
+						filter = string.Format("(SourceEntityTypeId = 3 AND [SourceId] = {0})", entityId);
+						return CF.EducationFrameworkManager.Search(filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				case "learningopportunity":
 					{
-						filter = string.Format( "(SourceEntityTypeId = 7 AND [SourceId] = {0})", entityId );
-						return CF.EducationFrameworkManager.Search( filter, "", 1, maxRecords, ref pTotalRows );
+						filter = string.Format("(SourceEntityTypeId = 7 AND [SourceId] = {0})", entityId);
+						return CF.EducationFrameworkManager.Search(filter, "", 1, maxRecords, ref pTotalRows);
 					}
 				default:
 					break;
@@ -290,20 +303,20 @@ namespace workIT.Services
 
 			return results;
 		}
-		public static List<OrganizationAssertion> QAPerformedList( int orgId, int maxRecords = 10 )
+		public static List<OrganizationAssertion> QAPerformedList(int orgId, int maxRecords = 10)
 		{
 			//try to use combined!
-			return CF.Entity_AssertionManager.GetAllCombined( orgId, maxRecords );
+			return CF.Entity_AssertionManager.GetAllCombined(orgId, maxRecords);
 		}
 
 		//Convenience method to handle location data
 		//For convenience, check boundaries.IsDefined to see if a boundary is defined
-		public static BoundingBox GetBoundaries( MainSearchInput data, string name )
+		public static BoundingBox GetBoundaries(MainSearchInput data, string name)
 		{
 			var boundaries = new BoundingBox();
 			try
 			{
-				boundaries = data.FiltersV2.FirstOrDefault( m => m.Name == name ).AsBoundaries();
+				boundaries = data.FiltersV2.FirstOrDefault(m => m.Name == name).AsBoundaries();
 			}
 			catch { }
 
@@ -311,19 +324,19 @@ namespace workIT.Services
 		}
 		//
 
-		public enum TagTypes { CONNECTIONS, QUALITY, AUDIENCE_LEVEL, AUDIENCE_TYPE, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, SCORING_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, QAPERFORMED }
+		public enum TagTypes { CONNECTIONS, QUALITY, AUDIENCE_LEVEL, AUDIENCE_TYPE, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, FRAMEWORKS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, SCORING_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, QAPERFORMED }
 
-		public MainSearchResults ConvertCredentialResults( List<CredentialSummary> results, int totalResults, string searchType )
+		public MainSearchResults ConvertCredentialResults(List<CredentialSummary> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
+			foreach (var item in results)
 			{
 				var mergedCosts = item.NumberOfCostProfileItems; // CostProfileMerged.FlattenCosts( item.EstimatedCost );
-				var subjects = Deduplicate( item.Subjects );
-				var mergedQA = item.AgentAndRoles.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
+				var subjects = Deduplicate(item.Subjects);
+				var mergedQA = item.AgentAndRoles.Results.Concat(item.Org_QAAgentAndRoles.Results).ToList();
 				var mergedConnections = item.CredentialsList.Results.ToList();
 				//.Concat( item.IsPartOfList.Results ).Concat( item.HasPartsList.Results ).ToList();
-				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
+				output.Results.Add(Result(item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -331,6 +344,7 @@ namespace workIT.Services
 						{ "Type", item.CredentialType },
 						{ "Owner", item.OwnerOrganizationName },
 						{ "OwnerId", item.OwnerOrganizationId },
+						{ "OwnerCTID", item.PrimaryOrganizationCTID },
 						//{ "CanEditRecord", item.CanEditRecord },
 						{ "TypeSchema", item.CredentialTypeSchema.ToLower()},
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
@@ -339,6 +353,7 @@ namespace workIT.Services
 						{ "RecordId", item.Id },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
+						{ "ResultImageUrl", item.ImageUrl ?? "" },
 						{ "HasBadge", item.HasVerificationType_Badge }, //Indicate existence of badge here
                         { "LastUpdated", item.LastUpdated.ToShortDateString() }
 
@@ -351,7 +366,7 @@ namespace workIT.Services
 						{
 							CategoryName = "Quality Assurance",
 							DisplayTemplate = "{#} Quality Assurance",
-							Name = "qualityassurance", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
 							TotalItems = mergedQA.Count(),
 							SearchQueryType = "merged", //Change this to "custom", or back to detail
 							//Something like this...
@@ -445,10 +460,10 @@ namespace workIT.Services
 						//Instructional Program Classfication
 						new Models.Helpers.SearchTag()
 						{
-							CategoryName = "InstructionalProgramType",
+							CategoryName = "instructionalprogramtypes",
 							CategoryLabel = "Instructional Program Type",
 							DisplayTemplate = "{#} Instructional Program{s}",
-							Name = "instructionalprogramtype",
+							Name = "instructionalprogramtypes",
 							TotalItems = item.InstructionalProgramClassification.Results.Count(),
 							SearchQueryType = "text",
                            //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
@@ -564,36 +579,39 @@ namespace workIT.Services
 							}
 						}
 					}
-				) );
+				));
 			}
 			return output;
 		}
 		//
 
-		public List<string> Deduplicate( List<string> items )
+		public List<string> Deduplicate(List<string> items)
 		{
 			var added = new List<string>();
 			var result = new List<string>();
-			foreach ( var item in items )
+			if (items == null || items.Count == 0)
+				return result;
+
+			foreach (var item in items)
 			{
 				var text = item.ToLower().Trim();
-				if ( !added.Contains( text ) )
+				if (!added.Contains(text))
 				{
-					added.Add( text );
-					result.Add( item.Trim() );
+					added.Add(text);
+					result.Add(item.Trim());
 				}
 			}
 			return result;
 		}
 		//
 
-		public List<Models.Helpers.SearchTagItem> GetSearchTagItems_Filter( List<CodeItem> items, string displayTemplate, int categoryID )
+		public List<Models.Helpers.SearchTagItem> GetSearchTagItems_Filter(List<CodeItem> items, string displayTemplate, int categoryID)
 		{
-			if ( "10 11 23".IndexOf( categoryID.ToString() ) > -1 )
+			if ("10 11 23".IndexOf(categoryID.ToString()) > -1)
 			{
-				return items.ConvertAll( m => new Models.Helpers.SearchTagItem()
+				return items.ConvertAll(m => new Models.Helpers.SearchTagItem()
 				{
-					Display = Models.Helpers.SearchTagHelper.Count( displayTemplate.Replace( "{Name}", m.Name ), 1 ),
+					Display = Models.Helpers.SearchTagHelper.Count(displayTemplate.Replace("{Name}", m.Name), 1),
 					QueryValues = new Dictionary<string, object>()
 				{
 					{ "CategoryId", categoryID },
@@ -602,54 +620,54 @@ namespace workIT.Services
 					{ "Name", m.Name },
 					{ "CodeId", m.Id }
 				}
-				} );
+				});
 			}
 			else
 			{
-				return items.ConvertAll( m => new Models.Helpers.SearchTagItem()
+				return items.ConvertAll(m => new Models.Helpers.SearchTagItem()
 				{
-					Display = Models.Helpers.SearchTagHelper.Count( displayTemplate.Replace( "{Name}", m.Name ), 1 ),
+					Display = Models.Helpers.SearchTagHelper.Count(displayTemplate.Replace("{Name}", m.Name), 1),
 					QueryValues = new Dictionary<string, object>()
 				{
 					{ "CategoryId", categoryID },
 					{ "CodeId", m.Id },
 					{ "SchemaName", m.SchemaName }
 				}
-				} );
+				});
 			}
 
 		}
 		//
 
-		public List<Models.Helpers.SearchTagItem> GetSearchTagItems_Filter( List<EnumeratedItem> items, string displayTemplate, int categoryID )
+		public List<Models.Helpers.SearchTagItem> GetSearchTagItems_Filter(List<EnumeratedItem> items, string displayTemplate, int categoryID)
 		{
-			return items.ConvertAll( m => new Models.Helpers.SearchTagItem()
+			return items.ConvertAll(m => new Models.Helpers.SearchTagItem()
 			{
-				Display = Models.Helpers.SearchTagHelper.Count( displayTemplate.Replace( "{Name}", m.Name ), 1 ),
+				Display = Models.Helpers.SearchTagHelper.Count(displayTemplate.Replace("{Name}", m.Name), 1),
 				QueryValues = new Dictionary<string, object>()
 				{
 					{ "CategoryId", categoryID },
 					{ "CodeId", m.Id },
 					{ "SchemaName", m.SchemaName }
 				}
-			} );
+			});
 		}
 		//
 
-		public static TagSet GetTagSet( string searchType, TagTypes entityType, int recordID, int maxRecords = 10 )
+		public static TagSet GetTagSet(string searchType, TagTypes entityType, int recordID, int maxRecords = 10)
 		{
 			var result = new TagSet();
-			switch ( entityType ) //Match "Schema" in ConvertCredentialResults() method above
+			switch (entityType) //Match "Schema" in ConvertCredentialResults() method above
 			{
 				case TagTypes.COMPETENCIES:
 					{
-						var data = SearchServices.EntityCompetenciesList( searchType, recordID, maxRecords );
+						var data = SearchServices.EntityCompetenciesList(searchType, recordID, maxRecords);
 						result = new TagSet()
 						{
 							Schema = TagTypes.COMPETENCIES.ToString().ToLower(),
 							Label = "Competencies",
 							Method = "direct",
-							Items = data.ConvertAll( m => new TagItem() { CodeId = m.Id, Label = m.TargetNodeName, Description = m.Description } ).Take( 10 ).ToList()
+							Items = data.ConvertAll(m => new TagItem() { CodeId = m.Id, Label = m.TargetNodeName, Description = m.Description }).Take(10).ToList()
 						};
 						break;
 					}
@@ -658,33 +676,33 @@ namespace workIT.Services
 
 					{
 						//future
-						var data = SearchServices.EntityCostsList( searchType, recordID, maxRecords );
+						var data = SearchServices.EntityCostsList(searchType, recordID, maxRecords);
 						result = new TagSet()
 						{
 							Schema = TagTypes.COST.ToString().ToLower(),
 							Label = "Costs",
 							Method = "direct",
-							CostItems = data.ConvertAll( c => new CostTagItem()
+							CostItems = data.ConvertAll(c => new CostTagItem()
 							{
 								CodeId = c.CostProfileId,
 								Price = c.Price,
 								CostType = c.CostTypeName,
 								CurrencySymbol = c.CurrencySymbol,
 								SourceEntity = c.ParentEntityType
-							} ),
-							Items = data.ConvertAll( m => new TagItem() { CodeId = m.Id, Label = m.CostTypeName, Description = "" } )
+							}),
+							Items = data.ConvertAll(m => new TagItem() { CodeId = m.Id, Label = m.CostTypeName, Description = "" })
 						};
 						break;
 					}
 				case TagTypes.QAPERFORMED:
 					{
-						var data = SearchServices.QAPerformedList( recordID, maxRecords );
+						var data = SearchServices.QAPerformedList(recordID, maxRecords);
 						result = new TagSet()
 						{
 							Schema = TagTypes.QAPERFORMED.ToString().ToLower(),
 							Label = "Quality Assurance Performed",
 							Method = "qaperformed",
-							QAItems = data.ConvertAll( q => new QAPerformedTagItem()
+							QAItems = data.ConvertAll(q => new QAPerformedTagItem()
 							{
 								TargetEntityTypeId = q.TargetEntityTypeId,
 								TargetEntityBaseId = q.TargetEntityBaseId,
@@ -693,8 +711,8 @@ namespace workIT.Services
 								TargetEntityType = q.TargetEntityType,
 								TargetEntitySubjectWebpage = q.TargetEntitySubjectWebpage,
 								AgentToTargetRelationship = q.AgentToSourceRelationship,
-								IsReference = string.IsNullOrEmpty( q.TargetCTID )
-							} )
+								IsReference = string.IsNullOrEmpty(q.TargetCTID)
+							})
 						};
 						break;
 					}
@@ -721,12 +739,12 @@ namespace workIT.Services
 		}
 		//
 		*/
-		public MainSearchResults ConvertOrganizationResults( List<OrganizationSummary> results, int totalResults, string searchType )
+		public MainSearchResults ConvertOrganizationResults(List<OrganizationSummary> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
+			foreach (var item in results)
 			{
-				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
+				output.Results.Add(Result(item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -755,21 +773,21 @@ namespace workIT.Services
 						{
 							CategoryName = "Quality Assurance",
 							DisplayTemplate = "{#} Quality Assurance",
-							Name = "qualityassurance", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
 							TotalItems = item.QualityAssurance.Results.Count(),
 							SearchQueryType = "merged", //Change this to "custom", or back to detail
 							Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-							Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
-							QueryValues = new Dictionary<string, object>() {
-									{ "Relationship", m.Relationship },
-									{ "TextValue", m.Agent },
-									{ "RelationshipId", m.RelationshipId },
-									{ "AgentId", m.AgentId },
-									{ "TargetType", "organization" },
-									{ "AgentUrl", m.AgentUrl},
-									{ "EntityStateId", m.EntityStateId },
-									{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-								}
+								Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
+								QueryValues = new Dictionary<string, object>() {
+										{ "Relationship", m.Relationship },
+										{ "TextValue", m.Agent },
+										{ "RelationshipId", m.RelationshipId },
+										{ "AgentId", m.AgentId },
+										{ "TargetType", "organization" },
+										{ "AgentUrl", m.AgentUrl},
+										{ "EntityStateId", m.EntityStateId },
+										{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
+									}
 							} ).ToList()
 						},
                          //Quality Assurance Performed
@@ -922,7 +940,24 @@ namespace workIT.Services
 								}
 							} ).ToList()
 						},
-
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "OwnsFrameworks",
+							CategoryLabel = "Owns Competency Frameworks",
+							DisplayTemplate = "Owns {#} Competency Framework{s}",
+							Name = TagTypes.FRAMEWORKS_OWNED_BY.ToString().ToLower(),
+							TotalItems = item.FrameworksOwnedByResults.Results.Count(),
+							SearchQueryType = "link",
+							Items = item.FrameworksOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+							{
+								Display = m.Title,
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m.Id }, //f ID
+									{ "TargetType", "competencyframework" }, //??
+								}
+							} ).ToList()
+						},
                        
        //                 new Models.Helpers.SearchTag()
        //                 {
@@ -957,17 +992,17 @@ namespace workIT.Services
                             Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
 						},
 					}
-				) );
+				));
 			}
 			return output;
 		}
 		//
-		public MainSearchResults ConvertOrganizationResultsOLD( List<Organization> results, int totalResults, string searchType )
+		public MainSearchResults ConvertOrganizationResultsOLD(List<Organization> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
+			foreach (var item in results)
 			{
-				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
+				output.Results.Add(Result(item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -1014,27 +1049,28 @@ namespace workIT.Services
 							Items = GetSearchTagItems_Filter( item.OrganizationSectorType.Items, "{Name}", item.OrganizationSectorType.Id )
 						},
 					}
-				) );
+				));
 			}
 			return output;
 		}
 		//
 
-		public MainSearchResults ConvertAssessmentResults( List<AssessmentProfile> results, int totalResults, string searchType )
+		public MainSearchResults ConvertAssessmentResults(List<AssessmentProfile> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
+			foreach (var item in results)
 			{
-				var subjects = Deduplicate( item.Subjects );
-				var mergedQA = item.QualityAssurance.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
+				var subjects = Deduplicate(item.Subjects);
+				var mergedQA = item.QualityAssurance.Results.Concat(item.Org_QAAgentAndRoles.Results).ToList();
 
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				output.Results.Add(Result(item.Name, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
 						{ "Description", item.Description },
 						{ "Owner", string.IsNullOrWhiteSpace( item.OrganizationName ) ? "" : item.OrganizationName },
 						{ "OwnerId", item.OwningOrganizationId },
+						{ "OwnerCTID", item.PrimaryOrganizationCTID },
 						{ "ctid", item.CTID },
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
 						{ "Locations", ConvertAddresses( item.Addresses ) },
@@ -1051,7 +1087,7 @@ namespace workIT.Services
 						{
 							CategoryName = "Quality Assurance",
 							DisplayTemplate = "{#} Quality Assurance",
-							Name = "qualityassurance", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
 							TotalItems = mergedQA.Count(),
 							SearchQueryType = "merged", //Change this to "custom", or back to detail
 					        Items = mergedQA.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
@@ -1207,10 +1243,10 @@ namespace workIT.Services
                         //Instructional Program Classfication
 						new Models.Helpers.SearchTag()
 						{
-							CategoryName = "InstructionalProgramType",
+							CategoryName = "instructionalprogramtypes",
 							CategoryLabel = "Instructional Program Type",
 							DisplayTemplate = "{#} Instructional Program{s}",
-							Name = "instructionalprogramtype",
+							Name = "instructionalprogramtypes",
 							TotalItems = item.InstructionalProgramClassification.Results.Count(),
 							SearchQueryType = "text",
                            //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
@@ -1259,26 +1295,27 @@ namespace workIT.Services
 							} )
 						},
 					}
-				) );
+				));
 			}
 			return output;
 		}
 		//
 
-		public MainSearchResults ConvertLearningOpportunityResults( List<LearningOpportunityProfile> results, int totalResults, string searchType )
+		public MainSearchResults ConvertLearningOpportunityResults(List<LearningOpportunityProfile> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
+			foreach (var item in results)
 			{
-				var subjects = Deduplicate( item.Subjects );
-				var mergedQA = item.QualityAssurance.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				var subjects = Deduplicate(item.Subjects);
+				var mergedQA = item.QualityAssurance.Results.Concat(item.Org_QAAgentAndRoles.Results).ToList();
+				output.Results.Add(Result(item.Name, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
 						{ "Description", item.Description },
 						{ "Owner", string.IsNullOrWhiteSpace( item.OrganizationName ) ? "" : item.OrganizationName },
 						{ "OwnerId", item.OwningOrganizationId },
+						{ "OwnerCTID", item.PrimaryOrganizationCTID },
 						//{ "CanEditRecord", item.CanEditRecord },
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
 						{ "Locations", ConvertAddresses( item.Addresses ) },
@@ -1296,7 +1333,7 @@ namespace workIT.Services
 						{
 							CategoryName = "Quality Assurance",
 							DisplayTemplate = "{#} Quality Assurance",
-							Name = "qualityassurance", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
 							TotalItems = mergedQA.Count(),
 							SearchQueryType = "merged", //Change this to "custom", or back to detail
 							Items = mergedQA.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
@@ -1430,10 +1467,10 @@ namespace workIT.Services
                         //Instructional Program Classfication
 				        new Models.Helpers.SearchTag()
 						{
-							CategoryName = "InstructionalProgramType",
+							CategoryName = "instructionalprogramtypes",
 							CategoryLabel = "Instructional Program Type",
 							DisplayTemplate = "{#} Instructional Program{s}",
-							Name = "instructionalprogramtype",
+							Name = "instructionalprogramtypes",
 							TotalItems = item.InstructionalProgramClassification.Results.Count(),
 							SearchQueryType = "text",
                            //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
@@ -1481,19 +1518,25 @@ namespace workIT.Services
 							} )
 						},
 
-                    }
-                ) );
-            }
-            return output;
-        }
-        //
-		
-		public MainSearchResults ConvertCompetencyFrameworkResults( List<CTDLAPICompetencyFrameworkResult> results, int totalResults, string searchType )
+					}
+				));
+			}
+			return output;
+		}
+		//
+
+		public MainSearchResults ConvertCompetencyFrameworkResults(CTDLAPICompetencyFrameworkResultSet results, string searchType)
 		{
-			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach( var result in results )
+			//var output = new MainSearchResults() { TotalResults = results.TotalResults, SearchType = searchType, RelatedItems = results.RelatedItems };
+			var output = new MainSearchResults() { TotalResults = results.TotalResults, SearchType = searchType, RelatedItems = new JArray() };
+
+			//Get related triples
+
+
+			foreach (var result in results.Results)
 			{
-				output.Results.Add( Result( result.Name.ToString(), result.Description.ToString(), 9999,
+				var relatedItemsForResult = results.PerResultRelatedItems.FirstOrDefault(m => m.RelatedItemsForCTID == result.CTID);
+				output.Results.Add(Result(result.Name.ToString(), result.Description.ToString(), -1,
 					new Dictionary<string, object>()
 					{
 						{ "CTID", result.CTID ?? "" },
@@ -1503,12 +1546,14 @@ namespace workIT.Services
 						{ "DateModified", result.DateModified == null || result.DateModified == DateTime.MinValue ? "Unknown" : result.DateModified.ToString("yyyy-MM-dd") },
 						//TODO: add framework and competency data to supply ajax calls after rendering
 						{ "RawData", result.RawData },
+						{ "PerResultRelatedItems", results.PerResultRelatedItems.FirstOrDefault( m => m.RelatedItemsForCTID == result.CTID ) },
+						{ "Debug", results.Debug },
 
 						//Compatibility with SearchV2
 						{ "Name", result.Name.ToString() },
 						{ "ctid", result.CTID ?? "" },
 						{ "Description", result.Description.ToString() },
-						{ "Owner", "" },
+						{ "Owner", relatedItemsForResult.Owners },
 						{ "OwnerId", result.Creator == null ? "" : (result.Creator.FirstOrDefault() ?? "").Split('/').ToList().Last() },
 						{ "LastUpdated", result.DateModified == null || result.DateModified == DateTime.MinValue ? "Unknown" : "Unknown; Last Updated: " + result.DateModified.ToString("yyyy-MM-dd") },
 						{ "SearchType", "competencyframework" },
@@ -1518,78 +1563,212 @@ namespace workIT.Services
 					null,
 					new List<Models.Helpers.SearchTag>()
 					{
-
-					} 
-				) );
+						//Add related items so they don't have to be calculated client-side
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Competencies",
+							CategoryLabel = "Competencies",
+							DisplayTemplate = "{#} Competenc{ies}",
+							Name = TagTypes.COMPETENCIES.ToString().ToLower(),
+							TotalItems = relatedItemsForResult.Competencies.TotalItems,
+							SearchQueryType = "detail",
+							Items = relatedItemsForResult.Competencies.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceasn:competencyText"] ),
+								QueryValues = new Dictionary<string, object>() { { "TextValue", m } }
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Credentials",
+							CategoryLabel = "Credentials",
+							DisplayTemplate = "{#} Related Credential{s}",
+							Name = "credentials",
+							TotalItems = relatedItemsForResult.Credentials.TotalItems,
+							SearchQueryType = "link",
+							Items = relatedItemsForResult.Credentials.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceterms:name"] ),
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m["ceterms:ctid"] }, //Credential ID
+									{ "TargetType", "credential" },
+								}
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Assessments",
+							CategoryLabel = "Assessments",
+							DisplayTemplate = "{#} Related Assessment{s}",
+							Name = "assessments",
+							TotalItems = relatedItemsForResult.Assessments.TotalItems,
+							SearchQueryType = "link",
+							Items = relatedItemsForResult.Assessments.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceterms:name"] ),
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m["ceterms:ctid"] }, //Assessment ID
+									{ "TargetType", "assessment" },
+								}
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "LearningOpportunities",
+							CategoryLabel = "Learning Opportunities",
+							DisplayTemplate = "{#} Related Learning Opportunit{ies}",
+							Name = "learningopportunities",
+							TotalItems = relatedItemsForResult.LearningOpportunities.TotalItems,
+							SearchQueryType = "link",
+							Items = relatedItemsForResult.LearningOpportunities.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceterms:name"] ),
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m["ceterms:ctid"] }, //Learning Opportunity ID
+									{ "TargetType", "learningopportunity" },
+								}
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "AlignedFrameworks",
+							CategoryLabel = "Competency Framework Alignments",
+							DisplayTemplate = "{#} Competency Framework Alignment{s}",
+							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
+							TotalItems = relatedItemsForResult.AlignedFrameworks.TotalItems,
+							SearchQueryType = "link",
+							Items = relatedItemsForResult.AlignedFrameworks.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceasn:name"] ),
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m["ceterms:ctid"] }, //Framework ID
+									{ "TargetType", "competencyframework" },
+								}
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "AlignedCompetencies",
+							CategoryLabel = "Competency Alignments",
+							DisplayTemplate = "{#} Competency Alignment{s}",
+							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
+							TotalItems = relatedItemsForResult.AlignedCompetencies.TotalItems,
+							SearchQueryType = "link",
+							Items = relatedItemsForResult.AlignedCompetencies.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceasn:competencyText"] ),
+								QueryValues = new Dictionary<string, object>()
+								{
+									{ "TargetId", m["ceasn:isPartOf"].FirstOrDefault() }, //Framework ID
+									{ "TargetType", "competencyframework" },
+								}
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "ConceptSchemes",
+							CategoryLabel = "Concept Schemes",
+							DisplayTemplate = "{#} Related Concept Scheme{s}",
+							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
+							TotalItems = relatedItemsForResult.ConceptSchemes.TotalItems,
+							SearchQueryType = "detail",
+							Items = relatedItemsForResult.ConceptSchemes.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["ceasn:name"] ),
+								QueryValues = new Dictionary<string, object>() { { "TextValue", m } }
+							} ).ToList()
+						},
+						new Models.Helpers.SearchTag()
+						{
+							CategoryName = "Concepts",
+							CategoryLabel = "Concepts",
+							DisplayTemplate = "{#} Related Concept{s}",
+							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
+							TotalItems = relatedItemsForResult.Concepts.TotalItems,
+							SearchQueryType = "detail",
+							Items = relatedItemsForResult.Concepts.Samples.ConvertAll( m => new Models.Helpers.SearchTagItem()
+							{
+								Display = CompetencyFrameworkServices.GetEnglish( m["skos:prefLabel"] ),
+								QueryValues = new Dictionary<string, object>() { { "TextValue", m } }
+							} ).ToList()
+						}
+					}
+				));
 			}
+
+
 
 			return output;
 		}
 		//
 
 
-		public Dictionary<string, string> ConvertCompetenciesToDictionary( List<CredentialAlignmentObjectProfile> input )
-        {
-            var result = new Dictionary<string, string>();
-            if ( input != null )
-            {
-                foreach ( var item in input )
-                {
-                    try
-                    {
-                        result.Add( item.Id.ToString(), item.Description );
-                    }
-                    catch { }
-                }
-            }
-            return result;
-        }
-        public MainSearchResult Result( string name, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
-        {
-            return new MainSearchResult()
-            {
-                Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
-                Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
-                RecordId = recordID,
-                Properties = properties == null ? new Dictionary<string, object>() : properties,
-                Tags = tags == null ? new List<TagSet>() : tags,
-                TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
-            };
-        }
-        //
-        public MainSearchResult Result( string name, string friendlyName, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null )
-        {
-            return new MainSearchResult()
-            {
-                Name = string.IsNullOrWhiteSpace( name ) ? "No name" : name,
-                FriendlyName = string.IsNullOrWhiteSpace( friendlyName ) ? "Record" : friendlyName,
-                Description = string.IsNullOrWhiteSpace( description ) ? "No description" : description,
-                RecordId = recordID,
-                Properties = properties == null ? new Dictionary<string, object>() : properties,
-                Tags = tags == null ? new List<TagSet>() : tags,
-                TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
-            };
-        }
-        //
-        public Dictionary<string, string> ConvertCodeItemsToDictionary( List<CodeItem> input )
-        {
-            var result = new Dictionary<string, string>();
-            foreach ( var item in input )
-            {
-                try
-                {
-                    result.Add( item.Code, item.Name );
-                }
-                catch { }
-            }
-            return result;
-        }
-        //
+		public Dictionary<string, string> ConvertCompetenciesToDictionary(List<CredentialAlignmentObjectProfile> input)
+		{
+			var result = new Dictionary<string, string>();
+			if (input != null)
+			{
+				foreach (var item in input)
+				{
+					try
+					{
+						result.Add(item.Id.ToString(), item.Description);
+					}
+					catch { }
+				}
+			}
+			return result;
+		}
+		public MainSearchResult Result(string name, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null)
+		{
+			return new MainSearchResult()
+			{
+				Name = string.IsNullOrWhiteSpace(name) ? "No name" : name,
+				Description = string.IsNullOrWhiteSpace(description) ? "No description" : description,
+				RecordId = recordID,
+				Properties = properties == null ? new Dictionary<string, object>() : properties,
+				Tags = tags == null ? new List<TagSet>() : tags,
+				TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
+			};
+		}
+		//
+		public MainSearchResult Result(string name, string friendlyName, string description, int recordID, Dictionary<string, object> properties, List<TagSet> tags, List<Models.Helpers.SearchTag> tagsV2 = null)
+		{
+			return new MainSearchResult()
+			{
+				Name = string.IsNullOrWhiteSpace(name) ? "No name" : name,
+				FriendlyName = string.IsNullOrWhiteSpace(friendlyName) ? "Record" : friendlyName,
+				Description = string.IsNullOrWhiteSpace(description) ? "No description" : description,
+				RecordId = recordID,
+				Properties = properties == null ? new Dictionary<string, object>() : properties,
+				Tags = tags == null ? new List<TagSet>() : tags,
+				TagsV2 = tagsV2 ?? new List<Models.Helpers.SearchTag>()
+			};
+		}
+		//
+		public Dictionary<string, string> ConvertCodeItemsToDictionary(List<CodeItem> input)
+		{
+			var result = new Dictionary<string, string>();
+			foreach (var item in input)
+			{
+				try
+				{
+					result.Add(item.Code, item.Name);
+				}
+				catch { }
+			}
+			return result;
+		}
+		//
 
-		public List<Dictionary<string, object>> ConvertAddresses( List<Address> input )
+		public List<Dictionary<string, object>> ConvertAddresses(List<Address> input)
 		{
 			var result = new List<Dictionary<string, object>>();
-			foreach ( var item in input )
+			foreach (var item in input)
 			{
 				try
 				{
@@ -1599,7 +1778,7 @@ namespace workIT.Services
 						{ "Longitude", item.Longitude },
 						{ "Address", item.DisplayAddress() }
 					};
-					result.Add( data );
+					result.Add(data);
 				}
 				catch { }
 			}
@@ -1607,30 +1786,30 @@ namespace workIT.Services
 		}
 		//
 
-		public static List<string> Autocomplete_Subjects( int entityTypeId, int categoryId, string keyword, int maxTerms = 25 )
+		public static List<object> Autocomplete_Subjects(int entityTypeId, int categoryId, string keyword, int maxTerms = 25)
 		{
-			List<string> list = new List<string>();
-			list = CF.Entity_ReferenceManager.QuickSearch_Subjects( entityTypeId, keyword, maxTerms );
+			List<object> list = new List<object>();
+			list = CF.Entity_ReferenceManager.QuickSearch_Subjects(entityTypeId, keyword, maxTerms);
 			return list;
 		}
 
-		public static List<string> Autocomplete_Occupations( int entityTypeId, string keyword, int maxTerms = 25 )
+		public static List<object> Autocomplete_Occupations(int entityTypeId, string keyword, int maxTerms = 25)
 		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( entityTypeId, 11, "", keyword, maxTerms );
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 11, "", keyword, maxTerms);
 		}
 
-		public static List<string> Autocomplete_Industries( int entityTypeId, string keyword, int maxTerms = 25 )
+		public static List<object> Autocomplete_Industries(int entityTypeId, string keyword, int maxTerms = 25)
 		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( entityTypeId, 10, "", keyword, maxTerms );
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 10, "", keyword, maxTerms);
 		}
-		public static List<string> Autocomplete_Cip( int entityTypeId, string keyword, int maxTerms = 25 )
+		public static List<object> Autocomplete_Cip(int entityTypeId, string keyword, int maxTerms = 25)
 		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( entityTypeId, 23, "", keyword, maxTerms );
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 23, "", keyword, maxTerms);
 		}
 
 
 		#region Common filters
-		public static void HandleCustomFilters( MainSearchInput data, int searchCategory, ref string where )
+		public static void HandleCustomFilters(MainSearchInput data, int searchCategory, ref string where)
 		{
 			string AND = "";
 			//may want custom category for each one, to prevent requests that don't match the current search
@@ -1638,28 +1817,28 @@ namespace workIT.Services
 			string sql = "";
 
 			//Updated to use FilterV2
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 			{
 				AND = " AND ";
 			}
-			foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+			foreach (var filter in data.FiltersV2.Where(m => m.Type == MainSearchFilterV2Types.CODE).ToList())
 			{
 				var item = filter.AsCodeItem();
-				if ( item.CategoryId != searchCategory )
+				if (item.CategoryId != searchCategory)
 				{
 					continue;
 				}
 
-				sql = GetPropertySql( item.Id );
-				if ( string.IsNullOrWhiteSpace( sql ) == false )
+				sql = GetPropertySql(item.Id);
+				if (string.IsNullOrWhiteSpace(sql) == false)
 				{
 					where = where + AND + sql;
 					AND = " AND ";
 				}
 			}
-			if ( sql.Length > 0 )
+			if (sql.Length > 0)
 			{
-				LoggingHelper.DoTrace( 6, "SearchServices.HandleCustomFilters. result: \r\n" + where );
+				LoggingHelper.DoTrace(6, "SearchServices.HandleCustomFilters. result: \r\n" + where);
 			}
 
 			/* //Retained for reference
@@ -1690,28 +1869,28 @@ namespace workIT.Services
 			}
 			*/
 		}
-		public static string GetPropertySql( int id )
+		public static string GetPropertySql(int id)
 		{
 			string sql = "";
 			string key = "propertySql_" + id.ToString();
 			//check cache for vocabulary
-			if ( HttpRuntime.Cache[ key ] != null )
+			if (HttpRuntime.Cache[key] != null)
 			{
-				sql = ( string ) HttpRuntime.Cache[ key ];
+				sql = (string)HttpRuntime.Cache[key];
 				return sql;
 			}
 
-			CodeItem item = CF.CodesManager.Codes_PropertyValue_Get( id );
-			if ( item != null && ( item.Description ?? "" ).Length > 5 )
+			CodeItem item = CF.CodesManager.Codes_PropertyValue_Get(id);
+			if (item != null && (item.Description ?? "").Length > 5)
 			{
 				sql = item.Description;
-				HttpRuntime.Cache.Insert( key, sql );
+				HttpRuntime.Cache.Insert(key, sql);
 			}
 
 			return sql;
 		}
 
-		public static void SetSubjectsFilter( MainSearchInput data, int entityTypeId, ref string where )
+		public static void SetSubjectsFilter(MainSearchInput data, int entityTypeId, ref string where)
 		{
 			string subjects = "  (base.RowId in (SELECT EntityUid FROM [Entity_Subjects] a where EntityTypeId = {0} AND {1} )) ";
 			//RowId is same as EntityUid
@@ -1730,32 +1909,32 @@ namespace workIT.Services
 			//Updated to use FilterV2
 			string next = "";
 			string fnext = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 			{
 				AND = " AND ";
 			}
 
-			foreach ( var filter in data.FiltersV2.Where( m => m.Name == "subjects" ) )
+			foreach (var filter in data.FiltersV2.Where(m => m.Name == "subjects"))
 			{
-				var text = ServiceHelper.HandleApostrophes( filter.AsText() );
-				if ( string.IsNullOrWhiteSpace( text ) )
+				var text = ServiceHelper.HandleApostrophes(filter.AsText());
+				if (string.IsNullOrWhiteSpace(text))
 				{
 					continue;
 				}
 
-				next += OR + string.Format( phraseTemplate, SearchifyWord( text ) );
-				fnext += OR + string.Format( titleTemplate, SearchifyWord( text ) );
+				next += OR + string.Format(phraseTemplate, SearchifyWord(text));
+				fnext += OR + string.Format(titleTemplate, SearchifyWord(text));
 				OR = " OR ";
 			}
 			string fsubject = "";
-			if ( !string.IsNullOrWhiteSpace( fnext )
-				&& ( entityTypeId == 3 || entityTypeId == 7 ) )
+			if (!string.IsNullOrWhiteSpace(fnext)
+				&& (entityTypeId == 3 || entityTypeId == 7))
 			{
-				fsubject = string.Format( frameworkItems, fnext );
+				fsubject = string.Format(frameworkItems, fnext);
 			}
-			if ( !string.IsNullOrWhiteSpace( next ) )
+			if (!string.IsNullOrWhiteSpace(next))
 			{
-				where = where + AND + " ( " + string.Format( subjects, entityTypeId, next ) + fsubject + ")";
+				where = where + AND + " ( " + string.Format(subjects, entityTypeId, next) + fsubject + ")";
 			}
 
 			/* //Retained for reference
@@ -1797,7 +1976,7 @@ namespace workIT.Services
 		/// </summary>
 		/// <param name="word"></param>
 		/// <returns></returns>
-		public static string SearchifyWord( string word )
+		public static string SearchifyWord(string word)
 		{
 			string keyword = word.Trim() + "^";
 
@@ -1808,33 +1987,33 @@ namespace workIT.Services
 			//	//keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "es" ) );
 			//}
 			//else 
-			if ( keyword.ToLower().LastIndexOf( "s^" ) > 4 )
+			if (keyword.ToLower().LastIndexOf("s^") > 4)
 			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "s" ) );
+				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("s"));
 			}
 
-			if ( keyword.ToLower().LastIndexOf( "ing^" ) > 3 )
+			if (keyword.ToLower().LastIndexOf("ing^") > 3)
 			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ing^" ) );
+				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("ing^"));
 			}
-			else if ( keyword.ToLower().LastIndexOf( "ed^" ) > 4 )
+			else if (keyword.ToLower().LastIndexOf("ed^") > 4)
 			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ed^" ) );
+				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("ed^"));
 			}
-			else if ( keyword.ToLower().LastIndexOf( "ion^" ) > 3 )
+			else if (keyword.ToLower().LastIndexOf("ion^") > 3)
 			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ion^" ) );
+				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("ion^"));
 			}
-			else if ( keyword.ToLower().LastIndexOf( "ive^" ) > 3 )
+			else if (keyword.ToLower().LastIndexOf("ive^") > 3)
 			{
-				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ive^" ) );
+				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("ive^"));
 			}
 
-			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ))
+			if (UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false))
 			{
-				var env = UtilityManager.GetAppKeyValue( "envType" );
+				var env = UtilityManager.GetAppKeyValue("envType");
 				//not sure of this
-				if ( env!= "production" && keyword.IndexOf( "*" ) == -1 )
+				if (env != "production" && keyword.IndexOf("*") == -1)
 				{
 					//keyword = "*" + keyword.Trim() + "*";
 					//keyword = keyword.Replace( "&", "*" ).Replace( " and ", "*" ).Replace( " in ", "*" ).Replace( " of ", "*" ).Replace( " for ", "*" ).Replace( " with ", "*" );
@@ -1848,27 +2027,28 @@ namespace workIT.Services
 					//keyword = keyword.Replace( " ", "*" );
 					//keyword = keyword.Replace( "**", "*" );
 				}
-			} else if ( keyword.IndexOf( "%" ) == -1 )
+			}
+			else if (keyword.IndexOf("%") == -1)
 			{
 				keyword = "%" + keyword.Trim() + "%";
-				keyword = keyword.Replace( "&", "%" ).Replace( " and ", "%" ).Replace( " in ", "%" ).Replace( " of ", "%" ).Replace( " for ", "%" ).Replace( " with ", "%" );
-				keyword = keyword.Replace( " from ", "%" );
-				keyword = keyword.Replace( " a ", "%" );
-				keyword = keyword.Replace( " - ", "%" );
-				keyword = keyword.Replace( " % ", "%" );
+				keyword = keyword.Replace("&", "%").Replace(" and ", "%").Replace(" in ", "%").Replace(" of ", "%").Replace(" for ", "%").Replace(" with ", "%");
+				keyword = keyword.Replace(" from ", "%");
+				keyword = keyword.Replace(" a ", "%");
+				keyword = keyword.Replace(" - ", "%");
+				keyword = keyword.Replace(" % ", "%");
 
 				//just replace all spaces with %?
-				keyword = keyword.Replace( "  ", "%" );
-				keyword = keyword.Replace( " ", "%" );
-				keyword = keyword.Replace( "%%", "%" );
+				keyword = keyword.Replace("  ", "%");
+				keyword = keyword.Replace(" ", "%");
+				keyword = keyword.Replace("%%", "%");
 			}
 
 
-			keyword = keyword.Replace( "^", "" );
+			keyword = keyword.Replace("^", "");
 			return keyword;
 		}
 
-		public static void SetPropertiesFilter( MainSearchInput data, int entityTypeId, string searchCategories, ref string where )
+		public static void SetPropertiesFilter(MainSearchInput data, int entityTypeId, string searchCategories, ref string where)
 		{
 			string AND = "";
 			string template = " ( base.Id in ( SELECT  [EntityBaseId] FROM [dbo].[EntityProperty_Summary] where EntityTypeId= {0} AND [PropertyValueId] in ({1}))) ";
@@ -1876,19 +2056,19 @@ namespace workIT.Services
 
 			//Updated to use FiltersV2
 			string next = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
-			foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+			foreach (var filter in data.FiltersV2.Where(m => m.Type == MainSearchFilterV2Types.CODE).ToList())
 			{
 				var item = filter.AsCodeItem();
-				if ( searchCategories.Contains( item.CategoryId.ToString() ) )
+				if (searchCategories.Contains(item.CategoryId.ToString()))
 				{
-					if ( item.CategoryId != prevCategoryId )
+					if (item.CategoryId != prevCategoryId)
 					{
-						if ( prevCategoryId > 0 )
+						if (prevCategoryId > 0)
 						{
-							next = next.Trim( ',' );
-							where = where + AND + string.Format( template, entityTypeId, next );
+							next = next.Trim(',');
+							where = where + AND + string.Format(template, entityTypeId, next);
 							AND = " AND ";
 						}
 						prevCategoryId = item.CategoryId;
@@ -1897,33 +2077,33 @@ namespace workIT.Services
 					next += item.Id + ",";
 				}
 			}
-			next = next.Trim( ',' );
-			if ( !string.IsNullOrWhiteSpace( next ) )
+			next = next.Trim(',');
+			if (!string.IsNullOrWhiteSpace(next))
 			{
-				where = where + AND + string.Format( template, entityTypeId, next );
+				where = where + AND + string.Format(template, entityTypeId, next);
 			}
 
 		}
-		public static void SetBoundariesFilter( MainSearchInput data, ref string where )
+		public static void SetBoundariesFilter(MainSearchInput data, ref string where)
 		{
 			string AND = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
 			string template = " ( base.RowId in ( SELECT  b.EntityUid FROM [dbo].[Entity.Address] a inner join Entity b on a.EntityId = b.Id    where [Longitude] < {0} and [Longitude] > {1} and [Latitude] < {2} and [Latitude] > {3} ) ) ";
-			if ( data.SearchType == "credential" )
-				template = template.Replace( "base.RowId", "base.EntityUid" );
+			if (data.SearchType == "credential")
+				template = template.Replace("base.RowId", "base.EntityUid");
 
-			var boundaries = SearchServices.GetBoundaries( data, "bounds" );
-			if ( boundaries.IsDefined )
+			var boundaries = SearchServices.GetBoundaries(data, "bounds");
+			if (boundaries.IsDefined)
 			{
-				where = where + AND + string.Format( template, boundaries.East, boundaries.West, boundaries.North, boundaries.South );
+				where = where + AND + string.Format(template, boundaries.East, boundaries.West, boundaries.North, boundaries.South);
 			}
 		}
 		//
-		public static void SetRolesFilter( MainSearchInput data, ref string where )
+		public static void SetRolesFilter(MainSearchInput data, ref string where)
 		{
 			string AND = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
 			string template = " ( base.RowId in ( SELECT distinct b.EntityUid FROM [dbo].[Entity.AgentRelationship] a inner join Entity b on a.EntityId = b.Id   where [RelationshipTypeId] in ({0})   ) ) ";
 
@@ -1932,20 +2112,20 @@ namespace workIT.Services
 
 			//Updated to use FiltersV2
 			string next = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
-			foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ) )
+			foreach (var filter in data.FiltersV2.Where(m => m.Type == MainSearchFilterV2Types.CODE))
 			{
 				var item = filter.AsCodeItem();
-				if ( item.CategoryId == 13 )
+				if (item.CategoryId == 13)
 				{
 					next += item.Id + ",";
 				}
 			}
-			next = next.Trim( ',' );
-			if ( !string.IsNullOrWhiteSpace( next ) )
+			next = next.Trim(',');
+			if (!string.IsNullOrWhiteSpace(next))
 			{
-				where = where + AND + string.Format( template, next );
+				where = where + AND + string.Format(template, next);
 			}
 
 			/* //Retained for reference
@@ -1965,31 +2145,31 @@ namespace workIT.Services
 		}
 
 
-		public static void SetOrgRolesFilter( MainSearchInput data, ref string where )
+		public static void SetOrgRolesFilter(MainSearchInput data, ref string where)
 		{
 			string AND = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
 			string template = " ( base.RowId in ( SELECT distinct EntityUid FROM [dbo].[Entity.AgentRelationship] a inner join Entity b on a.EntityId = b.Id   where [RelationshipTypeId] in ({0})   ) ) ";
 
-			foreach ( MainSearchFilter filter in data.Filters.Where( s => s.CategoryId == 13 ) )
+			foreach (MainSearchFilter filter in data.Filters.Where(s => s.CategoryId == 13))
 			{
 				string next = "";
-				if ( where.Length > 0 )
+				if (where.Length > 0)
 					AND = " AND ";
-				foreach ( string item in filter.Items )
+				foreach (string item in filter.Items)
 				{
 					next += item + ",";
 				}
-				next = next.Trim( ',' );
-				where = where + AND + string.Format( template, next );
+				next = next.Trim(',');
+				where = where + AND + string.Format(template, next);
 			}
 		}
 
-		private static void SetAuthorizationFilter( AppUser user, string summaryView, ref string where )
+		private static void SetAuthorizationFilter(AppUser user, string summaryView, ref string where)
 		{
 			string AND = "";
-			if ( where.Length > 0 )
+			if (where.Length > 0)
 				AND = " AND ";
 			return;
 

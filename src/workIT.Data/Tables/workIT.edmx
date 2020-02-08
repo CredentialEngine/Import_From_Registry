@@ -67,6 +67,7 @@
           <Property Name="ScoringMethodExampleDescription" Type="nvarchar(max)" />
           <Property Name="InLanguageId" Type="int" />
           <Property Name="VersionIdentifier" Type="varchar" MaxLength="100" />
+          <Property Name="CreditUnitMaxValue" Type="decimal" Precision="7" Scale="2" />
         </EntityType>
         <EntityType Name="Codes_AssertionType">
           <Key>
@@ -239,6 +240,7 @@
           </Key>
           <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CategoryId" Type="int" />
           <Property Name="Title" Type="varchar" MaxLength="200" Nullable="false" />
           <Property Name="Description" Type="varchar" MaxLength="2000" />
           <Property Name="SortOrder" Type="int" />
@@ -246,7 +248,16 @@
           <Property Name="SchemaName" Type="varchar" MaxLength="100" />
           <Property Name="Totals" Type="int" />
           <Property Name="Created" Type="datetime" />
-          <Property Name="CategoryId" Type="int" />
+        </EntityType>
+        <EntityType Name="Counts_RegionTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="Country" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Region" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Totals" Type="int" Nullable="false" />
         </EntityType>
         <EntityType Name="Counts_SiteTotals">
           <Key>
@@ -289,6 +300,10 @@
           <Property Name="ProcessStandardsDescription" Type="nvarchar(max)" />
           <Property Name="CopyrightHolder" Type="uniqueidentifier" />
           <Property Name="InLanguageId" Type="int" />
+          <Property Name="NextVersion" Type="varchar" MaxLength="500" />
+          <Property Name="Supersedes" Type="varchar" MaxLength="500" />
+          <Property Name="SupersededBy" Type="varchar" MaxLength="500" />
+          <Property Name="ISICV4" Type="varchar" MaxLength="15" />
         </EntityType>
         <EntityType Name="Credential_SummaryCache">
           <Key>
@@ -351,11 +366,16 @@
           <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="FrameworkName" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="CTID" Type="varchar" MaxLength="50" />
+          <Property Name="OrganizationCTID" Type="varchar" MaxLength="50" />
           <Property Name="FrameworkUri" Type="varchar" MaxLength="500" />
           <Property Name="SourceUrl" Type="varchar" MaxLength="500" />
-          <Property Name="FrameworkUrl" Type="varchar" MaxLength="500" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="ExistsInRegistry" Type="bit" />
           <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="CredentialRegistryId" Type="varchar" MaxLength="50" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="FrameworkUrl" Type="varchar" MaxLength="500" />
         </EntityType>
         <EntityType Name="Entity">
           <Key>
@@ -489,11 +509,13 @@
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="Weight" Type="decimal" Precision="5" Scale="2" />
-          <Property Name="CreditHourType" Type="nvarchar" MaxLength="100" />
-          <Property Name="CreditHourValue" Type="decimal" Precision="5" Scale="2" />
           <Property Name="CreditUnitTypeId" Type="int" />
           <Property Name="CreditUnitTypeDescription" Type="nvarchar(max)" />
           <Property Name="CreditUnitValue" Type="decimal" Precision="5" Scale="2" />
+          <Property Name="CreditUnitMaxValue" Type="decimal" Precision="7" Scale="2" />
+          <Property Name="SubmissionOfDescription" Type="nvarchar(max)" />
+          <Property Name="CreditHourType" Type="nvarchar" MaxLength="100" />
+          <Property Name="CreditHourValue" Type="decimal" Precision="5" Scale="2" />
         </EntityType>
         <EntityType Name="Entity_ContactPoint">
           <Key>
@@ -604,6 +626,19 @@
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AlignmentType" Type="nvarchar" MaxLength="100" />
         </EntityType>
+        <EntityType Name="Entity_FinancialAssistanceProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="500" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="SubjectWebpage" Type="nvarchar" MaxLength="500" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+        </EntityType>
         <EntityType Name="Entity_FrameworkItem">
           <Key>
             <PropertyRef Name="Id" />
@@ -648,6 +683,19 @@
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AssertedByAgentUid" Type="uniqueidentifier" />
           <Property Name="AssertedInTypeId" Type="int" />
+        </EntityType>
+        <EntityType Name="Entity_LanguageMaps">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="Property" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="HasMultipleLanguages" Type="bit" Nullable="false" />
+          <Property Name="LanguageMap" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
         </EntityType>
         <EntityType Name="Entity_LearningOpportunity">
           <Key>
@@ -710,7 +758,7 @@
           <Property Name="EntityId" Type="int" Nullable="false" />
           <Property Name="CategoryId" Type="int" Nullable="false" />
           <Property Name="Title" Type="nvarchar" MaxLength="600" />
-          <Property Name="TextValue" Type="nvarchar" MaxLength="1000" />
+          <Property Name="TextValue" Type="nvarchar(max)" />
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="PropertyValueId" Type="int" />
@@ -843,6 +891,23 @@
           <Property Name="Severity" Type="int" />
           <Property Name="Message" Type="varchar" MaxLength="500" />
         </EntityType>
+        <EntityType Name="Import_PendingRequest">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="Environment" Type="varchar" MaxLength="50" />
+          <Property Name="DataOwnerCTID" Type="varchar" MaxLength="50" />
+          <Property Name="PublisherCTID" Type="varchar" MaxLength="50" />
+          <Property Name="PublishMethodURI" Type="varchar" MaxLength="50" />
+          <Property Name="PublishingEntityType" Type="varchar" MaxLength="50" />
+          <Property Name="CtdlType" Type="varchar" MaxLength="200" />
+          <Property Name="EntityCtid" Type="varchar" MaxLength="50" />
+          <Property Name="EnvelopeId" Type="varchar" MaxLength="50" />
+          <Property Name="EntityName" Type="nvarchar" MaxLength="500" />
+          <Property Name="PublishPayload" Type="varchar(max)" />
+        </EntityType>
         <EntityType Name="Import_Staging">
           <Key>
             <PropertyRef Name="Id" />
@@ -886,6 +951,7 @@
           <Property Name="DeliveryTypeDescription" Type="nvarchar(max)" />
           <Property Name="VerificationMethodDescription" Type="nvarchar(max)" />
           <Property Name="InLanguageId" Type="int" />
+          <Property Name="CreditUnitMaxValue" Type="decimal" Precision="7" Scale="2" />
         </EntityType>
         <EntityType Name="Organization">
           <Key>
@@ -960,6 +1026,8 @@
           <Property Name="RegionFilters" Type="varchar(max)" />
           <Property Name="CityFilters" Type="varchar(max)" />
           <Property Name="IncludeIfAvailableOnline" Type="bit" />
+          <Property Name="LogoFileName" Type="varchar" MaxLength="50" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
         </EntityType>
         <Association Name="FK_Codes_TagValue_Codes_TagCategory">
           <End Role="Codes_PropertyCategory" Type="Self.Codes_PropertyCategory" Multiplicity="1">
@@ -1020,6 +1088,18 @@
           <End Role="Entity_AgentRelationship" Type="Self.Entity_AgentRelationship" Multiplicity="*" />
           <ReferentialConstraint>
             <Principal Role="Codes_AssertionType">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_AgentRelationship">
+              <PropertyRef Name="RelationshipTypeId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship">
+          <End Role="Codes_CredentialAgentRelationship" Type="Self.Codes_CredentialAgentRelationship" Multiplicity="1" />
+          <End Role="Entity_AgentRelationship" Type="Self.Entity_AgentRelationship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_CredentialAgentRelationship">
               <PropertyRef Name="Id" />
             </Principal>
             <Dependent Role="Entity_AgentRelationship">
@@ -1343,6 +1423,20 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_Entity_FinancialAssistanceProfile_Entity">
+          <End Role="Entity" Type="Self.Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_FinancialAssistanceProfile" Type="Self.Entity_FinancialAssistanceProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_FinancialAssistanceProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_Entity_FrameworkItem_Entity">
           <End Role="Entity" Type="Self.Entity" Multiplicity="1">
             <OnDelete Action="Cascade" />
@@ -1637,6 +1731,20 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_EntityLanguageMaps_Entity">
+          <End Role="Entity" Type="Self.Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_LanguageMaps" Type="Self.Entity_LanguageMaps" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_LanguageMaps">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_GeoCoordinate_Entity_JurisdictionProfile">
           <End Role="Entity_JurisdictionProfile" Type="Self.Entity_JurisdictionProfile" Multiplicity="1">
             <OnDelete Action="Cascade" />
@@ -1679,6 +1787,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="CostManifest" EntityType="Self.CostManifest" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Counts_EntityMonthlyTotals" EntityType="Self.Counts_EntityMonthlyTotals" Schema="dbo" Table="Counts.EntityMonthlyTotals" store:Type="Tables" />
           <EntitySet Name="Counts_EntityStatistic" EntityType="Self.Counts_EntityStatistic" Schema="dbo" Table="Counts.EntityStatistic" store:Type="Tables" />
+          <EntitySet Name="Counts_RegionTotals" EntityType="Self.Counts_RegionTotals" Schema="dbo" Table="Counts.RegionTotals" store:Type="Tables" />
           <EntitySet Name="Counts_SiteTotals" EntityType="Self.Counts_SiteTotals" Schema="dbo" Table="Counts.SiteTotals" store:Type="Tables" />
           <EntitySet Name="Credential" EntityType="Self.Credential" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Credential_SummaryCache" EntityType="Self.Credential_SummaryCache" Schema="dbo" Table="Credential.SummaryCache" store:Type="Tables" />
@@ -1700,9 +1809,11 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="Entity_Credential" EntityType="Self.Entity_Credential" Schema="dbo" Table="Entity.Credential" store:Type="Tables" />
           <EntitySet Name="Entity_DurationProfile" EntityType="Self.Entity_DurationProfile" Schema="dbo" Table="Entity.DurationProfile" store:Type="Tables" />
           <EntitySet Name="Entity_FinancialAlignmentProfile" EntityType="Self.Entity_FinancialAlignmentProfile" Schema="dbo" Table="Entity.FinancialAlignmentProfile" store:Type="Tables" />
+          <EntitySet Name="Entity_FinancialAssistanceProfile" EntityType="Self.Entity_FinancialAssistanceProfile" Schema="dbo" Table="Entity.FinancialAssistanceProfile" store:Type="Tables" />
           <EntitySet Name="Entity_FrameworkItem" EntityType="Self.Entity_FrameworkItem" Schema="dbo" Table="Entity.FrameworkItem" store:Type="Tables" />
           <EntitySet Name="Entity_IdentifierValue" EntityType="Self.Entity_IdentifierValue" Schema="dbo" Table="Entity.IdentifierValue" store:Type="Tables" />
           <EntitySet Name="Entity_JurisdictionProfile" EntityType="Self.Entity_JurisdictionProfile" Schema="dbo" Table="Entity.JurisdictionProfile" store:Type="Tables" />
+          <EntitySet Name="Entity_LanguageMaps" EntityType="Self.Entity_LanguageMaps" Schema="dbo" Table="Entity.LanguageMaps" store:Type="Tables" />
           <EntitySet Name="Entity_LearningOpportunity" EntityType="Self.Entity_LearningOpportunity" Schema="dbo" Table="Entity.LearningOpportunity" store:Type="Tables" />
           <EntitySet Name="Entity_Organization" EntityType="Self.Entity_Organization" Schema="dbo" Table="Entity.Organization" store:Type="Tables" />
           <EntitySet Name="Entity_ProcessProfile" EntityType="Self.Entity_ProcessProfile" Schema="dbo" Table="Entity.ProcessProfile" store:Type="Tables" />
@@ -1717,6 +1828,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="GeoCoordinate" EntityType="Self.GeoCoordinate" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Import_EntityResolution" EntityType="Self.Import_EntityResolution" Schema="dbo" Table="Import.EntityResolution" store:Type="Tables" />
           <EntitySet Name="Import_Message" EntityType="Self.Import_Message" Schema="dbo" Table="Import.Message" store:Type="Tables" />
+          <EntitySet Name="Import_PendingRequest" EntityType="Self.Import_PendingRequest" Schema="dbo" Table="Import.PendingRequest" store:Type="Tables" />
           <EntitySet Name="Import_Staging" EntityType="Self.Import_Staging" Schema="dbo" Table="Import.Staging" store:Type="Tables" />
           <EntitySet Name="LearningOpportunity" EntityType="Self.LearningOpportunity" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Organization" EntityType="Self.Organization" Schema="dbo" store:Type="Tables" />
@@ -1741,6 +1853,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           </AssociationSet>
           <AssociationSet Name="FK_Entity_AgentRelationship_Codes_AssertionType" Association="Self.FK_Entity_AgentRelationship_Codes_AssertionType">
             <End Role="Codes_AssertionType" EntitySet="Codes_AssertionType" />
+            <End Role="Entity_AgentRelationship" EntitySet="Entity_AgentRelationship" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" Association="Self.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship">
+            <End Role="Codes_CredentialAgentRelationship" EntitySet="Codes_CredentialAgentRelationship" />
             <End Role="Entity_AgentRelationship" EntitySet="Entity_AgentRelationship" />
           </AssociationSet>
           <AssociationSet Name="FK_Entity_AgentRelationship_Entity" Association="Self.FK_Entity_AgentRelationship_Entity">
@@ -1835,6 +1951,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Entity" EntitySet="Entity" />
             <End Role="Entity_FinancialAlignmentProfile" EntitySet="Entity_FinancialAlignmentProfile" />
           </AssociationSet>
+          <AssociationSet Name="FK_Entity_FinancialAssistanceProfile_Entity" Association="Self.FK_Entity_FinancialAssistanceProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_FinancialAssistanceProfile" EntitySet="Entity_FinancialAssistanceProfile" />
+          </AssociationSet>
           <AssociationSet Name="FK_Entity_FrameworkItem_Entity" Association="Self.FK_Entity_FrameworkItem_Entity">
             <End Role="Entity" EntitySet="Entity" />
             <End Role="Entity_FrameworkItem" EntitySet="Entity_FrameworkItem" />
@@ -1918,6 +2038,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_EntityContactPoint_ParentEntity" Association="Self.FK_EntityContactPoint_ParentEntity">
             <End Role="Entity" EntitySet="Entity" />
             <End Role="Entity_ContactPoint" EntitySet="Entity_ContactPoint" />
+          </AssociationSet>
+          <AssociationSet Name="FK_EntityLanguageMaps_Entity" Association="Self.FK_EntityLanguageMaps_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_LanguageMaps" EntitySet="Entity_LanguageMaps" />
           </AssociationSet>
           <AssociationSet Name="FK_GeoCoordinate_Entity_JurisdictionProfile" Association="Self.FK_GeoCoordinate_Entity_JurisdictionProfile">
             <End Role="Entity_JurisdictionProfile" EntitySet="Entity_JurisdictionProfile" />
@@ -2194,6 +2318,22 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Codes_EntityTypes" EntitySet="Codes_EntityTypes" />
             <End Role="Counts_EntityStatistic" EntitySet="Counts_EntityStatistic" />
           </AssociationSet>
+          <EntitySet Name="Counts_RegionTotals" EntityType="workITModel.Counts_RegionTotals" />
+          <AssociationSet Name="FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" Association="workITModel.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship">
+            <End Role="Codes_CredentialAgentRelationship" EntitySet="Codes_CredentialAgentRelationship" />
+            <End Role="Entity_AgentRelationship" EntitySet="Entity_AgentRelationship" />
+          </AssociationSet>
+          <EntitySet Name="Entity_FinancialAssistanceProfile" EntityType="workITModel.Entity_FinancialAssistanceProfile" />
+          <AssociationSet Name="FK_Entity_FinancialAssistanceProfile_Entity" Association="workITModel.FK_Entity_FinancialAssistanceProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_FinancialAssistanceProfile" EntitySet="Entity_FinancialAssistanceProfile" />
+          </AssociationSet>
+          <EntitySet Name="Entity_LanguageMaps" EntityType="workITModel.Entity_LanguageMaps" />
+          <AssociationSet Name="FK_EntityLanguageMaps_Entity" Association="workITModel.FK_EntityLanguageMaps_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_LanguageMaps" EntitySet="Entity_LanguageMaps" />
+          </AssociationSet>
+          <EntitySet Name="Import_PendingRequest" EntityType="workITModel.Import_PendingRequest" />
         </EntityContainer>
         <EntityType Name="ActivityLog">
           <Key>
@@ -2258,6 +2398,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="InLanguageId" Type="Int32" />
           <Property Name="VersionIdentifier" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="Entity_Assessment" Relationship="workITModel.FK_Entity_Assessment_Assessment" FromRole="Assessment" ToRole="Entity_Assessment" />
+          <Property Name="CreditUnitMaxValue" Type="Decimal" Precision="7" Scale="2" />
         </EntityType>
         <EntityType Name="Codes_AssertionType">
           <Key>
@@ -2328,6 +2469,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="AssessmentTotals" Type="Int32" />
           <Property Name="LoppTotals" Type="Int32" />
           <Property Name="QAPerformedTotals" Type="Int32" />
+          <NavigationProperty Name="Entity_AgentRelationship" Relationship="workITModel.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" FromRole="Codes_CredentialAgentRelationship" ToRole="Entity_AgentRelationship" />
         </EntityType>
         <EntityType Name="Codes_EntityTypes">
           <Key>
@@ -2469,6 +2611,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="InLanguageId" Type="Int32" />
           <NavigationProperty Name="Credential_SummaryCache" Relationship="workITModel.FK_Credential_SummaryCache_Credential1" FromRole="Credential" ToRole="Credential_SummaryCache" />
           <NavigationProperty Name="Entity_Credential" Relationship="workITModel.FK_Entity_Credential_Credential" FromRole="Credential" ToRole="Entity_Credential" />
+          <Property Name="NextVersion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Supersedes" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SupersededBy" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="ISICV4" Type="String" MaxLength="15" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="Credential_SummaryCache">
           <Key>
@@ -2538,6 +2684,11 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="RowId" Type="Guid" Nullable="false" />
           <Property Name="Created" Type="DateTime" Precision="3" />
           <NavigationProperty Name="Entity_Competency" Relationship="workITModel.FK_Entity_Competency_EducationFramework" FromRole="EducationFramework" ToRole="Entity_Competency" />
+          <Property Name="ExistsInRegistry" Type="Boolean" />
+          <Property Name="OrganizationCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="CredentialRegistryId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
         </EntityType>
         <EntityType Name="Entity">
           <Key>
@@ -2578,6 +2729,8 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <NavigationProperty Name="Entity_VerificationProfile" Relationship="workITModel.FK_Entity_VerificationProfile_Entity" FromRole="Entity" ToRole="Entity_VerificationProfile" />
           <NavigationProperty Name="Entity_ContactPoint" Relationship="workITModel.FK_EntityContactPoint_ParentEntity" FromRole="Entity" ToRole="Entity_ContactPoint" />
           <NavigationProperty Name="Entity_Cache" Relationship="workITModel.FK_Entity_Cache_Entity" FromRole="Entity" ToRole="Entity_Cache" />
+          <NavigationProperty Name="Entity_FinancialAssistanceProfile" Relationship="workITModel.FK_Entity_FinancialAssistanceProfile_Entity" FromRole="Entity" ToRole="Entity_FinancialAssistanceProfile" />
+          <NavigationProperty Name="Entity_LanguageMaps" Relationship="workITModel.FK_EntityLanguageMaps_Entity" FromRole="Entity" ToRole="Entity_LanguageMaps" />
         </EntityType>
         <EntityType Name="Entity_Address">
           <Key>
@@ -2616,6 +2769,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="IsInverseRole" Type="Boolean" />
           <NavigationProperty Name="Codes_AssertionType" Relationship="workITModel.FK_Entity_AgentRelationship_Codes_AssertionType" FromRole="Entity_AgentRelationship" ToRole="Codes_AssertionType" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_AgentRelationship_Entity" FromRole="Entity_AgentRelationship" ToRole="Entity" />
+          <NavigationProperty Name="Codes_CredentialAgentRelationship" Relationship="workITModel.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" FromRole="Entity_AgentRelationship" ToRole="Codes_CredentialAgentRelationship" />
         </EntityType>
         <EntityType Name="Entity_Assertion">
           <Key>
@@ -2720,6 +2874,8 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="CreditUnitTypeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="CreditUnitValue" Type="Decimal" Precision="5" Scale="2" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_ConditionProfile_Entity" FromRole="Entity_ConditionProfile" ToRole="Entity" />
+          <Property Name="CreditUnitMaxValue" Type="Decimal" Precision="7" Scale="2" />
+          <Property Name="SubmissionOfDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityType Name="Entity_ContactPoint">
           <Key>
@@ -2958,7 +3114,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="EntityId" Type="Int32" Nullable="false" />
           <Property Name="CategoryId" Type="Int32" Nullable="false" />
           <Property Name="Title" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
-          <Property Name="TextValue" Type="String" MaxLength="1000" FixedLength="false" Unicode="true" />
+          <Property Name="TextValue" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="Created" Type="DateTime" Precision="3" />
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="PropertyValueId" Type="Int32" />
@@ -3124,6 +3280,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="VerificationMethodDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="InLanguageId" Type="Int32" />
           <NavigationProperty Name="Entity_LearningOpportunity" Relationship="workITModel.FK_Entity_LearningOpportunity_LearningOpportunity" FromRole="LearningOpportunity" ToRole="Entity_LearningOpportunity" />
+          <Property Name="CreditUnitMaxValue" Type="Decimal" Precision="7" Scale="2" />
         </EntityType>
         <EntityType Name="Organization">
           <Key>
@@ -3200,6 +3357,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="RegionFilters" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="CityFilters" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="IncludeIfAvailableOnline" Type="Boolean" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
         </EntityType>
         <Association Name="FK_Entity_Assessment_Assessment">
           <End Type="workITModel.Assessment" Role="Assessment" Multiplicity="1">
@@ -3951,6 +4109,101 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <EntityType Name="Counts_RegionTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Region" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship">
+          <End Type="workITModel.Codes_CredentialAgentRelationship" Role="Codes_CredentialAgentRelationship" Multiplicity="1" />
+          <End Type="workITModel.Entity_AgentRelationship" Role="Entity_AgentRelationship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_CredentialAgentRelationship">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_AgentRelationship">
+              <PropertyRef Name="RelationshipTypeId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Entity_FinancialAssistanceProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="SubjectWebpage" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_FinancialAssistanceProfile_Entity" FromRole="Entity_FinancialAssistanceProfile" ToRole="Entity" />
+        </EntityType>
+        <Association Name="FK_Entity_FinancialAssistanceProfile_Entity">
+          <End Type="workITModel.Entity" Role="Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_FinancialAssistanceProfile" Role="Entity_FinancialAssistanceProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_FinancialAssistanceProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Entity_LanguageMaps">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="Property" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="HasMultipleLanguages" Type="Boolean" Nullable="false" />
+          <Property Name="LanguageMap" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Entity" Relationship="workITModel.FK_EntityLanguageMaps_Entity" FromRole="Entity_LanguageMaps" ToRole="Entity" />
+        </EntityType>
+        <Association Name="FK_EntityLanguageMaps_Entity">
+          <End Type="workITModel.Entity" Role="Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_LanguageMaps" Role="Entity_LanguageMaps" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_LanguageMaps">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Import_PendingRequest">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="Environment" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="DataOwnerCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PublisherCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PublishMethodURI" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PublishingEntityType" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="CtdlType" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="EntityCtid" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EnvelopeId" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityName" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="PublishPayload" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+        </EntityType>
         </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -3982,6 +4235,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Assessment">
             <EntityTypeMapping TypeName="workITModel.Assessment">
               <MappingFragment StoreEntitySet="Assessment">
+                <ScalarProperty Name="CreditUnitMaxValue" ColumnName="CreditUnitMaxValue" />
                 <ScalarProperty Name="VersionIdentifier" ColumnName="VersionIdentifier" />
                 <ScalarProperty Name="InLanguageId" ColumnName="InLanguageId" />
                 <ScalarProperty Name="ScoringMethodExampleDescription" ColumnName="ScoringMethodExampleDescription" />
@@ -4200,6 +4454,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Credential">
             <EntityTypeMapping TypeName="workITModel.Credential">
               <MappingFragment StoreEntitySet="Credential">
+                <ScalarProperty Name="ISICV4" ColumnName="ISICV4" />
+                <ScalarProperty Name="SupersededBy" ColumnName="SupersededBy" />
+                <ScalarProperty Name="Supersedes" ColumnName="Supersedes" />
+                <ScalarProperty Name="NextVersion" ColumnName="NextVersion" />
                 <ScalarProperty Name="InLanguageId" ColumnName="InLanguageId" />
                 <ScalarProperty Name="CopyrightHolder" ColumnName="CopyrightHolder" />
                 <ScalarProperty Name="ProcessStandardsDescription" ColumnName="ProcessStandardsDescription" />
@@ -4287,6 +4545,11 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="EducationFramework">
             <EntityTypeMapping TypeName="workITModel.EducationFramework">
               <MappingFragment StoreEntitySet="EducationFramework">
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="CredentialRegistryId" ColumnName="CredentialRegistryId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="OrganizationCTID" ColumnName="OrganizationCTID" />
+                <ScalarProperty Name="ExistsInRegistry" ColumnName="ExistsInRegistry" />
                 <ScalarProperty Name="Created" ColumnName="Created" />
                 <ScalarProperty Name="RowId" ColumnName="RowId" />
                 <ScalarProperty Name="FrameworkUrl" ColumnName="FrameworkUrl" />
@@ -4422,6 +4685,8 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Entity_ConditionProfile">
             <EntityTypeMapping TypeName="workITModel.Entity_ConditionProfile">
               <MappingFragment StoreEntitySet="Entity_ConditionProfile">
+                <ScalarProperty Name="SubmissionOfDescription" ColumnName="SubmissionOfDescription" />
+                <ScalarProperty Name="CreditUnitMaxValue" ColumnName="CreditUnitMaxValue" />
                 <ScalarProperty Name="CreditUnitValue" ColumnName="CreditUnitValue" />
                 <ScalarProperty Name="CreditUnitTypeDescription" ColumnName="CreditUnitTypeDescription" />
                 <ScalarProperty Name="CreditUnitTypeId" ColumnName="CreditUnitTypeId" />
@@ -4813,6 +5078,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="LearningOpportunity">
             <EntityTypeMapping TypeName="workITModel.LearningOpportunity">
               <MappingFragment StoreEntitySet="LearningOpportunity">
+                <ScalarProperty Name="CreditUnitMaxValue" ColumnName="CreditUnitMaxValue" />
                 <ScalarProperty Name="InLanguageId" ColumnName="InLanguageId" />
                 <ScalarProperty Name="VerificationMethodDescription" ColumnName="VerificationMethodDescription" />
                 <ScalarProperty Name="DeliveryTypeDescription" ColumnName="DeliveryTypeDescription" />
@@ -4895,6 +5161,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Widget">
             <EntityTypeMapping TypeName="workITModel.Widget">
               <MappingFragment StoreEntitySet="Widget">
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
                 <ScalarProperty Name="IncludeIfAvailableOnline" ColumnName="IncludeIfAvailableOnline" />
                 <ScalarProperty Name="CityFilters" ColumnName="CityFilters" />
                 <ScalarProperty Name="RegionFilters" ColumnName="RegionFilters" />
@@ -4966,6 +5233,63 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
                 <ScalarProperty Name="Description" ColumnName="Description" />
                 <ScalarProperty Name="Title" ColumnName="Title" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_RegionTotals">
+            <EntityTypeMapping TypeName="workITModel.Counts_RegionTotals">
+              <MappingFragment StoreEntitySet="Counts_RegionTotals">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="Region" ColumnName="Region" />
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_FinancialAssistanceProfile">
+            <EntityTypeMapping TypeName="workITModel.Entity_FinancialAssistanceProfile">
+              <MappingFragment StoreEntitySet="Entity_FinancialAssistanceProfile">
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_LanguageMaps">
+            <EntityTypeMapping TypeName="workITModel.Entity_LanguageMaps">
+              <MappingFragment StoreEntitySet="Entity_LanguageMaps">
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="LanguageMap" ColumnName="LanguageMap" />
+                <ScalarProperty Name="HasMultipleLanguages" ColumnName="HasMultipleLanguages" />
+                <ScalarProperty Name="Property" ColumnName="Property" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Import_PendingRequest">
+            <EntityTypeMapping TypeName="workITModel.Import_PendingRequest">
+              <MappingFragment StoreEntitySet="Import_PendingRequest">
+                <ScalarProperty Name="PublishPayload" ColumnName="PublishPayload" />
+                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
+                <ScalarProperty Name="EnvelopeId" ColumnName="EnvelopeId" />
+                <ScalarProperty Name="EntityCtid" ColumnName="EntityCtid" />
+                <ScalarProperty Name="CtdlType" ColumnName="CtdlType" />
+                <ScalarProperty Name="PublishingEntityType" ColumnName="PublishingEntityType" />
+                <ScalarProperty Name="PublishMethodURI" ColumnName="PublishMethodURI" />
+                <ScalarProperty Name="PublisherCTID" ColumnName="PublisherCTID" />
+                <ScalarProperty Name="DataOwnerCTID" ColumnName="DataOwnerCTID" />
+                <ScalarProperty Name="Environment" ColumnName="Environment" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>
             </EntityTypeMapping>

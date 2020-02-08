@@ -10,7 +10,7 @@ GO
 
 
 /*
-use [ctdlEditor]
+use [credFinder_github]
 GO
 
 exec [Entity_ReferenceConnection_Populate] 6777

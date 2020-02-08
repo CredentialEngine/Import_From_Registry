@@ -128,7 +128,7 @@ namespace workIT.Services
         /// <param name="keyword"></param>
         /// <param name="maxTerms"></param>
         /// <returns></returns>
-        public static List<string> Autocomplete( string keyword, int maxTerms = 25)
+        public static List<object> Autocomplete( string keyword, int maxTerms = 25)
         {
             int userId = 0;
             string where = "";
@@ -138,7 +138,7 @@ namespace workIT.Services
                 userId = user.Id;
             SetAuthorizationFilter( user, ref where );
 
-            SetKeywordFilter( keyword, true, ref where );
+			SetKeywordFilter( keyword, true, ref where );
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
             {
@@ -273,14 +273,14 @@ namespace workIT.Services
             if ( string.IsNullOrWhiteSpace( keywords ) || string.IsNullOrWhiteSpace( keywords.Trim() ) )
                 return;
 
-            //trim trailing (org)
-            if ( keywords.IndexOf( "('" ) > 0 )
-                keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
+			//trim trailing (org)
+			if ( keywords.LastIndexOf( "(" ) > 0 )
+				keywords = keywords.Substring( 0, keywords.LastIndexOf( "(" ) );
 
-            //OR CreatorOrgs like '{0}' 
-            bool isCustomSearch = false;
+			//OR CreatorOrgs like '{0}' 
+			bool isCustomSearch = false;
             //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.AlternateName like '{0}' OR OwningOrganization like '{0}' OR base.Description like '{0}'   ) ";
+            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
             //for ctid, needs a valid ctid or guid
             if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
             {
@@ -775,7 +775,7 @@ namespace workIT.Services
                     {
                         LoggingHelper.DoTrace( 5, string.Format( "===CredentialServices.GetCredentialDetail ****** Inserting new cached version of credential, Id: {0}, {1}", entity.Id, entity.Name ) );
 
-                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
                     }
                 }
             }

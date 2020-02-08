@@ -1,0 +1,217 @@
+﻿<script type="text/javascript">
+	var microsearch = {
+		searches: []
+	};
+
+	//Create microsearch object
+	microsearch.initialize = function (searchBox, id, pageSize) {
+		//Parts
+		var Search = {
+			Box: searchBox,
+			ID: id,
+			PageSize: pageSize,
+			PageNumber: 1,
+			TotalResults: 0,
+			Countdown: 0,
+			StatusBox: searchBox.find(".searchStatus"),
+			ResultsBox: searchBox.find(".searchResults"),
+			PagingBox: searchBox.find(".searchPaging")
+		};
+
+		//Tracking
+		microsearch.searches.push(Search);
+		return Search;
+	}
+	//
+
+	//Get microsearch object
+	microsearch.getByID = function (id) {
+		for (var i in microsearch.searches) {
+			if (microsearch.searches[i].ID == id) {
+				return microsearch.searches[i];
+			}
+		}
+		return null;
+	}
+	//
+
+	//Read Filters - uses data-property and data-type attributes
+	microsearch.readFilters = function (filterList) {
+		var result = {};
+		filterList.each(function () {
+			var box = $(this);
+			var property = box.attr("data-property");
+			var type = box.attr("data-type");
+			switch (type) {
+				case "text":
+					result[property] = box.val().trim();
+					break;
+				case "checkboxlist":
+					result[property] = [];
+					box.find(":checked").each(function () {
+						result[property].push($(this).val());
+					})
+					break;
+				case "boolean":
+					result[property] = box.prop("checked");
+					break;
+				default:
+					console.log("Unable to determine value for " + box.attr("[data-property]"));
+					return;
+			}
+		});
+		return result;
+	}
+	//
+
+    microsearch.getMicroSearchV2Filters = function (filterList) {
+        var filters = microsearch.readFilters(filterList);
+        var result = [];
+        for (var i in filters) {
+            (function (key, value) {
+                result.push({
+                    Name: key,
+                    Value: value.toString()
+                });
+            })(i, filters[i]);
+        }
+        return result;
+    }
+    //
+
+	//Do a search
+	microsearch.doSearch = function (Search, query, controller, method, success, passThrough, resetPaging, setPaging) {
+		clearTimeout(Search.Countdown);
+		Search.Countdown = setTimeout(function () {
+			microsearch.doImmediateSearch(Search, query, controller, method, success, passThrough, resetPaging, setPaging);
+		}, 800);
+	}
+	microsearch.doImmediateSearch = function (Search, query, controller, method, success, passThrough, resetPaging, setPaging) {
+		microsearch.setStatus(Search.StatusBox, "Searching...", "searching");
+
+		//Query parts
+		if (resetPaging) {
+			Search.PageNumber = 1;
+		}
+		else if (setPaging) {
+			Search.PageNumber = setPaging;
+		}
+		query.PageSize = Search.PageSize;
+		query.PageNumber = Search.PageNumber;
+
+		//Paging function
+		var pagingFunction = function (pageNumber) {
+			microsearch.doImmediateSearch(Search, query, controller, method, success, passThrough, false, pageNumber);
+		}
+
+		$.ajax({
+			url: "@Url.Content("~/")" + controller + "/" + method,
+			headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+			dataType: "json",
+			type: "POST",
+			data: JSON.stringify({ query: query }),
+			success: function (message) {
+				console.log("Response", message);
+				success(Search, message, pagingFunction, passThrough);
+			},
+			error: function (xhr, message, ex) {
+				console.log("Error", xhr);
+				console.log(message);
+				console.log(ex);
+			}
+		});
+	}
+	//
+
+	//Render results
+	microsearch.renderResults = function (resultsBox, results, template, skipProperties) {
+		resultsBox.html("");
+		var resultItems = [];
+		for (var i in results) {
+			(function (data) {
+				microsearch.renderResult(resultsBox, data, template, skipProperties);
+				resultItems.push(data);
+			})(results[i]);
+		}
+		return resultItems;
+	}
+	//Split out to enable calling this function for individual results from other places
+	microsearch.renderResult = function (resultsBox, data, template, skipProperties) {
+		var result = $(microsearch.autoFormat(template, data, "", skipProperties)).appendTo(resultsBox);
+		data.Box = result;
+		return data;
+	}
+	//
+
+	//Render paging - uses callback provided by doSearch()
+	microsearch.renderPaging = function (Search, pagingBox, totalResults, pagingFunction) {
+		pagingBox.html("");
+		var pagingItems = [];
+		var totalPages = Math.ceil(totalResults / Search.PageSize);
+		if (totalPages <= 1) {
+			return pagingItems;
+		}
+		var stops = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, totalPages];
+		for (var i = 1; i <= totalPages; i++) {
+			(function (current) {
+				if (current == Search.PageNumber || stops.indexOf(current) > -1 || current == Search.PageNumber + 1 || current == Search.PageNumber - 1 || current == Search.PageNumber + 2 || current == Search.PageNumber - 2) {
+					var pageButton = $("<button>" + current + "</button>").appendTo(pagingBox);
+					if (current == Search.PageNumber) {
+						pageButton.addClass("currentPage");
+					}
+					pageButton.on("click", function () {
+						pagingFunction(current);
+					});
+				}
+			})(i);
+		}
+		return pagingItems;
+	}
+	//
+
+	//Format a template
+	microsearch.autoFormat = function (template, data, prefix, skipProperties) {
+		for (var i in data) {
+			if (skipProperties && skipProperties.indexOf(i) > -1) {
+				continue;
+			}
+			try {
+				if (data[i] == null || typeof (data[i]) == "undefined" || (typeof(data[i]) == "string" && data[i] == "")) {
+					template = template.replace(new RegExp("{" + (prefix != "" ? prefix + "." : "") + i + "}", "g"), "");
+				}
+				else if (typeof (data[i]) == "object") {
+					if (Array.isArray(data[i])) {
+						//Handled Separately
+					}
+					else {
+						template = microsearch.autoFormat(template, data[i], i, skipProperties);
+					}
+				}
+				else {
+					template = template.replace(new RegExp("{" + (prefix != "" ? prefix + "." : "") + i + "}", "g"), data[i]);
+				}
+			}
+			catch (e) { }
+		}
+		return template;
+	}
+	//
+
+	//Set the text and data-status of a status box
+	microsearch.setStatus = function (statusBox, statusText, status) {
+		statusBox.attr("data-status", status).html(statusText);
+	}
+	//
+</script>
+<style type="text/css">
+	/* Microsearch */
+	.microsearch { }
+	.microsearch .searchHeader { background-color: #F5F5F5; padding: 5px; }
+	.microsearch .searchFilter { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; margin-bottom: 5px; padding-bottom: 5px; background-color: #F5F5F5; border-bottom: 1px solid #CCC; }
+	.microsearch .searchFilter:last-child { border: none; padding: 0; margin: 0; }
+	.microsearch .searchFilter .label { -webkit-flex: 125px 1 0; flex: 125px 1 0; font-weight: bold; }
+	.microsearch .searchFilter .value { -webkit-flex: 100% 1 1; flex: 100% 1 1; }
+	.microsearch .searchFilter .value input[type=text] { display: block; width: 100%; }
+	.microsearch .searchStatus { padding: 5px; text-align: center; }
+	.microsearch .searchResults .searchResult { padding: 5px; background-color: #F5F5F5; margin-bottom: 5px; }
+</style>

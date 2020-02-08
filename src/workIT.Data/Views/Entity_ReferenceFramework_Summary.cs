@@ -28,5 +28,6 @@ namespace workIT.Data.Views
         public string Description { get; set; }
         public int EntityTypeId { get; set; }
         public Nullable<int> EntityBaseId { get; set; }
+        public Nullable<System.DateTime> refCreated { get; set; }
     }
 }

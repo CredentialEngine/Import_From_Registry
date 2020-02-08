@@ -11,8 +11,10 @@ using workIT.Utilities;
 using EntityServices = workIT.Services.CredentialServices;
 using InputEntity = RA.Models.Json.Credential;
 
+//input document from registry
 using InputEntityV3 = RA.Models.JsonV2.Credential;
 using BNode = RA.Models.JsonV2.BlankNode;
+//target local storage class
 using ThisEntity = workIT.Models.Common.Credential;
 using workIT.Factories;
 using workIT.Models;
@@ -150,18 +152,7 @@ namespace Import.Services
 
 				if ( !string.IsNullOrWhiteSpace( payload ) )
 				{
-                    if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-                    {
-                        //if ( payload.IndexOf( "\"en\":" ) > 0 )
-                            return ImportV3( payload, "", status );
-                        //else
-                        //    return ImportV2( payload, "", status );
-                    }
-                    else
-                    {
-                        input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-                        return Import( input, "", status );
-                    }
+					return ImportV3( payload, "", status );
                 }
 				else
 				{
@@ -188,18 +179,15 @@ namespace Import.Services
 
         public bool ImportByPayload( string payload, SaveStatus status )
 		{
-            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-            {
-                //if ( payload.IndexOf( "\"en\":" ) > 0 )
+            //if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            //{
                     return ImportV3( payload, "", status );
-                //else
-                //    return ImportV2( payload, "", status );
-            }
-            else
-            {
-                input = JsonConvert.DeserializeObject<InputEntity>( payload );
-                return Import( input, "", status );
-            }
+            //}
+            //else
+            //{
+            //    input = JsonConvert.DeserializeObject<InputEntity>( payload );
+            //    return Import( input, "", status );
+            //}
         }
 		/// <summary>
 		/// Custom version, typically called outside a scheduled import
@@ -230,291 +218,50 @@ namespace Import.Services
 				status.AddError( "A valid ReadEnvelope must be provided." );
 				return false;
 			}
-			
-	
+
+			DateTime createDate = new DateTime();
+			DateTime envelopeUpdateDate = new DateTime();
+			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+			{
+				//entity.DocumentUpdatedAt = updateDate;
+			}
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			{
+				//entity.DocumentUpdatedAt = envelopeUpdateDate;
+			}
+
 			string payload = item.DecodedResource.ToString();
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-            {
+            //if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+            //{
                 //if ( payload.IndexOf( "\"en\":" ) > 0 )
                     return ImportV3( payload, envelopeIdentifier, status );
                 //else
                 //    return ImportV2( payload, envelopeIdentifier, status );
-            }
-            else
-            {
-                LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-                LoggingHelper.WriteLogFile( 1, "credential_" + item.EnvelopeIdentifier, payload, "", false );
-                input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+            //}
+            //else
+            //{
+            //    LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+            //    LoggingHelper.WriteLogFile( 1, "credential_" + item.EnvelopeIdentifier, payload, "", false );
+            //    input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
 
-                DateTime createDate = new DateTime();
-                DateTime envelopeUpdateDate = new DateTime();
-                if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
-                {
-                    //entity.DocumentUpdatedAt = updateDate;
-                }
-                if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
-                {
-                    //entity.DocumentUpdatedAt = envelopeUpdateDate;
-                }
-                return Import( input, envelopeIdentifier, status, envelopeUpdateDate );
-            }
-		}
-
-		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
-		{
-			DateTime envelopeUpdateDate = System.DateTime.Now;
-			return Import( input, envelopeIdentifier, status, envelopeUpdateDate );
-		}
-		
-		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status, DateTime envelopeUpdateDate )
-		{
-            EntityServices mgr = new EntityServices();
-            List<string> messages = new List<string>();
-			bool importSuccessfull = false;
-			status.EnvelopeId = envelopeIdentifier;
-            try
-            {
-                //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-                string ctid = input.Ctid;
-                string referencedAtId = input.CtdlId;
-
-                LoggingHelper.DoTrace( 6, "		name: " + input.Name );
-                LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-                LoggingHelper.DoTrace( 6, "		ctid: " + input.Ctid );
-                LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
-                status.Ctid = ctid;
-
-                if ( status.DoingDownloadOnly )
-                    return true;
-
-                if (!DoesEntityExist( input.Ctid, ref output ))
-                {
-                    //set the rowid now, so that can be referenced as needed
-                    output.RowId = Guid.NewGuid();
-                }
-                //?? there is a difference with UTC, so not sure of the point of this check
-                if ( envelopeUpdateDate  < DateTime.Now.AddMinutes(-1))
-                {
-                    output.RegistryLastUpdated = envelopeUpdateDate;
-                }
-
-                //re:messages - currently passed to mapping but no errors are trapped??
-                //				- should use SaveStatus and skip import if errors encountered (vs warnings)
-
-                output.Name = input.Name;
-                output.Description = input.Description;
-                output.SubjectWebpage = input.SubjectWebpage;
-                output.CTID = input.Ctid;
-                output.CredentialRegistryId = envelopeIdentifier;
-                output.CredentialStatusType = MappingHelper.MapCAOToEnumermation( input.CredentialStatusType );
-                output.DateEffective = input.DateEffective;
-
-                //handle both ways for now
-                //output.AlternateName = input.AlternateName;
-                output.AlternateNames = MappingHelper.MapToTextValueProfile( input.AlternateName );
-                output.ImageUrl = input.Image;
-                output.CredentialTypeSchema = input.CredentialType;
-
-
-                output.AvailabilityListing = MappingHelper.MapListToString( input.AvailabilityListing );
-                output.AvailableOnlineAt = MappingHelper.MapListToString( input.AvailableOnlineAt );
-
-                output.CredentialId = input.CredentialId;
-                //TODO - develope entity for IdentitifierValue
-                output.VersionIdentifier = MappingHelper.MapIdentifierValueListToString( input.VersionIdentifier );
-                output.VersionIdentifierList = MappingHelper.MapIdentifierValueList( input.VersionIdentifier );
-
-                output.CodedNotation = input.CodedNotation;
-
-                foreach ( var l in input.InLanguage )
-                {
-                    if ( !string.IsNullOrWhiteSpace( l ) )
-                    {
-                        var language = CodesManager.GetLanguage( l );
-                        output.InLanguageCodeList.Add( new TextValueProfile()
-                        {
-                            CodeId = language.CodeId,
-                            TextTitle = language.Name,
-                            TextValue = language.Value
-                        } );
-                    }
-                }
-
-                output.ProcessStandards = input.ProcessStandards;
-                output.ProcessStandardsDescription = input.ProcessStandardsDescription;
-                output.LatestVersion = input.LatestVersion;
-                output.PreviousVersion = input.PreviousVersion;
-                output.Subject = MappingHelper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-
-                //occupations
-                output.Occupation = MappingHelper.MapCAOListToEnumermation( input.OccupationType );
-                output.Occupations = MappingHelper.MapCAOListToFramework( input.OccupationType );
-
-                //Industries
-                output.Industry = MappingHelper.MapCAOListToEnumermation( input.IndustryType );
-                output.Industries = MappingHelper.MapCAOListToFramework( input.IndustryType );
-                //naics
-                output.Naics = input.Naics;
-
-                output.Keyword = MappingHelper.MapToTextValueProfile( input.Keyword );
-
-                output.Jurisdiction = MappingHelper.MapToJurisdiction( input.Jurisdiction, ref status );
-                //CopyrightHolder - expecting single; will need to expand
-                output.CopyrightHolder = MappingHelper.MapOrganizationReferencesGuid( input.CopyrightHolder, ref status );
-                //CAO
-                output.AudienceLevelType = MappingHelper.MapCAOListToEnumermation( input.AudienceLevel );
-                //
-                output.AudienceType = MappingHelper.MapCAOListToEnumermation( input.AudienceType );
-                output.DegreeConcentration = MappingHelper.MapCAOListToTextValueProfile( input.DegreeConcentration, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
-                output.DegreeMajor = MappingHelper.MapCAOListToTextValueProfile( input.DegreeMajor, CodesManager.PROPERTY_CATEGORY_DEGREE_MAJOR );
-                output.DegreeMinor = MappingHelper.MapCAOListToTextValueProfile( input.DegreeMinor, CodesManager.PROPERTY_CATEGORY_DEGREE_MINOR );
-                //EstimatedCost
-                //will need to format, all populate Entity.RelatedCosts (for bubble up) - actually this would be for asmts, and lopps
-                output.EstimatedCost = MappingHelper.FormatCosts( input.EstimatedCost, ref status );
-
-                //EstimatedDuration
-                output.EstimatedDuration = MappingHelper.FormatDuration( input.EstimatedDuration, ref status );
-                output.RenewalFrequency = MappingHelper.FormatDurationItem( input.RenewalFrequency );
-
-                //conditions
-                output.Requires = MappingHelper.FormatConditionProfile( input.Requires, ref status );
-                output.Recommends = MappingHelper.FormatConditionProfile( input.Recommends, ref status );
-                output.Renewal = MappingHelper.FormatConditionProfile( input.Renewal, ref status );
-                output.Corequisite = MappingHelper.FormatConditionProfile( input.Corequisite, ref status );
-                output.Revocation = MappingHelper.FormatRevocationProfile( input.Revocation, ref status );
-
-                //connections
-                output.AdvancedStandingFrom = MappingHelper.FormatConditionProfile( input.AdvancedStandingFrom, ref status );
-                output.AdvancedStandingFor = MappingHelper.FormatConditionProfile( input.IsAdvancedStandingFor, ref status );
-
-                output.PreparationFrom = MappingHelper.FormatConditionProfile( input.PreparationFrom, ref status );
-                output.IsPreparationFor = MappingHelper.FormatConditionProfile( input.IsPreparationFor, ref status );
-
-                output.IsRequiredFor = MappingHelper.FormatConditionProfile( input.IsRequiredFor, ref status );
-                output.IsRecommendedFor = MappingHelper.FormatConditionProfile( input.IsRecommendedFor, ref status );
-
-                //common conditions
-                output.ConditionManifestIds = MappingHelper.MapEntityReferences( input.CommonConditions, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
-                //common costs
-                output.CostManifestIds = MappingHelper.MapEntityReferences( input.CommonCosts, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
-
-                //HasPart/IsPart
-                //WARNING - these methods assume all parts are the same type - the provided thisEntityTypeId. AT THIS TIME, THE PARTS SHOULD ALL BE CREDENTIALS
-                output.HasPartIds = MappingHelper.MapEntityReferences( input.HasPart, thisEntityTypeId, ref status );
-                output.IsPartOfIds = MappingHelper.MapEntityReferences( input.IsPartOf, thisEntityTypeId, ref status );
-
-                //Process profiles
-                output.AdministrationProcess = MappingHelper.FormatProcessProfile( input.AdministrationProcess, ref status );
-                output.DevelopmentProcess = MappingHelper.FormatProcessProfile( input.DevelopmentProcess, ref status );
-                output.MaintenanceProcess = MappingHelper.FormatProcessProfile( input.MaintenanceProcess, ref status );
-
-                output.AppealProcess = MappingHelper.FormatProcessProfile( input.AppealProcess, ref status );
-                output.ComplaintProcess = MappingHelper.FormatProcessProfile( input.ComplaintProcess, ref status );
-                output.ReviewProcess = MappingHelper.FormatProcessProfile( input.ReviewProcess, ref status );
-                output.RevocationProcess = MappingHelper.FormatProcessProfile( input.RevocationProcess, ref status );
-
-                //FinancialAssistance
-                output.FinancialAssistance = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
-
-
-                output.Addresses = MappingHelper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
-
-                //BYs
-                output.AccreditedBy = MappingHelper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
-                output.ApprovedBy = MappingHelper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
-                output.OfferedBy = MappingHelper.MapOrganizationReferenceGuids( input.OfferedBy, ref status );
-                //note need to set output.OwningAgentUid to the first entry
-                output.OwnedBy = MappingHelper.MapOrganizationReferenceGuids( input.OwnedBy, ref status );
-                if (output.OwnedBy != null && output.OwnedBy.Count > 0)
-                {
-                    output.OwningAgentUid = output.OwnedBy[ 0 ];
-                }
-                else
-                {
-                    //add warning?
-                    if (output.OfferedBy == null && output.OfferedBy.Count == 0)
-                    {
-                        status.AddWarning( "document doesn't have an owning or offering organization." );
-                    }
-                }
-
-			output.RecognizedBy = MappingHelper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
-			output.RegulatedBy = MappingHelper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
-			output.RevokedBy = MappingHelper.MapOrganizationReferenceGuids( input.RevokedBy, ref status );
-			output.RenewedBy = MappingHelper.MapOrganizationReferenceGuids( input.RenewedBy, ref status );
-
-			//INs
-			output.AccreditedIn = MappingHelper.MapToJurisdiction( input.AccreditedIn, ref status );
-			output.ApprovedIn = MappingHelper.MapToJurisdiction( input.ApprovedIn, ref status );
-			output.ApprovedIn = MappingHelper.MapToJurisdiction( input.ApprovedIn, ref status );
-			output.RecognizedIn = MappingHelper.MapToJurisdiction( input.RecognizedIn, ref status );
-			output.RegulatedIn = MappingHelper.MapToJurisdiction( input.RegulatedIn, ref status );
-			output.RevokedIn = MappingHelper.MapToJurisdiction( input.RevokedIn, ref status );
-			output.RenewedIn = MappingHelper.MapToJurisdiction( input.RenewedIn, ref status );
-
-			//=== if any messages were encountered treat as warnings for now
-			if ( messages.Count > 0 )
-				status.SetMessages( messages, true );
-			//just in case check if entity added since start
-			if (output.Id == 0)
-			{
-				ThisEntity entity = EntityServices.GetByCtid( ctid );
-				if ( entity != null && entity.Id > 0 )
-				{
-					output.Id = entity.Id;
-					output.RowId = entity.RowId;
-				}
-			}
-			importSuccessfull = mgr.Import( output, ref status );
-			status.DocumentId = output.Id;
-			status.DetailPageUrl = string.Format( "~/credential/{0}", output.Id );
-			status.DocumentRowId = output.RowId;
-
-			//if record was added to db, add to/or set EntityResolution as resolved
-			int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
-					ctid,
-					CodesManager.ENTITY_TYPE_CREDENTIAL,
-					output.RowId,
-					output.Id,
-					( output.Id > 0 ),
-					ref messages,
-					output.Id  > 0);
-			//just in case
-			if ( status.HasErrors )
-				importSuccessfull = false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "workIT Import exception" );
-				//importError = ex.Message;
-
-				////make continue on exceptions an option
-				//exceptionCtr++;
-				//if ( exceptionCtr > 10 )
-				//{
-				//	//arbitrarily stop if large number of exceptions
-				//	LoggingHelper.LogError( "Many exceptions were encountered during import - abandoning.", true, "workIT Import - many exceptions" );
-				//	isComplete = true;
-				//	break;
-				//}
-			}
-
-			return importSuccessfull;
+               
+            //    return Import( input, envelopeIdentifier, status, envelopeUpdateDate );
+            //}
 		}
 
         
         public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
         {
+			//instantiate the input document (credential)
             InputEntityV3 input = new InputEntityV3();
             var bnodes = new List<BNode>();
             var mainEntity = new Dictionary<string, object>();
-
-            //status.AddWarning( "The resource uses @graph and is not handled yet" );
-
+			//map payload to a dictionary
             Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
+			//get the @graph property
             object graph = dictionary[ "@graph" ];
             //serialize the graph object
             var glist = JsonConvert.SerializeObject( graph );
@@ -534,6 +281,7 @@ namespace Import.Services
                 }
                 else
                 {
+					//save blank nodes - typically reference organizations
                     var bn = item.ToString();
                     bnodes.Add( JsonConvert.DeserializeObject<BNode>( bn ) );
                 }
@@ -610,13 +358,17 @@ namespace Import.Services
                 output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
 
                 output.CodedNotation = input.CodedNotation;
+				output.ISICV4 = input.IsicV4;
 
-
-                output.ProcessStandards = input.ProcessStandards;
+				output.ProcessStandards = input.ProcessStandards;
                 output.ProcessStandardsDescription = helper.HandleLanguageMap( input.ProcessStandardsDescription, output, "ProcessStandardsDescription" );
                 output.LatestVersion = input.LatestVersion;
                 output.PreviousVersion = input.PreviousVersion;
-                output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+				output.NextVersion = input.NextVersion;
+				output.SupersededBy = input.SupersededBy;
+				output.Supersedes = input.Supersedes;
+
+				output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
                 //occupations
                 //output.Occupation = helper.MapCAOListToEnumermation( input.OccupationType );
@@ -640,15 +392,20 @@ namespace Import.Services
 
 				output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
 				output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
-
+				//
+				//will want a custom method to lookup the rating
+				NavyServices nsrvs = new NavyServices();
+				output.NavyRating = NavyServices.MapRatingsListToEnumermation( input.HasRating );
+				output.NavyRatingType.AddRange( nsrvs.MapCAOListToCAOProfileList( input.HasRating, ref messages ) );
+				//
 
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 
                 output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
                 //CopyrightHolder - expecting single; will need to expand
-                output.CopyrightHolder = helper.MapOrganizationReferencesGuid( input.CopyrightHolder, ref status );
+                output.CopyrightHolder = helper.MapOrganizationReferencesGuid( "Credential.CopyrightHolder", input.CopyrightHolder, ref status );
                 //CAO
-                output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevel );
+                output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevelType );
                 //
                 output.AudienceType = helper.MapCAOListToEnumermation( input.AudienceType );
                 output.DegreeConcentration = helper.MapCAOListToTextValueProfile( input.DegreeConcentration, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
@@ -710,11 +467,11 @@ namespace Import.Services
                 output.Addresses = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
 
                 //BYs
-                output.AccreditedBy = helper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
-                output.ApprovedBy = helper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
-                output.OfferedBy = helper.MapOrganizationReferenceGuids( input.OfferedBy, ref status );
+                output.AccreditedBy = helper.MapOrganizationReferenceGuids( "Credential.AccreditedBy", input.AccreditedBy, ref status );
+                output.ApprovedBy = helper.MapOrganizationReferenceGuids( "Credential.ApprovedBy", input.ApprovedBy, ref status );
+                output.OfferedBy = helper.MapOrganizationReferenceGuids( "Credential.OfferedBy", input.OfferedBy, ref status );
                 //note need to set output.OwningAgentUid to the first entry
-                output.OwnedBy = helper.MapOrganizationReferenceGuids( input.OwnedBy, ref status );
+                output.OwnedBy = helper.MapOrganizationReferenceGuids( "Credential.OwnedBy", input.OwnedBy, ref status );
                 if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
                 {
                     output.OwningAgentUid = output.OwnedBy[ 0 ];
@@ -728,10 +485,10 @@ namespace Import.Services
                     }
                 }
 
-                output.RecognizedBy = helper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
-                output.RegulatedBy = helper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
-                output.RevokedBy = helper.MapOrganizationReferenceGuids( input.RevokedBy, ref status );
-                output.RenewedBy = helper.MapOrganizationReferenceGuids( input.RenewedBy, ref status );
+                output.RecognizedBy = helper.MapOrganizationReferenceGuids( "Credential.RecognizedBy", input.RecognizedBy, ref status );
+                output.RegulatedBy = helper.MapOrganizationReferenceGuids( "Credential.RegulatedBy", input.RegulatedBy, ref status );
+                output.RevokedBy = helper.MapOrganizationReferenceGuids( "Credential.RevokedBy", input.RevokedBy, ref status );
+                output.RenewedBy = helper.MapOrganizationReferenceGuids( "Credential.RenewedBy", input.RenewedBy, ref status );
 
                 //INs
                 output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
@@ -755,6 +512,7 @@ namespace Import.Services
                         output.RowId = entity.RowId;
                     }
                 }
+				//save the data
                 importSuccessfull = mgr.Import( output, ref status );
                 status.DocumentId = output.Id;
                 status.DetailPageUrl = string.Format( "~/credential/{0}", output.Id );
@@ -790,5 +548,250 @@ namespace Import.Services
 
             return exists;
         }
-    }
+		/*
+//public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
+//{
+//	DateTime envelopeUpdateDate = System.DateTime.Now;
+//	return Import( input, envelopeIdentifier, status, envelopeUpdateDate );
+//}
+
+[Obsolete]
+private bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status, DateTime envelopeUpdateDate )
+{
+	EntityServices mgr = new EntityServices();
+	List<string> messages = new List<string>();
+	bool importSuccessfull = false;
+	status.EnvelopeId = envelopeIdentifier;
+	try
+	{
+		//input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+		string ctid = input.Ctid;
+		string referencedAtId = input.CtdlId;
+
+		LoggingHelper.DoTrace( 6, "		name: " + input.Name );
+		LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
+		LoggingHelper.DoTrace( 6, "		ctid: " + input.Ctid );
+		LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
+		status.Ctid = ctid;
+
+		if ( status.DoingDownloadOnly )
+			return true;
+
+		if (!DoesEntityExist( input.Ctid, ref output ))
+		{
+			//set the rowid now, so that can be referenced as needed
+			output.RowId = Guid.NewGuid();
+		}
+		//?? there is a difference with UTC, so not sure of the point of this check
+		if ( envelopeUpdateDate  < DateTime.Now.AddMinutes(-1))
+		{
+			output.RegistryLastUpdated = envelopeUpdateDate;
+		}
+
+		//re:messages - currently passed to mapping but no errors are trapped??
+		//				- should use SaveStatus and skip import if errors encountered (vs warnings)
+
+		output.Name = input.Name;
+		output.Description = input.Description;
+		output.SubjectWebpage = input.SubjectWebpage;
+		output.CTID = input.Ctid;
+		output.CredentialRegistryId = envelopeIdentifier;
+		output.CredentialStatusType = MappingHelper.MapCAOToEnumermation( input.CredentialStatusType );
+		output.DateEffective = input.DateEffective;
+
+		//handle both ways for now
+		//output.AlternateName = input.AlternateName;
+		output.AlternateNames = MappingHelper.MapToTextValueProfile( input.AlternateName );
+		output.ImageUrl = input.Image;
+		output.CredentialTypeSchema = input.CredentialType;
+
+
+		output.AvailabilityListing = MappingHelper.MapListToString( input.AvailabilityListing );
+		output.AvailableOnlineAt = MappingHelper.MapListToString( input.AvailableOnlineAt );
+
+		output.CredentialId = input.CredentialId;
+		//TODO - develope entity for IdentitifierValue
+		output.VersionIdentifier = MappingHelper.MapIdentifierValueListToString( input.VersionIdentifier );
+		output.VersionIdentifierList = MappingHelper.MapIdentifierValueList( input.VersionIdentifier );
+
+		output.CodedNotation = input.CodedNotation;
+
+		foreach ( var l in input.InLanguage )
+		{
+			if ( !string.IsNullOrWhiteSpace( l ) )
+			{
+				var language = CodesManager.GetLanguage( l );
+				output.InLanguageCodeList.Add( new TextValueProfile()
+				{
+					CodeId = language.CodeId,
+					TextTitle = language.Name,
+					TextValue = language.Value
+				} );
+			}
+		}
+
+		output.ProcessStandards = input.ProcessStandards;
+		output.ProcessStandardsDescription = input.ProcessStandardsDescription;
+		output.LatestVersion = input.LatestVersion;
+		output.PreviousVersion = input.PreviousVersion;
+
+		output.Subject = MappingHelper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+
+		//occupations
+		output.Occupation = MappingHelper.MapCAOListToEnumermation( input.OccupationType );
+		output.Occupations = MappingHelper.MapCAOListToFramework( input.OccupationType );
+
+		//Industries
+		output.Industry = MappingHelper.MapCAOListToEnumermation( input.IndustryType );
+		output.Industries = MappingHelper.MapCAOListToFramework( input.IndustryType );
+		//naics
+		output.Naics = input.Naics;
+
+		output.Keyword = MappingHelper.MapToTextValueProfile( input.Keyword );
+
+		output.Jurisdiction = MappingHelper.MapToJurisdiction( input.Jurisdiction, ref status );
+		//CopyrightHolder - expecting single; will need to expand
+		output.CopyrightHolder = MappingHelper.MapOrganizationReferencesGuid( input.CopyrightHolder, ref status );
+		//CAO
+		output.AudienceLevelType = MappingHelper.MapCAOListToEnumermation( input.AudienceLevel );
+		//
+		output.AudienceType = MappingHelper.MapCAOListToEnumermation( input.AudienceType );
+		output.DegreeConcentration = MappingHelper.MapCAOListToTextValueProfile( input.DegreeConcentration, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
+		output.DegreeMajor = MappingHelper.MapCAOListToTextValueProfile( input.DegreeMajor, CodesManager.PROPERTY_CATEGORY_DEGREE_MAJOR );
+		output.DegreeMinor = MappingHelper.MapCAOListToTextValueProfile( input.DegreeMinor, CodesManager.PROPERTY_CATEGORY_DEGREE_MINOR );
+		//EstimatedCost
+		//will need to format, all populate Entity.RelatedCosts (for bubble up) - actually this would be for asmts, and lopps
+		output.EstimatedCost = MappingHelper.FormatCosts( input.EstimatedCost, ref status );
+
+		//EstimatedDuration
+		output.EstimatedDuration = MappingHelper.FormatDuration( input.EstimatedDuration, ref status );
+		output.RenewalFrequency = MappingHelper.FormatDurationItem( input.RenewalFrequency );
+
+		//conditions
+		output.Requires = MappingHelper.FormatConditionProfile( input.Requires, ref status );
+		output.Recommends = MappingHelper.FormatConditionProfile( input.Recommends, ref status );
+		output.Renewal = MappingHelper.FormatConditionProfile( input.Renewal, ref status );
+		output.Corequisite = MappingHelper.FormatConditionProfile( input.Corequisite, ref status );
+		output.Revocation = MappingHelper.FormatRevocationProfile( input.Revocation, ref status );
+
+		//connections
+		output.AdvancedStandingFrom = MappingHelper.FormatConditionProfile( input.AdvancedStandingFrom, ref status );
+		output.AdvancedStandingFor = MappingHelper.FormatConditionProfile( input.IsAdvancedStandingFor, ref status );
+
+		output.PreparationFrom = MappingHelper.FormatConditionProfile( input.PreparationFrom, ref status );
+		output.IsPreparationFor = MappingHelper.FormatConditionProfile( input.IsPreparationFor, ref status );
+
+		output.IsRequiredFor = MappingHelper.FormatConditionProfile( input.IsRequiredFor, ref status );
+		output.IsRecommendedFor = MappingHelper.FormatConditionProfile( input.IsRecommendedFor, ref status );
+
+		//common conditions
+		output.ConditionManifestIds = MappingHelper.MapEntityReferences( input.CommonConditions, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
+		//common costs
+		output.CostManifestIds = MappingHelper.MapEntityReferences( input.CommonCosts, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
+
+		//HasPart/IsPart
+		//WARNING - these methods assume all parts are the same type - the provided thisEntityTypeId. AT THIS TIME, THE PARTS SHOULD ALL BE CREDENTIALS
+		output.HasPartIds = MappingHelper.MapEntityReferences( input.HasPart, thisEntityTypeId, ref status );
+		output.IsPartOfIds = MappingHelper.MapEntityReferences( input.IsPartOf, thisEntityTypeId, ref status );
+
+		//Process profiles
+		output.AdministrationProcess = MappingHelper.FormatProcessProfile( input.AdministrationProcess, ref status );
+		output.DevelopmentProcess = MappingHelper.FormatProcessProfile( input.DevelopmentProcess, ref status );
+		output.MaintenanceProcess = MappingHelper.FormatProcessProfile( input.MaintenanceProcess, ref status );
+
+		output.AppealProcess = MappingHelper.FormatProcessProfile( input.AppealProcess, ref status );
+		output.ComplaintProcess = MappingHelper.FormatProcessProfile( input.ComplaintProcess, ref status );
+		output.ReviewProcess = MappingHelper.FormatProcessProfile( input.ReviewProcess, ref status );
+		output.RevocationProcess = MappingHelper.FormatProcessProfile( input.RevocationProcess, ref status );
+
+		//FinancialAssistance
+		output.FinancialAssistanceOLD = MappingHelper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+
+
+		output.Addresses = MappingHelper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
+
+		//BYs
+		output.AccreditedBy = MappingHelper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
+		output.ApprovedBy = MappingHelper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
+		output.OfferedBy = MappingHelper.MapOrganizationReferenceGuids( input.OfferedBy, ref status );
+		//note need to set output.OwningAgentUid to the first entry
+		output.OwnedBy = MappingHelper.MapOrganizationReferenceGuids( input.OwnedBy, ref status );
+		if (output.OwnedBy != null && output.OwnedBy.Count > 0)
+		{
+			output.OwningAgentUid = output.OwnedBy[ 0 ];
+		}
+		else
+		{
+			//add warning?
+			if (output.OfferedBy == null && output.OfferedBy.Count == 0)
+			{
+				status.AddWarning( "document doesn't have an owning or offering organization." );
+			}
+		}
+
+	output.RecognizedBy = MappingHelper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
+	output.RegulatedBy = MappingHelper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
+	output.RevokedBy = MappingHelper.MapOrganizationReferenceGuids( input.RevokedBy, ref status );
+	output.RenewedBy = MappingHelper.MapOrganizationReferenceGuids( input.RenewedBy, ref status );
+
+	//INs
+	output.AccreditedIn = MappingHelper.MapToJurisdiction( input.AccreditedIn, ref status );
+	output.ApprovedIn = MappingHelper.MapToJurisdiction( input.ApprovedIn, ref status );
+	output.ApprovedIn = MappingHelper.MapToJurisdiction( input.ApprovedIn, ref status );
+	output.RecognizedIn = MappingHelper.MapToJurisdiction( input.RecognizedIn, ref status );
+	output.RegulatedIn = MappingHelper.MapToJurisdiction( input.RegulatedIn, ref status );
+	output.RevokedIn = MappingHelper.MapToJurisdiction( input.RevokedIn, ref status );
+	output.RenewedIn = MappingHelper.MapToJurisdiction( input.RenewedIn, ref status );
+
+	//=== if any messages were encountered treat as warnings for now
+	if ( messages.Count > 0 )
+		status.SetMessages( messages, true );
+	//just in case check if entity added since start
+	if (output.Id == 0)
+	{
+		ThisEntity entity = EntityServices.GetByCtid( ctid );
+		if ( entity != null && entity.Id > 0 )
+		{
+			output.Id = entity.Id;
+			output.RowId = entity.RowId;
+		}
+	}
+	importSuccessfull = mgr.Import( output, ref status );
+	status.DocumentId = output.Id;
+	status.DetailPageUrl = string.Format( "~/credential/{0}", output.Id );
+	status.DocumentRowId = output.RowId;
+
+	//if record was added to db, add to/or set EntityResolution as resolved
+	int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+			ctid,
+			CodesManager.ENTITY_TYPE_CREDENTIAL,
+			output.RowId,
+			output.Id,
+			( output.Id > 0 ),
+			ref messages,
+			output.Id  > 0);
+	//just in case
+	if ( status.HasErrors )
+		importSuccessfull = false;
+	}
+	catch ( Exception ex )
+	{
+		LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "workIT Import exception" );
+		//importError = ex.Message;
+
+		////make continue on exceptions an option
+		//exceptionCtr++;
+		//if ( exceptionCtr > 10 )
+		//{
+		//	//arbitrarily stop if large number of exceptions
+		//	LoggingHelper.LogError( "Many exceptions were encountered during import - abandoning.", true, "workIT Import - many exceptions" );
+		//	isComplete = true;
+		//	break;
+		//}
+	}
+
+	return importSuccessfull;
+}
+*/
+	}
 }

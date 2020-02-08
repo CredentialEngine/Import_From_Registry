@@ -107,8 +107,8 @@ namespace RA.Models.Json
         [JsonProperty( "@id" )]
         public string CtdlId { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:verificationMethodDescription" )] 
-        public string VerificationMethodDescription { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:verificationMethodDescription" )] 
+        //public string VerificationMethodDescription { get; set; }
         
         [JsonProperty( PropertyName = "ceterms:availabilityListing" )]
         public List<string> AvailabilityListing { get; set; } //URL

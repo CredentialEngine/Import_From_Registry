@@ -1,0 +1,10 @@
+﻿
+
+#mainSiteHeader { background-color: #b6ff00; color: #000; }
+.blueButton { background-color: darkslategrey; color: #FFFFFF; }
+
+.greenButton { background-color: #b6ff00; color: #000; }
+
+.actionButton, input.blueButton, input.actionButton { background-color: red; color: #FFFFFF; }
+
+#mainSiteLogo { height: 90px; width: 90px; background-position: center center; background-repeat: no-repeat; background-size: contain; background-image: url('http://workit.siuccwd.com/indianaLogo.png');}

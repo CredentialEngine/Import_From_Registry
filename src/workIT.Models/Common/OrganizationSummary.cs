@@ -24,8 +24,8 @@ namespace workIT.Models.Common
         public CodeItemResult OfferedByResults { get; set; } = new CodeItemResult();
         public CodeItemResult AsmtsOwnedByResults { get; set; } = new CodeItemResult();
         public CodeItemResult LoppsOwnedByResults { get; set; } = new CodeItemResult();
-
-        public CodeItemResult AccreditedByResults { get; set; } = new CodeItemResult();
+		public CodeItemResult FrameworksOwnedByResults { get; set; } = new CodeItemResult();
+		public CodeItemResult AccreditedByResults { get; set; } = new CodeItemResult();
         public CodeItemResult ApprovedByResults { get; set; } = new CodeItemResult();
         public CodeItemResult RecognizedByResults { get; set; } = new CodeItemResult();
         public CodeItemResult RegulatedByResults { get; set; } = new CodeItemResult();

@@ -97,7 +97,7 @@ namespace workIT.Factories
 		/// <param name="messages"></param>
 		/// <returns></returns>
 		public bool Save( ThisEntity entity,
-				ref SaveStatus status )
+				ref SaveStatus status, bool addingActivity = false )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -119,8 +119,12 @@ namespace workIT.Factories
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
 
-						efEntity.Created = DateTime.Now;
-						efEntity.RowId = Guid.NewGuid();
+						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
+						
+						if ( IsValidGuid( entity.RowId ) )
+							efEntity.RowId = entity.RowId;
+						else
+							efEntity.RowId = Guid.NewGuid();
 
 						context.EducationFramework.Add( efEntity );
 
@@ -131,12 +135,27 @@ namespace workIT.Factories
 						if ( count == 0 )
 						{
 							status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.FrameworkName ) ? "no description" : entity.FrameworkName ) );
+						} else
+						{
+							if ( addingActivity )
+							{
+								//add log entry
+								SiteActivity sa = new SiteActivity()
+								{
+									ActivityType = "CompetencyFramework",
+									Activity = "Import",
+									Event = "Add",
+									Comment = string.Format( "New Competency Framework was found by the import. Name: {0}, URI: {1}", entity.FrameworkName, entity.FrameworkUri ),
+									ActivityObjectId = entity.Id
+								};
+								new ActivityManager().SiteActivityAdd( sa );
+							}
 						}
 					}
 					else
 					{
 
-						efEntity = context.EducationFramework.SingleOrDefault( s => s.Id == entity.Id );
+						efEntity = context.EducationFramework.FirstOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							entity.RowId = efEntity.RowId;
@@ -145,7 +164,21 @@ namespace workIT.Factories
 							//has changed?
 							if ( HasStateChanged( context ) )
 							{
+								efEntity.LastUpdated = DateTime.Now;
 								count = context.SaveChanges();
+								if ( addingActivity )
+								{
+									//add log entry
+									SiteActivity sa = new SiteActivity()
+									{
+										ActivityType = "CompetencyFramework",
+										Activity = "Import",
+										Event = "Update",
+										Comment = string.Format( "Updated Competency Framework found by the import. Name: {0}, URI: {1}", entity.FrameworkName, entity.FrameworkUri ),
+										ActivityObjectId = entity.Id
+									};
+									new ActivityManager().SiteActivityAdd( sa );
+								}
 							}
 						}
 					}
@@ -186,6 +219,88 @@ namespace workIT.Factories
 
 		}
 
+		/// <summary>
+		/// Do delete based on import of deleted documents
+		/// </summary>
+		/// <param name="credentialRegistryId">NOT CURRENTLY HANDLED</param>
+		/// <param name="ctid"></param>
+		/// <param name="statusMessage"></param>
+		/// <returns></returns>
+		public bool Delete( string credentialRegistryId, string ctid, ref string statusMessage )
+		{
+			bool isValid = true;
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
+				return false;
+			}
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					context.Configuration.LazyLoadingEnabled = false;
+					var efEntity = context.EducationFramework
+								.FirstOrDefault( s => s.CTID == ctid );
+
+					if ( efEntity != null && efEntity.Id > 0 )
+					{
+						//TODO - may need a check for existing alignments
+						Guid rowId = efEntity.RowId;
+						var orgCtid = efEntity.OrganizationCTID ?? "";
+						//need to remove from Entity.
+						//-using before delete trigger - verify won't have RI issues
+						string msg = string.Format( " CompetencyFramework. Id: {0}, Name: {1}, Ctid: {2}", efEntity.Id, efEntity.FrameworkName, efEntity.CTID );
+						//leaving as virtual?
+						//need to check for in use.
+						//context.EducationFramework.Remove( efEntity );
+						efEntity.EntityStateId = 0;
+						efEntity.LastUpdated = System.DateTime.Now;
+
+						int count = context.SaveChanges();
+						if ( count >= 0 )
+						{
+							new ActivityManager().SiteActivityAdd( new SiteActivity()
+							{
+								ActivityType = "CompetencyFramework",
+								Activity = "Import",
+								Event = "Delete",
+								Comment = msg
+							} );
+							isValid = true;
+						}
+						if ( !string.IsNullOrWhiteSpace( orgCtid ) )
+						{
+							List<String> messages = new List<string>();
+							//mark owning org for updates 
+							//	- nothing yet from frameworks
+							var org = OrganizationManager.GetByCtid( orgCtid );
+							if ( org != null && org.Id > 0 )
+							{
+								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, org.Id, 1, ref messages );
+							} else
+							{
+								//issue with org ctid not found
+							}
+						}
+					}
+					else
+					{
+						statusMessage = thisClassName + ".Delete() Warning No action taken, as the record was not found.";
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					statusMessage = FormatExceptions( ex );
+					isValid = false;
+					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+					{
+						statusMessage = thisClassName + "Error: this record cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this assessment can be deleted.";
+					}
+				}
+			}
+			return isValid;
+		}
 		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
@@ -234,13 +349,14 @@ namespace workIT.Factories
 			return entity;
 		}//
 
-		public int Lookup_OR_Add( string frameworkUrl, string frameworkName )
+		public int Lookup_OR_Add( string frameworkUri, string frameworkName )
 		{
 			int frameworkId = 0;
-			if ( string.IsNullOrWhiteSpace( frameworkUrl ) )
+			if ( string.IsNullOrWhiteSpace( frameworkUri ) )
 				return 0;
 
-			ThisEntity entity = GetByUrl( frameworkUrl );
+			//*** no data for frameworkURL, just frameworkUri or sourceUrl
+			ThisEntity entity = GetByUrl( frameworkUri );
 			if ( entity != null && entity.Id > 0 )
 				return entity.Id;
 			//skip if no name
@@ -249,11 +365,11 @@ namespace workIT.Factories
 			SaveStatus status = new SaveStatus();
 			entity.FrameworkName = frameworkName;
 			//this could an external Url, or a registry Uri
-			if ( frameworkUrl.ToLower().IndexOf( "credentialengineregistry.org/resources/" ) > -1
-					|| frameworkUrl.ToLower().IndexOf( "credentialengineregistry.org/graph/" ) > -1 )
-			    entity.FrameworkUri = frameworkUrl;
+			if ( frameworkUri.ToLower().IndexOf( "credentialengineregistry.org/resources/" ) > -1
+					|| frameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/" ) > -1 )
+			    entity.FrameworkUri = frameworkUri;
             else
-                entity.SourceUrl = frameworkUrl;
+                entity.SourceUrl = frameworkUri;
             Save( entity, ref status );
 			if (entity.Id > 0)
 				return entity.Id;
@@ -261,10 +377,10 @@ namespace workIT.Factories
 			return frameworkId;
 		}//
 
-		public static ThisEntity GetByUrl( string frameworkUrl )
+		public static ThisEntity GetByUrl( string frameworkUri )
 		{
 			ThisEntity entity = new ThisEntity();
-			if ( string.IsNullOrWhiteSpace( frameworkUrl ))
+			if ( string.IsNullOrWhiteSpace( frameworkUri ))
 				return entity;
 			try
 			{
@@ -272,8 +388,8 @@ namespace workIT.Factories
 				{
                     //lookup by frameworkUri, or SourceUrl
 					DBEntity item = context.EducationFramework
-							.FirstOrDefault( s => s.FrameworkUri.ToLower() == frameworkUrl.ToLower()
-                            || s.SourceUrl.ToLower() == frameworkUrl.ToLower()
+							.FirstOrDefault( s => s.FrameworkUri.ToLower() == frameworkUri.ToLower()
+                            || s.SourceUrl.ToLower() == frameworkUri.ToLower()
                             );
 
 					if ( item != null && item.Id > 0 )
@@ -289,6 +405,31 @@ namespace workIT.Factories
 			return entity;
 		}//
 
+		public static ThisEntity GetByCtid( string ctid )
+		{
+			ThisEntity entity = new ThisEntity();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+				return entity;
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//lookup by frameworkUri, or SourceUrl
+					DBEntity item = context.EducationFramework
+							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
+
+					if ( item != null && item.Id > 0 )
+					{
+						MapFromDB( item, entity );
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl" );
+			}
+			return entity;
+		}//
 		public static void MapToDB( ThisEntity from, DBEntity to )
 		{
 			//want to ensure fields from create are not wiped
@@ -297,6 +438,7 @@ namespace workIT.Factories
 			to.FrameworkName = from.FrameworkName;
 			to.SourceUrl = from.SourceUrl ?? "";
 			to.FrameworkUri = from.FrameworkUri ?? "";
+			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
 			//will want to extract from FrameworkUri (for now)
 			if (!string.IsNullOrWhiteSpace(from.CTID) && from.CTID.Length == 39 )
                 to.CTID = from.CTID;
@@ -313,6 +455,20 @@ namespace workIT.Factories
                 //    to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
                 //}
             }
+			if ( !string.IsNullOrWhiteSpace( from.OrganizationCTID ) && from.OrganizationCTID.Length == 39 )
+				to.OrganizationCTID = from.OrganizationCTID;
+			//TODO - have to be consistent in having this data
+			//this may done separately. At very least setting false will be done separately
+			//actually the presence of a ctid should only be for registry denizen
+			if ( from.ExistsInRegistry || ( !string.IsNullOrWhiteSpace( to.CredentialRegistryId ) && to.CredentialRegistryId.Length == 36 ) )
+			{
+				to.EntityStateId = 3;
+				to.ExistsInRegistry = from.ExistsInRegistry;
+			} else
+			{
+				//dont think there is a case to set to 1
+				to.EntityStateId = 2;
+			}
 
 		} //
 
@@ -320,16 +476,55 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
+			to.EntityStateId = from.EntityStateId;
 			to.FrameworkName = from.FrameworkName;
             to.CTID = from.CTID;
-            to.SourceUrl = from.SourceUrl;
+			to.OrganizationCTID = from.OrganizationCTID ?? "";
+			to.SourceUrl = from.SourceUrl;
             to.FrameworkUri = from.FrameworkUri;
+			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
+			//this should be replace by presence of CredentialRegistryId
+			to.ExistsInRegistry = (bool)from.ExistsInRegistry;
+			if ( from.Created != null )
+				to.Created = ( DateTime )from.Created;
+			if ( from.LastUpdated != null )
+				to.LastUpdated = (DateTime) from.LastUpdated;
+
             //soon to be obsolete
 			//to.FrameworkUrl = from.FrameworkUrl;
 		}
 
 		#endregion
 
+		public static int FrameworkCount_ForOwningOrg( string orgCtid )
+		{
+			int totalRecords = 0;
+			if ( string.IsNullOrWhiteSpace( orgCtid ) || orgCtid.Trim().Length != 39 )
+				return totalRecords;
+
+			using ( var context = new EntityContext() )
+			{
+				var query = ( from entity in context.EducationFramework
+							  join org in context.Organization on entity.OrganizationCTID equals org.CTID
+							  where entity.OrganizationCTID.ToLower() == orgCtid.ToLower()
+								   && org.EntityStateId > 1 && entity.EntityStateId == 3
+							  select new
+							  {
+								  entity.CTID
+							  } );
+				//until ed frameworks is cleaned up, need to prevent dups != 39
+				var results = query.Select( s => s.CTID ).Distinct()
+					.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					totalRecords = results.Count();
+
+				}
+			}
+
+			return totalRecords;
+		}
 
 		public static List<ThisEntityItem> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows )
 		{

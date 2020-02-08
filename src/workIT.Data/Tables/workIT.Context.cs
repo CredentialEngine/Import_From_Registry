@@ -82,5 +82,9 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_Cache> Entity_Cache { get; set; }
         public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
         public virtual DbSet<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
+        public virtual DbSet<Counts_RegionTotals> Counts_RegionTotals { get; set; }
+        public virtual DbSet<Entity_FinancialAssistanceProfile> Entity_FinancialAssistanceProfile { get; set; }
+        public virtual DbSet<Entity_LanguageMaps> Entity_LanguageMaps { get; set; }
+        public virtual DbSet<Import_PendingRequest> Import_PendingRequest { get; set; }
     }
 }

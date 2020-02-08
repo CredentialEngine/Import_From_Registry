@@ -1,0 +1,199 @@
+﻿@using workIT.Models.Helpers;
+@using System.Web.Script.Serialization;
+@{
+    var serializer = new JavaScriptSerializer();
+    var toolTips = HttpContext.Current.Items[ "ToolTips" ] as List<ToolTip> ?? new List<ToolTip>();    
+}
+
+<script type="text/javascript">
+    var toolTipData = @Html.Raw( serializer.Serialize( toolTips ) );
+    var tips = { id: 0 };
+
+    tips.getData = function(schemaName) {
+        for(var i in toolTipData){
+            if(toolTipData[i].SchemaName == schemaName){
+                return toolTipData[i];
+            }
+        }
+        return null;
+    }
+    //
+
+    tips.getTipLink = function(id){
+        return $(".toolTipLink[data-toolTipID=" + id + "]");
+    }
+    //
+
+    tips.getTipBox = function(id){
+        return $(".toolTipBox[data-toolTipID=" + id + "]");
+    }
+    //
+
+    tips.build = function() {
+        var template = $("#template_toolTip").html();
+        var box = $("#toolTipsContainer");
+
+        $(".toolTipLink").not(".initialized").each(function() {
+            try {
+                //Get the tip link data
+                var tipLink = $(this);
+                var schemaName = tipLink.attr("data-toolTip_SchemaName") || ("toolTip_" + tips.id);
+                var title = tipLink.attr("data-toolTip_Title");
+                var description = tipLink.attr("data-toolTip_Description");
+                var useBubbleAfter = tipLink.hasClass("toolTipBubbleAfter");
+                var useBubbleBefore = tipLink.hasClass("toolTipBubbleBefore");
+                var bubble = "<img class=\"toolTipLink\" src=\"@Url.Content("~/images/icons/icon_infobubble.gif")\" />";
+
+                //Retrieve data from the list, or create it from the tip link's tag
+                var data = tips.getData(schemaName);
+                if(data == null){
+                    if(!title && !description){
+                        return;
+                    }
+
+                    data = {
+                        SchemaName: schemaName,
+                        Title: title,
+                        Description: description
+                    };
+                    toolTipData.push(data);
+                }
+
+                //If a bubble is being used, create and inject it, then reassociate the tooltip with it instead of the original item.
+                if(useBubbleAfter){
+                    tipLink.removeClass("toolTipLink");
+                    tipLink = $(bubble).appendTo(tipLink);
+                }
+                else if(useBubbleBefore) {
+                    tipLink.removeClass("toolTipLink");
+                    tipLink = $(bubble).prependTo(tipLink);
+                }
+
+                //Mark up the link
+                tipLink.addClass("initialized");
+                tipLink.attr("data-toolTipID", tips.id);
+
+                //Create the tooltip div
+                var descriptionParts = data.Description.split("|");
+                for(var i in descriptionParts){
+                    descriptionParts[i] = "<p>" + descriptionParts[i] + "</p>";
+                }
+                var tip = $(template
+                    .replace(/{id}/g, tips.id)
+                    .replace(/{Title}/g, data.Title)
+                    .replace(/{Description}/g, descriptionParts.join(""))
+                ).appendTo(box);
+            
+                //Assign functionality
+                var currentID = tips.id;
+                tipLink.on("mouseover focus", function() { 
+                    tips.show(currentID); 
+                });
+                tip.on("mouseover focus", function() {
+                    tips.show(currentID);
+                });
+                tipLink.on("mouseout blur", function() {
+                    tips.checkHide(currentID);
+                });
+                tip.on("mouseout blur", function() {
+                    tips.checkHide(currentID);
+                });
+
+                tips.id++;
+            }
+            catch (e) { }
+        });
+    }
+    //
+
+    tips.show = function(id){
+        var link = tips.getTipLink(id);
+        var box = tips.getTipBox(id);
+
+        //Fade in before positioning so that position gets set properly
+        box.stop().fadeIn(200);
+
+        //Get link position and compensate for scroll
+        var pos = link.offset();
+        pos.top = pos.top - window.scrollY;
+        pos.left = pos.left - window.scrollX;
+
+        //Position the box over the link
+        box.css("top", pos.top + link.height() * 0.5);
+        box.css("left", pos.left + link.width() * 0.5);
+
+        //Ensure the box does not go offscreen
+        var boxPos = box.offset();
+        boxPos.top = boxPos.top - window.scrollY;
+        boxPos.left = boxPos.left - window.scrollX;
+
+        var boxHeight = box.height();
+        boxPos.bottom = boxPos.top + boxHeight;
+
+        var boxWidth = box.width();
+        boxPos.right = boxPos.left + boxWidth;
+
+        //Compare box borders to window edges
+        var win = $(window);
+        var windowLimits = { right: win.width() - 5, bottom: win.height() - 50 };
+
+        if(boxPos.bottom > windowLimits.bottom){
+            if(boxHeight > windowLimits.bottom){
+                box.css("top", "5px");
+            }
+            else {
+                box.css("top", boxPos.top - (boxPos.bottom - windowLimits.bottom));
+            }
+        }
+        if(boxPos.right > windowLimits.right){
+            if(boxWidth > windowLimits.right){
+                box.css("left", "5px");
+            }
+            else {
+                box.css("left", boxPos.left - (boxPos.right - windowLimits.right));
+            }
+        }
+        
+    }
+    //
+
+    tips.checkHide = function(id){
+        setTimeout(function() {
+            try {
+                var tipLink = tips.getTipLink(id);
+                var tipBox = tips.getTipBox(id);
+
+                if(tipLink.is(":hover") || tipBox.is(":hover")) { return; }
+                tips.hide(id);
+            }
+            catch (e) { 
+                tips.hide(id);
+            }
+        }, 10); //Have to delay for firefox
+    }
+    //
+
+    tips.hide = function(id){
+        var box = tips.getTipBox(id);
+        box.stop().fadeOut(200);
+    }
+    //
+
+    $(document).ready(function() {
+        tips.build();
+        $(".toolTipBox").fadeOut(0);
+    })
+</script>
+<div id="toolTipsContainer"></div>
+<style type="text/css">
+    .toolTipBox { position: fixed; width: calc(100vw - 10px); max-width: 300px; max-height: calc(100vh - 50px); overflow: auto; background-color: rgba(255,255,255,0.9); border: 1px solid #CCC; transition: none; }
+    .toolTipTitle { background-color: #DDD; color: #000; padding: 5px 2px; }
+    .toolTipDescription { padding: 5px; }
+    img.toolTipLink[src*=icon_infobubble] { display: inline-block; vertical-align: middle; margin: 0 2px; }
+</style>
+<script type="text/template" id="template_toolTip">
+    <div class="toolTipBox" data-toolTipID="{id}">
+        <div class="toolTipTitle">{Title}</div>
+        <div class="toolTipDescription">{Description}</div>
+    </div>
+</script>

@@ -41,6 +41,7 @@ namespace workIT.Models
 		public string SchemaName { get; set; }
 		public string ParentSchemaName { get; set; }
 		public bool IsActive { get; set; }
+		public bool AnyValue { get; set; }
 		public int SortOrder { get; set; }
 		public int Totals { get; set; }
 		public int CategoryId { get; set; }

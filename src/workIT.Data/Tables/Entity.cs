@@ -43,6 +43,8 @@ namespace workIT.Data.Tables
             this.Entity_RevocationProfile = new HashSet<Entity_RevocationProfile>();
             this.Entity_VerificationProfile = new HashSet<Entity_VerificationProfile>();
             this.Entity_ContactPoint = new HashSet<Entity_ContactPoint>();
+            this.Entity_FinancialAssistanceProfile = new HashSet<Entity_FinancialAssistanceProfile>();
+            this.Entity_LanguageMaps = new HashSet<Entity_LanguageMaps>();
         }
     
         public int Id { get; set; }
@@ -107,5 +109,9 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ContactPoint> Entity_ContactPoint { get; set; }
         public virtual Entity_Cache Entity_Cache { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_FinancialAssistanceProfile> Entity_FinancialAssistanceProfile { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_LanguageMaps> Entity_LanguageMaps { get; set; }
     }
 }

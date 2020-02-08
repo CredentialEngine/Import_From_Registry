@@ -118,8 +118,8 @@ if @SortOrder = 'relevance' set @SortOrder = 'base.Name '
 else if @SortOrder = 'alpha' set @SortOrder = 'base.Name '
 else if @SortOrder = 'org_alpha' set @SortOrder = 'Organization, base.Name '
 else if @SortOrder = 'newest' set @SortOrder = 'base.lastUpdated Desc '
-else if @SortOrder = 'cost_highest' set @SortOrder = 'costs.TotalCost DESC'
-else if @SortOrder = 'cost_lowest' set @SortOrder = 'costs.TotalCost'
+--else if @SortOrder = 'cost_highest' set @SortOrder = 'costs.TotalCost DESC'
+--else if @SortOrder = 'cost_lowest' set @SortOrder = 'costs.TotalCost'
 else set @SortOrder = 'base.Name '
 
 if len(@SortOrder) > 0 
@@ -150,12 +150,13 @@ CREATE TABLE #tempWorkTable(
      end
 
   print '@Filter len: '  +  convert(varchar,len(@Filter))
+  				--not ideal, but doing a total
+					--left join (
+					--Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
+					--) costs	on base.RowId = costs.ParentEntityUid	
   set @SQL = 'SELECT  base.Id, base.Name, Organization 
         from [Assessment_Summary] base 
-				--not ideal, but doing a total
-					left join (
-					Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
-					) costs	on base.RowId = costs.ParentEntityUid				'
+			'
         + @Filter
         
   if charindex( 'order by', lower(@Filter) ) = 0
@@ -225,7 +226,7 @@ SELECT
 
 	,'' as QualityAssurance
 
-	,isnull(costs.totalCost,0) As TotalCost
+	--,isnull(costs.totalCost,0) As TotalCost
 	,ea.Nbr as AvailableAddresses
 	,base.CTID
 	,base.CredentialRegistryId
@@ -237,9 +238,9 @@ Inner join Assessment_Summary base on work.Id = base.Id
   Inner Join Entity e on base.RowId = e.EntityUid
   left Join (select EntityId, count(*) as nbr from [Entity.Address] group by EntityId ) ea on e.Id = ea.EntityId
 	--not ideal, but doing a total
-	left join (
-					Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
-					) costs	on base.RowId = costs.ParentEntityUid       
+	--left join (
+	--				Select ParentEntityUid, sum(isnull(TotalCost, 0)) As TotalCost from Entity_CostProfileTotal group by ParentEntityUid
+	--				) costs	on base.RowId = costs.ParentEntityUid       
 	--left Join (
 	--	select EntityId, count(*) as nbr from Assessment_Competency_Summary group by EntityId 
 	--	) comps on e.Id = comps.EntityId  

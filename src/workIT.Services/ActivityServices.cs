@@ -232,12 +232,12 @@ namespace workIT.Services
 		public static int SiteActivityAdd( string activity, string eventType, string comment
 					, int actionByUserId, int targetUserId, int activityObjectId )
 		{
-			return SiteActivityAdd( activity, eventType, comment, actionByUserId, targetUserId, activityObjectId, "", "" );
+			return SiteActivityAdd( "Audit", activity, eventType, comment, actionByUserId, targetUserId, activityObjectId, "", "" );
 		}
 
-		public static int SiteActivityAdd( string activity, string eventType, string comment
+		public static int SiteActivityAdd( string activityType, string activity, string eventType, string comment
 					, int actionByUserId, int targetUserId, int activityObjectId
-					, string sessionId, string ipAddress )
+					, string sessionId = "", string ipAddress = "" )
 		{
 			string server = UtilityManager.GetAppKeyValue( "serverName", "" );
 			SiteActivity log = new SiteActivity();
@@ -250,7 +250,7 @@ namespace workIT.Services
 			try
 			{
 				log.CreatedDate = System.DateTime.Now;
-				log.ActivityType = "Audit";
+				log.ActivityType = activityType;
 				log.Activity = activity;
 				log.Event = eventType;
 				log.Comment = comment;

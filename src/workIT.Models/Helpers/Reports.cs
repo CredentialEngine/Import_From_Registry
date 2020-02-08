@@ -117,6 +117,7 @@ namespace workIT.Models.Helpers.Reports
 		public int TotalCredentialsToBeUpdatedToCurrentCtdl { get; set; }
 
 		public List<CodeItem> MainEntityTotals { get; set; }
+		public List<CodeItem> EntityRegionTotals { get; set; } = new List<CodeItem>();
 		public Enumeration AgentServiceTypes { get; set; }
 		public List<CodeItem> PropertiesTotals { get; set; }
 		public List<CodeItem> PropertiesTotalsByEntity { get; set; }
@@ -162,7 +163,12 @@ namespace workIT.Models.Helpers.Reports
 			return list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
 				.ToList();
 		}
-
+		public List<Statistic> GetStatisticsByEntityRegion( int entityTypeId, string country, string idPrefix, List<string> tags, bool includeEmpty = true, bool allowSearchability = true )
+		{
+			var list = EntityRegionTotals.Where( m => m.EntityTypeId == entityTypeId && m.CodeGroup == country && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
+			return list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
+				.ToList();
+		}
 		public List<Statistic> GetHistory( string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = false, bool allowSearchability = true )
 		{
 			return GetVocabularyItems( categorySchema, includeEmpty )
@@ -170,7 +176,7 @@ namespace workIT.Models.Helpers.Reports
 				.ToList();
 		}
 
-		public Statistic GetSingleStatistic( string schemaName, string idPrefix, List<string> tags, bool allowSearchability, string title = "", string description = "", bool includeEmpty = false )
+		public Statistic GetSingleStatistic( string schemaName, string idPrefix, List<string> tags, bool allowSearchability, string title = "", string description = "", bool includeEmpty = false, int overrideSortOrder = -1 )
 		{
 			var m = PropertiesTotals.Concat( PropertiesTotalsByEntity ).FirstOrDefault( x => x.SchemaName == schemaName.Trim() && x.Totals > ( includeEmpty ? -1 : 0 ) );
 			if ( m == null ) return new Statistic();
@@ -181,7 +187,7 @@ namespace workIT.Models.Helpers.Reports
 					idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ),
 					tags,
 					m.CategoryId.ToString(),
-					m.SortOrder,
+					overrideSortOrder > - 1 ? overrideSortOrder : m.SortOrder,
 					m.Id.ToString(),
 					allowSearchability
 				);

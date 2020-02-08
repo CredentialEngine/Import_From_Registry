@@ -17,6 +17,8 @@ namespace workIT.Models
 		}
 
 		public string ValidationGroup { get; set; }
+		public string Community { get; set; }
+		public List<string> Communities { get; set; } = new List<string>();
 		public string EnvelopeId { get; set; }
 		public Guid DocumentRowId { get; set; }
 		public int DocumentId { get; set; }

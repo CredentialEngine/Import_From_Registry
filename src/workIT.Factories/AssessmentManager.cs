@@ -73,8 +73,25 @@ namespace workIT.Factories
                             entity.RowId = efEntity.RowId;
 
 							MapToDB( entity, efEntity );
+
+							//19-05-21 mp - should add a check for an update where currently is deleted
+							if ( ( efEntity.EntityStateId ?? 0 ) == 0 )
+							{
+								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "assessment/{0}", efEntity.Id );
+								//notify, and???
+								EmailManager.NotifyAdmin( "Previously Deleted Assessment has been reactivated", string.Format( "<a href='{2}'>Assessment: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
+								SiteActivity sa = new SiteActivity()
+								{
+									ActivityType = "AssessmentProfile",
+									Activity = "Import",
+									Event = "Reactivate",
+									Comment = string.Format( "Assessment had been marked as deleted, and was reactivted by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+									ActivityObjectId = entity.Id
+								};
+								new ActivityManager().SiteActivityAdd( sa );
+							}
 							//assume and validate, that if we get here we have a full record
-							if ( (efEntity.EntityStateId ?? 1) == 1 )
+							if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
 								efEntity.EntityStateId = 3;
 
 							if ( HasStateChanged( context ) )
@@ -385,8 +402,8 @@ namespace workIT.Factories
                 status.AddWarning( "The Assessment Example Url is invalid. " + commonStatusMessage );
 
 
-            if ( profile.CreditHourValue < 0 || profile.CreditHourValue > 10000 )
-                status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
+            //if ( profile.CreditHourValue < 0 || profile.CreditHourValue > 10000 )
+            //    status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
 
             if ( profile.CreditUnitValue < 0 || profile.CreditUnitValue > 1000 )
                 status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
@@ -395,8 +412,8 @@ namespace workIT.Factories
             //can only have credit hours properties, or credit unit properties, not both
             bool hasCreditHourData = false;
             bool hasCreditUnitData = false;
-            if ( profile.CreditHourValue > 0 || ( profile.CreditHourType ?? "" ).Length > 0 )
-                hasCreditHourData = true;
+            //if ( profile.CreditHourValue > 0 || ( profile.CreditHourType ?? "" ).Length > 0 )
+            //    hasCreditHourData = true;
             if ( profile.CreditUnitTypeId > 0
                 || ( profile.CreditUnitTypeDescription ?? "" ).Length > 0
                 || profile.CreditUnitValue > 0 )
@@ -487,6 +504,7 @@ namespace workIT.Factories
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
 			int orgId = 0;
+			Guid orgUid = new Guid();
 			using ( var context = new EntityContext() )
 			{
 				try
@@ -504,6 +522,7 @@ namespace workIT.Factories
 						{
 							Organization org = OrganizationManager.GetBasics( ( Guid )efEntity.OwningAgentUid );
 							orgId = org.Id;
+							orgUid = org.RowId;
 						}
 						//need to remove from Entity.
 						//-using before delete trigger - verify won't have RI issues
@@ -518,7 +537,7 @@ namespace workIT.Factories
                             new ActivityManager().SiteActivityAdd( new SiteActivity()
                             {
                                 ActivityType = "AssessmentProfile",
-                                Activity = "Management",
+                                Activity = "Import",
                                 Event = "Delete",
 								Comment = msg,
 								ActivityObjectId = efEntity.Id
@@ -527,8 +546,18 @@ namespace workIT.Factories
                             //add pending request 
                             List<String> messages = new List<string>();
                             new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, efEntity.Id, ref messages );
-							//mark owning org for updates
+							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
 							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+
+							//delete all relationships
+							workIT.Models.SaveStatus status = new SaveStatus();
+							Entity_AgentRelationshipManager earmgr = new Entity_AgentRelationshipManager();
+							earmgr.DeleteAll( rowId, ref status );
+							//also check for any relationships
+							//There could be other orgs from relationships to be reindexed as well!
+
+							//also check for any relationships
+							new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( orgUid );
 						}
 					}
 					else
@@ -621,7 +650,10 @@ namespace workIT.Factories
             if ( mgr.AddProperties( entity.ScoringMethodType, entity.RowId, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CodesManager.PROPERTY_CATEGORY_Scoring_Method, false, ref status ) == false )
                 isAllValid = false;
 
-            if ( mgr.AddProperties( entity.AudienceType, entity.RowId, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
+			if ( mgr.AddProperties( entity.AudienceLevelType, entity.RowId, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, ref status ) == false )
+				isAllValid = false;
+
+			if ( mgr.AddProperties( entity.AudienceType, entity.RowId, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
                 isAllValid = false;
 
             return isAllValid;
@@ -646,9 +678,9 @@ namespace workIT.Factories
                 emanager.DeleteAll( relatedEntity, ref status );
 
                 emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
-			emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
-			emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
-			emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
+				emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
+				emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
+				emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
 
 				//Connections
 				emanager.SaveList( entity.AdvancedStandingFor, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor, entity.RowId, ref status, 3 );
@@ -674,15 +706,14 @@ namespace workIT.Factories
 			ppm.SaveList( entity.MaintenanceProcess, Entity_ProcessProfileManager.MTCE_PROCESS_TYPE, entity.RowId, ref status );
 
 			//Financial Alignment 
-			Entity_FinancialAlignmentProfileManager fapm = new Factories.Entity_FinancialAlignmentProfileManager();
-			fapm.SaveList( entity.FinancialAssistance, entity.RowId, ref status );
+			//Entity_FinancialAlignmentProfileManager fapm = new Factories.Entity_FinancialAlignmentProfileManager();
+			//fapm.SaveList( entity.FinancialAssistanceOLD, entity.RowId, ref status );
+
+			new Entity_FinancialAssistanceProfileManager().SaveList( entity.FinancialAssistance, entity.RowId, ref status );
 
 			//competencies
-			if ( entity.AssessesCompetencies != null && entity.AssessesCompetencies.Count > 0 )
-			{
-				Entity_CompetencyManager ecm = new Entity_CompetencyManager();
-				ecm.SaveList( entity.AssessesCompetencies, entity.RowId, ref status );
-			}
+			//no need to always do the delete
+			new Entity_CompetencyManager().SaveList( entity.AssessesCompetencies, entity.RowId, ref status );
 
 			//addresses
 			new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref 
@@ -861,7 +892,34 @@ status );
 
             return list;
         }
-        public static ThisEntity GetDetails( int id )
+		public static List<ThisEntity> GetAll( ref int totalRecords, int maxRecords = 100 )
+		{
+			List<ThisEntity> list = new List<ThisEntity>();
+			ThisEntity entity = new ThisEntity();
+			using ( var context = new EntityContext() )
+			{
+				List<DBEntity> results = context.Assessment
+							 .Where( s => s.EntityStateId > 2 )
+							 .OrderBy( s => s.Name )
+							 .ToList();
+				if ( results != null && results.Count > 0 )
+				{
+					totalRecords = results.Count();
+
+					foreach ( DBEntity item in results )
+					{
+						entity = new ThisEntity();
+						MapFromDB_Basic( item, entity, false );
+						list.Add( entity );
+						if ( maxRecords > 0 && list.Count >= maxRecords )
+							break;
+					}
+				}
+			}
+
+			return list;
+		}
+		public static ThisEntity GetDetails( int id )
         {
             ThisEntity entity = new ThisEntity();
             using ( var context = new EntityContext() )
@@ -886,10 +944,10 @@ status );
         }
 
 
-        public static List<string> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
+        public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
         {
             bool autocomplete = true;
-            List<string> results = new List<string>();
+            List<object> results = new List<object>();
             List<string> competencyList = new List<string>();
             //ref competencyList, 
             List<ThisEntity> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
@@ -1146,27 +1204,53 @@ status );
 			//else
 				output.InLanguageId = null;
 
-			output.CreditHourType = GetData( input.CreditHourType, null );
-            output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
-            //output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
-			if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
+			//======================================================================
+			if ( input.CreditValue.HasData() )
 			{
-				//get Id if available
-				EnumeratedItem item = input.CreditUnitType.GetFirstItem();
-				if ( item != null && item.Id > 0 )
-					output.CreditUnitTypeId = item.Id;
-				else
+				if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
 				{
-					//if not get by schema
-					CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-					output.CreditUnitTypeId = code.Id;
+					//get Id if available
+					EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
+					if ( item != null && item.Id > 0 )
+						output.CreditUnitTypeId = item.Id;
+					else
+					{
+						//if not get by schema
+						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+						output.CreditUnitTypeId = code.Id;
+					}
 				}
+				output.CreditUnitValue = input.CreditValue.Value;
+				output.CreditUnitMaxValue = input.CreditValue.MaxValue;
+				if ( input.CreditValue.MaxValue > 0)
+					output.CreditUnitValue = input.CreditValue.MinValue;
+				output.CreditUnitTypeDescription = input.CreditValue.Description;
 			}
-			output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
-            output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
+			else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
+			{
 
+				//output.CreditHourType = GetData( input.CreditHourType, null );
+				//output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
+				//output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
+				if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
+				{
+					//get Id if available
+					EnumeratedItem item = input.CreditUnitType.GetFirstItem();
+					if ( item != null && item.Id > 0 )
+						output.CreditUnitTypeId = item.Id;
+					else
+					{
+						//if not get by schema
+						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+						output.CreditUnitTypeId = code.Id;
+					}
+				}
+				output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
+				output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
+			}
+			//========================================================================
             output.DeliveryTypeDescription = input.DeliveryTypeDescription;
-            output.VerificationMethodDescription = input.VerificationMethodDescription;
+            //output.VerificationMethodDescription = input.VerificationMethodDescription;
             output.AssessmentExampleDescription = input.AssessmentExampleDescription;
             output.AssessmentOutput = input.AssessmentOutput;
             output.ExternalResearch = input.ExternalResearch;
@@ -1218,39 +1302,43 @@ status );
             to.CodedNotation = from.IdentificationCode;
             to.AvailableOnlineAt = from.AvailableOnlineAt;
 
-			//if ( ( from.InLanguageId ?? 0 ) > 0 )
-			//{
-			//	to.InLanguageId = ( int ) from.InLanguageId;
-			//	EnumeratedItem code = CodesManager.GetLanguage( to.InLanguageId );
-			//	if ( code.Id > 0 )
-			//	{
-			//		to.InLanguage = code.Name;
-			//		to.InLanguageCode = code.Value;
-			//	}
-			//}
-			//else
-			//{
-			//	to.InLanguageId = 0;
-			//	to.InLanguage = "";
-			//	to.InLanguageCode = "";
-			//}
 			//multiple languages, now in entity.reference
 			to.InLanguageCodeList = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
-			//short term convenience
-			//if ( to.InLanguageCodeList != null && to.InLanguageCodeList.Count > 0 )
-			//	to.InLanguage = to.InLanguageCodeList[ 0 ].TextValue;
+			//=========================================================
+			//populate QV
+			to.CreditValue = FormatQuantitiveValue( from.CreditUnitTypeId, from.CreditUnitValue, from.CreditUnitMaxValue, from.CreditUnitTypeDescription );
+			if ( to.CreditValue.HasData() )
+			{
+				to.CreditUnitType = to.CreditValue.CreditUnitType;
+				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
+				to.CreditUnitTypeDescription = to.CreditValue.Description;
+
+				to.CreditUnitValue = to.CreditValue.Value;
+				to.CreditUnitMaxValue = to.CreditValue.MaxValue;
 
 
-			to.CreditHourType = from.CreditHourType ?? "";
-            to.CreditHourValue = ( from.CreditHourValue ?? 0M );
-            to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
-            to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
-            to.CreditUnitValue = from.CreditUnitValue ?? 0M;
+			} else
+			{
+				//check for old
+				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
+				to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
+				to.CreditUnitValue = from.CreditUnitValue ?? 0M;
+				to.CreditUnitMaxValue = from.CreditUnitMaxValue ?? 0M;
+				//temp handling of clock hpurs
+				//to.CreditHourType = from.CreditHourType ?? "";
+				//to.CreditHourValue = ( from.CreditHourValue ?? 0M );
+				//if ( to.CreditHourValue > 0 )
+				//{
+				//	to.CreditUnitValue = to.CreditHourValue;
+				//	to.CreditUnitTypeDescription = to.CreditHourType;
+				//}
+			}
 
-            to.DeliveryTypeDescription = from.DeliveryTypeDescription;
-            to.VerificationMethodDescription = from.VerificationMethodDescription;
+			//=============================
 
-            to.AssessmentOutput = from.AssessmentOutput;
+			to.DeliveryTypeDescription = from.DeliveryTypeDescription;
+			//to.VerificationMethodDescription = from.VerificationMethodDescription;
+			to.AssessmentOutput = from.AssessmentOutput;
             to.ExternalResearch = from.ExternalResearch;
             if ( from.HasGroupEvaluation != null )
                 to.HasGroupEvaluation = ( bool )from.HasGroupEvaluation;
@@ -1266,8 +1354,9 @@ status );
             to.ScoringMethodExample = from.ScoringMethodExample;
             to.ScoringMethodExampleDescription = from.ScoringMethodExampleDescription;
             to.AudienceType = EntityPropertyManager.FillEnumeration( to.RowId,CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
+			to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 
-            to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+			to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
             to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
             //properties
@@ -1323,7 +1412,7 @@ status );
 
                     //get as ennumerations
                     //to.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration(to.RowId, true);
-                    to.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 3, to.Id );
+                    to.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 3, to.Id, to.OwningOrganizationId );
                     //}
                     //to.QualityAssuranceAction =	Entity_QualityAssuranceActionManager.QualityAssuranceActionProfile_GetAll( to.RowId );
 
@@ -1382,6 +1471,7 @@ status );
 
             to.CommonCosts = Entity_CommonCostManager.GetAll( to.RowId );
 
+			to.FinancialAssistance = Entity_FinancialAssistanceProfileManager.GetAll( to.RowId, false );
 			//TODO
 			List<ProcessProfile> processes = Entity_ProcessProfileManager.GetAll( to.RowId );
 			foreach ( ProcessProfile item in processes )
@@ -1474,13 +1564,21 @@ status );
             if (IsValidDate( from.LastUpdated ))
                 to.LastUpdated = ( DateTime ) from.LastUpdated;
 
+			to.AssessmentExample = from.AssessmentExampleUrl;
+			to.AvailabilityListing = from.AvailabilityListing;
+			to.AvailableOnlineAt = from.AvailableOnlineAt;
+			to.ExternalResearch = from.ExternalResearch;
+
             if (string.IsNullOrWhiteSpace( to.CTID ) || to.EntityStateId < 3)
             {
                 to.IsReferenceVersion = true;
                 return;
             }
-
-            try
+			//=====
+			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			if ( relatedEntity != null && relatedEntity.Id > 0 )
+				to.EntityLastUpdated = relatedEntity.LastUpdated;
+			try
             {
                 //**TODO VersionIdentifier - need to change to a list of IdentifierValue
                 to.VersionIdentifier = from.VersionIdentifier;
@@ -1512,7 +1610,7 @@ status );
 
                 //Need this for the detail page, since we now show durations by profile name - NA 4/13/2017
                 to.EstimatedDuration = DurationProfileManager.GetAll(to.RowId);
-                to.FinancialAssistance = Entity_FinancialAlignmentProfileManager.GetAll(to.RowId);
+                to.FinancialAssistanceOLD = Entity_FinancialAlignmentProfileManager.GetAll(to.RowId);
             }
             catch ( Exception ex )
             {

@@ -1,0 +1,2919 @@
+﻿@using Newtonsoft.Json;
+@using Newtonsoft.Json.Converters;
+@using workIT.Models.Common;
+@using System.Drawing;
+@model workIT.Models.Common.WidgetV2
+@{
+	Layout = "~/Views/Widget/_WidgetLayout.cshtml";
+	ViewBag.Title = "SearchWidget";
+
+	var googleMapsKey = new ThirdPartyApiServices().GetGoogleMapsApiKey();
+
+	var es = new EnumerationServices();
+	var credAudienceTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 1, false );
+	var asmtAudienceTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 3, false );
+	var loppAudienceTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, 7, false );
+	var credAudienceLevelTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, 1, false );
+	var asmtAudienceLevelTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, 3, false );
+	var loppAudienceLevelTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, 7, false );
+
+	var credAsmtDeliveryTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 18, 1, false );
+	var credLoppDeliveryTypes = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 1, false );
+	var credLanguages = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, 1, false );
+	var asmtLanguages = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, 3, false );
+	var loppLanguages = es.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, 7, false );
+
+	//Use of CustomJSON.Label here is due to pre-existing use of Label for code value, which is wrong, but I didn't want to break anything that might be relying on it
+	AllOrganizationRoles = es.GetCommonPlusQAAgentRoles( EnumerationType.MULTI_SELECT ).Items
+		.ConvertAll( m => new WidgetFilterItem() { CustomJSON = new { Label = m.Name.Split( '(' )[ 0 ] }, Label = m.Name.Split( '(' )[ 0 ].Replace( " ", "" ).ToLower(), ValueInt = m.CodeId } );
+
+
+	var allSelectableFilters = new List<WidgetFilter>()
+{
+		//Credential
+		EnumerationToFilter( SearchTypes.Credential, "CredentialTypes", es.GetCredentialType( EnumerationType.MULTI_SELECT, false ), "Credential Types" ),
+		EnumerationToFilter( SearchTypes.Credential, "QualityAssurance", es.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 1, false ), "Quality Assurance", needTextBox: true, textInputGuidance: "Optionally, find and select one or more organizations that perform credential Quality Assurance." ),
+		EnumerationToFilter( SearchTypes.Credential, "AudienceLevelTypes", credAudienceLevelTypes, "Audience Levels" ),
+		EnumerationToFilter( SearchTypes.Credential, "AudienceTypes", credAudienceTypes, "Audience Types" ),
+		EnumerationToFilter( SearchTypes.Credential, "CredentialConnections", es.GetCredentialConnectionsFilters( EnumerationType.MULTI_SELECT, false ), "Credential Connections" ),
+		new WidgetFilter( "Competencies", "Competencies", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.TextWithAny, "credReport:HasCompetencies", "Has Competencies (any type)", "Select 'Has Competencies' to search for credentials with any competencies.", "Enter a term(s) to show credentials with relevant competencies." ),
+		new WidgetFilter( "Subject Areas", "Subjects", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.Text ),
+		new WidgetFilter( "Occupations", "Occupations", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.TextWithAny, "credReport:HasOccupations", "Has Occupations", "Find and select the occupation(s) to filter relevant credentials.", "Select 'Has Occupations' to search for credentials with any occupations" ),
+		new WidgetFilter( "Industries", "Industries", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.TextWithAny, "credReport:HasIndustries", "Has Industries", "Select 'Has Industries' to search for credentials with any industries", "Find and select the industries to filter relevant credentials." ),
+		new WidgetFilter( "Classifications", "InstructionalProgramTypes", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.TextWithAny, "credReport:HasCIP", "Has Instructional Programs", "Select 'Has Instructional Programs' to search for credentials with any instructional program Instructional Programs.", "Type a CIP code to search for it." ),
+		EnumerationToFilter( SearchTypes.Credential, "AssessmentDeliveryTypes", credAsmtDeliveryTypes, "Assessment Delivery Types" ),
+		EnumerationToFilter( SearchTypes.Credential, "LearningDeliveryTypes", credLoppDeliveryTypes, "Learning Delivery Types" ),
+		EnumerationToFilter( SearchTypes.Credential, "Languages", credLanguages, "Languages" ),
+		EnumerationToFilter( SearchTypes.Credential, "OtherFilters", es.EntityStatisticGetEnumeration( 1, EnumerationType.MULTI_SELECT, false ), "Other Filters" ),
+		//new WidgetFilter( "Provider", "Provider", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.Custom ),
+		//new WidgetFilter( "Quality Assurance", "QualityAssurance", 0, null, SearchTypes.Credential, WidgetFilter.WidgetFilterType.Custom ),
+
+		//Organization
+		EnumerationToFilter( SearchTypes.Organization, "OrganizationTypes", es.GetOrganizationType( EnumerationType.MULTI_SELECT, false ), "Organization Types" ),
+		new WidgetFilter( "Industries", "Industries", 0, null, SearchTypes.Organization, WidgetFilter.WidgetFilterType.TextWithAny, "orgReport:HasIndustries", "Has Industries", "Select 'Has Industries' to search for organizations with any industries", "Find and select the industries to filter relevant organizations." ),
+		EnumerationToFilter( SearchTypes.Organization, "ServiceTypes", es.GetOrganizationServices( EnumerationType.MULTI_SELECT, false ), "Service Types" ),
+		EnumerationToFilter( SearchTypes.Organization, "SectorTypes", es.GetEnumeration( "orgSectorType", EnumerationType.SINGLE_SELECT, false ), "Sector Types" ),
+		EnumerationToFilter( SearchTypes.Organization, "ClaimTypes", es.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, false ), "Verification Claim Types" ),
+		EnumerationToFilter( SearchTypes.Organization, "QualityAssurance", es.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false ), "Quality Assurance", needTextBox: true, textInputGuidance: "Optionally, find and select one or more organizations that perform credential Quality Assurance." ),
+		EnumerationToFilter( SearchTypes.Organization, "QAPerformed", es.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 2, false, true ), "Quality Assurance Performed" ),
+		EnumerationToFilter( SearchTypes.Organization, "OtherFilters", es.EntityStatisticGetEnumeration( 2, EnumerationType.MULTI_SELECT, false ), "Other Filters" ),
+
+		//Assessment
+		EnumerationToFilter( SearchTypes.Assessment, "AssessmentMethodTypes", es.GetEnumeration( "assessmentMethodType", EnumerationType.CUSTOM, false, false ), "Assessment Methods" ),
+		EnumerationToFilter( SearchTypes.Assessment, "AssessmentUseTypes", es.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, false ), "Use Types" ),
+		EnumerationToFilter( SearchTypes.Assessment, "DeliveryMethodTypes", es.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 3, false ), "Delivery Methods" ),
+		EnumerationToFilter( SearchTypes.Assessment, "AudienceLevelTypes", asmtAudienceLevelTypes, "Audience Levels" ),
+		EnumerationToFilter( SearchTypes.Assessment, "AudienceTypes", asmtAudienceTypes, "Audience Types" ),
+		EnumerationToFilter( SearchTypes.Assessment, "ScoringMethodTypes", es.GetEnumerationForRadioButtons( "scoringMethod", -1, false ), "Scoring Methods" ),
+		EnumerationToFilter( SearchTypes.Assessment, "AssessmentConnections", es.GetAssessmentsConditionProfileTypes( EnumerationType.MULTI_SELECT, false ), "Assessment Connections" ),
+		new WidgetFilter( "Competencies", "Competencies", 0, null, SearchTypes.Assessment, WidgetFilter.WidgetFilterType.TextWithAny, "asmtReport:AssessesCompetencies", "Has Assesses Competencies", "Select 'Has Assesses Competencies' to search for assessments with any competencies", "Enter a term(s) to show assessments with relevant competencies." ),
+		new WidgetFilter( "Subject Areas", "Subjects", 0, null, SearchTypes.Assessment, WidgetFilter.WidgetFilterType.Text ),
+		new WidgetFilter( "Occupations", "Occupations" , 0, null, SearchTypes.Assessment, WidgetFilter.WidgetFilterType.TextWithAny, "asmtReport:HasOccupations", "Has Occupations", "Select 'Has Occupations' to search for assessments with any occupations.", "Find and select the occupation(s) to filter relevant assessments." ),
+		new WidgetFilter( "Industries", "Industries", 0, null, SearchTypes.Assessment, WidgetFilter.WidgetFilterType.TextWithAny, "asmtReport:HasIndustries", "Has Industries", "Select 'Has Industries' to search for assessments with any industries.", "Find and select the industries(s) to filter relevant assessments." ),
+		new WidgetFilter( "Instructional Programs", "InstructionalProgramTypes", 0, null, SearchTypes.Assessment, WidgetFilter.WidgetFilterType.TextWithAny, "asmtReport:HasCIP", "Has Instructional Programs", "Select 'Has Instructional Programs' to search for assessments with any Instructional Programs.", "Find and select the instructional program(s) to filter relevant assessments." ),
+		EnumerationToFilter( SearchTypes.Assessment, "QualityAssurance", es.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 3, false ), "Quality Assurance", needTextBox: true, textInputGuidance: "Optionally, find and select one or more organizations that perform credential Quality Assurance." ),
+		EnumerationToFilter( SearchTypes.Assessment, "Languages", asmtLanguages, "Languages" ),
+		EnumerationToFilter( SearchTypes.Assessment, "OtherFilters", es.EntityStatisticGetEnumeration( 3, EnumerationType.MULTI_SELECT, false ), "Other Filters" ),
+
+		//Learning Opportunity
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "LearningMethodTypes", es.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false ), "Learning Methods" ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "DeliveryMethodTypes", es.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, 7, false ), "Delivery Methods" ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "AudienceLevelTypes", loppAudienceLevelTypes, "Audience Levels" ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "AudienceTypes", loppAudienceTypes, "Audience Types" ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "LearningOpportunityConnections", es.GetLearningOppsConditionProfileTypes( EnumerationType.MULTI_SELECT, false ), "Learning Opportunity Connections" ),
+		new WidgetFilter( "Competencies", "Competencies", 0, null, SearchTypes.LearningOpportunity, WidgetFilter.WidgetFilterType.TextWithAny, "loppReport:TeachesCompetencies", "Has Teaches Competencies", "Select 'Has Teaches Competencies' to search for learning opportunities with any competencies.", "Enter a term(s) to show learning opportunities with relevant competencies." ),
+		new WidgetFilter( "Subject Areas", "Subjects", 0, null, SearchTypes.LearningOpportunity, WidgetFilter.WidgetFilterType.Text ),
+		new WidgetFilter( "Occupations", "Occupations", 0, null, SearchTypes.LearningOpportunity, WidgetFilter.WidgetFilterType.TextWithAny, "loppReport:HasOccupations", "Has Occupations", "Select 'Has Occupations' to search for learning opportunities with any occupations.", "Find and select the occupation(s) to filter relevant learning opportunities." ),
+		new WidgetFilter( "Industries", "Industries", 0, null, SearchTypes.LearningOpportunity, WidgetFilter.WidgetFilterType.TextWithAny, "loppReport:HasIndustries", "Has Industries", "Select 'Has Industries' to search for learning opportunities with any industries.", "Find and select the industries(s) to filter relevant learning opportunities." ),
+		new WidgetFilter( "Instructional Programs", "InstructionalProgramTypes", 0, null, SearchTypes.LearningOpportunity, WidgetFilter.WidgetFilterType.TextWithAny, "loppReport:HasCIP", "Has Instructional Programs", "Select 'Has Instructional Programs' to search for learning opportunities with any Instructional Programs.", "Find and select the instructional program(s) to filter relevant learning opportunities." ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "QualityAssurance", es.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, 7, false ), "Quality Assurance", needTextBox: true, textInputGuidance: "Optionally, find and select one or more organizations that perform credential Quality Assurance."),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "Languages", loppLanguages, "Languages" ),
+		EnumerationToFilter( SearchTypes.LearningOpportunity, "OtherFilters", es.EntityStatisticGetEnumeration( 7, EnumerationType.MULTI_SELECT, false ), "Other Filters" )
+	};
+
+	//Hide filters
+	var userSelectableFilters = new List<WidgetFilter>()
+		.Concat( GetVisibleFilters( SearchTypes.Credential, Model.CredentialFilters.HideFilters, allSelectableFilters ) )
+		.Concat( GetVisibleFilters( SearchTypes.Organization, Model.OrganizationFilters.HideFilters, allSelectableFilters ) )
+		.Concat( GetVisibleFilters( SearchTypes.Assessment, Model.AssessmentFilters.HideFilters, allSelectableFilters ) )
+		.Concat( GetVisibleFilters( SearchTypes.LearningOpportunity, Model.LearningOpportunityFilters.HideFilters, allSelectableFilters ) )
+		.ToList();
+
+
+	var availableSearchTypes = new List<WidgetFilterItem>()
+{
+		new WidgetFilterItem( "Credentials", SearchTypes.Credential.ToString() ),
+		new WidgetFilterItem( "Organizations", SearchTypes.Organization.ToString() ),
+		new WidgetFilterItem( "Assessments", SearchTypes.Assessment.ToString() ),
+		new WidgetFilterItem( "Learning Opportunities", SearchTypes.LearningOpportunity.ToString() ),
+		new WidgetFilterItem( "Competency Frameworks", SearchTypes.CompetencyFramework.ToString() )
+	};
+	var availableSortOrders = new List<WidgetFilterItem>()
+{
+		new WidgetFilterItem( "Relevance", "relevance" ),
+		new WidgetFilterItem( "Newest", "newest" ),
+		new WidgetFilterItem( "Alphabetic A-Z", "alpha" ),
+		new WidgetFilterItem( "Oldest", "oldest" )
+	};
+
+	var preselectedFilters = new List<WidgetFilter>();
+	AddFilterSets( ref preselectedFilters, SearchTypes.Credential, Model.CredentialFilters, Model.Locations );
+	AddFilterSets( ref preselectedFilters, SearchTypes.Organization, Model.OrganizationFilters, Model.Locations );
+	AddFilterSets( ref preselectedFilters, SearchTypes.Assessment, Model.AssessmentFilters, Model.Locations );
+	AddFilterSets( ref preselectedFilters, SearchTypes.LearningOpportunity, Model.LearningOpportunityFilters, Model.Locations );
+}
+@functions {
+	public enum SearchTypes { Organization, Credential, Assessment, LearningOpportunity, CompetencyFramework }
+	public List<WidgetFilterItem> AllOrganizationRoles { get; set; }
+
+	public class WidgetFilter
+	{
+		public WidgetFilter()
+		{
+			Items = new List<WidgetFilterItem>();
+		}
+		public WidgetFilter(string label, string property, int categoryID, List<WidgetFilterItem> items, SearchTypes searchType, WidgetFilterType filterType = WidgetFilterType.Text, string checkboxValue = "", string checkboxLabel = "", string checkboxGuidance = "", string textInputGuidance = "")
+		{
+			Label = label;
+			Property = property;
+			CategoryId = categoryID;
+			Items = items;
+			SearchType = searchType;
+			FilterType = filterType;
+			CheckboxValue = checkboxValue;
+			CheckboxLabel = checkboxLabel;
+			CheckboxGuidance = checkboxGuidance;
+			TextInputGuidance = textInputGuidance;
+		}
+		public enum WidgetFilterType { Text, TextWithAny, CheckBoxListWithText, CheckBoxList, Reference, Map, LocationSet, Custom, OrganizationRole }
+
+		public string Property { get; set; }
+		public string Label { get; set; }
+		public int CategoryId { get; set; }
+		public List<WidgetFilterItem> Items { get; set; }
+		[JsonConverter( typeof( StringEnumConverter ) )]
+		public SearchTypes SearchType { get; set; }
+		[JsonConverter( typeof( StringEnumConverter ) )]
+		public WidgetFilterType FilterType { get; set; }
+		public string CheckboxValue { get; set; }
+		public string CheckboxLabel { get; set; }
+		public string CheckboxGuidance { get; set; }
+		public string TextInputGuidance { get; set; }
+	}
+
+	public class WidgetFilterItem
+	{
+		public WidgetFilterItem() { }
+		public WidgetFilterItem(string label, string value)
+		{
+			Label = label;
+			ValueString = value;
+		}
+		public string Label { get; set; }
+		public string ValueString { get; set; }
+		public int ValueInt { get { try { return int.Parse( ValueString ); } catch { return 0; } } set { ValueString = value.ToString(); } }
+		public dynamic CustomJSON { get; set; }
+	}
+
+	public WidgetFilter EnumerationToFilter(SearchTypes searchType, string propertyName, Enumeration enumeration, string overrideLabel = "", bool needTextBox = false, string textInputGuidance = "")
+	{
+		return new WidgetFilter()
+		{
+			SearchType = searchType,
+			FilterType = needTextBox ? WidgetFilter.WidgetFilterType.CheckBoxListWithText : WidgetFilter.WidgetFilterType.CheckBoxList,
+			Property = propertyName,
+			Label = string.IsNullOrWhiteSpace( overrideLabel ) ? enumeration.Name.Split( new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries )[ 0 ] : overrideLabel, //Strip parenthetical text
+			CategoryId = enumeration.Id,
+			Items = enumeration.Items.ConvertAll( m => new WidgetFilterItem()
+			{
+				Label = m.Name.Split( new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries )[ 0 ], //Strip parenthetical text
+				ValueInt = m.Id,
+				ValueString = m.Value
+			} ),
+			TextInputGuidance = textInputGuidance
+		};
+	}
+
+	public WidgetV2.ColorPair GetColors(List<WidgetV2.ColorPair> pairs, string colorFor, string defaultForegroundColor, string defaultBackgroundColor)
+	{
+		var data = pairs.FirstOrDefault( m => m.ColorFor == colorFor ) ?? new WidgetV2.ColorPair() { UseDefaultForegroundColor = true, UseDefaultBackgroundColor = true };
+		var result = new WidgetV2.ColorPair()
+		{
+			ForegroundColor = data.UseDefaultForegroundColor ? defaultForegroundColor : data.ForegroundColor,
+			BackgroundColor = data.UseDefaultBackgroundColor ? defaultBackgroundColor : data.BackgroundColor,
+			UseDefaultForegroundColor = data.UseDefaultForegroundColor,
+			UseDefaultBackgroundColor = data.UseDefaultBackgroundColor
+		};
+		return result;
+	}
+
+	public string GetRGBA(string hex, string alpha)
+	{
+		var color = ColorTranslator.FromHtml( hex );
+		return ("rgba(" + color.R + "," + color.G + "," + color.B + "," + alpha + ")");
+	}
+
+	public List<WidgetFilter> GetVisibleFilters(SearchTypes type, List<string> hideItems, List<WidgetFilter> allPossible)
+	{
+		return allPossible.Where( m => m.SearchType == type && !hideItems.Contains( m.Property ) ).ToList();
+	}
+
+	public string RenderSearchFeaturesAttributes()
+	{
+		var result = "";
+		foreach( var item in Model.SearchFeatures )
+		{
+			result += "data-setting-" + item + "=\"true\" ";
+		}
+		return result;
+	}
+
+	public void AddFilterSets(ref List<WidgetFilter> filters, SearchTypes type, WidgetV2.FilterSet filterSet, WidgetV2.LocationSet injectLocations)
+	{
+		//AddReferenceFilters( ref filters, type, filterSet.OwnedBy, "OwnedBy", "Owned By/Offered By" );
+		//AddReferenceFilters( ref filters, type, filterSet.OfferedBy, "OfferedBy", "Offered By" );
+		//AddReferenceFilters( ref filters, type, filterSet.AccreditedBy, "AccreditedBy", "Accredited By" );
+		//AddReferenceFilters( ref filters, type, filterSet.ApprovedBy, "ApprovedBy", "Approved By" );
+		//AddReferenceFilters( ref filters, type, filterSet.RegulatedBy, "RegulatedBy", "Regulated By" );
+		//AddReferenceFilters( ref filters, type, filterSet.OrganizationRoles, "OrganizationRoles", "Organization Roles" );
+		AddReferenceFilters( ref filters, type, filterSet.PotentialResults, "PotentialResults", "Potential Result" );
+		//AddReferenceFilters( ref filters, type, filterSet.QA, "QA", "Quality Assurance" );
+		//AddReferenceFilters( ref filters, type, filterSet.QualityAssurance, "QualityAssurance", "Quality Assurance" );
+		AddTextFilters( ref filters, type, filterSet.Competencies, "Competencies", "Competencies" );
+		AddTextFilters( ref filters, type, filterSet.Subjects, "Subjects", "Subject Areas" );
+		AddTextFilters( ref filters, type, filterSet.Keywords, "Keywords", "Keywords" );
+
+		AddTextFilters( ref filters, type, filterSet.Industries, "Industries", "Industries" );
+		AddTextFilters( ref filters, type, filterSet.Occupations, "WOccupations", "Occupations" );
+		AddTextFilters( ref filters, type, filterSet.InstructionalProgramTypes, "instructionalprogramtypes", "Instructional Programs" );
+
+		AddOrganizationRoleFilters( ref filters, type, filterSet.Provider, "Provider", "Providers" );
+		AddOrganizationRoleFilters( ref filters, type, filterSet.QualityAssurance, "QualityAssurance", "Quality Assurance" );
+
+
+		if( injectLocations.Countries.Count() > 0 )
+		{
+			filters.Add( new WidgetFilter()
+			{
+				Property = "Locations",
+				FilterType = WidgetFilter.WidgetFilterType.LocationSet,
+				Label = "Locations",
+				SearchType = type,
+				Items = new List<WidgetFilterItem>()
+	{
+					new WidgetFilterItem()
+					{
+						Label = string.Join( ": ", new List<string>() {
+							string.Join( ", ", injectLocations.Countries ),
+							string.Join( ", ", injectLocations.Regions ),
+							string.Join( ", ", injectLocations.Cities )
+						}.Where(m => m.Trim().Length > 0).ToList() ),
+						CustomJSON = injectLocations
+					}
+				}
+			} );
+		}
+	}
+
+	public void AddReferenceFilters(ref List<WidgetFilter> filters, SearchTypes searchType, List<WidgetV2.Reference> references, string referenceType, string referenceLabel)
+	{
+		references = references ?? new List<WidgetV2.Reference>();
+		var filter = new WidgetFilter() { Label = referenceLabel, Property = referenceType, FilterType = WidgetFilter.WidgetFilterType.Reference, SearchType = searchType };
+		foreach( var reference in references )
+		{
+			filter.Items.Add( new WidgetFilterItem() { Label = reference.Name, ValueInt = reference.Id } );
+		}
+		if( filter.Items.Count() > 0 )
+		{
+			filters.Add( filter );
+		}
+	}
+
+	public void AddTextFilters(ref List<WidgetFilter> filters, SearchTypes searchType, List<string> values, string propertyName, string label)
+	{
+		var filter = new WidgetFilter() { Label = label, Property = propertyName, FilterType = WidgetFilter.WidgetFilterType.Text, SearchType = searchType };
+		foreach( var value in values )
+		{
+			filter.Items.Add( new WidgetFilterItem() { Label = value, ValueString = value } );
+		}
+		if( filter.Items.Count() > 0 )
+		{
+			filters.Add( filter );
+		}
+	}
+
+	public void AddOrganizationRoleFilters(ref List<WidgetFilter> filters, SearchTypes searchType, WidgetV2.OrganizationRole roleSet, string propertyName, string label)
+	{
+		if( roleSet != null )
+		{
+			var filter = new WidgetFilter() { Label = label, Property = propertyName, FilterType = WidgetFilter.WidgetFilterType.OrganizationRole, SearchType = searchType };
+			var filterItem = new WidgetFilterItem() { CustomJSON = roleSet };
+			var selectedRoleCodes = roleSet.RoleIds.ConvertAll( m => AllOrganizationRoles.FirstOrDefault( n => n.ValueInt == m ) ).ToList();
+			if( roleSet.RoleIds.Count() > 0 )
+			{
+				var organizationTotal = roleSet.Organizations.Count();
+				filterItem.Label = string.Join( ", ", selectedRoleCodes.Select( m => m.CustomJSON.Label ) ) + " " +
+					(organizationTotal == 0 ? "any organization" :
+					organizationTotal == 1 ? roleSet.Organizations.FirstOrDefault().Name :
+					organizationTotal + " organizations");
+				filter.Items.Add( filterItem );
+				filters.Add( filter );
+			}
+		}
+	}
+}
+@helper RenderUserSelectableFilter(WidgetFilter filter)
+{
+	<div class="filter @( filter.FilterType == WidgetFilter.WidgetFilterType.TextWithAny ? "text withany" : filter.FilterType.ToString().ToLower() )" data-property="@filter.Property" data-type="filter" data-searchtype="@filter.SearchType" data-filtertype="@filter.FilterType" data-categoryID="@( filter.CategoryId == 0 ? filter.Property.ToLower() : filter.CategoryId.ToString() )" data-label="@filter.Label">
+		<div class="label">@filter.Label</div>
+
+		@switch( filter.FilterType )
+		{
+			case WidgetFilter.WidgetFilterType.TextWithAny:
+			case WidgetFilter.WidgetFilterType.Text:
+			{
+				<div class="value">
+					@if( filter.FilterType == WidgetFilter.WidgetFilterType.TextWithAny )
+					{
+						<div class="guidance">@Html.Raw( filter.CheckboxGuidance )</div>
+						<label><input type="checkbox" data-label="@filter.CheckboxLabel" value="@filter.CheckboxValue" /> @Html.Raw( filter.CheckboxLabel )</label>
+					}
+					<div class="guidance">@Html.Raw( filter.TextInputGuidance )</div>
+					<input type="text" data-type="filterValue" placeholder="Type a search term for this filter and press Enter" title="text box search" />
+					<div class="valueList"></div>
+				</div>
+				break;
+			}
+			case WidgetFilter.WidgetFilterType.CheckBoxList:
+			case WidgetFilter.WidgetFilterType.CheckBoxListWithText:
+			{
+				<div class="value">
+					@foreach( var item in filter.Items )
+					{
+						<label> <input type="checkbox" data-type="filterValue" value="@item.ValueString" data-label="@item.Label" /> @item.Label</label>
+					}
+				</div>
+				if( filter.FilterType == WidgetFilter.WidgetFilterType.CheckBoxListWithText )
+				{
+					<div class="textvalue">
+						<div class="guidance">@Html.Raw( filter.TextInputGuidance )</div>
+						<input class="hasAutoComplete" type="text" data-type="filterValue" placeholder="Type a search term for this filter and press Enter" data-autocompletecontext="organizations" title="Organization Search" />
+						<div class="valueList"></div>
+					</div>
+				}
+				break;
+			}
+			default:
+			{
+				break;
+			}
+		}
+	</div>
+}
+@helper RenderToggleButton(string text, string iconCSS, string action, string cssClass, bool defaultToggleState = false, string extraAttributes = "")
+{
+	<button class="toggleButton @cssClass" data-toggled="@( defaultToggleState ? "true" : "false" )" data-action="@action" @Html.Raw( extraAttributes )>
+		<div class="toggleIcons">
+			<i class="toggled far fa-check-square"></i>
+			<i class="untoggled far fa-square"></i>
+		</div>
+		<div class="buttonText">@text</div>
+		<i class="buttonIcon @iconCSS fw"></i>
+	</button>
+}
+
+@Html.Partial( "~/views/detail/_competencyframeworksharedv3.cshtml" )
+
+@* Main Javascript *@
+<script type="text/javascript">
+	var Search = {
+		PreselectedFilters: @Html.Raw( JsonConvert.SerializeObject( preselectedFilters ) ),
+		QualityAssuranceTypes: @Html.Raw( JsonConvert.SerializeObject( AllOrganizationRoles ) )
+	};
+	$(document).ready(function () {
+		setupSearch();
+	});
+
+	//Setup the main search object
+	function setupSearch() {
+		//Parts
+		Search.Box = $(".searchBody");
+		Search.SearchTypes = @Html.Raw( JsonConvert.SerializeObject( availableSearchTypes ) );
+		Search.SearchTypeSelector = Search.Box.find("[data-property='SearchType']");
+		Search.SortOrderSelector = Search.Box.find("[data-property='SortOrder']");
+		Search.FreeTextKeywordsBox = Search.Box.find("[data-property='FreeTextKeywords']");
+		Search.FilterToggleButtons = Search.Box.find("[data-action='toggleFilters']");
+		Search.LoadMoreResultsButton = Search.Box.find("[data-action='loadMoreResults']");
+		Search.FilterListButtons = Search.Box.find("[data-action='showFilter']");
+		Search.FilterContents = Search.Box.find(".filterContents .filter");
+		Search.NoFiltersMessages = Search.Box.find(".noFiltersMessage");
+		Search.ToggleButtons = {
+			Compare: Search.Box.find("[data-action='compareSelected']"),
+			Map: Search.Box.find("[data-action='toggleMap']"),
+			Settings: Search.Box.find("[data-action='toggleSettingsMenu']")
+		};
+		Search.Map = {
+			Box: Search.Box.find(".mapBox"),
+			ToggleButton: Search.ToggleButtons.Map,
+			Markers: [],
+			GoogleMap: {},
+			DefaultCenter: { lat: 37.0902, lng: -95.7129 },
+			Initialized: false,
+			Showing: false,
+			CurrentResults: []
+		};
+		Search.Render = {
+			HeaderBox: Search.Box.find(".searchHeader"),
+			StatusBox: Search.Box.find(".statusBox"),
+			SpinnerBox: Search.Box.find(".searchSpinner"),
+			CurrentFiltersBox: Search.Box.find(".currentFilters"),
+			ScrollResultsBox: Search.Box.find(".resultsListWrapper"),
+			ResultsBox: Search.Box.find(".resultsListBox"),
+			ResultsHeaderBox: Search.Box.find(".resultsHeader"),
+			PagingBox: Search.Box.find(".resultsPagingBox"),
+			FiltersBox: Search.Box.find(".selectedFilters"),
+			DisplayBox: Search.Box.find(".displayBox"),
+			CompareStatusBox: Search.Box.find(".compareStatusBox")
+		};
+		Search.Timeout = 0;
+		Search.Current = {
+			SearchType: Search.SearchTypes[0].ValueString,
+			SortOrder: Search.SortOrderSelector.val(),
+			Query: {},
+			RawResults: [],
+			Results: [],
+			RelatedItems: [],
+			TotalResults: 0,
+			PageNumber: 1,
+			PageSize: 20,
+			Searching: false,
+			CustomFilters: [],
+			CompareMode: false
+		}
+		Search.Settings = {
+			Box: Search.Box.find(".settingsBox"),
+			MenuBox: Search.Box.find(".settingsMenu"),
+			MenuToggleButton: Search.ToggleButtons.Settings,
+			SettingsButtons: Search.Box.find(".settingsMenu [data-action='toggleSetting']")
+		};
+		Search.Reports = {
+			Box: Search.Box.find(".reportsBox"),
+			StatusBox: Search.Box.find(".reportsBox .reportsStatus"),
+			ProgressWrapper: Search.Box.find(".reportsBox .reportsProgressWrapper"),
+			ProgressBar: Search.Box.find(".reportsBox .reportsProgressBar"),
+			DownloadButton: Search.Box.find("[data-action='downloadReport']"),
+			Cache: []
+		};
+
+		//Functionality
+		//Search Type Selector
+		Search.SearchTypeSelector.on("change", function() {
+			Search.Current.SearchType = $(this).val();
+			Search.FilterListButtons.removeClass("available").filter("[data-searchType='" + Search.Current.SearchType + "']").addClass("available").first().trigger("click");
+			Search.FilterContents.removeClass("available").filter("[data-searchType='" + Search.Current.SearchType + "']").addClass("available");
+			Search.NoFiltersMessages.removeClass("available").filter("[data-searchType='" + Search.Current.SearchType + "']").addClass("available");
+			resetCountdown();
+		}).trigger("change");
+		//Filter Toggle Button
+		Search.FilterToggleButtons.on("click", function(){
+			Search.Box.toggleClass("expandedFilters");
+		});
+		//Filter List Buttons
+		Search.FilterListButtons.on("click", function() {
+			var button = $(this);
+			var filter = button.attr("data-filter");
+			Search.FilterListButtons.removeClass("selected").filter(button).addClass("selected");
+			Search.FilterContents.removeClass("selected").filter("[data-property='" + filter + "']").addClass("selected");
+		}).first().trigger("click");
+		//Sort Order Selector
+		Search.SortOrderSelector.on("change", function() {
+			Search.Current.SortOrder = $(this).val();
+			Search.Current.PageNumber = 1;
+			resetCountdown();
+		});
+		//Free Text Keywords
+		Search.FreeTextKeywordsBox.on("keyup change", function() {
+			resetCountdown();
+		});
+		//Text Filters
+		Search.FilterContents.filter("[data-filtertype='Text'], [data-filtertype='TextWithAny']").each(function() {
+			var box = $(this);
+			var input = box.find("input[type='text']");
+			var checkBox = box.find("input[type='checkbox']");
+			var valueBox = box.find(".valueList");
+			var template = $("#template_TextFilterItem").html();
+				input[0].applyValue = function () { //Enables calling this from here or later on (via clickable filter)
+					var currentValues = box.find(".textFilterItem .textValue").map(function (i, element) { return $(element).text(); }).get();
+					var value = $(this).val().trim();
+					if (value.length > 0 && currentValues.indexOf(value) == -1) {
+						checkBox.prop("checked", false);
+						var newItem = $(template.replace(/{value}/g, value)).appendTo(valueBox);
+						newItem.find("button").on("click", function () {
+							newItem.remove();
+							resetCountdown();
+						});
+						input.val("");
+						resetCountdown();
+					}
+				}
+			input.on("keyup", function(e) {
+				if(e.which == 13 || e.keyCode == 13){
+					input[0].applyValue();
+				}
+			});
+			checkBox.on("change", function (e) {
+				if (this.checked) {
+					input.val("");
+					valueBox.html("");
+					resetCountdown();
+				}
+			});
+		});
+		//Checkbox Filters
+		Search.FilterContents.filter("[data-filtertype='CheckBoxList'], [data-filtertype='CheckBoxListWithText']").find("input:checkbox").on("change", function() {
+			resetCountdown();
+		});
+		Search.FilterContents.filter("[data-filtertype='CheckBoxListWithText']").find("input.hasAutoComplete").each(function () {
+			var template = $("#template_TextFilterItem").html();
+			var valueBox = $(this).next(".valueList");
+			var input = $(this);
+				input.autocomplete({
+					source: function (request, response) {
+						handleAutoComplete(request, response, input);
+					},
+					select: function (event, ui) {
+						//input.val(ui.item.label).data("id", ui.item.value);
+						var newItem = $(template.replace(/{value}/g, ui.item.label).replace(/{id}/g, ui.item.value)).appendTo(valueBox);
+						newItem.find("button").on("click", function () {
+							newItem.remove();
+							resetCountdown();
+						});
+						setTimeout(function () { input.val(""); }, 10);
+						resetCountdown();
+					},
+					delay: 150,
+				});
+		});
+		//Scrolling to load more results
+		Search.Render.ScrollResultsBox.on("scroll", function() {
+			if(Search.Current.Searching == false && Search.Box.attr("data-compareMode") == "false"){ //If there is no search in progress already and we aren't comparing results...
+				if(Search.Current.PageNumber < Math.ceil(Search.Current.TotalResults / Search.Current.PageSize)){ //...and there are more pages to load...
+					var distanceLeft = Search.Render.ScrollResultsBox[0].scrollHeight - (Search.Render.ScrollResultsBox.scrollTop() + Search.Render.ScrollResultsBox.outerHeight());
+					if(distanceLeft <= Search.Render.ScrollResultsBox.outerHeight() * 0.2){ //...and if there is only 10% of remaining scrollable space left...
+						Search.Current.PageNumber++; //Increment the page number
+						doSearch(true); //Do a paging search immediately
+					}
+				}
+			}
+		});
+		//Clicking to load more results
+		Search.LoadMoreResultsButton.on("click", function() {
+			if(Search.Current.Searching == false){
+				if(Search.Current.PageNumber < Math.ceil(Search.Current.TotalResults / Search.Current.PageSize)){
+					Search.Current.PageNumber++;
+					doSearch(true);
+				}
+			}
+		});
+		//Map
+		setupMapBox();
+		Search.Map.ToggleButton.on("click", function() {
+			Maps.toggleMapDisplay();
+		});
+		//Compare
+		Search.ToggleButtons.Compare.on("click", function() {
+			toggleCompareMode();
+		});
+		//Settings Menu
+		Search.Settings.MenuToggleButton.on("click", function() {
+			Search.Settings.Box.attr("data-collapsed", function(i, value){ return value == "true" ? "false" : "true" });
+			Search.Settings.MenuToggleButton.attr("data-toggled", Search.Settings.Box.attr("data-collapsed") == "true" ? "false" : "true");
+		});
+		//Settings Buttons
+		Search.Settings.SettingsButtons.on("click", function() {
+			var button = $(this);
+			Search.Box.attr("data-setting-" + button.attr("data-setting"), function(i, value){ return value == "true" ? "false" : "true" });
+			button.attr("data-toggled", Search.Box.attr("data-setting-" + button.attr("data-setting")) == "true");
+		});
+		//Iframe handling
+		if(window != window.top){
+			Search.Render.ScrollResultsBox.css("overflow-y", "auto");
+		}
+		//Reports
+		Search.Reports.DownloadButton.on("click", function() {
+			downloadReport();
+		});
+	}
+	//
+
+	function handleAutoComplete(request, response, box) {
+		var context = box.attr("data-autocompletecontext").toLowerCase();
+		if (box.val().trim().length >= 0) {
+			console.log(request.term, response, context);
+			doAjax("Search", "DoAutoComplete", { text: request.term, context: context, searchType: Search.Current.SearchType, widgetId: @Model.Id }, success_handleAutoComplete, { response: response, box: box });
+		}
+	}
+		function success_handleAutoComplete(message, extra) {
+			console.log(message, extra);
+			if (message.valid) {
+				console.log("AutoComplete suggestions received", { message: message, extra: extra });
+				extra.response(message.data);
+			}
+			else {
+				extra.response([]);
+			}
+		}
+
+	//Set the status for the search
+	function setStatus(message, status){
+		Search.Render.StatusBox.attr("data-status", status).html(message);
+	}
+	//
+
+	//Reset the delay between user entry (i.e., keyup) and AJAX call to prevent AJAX calls from happening too often
+	function resetCountdown() {
+		updateQuery();
+		clearTimeout(Search.Timeout);
+		Search.Timeout = setTimeout(function() {
+			doSearch();
+		},1000);
+	}
+	//
+
+	//Read the HTML inputs to determine the current query
+	function updateQuery() {
+		//Basic Info
+		Search.Current.Query = {
+			FreeTextKeywords: Search.FreeTextKeywordsBox.val().trim(),
+			SearchType: Search.Current.SearchType,
+			SortOrder: Search.Current.SortOrder,
+			PageNumber: Search.Current.PageNumber,
+			PageSize: Search.Current.PageSize,
+			Filters: []
+		};
+
+		//Preselected Filters
+		Search.PreselectedFilters.filter(function(m){ return m.SearchType == Search.Current.SearchType }).forEach(function(filter){
+			var newFilter = {
+				CategoryId: 0,
+				Items: [],
+				DisplayItems: [],
+				Property: filter.Property,
+				FilterType: filter.FilterType,
+				Label: filter.Label,
+				Preselected: true
+			}
+		switch(newFilter.FilterType){
+			case "Text": {
+					newFilter.Items = filter.Items.map(function(m){ return m.ValueString });
+					newFilter.DisplayItems = filter.Items.map(function(m){ return { Label: m.ValueString, ValueString: m.ValueString } });
+					break;
+				}
+			case "Reference": {
+					newFilter.Items = filter.Items;
+					newFilter.DisplayItems = filter.Items;
+					break;
+				}
+			case "LocationSet": {
+					newFilter.Items = filter.Items;
+					newFilter.DisplayItems = filter.Items;
+					break;
+				}
+			case "OrganizationRole": {
+				newFilter.Items = filter.Items.map(function(m){ return { CustomJSON: m.CustomJSON } });
+				newFilter.DisplayItems = filter.Items.map(function(m){ return { Label: m.Label } });
+					break;
+				}
+			case "Map":
+			case "Custom": {
+					newFilter.Items = filter.Items.map(function(m){ return { CustomJSON: { Property: filter.Property, ValueString: m.ValueString } } });
+					newFilter.DisplayItems = filter.Items.map(function(m){ return { Label: "Organization " + m.ValueString, ValueString: m.ValueString } });
+					break;
+				}
+			default: break;
+		}
+		Search.Current.Query.Filters.push(newFilter);
+	});
+
+		//User-Selected Filters
+		Search.FilterContents.filter("[data-searchtype='" + Search.Current.SearchType + "']").each(function() {
+		var box = $(this);
+		var filter = {
+				CategoryId: parseInt(box.attr("data-categoryID") || "0"),
+				Items: [],
+				DisplayItems: [],
+				Property: box.attr("data-property"),
+				FilterType: box.attr("data-filtertype"),
+				Label: box.attr("data-label")
+			}
+
+			switch(box.attr("data-filtertype")){
+				case "Text":
+				case "TextWithAny": {
+					var checkBoxFilter = box.find("input[type='checkbox']");
+					if (checkBoxFilter.prop("checked")) {
+						filter.DisplayItems = checkBoxFilter.map(function (i, element) {
+							var item = $(element);
+							var text = item.data("label");
+							return {
+								Label: text,
+								Values: {
+									AnyValue: true,
+									SchemaName: checkBoxFilter.val(),
+								},
+								Element: item
+							};
+						}).get();
+						filter.FilterType = "HasAnyValue";
+						filter.Items = filter.DisplayItems.map(function (m) { return m.Values });
+					}
+					else {
+						filter.DisplayItems = box.find(".textFilterItem").map(function (i, element) {
+							var item = $(element);
+							var text = item.find(".textValue").text();
+							return { Label: text, ValueString: text, Element: item };
+						}).get();
+						filter.Items = filter.DisplayItems.map(function (m) { return m.Label });
+					}
+
+					break;
+				}
+				case "CheckBoxList":
+				case "CheckBoxListWithText":	{
+					filter.DisplayItems = box.find("input:checkbox:checked, .textFilterItem").map(function(i,element){
+						var item = $(element);
+						if(item.is(":checkbox"))
+							return {
+								Label: item.attr("data-label"),
+								ValueString: item.val(),
+								Element: item
+							};
+						else
+							return {
+								Label: item.find(".textValue").text(),
+								Id: item.find(".textValue").data("id"),					Element: item
+							};
+					}).get();
+					filter.Items = filter.DisplayItems.map(function (m) { return m });
+					break;
+				}
+				default: break;
+			}
+
+			//Add the filter if there are any items
+			if(filter.Items.length > 0){
+				Search.Current.Query.Filters.push(filter);
+			}
+		});
+
+		//Custom Filters
+		Search.Current.Query.Filters = Search.Current.Query.Filters.concat(Search.Current.CustomFilters);
+
+		renderFilters();
+
+	console.log("Updated query", Search.Current.Query);
+	}
+	//
+
+	//Do a search
+	function doSearch(isPaging, overrideSuccessMethod){
+		if(!isPaging){
+			Search.Current.Query.PageNumber = 1;
+		}
+		//Update the query again just to be sure
+		updateQuery();
+
+		//Ensure we are not in compare mode
+		if(Search.Box.attr("data-compareMode") == "true"){
+			Search.ToggleButtons.Compare.trigger("click");
+		}
+
+		//Translate the query into the old format
+		var query = {
+			Elastic: "false",
+			FiltersV2: [],
+			Keywords: Search.Current.Query.FreeTextKeywords,
+			PageSize: Search.Current.Query.PageSize,
+			StartPage: Search.Current.Query.PageNumber,
+			SortOrder: Search.Current.Query.SortOrder.toLowerCase(),
+			SearchType: Search.Current.Query.SearchType.toLowerCase(),
+		}
+		Search.Current.Query.Filters.forEach(function(filter){
+			filter.Items.forEach(function(item){
+				var newFilter = {
+					Type: "",
+					Name: filter.Property.toLowerCase(),
+					Values: []
+				}
+				switch(filter.FilterType){
+					case "Text":
+					case "TextWithAny":	{
+						newFilter.Type = "TEXT";
+						newFilter.Values = { TextValue: item };
+						break;
+					}
+					case "HasAnyValue":
+						{
+							newFilter.Type = "CODE";
+							newFilter.Values = item;
+							break;
+						}
+					case "CheckBoxList":
+					case "CheckBoxListWithText": {
+						newFilter.Type = "TEXT";
+						if (filter.FilterType == "CheckBoxList")
+							newFilter.Type = "CODE";
+						if (item.Element.is(":checkbox"))
+							newFilter.Values =
+								{
+									CategoryId: filter.CategoryId,
+									CodeId: parseInt(item.ValueString),
+									CodeText: item.ValueString
+								}
+						else
+							newFilter.Values = { TextValue: item.Label, Id: item.Id }
+						break;
+					}
+					case "Map": {
+						newFilter.Name = "bounds";
+						newFilter.Type = "MAP";
+						newFilter.Values = item.CustomJSONFunction ? item.CustomJSONFunction() : item.CustomJSON;
+						break;
+					}
+					case "Reference": {
+						//Handle QA filters using the older system
+						var match = Search.QualityAssuranceTypes.filter(function(m){ return m.Label == filter.Property.toLowerCase() })[0];
+						if (match){
+							newFilter.Name = "organizationroles";// filter.Property.toLowerCase();
+							//newFilter.CategoryId = 0; //Should be the relationship type ID
+							newFilter.Type = "CUSTOM";// "RELATIONSHIP";
+                            newFilter.Values = { AgentId: item.ValueInt, RelationshipId: (match ? match.ValueInt : 0) }
+						}
+						//Enable other types of references
+						else{
+							newFilter.Name = filter.Property.toLowerCase();
+							newFilter.Type = "CUSTOM";
+							newFilter.Values = { ValueInt: item.ValueInt, ValueString: item.ValueString };
+							if(item.CustomJSON){
+								newFilter.Values.CustomJSON = JSON.stringify(item.CustomJSON);
+							}
+						}
+						break;
+					}
+					case "LocationSet": {
+						//Mild hack to merge IsAvailableOnline and other LocationSet properties, since these originate in different places
+						var existingLocationSet = query.FiltersV2.filter(function(m){ return m.Type == "LOCATIONSET" })[0];
+						if(existingLocationSet){
+							Object.assign(existingLocationSet.Values, item.CustomJSON);
+							return;
+						}
+						newFilter.Name = "locationset";
+						newFilter.Type = "LOCATIONSET";
+						newFilter.Values = item.CustomJSON;
+						break;
+					}
+					case "Custom": {
+						newFilter.Name = filter.Property || "Custom";
+						newFilter.Type = "CUSTOM";
+						newFilter.Values = item.CustomJSONFunction ? item.CustomJSONFunction() : item.CustomJSON;
+						break;
+					}
+					default: break;
+				}
+				query.FiltersV2.push(newFilter);
+			});
+		});
+
+		//Custom handling for PotentialResults, as the value may be very large
+		var customMembersIDs = query.FiltersV2.filter(function(m) { return m.Name == "potentialresults" }).map(function(m){ return m.Values.ValueInt });
+		query.FiltersV2 = query.FiltersV2.filter(function(m){ return m.Name != "potentialresults" });
+		if(customMembersIDs.length > 0){
+			query.FiltersV2.push({
+				Name: "potentialresults",
+				Type: "CUSTOM",
+				CustomJSON: JSON.stringify(customMembersIDs)
+			});
+		}
+
+		//Custom handling for Organization Roles, because they're really complicated
+		try {
+			//Remove auto-injected filters from the switch statement above
+			//19-05-29 mp - commenting for now, as removes filter just set in CheckBoxListWithText
+			//query.FiltersV2 = query.FiltersV2.filter(function(m){ return m.Name != "provider" && m.Name != "qualityassurance" });
+			var roleFilters = Search.Current.Query.Filters.filter(function(m){ return m.FilterType == "OrganizationRole" });
+			roleFilters.filter(function(m){ return m.Items[0].CustomJSON.RoleIds.length > 0 }).forEach(function(roleFilter){
+				if(roleFilter.Property == "Provider"){
+					roleFilter.Items[0].CustomJSON.Organizations.forEach(function(organization){
+						query.FiltersV2.push({ Name: "organizationroles", Type: "CUSTOM", Values: { AgentId: organization.Id, RelationshipId: roleFilter.Items[0].CustomJSON.RoleIds } });
+					});
+				}
+				else{
+					roleFilter.Items[0].CustomJSON.RoleIds.forEach(function(roleID){
+						query.FiltersV2.push({ Name: "qualityassurance", Type: "CODE", Values: { CategoryId: 13, CodeId: roleID } });
+					});
+					roleFilter.Items[0].CustomJSON.Organizations.forEach(function(organization){
+						query.FiltersV2.push({ Name: "qualityassurance", Type: "TEXT", Values: { Id: organization.Id } });
+					});
+				}
+			});
+		}
+		catch(e){ }
+
+
+		//Do the search
+		setStatus("Searching...", "searching");
+		Search.Current.Searching = true;
+		Search.Render.SpinnerBox.attr("data-searching", "true").attr("data-nomoreresults", "false");
+		Search.LoadMoreResultsButton.addClass("hidden");
+		Resize.triggerResizeMessage();
+		doAjax("Search", "MainSearch", { query: query, useV4Results: true, widgetID: @Model.Id, referrer: document.referrer }, (overrideSuccessMethod ? overrideSuccessMethod : success_doSearch), { isPaging: isPaging });
+	}
+	//
+
+	//Successful search transaction
+	function success_doSearch(message, passThrough){
+		Search.Current.Searching = false;
+		Search.Render.SpinnerBox.attr("data-searching", "false");
+		if(message.valid){
+			setStatus( message.data.TotalResults == 0 ? "Sorry, no results found." : "Found " + message.data.TotalResults + " Results", "");
+			Search.Current.RawResults = message.data.Results;
+			Search.Current.TotalResults = message.data.TotalResults;
+			Search.Current.RelatedItems = message.data.RelatedItems;
+			renderResults(passThrough.isPaging);
+			renderPaging();
+		}
+		else{
+			setStatus("Error: " + message.status, "error");
+		}
+	}
+	//
+
+	//Make an AJAX call
+	function doAjax(controller, method, data, success, passThrough){
+		$.ajax({
+			url: "@Url.Content( "~/" )" + controller + "/" + method,
+			headers: { "Accept": "application/json", "Content-type": "application/json; charset=utf-8" },
+			dataType: "json",
+			type: "POST",
+			data: JSON.stringify(data),
+			success: function (message) {
+				console.log("Response", message);
+				success(message, passThrough);
+			}
+		});
+	}
+	//
+
+	//Render the currently-selected list of filters
+	function renderFilters(){
+		var template = $("#template_RenderedCurrentFilter_User").html();
+		Search.Render.FiltersBox.html("");
+		Search.Current.Query.Filters.forEach(function(filter){
+			//Handle pre-selected lists of allowed results
+			if(filter.FilterType == "Reference" && filter.Property == "PotentialResults"){
+				//var box = $(template.replace(/{category}/g, "Potential Results").replace(/{value}/g, filter.Items.length + " Potential Results")).appendTo(Search.Render.FiltersBox);
+				var box = $(template.replace(/{category}:/g, "Widget Results").replace(/{value}/g, "")).appendTo(Search.Render.FiltersBox);
+				box.find("button").remove();
+				box.addClass("preselectedFilter");
+			}
+			//Handle other filter types
+			else{
+				filter.DisplayItems.forEach(function(item){
+					var box = $(template.replace(/{category}/g, filter.Label).replace(/{value}/g, item.Label)).appendTo(Search.Render.FiltersBox);
+					box.find("button").on("click", function () {
+						switch(filter.FilterType){
+							case "Text":
+							case "CheckBoxListWithText":
+							case "TextWithAny":
+								item.Element.remove();
+								break;
+							case "HasAnyValue":
+								item.Element.prop("checked", false);
+								break;
+							case "CheckBoxList": item.Element.prop("checked", false); break;
+							case "Map":
+							case "LocationSet":
+							case "Custom": {
+									if(filter.OnRemove){
+										filter.OnRemove();
+									}
+									Search.Current.CustomFilters = Search.Current.CustomFilters.filter(function(m) { return m != filter });
+									break;
+								}
+							default: break;
+						}
+						box.remove();
+						resetCountdown();
+					});
+					if(filter.Preselected){
+						box.find("button").remove();
+						box.addClass("preselectedFilter");
+					}
+					else{
+						box.addClass("userFilter");
+					}
+				});
+			}
+		});
+		Resize.triggerResizeMessage();
+	}
+	//
+
+	//Render a set of search results
+	function renderResults(appendToCurrentResults){
+		var template = $("#template_SearchResult_" + Search.Current.SearchType).html();
+		if(!appendToCurrentResults){
+			Search.Render.ResultsBox.html("");
+			Maps.removeAllMapMarkers();
+			Resize.triggerResizeMessage();
+			Search.Current.Results = [];
+		}
+		Search.Current.RawResults.forEach(function(resultData){
+			//Parts
+			var Result = {};
+			Result.Data = resultData;
+			Result.Box = $(autoFormat(template, Result.Data)).appendTo(Search.Render.ResultsBox);
+			Result.Box.attr("data-searchType", Search.Current.SearchType);
+			Result.ShowLocationsButton = Result.Box.find("[data-action='showLocations']");
+			Result.ShowLocationsBox = Result.Box.find(".locations");
+			Result.SelectButton = Result.Box.find("[data-action='selectResult']");
+			Result.DetailsToggleButton = Result.Box.find("[data-action='toggleDetails']");
+			Result.TagSetDetailsBox = Result.Box.find(".tagSetsDetails");
+			Result.TagSetSummaryBox = Result.Box.find(".tagSetsBox");
+			Result.TagSetDetailsTemplate = $("#template_TagSetDetails").html();
+			Result.TagSetSummaryTemplate = $("#template_TagSetSummary").html();
+			Result.TagSets = [];
+			Result.MapMarkers = [];
+
+			//Functionality
+			Result.DetailsToggleButton.on("click", function() {
+				Result.Box.toggleClass("expanded");
+				Result.DetailsToggleButton.attr("data-toggled", function(i,current){ return current == "false" ? "true" : "false" });
+				Resize.triggerResizeMessage();
+			});
+			Result.SelectButton.on("click", function() {
+				Result.Box.attr("data-selected", function(i, value){ return value == "true" ? "false" : "true" });
+				Result.SelectButton.attr("data-toggled", Result.Box.attr("data-selected"));
+				Result.Selected = Result.SelectButton.attr("data-toggled") == "true";
+				updateCompareStatus();
+			});
+
+			//Map functions
+			Result.ShowLocationsButton.find("span").html("Show " + Result.Data.Properties.Locations.length + " Location" + (Result.Data.Properties.Locations.length > 1 ? "s" : "" ) );
+			Result.ShowLocationsButton.on("click", function(){
+				Result.ShowLocationsBox.addClass("showing");
+				Result.ShowLocationsButton.remove();
+			});
+			if(Result.Data.Properties.Locations.length < 5){
+				Result.ShowLocationsButton.remove();
+				Result.ShowLocationsBox.addClass("showing");
+			}
+			Result.MapMarkers = Maps.addLocationsForResult(Result);
+
+			//Tag Set Summaries
+			Result.Data.TagsV2.filter(function(m){ return m.Items.length > 0; }).forEach(function(tag){
+				var TagSet = renderTagSet(Result, tag);
+				Result.TagSets.push(TagSet);
+			});
+
+			Search.Current.Results.push(Result);
+		});
+
+		//Special handling for competency frameworks
+		handleCompetencyFrameworkResults();
+
+		Resize.triggerResizeMessage();
+	}
+	//
+
+	//Render the data for a set of tags ("gray boxes") in both summarized and detailed forms
+	function renderTagSet(Result, tagSetData){
+		//Parts
+		var TagSet = {};
+		TagSet.Data = tagSetData;
+		TagSet.SummaryBox = $(autoFormat(Result.TagSetSummaryTemplate, tagSetData)).appendTo(Result.TagSetSummaryBox);
+		TagSet.DetailsBox = $(autoFormat(Result.TagSetDetailsTemplate, tagSetData)).appendTo(Result.TagSetDetailsBox);
+		TagSet.ItemsBox = TagSet.DetailsBox.find(".tagSetItems");
+		TagSet.Items = [];
+
+		//Populate
+		TagSet.Data.Items.forEach(function(item){
+			var TagItem = renderTagItem(Result, TagSet, item);
+			TagSet.Items.push(TagItem);
+		});
+		if(tagSetData.TotalItems > tagSetData.Items.length){
+			TagSet.ItemsBox.append("<div class=\"tagItem showAll\"><a href=\"@Url.Content("~/")" + Search.Current.SearchType + "/" + Result.Data.RecordId + "\" target=\"_blank\">Show All <i class=\" externalIcon fas fa-external-link-alt\"></i></a></div>");
+		}
+		return TagSet;
+	}
+	//
+
+	//Render an individual tag item
+	function renderTagItem(Result, TagSet, itemData){
+		//Parts
+		var TagItem = {};
+		TagItem.Data = itemData;
+		TagItem.Box = $("<div class=\"tagItem\"></div>").appendTo(TagSet.ItemsBox);
+		TagItem.Box.attr("data-searchquerytype", TagSet.Data.SearchQueryType);
+		TagItem.Link = $("<a href=\"javascript:void(0)\">" + TagItem.Data.Display + " <i class=\"searchIcon fas fa-search\"></i></a>").appendTo(TagItem.Box);
+
+		//Conditional Handling
+		if(window["renderTagItem_" + TagSet.Data.SearchQueryType]){
+			window["renderTagItem_" + TagSet.Data.SearchQueryType](Result, TagSet, TagItem);
+		}
+
+		//Return tag item
+		return TagItem;
+	}
+	//Just display text
+	function renderTagItem_none(Result, TagSet, TagItem){
+		TagItem.Box.html(TagItem.Data.Display);
+	}
+	//Link to the detail page for the current result
+	function renderTagItem_detail(Result, TagSet, TagItem){
+		TagItem.Link.attr("href", "@Url.Content("~/")" + Search.Current.SearchType + "/" + Result.Data.RecordId);
+		TagItem.Link.attr("target", "_grayTagWindow");
+		TagItem.Link.find(".searchIcon").replaceWith("<i class=\" externalIcon fas fa-external-link-alt\"></i>");
+	}
+	//Link to the detail page for something else
+	function renderTagItem_link(Result, TagSet, TagItem){
+		TagItem.Link.attr("href", "@Url.Content("~/")" + TagItem.Data.QueryValues.TargetType + "/" + TagItem.Data.QueryValues.TargetId);
+		TagItem.Link.attr("target", "_grayTagWindow");
+		TagItem.Link.find(".searchIcon").replaceWith("<i class=\" externalIcon fas fa-external-link-alt\"></i>");
+	}
+	//Trigger a checkbox filter
+	function renderTagItem_code(Result, TagSet, TagItem){
+		TagItem.Link.on("click", function() {
+			Search.FilterContents.filter("[data-searchtype='" + Search.Current.SearchType + "'][data-categoryid='" + TagItem.Data.QueryValues.CategoryId + "']").find("input[type='checkbox'][value='" + TagItem.Data.QueryValues.CodeId + "']").prop("checked", true).trigger("change");
+		});
+	}
+	//Apply a text filter
+	function renderTagItem_text(Result, TagSet, TagItem){
+		TagItem.Link.on("click", function() {
+			Search.FilterContents.filter("[data-searchtype='" + Search.Current.SearchType + "'][data-categoryid='" + TagSet.Data.Name + "']").find("input[type='text']").val(TagItem.Data.QueryValues.TextValue)[0].applyValue();
+		});
+	}
+	//Do a custom search
+	function renderTagItem_search(Result, TagSet, TagItem){
+		TagItem.Link.on("click", function() {
+			addCustomFilter(TagSet.Data.Name, TagSet.Data.CategoryName, TagItem.Data.Display, TagItem.Data.QueryValues);
+			doSearch();
+		});
+	}
+	//Show a filter that allows either searching for the currently displayed thing or viewing its detail page
+	function renderTagItem_merged(Result, TagSet, TagItem){
+		TagItem.Link.on("click", function() {
+			addCustomFilter(TagSet.Data.Name, TagSet.Data.CategoryName, TagItem.Data.Display, TagItem.Data.QueryValues);
+			doSearch();
+		});
+		var detailLink = $("<a title=\"Details\"><i class=\"externalIcon fas fa-external-link-alt\"></i></a>").html("<span class='offscreen'>External link to an organization detail page</span>").appendTo(TagItem.Box);
+		detailLink.attr("href", "@Url.Content("~/")" + TagItem.Data.QueryValues.TargetType + "/" + TagItem.Data.QueryValues.AgentId);
+		detailLink.attr("target", "_grayTagWindow");
+	}
+	//
+
+	function handleCompetencyFrameworkResults(){
+		if(Search.Current.SearchType != "CompetencyFramework"){
+			return;
+		}
+
+		//Setup data
+		Search.Current.Results.forEach(function(result){
+			result.Data.RawCTDL = JSON.parse(result.Data.Properties.RawData);
+		});
+
+		var resultItems = Search.Current.Results.map(function(m){ return m.Data });
+		resultItems.forEach(function(resultItem){
+			//Handle framework rendering asynchronously
+			setTimeout(function(){
+				CompetencyFrameworkDSP.getRelatedItemsForResults([resultItem], Search.Current.RelatedItems, function(){
+					//Rendering
+					Search.Current.Results.forEach(function(result){
+						//Owner
+						var owner = result.Data.RelatedItems.Owner[0];
+						if(owner){
+							result.Box.find(".resultOwner").attr("href", "@Url.Content( "~/organization/" )" + owner["ceterms:ctid"]).html(CompetencyFrameworkDSP.getEnglish(owner["ceterms:name"]));
+						}
+						else{
+							result.Box.find(".resultOwner").hide();
+						}
+						//Tags
+						result.TagSections = {
+							ButtonsBox: result.Box.find(".resultTagButtons"),
+							ItemsBox: result.Box.find(".resultTagContent")
+						}
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.Competencies, "Competenc{ies}", "competencies", "ceasn:competencyText", "competencyframework", result.Data.Properties.CTID);
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.Credentials, "Related Credential{s}", "credentials", "ceterms:name", "credential");
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.Assessments, "Related Assessment{s}", "assessments", "ceterms:name", "assessment");
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.LearningOpportunities, "Related Learning Opportunit{ies}", "learningopportunities", "ceterms:name", "learningopportunity");
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.ConceptSchemes, "Related Concept Scheme{s}", "conceptschemes", "ceasn:name", "competencyframework", result.Data.Properties.CTID);
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.AlignedFrameworks, "Aligned Framework{s}", "alignedframeworks", "ceasn:name", "competencyFramework");
+						createCompetencyFrameworkItemsSectionData(result, result.Data.RelatedItems.AlignedCompetencies, "Aligned Competenc{ies}", "alignedcompetencies", "ceasn:competencyText", "competencyframework", result.Data.Properties.CTID);
+					});
+				});
+
+			},10);
+		});
+
+	}
+	//
+
+	function createCompetencyFrameworkItemsSectionData(Result, data, label, name, nameProperty, detailPageType, detailPageOverrideCTID){
+		if(!data || data.length == 0){
+			return;
+		}
+
+		var multiLabel = label.replace("{ies}", "ies" ).replace("{s}", "s");
+		var singleLabel = label.replace("{ies}", "y").replace("{s}", "");
+
+		var dataMap = data.map(function(m){
+			return {
+				Display: CompetencyFrameworkDSP.getEnglish( m["ceasn:competencyText"] || m["ceasn:name"] || m["ceterms:name"] ),
+				QueryValues: {
+					TargetType: detailPageType,
+					TargetId: detailPageOverrideCTID ? detailPageOverrideCTID : m["ceterms:ctid"]
+				}
+			}
+		});
+		var maxLength = 10;
+		var limitedDataMap = [];
+		for(var i = 0; i < maxLength && i < data.length; i++){
+			limitedDataMap.push(dataMap[i]);
+		}
+		if(data.length > maxLength){
+			limitedDataMap.push({
+				Display: "More",
+				QueryValues: {
+					TargetType: "competencyframework",
+					TargetId: Result.Data.RawCTDL["ceterms:ctid"]
+				}
+			});
+		}
+
+		renderTagSet(Result, {SearchQueryType: "link", Name: name, Display: data.length + " " + (data.length == 1 ? singleLabel : multiLabel), Items: limitedDataMap });
+	}
+	//
+
+	@*
+	function handleCompetencyFrameworkResultsOLD() {
+		if(Search.Current.SearchType != "CompetencyFramework"){
+			return;
+		}
+
+		Search.Current.Results.forEach(function(Result){
+			//Tag Sections
+			Result.TagSections = {
+				Competencies: createCompetencyFrameworkItemsSection(Result, "Competencies", "competencyframework"),
+				ConceptSchemes: createCompetencyFrameworkItemsSection(Result, "Concept Schemes", "competencyframework"),
+				Credentials: createCompetencyFrameworkItemsSection(Result, "Credentials", "credentials"),
+				Assessments: createCompetencyFrameworkItemsSection(Result, "Assessments", "assessments"),
+				LearningOpportunities: createCompetencyFrameworkItemsSection(Result, "Learning Opportunities", "learningopportunities"),
+				AlignedFrameworks: createCompetencyFrameworkItemsSection(Result, "Aligned Frameworks", "competencyframework"),
+				AlignedCompetencies: createCompetencyFrameworkItemsSection(Result, "Aligned Competencies", "competencyframework"),
+			};
+		});
+
+		var frameworkCTIDs = Search.Current.Results.map(function(m){ return m.Data.Properties.CTID });
+		CompetencyFrameworks.getAllFrameworkData(frameworkCTIDs, [], {
+			PerFrameworkLimits: {
+				Organizations: 10,
+				Concepts: 10,
+				Credentials: 10,
+				Assessments: 10,
+				LearningOpportunities: 10,
+				AlignedFrameworks: 10,
+				AlignedCompetencies: 10
+			},
+			Frameworks: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.Competencies, frameworkData.Competencies.length, frameworkData.Competencies, "Competenc{ies}", "ceasn:competencyText", "competencyframework", frameworkData.Framework["ceterms:ctid"], true);
+					if(!frameworkData || frameworkData.hasLoadError){
+						for(var i in Result.TagSections){
+							(function(section){
+								section.SummaryBox.hide();
+								section.DetailsBox.hide();
+							})(Result.TagSections[i]);
+						}
+					}
+				});
+			},
+			Organizations: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					//Find the owner in the list of loaded organizations by converting the publisher and creator properties to CTIDs and comparing them to the owner's CTID
+					var owner = CompetencyFrameworks.allOrganizations().filter(function(m){ return CompetencyFrameworks.flatten((frameworkData.Framework["ceasn:publisher"] || []).concat(frameworkData.Framework["ceasn:creator"] || [])).map(function(n){ return CompetencyFrameworks.URItoCTID(n) }).filter(function(n){ return n.toLowerCase() == m["ceterms:ctid"].toLowerCase() }).length > 0 })[0];
+					if(owner){
+						Result.Box.find(".owner").attr("href", "@Url.Content( "~/organization/" )" + owner["ceterms:ctid"]).html(CompetencyFrameworks.getEnglish(owner["ceterms:name"]));
+					}
+					else{
+						Result.Box.find(".owner").hide();
+					}
+				});
+			},
+			ConceptSchemes: function(){
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					//Get all of the concepts used by all of the competencies for the framework
+					var conceptURIs = Array.from(new Set(CompetencyFrameworks.getValuesForProperties(frameworkData.Competencies, ["ceasn:conceptTerm", "ceasn:complexityLevel"])));
+					var conceptSchemes = [];
+					//Boil them down to the relevant concept schemes
+					conceptURIs.forEach(function(uri){
+						var concept = CompetencyFrameworks.get(CompetencyFrameworks.allConcepts(), "@@id", uri);
+						//var scheme = CompetencyFrameworks.ConceptSchemes.filter(function(m){ return m["@@id"] == concept["skos:inScheme"] })[0];
+						var scheme = CompetencyFrameworks.findMatches(CompetencyFrameworks.ConceptSchemes, concept["skos:inScheme"])[0];
+						if(CompetencyFrameworks.findMatches(conceptSchemes, scheme["@@id"]).length == 0){
+							conceptSchemes.push(scheme.Scheme);
+						}
+					});
+					//Populate the tag section
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.ConceptSchemes, conceptSchemes.length, conceptSchemes, "Concept Scheme{s}", "ceasn:name", "competencyframework", frameworkData.Framework["ceterms:ctid"]);
+				});			},
+			Credentials: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.Credentials, frameworkData.TotalCredentials, frameworkData.Credentials, "Credential{s}", "ceterms:name", "credential", frameworkData.Framework["ceterms:ctid"]);
+				});
+			},
+			Assessments: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.Assessments, frameworkData.TotalAssessments, frameworkData.Assessments, "Assessment{s}", "ceterms:name", "assessment", frameworkData.Framework["ceterms:ctid"]);
+				});
+			},
+			LearningOpportunities: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.LearningOpportunities, frameworkData.TotalLearningOpportunities, frameworkData.LearningOpportunities, "Learning Opportunit{ies}", "ceterms:name", "learningopportunity", frameworkData.Framework["ceterms:ctid"]);
+				});
+			},
+			AlignedFrameworks: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					//Get the aligned frameworks
+					var alignedFrameworkURIs = Array.from(new Set(CompetencyFrameworks.flatten(CompetencyFrameworks.getValuesForProperties([frameworkData.Framework], ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"]))));
+					var alignedFrameworks = CompetencyFrameworks.AlignedFrameworks.filter(function(m){ return alignedFrameworkURIs.indexOf(m["@@id"]) > -1 }).map(function(m){ return m["@@graph"][0] });
+					//Populate the tag section
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.AlignedFrameworks, alignedFrameworkURIs.length, alignedFrameworks, "Aligned Framework{s}", "ceasn:name", "competencyframework", frameworkData.Framework["ceterms:ctid"], true);
+				});
+			},
+			AlignedCompetencies: function() {
+				runForEachResultAndItsFramework(function(Result, frameworkData){
+					//Get the aligned frameworks
+					var alignedCompetencyURIs = Array.from(new Set(CompetencyFrameworks.flatten(CompetencyFrameworks.getValuesForProperties(frameworkData.Competencies, ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:narrowAlignment", "ceasn:prerequisiteAlignment"]))));
+					var alignedCompetencies = CompetencyFrameworks.allAlignedCompetencies().filter(function(m){ return alignedCompetencyURIs.indexOf(m["@@id"]) > -1 }).map(function(m){ return m["@@graph"][0] });
+					//Populate the tag section
+					updateCompetencyFrameworkItemsSection(Result, Result.TagSections.AlignedCompetencies, alignedCompetencyURIs.length, alignedCompetencies, "Aligned Competenc{ies}", "ceasn:competencyText", "competencyframework", frameworkData.Framework["ceterms:ctid"], true);
+				});
+			}
+		});
+
+	}
+	function createCompetencyFrameworkItemsSection(Result, label, queryName){
+		return renderTagSet(Result, {SearchQueryType: "link", Name: queryName, Display: "<i class=\"fas fa-spin fa-spinner\"></i> Loading " + label, Items: [] });
+	}
+	function runForEachResultAndItsFramework(method){
+		Search.Current.Results.forEach(function(Result){
+			try{
+				var frameworkData = CompetencyFrameworks.get(CompetencyFrameworks.Frameworks, "ceterms:ctid", Result.Data.Properties.CTID);
+				if(frameworkData && !frameworkData.hasLoadError){
+					method(Result, frameworkData);
+				}
+				else{
+					console.log("Error loading data for framework", { CTID: Result.Data.Properties.CTID, Result: Result, frameworkData: frameworkData });
+				}
+			}
+			catch(e){
+				console.log("Error rendering result:", { error: e, Result: Result, method: method });
+			}
+		});
+	}
+	function updateCompetencyFrameworkItemsSection(Result, section, totalItems, items, buttonLabel, nameProperty, detailPageType, frameworkCTID, forceFrameworkCTID){
+		if(items.length == 0){
+			section.SummaryBox.hide();
+			section.DetailsBox.hide();
+			return;
+		}
+
+		var totalsLabel = totalItems + " " + (totalItems == 1 ? buttonLabel.replace("{ies}", "y").replace("{s}", "") : buttonLabel.replace("{ies}", "ies").replace("{s}", "s"));
+		section.SummaryBox.find(".display").html(totalsLabel);
+		section.DetailsBox.find(".tagSetHeader .title").html(totalsLabel);
+		section.TargetType = detailPageType;
+
+		for(var i = 0; i < 10 && i < items.length; i++){
+			var item = renderTagItem(Result, section, {
+				Display: CompetencyFrameworks.getEnglish( items[i][nameProperty] ) || "View Data",
+				TargetId: forceFrameworkCTID ? frameworkCTID : items[i]["ceterms:ctid"],
+				//Compatibility
+				QueryValues: {
+					TargetType: "competencyframework",
+					TargetId: frameworkCTID
+				}
+			});
+		}
+		if(items.length > 10){
+			section.TargetType = "competencyframework";
+			var item = renderTagItem(Result, section, {
+				Display: "View More",
+				TargetId: frameworkCTID,
+				//Compatibility
+				QueryValues: {
+					TargetType: "competencyframework",
+					TargetId: frameworkCTID
+				}
+			});
+		}
+	}
+	//
+	*@
+
+	//Add a custom filter
+	function addCustomFilter(property, categoryDisplay, itemDisplay, customQueryJSON, customType, customQueryFunction, onRemove) {
+		var newFilter = {
+			CategoryId: 0,
+			Items: [{
+			CustomJSON: customQueryJSON,
+				CustomJSONFunction: customQueryFunction
+			}],
+			DisplayItems: [{
+			Label: itemDisplay,
+			}],
+			Property: property,
+			FilterType: customType || "Custom",
+			Label: categoryDisplay,
+			OnRemove: onRemove
+		};
+
+	//Duplicate check
+	var compare = JSON.stringify(newFilter);
+		if(Search.Current.CustomFilters.filter(function(m){ return JSON.stringify(m) == compare }).length > 0){
+			return;
+		}
+
+		//Add the filter
+		Search.Current.CustomFilters.push(newFilter);
+		updateQuery();
+
+		return newFilter;
+	}
+	//
+
+	//Render the contents of the paging box
+	function renderPaging() {
+		var totalPages = Math.ceil(Search.Current.TotalResults / Search.Current.PageSize);
+		if(Search.Current.PageNumber >= totalPages){
+			Search.Render.SpinnerBox.attr("data-nomoreresults", "true");
+			Search.LoadMoreResultsButton.addClass("hidden");
+		}
+		else{
+			Search.Render.SpinnerBox.attr("data-nomoreresults", "false");
+			Search.LoadMoreResultsButton.removeClass("hidden");
+		}
+		Resize.triggerResizeMessage();
+	}
+	//
+
+
+	//Automatically inject data into a template
+	function autoFormat(template, data, prefix) {
+		for (var i in data) {
+			try {
+				if (typeof (data[i]) == "object") {
+					if (!Array.isArray(data[i])) {
+						template = autoFormat(template, data[i], i);
+					}
+				}else if (data[i] != null && typeof (data[i]) != "undefined") {
+					template = template.replace(new RegExp("{" + (prefix ? prefix + "." : "") + i + "}", "g"), data[i]);
+				}
+
+			}
+			catch (e) { }
+		}
+		return template;
+	}
+	//
+
+	//Toggle Compare Mode
+	function toggleCompareMode(){
+		Search.Current.CompareMode = !Search.Current.CompareMode;
+		Search.Box.attr("data-compareMode", Search.Current.CompareMode ? "true" : "false");
+		Search.ToggleButtons.Compare.attr("data-toggled", Search.Current.CompareMode ? "true" : "false");
+		if(Search.Current.CompareMode){
+			//Changes handled by updateCompareStatus()
+		}
+		else{
+			Maps.hideAllMapMarkers();
+			Search.Current.Results.forEach(function(Result){
+				Maps.showMapMarkersForResult(Result);
+			});
+		}
+		updateCompareStatus();
+	}
+	//
+
+	//Update the displayed number of things currently being compared
+	function updateCompareStatus(){
+		Search.Render.CompareStatusBox.html("Comparing " + $(".searchResult[data-selected='true']").length + " selected results");
+		//Restrict map markers, but only if in compare mode
+		if(Search.Box.attr("data-compareMode") == "true"){
+			Maps.hideAllMapMarkers();
+			Search.Current.Results.filter(function(m) { return m.Selected }).forEach(function(Result){
+				Maps.showMapMarkersForResult(Result);
+			});
+		}
+		Resize.triggerResizeMessage();
+	}
+	//
+
+</script>
+<script type="text/javascript">
+	/* Map Functions */
+	var Maps = {};
+	//Setup - triggered by google maps script load and by the search initialization - but only one of these will ultimately let the process continue
+	function setupMapBox() {
+		if (!Search.Map || !Search.Map.Box || Search.Map.Initialized || !google || !google.maps) {
+			return;
+		}
+		//Parts
+		Search.Map.Initialized = true;
+		Search.Map.GoogleMap = new google.maps.Map(Search.Map.Box.find(".googleMapFrameWrapper")[0], { center: Search.Map.DefaultCenter, zoom: 4 });
+		Search.Map.KeywordsBox = Search.Map.Box.find("[data-property='MapSearchKeywords']");
+		Search.Map.SearchCurrentAreaButton = Search.Map.Box.find("[data-action='searchCurrentMapArea']");
+		Search.Map.CloseSearchResultsButton = Search.Map.Box.find("[data-action='closeMapSearchResults']");
+		Search.Map.IsAvailableOnlineButton = $("[data-action='toggleIsAvailableOnline']");
+		Search.Map.ResultsBox = Search.Map.Box.find(".mapSearchResultsBox");
+		Search.Map.ResultsList = Search.Map.Box.find(".mapSearchResultsList");
+		Search.Map.StatusBox = Search.Map.Box.find(".mapSearchStatus");
+		Search.Map.PagingBox = Search.Map.Box.find(".mapSearchPaging");
+		Search.Map.Countdown = 0;
+		Search.Map.ResultTemplate = $("#template_MapSearchResult").html();
+
+		//Functionality
+		Search.Map.KeywordsBox.on("focus", function () {
+			Search.Map.ResultsBox.removeClass("hidden");
+		});
+		Search.Map.KeywordsBox.on("keyup", function () {
+			Maps.resetMapSearchCountdown();
+		});
+		Search.Map.SearchCurrentAreaButton.on("click", function () {
+			Maps.addMapFilter("Currently Visible Map Area", null, function () { return Search.Map.GoogleMap.getBounds().toJSON(); });
+			doSearch();
+		});
+		Search.Map.CloseSearchResultsButton.on("click", function () {
+			Search.Map.ResultsBox.addClass("hidden");
+		});
+		Search.Map.IsAvailableOnlineButton.on("click", function () {
+			Search.Map.IsAvailableOnlineButton.attr("data-toggled", function (e, value) { return value == "true" ? "false" : "true" });
+			if (Search.Map.IsAvailableOnlineButton.attr("data-toggled") == "true") {
+				addCustomFilter("IsAvailableOnline", "Availability", "Is Available Online", { IsAvailableOnline: true }, "LocationSet", null, function () { Search.Map.IsAvailableOnlineButton.attr("data-toggled", "false"); });
+			}
+			else {
+				Search.Current.CustomFilters = Search.Current.CustomFilters.filter(function (m) { return m.Property != "IsAvailableOnline"; });
+			}
+			updateQuery();
+			doSearch();
+		});
+
+		//Initialize
+		Maps.redrawMap();
+		//Available online - may be a better way to initialize this
+		if (Search.Map.IsAvailableOnlineButton.attr("data-toggled") == "true") {
+			addCustomFilter("IsAvailableOnline", "Availability", "Is Available Online", { IsAvailableOnline: true }, "LocationSet", null, function () { Search.Map.IsAvailableOnlineButton.attr("data-toggled", "false"); });
+		}
+	}
+	//
+
+	//Toggle the map and update everything else
+	Maps.toggleMapDisplay = function (show) {
+		if (Search.Map.Showing && !show) {
+			Search.Map.Showing = false;
+			Search.Box.attr("data-showmap", "false");
+			Search.Map.ToggleButton.attr("data-toggled", "false");
+			var mapFilter = Search.Current.CustomFilters.filter(function (m) { return m.FilterType == "Map"; });
+			if (mapFilter.length > 0) {
+				Search.Current.CustomFilters = Search.Current.CustomFilters.filter(function (m) { return m.FilterType != "Map" });
+				updateQuery();
+				doSearch();
+			}
+			if (window != window.top) {
+				Search.Box.css("max-height", "none");
+				Resize.triggerResizeMessage();
+			}
+		}
+		else {
+			Search.Map.Showing = true;
+			Search.Box.attr("data-showmap", "true");
+			Search.Map.ToggleButton.attr("data-toggled", "true");
+			Maps.redrawMap();
+			if (window != window.top) {
+				Search.Box.css("max-height", window.outerHeight * 0.95 + "px");
+				Resize.triggerResizeMessage();
+			}
+		}
+	}
+	//
+
+	//Force the map to display/draw
+	Maps.redrawMap = function () {
+		Maps.moveMap(Search.Map.DefaultCenter.lat + 0.1, Search.Map.DefaultCenter.lng, 4);
+		setTimeout(function () {
+			Maps.moveMap(Search.Map.DefaultCenter.lat, Search.Map.DefaultCenter.lng, 4);
+		}, 250);
+	}
+	//
+
+	Maps.moveMap = function (latitude, longitude, zoom) {
+		google.maps.event.trigger(Search.Map.GoogleMap, "resize");
+		Search.Map.GoogleMap.setCenter({ lat: latitude, lng: longitude });
+		if (zoom) {
+			Search.Map.GoogleMap.setZoom(Math.floor(zoom));
+		}
+	}
+	//
+
+	Maps.addMapMarker = function (latitude, longitude, data, resultHTML) {
+		var template = $("#template_MapInfoWindow").html();
+		var content = autoFormat(template, data);
+		var infoWindow = new google.maps.InfoWindow({
+			content: content,
+			maxWidth: Search.Box.outerWidth() * 0.4 * 0.8 //80% of the map's window area
+		});
+		var marker = new google.maps.Marker({
+			map: Search.Map.GoogleMap,
+			position: { lat: latitude, lng: longitude },
+			customInfo: { data: data, window: infoWindow }
+		});
+		marker.addListener("click", function () {
+			Maps.focusMapAndResult(marker, resultHTML);
+			infoWindow.open(Search.Map.GoogleMap, marker);
+		});
+		Search.Map.Markers.push(marker);
+		return marker;
+	}
+	//
+
+	Maps.removeAllMapMarkers = function () {
+		try {
+			Search.Map.Markers.forEach(function (marker) {
+				marker.customInfo.window.close();
+				marker.customInfo.window = null;
+				marker.setMap(null);
+				marker = null;
+			});
+		}
+		catch (e) { }
+		Search.Map.Markers = [];
+	}
+	//
+
+	Maps.focusMapAndResult = function (marker, resultHTML) {
+		Maps.toggleMapDisplay(true);
+		Search.Map.Markers.forEach(function (item) {
+			item.customInfo.window.close();
+		});
+		Maps.moveMap(marker.position.lat(), marker.position.lng(), 10);
+		marker.customInfo.window.open(Search.Map.GoogleMap, marker);
+		if (resultHTML) {
+			resultHTML.addClass("highlighted");
+			resultHTML[0].scrollIntoView();
+			setTimeout(function () {
+				resultHTML.removeClass("highlighted");
+			}, 500);
+		}
+	}
+	//
+
+	//Add all locations for a result
+	Maps.addLocationsForResult = function (Result) {
+		var markers = [];
+		Result.Data.Properties.Locations.forEach(function (location) {
+			var marker = Maps.addMapMarker(location.Latitude, location.Longitude, { Name: Result.Data.Name, Address: location.Address }, Result.Box);
+			var button = $("<button class=\"fas fa-map-marker-alt\" title=\"" + location.Address + "\"></button>").html("<span class='offscreen'>map marker</span>").appendTo(Result.ShowLocationsBox);
+			button.on("click", function () {
+				Maps.focusMapAndResult(marker, Result.Box);
+			});
+			markers.push(marker);
+		});
+		return markers;
+	}
+
+	//Show all locations for a result
+	Maps.showMapMarkersForResult = function (Result) {
+		Result.MapMarkers.forEach(function (marker) {
+			marker.visible = true;
+		});
+		Maps.redrawMap();
+	}
+	//
+
+	//Hide map markers without removing them
+	Maps.hideAllMapMarkers = function () {
+		Search.Map.Markers.forEach(function (marker) {
+			marker.visible = false;
+		});
+		Maps.redrawMap();
+	}
+	//
+
+	//Prepare to do a map search
+	Maps.resetMapSearchCountdown = function () {
+		clearTimeout(Search.Map.Countdown);
+		Search.Map.Countdown = setTimeout(function () {
+			Maps.doMapSearch();
+		}, 800);
+	}
+	//
+
+	//Do a map search
+	Maps.doMapSearch = function (isPaging) {
+		var text = Search.Map.KeywordsBox.val().trim();
+		if (text.length == 0) {
+			return;
+		}
+		Maps.setStatus("Searching...");
+		Search.Map.ResultsBox.addClass("searching");
+		doAjax("Search", "FindLocations", { text: text }, Maps.success_doMapSearch, null, { isPaging: isPaging });
+	}
+	//
+
+	//Handle the results of a map search
+	Maps.success_doMapSearch = function (message, passThrough) {
+		if (message.valid) {
+			Search.Map.CurrentResults = message.data;
+			Maps.renderResults();
+		}
+		else {
+			Maps.setStatus("Error: " + message.status);
+		}
+	}
+	//
+
+	//Render map search results
+	Maps.renderResults = function () {
+		Maps.setStatus("Select a location.");
+		Search.Map.ResultsList.html("");
+		Search.Map.CurrentResults.forEach(function (resultData) {
+			//Parts
+			var Result = {};
+			Result.Box = $(autoFormat(Search.Map.ResultTemplate, resultData)).appendTo(Search.Map.ResultsList);
+			Result.FocusButton = Result.Box.find("[data-action='focusMap']");
+			Result.SearchButton = Result.Box.find("[data-action='searchHere']");
+
+			//Functionality
+			var bounds = { north: resultData.Bounds.North, east: resultData.Bounds.East, south: resultData.Bounds.South, west: resultData.Bounds.West };
+			Result.FocusButton.on("click", function () {
+				Search.Map.ResultsBox.addClass("hidden");
+				Search.Map.GoogleMap.fitBounds(bounds);
+				Maps.setStatus("");
+			});
+			Result.SearchButton.on("click", function () {
+				Search.Map.ResultsBox.addClass("hidden");
+				Search.Map.GoogleMap.fitBounds(bounds);
+				Maps.addMapFilter("Visible map area around " + resultData.Name + ", " + resultData.LocationFormatted, bounds);
+				Maps.setStatus("");
+				doSearch();
+			});
+		});
+	}
+	//
+
+	Maps.addMapFilter = function (label, bounds, liveBounds) {
+		Search.Current.CustomFilters = Search.Current.CustomFilters.filter(function (m) { return m.FilterType != "Map"; }); //Remove the existing map filter
+		addCustomFilter("bounds", "Map Search", label, bounds, "Map", liveBounds); //And replace it with a new one
+	}
+	//
+
+	//Set map search status
+	Maps.setStatus = function (status) {
+		Search.Map.StatusBox.html(status);
+	}
+	//
+</script>
+<script type="text/javascript">
+	//Iframe resizing functions
+	var Resize = {};
+	$(document).ready(function () {
+		setupSelfResize();
+	});
+
+	function setupSelfResize() {
+		//Parts
+		Resize.Window = $(window);
+		Resize.Document = $(document);
+		Resize.PreviousScrollDifference = 0;
+
+		//Functionality
+		if (window != window.top) {
+			Resize.Window.on("resize", function () {
+				Resize.triggerResizeMessage();
+			});
+			$("html").css("overflow", "hidden");
+		}
+	}
+
+	Resize.triggerResizeMessage = function () {
+		try {
+			var totalHeight = Search.Render.HeaderBox.outerHeight() +
+				Search.Render.CurrentFiltersBox.outerHeight() +
+				Search.Render.ResultsHeaderBox.outerHeight() +
+				Search.Render.CompareStatusBox.outerHeight() +
+				Search.Render.ResultsBox.outerHeight() +
+				Search.Render.PagingBox.outerHeight();
+			var scrollDifference = totalHeight - Resize.Window.outerHeight();
+			if (scrollDifference != 0 && Resize.PreviousScrollDifference != scrollDifference) {
+				window.parent.postMessage({ action: "resizeFrame", height: totalHeight }, "*");
+			}
+			Resize.PreviousScrollDifference = scrollDifference;
+		}
+		catch (e) { }
+	}
+	//
+</script>
+@if( AccountServices.IsUserSiteStaff() )
+{
+	//Download a report
+	<script type="text/javascript">
+		function downloadReport() {
+			Search.Reports.Box.show();
+			Search.Reports.Cache = [];
+			doSearch(false, success_downloadReportPage);
+			Search.Reports.StatusBox.html("Downloading...");
+			Search.Reports.ProgressBar.css("width", "0%");
+		}
+		//
+
+		function success_downloadReportPage(message, passThrough){
+			Search.Current.Searching = false;
+			Search.Render.SpinnerBox.attr("data-searching", "false");
+			if(message.valid){
+				var totalPages = Math.ceil(message.data.TotalResults / Search.Current.PageSize);
+				Search.Reports.StatusBox.html("Loaded Page " + Search.Current.PageNumber + " of " + totalPages);
+				Search.Reports.Cache = Search.Reports.Cache.concat(message.data.Results);
+				Search.Reports.ProgressBar.css("width", (100 * (Search.Current.PageNumber / (totalPages || 1))) + "%");
+				if(Search.Current.PageNumber >= totalPages){
+					setStatus( message.data.TotalResults == 0 ? "Sorry, no results found." : "Found " + message.data.TotalResults + " Results", "");
+					Search.Current.PageNumber = 1;
+					downloadCSV();
+				}
+				else{
+					Search.Current.PageNumber++;
+					doSearch(true, success_downloadReportPage);
+				}
+			}
+			else{
+				Search.Reports.StatusBox.html("Error: " + message.status);
+			}
+		}
+		//
+
+		function downloadCSV(){
+			//console.log("Downloaded Data", Search.Reports.Cache);
+			var customColumns = {
+				Credential: ["Credential Type", "Owner", "Owner ID"],
+				Organization: [],
+				Assessment: ["Owner", "Owner ID"],
+				LearningOpportunity: ["Owner", "Owner ID"]
+			};
+			var customData = {
+				Credential: function(record){ return [record.Properties.Type, record.Properties.Owner, record.Properties.OwnerId]; },
+				Organization: function(record){ return []; },
+				Assessment: function(record){ return [record.Properties.Owner, record.Properties.OwnerId]; },
+				LearningOpportunity: function(record){ return [record.Properties.Owner, record.Properties.OwnerId]; }
+			};
+
+			//Create table data
+			var csv = "";
+			var rows = [];
+			rows.push(["Id", "CTID", "Name", "Last Updated", "Detail Page", "Owner", "Owner ID"].concat(customColumns[Search.Current.SearchType]));
+			Search.Reports.Cache.forEach(function(record){
+				rows.push([record.RecordId, record.Properties.ctid, record.Name, record.Properties.LastUpdated, "https://@( Request.Url.Authority )" + "/" + Search.Current.SearchType + "/" + record.RecordId, record.Properties.Owner, record.Properties.OwnerId].concat(customData[Search.Current.SearchType](record)));
+			});
+			rows.forEach(function(row){
+				var rowText = JSON.stringify(row);
+				rowText = rowText.substring(1, rowText.length - 1);
+				rowText = rowText
+					.replace(/\\n/g, "\n")
+					.replace(/\\"/g, '""')
+					+ "\n";
+				csv += rowText;
+			});
+
+			//Save as file
+			var blob = new Blob([csv], { type: "text/csv" });
+			var fileName = "Report - " + Search.Current.SearchType + ".csv";
+			if(window.navigator && window.navigator.msSaveOrOpenBlob){
+				window.navigator.msSaveOrOpenBlob(blob, fileName);
+			}
+			else{
+				var link = $("<a></a>").appendTo("body");
+				link.attr("download", fileName);
+				var data = window.URL.createObjectURL(blob, { oneTimeOnly: true });
+				link.attr("href", data);
+				link[0].click();
+				link.remove();
+				window.URL.revokeObjectURL(data);
+			}
+			Search.Reports.Cache = [];
+		}
+		//
+	</script>
+}
+else
+{
+	<script type="text/javascript">
+		function downloadReport() { }
+	</script>
+}
+
+@* Structural CSS *@
+<style type="text/css">
+	/* Big Stuff */
+	* { font-size: 14px; }
+
+	body { height: 100vh; min-width: 400px; overflow: hidden; background-color: #FFF; }
+
+		body .closeButton { background-color: rgba(0,0,0,0); border: none; border-radius: 0; outline: none; box-shadow: none; padding: 0; }
+
+			body .closeButton i { font-size: inherit; }
+
+	.ui-autocomplete { z-index: 99999 !important; }
+	/* Flex Formatting */
+	.searchBody { display: flex; flex-direction: column; height: 100vh; }
+
+	.searchContent { display: flex; flex: 100% 1 1; min-height: 0; }
+
+	.resultsBox { display: flex; flex-direction: column; flex: 100% 1 1; }
+
+	.resultsHeader { flex: auto 0 0; }
+
+	.resultsBox .resultsListWrapper { display: flex; flex-direction: column; flex: 100% 1 1; overflow-y: scroll; }
+
+	.searchBody[data-showmap='true'] { max-height: 1200px; }
+		/* Prevent map stretching in dynamic height mode */
+		.searchBody[data-showmap='true'] .searchContent .displayBox { display: flex; }
+
+	.filterDescription { padding: 5px; }
+
+	/* Search Header */
+	.searchHeader { position: relative; }
+
+		.searchHeader .bannerBox { text-align: center; vertical-align: middle; line-height: 50px; margin-left: 10%; margin-right: 10%; }
+
+			.searchHeader .bannerBox p { padding: 0px; }
+
+			.searchHeader .bannerBox a { color: #fff; }
+
+		.searchHeader .searchHeaderTopBox { height: 50px; display: flex; align-items: center; padding: 1px 10px; }
+
+			.searchHeader .searchHeaderTopBox .searchHeaderTopBoxItem { margin: 0 2.5px; }
+
+				.searchHeader .searchHeaderTopBox .searchHeaderTopBoxItem .searchHeaderTopBoxInput { display: block; height: 35px; font-size: 16px; width: 100%; }
+
+			.searchHeader .searchHeaderTopBox .logoBox { flex: 100px 0 0; height: 100%; padding: 2.5px 5px; }
+
+				.searchHeader .searchHeaderTopBox .logoBox img { display: block; margin: 0 auto; max-height: 100%; max-width: 100%; }
+
+			.searchHeader .searchHeaderTopBox .searchInputs { flex: 100% 1 1; display: flex; }
+
+				.searchHeader .searchHeaderTopBox .searchInputs .searchTypeBox { flex: 250px 0 0; margin-right: 5px; }
+
+				.searchHeader .searchHeaderTopBox .searchInputs .keywordsBox { flex: 100% 1 1; }
+
+			.searchHeader .searchHeaderTopBox .filterToggleBox { flex: 100px 1 0; }
+
+		.searchHeader .filtersBox { position: absolute; width: 100%; z-index: 1000; background-color: inherit; }
+
+			.searchHeader .filtersBox .filterBoxLabel { display: flex; align-items: center; font-weight: bold; padding: 5px 25px; border-bottom: 1px solid rgba(255,255,255,0.5); }
+
+				.searchHeader .filtersBox .filterBoxLabel .filterBoxLabelText { font-size: 22px; }
+
+				.searchHeader .filtersBox .filterBoxLabel .filterBoxClose { margin-left: auto; color: inherit; font-size: 26px; }
+
+			.searchHeader .filtersBox .filterCollapseBox { display: flex; max-height: calc(80vh - 100px); overflow-y: auto; }
+
+				.searchHeader .filtersBox .filterCollapseBox .filterToggles { flex: 250px 0 0; }
+
+					.searchHeader .filtersBox .filterCollapseBox .filterToggles button { display: block; width: 100%; margin-bottom: 1px; border: none; border-radius: 0; outline: none; box-shadow: none; padding: 5px; }
+
+				.searchHeader .filtersBox .filterCollapseBox .filterContents { flex: 100% 1 1; padding: 0 10px; }
+
+					.searchHeader .filtersBox .filterCollapseBox .filterContents .filter { }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter .label { font-size: 18px; padding: 2.5px 5px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.5); }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter .guidance { padding: 5px; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value { padding: 5px; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text[data-filtertype='TextWithAny'] .value,
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text[data-filtertype='Text'] .value,
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .textvalue { max-width: 75%; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text.withany label { display: flex; align-items: center; cursor: pointer; padding: 2.5px; }
+
+							.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text.withany label:hover, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text.withany label:focus { background-color: rgba(255,255,255,0.1); }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value input[type='text'] { display: block; width: 100%; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value input[type='checkbox'] { margin-right: 5px; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value .valueList { padding: 5px; }
+
+							.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value .valueList .textFilterItem,
+							.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .textvalue .valueList .textFilterItem { display: flex; align-items: flex-start; border: 1px solid rgba(255,255,255,0.5); padding: 2.5px 5px; margin-bottom: 1px; }
+
+								.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.text .value .valueList .textFilterItem button,
+								.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .textvalue .valueList .textFilterItem button { margin-left: auto; font-size: 20px; }
+
+						.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.checkboxlist .value label, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter.checkboxlistwithtext .value label, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter.checkboxlistwithtext .textvalue input { display: inline-flex; align-items: flex-start; padding: 2.5px 5px; width: 100%; cursor: pointer; }
+
+							.searchHeader .filtersBox .filterCollapseBox .filterContents .filter.checkboxlist .value label input, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter.checkboxlistwithtext .value label input { margin-right: 5px; }
+
+				.searchHeader .filtersBox .filterCollapseBox .currentFilters { }
+
+			.searchHeader .filtersBox .noFiltersMessage { text-align: center; font-style: italic; padding: 25px; }
+
+	/* Current Filters */
+	.currentFilters { }
+
+		.currentFilters .selectedFilters { padding: 5px; }
+
+			.currentFilters .selectedFilters:empty { display: none; }
+
+			.currentFilters .selectedFilters .selectedFilter { display: inline-flex; margin: 2.5px; white-space: nowrap; align-items: center; padding: 2.5px 5px; }
+
+				.currentFilters .selectedFilters .selectedFilter .filterData { flex: 100% 1 1; }
+
+					.currentFilters .selectedFilters .selectedFilter .filterData .category { font-size: 10px; }
+
+					.currentFilters .selectedFilters .selectedFilter .filterData .value { font-size: 12px; }
+
+						.currentFilters .selectedFilters .selectedFilter .filterData .value * { font-size: inherit; }
+
+				.currentFilters .selectedFilters .selectedFilter .closeButton { flex: 25px 0 0; margin-left: 5px; font-size: 20px; }
+
+	/* Results Box */
+	.resultsBox { }
+
+	.resultsHeader { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; padding: 5px; border-bottom: 1px solid rgba(0,0,0,0.25); }
+
+		.resultsHeader .statusBox { flex: 200px 1 1; padding: 0 10px; font-style: italic; font-size: 18px; margin: 2.5px 0; white-space: nowrap; }
+
+			.resultsHeader .statusBox.mobile { font-size: 14px; display: none; }
+
+		.resultsHeader .buttonsBox { display: flex; flex-wrap: wrap; justify-content: flex-end; margin: 2.5px 0; }
+
+			.resultsHeader .buttonsBox button { margin: 0 0 2.5px 5px; height: 25px; }
+
+		.resultsHeader .sortOrderBox { flex: 200px 0 0; display: flex; margin: 2.5px 0; }
+
+			.resultsHeader .sortOrderBox select { display: block; width: 100%; height: 25px; margin: 0 0 2.5px 5px; }
+
+	.compareStatusBox { text-align: center; padding: 10px; }
+
+	.searchResult { min-height: 125px; padding: 5px; border-bottom: 1px solid rgba(0,0,0,0.25); transition: background-color 0.2s; }
+
+		.searchResult.highlighted { background-color: #3F5; }
+
+		.searchResult .resultBody { display: flex; }
+
+			.searchResult .resultBody .imageBox { flex: 125px 0 0; height: 125px; position: relative; padding: 5px; margin-right: 5px; }
+
+				.searchResult .resultBody .imageBox.withGradient { background-image: linear-gradient(#CCC,#EEE); }
+
+				.searchResult .resultBody .imageBox .image { width: 100%; height: 100%; background-repeat: no-repeat; background-size: contain; background-position: center center; background-size: contain; }
+
+				.searchResult .resultBody .imageBox .imageTitle { position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; padding: 5px; }
+
+				.searchResult .resultBody .imageBox .badge { position: absolute; bottom: 10px; right: 0; width: 75px; height: 75px; background-repeat: no-repeat; background-size: contain; background-position: center center; background-size: contain; }
+
+				.searchResult .resultBody .imageBox[data-hasbadge='false'] .badge { display: none; }
+
+			.searchResult .resultBody .dataBox { flex: 100% 1 1; }
+
+				.searchResult .resultBody .dataBox .resultHeader { }
+
+					.searchResult .resultBody .dataBox .resultHeader .name { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+
+				.searchResult .resultBody .dataBox .subtitleBox { }
+
+				.searchResult .resultBody .dataBox .description { height: 65px; overflow: hidden; position: relative; word-break: break-word; }
+
+					.searchResult .resultBody .dataBox .description::after { content: " "; position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background-image: linear-gradient(rgba(255,255,255,0),rgba(255,255,255,1)); pointer-events: none; }
+
+		.searchResult.expanded .resultBody .dataBox .description { height: auto; overflow: auto; margin-bottom: 5px; }
+
+			.searchResult.expanded .resultBody .dataBox .description::after { display: none; }
+
+		.searchResult .resultBody .dataBox .lastUpdated { text-align: right; padding: 2.5px; opacity: 0.7; }
+
+		.searchResult .resultBody .dataBox .tagSetsBox { }
+
+		.searchResult.expanded .resultBody .dataBox .tagSetsBox { display: none; }
+
+		.searchResult .resultBody .dataBox .tagSetsBox .tagSetSummary { display: inline-flex; align-items: center; white-space: nowrap; margin: 2.5px; padding: 5px; background-color: rgba(0,0,0,0.025); }
+
+			.searchResult .resultBody .dataBox .tagSetsBox .tagSetSummary .icon { flex: 20px 0 0; height: 20px; width: 20px; margin-right: 5px; background-repeat: no-repeat; background-size: contain; background-position: center center; opacity: 0.8; }
+
+		.searchResult .resultBody .buttonsBox { flex: 175px 0 0; margin-left: 10px; }
+
+			.searchResult .resultBody .buttonsBox .buttons button { width: 100%; margin-bottom: 5px; padding: 5px; }
+
+			.searchResult .resultBody .buttonsBox .locationsBox { text-align: right; }
+
+				.searchResult .resultBody .buttonsBox .locationsBox button[data-action='showLocations'] { display: flex; align-items: center; justify-content: flex-end; padding: 5px; height: 28px; width: 100%; }
+
+					.searchResult .resultBody .buttonsBox .locationsBox button[data-action='showLocations'] span { margin-right: 10px; }
+
+				.searchResult .resultBody .buttonsBox .locationsBox .locations { display: none; }
+
+					.searchResult .resultBody .buttonsBox .locationsBox .locations.showing { display: block; }
+
+					.searchResult .resultBody .buttonsBox .locationsBox .locations button { margin: 0 0 5px 5px; padding: 5px; height: 28px; }
+
+		.searchResult .detailsBox { display: none; border: 1px solid rgba(0,0,0,0.05); padding: 5px; margin: 5px 10px; }
+
+		.searchResult.expanded .detailsBox { display: block; }
+
+		.searchResult .detailsBox .detailsBoxHeader { font-size: 16px; background-color: rgba(0,0,0,0.05); padding: 5px; margin: -5px -5px 5px -5px; }
+
+		.searchResult .detailsBox .tagSetsDetails { display: flex; flex-wrap: wrap; align-items: top; }
+
+			.searchResult .detailsBox .tagSetsDetails .tagSetDetails { margin-bottom: 10px; }
+
+			.searchResult .detailsBox .tagSetsDetails .tagSetHeader { display: flex; align-items: center; }
+
+				.searchResult .detailsBox .tagSetsDetails .tagSetHeader .icon { flex: 20px 0 0; width: 20px; height: 20px; opacity: 0.8; margin-right: 5px; background-repeat: no-repeat; background-size: contain; background-position: center center; }
+
+				.searchResult .detailsBox .tagSetsDetails .tagSetHeader .title { font-weight: bold; }
+
+			.searchResult .detailsBox .tagSetsDetails .tagSetItems { padding: 0 5px; }
+
+				.searchResult .detailsBox .tagSetsDetails .tagSetItems .tagItem { display: flex; margin-bottom: 1px; }
+
+					.searchResult .detailsBox .tagSetsDetails .tagSetItems .tagItem * { font-size: 12px; }
+
+					.searchResult .detailsBox .tagSetsDetails .tagSetItems .tagItem a { display: block; padding: 2.5px 5px; }
+
+					.searchResult .detailsBox .tagSetsDetails .tagSetItems .tagItem .hoverIcon { margin-left: 5px; font-size: 10px; }
+
+	.resultsPagingBox { }
+
+		.resultsPagingBox .searchSpinner { text-align: center; padding: 25px; }
+
+			.resultsPagingBox .searchSpinner .spinner { font-size: 30px; }
+
+			.resultsPagingBox .searchSpinner .noMoreResults { font-size: 20px; font-style: italic; }
+
+			.resultsPagingBox .searchSpinner[data-searching='false'] .spinner { display: none; }
+
+			.resultsPagingBox .searchSpinner[data-nomoreresults='false'] .noMoreResults { display: none; }
+
+		.resultsPagingBox .loadMoreResults { display: block; padding: 10px; width: 50%; min-width: 300px; max-width: 500px; font-size: 18px; margin: 5px auto; }
+
+			.resultsPagingBox .loadMoreResults.hidden { display: none; }
+
+	/* Display Box */
+	.searchBody .searchContent .displayBox { display: none; flex: 40% 0 0; border-left: 1px solid #CCC; }
+
+		.searchBody .searchContent .displayBox .mapBox { flex: 100% 0 0; display: flex; flex-direction: column; }
+
+			.searchBody .searchContent .displayBox .mapBox .mapSearchBox { position: relative; padding: 5px; border-bottom: 1px solid rgba(0,0,0,0.25); }
+
+			.searchBody .searchContent .displayBox .mapBox .mapSearchHeader { display: flex; align-items: center; flex-wrap: wrap; }
+
+				.searchBody .searchContent .displayBox .mapBox .mapSearchHeader input[type='text'] { flex: 10% 1 1; height: 25px; margin: 0 0 2.5px 0; min-width: 200px; }
+
+				.searchBody .searchContent .displayBox .mapBox .mapSearchHeader .mapSearchHeaderButtons { flex: 10% 1 1; display: flex; justify-content: flex-end; padding: 2.5px; }
+
+					.searchBody .searchContent .displayBox .mapBox .mapSearchHeader .mapSearchHeaderButtons button { height: 25px; margin: 0 0 2.5px 5px; white-space: nowrap; }
+
+			.searchBody .searchContent .displayBox .mapBox .googleMapFrameWrapper { flex: 100% 1 1; }
+
+			.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox { position: absolute; z-index: 50; left: 5px; right: 5px; background-color: #FFF; border: 1px solid rgba(0,0,0,0.25); padding: 5px; }
+
+				.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox.hidden { display: none; }
+
+				.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsHeader { display: flex; align-items: center; margin-bottom: 5px; }
+
+					.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsHeader .mapSearchStatus { flex: 100% 1 1; }
+
+					.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsHeader button { flex: 22px 0 0; height: 22px; margin-left: auto; }
+
+				.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList { }
+
+					.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList .mapSearchResult { display: flex; align-items: center; margin-bottom: 1px; padding: 2.5px 5px; border: 1px solid rgba(0,0,0,0.25); }
+
+						.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList .mapSearchResult .dataBox { flex: 100% 1 1; }
+
+						.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList .mapSearchResult .buttons { flex: 200px 0 0; }
+
+						.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList .mapSearchResult .dataBox .locationName { font-weight: bold; }
+
+						.searchBody .searchContent .displayBox .mapBox .mapSearchResultsBox .mapSearchResultsList .mapSearchResult .dataBox .locationDetails { font-size: 12px; padding: 1px 5px; }
+
+	/* Functional CSS (showing/hiding areas) */
+	.searchBody .filtersBox { display: none; }
+
+	.searchBody.expandedFilters .filtersBox { display: block; }
+
+	.searchHeader .filtersBox .filterCollapseBox .filterToggles button[data-action='showFilter'] { display: none; }
+
+		.searchHeader .filtersBox .filterCollapseBox .filterToggles button[data-action='showFilter'].available { display: block; }
+
+	.searchHeader .filterContents .filter { display: none; }
+
+		.searchHeader .filterContents .filter.available.selected { display: block; }
+
+	.searchHeader .filtersBox .noFiltersMessage { display: none; }
+
+		.searchHeader .filtersBox .noFiltersMessage.available { display: block; }
+
+	.searchBody[data-compareMode='true'] .searchResult:not([data-selected='true']) { display: none; }
+
+	.searchBody:not([data-compareMode='true']) .compareStatusBox { display: none; }
+
+	.searchBody[data-compareMode='true'] .resultsPagingBox { display: none; }
+
+	.searchBody[data-setting-HideSearchResultDescriptions='true'] .searchResult .descriptionWrapper { display: none; }
+
+	.searchBody[data-setting-HideSearchResultAttributes='true'] .searchResult .tagSetsBox { display: none; }
+
+	.searchBody[data-setting-HideSearchResultIcons='true'] .searchResult .imageBox { display: none; }
+
+	.searchBody[data-setting-HidePreselectedFilters='true'] .currentFilters .preselectedFilter { display: none; }
+
+	.collapseBox { }
+
+		.collapseBox[data-collapsed='true'] > .collapseContent { display: none; }
+
+	a .hoverIcon { opacity: 0; }
+
+	a:hover .hoverIcon, a:focus .hoverIcon { opacity: 1; }
+
+	/* Tools */
+	.toggleButton { display: flex; align-items: center; white-space: nowrap; }
+
+		.toggleButton .toggleIcons { margin-right: auto; }
+
+		.toggleButton[data-toggled='true'] .untoggled { display: none; }
+
+		.toggleButton[data-toggled='false'] .toggled { display: none; }
+
+		.toggleButton .buttonText { margin: 0 10px; }
+
+		.toggleButton.noToggle .toggleIcons { opacity: 0; }
+
+	/* Settings Menu */
+	.resultsHeader .settingsBox { position: relative; }
+
+		.resultsHeader .settingsBox .settingsMenu { position: absolute; min-width: 300px; z-index: 100; right: 0; background-color: #FFF; padding: 5px; max-height: calc(80vh - 100px); overflow-y: auto; border: 1px solid #CCC; }
+
+			.resultsHeader .settingsBox .settingsMenu button { width: 100%; margin: 0 0 1px 0; }
+
+				.resultsHeader .settingsBox .settingsMenu button.hidden { display: none; }
+
+	/* Reports */
+	.reportsBox { margin: 2.5px 0; display: none; }
+
+		.reportsBox .reportsStatus { padding: 2.5px 5px; font-size: 12px; text-align: center; }
+
+		.reportsBox .reportsProgressWrapper { width: 100%; background-color: #555; padding: 1px; height: 20px; border-radius: 4px; }
+
+			.reportsBox .reportsProgressWrapper .reportsProgressBar { width: 0%; background-color: #3D4; height: 100%; transition: width 0.2s; border-radius: 4px; }
+
+	/* Responsive */
+	@@media ( min-width: 1801px) {
+		.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] .value, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .value { column-count: 4; }
+
+		.searchResult .detailsBox .tagSetsDetails .tagSetDetails { flex: 25% 0 0; }
+	}
+
+	@@media (max-width: 1800px) {
+		.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] .value, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .value { column-count: 4; }
+
+		.searchResult .detailsBox .tagSetsDetails .tagSetDetails { flex: 33.3% 0 0; }
+	}
+
+	@@media (max-width: 1600px) {
+		.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] .value, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .value { column-count: 3; }
+
+		.searchResult .detailsBox .tagSetsDetails .tagSetDetails { flex: 50% 0 0; }
+	}
+
+	@@media (max-width: 1000px) {
+		.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] .value, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .value { column-count: 2; }
+
+		.searchResult .detailsBox .tagSetsDetails .tagSetDetails { flex: 100% 0 0; }
+	}
+
+	@@media (max-width: 700px) {
+		.searchContent { flex-direction: column; }
+
+		.searchHeader .searchHeaderTopBox { padding: 1px; }
+
+		.searchHeader .bannerBox { margin-left: 10px; margin-right: 10px; }
+
+		.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] .value, .searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxListWithText'] .value { column-count: 1; }
+
+		.searchHeader .searchHeaderTopBox .searchInputs { display: block; }
+
+		.searchHeader .searchHeaderTopBox .searchInputs .searchTypeBox { margin-right: 0; margin-bottom: 2.5px; height: 23px; font-size: 14px; padding: 1px 5px; }
+
+		.searchHeader .searchHeaderTopBox .searchInputs .keywordsBox { flex: 100% 1 1; height: 23px; font-size: 14px; padding: 1px 5px; }
+
+		.searchHeader .searchHeaderTopBox .filterToggleBox { flex: 75px 0 0; height: 100%; }
+
+		.searchHeader .searchHeaderTopBox .filterToggleBox [data-action='toggleFilters'] { height: 100%; }
+
+		.searchHeader .filtersBox .filterCollapseBox .filterToggles { flex: 150px 0 0; }
+
+		.searchHeader .filtersBox .filterCollapseBox .filterToggles button { text-align: left; }
+
+		.resultsHeader .statusBox.fullSize { display: none; }
+
+		.resultsHeader .statusBox.mobile { display: block; }
+
+		.resultsHeader .sortOrderBox { flex: 100% 1 1; justify-content: space-between; align-items: baseline; }
+
+		.resultsHeader .sortOrderBox select { max-width: 200px; }
+
+		.currentFilters .selectedFilters { padding: 2.5px; }
+
+		.currentFilters .selectedFilters .selectedFilter { margin: 1.5px; }
+
+		.searchResult .resultBody { display: block; }
+
+		.searchResult .resultBody .imageBox { display: none; }
+
+		.searchResult .resultBody .dataBox .resultHeader .name { font-size: 16px; }
+
+		.searchResult .resultBody .buttonsBox { display: flex; flex-wrap: wrap; }
+
+		.searchResult .resultBody .buttonsBox .buttons { display: flex; }
+
+		.searchResult .resultBody .buttonsBox .buttons button { margin-left: 5px; min-width: 175px; }
+
+		.searchResult .resultBody .buttonsBox .locationsBox { text-align: left; }
+
+		.searchResult .resultBody .buttonsBox .locationsBox [data-action='showLocations'] { margin-left: 5px; }
+	}
+</style>
+<style type="text/css">
+	.searchResult .resultBody .imageBox [data-credentialType*=adge] { background-image: url('@Url.Content( "~/images/icons/flat_badge.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=ertificate] { background-image: url('@Url.Content( "~/images/icons/flat_certificate.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=ertification] { background-image: url('@Url.Content( "~/images/icons/flat_certification.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=egree] { background-image: url('@Url.Content( "~/images/icons/flat_degree.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=master] { background-image: url('@Url.Content( "~/images/icons/flat_degree.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=octorate] { background-image: url('@Url.Content( "~/images/icons/flat_degree.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=iploma] { background-image: url('@Url.Content( "~/images/icons/flat_diploma.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=eneraleducationdev] { background-image: url('@Url.Content( "~/images/icons/flat_diploma.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=icense] { background-image: url('@Url.Content( "~/images/icons/flat_license.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=pprentice] { background-image: url('@Url.Content( "~/images/icons/flat_apprentice.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=ilitary] { background-image: url('@Url.Content( "~/images/icons/flat_military.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=icro] { background-image: url('@Url.Content( "~/images/icons/flat_microcredential.png" )'); }
+	.searchResult .resultBody .imageBox [data-credentialType*=uality] { background-image: url('@Url.Content( "~/images/icons/flat_quality.png" )'); }
+	.searchResult .resultBody .imageBox .badge { background-image: url('@Url.Content( "~/images/icons/flat_badge.png" )'); }
+
+	.tagSet[data-name=connections] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_connections.png" )'); }
+	.tagSet[data-name*=own] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_owns.png" )'); }
+	.tagSet[data-name*=quality] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_quality.png" )'); }
+	.tagSet[data-name*=orgQuality] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_quality.png" )'); }
+	.tagSet[data-name=audience_level] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_levels.png" )'); }
+	.tagSet[data-name=audience_type] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_servicetype.png" )'); }
+	.tagSet[data-name=occupations] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_occupations.png" )'); }
+	.tagSet[data-name=industries] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_industries.png" )'); }
+	.tagSet[data-name=subjects] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_subjects.png" )'); }
+	.tagSet[data-name=competencies] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_competencies.png" )'); }
+	.tagSet[data-name=time] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_duration.png" )'); }
+	.tagSet[data-name=cost] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_cost.png" )'); }
+	.tagSet[data-name=organizationtype] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_organizationtype.png" )'); }
+	.tagSet[data-name=organizationsectortype] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_organizationsector.png" )'); }
+	.tagSet[data-name=owned_by] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_owns.png" )'); }
+	.tagSet[data-name=offered_by] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_offers.png" )'); }
+	.tagSet[data-name=org_service_type] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_servicetype.png" )'); }
+	.tagSet[data-name=assessment_use_types] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_assessmentusetype.png" )'); }
+	.tagSet[data-name=assessment_method_types] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_assessmentmethodtype.png" )'); }
+	.tagSet[data-name=scoring_methods] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_scoringmethodtype.png" )'); }
+	.tagSet[data-name=deliver_methods] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_deliverymethodtype.png" )'); }
+	.tagSet[data-name=instructionalprogramtype] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_cip.png" )'); }
+	.tagSet[data-name=learning_methods] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_learningmethodtype.png" )'); }
+
+	.tagSet[data-name=credentials] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_offers.png" )'); }
+	.tagSet[data-name=assessments] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_owns.png" )'); }
+	.tagSet[data-name=learningopportunities] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_owns.png" )'); }
+	.tagSet[data-name=conceptschemes] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_connections.png" )'); }
+	.tagSet[data-name=alignedframeworks] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_connections.png" )'); }
+	.tagSet[data-name=alignedcompetencies] .icon { background-image: url('@Url.Content( "~/images/icons/cti_icon_connections.png" )'); }
+
+</style>
+
+@* Load Custom CSS *@
+<style type="text/css">
+	@{
+		var siteHeaderColors = GetColors( Model.WidgetColors, "SiteHeader", "#FFFFFF", "#0F3E63" );
+		var logoBoxColors = GetColors( Model.WidgetColors, "LogoBox", "#FFFFFF", "#0F3E63" );
+		var searchResultLinkColors = GetColors( Model.WidgetColors, "SearchResultLink", "#1C73B5", "transparent" );
+		var searchResultButtonColors = GetColors( Model.WidgetColors, "SearchResultButton", "#3D4443", "#DDDDDD" );
+	}
+	.searchHeader {
+		color: @( siteHeaderColors.ForegroundColor );
+		background-color: @( siteHeaderColors.BackgroundColor );
+	}
+	.searchHeader .searchHeaderTopBox .logoBox {
+		color: @( logoBoxColors.ForegroundColor );
+		background-color: @( logoBoxColors.BackgroundColor );
+	}
+	.searchHeader .filtersBox .filterBoxLabel {
+		color: @( siteHeaderColors.ForegroundColor );
+	}
+	.searchHeader .filtersBox .filterCollapseBox .filterToggles button {
+		color: @( siteHeaderColors.ForegroundColor );
+		background-color: @( GetRGBA( siteHeaderColors.ForegroundColor, "0" ) );
+	}
+	.searchHeader .filtersBox .filterCollapseBox .filterToggles button:hover,
+	.searchHeader .filtersBox .filterCollapseBox .filterToggles button:focus {
+		background-color: @( GetRGBA( siteHeaderColors.ForegroundColor, "0.3" ) );
+	}
+	.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] label:hover,
+	.searchHeader .filtersBox .filterCollapseBox .filterContents .filter[data-filtertype='CheckBoxList'] label:focus {
+		background-color: @( GetRGBA( siteHeaderColors.ForegroundColor, "0.3" ) );
+	}
+	.currentFilters .selectedFilters .selectedFilter {
+		color: @( searchResultButtonColors.ForegroundColor );
+		background-color: @( searchResultButtonColors.BackgroundColor );
+	}
+	.currentFilters .selectedFilters .selectedFilter .closeButton {
+		color: @( searchResultButtonColors.ForegroundColor );
+	}
+	.searchResult a {
+		color: @( searchResultLinkColors.ForegroundColor );
+	}
+	.resultsHeader .buttonsBox button {
+		color: @( searchResultButtonColors.ForegroundColor );
+		background-color: @( searchResultButtonColors.BackgroundColor );
+	}
+	.searchResult .resultBody .buttonsBox button {
+		color: @( searchResultButtonColors.ForegroundColor );
+		background-color: @( searchResultButtonColors.BackgroundColor );
+	}
+	.searchResult .resultBody .buttonsBox .locationsBox .locations button {
+		color: @( searchResultButtonColors.ForegroundColor );
+		background-color: @( searchResultButtonColors.BackgroundColor );
+	}
+</style>
+@if( !string.IsNullOrWhiteSpace( Model.CustomCssUrl ) )
+{
+	<link rel="stylesheet" href="@Model.CustomCssUrl" />
+}
+
+
+@* Main Body *@
+<div class="searchBody" data-showmap="false" data-compareMode="false" @Html.Raw( RenderSearchFeaturesAttributes() )>
+	<div class="searchHeader">
+		<div class="bannerBox">
+			@if( !string.IsNullOrEmpty( Model.BannerText ) )
+			{
+				@Html.Raw( Model.BannerText )
+			}
+		</div>
+		@* Logo, Search Type, Keywords, Filters Button *@
+		<div class="searchHeaderTopBox">
+			@{
+				var logoUrl = Url.Content( "~/Images/Common/turbine.png" );
+				if( Model.LogoImage != null && Model.LogoImage.Files.FirstOrDefault() != null )
+				{
+					logoUrl = Model.LogoImage.Files.FirstOrDefault().RawData;
+				}
+				else if( !string.IsNullOrWhiteSpace( Model.LogoUrl ) )
+				{
+					logoUrl = Model.LogoUrl;
+				}
+			}
+			<div class="searchHeaderTopBoxItem logoBox">
+				<img src="@logoUrl" alt="Widget Logo" />
+			</div>
+			<div class="searchHeaderTopBoxItem searchInputs">
+				<select class="searchHeaderTopBoxInput searchTypeBox" data-property="SearchType" data-type="select" title="search type">
+					@foreach( var searchType in availableSearchTypes )
+					{
+						if( Model.HideGlobalFilters.Count > 0 )
+						{
+							if( !Model.HideGlobalFilters.Contains( "Find" + searchType.ValueString ) )
+							{
+								<option value="@searchType.ValueString">Find @searchType.Label</option>
+							}
+						}
+						else
+						{
+							<option value="@searchType.ValueString">Find @searchType.Label</option>
+						}
+					}
+				</select>
+				<input class="searchHeaderTopBoxInput keywordsBox" type="text" data-property="FreeTextKeywords" data-type="text" placeholder="Search..." title="text search" />
+			</div>
+			<div class="searchHeaderTopBoxItem filterToggleBox">
+				<button class="searchHeaderTopBoxInput" data-action="toggleFilters">Filters<span class="offscreen"> close filters </span></button>
+			</div>
+			<div class="searchHeaderTopBoxItem logoBox">
+				<img src="@Url.Content( "~/Images/Common/poweredby.png" ) " alt="Powered by Credential Engine" />
+			</div>
+		</div>
+
+		@* Collapsible filters, Current filters (widget- and user-selected) *@
+		<div class="filtersBox">
+			<div class="filterBoxLabel">
+				<div class="filterBoxLabelText">Filters</div>
+				<button class="filterBoxClose closeButton" data-action="toggleFilters"><i class="far fa-times-circle"></i><span class="offscreen"> close filters </span></button>
+			</div>
+			<div class="filterCollapseBox">
+				<div class="filterToggles">
+					@foreach( var filter in userSelectableFilters )
+					{
+						<button data-type="filterToggle" data-action="showFilter" data-searchtype="@filter.SearchType" data-filter="@filter.Property">@filter.Label</button>
+					}
+				</div>
+				<div class="filterContents">
+					@foreach( var filter in userSelectableFilters )
+					{
+						@RenderUserSelectableFilter( filter )
+					}
+
+				</div>
+			</div>
+			@foreach( var type in availableSearchTypes )
+			{
+				var filtersForType = userSelectableFilters.Where( m => m.SearchType.ToString() == type.ValueString ).ToList();
+				if( filtersForType.Count() == 0 )
+				{
+					<div class="noFiltersMessage" data-searchtype="@type.ValueString">No available filters for @type.Label</div>
+				}
+			}
+		</div>
+
+	</div>
+
+	<div class="searchContent">
+
+		@* Search Results *@
+		<div class="resultsBox">
+			<div class="currentFilters">
+				<div class="selectedFilters"></div>
+			</div>
+			<div class="resultsHeader">
+				<div class="statusBox fullSize">Ready to Search</div>
+				<div class="buttonsBox">
+					@RenderToggleButton( "Compare Selected", "far fa-copy", "compareSelected", "" )
+					@RenderToggleButton( "Map", "fas fa-map-marked-alt", "toggleMap", "" )
+					<div class="collapseBox settingsBox" data-collapsed="true">
+						@RenderToggleButton( "Settings", "fas fa-cog", "toggleSettingsMenu", "collapseToggle" )
+						<div class="collapseContent settingsMenu">
+							@RenderToggleButton( "Hide Descriptions", "fas fa-bars", "toggleSetting", "", Model.SearchFeatures.Contains( "HideSearchResultDescriptions" ), "data-setting='HideSearchResultDescriptions'" )
+							@RenderToggleButton( "Hide Attributes", "fas fa-th", "toggleSetting", "", Model.SearchFeatures.Contains( "HideSearchResultAttributes" ), "data-setting='HideSearchResultAttributes'" )
+							@RenderToggleButton( "Hide Icons", "far fa-image", "toggleSetting", "", Model.SearchFeatures.Contains( "HideSearchResultIcons" ), "data-setting='HideSearchResultIcons'" )
+							@if( AccountServices.IsUserSiteStaff() )
+							{
+								@RenderToggleButton( "Hide Preselected Filters", "fas fa-filter", "toggleSetting", "", Model.SearchFeatures.Contains( "HidePreselectedFilters" ), "data-setting='HidePreselectedFilters'" )
+								@RenderToggleButton( "Download Report", "fas fa-download", "downloadReport", "noToggle" )
+								<div class="reportsBox">
+									<div class="reportsStatus"></div>
+									<div class="reportsProgressWrapper">
+										<div class="reportsProgressBar"></div>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				</div>
+				<div class="sortOrderBox">
+					<div class="statusBox mobile">Ready to Search</div>
+					<select data-property="SortOrder" title="Sort Order of search">
+						@foreach( var sortOrder in availableSortOrders )
+						{
+							<option value="@sortOrder.ValueString">@sortOrder.Label</option>
+						}
+					</select>
+				</div>
+			</div>
+			<div class="resultsListWrapper">
+				<div class="compareStatusBox"></div>
+				<div class="resultsListBox"></div>
+				<div class="resultsPagingBox">
+					<button class="greenButton loadMoreResults hidden" data-action="loadMoreResults">Load More Results</button>
+					<div class="searchSpinner" data-searching="false" data-nomoreresults="false">
+						<i class="spinner fas fa-spin fa-spinner"></i>
+						<div class="noMoreResults">No More Results!</div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		@* Map *@
+		<div class="displayBox">
+			<div class="mapBox">
+				<div class="mapSearchBox">
+					<div class="mapSearchHeader">
+						<input type="text" data-property="MapSearchKeywords" placeholder="Find a region..." title="map region search" />
+						<div class="mapSearchHeaderButtons">
+							<button data-action="searchCurrentMapArea">Search Visible Map Area</button>
+							@RenderToggleButton( "Include Available Online", "fas fa-globe", "toggleIsAvailableOnline", "", Model.Locations.IsAvailableOnline )
+						</div>
+					</div>
+					<div class="mapSearchResultsBox hidden">
+						<div class="mapSearchResultsHeader">
+							<div class="mapSearchStatus">Type a location's name above.</div>
+							<button class="redButton" data-action="closeMapSearchResults">X</button>
+						</div>
+						<div class="mapSearchResultsList"></div>
+						<div class="mapSearchPaging"></div>
+					</div>
+				</div>
+				<div class="googleMapFrameWrapper"></div>
+			</div>
+		</div>
+
+	</div>
+
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=@googleMapsKey&callback=setupMapBox"></script>
+
+<div id="templates" style="display:none;">
+
+	@* Text Filter Item *@
+	<script type="text/template" id="template_TextFilterItem">
+		<div class="textFilterItem">
+			<div class="textValue" data-id="{id}">{value}</div>
+			<button class="closeButton"><i class="far fa-times-circle"></i></button>
+		</div>
+	</script>
+
+	@* Rendered Current Filter Item (user) *@
+	<script type="text/template" id="template_RenderedCurrentFilter_User">
+		<div class="selectedFilter">
+			<div class="filterData">
+				<div class="category">{category}:</div>
+				<div class="value">{value}</div>
+			</div>
+			<button class="closeButton"><i class="far fa-times-circle"></i></button>
+		</div>
+	</script>
+
+	@* Search Result (Organization) *@
+	<script type="text/template" id="template_SearchResult_Organization" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.ctid}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="imageBox withGradient">
+					<div class="image" style="background-image:url('{Properties.ResultImageUrl}')"></div>
+				</div>
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/organization/" ){RecordId}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">{Description}</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Search Result (Credential) *@
+	<script type="text/template" id="template_SearchResult_Credential" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.ctid}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="imageBox" data-hasbadge="{Properties.HasBadge}">
+					<div class="image" data-credentialtype="{Properties.TypeSchema}"></div>
+					<div class="imageTitle">{Properties.Type}</div>
+					<div class="badge" title="This credential comes with a badge."></div>
+				</div>
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/credential/" ){RecordId}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+							<a class="owner" href="@Url.Content( "~/organization/" ){Properties.OwnerId}" target="_blank">{Properties.Owner}</a>
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">{Description}</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i><span class="offscreen">locations</span></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Search Result (Assessment) *@
+	<script type="text/template" id="template_SearchResult_Assessment" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.ctid}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/assessment/" ){RecordId}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+							<a class="owner" href="@Url.Content( "~/organization/" ){Properties.OwnerId}" target="_blank">{Properties.Owner}</a>
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">{Description}</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i><span class="offscreen">locations</span></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Search Result (Learning Opportunity) *@
+	<script type="text/template" id="template_SearchResult_LearningOpportunity" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.ctid}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/learningopportunity/" ){RecordId}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+							<a class="owner" href="@Url.Content( "~/organization/" ){Properties.OwnerId}" target="_blank">{Properties.Owner}</a>
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">{Description}</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i><span class="offscreen">locations</span></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Search Result (Competency Framework) *@
+	<script type="text/template" id="template_SearchResult_CompetencyFrameworkOLD" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.CTID}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/competencyframework/" ){Properties.CTID}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+							<a class="owner" href="@Url.Content( "~/organization/" ){Properties.PublisherCTID}" target="_blank"></a>
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">
+							<div>{Description}</div>
+							@*<div>Created: {Properties.DateCreated} | Modified: {Properties.DateModified}</div>*@
+						</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i><span class="offscreen">locations</span></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Search Result (Competency Framework DSP) *@
+	<script type="text/template" id="template_SearchResult_CompetencyFramework" data-selected="false">
+		<div class="searchResult" data-searchType="" data-ctid="{Properties.CTID}" data-recordID="{RecordId}">
+			<div class="resultBody">
+				<div class="dataBox">
+					<div class="resultHeader">
+						<a class="name" href="@Url.Content( "~/competencyframework/" ){Properties.CTID}" target="_blank">{Name}</a>
+						<div class="subtitleBox">
+							<a class="owner" href="@Url.Content( "~/organization/" ){Properties.PublisherCTID}" target="_blank"></a>
+						</div>
+					</div>
+					<div class="descriptionWrapper">
+						<div class="description">
+							<div>{Description}</div>
+							@*<div>Created: {Properties.DateCreated} | Modified: {Properties.DateModified}</div>*@
+						</div>
+					</div>
+					<div class="tagSetsBox"></div>
+					<div class="lastUpdated">Last Updated {Properties.LastUpdated}</div>
+				</div>
+				<div class="buttonsBox">
+					<div class="buttons">
+						@RenderToggleButton( "Details", "fas fa-info-circle", "toggleDetails", "" )
+						@RenderToggleButton( "Select", "fas fa-list", "selectResult", "" )
+					</div>
+					<div class="locationsBox">
+						<button data-action="showLocations"><span></span><i class="fas fw fa-map-marker-alt"></i><span class="offscreen">locations</span></button>
+						<div class="locations"></div>
+					</div>
+				</div>
+			</div>
+			<div class="detailsBox">
+				<div class="detailsBoxHeader">Details</div>
+				<div class="tagSetsDetails"></div>
+			</div>
+		</div>
+	</script>
+
+	@* Map Info Bubble *@
+	<script type="text/template" id="template_MapInfoWindow">
+		<div class="mapInfoWindow">
+			<div><b>{Name}</b></div>
+			<div>{Address}</div>
+		</div>
+	</script>
+
+	@* Gray Box Summary *@
+	<script type="text/template" id="template_TagSetSummary">
+		<div class="tagSet tagSetSummary" data-name="{Name}">
+			<div class="icon"></div>
+			<div class="display">{Display}</div>
+		</div>
+	</script>
+
+	@* Gray Box Details *@
+	<script type="text/template" id="template_TagSetDetails">
+		<div class="tagSet tagSetDetails" data-name="{Name}">
+			<div class="tagSetHeader">
+				<div class="icon"></div>
+				<div class="title">{Display}</div>
+			</div>
+			<div class="tagSetItems"></div>
+		</div>
+	</script>
+
+	@* Map Search Result *@
+	<script type="text/template" id="template_MapSearchResult">
+		<div class="mapSearchResult">
+			<div class="dataBox">
+				<div class="locationName">{Name}</div>
+				<div class="locationDetails">{LocationFormatted}</div>
+			</div>
+			<div class="buttons">
+				<button data-action="focusMap">Focus Map Here</button>
+				<button data-action="searchHere">Search Here</button>
+			</div>
+		</div>
+	</script>
+</div>

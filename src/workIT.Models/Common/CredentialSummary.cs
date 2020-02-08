@@ -33,13 +33,14 @@ namespace workIT.Models.Common
 		}
 		public string Name { get; set; }
 		public string FriendlyName { get; set; }
-		public int StatusId { get; set; }
+		public int EntityStateId { get; set; }
 		public string ListTitle { get; set; }
 		
 		public string Description { get; set; }
 		public string Version { get; set; }
 		public string LatestVersionUrl { get; set; }
 		public string PreviousVersion { get; set; }
+		public string ProcessStandards { get; set; }
 		public string AvailableOnlineAt { get; set; }
 		
 		public string SubjectWebpage { get; set; }
@@ -65,7 +66,7 @@ namespace workIT.Models.Common
 					return "";
 			}
 		}
-	
+		public string PrimaryOrganizationCTID { get; set; }
 		public int LearningOppsCompetenciesCount { get; set; }
 		public int AssessmentsCompetenciesCount { get; set; }
 		public int QARolesCount { get; set; }

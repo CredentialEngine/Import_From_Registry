@@ -34,7 +34,7 @@ namespace workIT.Factories
 			bool isAllValid = true;
 			foreach ( CredentialAlignmentObjectProfile item in list )
 			{
-				Add( parentEntityId, categoryId, item, ref status );
+				int newId = Add( parentEntityId, categoryId, item, ref status );
 			}
 
 			return isAllValid;
@@ -63,6 +63,65 @@ namespace workIT.Factories
 
 			return isAllValid;
 		}
+
+		public bool OnetSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+
+			bool isAllValid = true;
+			CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
+			foreach ( string code in list )
+			{
+				item = new CredentialAlignmentObjectProfile();
+				//look up SOC
+				var records = CodesManager.SOC_Get( code );
+				foreach ( var record in records )
+				{
+					if ( record != null && record.Id > 0 )
+					{
+						item.Id = record.Id;
+						item.TargetNodeName = record.Title;
+						item.Description = record.Description;
+						item.CodedNotation = record.Code;
+						item.TargetNode = record.URL;
+						Add( parentEntityId, categoryId, item, ref status, false );
+					}
+				}
+			}
+
+			return isAllValid;
+		}
+
+		public bool CIPSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+
+			bool isAllValid = true;
+			CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
+			foreach ( string code in list )
+			{
+				item = new CredentialAlignmentObjectProfile();
+				//look up SOC
+				var records = CodesManager.SOC_Get( code );
+				foreach ( var record in records )
+				{
+					if ( record != null && record.Id > 0 )
+					{
+						item.Id = record.Id;
+						item.TargetNodeName = record.Title;
+						item.Description = record.Description;
+						item.CodedNotation = record.Code;
+						item.TargetNode = record.URL;
+						Add( parentEntityId, categoryId, item, ref status, false );
+					}
+				}
+			}
+
+			return isAllValid;
+		}
+
 		/// <summary>
 		/// Add a Entity framework Item
 		/// </summary>

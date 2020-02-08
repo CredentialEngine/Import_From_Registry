@@ -81,7 +81,7 @@ namespace workIT.Factories
                 //status.AddWarning( thisClassName + ".Save() Warning: the selected entity was not found yet. Need to check later. Setting to pending" );
                 efEntity.IsPending = true;
                 //may want to log an activity - would allow for queries, or the equivalent to the search reindex
-                LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".Entity_AgentRole_Add the agent was not found, for entityId: {0}, AgentId:{1}, RoleId: {2}", entityId, targetUid, roleId ) );
+                LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".Save. The target Entity was not found, for entityId: {0}, targetUid:{1}, RoleId: {2}", entityId, targetUid, roleId ) );
                 return 0;
             }
             else
@@ -513,7 +513,8 @@ namespace workIT.Factories
 							select new
 							{
 								qa.TargetEntityTypeId,
-								qa.TargetEntityBaseId
+								qa.TargetEntityBaseId,
+								qa.TargetOwningOrganizationId
 							};
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
@@ -525,10 +526,10 @@ namespace workIT.Factories
 					//
 					totalRecords = results.Count();
 					//may want a fudge factor?
-					org.QAPerformedOnCredentialsCount = results.Where( s => s.TargetEntityTypeId == 1 ).Distinct().Count();
+					org.QAPerformedOnCredentialsCount = results.Where( s => s.TargetEntityTypeId == 1 && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
 					org.QAPerformedOnOrganizationsCount = results.Where( s => s.TargetEntityTypeId == 2 ).Distinct().Count();
-					org.QAPerformedOnAssessmentsCount = results.Where( s => s.TargetEntityTypeId == 3 ).Distinct().Count();
-					org.QAPerformedOnLoppsCount = results.Where( s => s.TargetEntityTypeId == 7 ).Distinct().Count();
+					org.QAPerformedOnAssessmentsCount = results.Where( s => s.TargetEntityTypeId == 3 && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
+					org.QAPerformedOnLoppsCount = results.Where( s => s.TargetEntityTypeId == 7 && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
 
 					DateTime listEnd = DateTime.Now;
 					elasped = listEnd.Subtract( end ).TotalSeconds;
@@ -712,7 +713,7 @@ namespace workIT.Factories
 
         } //
 
-		public static List<OrganizationRoleProfile> GetAllCombinedForTarget( int targetEntityTypeId, int recordId )
+		public static List<OrganizationRoleProfile> GetAllCombinedForTarget( int targetEntityTypeId, int recordId, int owningOrgId )
 		{
 			OrganizationRoleProfile orp = new OrganizationRoleProfile();
 			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
@@ -790,12 +791,12 @@ namespace workIT.Factories
 
 					if ( prevRoleTypeId == entity.RelationshipTypeId )
 					{
-						if ( prevRoleSource != entity.roleSource )
+						if ( prevRoleSource != entity.roleSource  )
 						{
 							//TBD
 							if ( entity.IsQARole ?? false )
 							{
-								if ( entity.roleSource == "QAOrganization" )
+								if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
 									eitem.IsDirectAssertion = true;
 								else
 									eitem.IsIndirectAssertion = true;
@@ -806,7 +807,6 @@ namespace workIT.Factories
 							prevRoleSource = entity.roleSource;
 							continue;
 						}
-
 					}
 					else
 					{
@@ -822,7 +822,7 @@ namespace workIT.Factories
 						SchemaName = entity.ReverseSchemaTag,
 						IsQAValue = ( entity.IsQARole ?? false )
 					};
-					if ( entity.IsQARole ?? false )
+					if ( (entity.IsQARole ?? false) && entity.OrgId != owningOrgId )
 					{
 						eitem.Name = entity.AgentToSourceRelationship;
 						eitem.SchemaName = entity.ReverseSchemaTag;
@@ -836,15 +836,17 @@ namespace workIT.Factories
 
 					prevRoleTypeId = entity.RelationshipTypeId;
 					prevRoleSource = entity.roleSource;
+					//**need additional check if from the owning org!
 					if ( entity.IsQARole ?? false )
 					{
-						if ( entity.roleSource == "QAOrganization" )
+						if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
 							eitem.IsDirectAssertion = true;
 						else
 							eitem.IsIndirectAssertion = true;
 					}
 
-				}
+				} //
+
 				//check for remaining
 				if ( IsGuidValid( prevOrgUid ) && prevRoleTypeId > 0 )
 				{

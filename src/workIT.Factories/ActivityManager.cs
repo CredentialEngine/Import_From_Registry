@@ -562,13 +562,15 @@ namespace workIT.Factories
                     item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
                     item.SessionId = GetRowColumn( dr, "SessionId", "" );
                     item.IsBot = GetRowColumn( dr, "IsBot", false );
+					//item.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 0 );
+					//item.OwningOrgId = GetRowColumn( dr, "OwningOrgId", 0 );
+					item.Organization = GetRowColumn( dr, "Organization", "" );
+					//N/A
+					//item.ParentObject = GetRowColumn( dr, "ParentObject", "" );
+					//item.ParentEntityTypeId = GetRowColumn( dr, "ParentEntityTypeId", 0 );
+					//item.ParentRecordId = GetRowColumn( dr, "ParentRecordId", 0 );
 
-                    //N/A
-                    //item.ParentObject = GetRowColumn( dr, "ParentObject", "" );
-                    //item.ParentEntityTypeId = GetRowColumn( dr, "ParentEntityTypeId", 0 );
-                    //item.ParentRecordId = GetRowColumn( dr, "ParentRecordId", 0 );
-
-                    list.Add( item );
+					list.Add( item );
                 }
 
                 return list;

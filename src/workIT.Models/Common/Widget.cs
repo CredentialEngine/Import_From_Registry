@@ -31,8 +31,10 @@ namespace workIT.Models.Common
         
         #region Style related 
         public string WidgetStylesUrl { get; set; }
+		//may not be used, as is part of json
         public string LogoUrl { get; set; }
-        public string CustomStylesFileName { get; set; }
+		public string LogoFileName { get; set; }
+		public string CustomStylesFileName { get; set; }
         public string CustomStylesURL { get; set; }
         public WidgetStyles WidgetStyles { get; set; } = new WidgetStyles();
 
@@ -62,7 +64,7 @@ namespace workIT.Models.Common
     [Serializable]
     public class WidgetFilters
     {
-
+		//NOT USED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //temp for prototyping
         public bool HideCredentialTypesFilter { get; set; }
         public CredentialFilters CredFilters { get; set; } = new CredentialFilters();

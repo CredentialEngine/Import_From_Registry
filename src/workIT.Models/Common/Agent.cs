@@ -51,8 +51,13 @@ namespace workIT.Models.Common
 
 		public string CredentialRegistryId { get; set; }
 		public string CTID { get; set; }
-        //use for import only
-        public List<TextValueProfile> AlternateNames { get; set; }
+		public int EntityId
+		{
+			get { return this.ParentId; }
+			set { this.ParentId = value; }
+		}
+		//use for import only
+		public List<TextValueProfile> AlternateNames { get; set; }
 		public List<string> AlternateName { get; set; }
 
 		public Address Address { get; set; }
@@ -89,6 +94,9 @@ namespace workIT.Models.Common
 				return result;
 			}
 		}
+		/// <summary>
+		/// Listing of online and/or physical locations where a credential can be pursued.
+		/// </summary>
 		public string AvailabilityListing { get; set; }
         public List<string> AvailabilityListings { get; set; } = new List<string>();
 
@@ -146,6 +154,10 @@ namespace workIT.Models.Common
 		public string ID_FEIN { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:fein" )?.TextValue; } }
 		public string ID_IPEDSID { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:ipedsID" )?.TextValue; } }
 		public string ID_OPEID { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:opeID" )?.TextValue; } }
+		public string ID_LEICode { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:leiCode" )?.TextValue; } }
+		public string ID_ISICV4 { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:isicv4" )?.TextValue; } }
+		public string ID_NECS { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:ceterms:ncesID" )?.TextValue; } }
+
 		public List<IdentifierValue> ID_AlternativeIdentifier {
 			get {
 				return IdentificationCodes.Where( m => m.CodeSchema == "ceterms:alternativeIdentifier" ).ToList().ConvertAll( m =>

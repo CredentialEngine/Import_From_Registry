@@ -85,11 +85,28 @@ namespace workIT.Factories
                             entity.RowId = efEntity.RowId;
 
                             MapToDB( entity, efEntity );
-                            //assume and validate, that if we get here we have a full record
-                            //not clear if we will want to update a base reference. 
-                            //==> should happen automatically if full record matches a SWP?
-                            //may be iffy
-                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+							//assume and validate, that if we get here we have a full record
+							//not clear if we will want to update a base reference. 
+							//==> should happen automatically if full record matches a SWP?
+							//may be iffy
+							//19-05-21 mp - should add a check for an update where currently is deleted
+							if ( ( efEntity.EntityStateId ?? 0 ) == 0 )
+							{
+								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "credential/{0}",efEntity.Id);
+								//notify, and???
+								EmailManager.NotifyAdmin( "Previously Deleted Credential has been reactivated", string.Format("<a href='{2}'>Credential: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ));
+								SiteActivity sa = new SiteActivity()
+								{
+									ActivityType = "Credential",
+									Activity = "Import",
+									Event = "Reactivate",
+									Comment = string.Format( "Credential had been marked as deleted, and was reactivted by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+									ActivityObjectId = entity.Id
+								};
+								new ActivityManager().SiteActivityAdd( sa );
+							}
+
+							if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
                                 efEntity.EntityStateId = 3;
                             
                             if ( HasStateChanged( context ) )
@@ -591,7 +608,20 @@ namespace workIT.Factories
             {
                 status.AddWarning( "The 'Replaces Version' URL format is invalid. " + commonStatusMessage );
             }
-            if ( !IsUrlValid( profile.ImageUrl, ref commonStatusMessage ) )
+			if ( !IsUrlValid( profile.NextVersion, ref commonStatusMessage ) )
+			{
+				status.AddWarning( "The 'Next Version' URL format is invalid. " + commonStatusMessage );
+			}
+			if ( !IsUrlValid( profile.SupersededBy, ref commonStatusMessage ) )
+			{
+				status.AddWarning( "The 'SupersededBy' URL format is invalid. " + commonStatusMessage );
+			}
+			if ( !IsUrlValid( profile.Supersedes, ref commonStatusMessage ) )
+			{
+				status.AddWarning( "The 'Supersedes' URL format is invalid. " + commonStatusMessage );
+			}
+
+			if ( !IsUrlValid( profile.ImageUrl, ref commonStatusMessage ) )
             {
                 status.AddWarning( "The Image Url is invalid. " + commonStatusMessage );
             }
@@ -651,33 +681,6 @@ namespace workIT.Factories
 			 * Assertions BYs
 			 * Assertions (Jurisdiction) INs
 			 */
-
-
-            //not used by import
-
-            //if ( isAdd || ( entity.OwnerRoles != null && entity.OwnerRoles.Items.Count > 0 ) )
-            //{
-            //    if ( entity.OwnerRoles == null || entity.OwnerRoles.Items.Count == 0 )
-            //    {
-            //        //status.AddError( "Invalid request, please select one or more roles for the owing agent." );
-            //        //isAllValid = false;
-            //    }
-            //    //the owner role must be selected
-            //    else if ( entity.OwnerRoles.GetFirstItemId() != Entity_AgentRelationshipManager.ROLE_TYPE_OWNER )
-            //    {
-            //        //status.AddError( "Invalid request. The role \"Owned By\" must be one of the roles selected." );
-            //        //isAllValid = false;
-            //    }
-            //    else
-            //    {
-            //        OrganizationRoleProfile profile = new OrganizationRoleProfile();
-            //        profile.ParentUid = entity.RowId;
-            //        profile.ActingAgentUid = entity.OwningAgentUid;
-            //        profile.AgentRole = entity.OwnerRoles;
-            //        //now what
-            //    }
-            //}
-
 
             AddProfiles( entity, relatedEntity, ref status );
 
@@ -762,11 +765,13 @@ namespace workIT.Factories
             }
 
             //Financial Alignment  (do delete in SaveList)
-            Entity_FinancialAlignmentProfileManager fapm = new Factories.Entity_FinancialAlignmentProfileManager();
-            fapm.SaveList( entity.FinancialAssistance, entity.RowId, ref status );
+            //Entity_FinancialAlignmentProfileManager fapm = new Factories.Entity_FinancialAlignmentProfileManager();
+            //fapm.SaveList( entity.FinancialAssistanceOLD, entity.RowId, ref status );
 
-            //Revocation Profile (do delete in SaveList)
-            Entity_RevocationProfileManager rpm = new Entity_RevocationProfileManager();
+			new Entity_FinancialAssistanceProfileManager().SaveList( entity.FinancialAssistance, entity.RowId, ref status );
+
+			//Revocation Profile (do delete in SaveList)
+			Entity_RevocationProfileManager rpm = new Entity_RevocationProfileManager();
             rpm.SaveList( entity.Revocation, entity, ref status );
 
             //addresses (do delete in SaveList)
@@ -834,6 +839,10 @@ namespace workIT.Factories
 			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
 				isAllValid = false;
 
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAVY_RATING, entity.NavyRatingType, ref status ) == false )
+				isAllValid = false;
+
+			//
 			if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
                 isAllValid = false;
 
@@ -909,61 +918,64 @@ namespace workIT.Factories
 
         } //
 
-        /// <summary>
-        /// Delete a credential
-        /// May be done with each new import?
-        /// 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="statusMessage"></param>
-        /// <returns></returns>
-        //public bool Delete( int id, int userId, ref string statusMessage )
-        //{
-        //    bool isValid = false;
-        //    if ( id == 0 )
-        //    {
-        //        statusMessage = "Error - missing an identifier for the Credential";
-        //        return false;
-        //    }
-        //    using ( var context = new EntityContext() )
-        //    {
-        //        EM.Credential efEntity = context.Credential
-        //                    .SingleOrDefault( s => s.Id == id );
+		/// <summary>
+		/// Delete a credential
+		/// May be done with each new import?
+		/// 
+		/// </summary>
+		/// <param name="id"></param>
+		/// <param name="statusMessage"></param>
+		/// <returns></returns>
+		//public bool Delete( int id, int userId, ref string statusMessage )
+		//{
+		//    bool isValid = false;
+		//    if ( id == 0 )
+		//    {
+		//        statusMessage = "Error - missing an identifier for the Credential";
+		//        return false;
+		//    }
+		//    using ( var context = new EntityContext() )
+		//    {
+		//        EM.Credential efEntity = context.Credential
+		//                    .SingleOrDefault( s => s.Id == id );
 
-        //        if ( efEntity != null && efEntity.Id > 0 )
-        //        {
-        //            statusMessage = string.Format( "Credential: {0}, Id:{1}", efEntity.Name, efEntity.Id );
+		//        if ( efEntity != null && efEntity.Id > 0 )
+		//        {
+		//            statusMessage = string.Format( "Credential: {0}, Id:{1}", efEntity.Name, efEntity.Id );
 
-        //            //context.Credential.Remove( efEntity );
-        //            efEntity.LastUpdated = System.DateTime.Now;
+		//            //context.Credential.Remove( efEntity );
+		//            efEntity.LastUpdated = System.DateTime.Now;
 
-        //            int count = context.SaveChanges();
-        //            if ( count > 0 )
-        //            {
-        //                isValid = true;
-        //                //add pending request 
-        //                List<String> messages = new List<string>();
-        //                new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
-        //            }
-        //            else
-        //                statusMessage = "Error - delete failed, but no message was provided.";
-        //        }
-        //        else
-        //        {
-        //            statusMessage = "Error - delete failed, as record was not found.";
-        //        }
-        //    }
+		//            int count = context.SaveChanges();
+		//            if ( count > 0 )
+		//            {
+		//                isValid = true;
+		//                //add pending request 
+		//                List<String> messages = new List<string>();
+		//                new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
+		//				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+		//also check for any relationships
+		//				new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( orgUid );
+		//            }
+		//            else
+		//                statusMessage = "Error - delete failed, but no message was provided.";
+		//        }
+		//        else
+		//        {
+		//            statusMessage = "Error - delete failed, as record was not found.";
+		//        }
+		//    }
 
-        //    return isValid;
-        //}
+		//    return isValid;
+		//}
 
-        /// <summary>
-        /// Delete by envelopeId
-        /// </summary>
-        /// <param name="envelopeId"></param>
-        /// <param name="statusMessage"></param>
-        /// <returns></returns>
-        public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		/// <summary>
+		/// Delete by envelopeId
+		/// </summary>
+		/// <param name="envelopeId"></param>
+		/// <param name="statusMessage"></param>
+		/// <returns></returns>
+		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
         {
             bool isValid = true;
             if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
@@ -975,6 +987,7 @@ namespace workIT.Factories
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
 			int orgId = 0;
+			Guid orgUid = new Guid();
             using ( var context = new EntityContext() )
             {
                 try
@@ -992,6 +1005,7 @@ namespace workIT.Factories
 						{
 							Organization org = OrganizationManager.GetBasics( (Guid) efEntity.OwningAgentUid );
 							orgId = org.Id;
+							orgUid = org.RowId;
 						}
 
                         //if ( efEntity.OwningAgentUid.ToString().ToLower() == "ce-1abb6c52-0f8c-4b17-9f89-7e9807673106" )
@@ -1028,7 +1042,7 @@ namespace workIT.Factories
                             new ActivityManager().SiteActivityAdd( new SiteActivity()
                             {
                                 ActivityType = "Credential",
-                                Activity = "Management",
+                                Activity = "Import",
                                 Event = "Delete",
                                 Comment = msg,
 								ActivityObjectId = id
@@ -1036,10 +1050,18 @@ namespace workIT.Factories
                             isValid = true;
                             //add pending request 
                             List<String> messages = new List<string>();
-                            new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
+
+							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
 							//mark owning org for updates
 							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+
+							//delete all relationships
+							workIT.Models.SaveStatus status = new SaveStatus();
+							Entity_AgentRelationshipManager earmgr = new Entity_AgentRelationshipManager();
+							earmgr.DeleteAll( rowId, ref status );
 							//also check for any relationships
+							//There could be other orgs from relationships to be reindexed as well!
+							earmgr.ReindexAgentForDeletedArtifact( orgUid );
 						}
                     }
                     else
@@ -1444,10 +1466,10 @@ namespace workIT.Factories
 
             return output;
         }
-        public static List<string> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
+        public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
         {
             bool autocomplete = true;
-            List<string> results = new List<string>();
+            List<object> results = new List<object>();
 
             List<CM.CredentialSummary> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
             bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
@@ -1571,8 +1593,9 @@ namespace workIT.Factories
                         item.OwnerOrganizationName = "";
 
                     item.CTID = GetRowColumn( dr, "CTID" );
+					item.PrimaryOrganizationCTID = dr[ "OrganizationCTID" ].ToString();
 
-                    item.CredentialRegistryId = dr["CredentialRegistryId"].ToString();
+					item.CredentialRegistryId = dr["CredentialRegistryId"].ToString();
 
                     string date = GetRowColumn( dr, "EffectiveDate", "" );
                     if ( IsValidDate( date ) )
@@ -1589,8 +1612,9 @@ namespace workIT.Factories
                     item.Version = GetRowPossibleColumn( dr, "Version", "" );
                     item.LatestVersionUrl = GetRowPossibleColumn( dr, "LatestVersionUrl", "" );
                     item.PreviousVersion = GetRowPossibleColumn( dr, "PreviousVersion", "" );
+					item.ProcessStandards = GetRowPossibleColumn( dr, "ProcessStandards", "" );
 
-                    item.CredentialType = GetRowPossibleColumn( dr, "CredentialType", "" );
+					item.CredentialType = GetRowPossibleColumn( dr, "CredentialType", "" );
 
                     item.CredentialTypeSchema = GetRowPossibleColumn( dr, "CredentialTypeSchema", "" );
                     // item.CredentialTypeSchema = dr["CredentialTypeSchema"].ToString();
@@ -1829,7 +1853,7 @@ namespace workIT.Factories
                     to.CredentialType = ct.Title;
                     to.CredentialTypeSchema = ct.SchemaName;
                 }
-
+				//retain example using an Enumeration for by other related tableS???
                 to.CredentialTypeEnum = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE );
                 to.CredentialTypeEnum.Items.Add( new EnumeratedItem() { Id = to.CredentialTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
             }
@@ -1861,9 +1885,12 @@ namespace workIT.Factories
 
 			if ( cr.IsForProfileLinks ) //return minimum ===========
                 return;
-            //===================================================================
+			//===================================================================
+			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			if ( relatedEntity != null && relatedEntity.Id > 0 )
+				to.EntityLastUpdated = relatedEntity.LastUpdated;
 
-            if ( IsGuidValid( from.CopyrightHolder ) )
+			if ( IsGuidValid( from.CopyrightHolder ) )
             {
                 to.CopyrightHolder = ( Guid )from.CopyrightHolder;
                 //not sure if we need the org for display?
@@ -1878,7 +1905,8 @@ namespace workIT.Factories
 
             to.CredentialId = from.CredentialId;
             to.CodedNotation = from.CodedNotation;
-            to.AvailabilityListing = from.AvailabilityListing;
+			to.ISICV4 = from.ISICV4;
+			to.AvailabilityListing = from.AvailabilityListing;
 
 
             if ( IsValidDate( from.EffectiveDate ) )
@@ -1888,35 +1916,19 @@ namespace workIT.Factories
 
             to.LatestVersion = from.LatestVersionUrl;
             to.PreviousVersion = from.ReplacesVersionUrl;
+			to.NextVersion = from.NextVersion;
+			to.Supersedes = from.Supersedes;
+			to.SupersededBy = from.SupersededBy;
 
-            to.AvailableOnlineAt = from.AvailableOnlineAt;
+			to.AvailableOnlineAt = from.AvailableOnlineAt;
 
             if ( IsValidDate( from.Created ) )
                 to.Created = ( DateTime )from.Created;
             if ( IsValidDate( from.LastUpdated ) )
                 to.LastUpdated = ( DateTime )from.LastUpdated;
 
-            //if ( ( from.InLanguageId ?? 0 ) > 0 )
-            //{
-            //    to.InLanguageId = ( int )from.InLanguageId;
-            //    EnumeratedItem code = CodesManager.GetLanguage( to.InLanguageId );
-            //    if ( code.Id > 0 )
-            //    {
-            //        to.InLanguage = code.Name;
-            //        to.InLanguageCode = code.Value;
-            //    }
-            //}
-            //else
-            //{
-            //    to.InLanguageId = 0;
-            //    to.InLanguage = "";
-            //    to.InLanguageCode = "";
-            //}
             //multiple languages, now in entity.reference
             to.InLanguageCodeList = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
-            //short term convenience
-            //if ( to.InLanguageCodeList != null && to.InLanguageCodeList.Count > 0 )
-            //    to.InLanguage = to.InLanguageCodeList[0].TextValue;
 
             to.ProcessStandards = from.ProcessStandards ?? "";
             to.ProcessStandardsDescription = from.ProcessStandardsDescription ?? "";
@@ -1928,9 +1940,20 @@ namespace workIT.Factories
 				if ( cr.IsForDetailView && to.Name.IndexOf( statusItem.Name ) == -1 )
 					to.Name += string.Format( " ({0})", statusItem.Name );
 			}
+			//---------------
+			if ( cr.IncludingRolesAndActions )
+			{
+				to.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
 
-            //properties ===========================================
-            try
+
+				//get as ennumerations
+				//var oldRoles = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( to.RowId, true );
+				//this should really be QA only, the latter (AgentEntityRole_GetAll_ToEnumeration) included owns/offers
+				to.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 1, to.Id, to.OwningOrganizationId );
+			}
+
+			//properties ===========================================
+			try
             {
                 //**TODO VersionIdentifier - need to change to a list of IdentifierValue
                 to.VersionIdentifier = from.Version;
@@ -1965,9 +1988,10 @@ namespace workIT.Factories
                     to.EstimatedCosts = new List<CostProfile>();
 
                 //profiles ==========================================
-                to.FinancialAssistance = Entity_FinancialAlignmentProfileManager.GetAll( to.RowId );
+                //to.FinancialAssistanceOLD = Entity_FinancialAlignmentProfileManager.GetAll( to.RowId );
+				to.FinancialAssistance = Entity_FinancialAssistanceProfileManager.GetAll( to.RowId, false );
 
-                if ( cr.IncludingAddresses )
+				if ( cr.IncludingAddresses )
                     to.Addresses = Entity_AddressManager.GetAll( to.RowId );
 
                 if ( cr.IncludingDuration )
@@ -1982,6 +2006,8 @@ namespace workIT.Factories
                     to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
 					to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+
+					to.NavyRating = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAVY_RATING );
 				}
 
                 if ( cr.IncludingConnectionProfiles )
@@ -2144,17 +2170,7 @@ namespace workIT.Factories
                 to.DegreeMajor = Entity_ReferenceManager.GetAll(to.RowId, CodesManager.PROPERTY_CATEGORY_DEGREE_MAJOR);
                 to.DegreeMinor = Entity_ReferenceManager.GetAll(to.RowId, CodesManager.PROPERTY_CATEGORY_DEGREE_MINOR);
 
-                //---------------
-                if ( cr.IncludingRolesAndActions )
-                {
-                    to.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN);
 
-
-                    //get as ennumerations
-                    //var oldRoles = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( to.RowId, true );
-					//this should really be QA only, the latter (AgentEntityRole_GetAll_ToEnumeration) included owns/offers
-					to.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 1, to.Id);
-                }
             }
             catch ( Exception ex )
             {
@@ -2187,9 +2203,10 @@ namespace workIT.Factories
 
             output.CredentialId = string.IsNullOrWhiteSpace( input.CredentialId ) ? null : input.CredentialId;
             output.CodedNotation = GetData( input.CodedNotation );
+			output.ISICV4 = GetData( input.ISICV4 );
 
-            //handle old version setting output zero
-            if ( IsGuidValid( input.OwningAgentUid ) )
+			//handle old version setting output zero
+			if ( IsGuidValid( input.OwningAgentUid ) )
             {
                 if ( output.Id > 0 && output.OwningAgentUid != input.OwningAgentUid )
                 {
@@ -2229,7 +2246,11 @@ namespace workIT.Factories
 
             output.LatestVersionUrl = GetUrlData( input.LatestVersion, null );
             output.ReplacesVersionUrl = GetUrlData( input.PreviousVersion, null );
-            output.AvailabilityListing = GetUrlData( input.AvailabilityListing, null );
+			output.NextVersion = GetUrlData( input.NextVersion, null );
+			output.Supersedes = GetUrlData( input.Supersedes, null );
+			output.SupersededBy = GetUrlData( input.SupersededBy, null );
+
+			output.AvailabilityListing = GetUrlData( input.AvailabilityListing, null );
             output.AvailableOnlineAt = GetUrlData( input.AvailableOnlineAt, null );
             output.ImageUrl = GetUrlData( input.ImageUrl, null );
 

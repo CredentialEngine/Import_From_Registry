@@ -15,7 +15,6 @@ namespace workIT.Models.Elastic
             RelationshipTypes = new List<int>();
             SubjectAreas = new List<string>();
             Classifications = new List<IndexReferenceFramework>();
-            QualityAssurance = new List<IndexQualityAssurance>();
             Addresses = new List<Address>();
         }
         //public int Id { get; set; }
@@ -42,7 +41,7 @@ namespace workIT.Models.Elastic
         public List<int> RelationshipTypes { get; set; }
         //public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
 
-        public string Subject { get; set; }
+
         //public string Description { get; set; }
 
         public int NameIndex { get; set; }
@@ -62,21 +61,21 @@ namespace workIT.Models.Elastic
 			get { return PrimaryOrganizationCTID; }
 			set { this.PrimaryOrganizationCTID = value; }
 		}
-        
-        //public DateTime Created { get; set; }
-        //public DateTime LastUpdated { get; set; }
-        public string AvailableOnlineAt { get; set; }
-        public bool IsAvailableOnline
-        {
-            get
-            {
-                if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
-                    return true;
-                else
-                    return false;
-            }
-        }
-        public decimal TotalCost { get; set; }
+
+		//public DateTime Created { get; set; }
+		//public DateTime LastUpdated { get; set; }
+		public string AvailableOnlineAt { get; set; }
+		public bool IsAvailableOnline
+		{
+			get
+			{
+				if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) && AvailableOnlineAt.Length > 10 )
+					return true;
+				else
+					return false;
+			}
+		}
+		public decimal TotalCost { get; set; }
         //public string CredentialRegistryId { get; set; }
 		/// <summary>
 		/// Source will be Entity.SearchIndex:
@@ -89,8 +88,10 @@ namespace workIT.Models.Elastic
 		/// </summary>
 		//public List<string> TextValues { get; set; } = new List<string>();
 		public List<string> PremiumValues { get; set; } = new List<string>();
-		public List<string> SubjectAreas { get; set; }
-        public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
+		public bool HasSubjects { get; set; }
+		//public new List<string> SubjectAreas { get; set; }
+
+		public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
         //public List<IndexProperty> LearningMethodTypes { get; set; } = new List<IndexProperty>();
         //public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
@@ -102,7 +103,7 @@ namespace workIT.Models.Elastic
         //QAAgentAndRoles - List actual orgIds and names for roles
         public string Org_QAAgentAndRoles { get; set; }
         //public List<int> QualityAssurances { get; set; } = new List<int>();
-        public List<IndexQualityAssurance> QualityAssurance { get; set; }
+        //public List<IndexQualityAssurance> QualityAssurance { get; set; }
 
 		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
 		public string CodedNotation { get; set; }
@@ -110,7 +111,8 @@ namespace workIT.Models.Elastic
         public int CompetenciesCount { get; set; }
         public string ListTitle { get; set; }
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
-        public List<int> ReportFilters { get; set; } = new List<int>();
+		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
+		public List<int> ReportFilters { get; set; } = new List<int>();
 
 		//-actual connection type (no credential info)
 		public string ConnectionsList { get; set; }
@@ -118,6 +120,7 @@ namespace workIT.Models.Elastic
 		public List<Connection> Connections { get; set; } = new List<Connection>();
 		//connection type, plus Id, and name of credential
 		public string CredentialsList { get; set; }
+		public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
 
 		//condition profiles - future
 
@@ -133,7 +136,7 @@ namespace workIT.Models.Elastic
 		public bool HasIndustries { get; set; }
 		public bool HasInstructionalPrograms { get; set; }
 		#region counts
-		//connections
+		//connections not condition profiles
 		public int RequiresCount { get; set; }
 
         public int RecommendsCount { get; set; }

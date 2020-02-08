@@ -46,14 +46,14 @@ namespace workIT.Factories
 
 		public bool SaveAssertedInList( Guid parentUid, int assertedInTypeId, List<ThisEntity> list,  ref SaveStatus status )
 		{
-			int jProfilePurposeId = JURISDICTION_PURPOSE_OFFERREDIN;
+
 			if ( list == null || list.Count == 0 )
 				return true;
 
 			bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
-				item.JProfilePurposeId = jProfilePurposeId;
+				item.JProfilePurposeId = JURISDICTION_PURPOSE_OFFERREDIN;
 				item.ParentEntityUid = parentUid;
 				item.AssertedInTypeId = assertedInTypeId;
 				Add( item, "", ref status );
@@ -442,8 +442,12 @@ namespace workIT.Factories
 				to.IsGlobalJurisdiction = from.IsGlobalJurisdiction;
 			else
 				to.IsGlobalJurisdiction = null;
+			if ( !IsGuidValid( from.AssertedBy ) && from.AssertedByList != null && from.AssertedByList.Count > 0 )
+			{
+				from.AssertedBy = from.AssertedByList[ 0 ];
+			}
 
-			if ( IsGuidValid( from.AssertedBy ) )
+				if ( IsGuidValid( from.AssertedBy ) )
 			{
 				if ( to.Id > 0 && to.AssertedByAgentUid != from.AssertedBy )
 				{
@@ -541,7 +545,7 @@ namespace workIT.Factories
 
 			}
 			//***TODO ** handle differently?
-			//use of properities, requires creating an Entity for Jurisdiction???
+			//use of properties, requires creating an Entity for Jurisdiction???
 			if ( to.JProfilePurposeId == 3)
 			{
 

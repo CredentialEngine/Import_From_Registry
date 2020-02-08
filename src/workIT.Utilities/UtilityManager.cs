@@ -242,7 +242,7 @@ namespace workIT.Utilities
 		/// </summary>
 		/// <param name="input"></param>
 		/// <returns></returns>
-		public static string GenerationMD5String( string input, bool returnAsLowerCase = true )
+		public static string GenerateMD5String( string input, bool returnAsLowerCase = true )
 		{
 			// Use input string to calculate MD5 hash
 			using ( System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create() )

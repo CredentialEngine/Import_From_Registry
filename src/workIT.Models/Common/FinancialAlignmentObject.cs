@@ -16,6 +16,25 @@ namespace workIT.Models.Common
 		/// </summary>
 		public int AlignmentTypeId { get; set; }
 		public string AlignmentType { get; set; }
+		//private string _alignmentType = "";
+		//public string AlignmentType
+		//{
+		//	get { return _alignmentType; }
+		//	set
+		//	{
+		//		if ( value.ToLower().Contains( "teaches" ) )
+		//			value = "Teaches";
+		//		else if ( value.ToLower().Contains( "requires" ) )
+		//			value = "Requires";
+		//		else if ( value.ToLower().Contains( "assesses" ) )
+		//			value = "Assesses";
+		//		else
+		//		{
+		//			//let it go
+		//		}
+		//		_alignmentType = value;
+		//	}
+		//}
 
 		/// <summary>
 		/// Framework URL
@@ -75,6 +94,21 @@ namespace workIT.Models.Common
 
 	}
 	//
+	public class FinancialAssistanceProfile: BaseProfile
+	{
+
+		public string Name {
+			get { return this.ProfileName;  }
+			set { this.ProfileName = value; } 
+		}
+
+		/// <summary>
+		/// SubjectWebpage - URI
+		/// </summary>
+		public string SubjectWebpage { get; set; }
+
+		public Enumeration FinancialAssistanceType { get; set; } = new Enumeration();
+	}
 
 
 }

@@ -1,0 +1,270 @@
+﻿<script type="text/javascript">
+	var CompetencyFrameworkDSP = {
+		CredentialTypes: ["ceterms:ApprenticeshipCertificate", "ceterms:AssociateDegree", "ceterms:BachelorDegree", "ceterms:Badge", "ceterms:Certificate", "ceterms:Certification", "ceterms:Degree", "ceterms:DigitalBadge", "ceterms:Diploma", "ceterms:DoctoralDegree", "ceterms:GeneralEducationDevelopment", "ceterms:JourneymanCertificate", "ceterms:License", "ceterms:MasterCertificate", "ceterms:MasterDegree", "ceterms:MicroCredential", "ceterms:OpenBadge", "ceterms:ProfessionalDoctorate", "ceterms:QualityAssuranceCredential", "ceterms:ResearchDoctorate", "ceterms:SecondarySchoolDiploma"],
+		CoreToConditionProfile: ["ceterms:requires", "ceterms:recommends", "ceterms:advancedStandingFrom", "ceterms:preparationFrom", "ceterms:isRequiredFor", "ceterms:isRecommendedFor", "ceterms:isAdvancedStandingFor", "ceterms:isPreparationFor", "ceterms:prerequsite", "ceterms:corequisite"],
+		ConnectionProperties: ["ceasn:creator", "ceasn:publisher", "ceasn:isPartOf", "ceasn:conceptTerm", "ceasn:complexityLevel", "ceasn:abilityEmbodied", "ceasn:skillEmbodied", "knowledgeEmbodied", "skos:inScheme", "ceterms:targetNode", "ceterms:targetCredential", "ceterms:targetAssessment", "ceterms:targetLearningOpportunity"],
+		AlignmentProperties: ["ceasn:alignFrom", "ceasn:alignTo", "ceasn:broadAlignment", "ceasn:exactAlignment", "ceasn:narrowAlignment", "ceasn:majorAlignment", "ceasn:minorAlignment", "ceasn:prerequisiteAlignment"],
+
+		getRelatedItemsForResults: function (results, relatedItems, onFinish) {
+			//Build triples
+			var allData = results.map(function (m) { return m.RawCTDL }).concat(relatedItems);
+			var triples = [];
+			allData.forEach(function (item) {
+				var label = CompetencyFrameworkDSP.getEnglish(item["ceterms:name"] || item["ceasn:name"] || item["ceasn:competencyLabel"] || item["ceasn:competencyText"] || item["skos:prefLabel"] || "Item");
+				Object.keys(item).forEach(function (key) {
+					CompetencyFrameworkDSP.flatten(key, item[key], [key], item["@@type"], item["@@id"], label, item["ceterms:ctid"], triples);
+				});
+			});
+
+			//Handle results
+			var allCredentialTriples = triples.filter(function (m) { return CompetencyFrameworkDSP.CredentialTypes.indexOf(m.subjectType) > -1 });
+			var allConceptSchemeTriples = triples.filter(function (m) { return m.subjectType == "skos:ConceptScheme" });
+			//var allCompetencyTriples = triples.filter(function (m) { return m.subjectType == "ceasn:Competency" });
+			results.forEach(function (result) {
+				//Triples for the Framework
+				var outgoingTriples = triples.filter(function (m) { return m.subjectURI == result.RawCTDL["@@id"] });
+				var incomingTriples = triples.filter(function (m) { return m.objectURI == result.RawCTDL["@@id"] });
+
+				//Competencies and triples for the Competencies
+				var competencyURIs = incomingTriples.filter(function (m) { return m.path.indexOf("ceasn:isPartOf") > -1 }).map(function (m) { return m.subjectURI });
+				var competencies = relatedItems.filter(function (m) { return competencyURIs.indexOf(m["@@id"]) > -1 });
+				var outgoingCompetencyTriples = triples.filter(function (m) { return competencyURIs.indexOf(m.subjectURI) > -1 });
+				var incomingCompetencyTriples = triples.filter(function (m) { return competencyURIs.indexOf(m.objectURI) > -1 });
+
+				//Framework-level relationships
+				var publishers = CompetencyFrameworkDSP.findRelated("objectURI", outgoingTriples, function (m) { return m.path.indexOf("ceasn:publisher") > -1 }, relatedItems);
+				var creators = CompetencyFrameworkDSP.findRelated("objectURI", outgoingTriples, function (m) { return m.path.indexOf("ceasn:creator") > -1 }, relatedItems);
+				var outAlignedFrameworks = CompetencyFrameworkDSP.findRelated("objectURI", outgoingTriples, function (m) { return m.path.filter(function (n) { return CompetencyFrameworkDSP.AlignmentProperties.indexOf(n) > -1 }).length > 0 }, relatedItems);
+				var inAlignedFrameworks = CompetencyFrameworkDSP.findRelated("subjectURI", incomingTriples, function (m) { return m.subjectType == "ceasn:CompetencyFramework" }, relatedItems);
+
+				//Competency-level relationships
+				var assessments = CompetencyFrameworkDSP.findRelated("subjectURI", incomingCompetencyTriples, function (m) { return m.subjectType == "ceterms:AssessmentProfile" }, relatedItems);
+				var assessmentURIs = assessments.map(function (m) { return m["@@id"] });
+				var learningOpportunities = CompetencyFrameworkDSP.findRelated("subjectURI", incomingCompetencyTriples, function (m) { return m.subjectType == "ceterms:LearningOpportunityProfile" }, relatedItems);
+				var learningOpportunityURIs = learningOpportunities.map(function (m) { return m["@@id"] });
+				var credentials = CompetencyFrameworkDSP.findRelated("subjectURI", incomingCompetencyTriples, function (m) { return CompetencyFrameworkDSP.CredentialTypes.indexOf(m.subjectType) > -1 }, relatedItems);
+				var credentialsViaAssesments = CompetencyFrameworkDSP.findRelated("subjectURI", allCredentialTriples, function (m) { return assessmentURIs.indexOf(m.objectURI) > -1 }, relatedItems);
+				var credentialsViaLearningOpportunities = CompetencyFrameworkDSP.findRelated("subjectURI", allCredentialTriples, function (m) { return learningOpportunityURIs.indexOf(m.objectURI) > -1 }, relatedItems);
+				var concepts = CompetencyFrameworkDSP.findRelated("objectURI", outgoingCompetencyTriples, function (m) { return m.path.indexOf("ceasn:conceptTerm") > -1 }, relatedItems);
+				var conceptSchemes = CompetencyFrameworkDSP.findRelated("subjectURI", allConceptSchemeTriples, function (m) { return concepts.map(function (n) { return n["skos:inScheme"] }).indexOf(m.subjectURI) > -1 }, relatedItems);
+				var outAlignedCompetencies = CompetencyFrameworkDSP.findRelated("objectURI", outgoingCompetencyTriples, function (m) { return m.path.filter(function (n) { return CompetencyFrameworkDSP.AlignmentProperties.indexOf(n) > -1 }).length > 0 }, relatedItems);
+				var inAlignedCompetencies = CompetencyFrameworkDSP.findRelated("subjectURI", incomingCompetencyTriples, function (m) { return m.path.filter(function (n) { return CompetencyFrameworkDSP.AlignmentProperties.indexOf(n) > -1 }).length > 0 }, relatedItems);
+
+				result.RelatedItems = {
+					Publisher: publishers,
+					Creator: creators,
+					Owner: publishers.concat(creators),
+					Competencies: competencies,
+					Credentials: CompetencyFrameworkDSP.mergeArrays([credentials, credentialsViaAssesments, credentialsViaLearningOpportunities]),
+					Assessments: assessments,
+					LearningOpportunities: learningOpportunities,
+					ConceptSchemes: conceptSchemes,
+					Concepts: concepts,
+					AlignedFrameworks: CompetencyFrameworkDSP.mergeArrays([outAlignedFrameworks, inAlignedFrameworks]),
+					AlignedCompetencies: CompetencyFrameworkDSP.mergeArrays([outAlignedCompetencies, inAlignedCompetencies])
+				}
+			});
+
+			if (onFinish) {
+				onFinish();
+			}
+		},
+
+		flatten: function (key, value, path, subjectType, subjectURI, subjectLabel, subjectCTID, triples) {
+			if (Array.isArray(value)) {
+				value.forEach(function (item) {
+					CompetencyFrameworkDSP.flatten(key, item, path, subjectType, subjectURI, subjectLabel, subjectCTID, triples);
+				})
+			}
+			else if (typeof (value) == "object") {
+				Object.keys(value).forEach(function (itemKey) {
+					CompetencyFrameworkDSP.flatten(itemKey, value[itemKey], path.concat([itemKey]), subjectType, subjectURI, subjectLabel, subjectCTID, triples);
+				})
+			}
+			else {
+				if (CompetencyFrameworkDSP.ConnectionProperties.indexOf(key) > -1 || CompetencyFrameworkDSP.AlignmentProperties.indexOf(key) > -1) {
+					triples.push({ subjectType: subjectType, subjectURI: subjectURI, subjectLabel: subjectLabel, subjectCTID: subjectCTID, path: path, objectURI: value });
+				}
+			}
+		},
+
+		//Get either the objectURI or the subjectURI from the "lookIn" triples where those triples satisfy the matchFunction, then return the relatedItems that match those URI values
+		findRelated: function (desiredURIProperty, lookIn, matchFunction, relatedItems) {
+			var matchingURIs = lookIn.filter(matchFunction).map(function (m) { return m[desiredURIProperty] });
+			return relatedItems.filter(function (m) { return matchingURIs.indexOf(m["@@id"]) > -1 });
+		},
+
+		mergeArrays: function (arrayOfArrays) {
+			var result = [];
+			arrayOfArrays.forEach(function (arr) {
+				arr.forEach(function (item) {
+					if (result.indexOf(item) == -1) {
+						result.push(item);
+					}
+				});
+			});
+			return result;
+		},
+
+		match: function (haystack, haystackProperty, needle) {
+			return haystack.filter(function (m) { return m[haystackProperty] == needle });
+		},
+
+		//Handle language maps
+		getEnglish: function (languageMap, targetLanguage) {
+			return !languageMap ? "" : languageMap[targetLanguage] || languageMap["en"] || languageMap["en-us"] || languageMap["en-US"] || languageMap[Object.keys(languageMap)[0]] || "";
+		},
+		//
+
+
+		/// OLD stuff below ///
+		/*
+		getRelatedItemsForResultsOLD: function(results, relatedItems, onFinish){
+			//Get graph
+			//var graph = CompetencyFrameworkDSP.getRelatedItemsGraph(results.map(function (m) { return m.RawCTDL }), relatedItems);
+
+			CompetencyFrameworkDSP.getRelatedItemsGraphRecursively(results.map(function (m) { return m.RawCTDL }), relatedItems, function (graph) {
+
+				//Get related
+				results.forEach(function (result) {
+
+					//Framework
+					var frameworkRelated = graph.filter(function (m) { return m.id == result.RawCTDL["@@id"] })[0].related;
+
+					//Competencies
+					var competencies = relatedItems.filter(function (m) { return m["ceasn:isPartOf"] == result.RawCTDL["@@id"] }); //Ensure we only select member competencies
+					var competenciesRelatedMulti = graph.filter(function (m) { return competencies.filter(function (n) { return n["@@id"] == m.id }).length > 0 }).map(function (m) { return m.related });
+					var competenciesRelated = CompetencyFrameworkDSP.condenseGraphItems(competenciesRelatedMulti).filter(function (m) { return competencies.filter(function (n) { return n["@@id"] == m.id }).length == 0 });
+
+					//Organization
+					var publisher = relatedItems.filter(function (m) { return result.RawCTDL["ceasn:publisher"] && result.RawCTDL["ceasn:publisher"].join(",").indexOf(m["ceterms:ctid"]) > -1 });
+					var creator = relatedItems.filter(function (m) { return result.RawCTDL["ceasn:creator"] && result.RawCTDL["ceasn:creator"].join(",").indexOf(m["ceterms:ctid"]) > -1 });
+
+					//Related items
+					var directCredentials = competenciesRelated.filter(function (m) { return CompetencyFrameworkDSP.CredentialTypes.indexOf(m.type) > -1 });
+					var directAssessments = competenciesRelated.filter(function (m) { return m.type == "ceterms:AssessmentProfile" });
+					var credsViaAssessments = CompetencyFrameworkDSP.condenseGraphItems(directAssessments.map(function (m) { return m.related.filter(function (n) { return CompetencyFrameworkDSP.CredentialTypes.indexOf(n.type) > -1 }) }));
+					var directLearningOpportunities = competenciesRelated.filter(function (m) { return m.type == "ceterms:LearningOpportunityProfile" });
+					var credsViaLearningOpportunities = CompetencyFrameworkDSP.condenseGraphItems(directLearningOpportunities.map(function (m) { return m.related.filter(function (n) { return CompetencyFrameworkDSP.CredentialTypes.indexOf(n.type) > -1 }) }));
+					var relatedCredentials = directCredentials.concat(credsViaAssessments).concat(credsViaLearningOpportunities);
+
+					//Concepts
+					var concepts = competenciesRelated.filter(function (m) { return m.type == "skos:Concept" });
+
+					//Concept Schemes
+					var conceptSchemes = CompetencyFrameworkDSP.condenseGraphItems(concepts.map(function (m) { return m.related.filter(function (n) { return n.type == "skos:ConceptScheme" }) }));
+
+					//Aligned Competencies
+					var alignedCompetencies = competenciesRelated.filter(function (m) { return m.type == "ceasn:Competency" });
+
+					//Aligned Frameworks
+					var alignedFrameworks = frameworkRelated.filter(function (m) { return m.type == "ceasn:CompetencyFramework" });
+
+					result.RelatedItems = {
+						Publisher: publisher,
+						Creator: creator,
+						Owner: publisher.concat(creator),
+						Competencies: competencies,
+						Credentials: relatedCredentials.map(function (m) { return m.data }),
+						Assessments: directAssessments.map(function (m) { return m.data }),
+						LearningOpportunities: directLearningOpportunities.map(function (m) { return m.data }),
+						ConceptSchemes: conceptSchemes.map(function (m) { return m.data }),
+						Concepts: concepts.map(function (m) { return m.data }),
+						AlignedFrameworks: alignedFrameworks.map(function (m) { return m.data }),
+						AlignedCompetencies: alignedCompetencies.map(function (m) { return m.data })
+					};
+				});
+
+				if (onFinish) {
+					onFinish();
+				}
+
+			});
+
+		},
+		//
+
+		getRelatedItemsGraph: function (results, relatedItems) {
+			var rawGraph = results.concat(relatedItems);
+			var graph = CompetencyFrameworkDSP.buildGraphItems(rawGraph);
+
+			for (var i = 0; i < graph.length; i++) {
+				(function (item) {
+					item.related = graph.filter(function (m) { return m.id != item.id && (m.referencedCTIDs.indexOf(item.ctid) > -1 || item.referencedCTIDs.indexOf(m.ctid) > -1) });
+				})(graph[i]);
+			}
+
+			console.log("found relations", graph);
+			return graph;
+		},
+
+		buildGraphItems: function(relatedItems){
+			var graph = [];
+			relatedItems.forEach(function (item) {
+				var itemString = JSON.stringify(item);
+				var itemID = (item["@@id"] || "").toLowerCase()
+				graph.push({
+					id: itemID,
+					type: item["@@type"],
+					ctid: (item["ceterms:ctid"] || "").toLowerCase(),
+					data: item,
+					text: itemString,
+					referencedCTIDs: itemString.toLowerCase().match(/ce-[a-z0-9-]/g).filter(function (m) { return m != itemID }),
+					related: []
+				});
+			});
+			return graph;
+		},
+
+		getRelatedItemsGraphRecursively: function(results, relatedItems, onFinish){
+			var rawGraph = results.concat(relatedItems);
+			var graph = CompetencyFrameworkDSP.buildGraphItems(rawGraph);
+
+			//TODO - make this part behave more asynchronously
+			setTimeout(function () {
+				results.forEach(function (result) {
+					var graphItem = graph.filter(function (m) { return m.ctid == result["ceterms:ctid"] })[0];
+					if (graphItem) {
+						CompetencyFrameworkDSP.getRelatedItemsRecursively(graphItem, graph, 10);
+					}
+				});
+
+				if (onFinish) {
+					onFinish(graph);
+				}
+			}, 20);
+
+		},
+
+		getRelatedItemsRecursively: function (graphItem, graph, limit) {
+			if (limit <= 0) {
+				return;
+			}
+
+			graphItem.related = graph.filter(function (m) {
+				return m.id != graphItem.id && (m.referencedCTIDs.indexOf(graphItem.ctid) > -1 || graphItem.referencedCTIDs.indexOf(m.ctid) > -1)
+			});
+
+			graphItem.related.filter(function(m){ return m.related.length == 0 }).forEach(function (subGraphItem) {
+				CompetencyFrameworkDSP.getRelatedItemsRecursively(subGraphItem, graph, limit - 1);
+			});
+
+			return graphItem;
+		},
+
+		condenseGraphItems: function(arrayOfArrays) {
+			var result = [];
+			arrayOfArrays.forEach(function(list){
+				list.forEach(function(item){
+					if(result.filter(function(m){ return m.id == item.id }).length == 0){
+						result.push(item);
+					}
+				});
+			});
+			return result;
+		}
+		//
+		*/
+	};
+
+</script>

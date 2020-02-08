@@ -103,24 +103,6 @@ namespace workIT.Models.ProfileModels
 		public int ConnectionProfileTypeId { get; set; }
 		public int ConditionSubTypeId { get; set; }
 		
-		//public MN.ProfileLink AssertedByOrgProfileLink { get; set; }
-		//public List<TextValueProfile> Auto_AssertedBy
-		//{
-		//	get
-		//	{
-		//		var result = new List<TextValueProfile>();
-		//		if ( AssertedBy == null
-		//			|| AssertedBy.Id == 0
-		//			|| ( AssertedBy.CTID ?? "" ).Length != 39 )
-		//			return result;
-
-		//		//if ( !string.IsNullOrWhiteSpace( AssertedBy_GUID ) && AssertedBy_GUID.IndexOf("00000000-") == -1 )
-		//		//{
-		//		//	result.Add( new TextValueProfile() { TextValue = Utilities.GetWebConfigValue( "credRegistryResourceUrl" ) + AssertedBy_GUID } );
-		//		//}
-		//		return result;
-		//	}
-		//}
 		
 		public Guid AssertedByAgentUid { get; set; }
         public List<Guid> AssertedByAgent { get; set; } = new List<Guid>();
@@ -139,13 +121,18 @@ namespace workIT.Models.ProfileModels
 		public string SubjectWebpage { get; set; }
 		public List<TextValueProfile> Auto_SubjectWebpage { get { return string.IsNullOrWhiteSpace( SubjectWebpage ) ? null : new List<TextValueProfile>() { new TextValueProfile() { TextValue = SubjectWebpage } }; } }
 
+		//not sure if will use this?
+		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		[Obsolete]
 		public string CreditHourType { get; set; }
+		[Obsolete]
 		public decimal CreditHourValue { get; set; }
 		public int CreditUnitTypeId { get; set; }
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
-
+		public decimal CreditUnitMaxValue { get; set; }
+		public bool CreditValueIsRange { get; set; }
 		/// <summary>
 		/// EducationLevel - actually AudienceLevel - should rename
 		/// </summary>
@@ -177,6 +164,7 @@ namespace workIT.Models.ProfileModels
 		public List<CredentialAlignmentObjectProfile> TargetCompetencies { get; set; }
 		public List<TextValueProfile> Condition { get; set; }
 
+		public string SubmissionOfDescription { get; set; }
 		public List<TextValueProfile> SubmissionOf { get; set; }
 		public List<ConditionProfile> AlternativeCondition { get; set; }
 
@@ -251,14 +239,16 @@ namespace workIT.Models.ProfileModels
 				//Ignore credentials, assessments, learning opportunities, competencies
 				return !string.IsNullOrWhiteSpace( Description ) ||
 					!string.IsNullOrWhiteSpace( Experience ) ||
+					!string.IsNullOrWhiteSpace( SubmissionOfDescription ) ||
+					( Condition != null && SubmissionOf.Count() > 0 ) ||
 					YearsOfExperience > 0 ||
 					MinimumAge > 0 ||
 					!string.IsNullOrWhiteSpace( SubjectWebpage ) ||
 					(Condition != null && Condition.Count() > 0) ||
 					(AudienceLevel != null && AudienceLevel.Items != null && AudienceLevel.Items.Where( m => m != null ).Count() > 0) ||
 					(ApplicableAudienceType != null && ApplicableAudienceType.Items != null && ApplicableAudienceType.Items.Where( m => m != null ).Count() > 0) ||
-					!string.IsNullOrWhiteSpace( CreditHourType ) ||
-					CreditHourValue > 0 ||
+					//!string.IsNullOrWhiteSpace( CreditHourType ) ||
+					//CreditHourValue > 0 ||
 					(CreditUnitType != null && CreditUnitType.Items != null && CreditUnitType.Items.Where( m => m != null ).Count() > 0) ||
 					!string.IsNullOrWhiteSpace( CreditUnitTypeDescription ) ||
 					CreditUnitValue > 0 ||

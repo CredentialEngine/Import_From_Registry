@@ -15,8 +15,9 @@ namespace CTI.Import
 	{
 		static string thisClassName = "Program";
         public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
-
-        ImportCredential credImportMgr = new ImportCredential();
+		public static string envType = UtilityManager.GetAppKeyValue( "envType");
+		//
+		ImportCredential credImportMgr = new ImportCredential();
         ImportOrganization orgImportMgr = new ImportOrganization();
         ImportAssessment asmtImportMgr = new ImportAssessment();
         ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
@@ -27,7 +28,7 @@ namespace CTI.Import
 		{
 			//NOTE: consider the IOER approach that all candidate records are first downloaded, and then a separate process does the import
 
-			RegistryImport registryImport = new RegistryImport();
+			
 			LoggingHelper.DoTrace( 1, "======================= STARTING IMPORT =======================" );
             TimeZone zone = TimeZone.CurrentTimeZone;
             // Demonstrate ToLocalTime and ToUniversalTime.
@@ -42,11 +43,30 @@ namespace CTI.Import
             int deleteAction = UtilityManager.GetAppKeyValue( "deleteAction", 0 );
             bool doingDownloadOnly = UtilityManager.GetAppKeyValue( "DoingDownloadOnly", false );
 
-            #region  Import Type/Arguments
-            if ( args != null && args.Length == 1 )
+			string defaultCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			string additionalCommunity = UtilityManager.GetAppKeyValue( "additionalCommunity" );
+
+			#region  Import Type/Arguments
+			if ( args != null )
 			{
-				scheduleType = args[ 0 ];
+				if ( args.Length >= 1 )
+					scheduleType = args[ 0 ];
+
+				if ( args.Length == 2 )
+				{
+					//
+					var altCommunity = args[ 1 ];
+					if ( !string.IsNullOrWhiteSpace( altCommunity ) && altCommunity.ToLower() == additionalCommunity.ToLower() )
+					{
+						//has to match additional to be valid
+						defaultCommunity = additionalCommunity;
+					}
+				}
 			}
+
+
+			RegistryImport registryImport = new RegistryImport( defaultCommunity );
+
 			string startingDate = DateTime.Now.AddDays( -1 ).ToString();
             //typically will want this as registry server is UTC (+6 hours from central)
             bool usingUTC_ForTime = UtilityManager.GetAppKeyValue( "usingUTC_ForTime", true );
@@ -84,7 +104,7 @@ namespace CTI.Import
                     //the server date is UTC, so if we leave enddate open, we will get the same stuff all day, so setting an endate to the current hour
                     endingDate = DateTime.Now.ToString( "yyyy-MM-ddTHH:mm:ss" );
                 }
-                importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} {1}", startingDate, usingUTC_ForTime ? " (UTC)" : "" ) );
+                importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Community: {0}, Updates since: {1} {2}", defaultCommunity, startingDate, usingUTC_ForTime ? " (UTC)" : "" ) );
             } 
             else if( scheduleType == "sinceLastRun" )
 			{
@@ -119,7 +139,7 @@ namespace CTI.Import
 					//no end date?
 					//endingDate = "";
 				}
-				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates from: {0} to {1} ", startingDate, endingDate ) );
+				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates from: {0} to {1} for community: {2}", startingDate, endingDate, defaultCommunity ) );
             }
             else if ( scheduleType == "hourly" )
 			{
@@ -137,7 +157,7 @@ namespace CTI.Import
                     endingDate = DateTime.Now.ToString( "yyyy-MM-ddTHH:mm:ss" );
                 }
                 //LoggingHelper.DoTrace( 1, string.Format( " - Updates since: {0} ", startingDate ) );
-                importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} {1}", startingDate, usingUTC_ForTime ? " (UTC)" : "" ) );
+                importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} {1}, community: {2}", startingDate, usingUTC_ForTime ? " (UTC)" : "", defaultCommunity ) );
 			}
             else
 			{
@@ -148,9 +168,10 @@ namespace CTI.Import
 				//LoggingHelper.DoTrace( 1, string.Format( " - Updates since: {0} ", startingDate ) );
 				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} ", startingDate ) );
 			}
-            #endregion
-            //===================================================================================================
-            LogStart();
+			#endregion
+			//===================================================================================================
+			if ( !doingDownloadOnly )
+				LogStart();
             //set to zero to handle all, or a number to limit records to process
             //partly for testing
             //although once can sort by date, we can use this, and update the start date
@@ -163,69 +184,100 @@ namespace CTI.Import
             if ( deleteAction < 2 )
             {
                 //handle deleted records
-                importResults = importResults + "<br/>" + HandleDeletes( startingDate, endingDate, maxImportRecords, ref recordsDeleted );
+                importResults = importResults + "<br/>" + HandleDeletes( defaultCommunity, startingDate, endingDate, maxImportRecords, ref recordsDeleted );
             }
 			int recordsImported = 0;
             if ( deleteAction != 1 )
             {
                 //do manifests 
-                //importResults = importResults + "<br/>" + new ConditionManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-                //importResults = importResults + "<br/>" + new CostManifestImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				if (UtilityManager.GetAppKeyValue( "importing_condition_manifest_schema", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_cost_manifest_schema", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
-                //handle credentials
-                //importResults = importResults + "<br/>" + new CredentialsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-                //handle assessments
-                //importResults = importResults + "<br/>" + new AssessmentsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//handle credentials
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_credential", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//handle assessments
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_assessment_profile", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
-                //handle learning opps
-                //importResults = importResults + "<br/>" + new LearningOpportuniesImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//handle learning opps
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_learning_opportunity_profile", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_competency_frameworks", true ) )
+					importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( startingDate, endingDate, maxImportRecords, defaultCommunity, doingDownloadOnly );
 
-                importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
+				//new pathways
+				//if ( UtilityManager.GetAppKeyValue( "importing_pathways", true ) )
+				//	importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
 
-                //handle organizations
-                //might be better to do last, then can populate placeholders, try first
-                //importResults = importResults + "<br/>" + new OrganizationsImport().Import( startingDate, endingDate, maxImportRecords, doingDownloadOnly );
-                importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//handle organizations
+				//might be better to do last, then can populate placeholders, try first
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_organization", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
 				if ( !doingDownloadOnly && recordsImported > 0 )
 				{
-                    //==============================================================
-                    //import pending
-                    string pendingStatus = new RegistryServices().ImportPending();
+					if ( UtilityManager.GetAppKeyValue( "processingPendingRecords", true ) )
+					{
+						//==============================================================
+						//import pending
+						string pendingStatus = new RegistryServices().ImportPending();
 
-                    importResults = importResults + "<br/>TODO: add stats from ImportPending.";
+						importResults = importResults + "<br/>TODO: add stats from ImportPending.";
+					}
+						
                 }
             }
 
             //===================================================================================================
-            if ( !doingDownloadOnly && recordsImported > 0 )
+            if ( !doingDownloadOnly )
             {
-                //update elastic if not included - probably will always delay elastic, due to multiple possible updates
-                //may want to move this to services for use by other process, including adhoc imports
-                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
-                {
-					//update elastic if a elasticSearchUrl exists
-					if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
-						ElasticServices.UpdateElastic(true);
-                    //procs have been updated to use the 
-                    //new CacheManager().PopulateAllCaches();
-                    ////
-                    //ElasticServices.HandlePendingReindexRequests();
-                }
+				if ( recordsImported > 0 || recordsDeleted > 0 )
+				{
+					//update elastic if not included - probably will always delay elastic, due to multiple possible updates
+					//may want to move this to services for use by other process, including adhoc imports
+					if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
+					{
+						//update elastic if a elasticSearchUrl exists
+						if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
+						{
+							LoggingHelper.DoTrace( 1, string.Format( "===  *****************  UpdateElastic  ***************** " ) );
+							ElasticServices.UpdateElastic( true );
+						}
+					}
 
-                //update code table counts
-                new CacheManager().UpdateCodeTableCounts();
-                //set all resolved records in Import_EntityResolution to be resolved.
-                new ImportManager().SetAllResolvedEntities();
-                //send summary email 
-                string message = string.Format( "<h2>Import Results</h2><p>{0}</p>", importResults );
-                EmailManager.NotifyAdmin( "Credential Finder Import Results", message );
-            }
+					if (recordsImported > 0 )
+					{
+						//set all resolved records in Import_EntityResolution to be resolved.
+						LoggingHelper.DoTrace( 1, string.Format( "===  *****************  SetAllResolvedEntities  ***************** " ) );
+						new ImportManager().SetAllResolvedEntities();
+					}
+
+					//update code table counts
+					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  UpdateCodeTableCounts  ***************** " ) );
+					new CacheManager().UpdateCodeTableCounts();
+
+					//send summary email 
+					string message = string.Format( "<h2>Import Results</h2><p>{0}</p>", importResults );
+					EmailManager.NotifyAdmin( string.Format( "Credential Finder Import Results ({0})", envType), message );
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "System", Activity = "Import", Event = "End", Comment = string.Format( "Summary: {0} records were imported, {1} records were deleted.", recordsImported, recordsDeleted ), SessionId = "batch job", IPAddress = "local" });
+				}
+				else
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "System", Activity = "Import", Event = "End", Comment = "No data was found to import", SessionId = "batch job", IPAddress = "local" } );
+				}
+
+			}
 
 			//summary, and logging
 			LoggingHelper.DoTrace( 1, "======================= all done ==============================" );
@@ -241,11 +293,11 @@ namespace CTI.Import
         public static void LogStart( )
         {
             new ActivityServices().AddActivity( new SiteActivity()
-                { ActivityType = "System", Activity = "Import", Event = "Start" } 
+                { ActivityType = "System", Activity = "Import", Event = "Start", SessionId="batch job", IPAddress= "local" } 
             );
 
         }
-        public static string HandleDeletes( string startingDate, string endingDate, int maxRecords, ref int recordsDeleted )
+        public static string HandleDeletes( string community, string startingDate, string endingDate, int maxRecords, ref int recordsDeleted )
 		{
 			int pageNbr = 1;
 			int pageSize = 50;
@@ -269,7 +321,7 @@ namespace CTI.Import
 			{
 				while ( pageNbr > 0 && !isComplete )
 				{
-					list = RegistryImport.GetDeleted( type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
+					list = RegistryImport.GetDeleted( community, type, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage );
 
 					if ( list == null || list.Count == 0 )
 					{
@@ -335,6 +387,11 @@ namespace CTI.Import
 								case "costmanifest":
 									DisplayMessages( string.Format( "{0}. Deleting CostManifest by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
 									if ( !new CostManifestManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+									break;
+								case "competencyframework": //CompetencyFramework
+									DisplayMessages( string.Format( "{0}. Deleting CompetencyFramework by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									if ( !new EducationFrameworkManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								default:

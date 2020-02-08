@@ -35,6 +35,19 @@ set @StatusId = 1
 -- first reset (to handle where all instances of a property have been deleted)
 UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = 0
+
+--NEW ***
+-- will replace the reports portion of [Codes.PropertyValue]
+-- the competency framework related counts are done dynamically, so do NOT reset here
+UPDATE [dbo].[Counts.EntityStatistic]
+   SET [Totals] = 0
+where EntityTypeId in (1,2,3,7)
+
+-- site totals
+-- will replace the reports portion of [Codes.PropertyValue]
+truncate table [dbo].[Counts.SiteTotals]
+	
+
 UPDATE [dbo].[Codes.ConditionProfileType]
    SET [Totals] = 0
    , CredentialTotals = 0
@@ -50,20 +63,19 @@ UPDATE [dbo].[Codes.CredentialAgentRelationship]
 
 UPDATE [dbo].[Codes.EntityTypes]
    SET [Totals] = 0
+where id <> 10
 
-UPDATE [dbo].NAICS
-   SET [Totals] = 0
-UPDATE [dbo].ONET_SOC
-   SET [Totals] = 0
-UPDATE [dbo].[ONET_SOC.JobFamily]
-   SET [Totals] = 0
+--UPDATE [dbo].NAICS
+--   SET [Totals] = 0
+--UPDATE [dbo].ONET_SOC
+--   SET [Totals] = 0
+--UPDATE [dbo].[ONET_SOC.JobFamily]
+--   SET [Totals] = 0
 
-UPDATE [dbo].CIPCode2010
-   SET [Totals] = 0
+--UPDATE [dbo].CIPCode2010
+--   SET [Totals] = 0
 
--- site totals
-truncate table [dbo].[Counts.SiteTotals]
-	
+
 
 -- ==========================================================
 print 'updating all [Codes.PropertyValue] from [Entity.Property] ...'
@@ -78,14 +90,16 @@ SELECT [PropertyValueId],count(*) AS Totals
   group by [PropertyValueId]
   --order by [PropertyValueId]
     ) base on codes.Id = base.[PropertyValueId]
+
 where codes.IsActive = 1 
-and codes.CategoryId <> 41
-and codes.CategoryId <> 14
+and codes.CategoryId NOT in (14,18,21, 41) --???
+--and codes.CategoryId <> 41
+--and codes.CategoryId <> 14
 
 -- =======================
 -- use Codes.SiteTotals
 -- audience type 14
--- delivery type 21
+-- delivery type 18,21
 
 INSERT INTO [dbo].[Counts.SiteTotals]
            ([CategoryId]
@@ -102,12 +116,12 @@ SELECT e.EntityTypeId, tags.[PropertyValueId], count(*) AS Totals
   inner join Entity_summary e on tags.EntityId = e.Id
   Inner Join [Codes.PropertyValue] codes on tags.PropertyValueId = codes.Id
   where codes.IsActive = 1 
-	and codes.CategoryId in (14,21)
+	and codes.CategoryId in (4,14,18,21) --???
 	and e.EntityTypeId in (1,3,7)
   group by e.EntityTypeId, tags.[PropertyValueId]
   --order by e.EntityTypeId, tags.[PropertyValueId]
 ) base On codes.id = base.PropertyValueId
-order by base.EntityTypeId, base.[PropertyValueId], codes.title 
+order by codes.CategoryId, base.EntityTypeId, base.[PropertyValueId], codes.title 
 
 -- =======================
 -- Language 
@@ -121,7 +135,7 @@ order by base.EntityTypeId, base.[PropertyValueId], codes.title
            ,[Title]
            ,[Totals])
 
-SELECT distinct 65, e.EntityTypeId, 0, LTrim(tags.[TextValue]), count(*) AS Totals
+SELECT distinct 65, e.EntityTypeId, 0, RTrim(LTrim(tags.[TextValue])), count(*) AS Totals
   FROM [dbo].[Entity.Reference] tags
   inner join Entity e on tags.EntityId = e.Id
   where tags.CategoryId = 65
@@ -282,6 +296,53 @@ if @debugLevel > 8  begin
 
 -- ===========================================================
 print '[Codes.CredentialAgentRelationship] credential ...'
+print 'TODO - replace with Counts.SiteTotals'
+INSERT INTO [dbo].[Counts.SiteTotals]
+			([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals]) 
+
+SELECT 13, ttls.EntityTypeId, ttls.RelationshipTypeId, codes.Title, IsNull(count(*),0) AS Totals
+FROM  (
+	SELECT b.EntityTypeId, RelationshipTypeId, tags.EntityId
+		,count(*) AS Totals
+		  FROM [dbo].[Entity.AgentRelationship] tags
+		  inner join Entity b on tags.EntityId = b.Id
+		  --where b.EntityTypeId = 1
+		  group by b.EntityTypeId, RelationshipTypeId, tags.EntityId
+		  --order by RelationshipTypeId
+) ttls 
+Inner Join [Codes.CredentialAgentRelationship] codes on ttls.RelationshipTypeId = codes.Id
+where codes.IsActive = 1
+group by ttls.EntityTypeId, ttls.RelationshipTypeId, codes.Title
+
+print 'NEW [Counts.SiteTotals] QAPerformed ...'
+INSERT INTO [dbo].[Counts.SiteTotals]
+			([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals]) 
+
+SELECT 130, ttls.EntityTypeId, ttls.AssertionTypeId, codes.ReverseRelation, IsNull(count(*),0) AS Totals
+FROM  (
+	SELECT b.EntityTypeId, AssertionTypeId, tags.EntityId
+		,count(*) AS Totals
+		  FROM [dbo].[Entity.Assertion] tags
+		  inner join Entity b on tags.EntityId = b.Id
+		  where b.EntityTypeId = 2 
+		  and AssertionTypeId in (1,2,10,12)
+		  group by b.EntityTypeId, AssertionTypeId, tags.EntityId
+
+) ttls 
+Inner Join [Codes.CredentialAgentRelationship] codes on ttls.AssertionTypeId = codes.Id
+where codes.IsActive = 1
+group by ttls.EntityTypeId, ttls.AssertionTypeId, codes.ReverseRelation
+
+
+-- OLD
 UPDATE [dbo].[Codes.CredentialAgentRelationship]
    SET CredentialTotals = isnull(base.Totals,0)
 from [Codes.CredentialAgentRelationship] codes
@@ -385,11 +446,11 @@ declare @dpCount int
 Select @dpCount = count(*) FROM [dbo].[Entity.DurationProfile] tags
   inner join Entity_summary e on tags.Id = e.Id
 
-
+-- ????????????????????????????????????
 UPDATE [dbo].[Codes.EntityTypes]
    SET [Totals] = isnull(@dpCount,0)
 from [Codes.EntityTypes] codes
-where codes.Id = 17
+where codes.Id = 21
 
 print 'updating all [Codes.EntityTypes] for indirect:[Entity.ContactPoint] ...'
 declare @cpCount int
@@ -415,233 +476,76 @@ from [Codes.EntityTypes] codes
 where codes.Id = 16
 
 -- ===========================================================
---print 'updating all [NAICS] ...'
---UPDATE [dbo].NAICS
---   SET [Totals] = isnull(base.Totals,0)
---from NAICS codes
---Inner join ( 
---SELECT tags.CodeId,count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---  	inner join Entity_summary e on tags.EntityId = e.Id
---  where tags.CategoryId = 10
---  group by tags.CodeId
---    ) base on codes.Id = base.CodeId
+print 'updating all [NAICS] ...'
+-- need to get a unique name for the groups
+INSERT INTO [dbo].[Counts.SiteTotals]
+			([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals]) 
+SELECT a.[CategoryId], EntityTypeId
+	  ,[CodeGroup]  
+      ,d.NaicsTitle
+      , COUNT (*) as totals
+  FROM [dbo].[Reference.Frameworks] a 
+  INNER JOIN [Entity.ReferenceFramework] b ON a.Id = b.ReferenceFrameworkId
+  INNER JOIN Entity c ON b.EntityId = c.Id 
+  Inner Join [NAICS.NaicsGroup] d on a.CodeGroup = d.NaicsGroup
+  where a.CategoryId = 10 AND CodeGroup IS NOT NULL 
+  --and EntityTypeId = 1
+  GROUP by a.CategoryId, EntityTypeId, CodeGroup, NaicsTitle
 
+print 'updating all [ONET_SOC] ...'
+INSERT INTO [dbo].[Counts.SiteTotals]
+			([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals]) 
+SELECT a.[CategoryId], EntityTypeId
+	  ,[CodeGroup]  
+      ,d.[Description]
+      , COUNT (*) as totals
+  FROM [dbo].[Reference.Frameworks] a 
+  INNER JOIN [Entity.ReferenceFramework] b ON a.Id = b.ReferenceFrameworkId
+  INNER JOIN Entity c ON b.EntityId = c.Id 
+  Inner Join [ONET_SOC.JobFamily] d on a.CodeGroup = d.JobFamilyId
+  where a.CategoryId = 11 AND CodeGroup IS NOT NULL 
+  --and EntityTypeId = 1
+  GROUP by a.CategoryId, EntityTypeId, CodeGroup, d.[Description]
 
----- update for groups by entity
----- actually, clear and insert
----- *** credentials ***
---INSERT INTO [dbo].[Counts.SitePropertyTotals]
---           ([CategoryId]
---           ,[EntityTypeId]
---           ,[CodeId]
---           ,[Description]
---           ,[Totals])
-
---	SELECT b.CategoryId, b.EntityTypeId
---	, a.NaicsGroup
---	, a.NaicsTitle
---  ,count(*) as GroupTotals
---  FROM [dbo].[NAICS.NaicsGroup] a
---	inner join (
-
---	SELECT tags.CategoryId, b.NaicsGroup, e.EntityTypeId, e.EntityBaseId, count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---		left join [dbo].NAICS b on tags.CodeId = b.Id
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join credential c on e.EntityUid = c.RowId
---  where tags.CategoryId = 10
---  group by tags.CategoryId, b.NaicsGroup, e.EntityTypeId, e.EntityBaseId
---	--order by b.NaicsGroup, e.EntityBaseId
---	) b on a.NaicsGroup = b.NaicsGroup
-
---	group by b.CategoryId, b.EntityTypeId, a.NaicsGroup, a.NaicsTitle
-	
----- *** organizations ***
---INSERT INTO [dbo].[Counts.SitePropertyTotals]
---           ([CategoryId]
---           ,[EntityTypeId]
---           ,[CodeId]
---           ,[Description]
---           ,[Totals])
-
---	SELECT b.CategoryId, b.EntityTypeId
---	, a.NaicsGroup
---	, a.NaicsTitle
---  ,count(*) as GroupTotals
---  FROM [dbo].[NAICS.NaicsGroup] a
---	inner join (
-
---	SELECT tags.CategoryId, b.NaicsGroup, e.EntityTypeId, e.EntityBaseId, count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---		left join [dbo].NAICS b on tags.CodeId = b.Id
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join Organization c on e.EntityUid = c.RowId
---  where tags.CategoryId = 10
---  group by tags.CategoryId, b.NaicsGroup, e.EntityTypeId, e.EntityBaseId
---	--order by b.NaicsGroup, e.EntityBaseId
---	) b on a.NaicsGroup = b.NaicsGroup
-
---	group by b.CategoryId, b.EntityTypeId, a.NaicsGroup, a.NaicsTitle
-	
-
-
----- ===========================================================
---print 'updating all [ONET_SOC] ...'
---UPDATE [dbo].ONET_SOC
---   SET [Totals] = isnull(base.Totals,0)
---from ONET_SOC codes
---Inner join ( 
---SELECT tags.CodeId,count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join credential c on e.EntityUid = c.RowId
---  where tags.CategoryId = 11
---  group by tags.CodeId
---    ) base on codes.Id = base.CodeId
-
-----
---print 'updating all [ONET_SOC.JobFamily] ...'
-
----- this only counts once for all of a group on a credential
---UPDATE [dbo].[ONET_SOC.JobFamily]
---   SET [Totals] = isnull(base.GroupTotals,0)
-
---FROM [dbo].[ONET_SOC.JobFamily] codes
---Inner join ( 
---	SELECT [JobFamilyId]
---      ,a.[Description]
---      ,count(*) as GroupTotals
---  FROM [dbo].[ONET_SOC.JobFamily] a
---	inner join (
-
---	SELECT e.EntityBaseId, b.JobFamily, count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---		left join [dbo].[ONET_SOC] b on tags.CodeId = b.Id
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join credential c on e.EntityUid = c.RowId
---  where tags.CategoryId = 11
---  group by e.EntityBaseId,b.JobFamily
---	) b on a.JobFamilyId = b.JobFamily
-
---	group by a.JobFamilyId,a.[Description]
---	) base on codes.[JobFamilyId] = base.[JobFamilyId]
-
----- ===========================================================
---print 'updating all [CIPCode2010] ...'
---UPDATE [dbo].CIPCode2010
---   SET [Totals] = isnull(base.Totals,0)
---from CIPCode2010 codes
---Inner join ( 
---SELECT tags.CodeId,count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---  	inner join Entity_summary e on tags.EntityId = e.Id
---  where tags.CategoryId = 23
---  group by tags.CodeId
---    ) base on codes.Id = base.CodeId
-
-
----- *** assessments ***
---INSERT INTO [dbo].[Counts.SitePropertyTotals]
---           ([CategoryId]
---           ,[EntityTypeId]
---           ,[CodeId]
---           ,[Description]
---           ,[Totals])
-
---	SELECT b.CategoryId, b.EntityTypeId
---	, a.CIPFamily
---	, a.CIPTitle
---  ,count(*) as GroupTotals
---  FROM [dbo].[CIPCode2010.JobFamily] a
---	inner join (
-
---	SELECT tags.CategoryId, b.CIPFamily, e.EntityTypeId, e.EntityBaseId, count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---		left join [dbo].CIPCode2010 b on tags.CodeId = b.Id
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join Assessment c on e.EntityUid = c.RowId
---  where tags.CategoryId = 23
---  group by tags.CategoryId, b.CIPFamily, e.EntityTypeId, e.EntityBaseId
---	--order by b.NaicsGroup, e.EntityBaseId
---	) b on a.CIPFamily = b.CIPFamily
-
---	group by b.CategoryId, b.EntityTypeId, a.CIPFamily, a.CIPTitle
-	
-
----- *** learning opps ***
---INSERT INTO [dbo].[Counts.SitePropertyTotals]
---           ([CategoryId]
---           ,[EntityTypeId]
---           ,[CodeId]
---           ,[Description]
---           ,[Totals])
-
---	SELECT b.CategoryId, b.EntityTypeId
---	, a.CIPFamily
---	, a.CIPTitle
---  ,count(*) as GroupTotals
---  FROM [dbo].[CIPCode2010.JobFamily] a
---	inner join (
-
---	SELECT tags.CategoryId, b.CIPFamily, e.EntityTypeId, e.EntityBaseId, count(*) AS Totals
---  FROM [dbo].[Entity.FrameworkItem] tags
---		left join [dbo].CIPCode2010 b on tags.CodeId = b.Id
---  	inner join Entity e			on tags.EntityId = e.Id
---		inner join LearningOpportunity c on e.EntityUid = c.RowId
---  where tags.CategoryId = 23
---  group by tags.CategoryId, b.CIPFamily, e.EntityTypeId, e.EntityBaseId
---	--order by b.NaicsGroup, e.EntityBaseId
---	) b on a.CIPFamily = b.CIPFamily
-
---	group by b.CategoryId, b.EntityTypeId, a.CIPFamily, a.CIPTitle
-
--- NON-CIP values
---[Entity.Reference]
-
--- *** all ***
--- code 100
---INSERT INTO [dbo].[Counts.SitePropertyTotals]
---           ([CategoryId]
---           ,[EntityTypeId]
---           ,[CodeId]
---           ,[Description]
---           ,[Totals])
-
---	SELECT summary.CategoryId, summary.EntityTypeId
---	, 100
---	, case 
---			when summary.CategoryId = 10 then 'Other Industries'
---			when summary.CategoryId = 11 then 'Other Occupations'
---			when summary.CategoryId = 23 then 'Other CIP'
---			else '' end as OtherTitle
---  ,count(*) as GroupTotals
---  FROM (
-
---		SELECT [CategoryId],b.EntityTypeId,[EntityId]
---		,count(*)  As GroupTotals
---			FROM [dbo].[Entity.Reference] a
---			inner join entity b on a.EntityId = b.id	
---			where [CategoryId] in (10,11,23)
---			group by 
---			[CategoryId]
---			,b.EntityTypeId
---			,[EntityId]
-
---) summary
---group by
---summary.CategoryId, summary.EntityTypeId
+print 'updating all [CIP] ...'
+INSERT INTO [dbo].[Counts.SiteTotals]
+			([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals]) 
+SELECT a.[CategoryId], EntityTypeId
+	  ,[CodeGroup]  
+      ,d.CIPTitle
+      , COUNT (*) as totals
+  FROM dbo.[Reference.Frameworks] a 
+  INNER JOIN [Entity.ReferenceFramework] b ON a.Id = b.ReferenceFrameworkId
+  INNER JOIN Entity c ON b.EntityId = c.Id 
+  Inner Join [CIPCode2010.JobFamily] d on a.CodeGroup = d.CIPFamily
+  where a.CategoryId = 23 AND CodeGroup IS NOT NULL 
+  --and EntityTypeId = 3
+  GROUP by a.CategoryId, EntityTypeId, CodeGroup, d.CIPTitle
 
 
 -- ============ one offs ==========================================
-
+/*
+change to use [Counts.EntityStatistic]
+*/
 
 -- $$$$ credentials $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 --	cost profiles
 -- need to do two parts, so to not count multiple per entity
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue]
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -654,9 +558,9 @@ from (
 where codes.IsActive = 1
 
 --	reference common cost MANIFESTS
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue]
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -670,9 +574,9 @@ where codes.IsActive = 1
 
 
 --	reference common condition manifests
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue]
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -685,9 +589,9 @@ from (
 where codes.IsActive = 1
 
 --	reference financial
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -700,9 +604,9 @@ from (
 where codes.IsActive = 1
 
 --	process profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -716,9 +620,9 @@ where codes.IsActive = 1
 
 	
 --	revocation profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -732,9 +636,9 @@ where codes.IsActive = 1
 
 	
 --	has occupations
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -748,9 +652,9 @@ from (
 where codes.IsActive = 1
 
 --	has industries
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -763,10 +667,27 @@ from (
     ) base on codes.SchemaName = 'credReport:HasIndustries'
 where codes.IsActive = 1
 
---	has condition profile 
-UPDATE [dbo].[Codes.PropertyValue]
+-- Has CIP
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
+Inner join ( 
+select count(*) as Totals 
+from (
+	SELECT e.EntityBaseId,count(*) AS Totals
+	  FROM [dbo].[Entity.ReferenceFramework] tags
+	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 1
+	  where tags.CategoryId =  23
+	  group by EntityBaseId
+	  ) source
+    ) base on codes.SchemaName = 'credReport:HasCIP'
+where codes.IsActive = 1
+
+
+--	has condition profile 
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
+   SET [Totals] = isnull(base.Totals,0)
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -779,9 +700,9 @@ from (
 where codes.IsActive = 1
 	
 --	By available online -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 SELECT count(*) AS Totals
   FROM [dbo].Credential source
@@ -792,9 +713,9 @@ where codes.IsActive = 1
 	
 
 --	By requires competencies -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -810,9 +731,9 @@ where codes.IsActive = 1
 --	By has competencies -----------------------------------------------
 -- any of requires, or asmt -> assess or lopp -> teaches
 --=. DEPENDENT ON credential_SummaryCache being updated first
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from  [Credential.SummaryCache] a 
@@ -822,9 +743,9 @@ where a.AssessmentsCompetenciesCount > 0 OR a.LearningOppsCompetenciesCount > 0 
 where codes.IsActive = 1
 
 --	By requires credential -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT distinct [EntityTypeId], baseId
@@ -839,9 +760,9 @@ SELECT distinct [EntityTypeId], baseId
 where codes.IsActive = 1
 
 --	By recommends credential -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT distinct [EntityTypeId], baseId
@@ -856,9 +777,9 @@ SELECT distinct [EntityTypeId], baseId
 where codes.IsActive = 1
 
 --	By requires assessment -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT [EntityTypeId], baseId
@@ -873,9 +794,9 @@ SELECT [EntityTypeId], baseId
 where codes.IsActive = 1
 
 --	By recommends assessment -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT [EntityTypeId], baseId
@@ -891,9 +812,9 @@ where codes.IsActive = 1
 
 
 --	By requires LearningOpportunitiess -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT distinct [EntityTypeId], baseId
@@ -908,9 +829,9 @@ SELECT distinct [EntityTypeId], baseId
 where codes.IsActive = 1
 
 --	By recommends LearningOpportunities -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT distinct [EntityTypeId], baseId
@@ -925,9 +846,9 @@ SELECT distinct [EntityTypeId], baseId
 where codes.IsActive = 1
 
 -- conditions
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 	SELECT distinct [EntityTypeId], b.EntityBaseId
@@ -941,9 +862,9 @@ select count(*) as Totals from (
 where codes.IsActive = 1	
 
 --	embedded credentials -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 	SELECT distinct [EntityTypeId], b.EntityBaseId
@@ -959,9 +880,9 @@ where codes.IsActive = 1
 
 --	IsPartOf credentials -----------------------------------------------
 -- credential (part of) -> Entity.Credential ->  Entity - Credential (parent)
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 	SELECT c.Id
@@ -979,9 +900,9 @@ where codes.IsActive = 1
 			
 
 --	By Has Verification Badge(s) -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 SELECT distinct CredentialId
@@ -994,9 +915,9 @@ SELECT distinct CredentialId
 where codes.IsActive = 1			
 		
 --	Duration profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1011,20 +932,24 @@ where codes.IsActive = 1
 
 -- @@@@@@@  organization @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 --  partner orgs
-UPDATE [dbo].[Codes.PropertyValue]
+-- reference orgs
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
-select count(*) as Totals 
-from organization base where 
-	(base.Id in (SELECT e.EntityBaseId FROM [dbo].[Entity.Property] a inner join Entity e on a.EntityId = e.id and e.EntityTypeId = 2 inner join [Codes.PropertyValue] b on a.PropertyValueId = b.Id and b.ParentSchemaName = 'orgReport:IsCEPartner') ) 
-) base on codes.SchemaName = 'orgReport:IsCEPartner'
+
+	SELECT count(*) AS Totals
+		FROM [dbo].Organization tags
+		where tags.EntityStateId = 2
+
+) base on codes.SchemaName = 'orgReport:IsReferenceOrg'
 	where codes.IsActive = 1
 
+
 --	manifests =============================================================
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1038,9 +963,9 @@ from (
 ) base on codes.SchemaName = 'orgReport:HasCostManifest'
 	where codes.IsActive = 1
 
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [Counts.EntityStatistic] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1054,9 +979,9 @@ from (
 ) base on codes.SchemaName = 'orgReport:HasConditionManifest'
 	where codes.IsActive = 1
 
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1070,9 +995,9 @@ from (
 ) base on codes.SchemaName = 'orgReport:HasNoCostManifests'
 	where codes.IsActive = 1
 
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1088,9 +1013,9 @@ from (
 
 
 --	verification service =====================================================
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1108,9 +1033,9 @@ from (
 
 
 -- NO	verification service
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1125,9 +1050,9 @@ from (
 	where codes.IsActive = 1
 
 --	Verification Claim 
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select source.PropertyValueId, count(*) as Totals 
 from (
@@ -1144,9 +1069,9 @@ from (
 ) base on codes.Id = base.PropertyValueId
 
 -- Has Departments
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1162,9 +1087,9 @@ from (
 
 
 -- Has Subsidiary
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1179,9 +1104,9 @@ from (
 	where codes.IsActive = 1
 
 --	has industries
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1198,9 +1123,9 @@ where codes.IsActive = 1
 
 -- AAAAAAAA  asmt AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 -- conditions
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals from (
 	SELECT distinct [EntityTypeId], b.EntityBaseId
@@ -1214,9 +1139,9 @@ select count(*) as Totals from (
 where codes.IsActive = 1	
 
 --	cost profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1229,9 +1154,9 @@ from (
 where codes.IsActive = 1
 
 --	Duration profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1245,9 +1170,9 @@ where codes.IsActive = 1
 
 
 --	reference common cost profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1261,9 +1186,9 @@ where codes.IsActive = 1
 
 
 --	reference common condition manifests
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1276,9 +1201,9 @@ from (
 where codes.IsActive = 1
 
 --	reference financial
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1292,9 +1217,9 @@ where codes.IsActive = 1
 
 
 --	process profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1306,25 +1231,58 @@ from (
     ) base on codes.SchemaName = 'asmtReport:HasProcessProfile'
 where codes.IsActive = 1
 
--- Has CIP
-UPDATE [dbo].[Codes.PropertyValue]
+--	has occupations
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
 	SELECT e.EntityBaseId,count(*) AS Totals
 	  FROM [dbo].[Entity.ReferenceFramework] tags
 	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 3
+	  where tags.CategoryId =  11
+	  group by EntityBaseId
+	  ) source
+    ) base on codes.SchemaName = 'asmtReport:HasOccupations'
+where codes.IsActive = 1
+
+--	has industries
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
+   SET [Totals] = isnull(base.Totals,0)
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
+Inner join ( 
+select count(*) as Totals 
+from (
+	SELECT e.EntityBaseId,count(*) AS Totals
+	  FROM [dbo].[Entity.ReferenceFramework] tags
+	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 3
+	  where tags.CategoryId =  10
+	  group by EntityBaseId
+	  ) source
+    ) base on codes.SchemaName = 'asmtReport:HasIndustries'
+where codes.IsActive = 1
+
+-- Has CIP
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
+   SET [Totals] = isnull(base.Totals,0)
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
+Inner join ( 
+select count(*) as Totals 
+from (
+	SELECT e.EntityBaseId,count(*) AS Totals
+	  FROM [dbo].[Entity.ReferenceFramework] tags
+	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 3
+	    where tags.CategoryId =  23
 	  group by EntityBaseId
 	  ) source
     ) base on codes.SchemaName = 'asmtReport:HasCIP'
 where codes.IsActive = 1
 
 --	By available online -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 SELECT count(*) AS Totals
   FROM [dbo].Assessment source
@@ -1336,9 +1294,9 @@ where codes.IsActive = 1
 
 
 --	asmt By requires competencies -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1352,9 +1310,9 @@ from (
 where codes.IsActive = 1
 
 --	By assesses competencies -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1370,9 +1328,9 @@ where codes.IsActive = 1
 
 -- LLLLLLLLLLLLLLLLL lopp LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 --	cost profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1385,9 +1343,9 @@ from (
 where codes.IsActive = 1
 
 --	Duration profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1401,9 +1359,9 @@ where codes.IsActive = 1
 
 
 --	reference common cost profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1416,9 +1374,9 @@ from (
 where codes.IsActive = 1
 
 --	reference common condition manifests
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1431,9 +1389,9 @@ from (
 where codes.IsActive = 1
 
 --	reference financial
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1445,25 +1403,57 @@ from (
     ) base on codes.SchemaName = 'loppReport:FinancialAid'
 where codes.IsActive = 1
 
--- Has CIP
-UPDATE [dbo].[Codes.PropertyValue]
+--	has occupations
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
 	SELECT e.EntityBaseId,count(*) AS Totals
 	  FROM [dbo].[Entity.ReferenceFramework] tags
 	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 7
+	  where tags.CategoryId =  11
+	  group by EntityBaseId
+	  ) source
+    ) base on codes.SchemaName = 'loppReport:HasOccupations'
+where codes.IsActive = 1
+
+--	has industries
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
+   SET [Totals] = isnull(base.Totals,0)
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
+Inner join ( 
+select count(*) as Totals 
+from (
+	SELECT e.EntityBaseId,count(*) AS Totals
+	  FROM [dbo].[Entity.ReferenceFramework] tags
+	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 7
+	  where tags.CategoryId =  10
+	  group by EntityBaseId
+	  ) source
+    ) base on codes.SchemaName = 'loppReport:HasIndustries'
+where codes.IsActive = 1
+-- Has CIP
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
+   SET [Totals] = isnull(base.Totals,0)
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
+Inner join ( 
+select count(*) as Totals 
+from (
+	SELECT e.EntityBaseId,count(*) AS Totals
+	  FROM [dbo].[Entity.ReferenceFramework] tags
+	  inner join Entity e on tags.EntityId = e.Id and e.EntityTypeId = 7
+	  where tags.CategoryId =  23
 	  group by EntityBaseId
 	  ) source
     ) base on codes.SchemaName = 'loppReport:HasCIP'
 where codes.IsActive = 1
 
 --	process profiles
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1476,9 +1466,9 @@ from (
 where codes.IsActive = 1
 
 --	By available online -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 SELECT count(*) AS Totals
   FROM [dbo].LearningOpportunity source
@@ -1489,9 +1479,9 @@ SELECT count(*) AS Totals
 where codes.IsActive = 1	
 
 -- RequiresCompetencies
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1505,9 +1495,9 @@ from (
 where codes.IsActive = 1
 
 --	By teaches competencies -----------------------------------------------
-UPDATE [dbo].[Codes.PropertyValue]
+UPDATE [dbo].[Counts.EntityStatistic]  -- UPDATE [dbo].[Codes.PropertyValue]
    SET [Totals] = isnull(base.Totals,0)
-from [Codes.PropertyValue] codes
+from [dbo].[Counts.EntityStatistic] codes -- from [dbo].[Codes.PropertyValue] codes
 Inner join ( 
 select count(*) as Totals 
 from (
@@ -1521,3 +1511,50 @@ from (
 ) base on codes.SchemaName = 'loppReport:TeachesCompetencies'
 where codes.IsActive = 1						
 
+-- =====================================================================
+truncate table [Counts.RegionTotals] 
+-- expand regions as needed.
+UPDATE credFinder.[dbo].[Entity.Address]
+   SET [Region] = b.state
+-- select a.Region, b.StateCode, b.State
+  FROM credFinder.[dbo].[Entity.Address] a
+  Left Join credFinder.[dbo].[Codes.State] b on Rtrim(LTrim(a.Region)) = b.StateCode
+  where b.StateCode is not null
+  and a.region <> b.State
+
+-- handle null countries for US
+UPDATE credFinder.[dbo].[Entity.Address]
+   SET Country = 'United States'
+-- select a.Country, a.Region, b.StateCode, b.State
+  FROM credFinder.[dbo].[Entity.Address] a
+  Left Join credFinder.[dbo].[Codes.State] b on a.Region = b.State
+  where isnull(a.Country,'')= ''
+  and b.StateCode is not null
+
+-- ===================
+-- using organization addresses rather than depending on addresses being included with the credential
+INSERT INTO [dbo].[Counts.RegionTotals]
+           ([EntityTypeId]
+           ,[Country]
+           ,[Region]
+           ,[Totals])
+
+Select 1, regions.Country, regions.Region, count(*) as cnt 
+from (
+
+SELECT DISTINCT dbo.Credential.Id, dbo.Organization.Name, dbo.[Entity.Address].Country, dbo.[Entity.Address].Region
+FROM            dbo.[Entity.Address] 
+INNER JOIN dbo.Entity ON dbo.[Entity.Address].EntityId = dbo.Entity.Id 
+INNER JOIN dbo.Credential 
+	INNER JOIN dbo.Organization 
+		ON dbo.Credential.OwningAgentUid = dbo.Organization.RowId 
+		ON dbo.Entity.EntityUid = dbo.Organization.RowId
+WHERE        (dbo.Credential.EntityStateId = 3)
+
+) regions
+group by regions.Country,regions.Region
+order by 1,2
+
+go
+grant execute on [CodeTables_UpdateTotals] to public
+go

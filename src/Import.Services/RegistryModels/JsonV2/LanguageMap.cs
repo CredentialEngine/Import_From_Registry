@@ -28,7 +28,7 @@ namespace RA.Models.JsonV2
             if ( string.IsNullOrWhiteSpace( value ) )
             {
                 value = this.FirstOrDefault().Value;
-            }
+            } 
             return value;
         }
         public string ToString( string languageCode )

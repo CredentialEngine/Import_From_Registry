@@ -199,6 +199,7 @@ namespace workIT.Models.Common
 		public int TotalCredentials { get; set; }
 		public int TotalAssessments { get; set; }
 		public int TotalLopps{ get; set; }
+		public int TotalFrameworks { get; set; }
 
 		public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }

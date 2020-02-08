@@ -43,19 +43,79 @@ namespace workIT.Utilities
 		/// <returns></returns>
 		public static bool SendSiteEmail( string subject, string message )
 		{
-			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "cwd.mparsons@email.com" );
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
+			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "email@yourDomain.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
 
 		public static bool SendEmail( string toEmail, string subject, string message )
 		{
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
+		public static void SendEmail( string fromEmail, string[] toEmail, string[] ccEmail, string[] bccEmail, string subject, string emailBody, string[] attachments )
+		{
+			MailMessage email = new MailMessage();
+			try
+			{
+				
+				email.From = new MailAddress( fromEmail );
+				if ( toEmail != null )
+				{
+					foreach ( string address in toEmail )
+					{
+						email.To.Add( address.Trim() );
+					}
+				}
+				if ( ccEmail != null )
+				{
+					foreach ( string address in ccEmail )
+					{
+						email.CC.Add( address.Trim() );
+					}
+				}
+				if ( bccEmail != null )
+				{
+					foreach ( string address in bccEmail )
+					{
+						email.Bcc.Add( address.Trim() );
+					}
+				}
+				email.Subject = subject;
+				email.Body = emailBody;
+				if ( attachments != null )
+				{
+					foreach ( string fileName in attachments )
+					{
+						Attachment mailAttachment = new Attachment( fileName.Trim() );
+						email.Attachments.Add( mailAttachment );
+					}
+				}
+				DoSendEmail( email );
 
+				if ( UtilityManager.GetAppKeyValue( "logAllEmail", "no" ) == "yes" )
+				{
+					LogEmail( 1, email );
+				}
+			}
+			catch ( Exception ex )
+			{
+				if ( UtilityManager.GetAppKeyValue( "logAllEmail", "no" ) == "yes" )
+				{
+					LogEmail( 1, email );
+				}
+
+				Console.WriteLine( ex.ToString() );
+	//			LoggingHelper.LogError( "UtilityManager.sendEmail(): Error while attempting to send:"
+	//+ "\r\nFrom:" + fromEmail + "   To:" + toEmail
+	//+ "\r\nCC:(" + CC + ") BCC:(" + BCC + ") "
+	//+ "\r\nSubject:" + subject
+	//+ "\r\nMessage:" + message
+	//+ "\r\nError message: " + exc.ToString() );
+			}
+		}
 		public static bool SendEmail( string toEmail, string fromEmail, string subject, string message )
 		{
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
@@ -90,8 +150,8 @@ namespace workIT.Utilities
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
             MailMessage email = new MailMessage();
-            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom" );
-			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail" );
+            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
 			if ( string.IsNullOrWhiteSpace( BCC ) )
 				BCC = systemAdminEmail;
 			else
@@ -102,7 +162,6 @@ namespace workIT.Utilities
 				MailAddress maFrom;
 				if ( fromEmail.Trim().Length == 0 )
                     fromEmail = appEmail;
-
 
                 maFrom = new MailAddress( fromEmail );
 
@@ -314,19 +373,33 @@ namespace workIT.Utilities
             };
             email.To.Add( emailMsg.To.ToString() );
             email.CC.Add( emailMsg.CC.ToString() );
+			if ( emailMsg.Attachments != null && emailMsg.Attachments.Count > 0 )
+			{
+				//need to be able to handle attachments
+			}
             var parameters = email.GetContent();
+			//var parameters2 = email.GetContent2();
+			//var client2 = new MailgunClient( sendingDomain, apiKey );
+	
+			try
+			{
+				using ( var client = new HttpClient() )
+				{
+					client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "Basic", apiKeyEncoded );
+					var result = client.PostAsync( url, parameters ).Result;
+					//var result = client.PostAsync( url, parameters2 ).Result;
+					valid = result.IsSuccessStatusCode;
+					status = valid ? result.Content.ReadAsStringAsync().Result : result.ReasonPhrase;
+				}
+				if ( !valid )
+				{
+					LoggingHelper.DoTrace( 2, "***** EmailManager.SendEmailViaMailgun - error on send: " + status );
+				}
+			} catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, "SendEmailViaMailgun" );
+			}
 
-            using ( var client = new HttpClient() )
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "Basic", apiKeyEncoded );
-                var result = client.PostAsync( url, parameters ).Result;
-                valid = result.IsSuccessStatusCode;
-                status = valid ? result.Content.ReadAsStringAsync().Result : result.ReasonPhrase;
-            }
-            if ( !valid )
-            {
-                LoggingHelper.DoTrace( 2, "***** EmailManager.SendEmailViaMailgun - error on send: " + status );
-            }
         }
         private static bool EmailViaSendGrid( MailMessage emailMsg )
 		{
@@ -407,7 +480,7 @@ namespace workIT.Utilities
 		/// <returns>True id message was sent successfully, otherwise false</returns>
 		public static bool NotifyAdmin( string subject, string message )
 		{
-			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail" );	
+			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );	
 
 			return  NotifyAdmin( emailTo, subject, message );
         } 
@@ -423,13 +496,17 @@ namespace workIT.Utilities
 		{
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
-			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail");
-			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail" );
+			string emailFrom = UtilityManager.GetAppKeyValue( "systemNotifyFromEmail" );
+			string cc = UtilityManager.GetAppKeyValue( "systemAdminEmail");
             if ( emailTo == "" )
             {
                 emailTo = cc;
                 cc = "";
             }
+			if( emailTo == "" )
+			{
+				return false;
+			}
 			//avoid infinite loop by ensuring this method didn't generate the exception
 			if ( message.IndexOf( "EmailManager.NotifyAdmin" ) > -1 )
 			{
@@ -447,7 +524,7 @@ namespace workIT.Utilities
 
 				//try to make subject more specific
 				//if: workNet Exception encountered, try to insert type
-				if ( subject.IndexOf( "workNet Exception" ) > -1 )
+				if ( subject.IndexOf( "Finder Exception" ) > -1 )
 				{
 					subject = FormatExceptionSubject( subject, message );
 				}
@@ -654,8 +731,8 @@ namespace workIT.Utilities
             public string Subject { get; set; }
             public string BodyHtml { get; set; }
             public string BodyText { get; set; }
-
-            public FormUrlEncodedContent GetContent()
+			public List<string> Attachment { get; set; } = new List<string>();
+			public FormUrlEncodedContent GetContent()
             {
                 var data = new List<KeyValuePair<string, string>>();
                 Add( data, "from", From );
@@ -674,10 +751,41 @@ namespace workIT.Utilities
                 {
                     Add( data, "bcc", BCC );
                 }
-                return new FormUrlEncodedContent( data );
-            }
 
-            private void Add( List<KeyValuePair<string, string>> data, string key, string value )
+				// Serialize our concrete class into a JSON String
+				//var stringPayload = JsonConvert.SerializeObject( data );
+				//var content = new StringContent( stringPayload, Encoding.UTF8, "application/json" );
+				//return content;
+				return new FormUrlEncodedContent( data );
+            }
+			public StringContent GetContent2()
+			{
+				var data = new List<KeyValuePair<string, string>>();
+				Add( data, "from", From );
+				Add( data, "subject", Subject );
+				Add( data, "html", BodyHtml );
+				Add( data, "text", BodyText );
+				foreach ( var item in To )
+				{
+					Add( data, "to", HandleProxyEmails( item ) );
+				}
+				foreach ( var item in CC )
+				{
+					if (!string.IsNullOrWhiteSpace( item ) )
+						Add( data, "cc", HandleProxyEmails( item ) );
+				}
+				if ( !string.IsNullOrWhiteSpace( BCC ) )
+				{
+					Add( data, "bcc", BCC );
+				}
+
+				// Serialize our concrete class into a JSON String
+				var stringPayload = JsonConvert.SerializeObject( data );
+				var content = new StringContent( stringPayload, Encoding.UTF8, "application/json" );
+				return content;
+				//return new FormUrlEncodedContent( data );
+			}
+			private void Add( List<KeyValuePair<string, string>> data, string key, string value )
             {
                 if ( !string.IsNullOrWhiteSpace( value ) )
                 {

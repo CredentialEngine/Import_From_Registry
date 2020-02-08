@@ -1,0 +1,307 @@
+﻿@using Microsoft.AspNet.Identity
+@using workIT.Models.Common;
+@using workIT.Utilities;
+@using workIT.Services;
+@{
+	var env = UtilityManager.GetAppKeyValue( "envType", "production" );
+	//add warning don't refer to wrong site
+	var credentialRegistryUrl = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+	var url = Request.Url.PathAndQuery.ToLower();
+	var user = AccountServices.GetCurrentUser();
+
+	//doesn't work! - get too many redirects
+	//if ( Request.Url.Host.ToLower().Contains( "credentialfinder.com" ))
+	//{
+	//	url = url.Replace( "credentialfinder.com", "credentialfinder.org" );
+	//	Response.Redirect( @Url.Content( url ) );
+	//}
+	//else if ( Request.Url.Host.ToLower().Contains( "credentialfinder.net" ))
+	//{
+	//	url = url.Replace( "credentialfinder.net", "credentialfinder.org" );
+	//	Response.Redirect( @Url.Content( url ) );
+	//}
+
+	//check for widget ==> generally only done by the search now. 
+	//  however there are some actions necessary if widget requested.
+	Widget widget = new Widget();
+	int widgetId = 0;
+	var currentWidgetName = "";
+	var isWidgetMode = false;
+	var lastUpdatedById = 0;
+
+	var widgetAlias = ViewContext.RouteData.Values[ "widgetAlias" ];
+	if ( widgetAlias != null && !string.IsNullOrWhiteSpace( widgetAlias.ToString() ) )
+	{
+		widget = WidgetServices.GetByAlias( widgetAlias.ToString() );
+	}
+	else
+	{
+		widgetId = FormHelper.GetRequestKeyValue( "widgetId", 0 );
+		if ( widgetId > 0 )
+		{
+			widget = WidgetServices.Get( widgetId );
+			if ( widget == null || widget.Id == 0 )
+			{
+				workIT.Models.Common.SiteMessage msg = new workIT.Models.Common.SiteMessage() { Title = "Invalid Widget Request", Message = "ERROR - the requested Widget record was not found ", MessageType = "error" };
+				Session[ "SystemMessage" ] = msg;
+				Response.Redirect( @Url.Content( "~/Message" ), false );
+			}
+			else
+			{
+
+				Response.Redirect( @Url.Content( "~/widget/searchwidget?widgetId=" + widgetId.ToString() ) );
+				//may already be in session, so remove and readd
+				//can't use widget.Id. Session will only be checked for one widget
+				//if ( Session[ "currentWidget" ] != null )
+				//{
+				//    Session.Remove( "currentWidget" );
+				//}
+				//Session[ "currentWidget" ] = widget;
+
+			}
+		}
+		else if ( widgetId == -1 )
+		{
+			WidgetServices.RemoveCurrentWidget();
+		}
+	}
+
+
+	if ( widget != null && widget.Id > 0 )
+	{
+		widgetId = widget.Id;
+		currentWidgetName = widget.Name;
+		lastUpdatedById = widget.LastUpdatedById;
+		isWidgetMode = true;
+
+	}
+
+	var clientToken = UtilityManager.GetAppKeyValue( "finderClientToken", "" );
+	var callbackUrl = UtilityManager.GetAppKeyValue( "finderCallbackUrl", "" );
+	var loginApi = UtilityManager.GetAppKeyValue( "accountsLogin", "" );
+	var loginUrl = "~/Account/Login?returnUrl=" + ( url.Contains( "/account" ) ? "" : url );
+	var registerUrl = "~/Account/Register";
+	var accountsRegister = UtilityManager.GetAppKeyValue( "accountsRegister", "" );
+	var accountsDashboard = UtilityManager.GetAppKeyValue( "accountsDashboard", "" );
+	var credentialPublisherSite = UtilityManager.GetAppKeyValue( "credentialPublisherSite", "" ) + "summary/organization";
+
+	if ( Request.Url.Host.ToLower().Contains( "credfinder.siuccwd.com" )
+|| Request.Url.Host.ToLower().Contains( "localhost" )
+)
+	{
+		loginUrl = "~/Account/LoginTest?returnUrl=" + url;
+		registerUrl = "~/Account/RegisterTest";
+	}
+	if ( string.IsNullOrWhiteSpace( loginApi ) )
+	{
+		loginApi = loginUrl;
+	}
+	else
+	{
+		loginApi += "?ClientId=" + clientToken + "&callback=" + callbackUrl;
+		registerUrl = accountsRegister;
+	}
+
+}
+
+
+<script type="text/javascript">
+	/* Initialization */
+	$(document).ready(function () {
+		if (window.location.href.indexOf("//localhost") > 0) {
+			$('#mainSiteHeader').css({ "background-color": "bisque" });
+		} else if (window.location.href.indexOf("//staging.credentialengine") > 0) {
+			$('#mainSiteHeader').css({ "background-color": "#ddb8e9" });
+		} else if (window.location.href.indexOf("//sandbox.credentialengine") > 0) {
+			$('#mainSiteHeader').css({ "background-color": "#c2b280" });
+		}
+	});  //ready
+
+</script>
+
+<script type="text/javascript">
+    /* Global Variables */
+    var isWidgetMode = "@isWidgetMode";
+	//Run this in the child window (the one loaded by the iframe)
+	//Requires jQuery (but we have that)
+	$(document).ready(function () {
+		setupSelfResize();
+	});
+
+	function setupSelfResize() {
+		if (window != window.top) {
+			var win = $(window);
+			var doc = $(document);
+			var previousScrollDifference = 0;
+			win.on("resize", function () {
+				var docHeight = doc.outerHeight();
+				var scrollDifference = doc.outerHeight() - win.outerHeight();
+				if (scrollDifference != 0 && previousScrollDifference != scrollDifference) {
+					window.parent.postMessage({ action: "resizeFrame", height: docHeight }, "*");
+				}
+				previousScrollDifference = scrollDifference;
+			});
+			$("html").css("overflow", "hidden");
+		}
+	}
+	//
+</script>
+
+
+<div id="mainSiteHeader">
+    <div id="mainSiteHeaderTrim" class="rainbow"></div>
+    <div id="mainSiteHeaderLeft" class="inlineBlockBox">
+        <a class="column" id="mainSiteLogo" href="@Url.Content( "~" )" style="background-image: url('@Url.Content( "~/Images/Common/logo_stacked.png" )');" title="Site Logo"></a>
+        @*<a class="column" id="mainSiteLogo" href="@Url.Content( "~" )" title="Site Logo" ></a>*@
+        <div class="column" id="mainSiteTagline">Discover Credentials<br />Powered by Credential Registry<br />Prototype Phase</div>
+    </div>
+    <div id="mainSiteHeaderRight">
+        <button id="btnMobileMenuOpen" class="whiteButton"><i class="fas fa-bars"></i><span class="offscreen">MobileMenu</span></button>
+        <div id="mainSiteMenu" class="inlineBlockBox">
+            <div id="mobileMenuHeader" style="background-image: url('@Url.Content( "~/Images/Common/logo_stacked_white.png" )');">
+                <button id="btnMobileMenuClose" class="actionButton"><i class="fas fa-times closeButton"></i><span class="offscreen">Mobile menu close</span></button>
+            </div>
+
+            <div class="headerMenu column" id="headerMenuSearch">
+                <button class="headerMenuTitle"><i class="fa fa-search"></i> Search <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+				<div class="headerMenuList">
+					@if ( widgetId > 0 )
+					{
+						<a href="@Url.Content( "~/search?searchtype=credential&widgetId="+widgetId )">Credentials</a>
+						<a href="@Url.Content( "~/search?searchtype=organization&widgetId="+widgetId)">Organizations</a>
+						<a href="@Url.Content( "~/search?searchtype=assessment&widgetId="+widgetId )">Assessments</a>
+						<a href="@Url.Content( "~/search?searchtype=learningopportunity&widgetId="+widgetId )">Learning Opportunities</a>
+						<a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
+					}
+					else
+					{
+						<a href="@Url.Content( "~/search?searchtype=credential" )">Credentials</a>
+						<a href="@Url.Content( "~/search?searchtype=organization" )">Organizations</a>
+						<a href="@Url.Content( "~/search?searchtype=assessment" )">Assessments</a>
+						<a href="@Url.Content( "~/search?searchtype=learningopportunity" )">Learning Opportunities</a>
+						<a href="@Url.Content( "~/search?searchtype=competencyframework" )">Competency Frameworks</a>
+						@*<a class="blueButton" href="@Url.Content( "~/Reports" )"></a>*@
+					}
+				</div>
+            </div>
+
+			<div class="headerMenu column" id="headerMenuAbout">
+                <button class="headerMenuTitle"><i class="fa fa-info-circle"></i> About <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+                <div class="headerMenuList">
+                    <a href="@Url.Content( "~/home/about")" class="headerMenuTitle" title="About Credential Finder">About Credential Finder</a>
+                    <a href="@Url.Content( "~/widget")" class="headerMenuTitle" title="Credential Finder Data">Finder Widgets</a>
+                    <a href="@Url.Content( "~/reports")" class="headerMenuTitle" title="Credential Finder Data">Reports and Data</a>
+                </div>
+            </div>
+
+            @if ( Request.IsAuthenticated || AccountServices.IsUserAuthenticated() )
+            {
+                if ( AccountServices.IsUserSiteStaff() )
+                {
+                    <div class="headerMenu column" id="headerMenuAdmin">
+                        <button class="headerMenuTitle"><i class="fa fa-plus"></i> Admin <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+						<div class="headerMenuList">
+							<a href="@Url.Content("~/Reports/Index")">Site Totals</a>
+							<a href="@Url.Content("~/Widget/ConfigureV2")">Widgets</a>
+							<a href="@Url.Content("~/Admin/Activity/")">Activity Search</a>
+							@*<a href="@Url.Content("~/Admin/Site/LinkChecker")">LinkChecker Search</a>*@
+							<a href="@Url.Content("~/Import")">Importing/Re-importing</a>
+							<a href="@Url.Content("~/Registry/Search")">Registry Search</a>
+
+
+							@if ( AccountServices.IsUserAnAdmin() )
+							{
+								//
+								<a href="@Url.Content("~/Admin/Site/HandlePendingUpdates")">Elastic:Process Pending Updates</a>
+								<a href="@Url.Content("~/Admin/Site/HandlePendingDeletes")">Elastic:Process Pending Deletes</a>
+								<a href="@Url.Content("~/Admin/Site/UpdateCompetencyFrameworkTotals")">Update Competency Framework Totals</a>
+								<a href="@Url.Content("~/Admin/Site/NormalizeAddresses?maxRecords=100")">Normalize Addresses</a>
+							}
+						</div>
+                    </div>
+                }
+
+                <div class="headerMenu column" id="headerMenuAccount">
+                    <button class="headerMenuTitle"><i class="fa fa-user"></i> <div id="userName" >@user.FullName()</div> <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+                    <div class="headerMenuList">
+                         <a href="@Url.Content( @accountsDashboard )" target="extSite">Account Dashboard</a>
+						<a href="@Url.Content( @credentialPublisherSite )" target="extSite">Credential Publisher</a>
+
+                        <form action="@Url.Content("~/account/LogOff")" method="post" id="logoutForm">
+                            @Html.AntiForgeryToken()
+                            <a href="javascript:document.getElementById('logoutForm').submit();" id="logoutLink">Logout</a>
+                        </form>
+                        @*<a href="@Url.Content( "~/Account/LogOff" )" id="logoutLink">Logout 2</a>*@
+
+                    </div>
+                </div>
+            }
+            else if ( env != "production" && env != "staging" && env != "sandbox" )
+            {
+                <div class="headerMenu column" id="headerMenuAdd">
+                    <button class="headerMenuTitle"><i class="fa fa-user"></i> Login <i class="fa fa-caret-down expandArrow"></i><i class="fa fa-caret-up collapseArrow"></i></button>
+                    <div class="headerMenuList">
+                        <a href="@Url.Content( @loginApi )">Login</a>
+                        @if ( Request.Url.Host.ToLower().Contains( "localhost" ) )
+                        {
+                            <a href="@Url.Content( @loginUrl )">OLD Account Login</a>
+                        }
+                        @*<a href="@Url.Content( @registerUrl )">Register</a>*@
+
+                    </div>
+                </div>
+            }
+            @*else
+            {
+                <div class="headerMenu column" id="headerMenuAdd">
+                    <div class="headerMenuTitle">
+                        <a style="color:white" href="@Url.Content( @loginUrl )">.....</a>
+                    </div>
+                </div>
+            }*@
+
+        </div>
+
+    </div>
+
+</div>
+@*actually want to show if current person is working with a widget*@
+@if ( AccountServices.IsUserAuthenticated() && widgetId > 0
+    && (lastUpdatedById == user.Id || env != "production") )
+{
+    <div id="widgetSection">
+       
+        <div class="column" style="margin-left: auto; margin-right: auto; ">
+            <div class="column" style=" margin: 5px;  text-align: center; background-color: cyan; padding: 5px; border-radius: 5px;">
+                You are in Widget Mode:&nbsp;<b> @currentWidgetName</b>
+                <div style="display: inline-block; margin-left: 10px;">
+                    <a href="~/widget/remove">Turn Off Widget Mode</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="homePageSection" style="display:none;padding: 8px;">
+        <a id="btnHome" class="btn">Search</a>
+        
+       
+    </div>
+}
+    <script type="text/javascript">
+        
+        $(document).ready(function () {
+            widgetIframeCheck();
+        });
+
+        function widgetIframeCheck() {
+            if (window != window.top) {
+                $("#mainSiteHeader").css("display", "none");
+                $("#headerMenuAbout").css("display", "none");
+                $("#mainSiteFooter").css("display", "none");
+                $("#widgetSection").css("display", "none");
+            } else if (@Convert.ToString(isWidgetMode).ToLower()) {
+                $("#headerMenuAbout").css("display", "none");
+                $("#mainSiteFooter").css("display", "none");
+                
+            }
+        }
+    </script>

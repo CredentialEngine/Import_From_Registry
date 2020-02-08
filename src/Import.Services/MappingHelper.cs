@@ -1281,8 +1281,8 @@ namespace Import.Services
                 cp.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
                 cp.CreditUnitType = MapCAOToEnumermation( input.CreditUnitType );
                 cp.CreditUnitValue = input.CreditUnitValue;
-                cp.CreditHourType = input.CreditHourType;
-                cp.CreditHourValue = input.CreditHourValue;
+                //cp.CreditHourType = input.CreditHourType;
+                //cp.CreditHourValue = input.CreditHourValue;
 
 				if ( input.AlternativeCondition != null & input.AlternativeCondition.Count > 0)
 					cp.AlternativeCondition = FormatConditionProfile( input.AlternativeCondition, ref status );
