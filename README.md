@@ -1,5 +1,5 @@
 # Import_From_Registry
-Sample project to import resources from the credential registry. While the code is also included for the credential finder site, the main focus of this repo is importing data from the [**Credential Registry**](https://credreg.net/). 
+Sample project to import resources from the credential registry. While the code is also included for the [**Credential Finder**](https://credentialfinder.org/) site, the main focus of this repo is importing data from the [**Credential Registry**](https://credreg.net/). 
 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
