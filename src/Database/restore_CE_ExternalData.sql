@@ -1,24 +1,18 @@
 /*
 Sample restore SQL to a SQL server 2016+ database
 
-The database has two users that will have to be created in the target database (or new users could be added, and replace those referenced by the apps. 
+The database has one user now that will have to be created in the target database (or new users could be added, and replace those referenced by the apps. 
 
 
 use master 
 go
-sp_addLogin 'ceGithub', '###PASSWORD###', master
-go
-
-sp_addLogin 'ceGithub', '###PASSWORD###', master
-go
+sp_addLogin 'ceGithub', 'ce$Rocks2020', master
 
 After completing the restore, run the following sql to 'associate' the named accounts in the backup file with the ones created on this server
 
 Use CE_ExternalData
 go
 sp_change_users_login 'report'
-go
-sp_change_users_login 'update_one', 'ceGithub','ceGithub'
 go
 sp_change_users_login 'update_one', 'ceGithub','ceGithub'
 go
