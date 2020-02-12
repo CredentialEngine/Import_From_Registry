@@ -26,5 +26,5 @@ The solution includes the code for the Credential Finder site: https://credentia
 #### Elastic
 The latter site uses Elastic for searching. The code to build and maintain the Elastic indices is included. 
 Guidance for the installation and configuration of Elastic is not currently provided. 
-### Sql Server
+#### Sql Server
 By default the web site will use Sql server stored procedures for the simple searches. 
