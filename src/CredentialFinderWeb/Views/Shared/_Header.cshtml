@@ -167,10 +167,10 @@
 				<div class="headerMenuList">
 					@if ( widgetId > 0 )
 					{
-						<a href="@Url.Content( "~/search?searchtype=credential&widgetId="+widgetId )">Credentials</a>
-						<a href="@Url.Content( "~/search?searchtype=organization&widgetId="+widgetId)">Organizations</a>
-						<a href="@Url.Content( "~/search?searchtype=assessment&widgetId="+widgetId )">Assessments</a>
-						<a href="@Url.Content( "~/search?searchtype=learningopportunity&widgetId="+widgetId )">Learning Opportunities</a>
+						<a href="@Url.Content( "~/credentials?widgetId="+widgetId )">Credentials</a>
+						<a href="@Url.Content( "~/organizations?widgetId="+widgetId)">Organizations</a>
+						<a href="@Url.Content( "~/assessments?widgetId="+widgetId )">Assessments</a>
+						<a href="@Url.Content( "~/learningopportunities?widgetId="+widgetId )">Learning Opportunities</a>
 						<a class="blueButton" href="@Url.Content( "~/Reports" )"></a>
 					}
 					else

@@ -216,8 +216,8 @@ namespace CredentialFinderWeb.Areas.Admin.Controllers
             var user = AccountServices.GetCurrentUser();
             if ( user != null && 
                 ( 
-                    user.Email == "email@yourDomain.com" ||
-                    user.Email == "cwd-nathan.argo@yourDomain.com"
+                    user.Email == "mparsons@credentialengine.org" ||
+                    user.Email == "cwd-nathan.argo@credentialengine.org"
                   )
                 )
             {
@@ -225,8 +225,8 @@ namespace CredentialFinderWeb.Areas.Admin.Controllers
             } else 
             //if ( !User.Identity.IsAuthenticated
             //    || ( User.Identity.Name != "mparsons"
-            //    && User.Identity.Name != "email@yourDomain.com"
-            //    && User.Identity.Name != "cwd-nathan.argo@yourDomain.com" )
+            //    && User.Identity.Name != "mparsons@credentialengine.org"
+            //    && User.Identity.Name != "cwd-nathan.argo@credentialengine.org" )
             //    )
             {
                 SetSystemMessage( "Unauthorized Action", "You are not authorized to invoke NormalizeAddresses." );
