@@ -93,7 +93,7 @@ set @DestLogfile  = @DestDatabase + '_Log'
 set @BackupDir 	= @wnTestBackupLoc
 
 
-set @BackupFile = 'credfinderTest190223.BAK'	--@DestDatabase + '.BAK'
+set @BackupFile = 'credFinderGithub210127.BAK'	--@DestDatabase + '.BAK'
 
 if 1 = 2 begin
 -- If the source backup is the same as the dest. then use:
