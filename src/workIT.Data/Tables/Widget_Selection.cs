@@ -12,15 +12,16 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_Credential
+    public partial class Widget_Selection
     {
         public int Id { get; set; }
-        public int EntityId { get; set; }
-        public int CredentialId { get; set; }
+        public int WidgetId { get; set; }
+        public string WidgetSection { get; set; }
+        public int EntityTypeId { get; set; }
+        public int RecordId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public int RelationshipTypeId { get; set; }
+        public string ResourceName { get; set; }
     
-        public virtual Credential Credential { get; set; }
-        public virtual Entity Entity { get; set; }
+        public virtual Widget Widget { get; set; }
     }
 }

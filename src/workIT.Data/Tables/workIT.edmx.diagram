@@ -4,9 +4,9 @@
   <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
-      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="77">
+      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="98">
         <EntityTypeShape EntityType="workITModel.ActivityLog" Width="1.5" PointX="38.375" PointY="4.5" />
-        <EntityTypeShape EntityType="workITModel.Assessment" Width="1.5" PointX="0.75" PointY="20.5" FillColor="Yellow" />
+        <EntityTypeShape EntityType="workITModel.Assessment" Width="2.5" PointX="0.5" PointY="21.875" FillColor="Yellow" />
         <EntityTypeShape EntityType="workITModel.Codes_AssertionType" Width="3" PointX="25.875" PointY="5.5" />
         <EntityTypeShape EntityType="workITModel.Codes_ConditionProfileType" Width="1.5" PointX="40.375" PointY="4.5" />
         <EntityTypeShape EntityType="workITModel.Codes_CredentialAgentRelationship" Width="3.125" PointX="2.25" PointY="37.5" />
@@ -15,28 +15,27 @@
         <EntityTypeShape EntityType="workITModel.Codes_PropertyValue" Width="1.5" PointX="11.5" PointY="11.375" />
         <EntityTypeShape EntityType="workITModel.Codes_State" Width="1.5" PointX="42.375" PointY="6.5" />
         <EntityTypeShape EntityType="workITModel.ConditionManifest" Width="1.5" PointX="15.25" PointY="37.625" />
-        <EntityTypeShape EntityType="workITModel.CostManifest" Width="1.5" PointX="9.25" PointY="20.5" />
+        <EntityTypeShape EntityType="workITModel.CostManifest" Width="1.5" PointX="19.5" PointY="21.5" />
         <EntityTypeShape EntityType="workITModel.Counts_SiteTotals" Width="1.5" PointX="44.375" PointY="0.5" />
         <EntityTypeShape EntityType="workITModel.Credential" Width="2.5" PointX="11" PointY="41.25" />
         <EntityTypeShape EntityType="workITModel.Credential_SummaryCache" Width="3.125" PointX="5.75" PointY="41.5" />
         <EntityTypeShape EntityType="workITModel.EducationFramework" Width="1.5" PointX="15.25" PointY="17" />
         <EntityTypeShape EntityType="workITModel.Entity" Width="3.875" PointX="22.875" PointY="22.5" />
-        <EntityTypeShape EntityType="workITModel.Entity_Address" Width="1.5" PointX="34.5" PointY="33.25" />
+        <EntityTypeShape EntityType="workITModel.Entity_Address" Width="1.5" PointX="36.5" PointY="25.75" />
         <EntityTypeShape EntityType="workITModel.Entity_AgentRelationship" Width="2" PointX="11" PointY="32.375" />
-        <EntityTypeShape EntityType="workITModel.Entity_Assertion" Width="1.5" PointX="14.5" PointY="21" />
+        <EntityTypeShape EntityType="workITModel.Entity_Assertion" Width="1.5" PointX="14.375" PointY="20.75" />
         <EntityTypeShape EntityType="workITModel.Entity_Assessment" Width="1.5" PointX="14.5" PointY="31.375" />
         <EntityTypeShape EntityType="workITModel.Entity_CommonCondition" Width="1.5" PointX="14.5" PointY="34.375" />
         <EntityTypeShape EntityType="workITModel.Entity_CommonCost" Width="1.5" PointX="14.5" PointY="25.375" />
-        <EntityTypeShape EntityType="workITModel.Entity_Competency" Width="1.5" PointX="19.125" PointY="22.5" />
+        <EntityTypeShape EntityType="workITModel.Entity_Competency" Width="2.125" PointX="31.875" PointY="12.125" />
         <EntityTypeShape EntityType="workITModel.Entity_ConditionManifest" Width="1.5" PointX="20.375" PointY="27.75" />
         <EntityTypeShape EntityType="workITModel.Entity_ConditionProfile" Width="1.5" PointX="41.25" PointY="39.875" />
         <EntityTypeShape EntityType="workITModel.Entity_ContactPoint" Width="1.5" PointX="29.125" PointY="46.375" />
-        <EntityTypeShape EntityType="workITModel.Entity_CostManifest" Width="1.5" PointX="11.5" PointY="21.375" />
+        <EntityTypeShape EntityType="workITModel.Entity_CostManifest" Width="1.5" PointX="17.125" PointY="21.625" />
         <EntityTypeShape EntityType="workITModel.Entity_CostProfile" Width="1.5" PointX="11.5" PointY="6.5" />
         <EntityTypeShape EntityType="workITModel.Entity_CostProfileItem" Width="1.5" PointX="13.75" PointY="6.75" />
-        <EntityTypeShape EntityType="workITModel.Entity_Credential" Width="1.5" PointX="11.5" PointY="36.375" />
+        <EntityTypeShape EntityType="workITModel.Entity_Credential" Width="2.125" PointX="11.5" PointY="36.375" />
         <EntityTypeShape EntityType="workITModel.Entity_DurationProfile" Width="1.5" PointX="38.125" PointY="48.125" />
-        <EntityTypeShape EntityType="workITModel.Entity_FinancialAlignmentProfile" Width="1.5" PointX="48.625" PointY="28.75" />
         <EntityTypeShape EntityType="workITModel.Entity_FrameworkItem" Width="1.5" PointX="30.625" PointY="39.625" />
         <EntityTypeShape EntityType="workITModel.Entity_IdentifierValue" Width="1.5" PointX="27.125" PointY="40" />
         <EntityTypeShape EntityType="workITModel.Entity_JurisdictionProfile" Width="1.5" PointX="28" PointY="26.5" />
@@ -47,15 +46,15 @@
         <EntityTypeShape EntityType="workITModel.Entity_Reference" Width="1.5" PointX="17.5" PointY="31.875" />
         <EntityTypeShape EntityType="workITModel.Entity_ReferenceConnection" Width="1.5" PointX="19.75" PointY="32.375" />
         <EntityTypeShape EntityType="workITModel.Entity_ReferenceFramework" Width="1.5" PointX="14.5" PointY="28.25" />
-        <EntityTypeShape EntityType="workITModel.Entity_RevocationProfile" Width="1.5" PointX="11.5" PointY="2.625" />
+        <EntityTypeShape EntityType="workITModel.Entity_RevocationProfile" Width="1.5" PointX="23.25" PointY="10.125" />
         <EntityTypeShape EntityType="workITModel.Entity_VerificationProfile" Width="1.5" PointX="39" PointY="30.625" />
         <EntityTypeShape EntityType="workITModel.Entity_VerificationStatus" Width="1.5" PointX="43.875" PointY="31.5" />
         <EntityTypeShape EntityType="workITModel.GeoCoordinate" Width="1.5" PointX="31.5" PointY="25.5" />
         <EntityTypeShape EntityType="workITModel.Import_EntityResolution" Width="1.5" PointX="44.375" PointY="3.5" />
         <EntityTypeShape EntityType="workITModel.Import_Message" Width="1.5" PointX="38.625" PointY="1.25" />
         <EntityTypeShape EntityType="workITModel.Import_Staging" Width="1.5" PointX="36.375" PointY="0.75" />
-        <EntityTypeShape EntityType="workITModel.LearningOpportunity" Width="1.5" PointX="5.75" PointY="21.375" FillColor="Yellow" />
-        <EntityTypeShape EntityType="workITModel.Organization" Width="1.5" PointX="4.875" PointY="32" />
+        <EntityTypeShape EntityType="workITModel.LearningOpportunity" Width="3.125" PointX="4.125" PointY="21.375" FillColor="Yellow" />
+        <EntityTypeShape EntityType="workITModel.Organization" Width="1.5" PointX="2.625" PointY="32" />
         <EntityTypeShape EntityType="workITModel.Reference_Frameworks" Width="1.5" PointX="12.25" PointY="17" />
         <EntityTypeShape EntityType="workITModel.SearchPendingReindex" Width="1.5" PointX="44.375" PointY="7.5" />
         <EntityTypeShape EntityType="workITModel.Widget" Width="2" PointX="36.375" PointY="9.5" />
@@ -73,7 +72,6 @@
         <AssociationConnector Association="workITModel.FK_Entity_CostManifest_CostManifest" />
         <AssociationConnector Association="workITModel.FK_Credential_SummaryCache_Credential1" />
         <AssociationConnector Association="workITModel.FK_Entity_Credential_Credential" />
-        <AssociationConnector Association="workITModel.FK_Entity_Competency_EducationFramework" />
         <AssociationConnector Association="workITModel.FK_Entity_Address_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_AgentRelationship_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_Assertion_Entity" />
@@ -87,7 +85,6 @@
         <AssociationConnector Association="workITModel.FK_Entity_CostProfile_Entity1" />
         <AssociationConnector Association="workITModel.FK_Entity_Credential_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_DurationProfile_Entity1" />
-        <AssociationConnector Association="workITModel.FK_Entity_FinancialAlignmentProfile_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_FrameworkItem_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_IdentifierValue_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_JurisdictionProfile_Entity" />
@@ -115,11 +112,55 @@
         <AssociationConnector Association="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" />
         <EntityTypeShape EntityType="workITModel.Counts_RegionTotals" Width="1.5" PointX="5" PointY="2.375" />
         <AssociationConnector Association="workITModel.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" />
-        <EntityTypeShape EntityType="workITModel.Entity_FinancialAssistanceProfile" Width="2.75" PointX="28" PointY="22.125" />
+        <EntityTypeShape EntityType="workITModel.Entity_FinancialAssistanceProfile" Width="2.25" PointX="30.625" PointY="21.875" />
         <AssociationConnector Association="workITModel.FK_Entity_FinancialAssistanceProfile_Entity" />
-        <EntityTypeShape EntityType="workITModel.Entity_LanguageMaps" Width="1.5" PointX="27.5" PointY="31.25" />
+        <EntityTypeShape EntityType="workITModel.Entity_LanguageMaps" Width="1.5" PointX="27.5" PointY="31.25" FillColor="255, 192, 255" />
         <AssociationConnector Association="workITModel.FK_EntityLanguageMaps_Entity" />
         <EntityTypeShape EntityType="workITModel.Import_PendingRequest" Width="2.125" PointX="8.625" PointY="0.625" FillColor="Lime" />
+        <EntityTypeShape EntityType="workITModel.CompetencyFramework" Width="3.375" PointX="31.625" PointY="5.5" />
+        <AssociationConnector Association="workITModel.FK_Entity_Competency_CompetencyFramework" />
+        <EntityTypeShape EntityType="workITModel.TransferValueProfile" Width="2.5" PointX="0.75" PointY="0.5" />
+        <EntityTypeShape EntityType="workITModel.Pathway" Width="2.5" PointX="0.625" PointY="8.25" FillColor="Fuchsia" />
+        <EntityTypeShape EntityType="workITModel.Pathway_ComponentCondition" Width="2.875" PointX="3.5" PointY="13.75" FillColor="Fuchsia" />
+        <EntityTypeShape EntityType="workITModel.PathwayComponent" Width="2" PointX="0.75" PointY="13" FillColor="Fuchsia" />
+        <AssociationConnector Association="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" />
+        <EntityTypeShape EntityType="workITModel.Codes_PathwayComponentType" Width="3" PointX="0.625" PointY="18.5" FillColor="Fuchsia" />
+        <AssociationConnector Association="workITModel.FK_PathwayComponent_Codes_PathwayComponentType" />
+        <EntityTypeShape EntityType="workITModel.Entity_HasPathway" Width="1.5" PointX="7.75" PointY="15.5" FillColor="Fuchsia" />
+        <EntityTypeShape EntityType="workITModel.Entity_HasPathwayComponent" Width="1.75" PointX="4.75" PointY="17.5" FillColor="Fuchsia" />
+        <EntityTypeShape EntityType="workITModel.PathwaySet" Width="1.5" PointX="4.375" PointY="8.75" FillColor="Fuchsia" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathway_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathway_Pathway" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent" />
+        <EntityTypeShape EntityType="workITModel.Widget_Selection" Width="1.5" PointX="39.875" PointY="9.75" />
+        <AssociationConnector Association="workITModel.FK_Widget_Selection_Widget" />
+        <EntityTypeShape EntityType="workITModel.ConceptScheme" Width="1.5" PointX="5.375" PointY="32.625" />
+        <AssociationConnector Association="workITModel.FK_ConceptScheme_Organization" />
+        <EntityTypeShape EntityType="workITModel.Codes_PathwayComponentRelationship" Width="2.5" PointX="8.5" PointY="18.625" />
+        <EntityTypeShape EntityType="workITModel.ConceptScheme_Concept" Width="2.5" PointX="7.75" PointY="32.75" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_Codes_PathwayComponentRelationship" />
+        <AssociationConnector Association="workITModel.FK_ConceptScheme_Concept_ConceptScheme" />
+        <EntityTypeShape EntityType="workITModel.DataProfile" Width="1.5" PointX="31" PointY="1.75" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.DataSetProfile" Width="1.5" PointX="25.25" PointY="16.875" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.DataSetTimeFrame" Width="2.5" PointX="27.5" PointY="1.375" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.EarningsProfile" Width="1.875" PointX="24.875" PointY="33" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.EmploymentOutcomeProfile" Width="2.25" PointX="31.25" PointY="33.25" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.Entity_DataSetProfile" Width="1.5" PointX="27.5" PointY="20" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.Entity_EarningsProfile" Width="1.5" PointX="27.5" PointY="23" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.Entity_EmploymentOutcomeProfile" Width="1.5" PointX="33.5" PointY="30" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.Entity_HoldersProfile" Width="1.5" PointX="30.5" PointY="30" FillColor="255, 192, 255" />
+        <EntityTypeShape EntityType="workITModel.HoldersProfile" Width="1.875" PointX="28" PointY="35.25" FillColor="255, 192, 255" />
+        <AssociationConnector Association="workITModel.FK_DataProfile_DataSetTimeFrame" />
+        <AssociationConnector Association="workITModel.FK_DataSetTimeFrame_DataSetProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_DataSetProfile_DataSetProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_EarningsProfile_EarningsProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_DataSetProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_EarningsProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_HoldersProfile" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

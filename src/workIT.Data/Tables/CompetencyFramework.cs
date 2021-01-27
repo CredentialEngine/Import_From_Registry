@@ -12,36 +12,32 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Widget
+    public partial class CompetencyFramework
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public Widget()
+        public CompetencyFramework()
         {
-            this.Widget_Selection = new HashSet<Widget_Selection>();
+            this.Entity_Competency = new HashSet<Entity_Competency>();
         }
     
         public int Id { get; set; }
-        public string OrgCTID { get; set; }
-        public string OrganizationName { get; set; }
         public string Name { get; set; }
-        public string WidgetAlias { get; set; }
+        public int EntityStateId { get; set; }
+        public string CTID { get; set; }
+        public string OrganizationCTID { get; set; }
+        public string FrameworkUri { get; set; }
+        public string SourceUrl { get; set; }
+        public Nullable<bool> ExistsInRegistry { get; set; }
+        public string CredentialRegistryId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public Nullable<int> CreatedById { get; set; }
-        public Nullable<int> LastUpdatedById { get; set; }
-        public string CustomStyles { get; set; }
-        public string LogoUrl { get; set; }
-        public string CustomStylesFileName { get; set; }
-        public string WidgetStylesUrl { get; set; }
-        public string SearchFilters { get; set; }
-        public string OwningOrganizationIds { get; set; }
-        public string CountryFilters { get; set; }
-        public string RegionFilters { get; set; }
-        public string CityFilters { get; set; }
-        public Nullable<bool> IncludeIfAvailableOnline { get; set; }
         public System.Guid RowId { get; set; }
+        public string CompetencyFrameworkGraph { get; set; }
+        public string Description { get; set; }
+        public string CompetenciesStore { get; set; }
+        public int TotalCompetencies { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Widget_Selection> Widget_Selection { get; set; }
+        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
     }
 }

@@ -44,6 +44,9 @@ namespace workIT.Data.Tables
         public string VerificationMethodDescription { get; set; }
         public Nullable<int> InLanguageId { get; set; }
         public Nullable<decimal> CreditUnitMaxValue { get; set; }
+        public string LearningMethodDescription { get; set; }
+        public string AssessmentMethodDescription { get; set; }
+        public Nullable<System.DateTime> ExpirationDate { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_LearningOpportunity> Entity_LearningOpportunity { get; set; }

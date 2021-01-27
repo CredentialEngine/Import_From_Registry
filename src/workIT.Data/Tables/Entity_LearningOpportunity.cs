@@ -18,6 +18,7 @@ namespace workIT.Data.Tables
         public int EntityId { get; set; }
         public int LearningOpportunityId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
+        public int RelationshipTypeId { get; set; }
     
         public virtual Entity Entity { get; set; }
         public virtual LearningOpportunity LearningOpportunity { get; set; }

@@ -12,18 +12,26 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_FinancialAssistanceProfile
+    public partial class TransferValueProfile
     {
         public int Id { get; set; }
-        public int EntityId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public int EntityStateId { get; set; }
         public string SubjectWebpage { get; set; }
+        public string CTID { get; set; }
+        public string CredentialRegistryId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
-        public string FinancialAssistanceValue { get; set; }
-    
-        public virtual Entity Entity { get; set; }
+        public Nullable<System.Guid> OwningAgentUid { get; set; }
+        public string LifecycleStatusType { get; set; }
+        public string CodedNotation { get; set; }
+        public string IdentifierJson { get; set; }
+        public string TransferValueJson { get; set; }
+        public string TransferValueFromJson { get; set; }
+        public string TransferValueForJson { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
     }
 }

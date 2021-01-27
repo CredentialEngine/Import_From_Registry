@@ -14,12 +14,6 @@ namespace workIT.Data.Tables
     
     public partial class EducationFramework
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public EducationFramework()
-        {
-            this.Entity_Competency = new HashSet<Entity_Competency>();
-        }
-    
         public int Id { get; set; }
         public string FrameworkName { get; set; }
         public string CTID { get; set; }
@@ -33,8 +27,5 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string CredentialRegistryId { get; set; }
         public int EntityStateId { get; set; }
-    
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
     }
 }

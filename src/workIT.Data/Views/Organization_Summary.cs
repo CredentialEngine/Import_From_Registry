@@ -7,33 +7,42 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace workIT.Data.Tables
+namespace workIT.Data.Views
 {
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_Address
+    public partial class Organization_Summary
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
         public string Name { get; set; }
+        public string Description { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
         public string Address1 { get; set; }
         public string Address2 { get; set; }
-        public string PostOfficeBoxNumber { get; set; }
         public string City { get; set; }
         public string Region { get; set; }
         public string PostalCode { get; set; }
         public string Country { get; set; }
-        public Nullable<bool> IsPrimaryAddress { get; set; }
         public Nullable<double> Latitude { get; set; }
         public Nullable<double> Longitude { get; set; }
+        public string SubjectWebpage { get; set; }
+        public string ImageURL { get; set; }
         public System.Guid RowId { get; set; }
-        public System.DateTime Created { get; set; }
-        public System.DateTime LastUpdated { get; set; }
-        public Nullable<int> CountryId { get; set; }
-        public string SubRegion { get; set; }
-        public string Description { get; set; }
-    
-        public virtual Entity Entity { get; set; }
+        public string CTID { get; set; }
+        public string CredentialRegistryId { get; set; }
+        public string cerEnvelopeUrl { get; set; }
+        public string AvailabilityListing { get; set; }
+        public int IsAQAOrganization { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
+        public int CredentialCount { get; set; }
+        public int AssessmentCount { get; set; }
+        public int LearningOpportunityCount { get; set; }
+        public int FrameworkCount { get; set; }
+        public int PathwayCount { get; set; }
+        public int PathwaySetCount { get; set; }
+        public int TransferValueCount { get; set; }
     }
 }

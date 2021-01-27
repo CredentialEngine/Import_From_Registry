@@ -43,6 +43,7 @@
         <EntityTypeShape EntityType="workITViewModels.Query_IndianapolisCredentials" Width="2.75" PointX="21.375" PointY="19.75" FillColor="255, 128, 0" />
         <EntityTypeShape EntityType="workITViewModels.Query_IndianaCredentials" Width="2.125" PointX="18.375" PointY="19.75" FillColor="255, 128, 0" />
         <EntityTypeShape EntityType="workITViewModels.Organization_CombinedConnections" Width="2.375" PointX="23.375" PointY="11.75" />
+        <EntityTypeShape EntityType="workITViewModels.Organization_Summary" Width="1.5" PointX="16.375" PointY="23.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

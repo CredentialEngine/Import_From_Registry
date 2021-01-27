@@ -12,15 +12,14 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_Credential
+    public partial class Entity_HoldersProfile
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public int CredentialId { get; set; }
+        public int HoldersProfileId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public int RelationshipTypeId { get; set; }
     
-        public virtual Credential Credential { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual HoldersProfile HoldersProfile { get; set; }
     }
 }

@@ -18,6 +18,7 @@ namespace workIT.Data.Tables
         public int EntityId { get; set; }
         public int AssessmentId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
+        public int RelationshipTypeId { get; set; }
     
         public virtual Assessment Assessment { get; set; }
         public virtual Entity Entity { get; set; }

@@ -12,15 +12,15 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_Credential
+    public partial class Entity_HasPathway
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public int CredentialId { get; set; }
-        public Nullable<System.DateTime> Created { get; set; }
-        public int RelationshipTypeId { get; set; }
+        public int PathwayId { get; set; }
+        public int PathwayRelationshipTypeId { get; set; }
+        public System.DateTime Created { get; set; }
     
-        public virtual Credential Credential { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual Pathway Pathway { get; set; }
     }
 }

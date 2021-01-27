@@ -44,12 +44,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EntityFramework">
-      <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer">
-      <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -127,6 +121,12 @@
     <Compile Include="Tables\Codes_EntityTypes.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Codes_PathwayComponentRelationship.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_PathwayComponentType.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Codes_PropertyCategory.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -134,6 +134,15 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Codes_State.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\CompetencyFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\ConceptScheme.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\ConceptScheme_Concept.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\ConditionManifest.cs">
@@ -160,7 +169,22 @@
     <Compile Include="Tables\Credential_SummaryCache.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\DataProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\DataSetProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\DataSetTimeFrame.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\EarningsProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\EducationFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\EmploymentOutcomeProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity.cs">
@@ -211,10 +235,16 @@
     <Compile Include="Tables\Entity_Credential.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_DataSetProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_DurationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Entity_FinancialAlignmentProfile.cs">
+    <Compile Include="Tables\Entity_EarningsProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_EmploymentOutcomeProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_FinancialAssistanceProfile.cs">
@@ -223,10 +253,22 @@
     <Compile Include="Tables\Entity_FrameworkItem.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_HasPathway.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_HasPathwayComponent.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_HoldersProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_IdentifierValue.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_JurisdictionProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Language.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_LanguageMaps.cs">
@@ -265,6 +307,9 @@
     <Compile Include="Tables\GeoCoordinate.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\HoldersProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Import_EntityResolution.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -283,13 +328,31 @@
     <Compile Include="Tables\Organization.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Pathway.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\PathwayComponent.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\PathwaySet.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Pathway_ComponentCondition.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Reference_Frameworks.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\SearchPendingReindex.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\TransferValueProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Widget.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Widget_Selection.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\workIT.Context.cs">
@@ -412,6 +475,9 @@
     <Compile Include="Views\Organization_CombinedQAPerformed.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
+    <Compile Include="Views\Organization_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
     <Compile Include="Views\Query_IndianaCredentials.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
@@ -452,7 +518,6 @@
       <DependentUpon>Accounts.edmx</DependentUpon>
     </None>
     <None Include="App.Config" />
-    <None Include="packages.config" />
     <None Include="Tables\workIT.edmx.diagram">
       <DependentUpon>workIT.edmx</DependentUpon>
     </None>
@@ -500,7 +565,11 @@
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <PackageReference Include="EntityFramework">
+      <Version>6.2.0</Version>
+    </PackageReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

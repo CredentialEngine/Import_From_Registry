@@ -16,7 +16,6 @@ namespace workIT.Data.Tables
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public Nullable<int> EducationFrameworkId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public string TargetNodeName { get; set; }
         public string TargetNodeDescription { get; set; }
@@ -25,8 +24,9 @@ namespace workIT.Data.Tables
         public Nullable<decimal> Weight { get; set; }
         public string FrameworkName { get; set; }
         public string FrameworkUrl { get; set; }
+        public Nullable<int> CompetencyFrameworkId { get; set; }
     
-        public virtual EducationFramework EducationFramework { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual CompetencyFramework CompetencyFramework { get; set; }
     }
 }

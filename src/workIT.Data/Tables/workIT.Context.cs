@@ -56,7 +56,6 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_CostProfileItem> Entity_CostProfileItem { get; set; }
         public virtual DbSet<Entity_Credential> Entity_Credential { get; set; }
         public virtual DbSet<Entity_DurationProfile> Entity_DurationProfile { get; set; }
-        public virtual DbSet<Entity_FinancialAlignmentProfile> Entity_FinancialAlignmentProfile { get; set; }
         public virtual DbSet<Entity_FrameworkItem> Entity_FrameworkItem { get; set; }
         public virtual DbSet<Entity_IdentifierValue> Entity_IdentifierValue { get; set; }
         public virtual DbSet<Entity_JurisdictionProfile> Entity_JurisdictionProfile { get; set; }
@@ -86,5 +85,28 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_FinancialAssistanceProfile> Entity_FinancialAssistanceProfile { get; set; }
         public virtual DbSet<Entity_LanguageMaps> Entity_LanguageMaps { get; set; }
         public virtual DbSet<Import_PendingRequest> Import_PendingRequest { get; set; }
+        public virtual DbSet<CompetencyFramework> CompetencyFramework { get; set; }
+        public virtual DbSet<TransferValueProfile> TransferValueProfile { get; set; }
+        public virtual DbSet<Pathway> Pathway { get; set; }
+        public virtual DbSet<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
+        public virtual DbSet<PathwayComponent> PathwayComponent { get; set; }
+        public virtual DbSet<Codes_PathwayComponentType> Codes_PathwayComponentType { get; set; }
+        public virtual DbSet<Entity_HasPathway> Entity_HasPathway { get; set; }
+        public virtual DbSet<Entity_HasPathwayComponent> Entity_HasPathwayComponent { get; set; }
+        public virtual DbSet<PathwaySet> PathwaySet { get; set; }
+        public virtual DbSet<Widget_Selection> Widget_Selection { get; set; }
+        public virtual DbSet<ConceptScheme> ConceptScheme { get; set; }
+        public virtual DbSet<Codes_PathwayComponentRelationship> Codes_PathwayComponentRelationship { get; set; }
+        public virtual DbSet<ConceptScheme_Concept> ConceptScheme_Concept { get; set; }
+        public virtual DbSet<DataProfile> DataProfile { get; set; }
+        public virtual DbSet<DataSetProfile> DataSetProfile { get; set; }
+        public virtual DbSet<DataSetTimeFrame> DataSetTimeFrame { get; set; }
+        public virtual DbSet<EarningsProfile> EarningsProfile { get; set; }
+        public virtual DbSet<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; }
+        public virtual DbSet<Entity_DataSetProfile> Entity_DataSetProfile { get; set; }
+        public virtual DbSet<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
+        public virtual DbSet<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
+        public virtual DbSet<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
+        public virtual DbSet<HoldersProfile> HoldersProfile { get; set; }
     }
 }

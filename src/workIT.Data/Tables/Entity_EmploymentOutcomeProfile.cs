@@ -12,24 +12,14 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_FinancialAlignmentProfile
+    public partial class Entity_EmploymentOutcomeProfile
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public string FrameworkName { get; set; }
-        public string Framework { get; set; }
-        public string TargetNodeName { get; set; }
-        public string TargetNodeDescription { get; set; }
-        public string TargetNode { get; set; }
-        public string CodedNotation { get; set; }
-        public Nullable<System.DateTime> AlignmentDate { get; set; }
-        public Nullable<int> AlignmentTypeId { get; set; }
-        public Nullable<decimal> Weight { get; set; }
+        public int EmploymentOutcomeProfileId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<System.DateTime> LastUpdated { get; set; }
-        public System.Guid RowId { get; set; }
-        public string AlignmentType { get; set; }
     
+        public virtual EmploymentOutcomeProfile EmploymentOutcomeProfile { get; set; }
         public virtual Entity Entity { get; set; }
     }
 }

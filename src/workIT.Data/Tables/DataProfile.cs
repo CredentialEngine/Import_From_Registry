@@ -12,15 +12,18 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_Credential
+    public partial class DataProfile
     {
         public int Id { get; set; }
-        public int EntityId { get; set; }
-        public int CredentialId { get; set; }
+        public System.Guid RowId { get; set; }
+        public int DataSetTimeFrameId { get; set; }
+        public string Description { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public int RelationshipTypeId { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
+        public string DataProfileAttributeSummaryJson { get; set; }
+        public string DataProfileAttributesJson { get; set; }
+        public Nullable<System.DateTime> DateEffective { get; set; }
     
-        public virtual Credential Credential { get; set; }
-        public virtual Entity Entity { get; set; }
+        public virtual DataSetTimeFrame DataSetTimeFrame { get; set; }
     }
 }
