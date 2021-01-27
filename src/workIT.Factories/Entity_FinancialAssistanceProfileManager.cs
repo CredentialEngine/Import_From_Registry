@@ -16,6 +16,7 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -27,16 +28,16 @@ namespace workIT.Factories
 
 
 		#region === -Persistance ==================
-		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
+		public bool SaveList(List<ThisEntity> list, Guid parentUid, ref SaveStatus status)
 		{
-			if ( !IsValidGuid( parentUid ) )
+			if( !IsValidGuid( parentUid ) )
 			{
 				status.AddError( string.Format( "A valid parent identifier was not provided to the {0}.Add method.", thisClassName ) );
 				return false;
 			}
 
 			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
+			if( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
@@ -55,7 +56,8 @@ namespace workIT.Factories
 				{
 					Save( item, parent, ref status );
 				}
-			} catch(Exception ex)
+			}
+			catch( Exception ex )
 			{
 				string message = FormatExceptions( ex );
 				messages.Add( "Error - the SaveList was not successful. " + message );
@@ -64,6 +66,7 @@ namespace workIT.Factories
 			}
 			return isAllValid;
 		}
+
 
 		/// <summary>
 		/// Persist FinancialAssistanceProfile
@@ -385,7 +388,46 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
-		 
+
+		public static List<ThisEntity> Search( int topParentTypeId, int topParentEntityBaseId )
+		{
+			ThisEntity to = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+			Entity parent = EntityManager.GetEntity( topParentTypeId, topParentEntityBaseId );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//context.Configuration.LazyLoadingEnabled = false;
+
+					List<EM.Entity_FinancialAssistanceProfile> results = context.Entity_FinancialAssistanceProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.Name )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( EM.Entity_FinancialAssistanceProfile from in results )
+						{
+							to = new ThisEntity();
+							MapFromDB( from, to );
+							list.Add( to );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".Search (topParentTypeId, topParentEntityBaseId)" );
+			}
+			return list;
+		}//
 
 		public static void MapToDB( ThisEntity from, DBEntity to )
 		{
@@ -401,7 +443,8 @@ namespace workIT.Factories
 			to.Name = GetData( from.Name );
 			to.SubjectWebpage = GetData( from.SubjectWebpage );
 			to.Description = GetData( from.Description );
-
+			//QuantitativeValue as json
+			to.FinancialAssistanceValue = from.FinancialAssistanceValueJson;
 
 		}
 		public static void MapFromDB( DBEntity from, ThisEntity to)
@@ -413,7 +456,12 @@ namespace workIT.Factories
 			to.SubjectWebpage = GetData( from.SubjectWebpage );
 			to.Description = GetData( from.Description );
 			to.FinancialAssistanceType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_FINANCIAL_ASSISTANCE );
-
+			to.FinancialAssistanceValueJson = from.FinancialAssistanceValue;
+			if (!string.IsNullOrWhiteSpace( to.FinancialAssistanceValueJson ) )
+			{
+				to.FinancialAssistanceValue = JsonConvert.DeserializeObject<List<QuantitativeValue>>( to.FinancialAssistanceValueJson );
+				to.FinancialAssistanceValueSummary = SummarizeFinancialAssistanceValue( to.FinancialAssistanceValue );
+			}
 			if ( IsValidDate( from.Created ) )
 				to.Created = ( DateTime ) from.Created;
 
@@ -421,7 +469,46 @@ namespace workIT.Factories
 				to.LastUpdated = ( DateTime ) from.LastUpdated;
 
 		}
+		private static List<string> SummarizeFinancialAssistanceValue( List<QuantitativeValue> input )
+		{
+			var output = new List<string>();
+			if ( input == null || !input.Any() )
+				return output;
+			
+			foreach ( var item in input )
+			{
+				var summary = "";
+				var units = !string.IsNullOrWhiteSpace(item.UnitText) ? item.UnitText : string.Join( ",", item.CreditUnitType.Items.ToArray().Select( m => m.Name));
+				var currencySymbol = "";
+				var code = CodesManager.GetCurrencyItem( units );
+				if ( code != null && code.NumericCode > 0 )
+				{
+					//currency = code.Currency;
+					currencySymbol = code.HtmlCodes;
+				}
+				if ( item.IsRange )
+				{
+					if ( string.IsNullOrWhiteSpace( currencySymbol ) ) 
+						summary = string.Format( "{0} to {1} {2}", item.MinValue.ToString( "#,##0" ), item.MaxValue.ToString( "#,##0" ), units );
+					else
+						summary = string.Format( "{2} {0} to {2} {1}", item.MinValue.ToString( "#,##0" ), item.MaxValue.ToString( "#,##0" ), currencySymbol );
+				}
+				else if ( item.Percentage > 0 )
+				{
+					summary = string.Format( "{0}% {1}", item.Percentage.ToString( "##0" ), units );
+				}
+				else if( item.Value > 0 )
+				{
+					if (string.IsNullOrWhiteSpace( currencySymbol ) )
+						summary = string.Format( "{0} {1}", item.Value.ToString( "#,##0" ), units );
+					else
+						summary = string.Format( "{1} {0}", item.Value.ToString( "#,##0" ), currencySymbol );
+				}
+				output.Add( summary );
+			}
 
+			return output;
+		}
 		#endregion
 	}
 }

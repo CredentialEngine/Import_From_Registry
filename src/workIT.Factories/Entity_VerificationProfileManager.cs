@@ -159,7 +159,7 @@ namespace workIT.Factories
 				Entity_CredentialManager ecm = new Entity_CredentialManager();
 				foreach ( int id in entity.TargetCredentialIds )
 				{
-					ecm.Add( entity.RowId, id, ref newId, ref status );
+					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 				}
 			}
 
@@ -236,7 +236,7 @@ namespace workIT.Factories
 				status.AddWarning( "The Verification Directory Url is invalid. " + commonStatusMessage );
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		#endregion
@@ -383,7 +383,7 @@ namespace workIT.Factories
 				//detail - get basic
 				bool isForDetailPageCredential = true;
 				
-				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, isForDetailPageCredential );
+				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForDetailPageCredential );
 
 				to.EstimatedCost = CostProfileManager.GetAll( to.RowId );
 

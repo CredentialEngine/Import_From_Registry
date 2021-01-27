@@ -43,15 +43,15 @@ namespace workIT.Utilities
 		/// <returns></returns>
 		public static bool SendSiteEmail( string subject, string message )
 		{
-			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "email@yourDomain.com" );
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "yoohoo@email.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
 
 		public static bool SendEmail( string toEmail, string subject, string message )
 		{
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
@@ -150,8 +150,8 @@ namespace workIT.Utilities
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
             MailMessage email = new MailMessage();
-            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
-			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
+            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
 			if ( string.IsNullOrWhiteSpace( BCC ) )
 				BCC = systemAdminEmail;
 			else
@@ -450,37 +450,59 @@ namespace workIT.Utilities
 			string newAddr = address;
 
 			int atPos = address.IndexOf( "@" );
-			int wnPos = address.IndexOf( "_siuccwd.com" );
+			int wnPos = address.IndexOf( "_credentialengine" );
 			if ( wnPos > atPos )
 			{
 				newAddr = address.Substring( 0, atPos + 1 ) + address.Substring( wnPos + 1 );
-			} else
+			}
+			//else
 			{
-				//check for others with format:
-				//	someName@_ ??? __realDomain.com
-				atPos = address.IndexOf( "@_" );
-				if ( atPos > 1 )
+				int p1 = address.IndexOf( "||" );
+				if ( p1 > 0 )
 				{
-					wnPos = address.IndexOf( "__", atPos );
-					if ( wnPos > atPos )
+					//check for second pipe or @
+					int p2 = address.IndexOf( "|", p1 + 2 );
+					if ( p2 > p1 )
 					{
-						newAddr = address.Substring( 0, atPos + 1 ) + address.Substring( wnPos + 2 );
+						newAddr = address.Substring( 0, p1 ) + address.Substring( p2 + 1 );
+					}
+					else if ( p2 == -1 )
+					{
+						p2 = address.IndexOf( "@", p1 + 2 );
+						if ( p2 > p1 )
+						{
+							newAddr = address.Substring( 0, p1 ) + address.Substring( p2 );
+						}
+					}
+				}
+				else
+				{
+					//check for others with format:
+					//	someName@_ ??? __realDomain.com
+					atPos = address.IndexOf( "@_" );
+					if ( atPos > 1 )
+					{
+						wnPos = address.IndexOf( "__", atPos );
+						if ( wnPos > atPos )
+						{
+							newAddr = address.Substring( 0, atPos + 1 ) + address.Substring( wnPos + 2 );
+						}
 					}
 				}
 			}
 
 			return newAddr;
-		} //
+		} ///
 
-		/// <summary>
-		/// Sends an email message to the system administrator
-		/// </summary>
-		/// <param name="subject">Email subject</param>
-		/// <param name="message">Email message</param>
-		/// <returns>True id message was sent successfully, otherwise false</returns>
+		  /// <summary>
+		  /// Sends an email message to the system administrator
+		  /// </summary>
+		  /// <param name="subject">Email subject</param>
+		  /// <param name="message">Email message</param>
+		  /// <returns>True id message was sent successfully, otherwise false</returns>
 		public static bool NotifyAdmin( string subject, string message )
 		{
-			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );	
+			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );	
 
 			return  NotifyAdmin( emailTo, subject, message );
         } 
@@ -503,10 +525,6 @@ namespace workIT.Utilities
                 emailTo = cc;
                 cc = "";
             }
-			if( emailTo == "" )
-			{
-				return false;
-			}
 			//avoid infinite loop by ensuring this method didn't generate the exception
 			if ( message.IndexOf( "EmailManager.NotifyAdmin" ) > -1 )
 			{
@@ -528,8 +546,9 @@ namespace workIT.Utilities
 				{
 					subject = FormatExceptionSubject( subject, message );
 				}
+				subject = FormHelper.CleanText( subject );
+				subject = System.Text.RegularExpressions.Regex.Replace( subject, @"\r\n?|\n", "" );
 				email.Subject = subject;
-
 				if ( message.IndexOf( "Type:" ) > 0 )
 				{
 					int startPos = message.IndexOf( "Type:" );

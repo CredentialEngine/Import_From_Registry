@@ -38,37 +38,53 @@ namespace workIT.Factories
                 status.AddError( "Error - the parent entity was not found." );
                 return false;
             }
-            DeleteAll( parent, ref status );
+			//20-12-05 - skip delete all, and check in save
+			//DeleteAll( parent, ref status );
 
-            if ( list == null || list.Count == 0 )
-				return true;
-
-			bool isAllValid = true;
-			foreach ( ThisEntity item in list )
+			//now be still do a delete all until implementing a balance line
+			//could set date and delete all before this date!
+			DateTime updateDate = DateTime.Now;
+			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
 			{
-				Save( item, parentUid, ref status );
+				updateDate = status.LocalUpdatedDate;
 			}
 
+			var currentAddresses = GetAll( parent.EntityUid );
+			bool isAllValid = true;
+			if ( list == null || list.Count == 0 )
+			{
+				if ( currentAddresses != null && currentAddresses.Any() )
+				{
+					DeleteAll( parent, ref status );
+				}
+				return true;
+			}
+			//may not need this if the new list version works
+			else if ( list.Count == 1 && currentAddresses.Count == 1 )
+			{
+				//just do update of one
+				var entity = list[ 0 ];
+				entity.Id = currentAddresses[ 0 ].Id;
+
+				Save( entity, parent, updateDate, ref status );
+			}
+			else
+			{
+				foreach ( ThisEntity item in list )
+				{
+					Save( item, parent, updateDate, ref status );
+				}
+				//delete any addresses with last updated less than updateDate
+				DeleteAll( parent, ref status, updateDate );
+			}
 			return isAllValid;
 		}
-		public bool Save( ThisEntity entity, Guid parentUid, ref SaveStatus status )
+		private bool Save( ThisEntity entity, Entity parent, DateTime updateDate, ref SaveStatus status )
 		{
 			bool isValid = true;
-
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( "Error: a valid parent identifier was not provided." );
-				return false;
-			}
-
 			int count = 0;
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.EntityBaseId == 0 )
-			{
-				status.AddError( "Error - the parent entity was not found." );
-				return false;
-			}
 
+			var doingGeoCoding = UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false );
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -79,53 +95,85 @@ namespace workIT.Factories
 						return false;
 					}
 					bool resetIsPrimaryFlag = false;
-
+					//typically all will have an entity.Id of zero
+					//could do a lookup
 					if ( entity.Id == 0 )
 					{
-						//add
 						efEntity = new DBEntity();
-						efEntity.EntityId = parent.Id;
-						entity.ParentId = parent.Id;
-						MapToDB( entity, efEntity, ref resetIsPrimaryFlag );
-
-						//could just have contact points without address
-						if (entity.HasAddress() )
+						//check for current match - only do if not deleting
+						var exists = context.Entity_Address
+							.Where( s => s.EntityId == parent.Id
+								&& s.Address1 == entity.Address1
+								&& s.City == entity.City
+								&& ( s.PostalCode == entity.PostalCode || ( s.PostalCode ?? "" ).IndexOf( entity.PostalCode ?? "" ) == 0 )  //could have been normalized to full 
+																																									//&& s.Region == from.AddressRegion	//could have been expanded
+							)
+							.OrderBy( s => s.Address1 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
+							.ToList();
+						if ( exists != null && exists.Count > 0 )
 						{
-							efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-                            if ( IsValidGuid( entity.RowId ) )
-                                efEntity.RowId = entity.RowId;
-                            else
-                                efEntity.RowId = Guid.NewGuid();
-
-                            context.Entity_Address.Add( efEntity );
-							count = context.SaveChanges();
-
-							//update profile record so doesn't get deleted
+							//should only be one
+							efEntity = exists[ 0 ];
 							entity.Id = efEntity.Id;
 							entity.ParentId = parent.Id;
 							entity.RowId = efEntity.RowId;
-							if ( count == 0 )
+							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
+							if ( HasStateChanged( context ) )
 							{
-								status.AddError( string.Format( " Unable to add address. parentUid: {0}, City: {1}, Region: {2} <br\\> ", parentUid, efEntity.City, efEntity.Region ) );
+								//Hmm this should come from the envelope!!
+								efEntity.LastUpdated = updateDate;
+								count = context.SaveChanges();
 							}
-							else
+						}
+						else
+						{
+							efEntity.EntityId = parent.Id;
+							entity.ParentId = parent.Id;
+							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
+							//could just have contact points without address
+							if ( entity.HasAddress() )
 							{
-								if ( resetIsPrimaryFlag )
+								efEntity.Created = efEntity.LastUpdated = updateDate;
+								if ( IsValidGuid( entity.RowId ) )
+									efEntity.RowId = entity.RowId;
+								else
+									efEntity.RowId = Guid.NewGuid();
+
+								context.Entity_Address.Add( efEntity );
+								count = context.SaveChanges();
+
+								//update profile record so doesn't get deleted
+								entity.Id = efEntity.Id;
+								entity.ParentId = parent.Id;
+								entity.RowId = efEntity.RowId;
+								if ( count == 0 )
 								{
-									Reset_Prior_ISPrimaryFlags( efEntity.EntityId, entity.Id );
+									status.AddError( string.Format( " Unable to add address. EntityParent: type: {0}, (id: {1}), City: {2}, Region: {3} <br\\> ", parent.EntityType, parent.EntityBaseId, efEntity.City, efEntity.Region ) );
+								}
+								else
+								{
+									//not used in finder!
+									if ( resetIsPrimaryFlag )
+									{
+										//Reset_Prior_ISPrimaryFlags( efEntity.EntityId, entity.Id );
+									}
 								}
 							}
 						}
-                        //handle contact points
-                        //if address present, these need to be closely related
-                        if ( entity.Id > 0 )
-                            new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
-                        else
-                        {
-                            // put under parent
-                            //should log this. If under parent should onlybe an org, and delete all has already been done. 
-                            new Entity_ContactPointManager().SaveList( entity.ContactPoint, parentUid, ref status, false );
-                        }
+
+						
+						//handle contact points
+						//if address present, these need to be closely related
+						if ( entity.Id > 0 )
+						{
+							new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
+						}
+						else
+						{
+							// put under parent
+							//should log this. If under parent should only be an org, and delete all has already been done. 
+							new Entity_ContactPointManager().SaveList( entity.ContactPoint, parent.EntityUid, ref status, false );
+						}
 					}
 					else
 					{
@@ -136,11 +184,12 @@ namespace workIT.Factories
 						{
 							entity.RowId = efEntity.RowId;
 							//update
-							MapToDB( entity, efEntity, ref resetIsPrimaryFlag );
+							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							//has changed?
 							if ( HasStateChanged( context ) )
 							{
-								efEntity.LastUpdated = System.DateTime.Now;
+								//Hmm this should come from the envelope!!
+								efEntity.LastUpdated = updateDate;
 
 								count = context.SaveChanges();
 							}
@@ -174,7 +223,7 @@ namespace workIT.Factories
 			}
 			return isValid;
 		}
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        public bool DeleteAll( Entity parent, ref SaveStatus status, DateTime? lastUpdated = null )
         {
             bool isValid = true;
             //Entity parent = EntityManager.GetEntity( parentUid );
@@ -183,20 +232,39 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_Address.RemoveRange( context.Entity_Address.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//????
+					//context.Database.ExecuteSqlCommand( "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;" );
+					//context.Entity_Address.RemoveRange( context.Entity_Address.Where( s => s.EntityId == parent.Id ) );
+					//            int count = context.SaveChanges();
+					//            if ( count > 0 )
+					//            {
+					//                isValid = true;
+					//            }
+					//
+					var results = context.Entity_Address.Where( s => s.EntityId == parent.Id && ( lastUpdated == null || s.LastUpdated < lastUpdated) )
+				.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
 
+					foreach ( var item in results )
+					{
+						context.Entity_Address.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
+					}
+				}
+			} catch (Exception ex)
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+			}
             return isValid;
         }
         public bool Reset_Prior_ISPrimaryFlags( int entityId, int newPrimaryProfileId )
@@ -291,10 +359,9 @@ namespace workIT.Factories
 				status.AddError( "The address name must be less than 200 characters" );
 			if ( ( profile.Address1 ?? "" ).Length > 200 )
 				status.AddError( "The address1 must be less than 200 characters" );
-			if ( ( profile.Address2 ?? "" ).Length > 200 )
-				status.AddError( "The address2 must be less than 200 characters" );
 
-			return !status.HasSectionErrors;
+
+			return status.WasSectionValid;
 		}
         #endregion
         #region  retrieval ==================
@@ -378,7 +445,6 @@ namespace workIT.Factories
 			to.Name = from.Name;
 			to.IsMainAddress = from.IsPrimaryAddress ?? false;
 			to.Address1 = from.Address1;
-			to.Address2 = from.Address2 ?? "";
 			to.PostOfficeBoxNumber = from.PostOfficeBoxNumber ?? "";
 			to.City = from.City;
 			to.PostalCode = from.PostalCode;
@@ -405,7 +471,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapToDB( ThisEntity from, EM.Entity_Address to, ref bool resetIsPrimaryFlag )
+		public static void MapToDB( ThisEntity from, EM.Entity_Address to, ref bool resetIsPrimaryFlag, bool doingGeoCodingCheck = true )
 		{
 			resetIsPrimaryFlag = false;
 	
@@ -440,7 +506,6 @@ namespace workIT.Factories
 			//}
 
 			to.Address1 = from.Address1;
-			to.Address2 = GetData( from.Address2, null );
 			to.PostOfficeBoxNumber = GetData( from.PostOfficeBoxNumber, null );
 			to.City = from.City;
 			to.PostalCode = from.PostalCode;
@@ -455,10 +520,17 @@ namespace workIT.Factories
 				//check if lat/lng were not provided with address
 				//may want to always do this to expand region!
 				if ( to.Latitude == null || to.Latitude == 0
-				  || to.Longitude == null || to.Longitude == 0 
+				  || to.Longitude == null || to.Longitude == 0
 				  || ( to.Region ?? "" ).Length == 2
 				  )
-					UpdateGeo( from, to );
+				{
+					//20-12-05 mp - as this could be 20+ seconds from import, consider deferring to end of cycle
+					if ( UtilityManager.GetAppKeyValue( "envType" ) != "development" )
+					{
+						if ( doingGeoCodingCheck )
+							UpdateGeo( from, to );
+					}
+				}
 			}
 
 			//these will likely not be present? 
@@ -477,7 +549,7 @@ namespace workIT.Factories
 			//}
 
 		}
-        public List<ThisEntity> ResolveMissingGeodata( ref string messages, int maxRecords = 100 )
+        public List<ThisEntity> ResolveMissingGeodata( ref string messages, int maxRecords = 300 )
         {
             ThisEntity entity = new ThisEntity();
             List<ThisEntity> list = new List<ThisEntity>();
@@ -487,7 +559,6 @@ namespace workIT.Factories
             string prevAddr2 = "";
             string prevCity = "";
             string prevRegion = "";
-            string prevFullRegion = "";
             string prevPostalCode = "";
             double prevLat = 0.0;
             double prevLng = 0.0;
@@ -499,10 +570,10 @@ namespace workIT.Factories
                     List<EM.Entity_Address> results = context.Entity_Address
                             .Where( s => ( s.Latitude == null || s.Latitude == 0.0 )
                             || ( s.Longitude == null || s.Longitude == 0.0 ) )
-                            .OrderBy( s => s.Address1 ).ThenBy( s => s.Address2 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
+                            .OrderBy( s => s.Address1 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
                             .ToList();
-
-                    if ( results != null && results.Count > 0 )
+					//.ThenBy( s => s.Address2 )
+					if ( results != null && results.Count > 0 )
                     {
                         foreach ( EM.Entity_Address efEntity in results )
                         {
@@ -516,10 +587,11 @@ namespace workIT.Factories
                                 )
                                 continue;
 
-                            //quick approach, map to address, which will call the geo code. If there was an update, update the entity
-                            //check if the same address to avoid many hits against google endpoint
+							//quick approach, map to address, which will call the geo code. If there was an update, update the entity
+							//check if the same address to avoid many hits against google endpoint
+							bool updatedViaCopy = false;
                             if ( efEntity.Address1 == prevAddr
-                                && ( efEntity.Address2 ?? "" ) == prevAddr2
+                                //&& ( efEntity.Address2 ?? "" ) == prevAddr2
                                 && ( efEntity.City ?? "" ) == prevCity
                                 && ( efEntity.Region ?? "" ) == prevRegion
                                 && ( efEntity.PostalCode ?? "" ) == prevPostalCode
@@ -527,13 +599,14 @@ namespace workIT.Factories
                             {
                                 efEntity.Latitude = prevLat;
                                 efEntity.Longitude = prevLng;
-                            }
+								updatedViaCopy = true;
+							}
                             else
                             {
                                 //save prev region now, in case it gets expanded, although successive ones will not be expanded!
                                 prevRegion = efEntity.Region ?? "";
                                 MapFromDB( efEntity, entity );
-                                MapToDB( entity, efEntity, ref resetIsPrimaryFlag );
+                                MapToDB( entity, efEntity, ref resetIsPrimaryFlag, true );
                             }
                             if ( HasStateChanged( context ) )
                             {
@@ -541,7 +614,7 @@ namespace workIT.Factories
                                 //efEntity.LastUpdatedById = userId;
 
                                 int count = context.SaveChanges();
-                                messageList.Add( string.Format( "___Updated address: {0}", DisplayAddress( efEntity ) ) );
+                                messageList.Add( string.Format( "___Updated address: {0}, viaCopy: {1}", DisplayAddress( efEntity ), updatedViaCopy ) );
                                 prevLat = ( double ) ( efEntity.Latitude ?? 0.0 );
                                 prevLng = ( double ) ( efEntity.Longitude ?? 0.0 );
                             }
@@ -551,7 +624,7 @@ namespace workIT.Factories
                                 list.Add( entity );
                             }
                             prevAddr = efEntity.Address1 ?? "";
-                            prevAddr2 = efEntity.Address2 ?? "";
+                            //prevAddr2 = efEntity.Address2 ?? "";
                             prevCity = efEntity.City ?? "";
                             //prevRegion = efEntity.Region ?? "";
                             prevPostalCode = efEntity.PostalCode ?? "";
@@ -577,10 +650,81 @@ namespace workIT.Factories
 
         public static void UpdateGeo( CM.Address from, EM.Entity_Address to )
         {
-            //GoogleGeocoding.Results results = GeoServices.GeocodeAddress( from.DisplayAddress() );
-            bool doingExpandOfRegion = UtilityManager.GetAppKeyValue( "doingExpandOfRegion", false );
-            //Try with a looser address if 0/0 lat/lng
-            var hasLatLng = false;
+			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - entered" );
+
+			//GoogleGeocoding.Results results = GeoServices.GeocodeAddress( from.DisplayAddress() );
+			bool doingExpandOfRegion = UtilityManager.GetAppKeyValue( "doingExpandOfRegion", false );
+			//check for existing address with lat/lng
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//have to handle where region was expanded
+					var  exists = context.Entity_Address
+							.Where( s =>  
+									s.Address1 == from.Address1
+								&& s.City == from.City		//need to handle for different regions/countries
+								&& (s.PostalCode == from.PostalCode || ( s.PostalCode ?? "" ).IndexOf( from.PostalCode ?? "" ) == 0 )  //could have been normalized to full 9
+																																	//&& s.Region == from.AddressRegion	//could have been expanded
+								&& ( s.Latitude != null && s.Latitude != 0.0 && s.Longitude != null && s.Longitude != 0.0 )
+							)
+							.OrderBy( s => s.Address1 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
+							.ToList();
+
+					if ( exists != null && exists.Count > 0 )
+					{
+						foreach ( var item in exists )
+						{
+							bool existsIsUSA = false;
+							if ( item.Country.IndexOf( "United" ) == 0 )
+								existsIsUSA = true;
+
+							//may remove this check if use in search is OK.
+							if ( item.PostalCode == from.PostalCode || (item.PostalCode ?? "").IndexOf(from.PostalCode) == 0 )
+							{
+								bool isOK = false;
+								//no input country
+								if ( string.IsNullOrWhiteSpace( from.Country ) )
+								{
+									//assume if street, city, and postal match to USA, then OK
+									if ( existsIsUSA )
+										isOK = true;
+									else
+									{
+										//how likely if street, city, and postal match, that the country is wrong? Google would have to have figured it out, so just go for it?
+										isOK = true;
+									}
+								} else 
+								if (  "usa u.s.a. united states united states of america".IndexOf((from.Country ??"").ToLower()) > -1
+									&& existsIsUSA ) 
+								{
+									isOK = true;
+								} else
+								{
+									//what
+								}
+								if ( isOK )
+								{
+									to.Latitude = item.Latitude;
+									to.Longitude = item.Longitude;
+									to.Region = item.Region;
+									to.PostalCode = item.PostalCode;
+									to.Country = item.Country;
+									return;
+								}
+							}
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".UpdateGeo" );
+			}
+
+			//otherwise
+			//Try with a looser address if 0/0 lat/lng
+			var hasLatLng = false;
             var results = new GoogleGeocoding.Results();
             var addressesToTry = new List<string>()
             {
@@ -594,19 +738,23 @@ namespace workIT.Factories
             {
 				if ( string.IsNullOrWhiteSpace( test ) || test.Trim().Length < 5 )
 					continue;
-
-                results = TryGetAddress( test, ref hasLatLng );
+				//LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - testing: " + test );
+				results = TryGetAddress( test, ref hasLatLng );
                 if ( hasLatLng )
                 {
                     break;
                 }
-                System.Threading.Thread.Sleep( 3000 ); //Don't spam the Geocoding API
+				//Don't spam the Geocoding API
+				//20-08-17 mp - changed to 1sec from 3
+				System.Threading.Thread.Sleep( 1000 ); 
             }
 
             //Continue
             if ( results != null )
             {
-                GoogleGeocoding.Location location = results.GetLocation();
+				LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - have results." );
+
+				GoogleGeocoding.Location location = results.GetLocation();
                 if ( location != null )
                 {
                     to.Latitude = location.lat;
@@ -673,8 +821,12 @@ namespace workIT.Factories
                 {
                     LoggingHelper.LogError( ex, thisClassName + "UpdateGeo" );
                 }
-            }
-        }
+            } else
+			{
+				LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - ***unable to resolve lat/lng. for : " + from.DisplayAddress() );
+
+			}
+		}
 
         public string DisplayAddress( DBEntity dbaddress, string separator = ", " )
         {
@@ -692,13 +844,16 @@ namespace workIT.Factories
             if ( !string.IsNullOrWhiteSpace( dbaddress.Country ) )
                 address += separator + dbaddress.Country;
 
-            address += separator + string.Format( "Lat: {0}, lng: {1}", dbaddress.Latitude, dbaddress.Longitude );
+			if ( dbaddress.Latitude != null && dbaddress.Latitude != 0)
+				address += separator + string.Format( "Lat: {0}, lng: {1}", dbaddress.Latitude, dbaddress.Longitude );
             return address;
         }
         private static GoogleGeocoding.Results TryGetAddress( string address, ref bool hasLatLng )
         {
-            try
-            {
+			LoggingHelper.DoTrace( 7, thisClassName + ".TryGetAddress : " + address );
+
+			try
+			{
                 var results = GeoServices.GeocodeAddress( address );
                 hasLatLng = results != null && results.GetLocation().lat != 0 && results.GetLocation().lng != 0;
                 return results;
@@ -714,7 +869,6 @@ namespace workIT.Factories
 			bool hasChanged = false;
 
 			if ( to.Address1 != from.Address1
-			|| to.Address2 != from.Address2
 			|| to.City != from.City
 			|| to.PostalCode != from.PostalCode
 			|| to.Region != from.AddressRegion
@@ -796,7 +950,6 @@ namespace workIT.Factories
 					{
 						Name = a.Name,
 						Address1 = a.Address1,
-						Address2 = a.Address2 ?? "",
 						City = a.City,
 						PostalCode = a.PostalCode,
 						AddressRegion = a.Region,
@@ -806,7 +959,7 @@ namespace workIT.Factories
 					{
 						Name = g.Key.Name,
 						Address1 = g.Key.Address1,
-						Address2 = g.Key.Address2 ?? "",
+						//Address2 = g.Key.Address2 ?? "",
 						City = g.Key.City,
 						PostalCode = g.Key.PostalCode,
 						AddressRegion = g.Key.AddressRegion,

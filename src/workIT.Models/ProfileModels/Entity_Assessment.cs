@@ -11,8 +11,8 @@ namespace workIT.Models.ProfileModels
 		public int Id { get; set; }
 		public int EntityId { get; set; }
 		public int AssessmentId { get; set; }
+		public int RelationshipTypeId { get; set; }
 		public System.DateTime Created { get; set; }
-		public int CreatedById { get; set; }
 
 		public string ProfileSummary { get; set; }
 

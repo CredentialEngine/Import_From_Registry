@@ -34,7 +34,7 @@ namespace workIT.Factories
 	/// </summary>
 	public class EntityManager : BaseFactory
 	{
-		string thisClassName = "EntityManager";
+		static string thisClassName = "EntityManager";
         #region persistance
         /// <summary>
         /// Resetting an entity by first deleting it, and then readding.
@@ -129,7 +129,19 @@ namespace workIT.Factories
 			return 0;
 		}
 
-        public bool UpdateModifiedDate( Guid entityUid, ref SaveStatus status )
+		public bool UpdateModifiedDate(Guid entityUid, ref SaveStatus status)
+		{
+			DateTime someDate = DateTime.Now;
+			return UpdateModifiedDate( entityUid, ref status, someDate );
+		}
+
+		public bool UpdateModifiedDate( Guid entityUid, ref SaveStatus status, DateTime? modifiedDate )
+		{
+			DateTime date = (DateTime)modifiedDate;
+			return UpdateModifiedDate( entityUid, ref status, date );
+		}
+
+        public bool UpdateModifiedDate( Guid entityUid, ref SaveStatus status, DateTime modifiedDate  )
         {
             bool isValid = false;
             if ( !IsValidGuid( entityUid ) )
@@ -137,6 +149,9 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ".UpdateModifiedDate(). Error - missing a valid identifier for the Entity" );
                 return false;
             }
+			if ( modifiedDate == null || modifiedDate < new DateTime(2017, 1, 1) )
+				modifiedDate = DateTime.Now;
+
             using ( var context = new EntityContext() )
             {
                 DBentity efEntity = context.Entity
@@ -144,7 +159,7 @@ namespace workIT.Factories
 
                 if ( efEntity != null && efEntity.Id > 0 )
                 {
-                    efEntity.LastUpdated = DateTime.Now;
+                    efEntity.LastUpdated = modifiedDate;
                     int count = context.SaveChanges();
                     if ( count >= 0 )
                     {
@@ -187,7 +202,7 @@ namespace workIT.Factories
                     if ( efEntity != null && efEntity.Id > 0 )
                     {
                         int entityTypeId = efEntity.EntityTypeId;
-                        //string entityType = efEntity.Codes_EntityType.Title;
+                        //string entityType = efEntity.Codes_EntityTypes.Title;
 
                         context.Entity.Remove(efEntity);
                         int count = context.SaveChanges();
@@ -253,8 +268,15 @@ namespace workIT.Factories
 				{
 					entity.Id = item.Id;
 					entity.EntityTypeId = item.EntityTypeId;
-
-					//entity.EntityType = item.Codes_EntityType.Title;
+					//20-12-18 mp - the following was commented, not sure why - probably related to lazy loading. Change to do conditionally
+					//entity.EntityType = item.Codes_EntityTypes.Title;
+					if ( item.Codes_EntityTypes != null )
+					{
+						entity.EntityType = item.Codes_EntityTypes.Title;
+					} else
+					{
+						entity.EntityType = GetEntityType( entity.EntityTypeId );
+					}
 
 					entity.EntityUid = item.EntityUid;
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
@@ -264,8 +286,120 @@ namespace workIT.Factories
 				}
 				return entity;
 			}
+		}
 
+		public static string GetEntityType( int entityTypeId )
+		{
+			string entityType = "error";
+			switch ( entityTypeId )
+			{
+				case 1:
+					entityType="Credential";
+					break;
+				case 2:
+					entityType = "Organization";
+					break;
+				case 3:
+					entityType = "AssessmentProfile";
+					break;
+				case 4:
+					entityType = "ConditionProfile";
+					break;
+				case 5:
+					entityType = "CostProfile";
+					break;
+				case 6:
+					entityType = "CostProfileItem";
+					break;
+				case 7:
+					entityType = "LearningOpportunity";
+					break;
+				case 8:  
+					entityType = "Pathway";
+					break;
+				case 9:    //
+					entityType = "Rubric";
+					break;
+				case 10:
+				case 17:
+					entityType = "CompetencyFramework";
+					break;
+				case 11:   
+					entityType = "ConceptScheme";
+					break;
+				//
+				case 12:
+					entityType = "RevocationProfile";
+					break;
+				case 13:
+					entityType = "VerificationProfile";
+					break;
+				case 14:
+					entityType = "ProcessProfile";
+					break;
+				case 15:
+					entityType = "ContactPoint";
+					break;
+				case 16:
+					entityType = "Address Profile";
+					break;
+				case 18:
+					entityType = "JurisdictionProfile";
+					break;
+				case 19:
+					entityType = "ConditionManifest";
+					break;
+				case 20:
+					entityType = "CostManifest";
+					break;
+				case 21:
+					entityType = "FinancialAssistanceProfile";
+					break;
+				case 22:
+					entityType = "Accredit Action";
+					break;
+				case 23:
+					entityType = "PathwaySet";
+					break;
+				case 24:
+					entityType = "Pathway Component";
+					break;
+				case 25:
+					entityType = "Component Condition";
+					break;
+				case 26:
+					entityType = "TransferValueProfile";
+					break;
+				case 28:
+					entityType = "HoldersProfile";
+					break;
+				case 29:
+					entityType = "EarningsProfile";
+					break;
+				case 30:
+					entityType = "EmploymentOutcomeProfile";
+					break;
+				case 31:
+					entityType = "DataSet Profile";
+					break;
+				case 32:
+					entityType = "JobProfile";
+					break;
+				case 33:
+					entityType = "TaskProfile";
+					break;
+				case 34:
+					entityType = "Work Role";
+					break;
+				case 35:
+					entityType = "Occupation";
+					break;
+				default:
+					LoggingHelper.LogError( string.Format( "{0}.GetEntityType. Invalid Entity type encountered: {1} ", thisClassName, entityTypeId ) );
+					break;
+			}
 
+			return entityType;
 		}
 
 		public static Entity GetEntity( int entityId)
@@ -280,7 +414,7 @@ namespace workIT.Factories
 				{
 					entity.Id = item.Id;
 					entity.EntityTypeId = item.EntityTypeId;
-					//entity.EntityType = item.Codes_EntityType.Title;
+					//entity.EntityType = item.Codes_EntityTypes.Title;
 					entity.EntityUid = item.EntityUid;
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
@@ -303,7 +437,7 @@ namespace workIT.Factories
 				{
 					entity.Id = item.Id;
 					entity.EntityTypeId = item.EntityTypeId;
-					//entity.EntityType = item.Codes_EntityType.Title;
+					//entity.EntityType = item.Codes_EntityTypes.Title;
 					entity.EntityUid = item.EntityUid;
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
@@ -316,57 +450,92 @@ namespace workIT.Factories
 
 		}
 
-        //Entity_Cache
-        //public static Entity GetEntity_FromCache( int entityId )
-        //{
-        //	Entity entity = new Entity();
-        //	using ( var context = new EntityContext() )
-        //	{
-        //		EM.Entity_Cache item = context.Entity_Cache
-        //				.SingleOrDefault( s => s.Id == entityId );
+		//Entity_Cache
+		//public static Entity GetEntity_FromCache( int entityId )
+		//{
+		//	Entity entity = new Entity();
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		EM.Entity_Cache item = context.Entity_Cache
+		//				.SingleOrDefault( s => s.Id == entityId );
 
-        //		if ( item != null && item.Id > 0 )
-        //		{
-        //			entity.Id = item.Id;
-        //			entity.EntityTypeId = item.EntityTypeId;
-        //			entity.EntityType = item.EntityType;
-        //			entity.EntityUid = item.EntityUid;
-        //			entity.EntityBaseId = item.BaseId;
-        //			entity.EntityBaseName = item.Name;
-        //			entity.Created = ( DateTime ) item.Created;
-        //			entity.LastUpdated = ( DateTime ) item.LastUpdated;
-        //			if (item.parentEntityId > 0)
-        //			{
-        //				//NOTE	- can use the included Entity to get more info
-        //				//		- although may want to turn off lazy loading
-        //				entity.ParentEntity = new ThisEntity();
-        //				entity.ParentEntity.Id = item.parentEntityId ?? 0;
-        //				entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
-        //				entity.ParentEntity.EntityType = item.parentEntityType;
-        //				entity.ParentEntity.EntityUid = (Guid)item.parentEntityUid;
-        //			}
-        //		}
-        //		return entity;
-        //	}
-        //}
-
-        /// <summary>
-        /// Look up for resolving a third party entity
-        /// NOTE: entityTypeId will often be zero (as unknown at time), 
-        /// </summary>
-        /// <param name="entityTypeId"></param>
-        /// <param name="name"></param>
-        /// <param name="subjectWebpage"></param>
-        /// <returns></returns>
-        public static Entity Entity_Cache_Get( int entityTypeId, string name, string subjectWebpage )
+		//		if ( item != null && item.Id > 0 )
+		//		{
+		//			entity.Id = item.Id;
+		//			entity.EntityTypeId = item.EntityTypeId;
+		//			entity.EntityType = item.EntityType;
+		//			entity.EntityUid = item.EntityUid;
+		//			entity.EntityBaseId = item.BaseId;
+		//			entity.EntityBaseName = item.Name;
+		//			entity.Created = ( DateTime ) item.Created;
+		//			entity.LastUpdated = ( DateTime ) item.LastUpdated;
+		//			if (item.parentEntityId > 0)
+		//			{
+		//				//NOTE	- can use the included Entity to get more info
+		//				//		- although may want to turn off lazy loading
+		//				entity.ParentEntity = new ThisEntity();
+		//				entity.ParentEntity.Id = item.parentEntityId ?? 0;
+		//				entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
+		//				entity.ParentEntity.EntityType = item.parentEntityType;
+		//				entity.ParentEntity.EntityUid = (Guid)item.parentEntityUid;
+		//			}
+		//		}
+		//		return entity;
+		//	}
+		//}
+		public static Entity Entity_Cache_Get( string ctid )
 		{
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
 			{
 				EM.Entity_Cache item = context.Entity_Cache
+						.FirstOrDefault( s => s.CTID == ctid.ToLower() );
+
+				if ( item != null && item.Id > 0 )
+				{
+					entity.Id = item.Id;
+					entity.EntityTypeId = item.EntityTypeId;
+					entity.EntityType = item.EntityType;
+					entity.EntityUid = item.EntityUid;
+					entity.EntityBaseId = item.BaseId;
+					entity.EntityBaseName = item.Name;
+					entity.CTID = item.CTID ?? "";
+
+					entity.Created = ( DateTime )item.Created;
+					entity.LastUpdated = ( DateTime )item.LastUpdated;
+					if ( item.parentEntityId > 0 )
+					{
+						//NOTE	- can use the included Entity to get more info
+						//		- although may want to turn off lazy loading
+						entity.ParentEntity = new ThisEntity();
+						entity.ParentEntity.Id = item.parentEntityId ?? 0;
+						entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
+						entity.ParentEntity.EntityType = item.parentEntityType;
+						entity.ParentEntity.EntityUid = ( Guid )item.parentEntityUid;
+					}
+				}
+				return entity;
+			}
+		}
+
+		/// <summary>
+		/// Look up for resolving a third party entity
+		/// NOTE: entityTypeId will often be zero (as unknown at time), 
+		/// </summary>
+		/// <param name="entityTypeId"></param>
+		/// <param name="name"></param>
+		/// <param name="subjectWebpage"></param>
+		/// <returns></returns>
+		public static Entity Entity_Cache_Get( int entityTypeId, string name, string subjectWebpage )
+		{
+			Entity entity = new Entity();
+			using ( var context = new EntityContext() )
+			{
+				//20-12-16 NOTE: the swp can be null now. It could be a risk to allow just a match on name and type. Could add whether a reference
+				EM.Entity_Cache item = context.Entity_Cache
 						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
-						 && s.Name.ToLower() == name.ToLower()
-						 && s.SubjectWebpage == subjectWebpage.ToLower() );
+						 && s.Name.ToLower() == (name ?? "").ToLower()
+						 && s.SubjectWebpage == subjectWebpage );
 
 				if ( item != null && item.Id > 0 )
 				{

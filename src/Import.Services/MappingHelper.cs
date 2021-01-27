@@ -95,7 +95,7 @@ namespace Import.Services
                     IdentifierType = item.IdentifierType,
                     IdentifierValueCode = item.IdentifierValueCode,
                     Name = item.Name,
-                    Description = item.Description
+                    //Description = item.Description
                 };
                 list.Add( iv );
             }
@@ -850,15 +850,15 @@ namespace Import.Services
         private static Guid ResolveOrgBaseToGuid( MJ.OrganizationBase input, ref SaveStatus status, ref bool isResolved )
         {
             Guid entityRef = new Guid();
-            int start = status.Messages.Count;
+			status.HasSectionErrors=false;
             if ( string.IsNullOrWhiteSpace( input.Name ) )
                 status.AddError( "Invalid OrganizationBase, missing name" );
             //if ( string.IsNullOrWhiteSpace( input.Description ) )
             //    status.AddWarning( "Invalid OrganizationBase, missing Description" );
             if ( string.IsNullOrWhiteSpace( input.SubjectWebpage )  )
-                status.AddError( "Invalid OrganizationBase, missing SubjectWebpage" );
+                status.AddWarning( "Invalid OrganizationBase, missing SubjectWebpage" );
             //any messages return
-            if ( start < status.Messages.Count )
+            if ( status.HasSectionErrors )
                 return entityRef;
 
             //look up by subject webpage
@@ -973,7 +973,7 @@ namespace Import.Services
             Guid entityRef = new Guid();
             if ( !string.IsNullOrWhiteSpace( registryAtId ) )
             {
-                entityRef = ResolutionServices.ResolveEntityByRegistryAtIdToGuid( registryAtId, entityTypeId, ref status, ref isResolved );
+                entityRef = ResolutionServices.ResolveEntityByRegistryAtIdToGuid( "unknown-old import", registryAtId, entityTypeId, ref status, ref isResolved );
             }
 
             return entityRef;
@@ -982,15 +982,15 @@ namespace Import.Services
         private static Guid ResolveEntityBaseToGuid( MJ.EntityBase input, int entityTypeId, ref SaveStatus status )
         {
             Guid entityRef = new Guid();
-            int start = status.Messages.Count;
+			status.HasSectionErrors=false;
             if ( string.IsNullOrWhiteSpace( input.Name ) )
                 status.AddError( "Invalid EntityBase, missing name" );
             //if ( !string.IsNullOrWhiteSpace( input.Description ) )
             //    status.AddError( "Invalid EntityBase, missing Description" );
 			if ( string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
-				status.AddError( "Invalid EntityBase, missing SubjectWebpage" );
+				status.AddWarning( "Invalid EntityBase, missing SubjectWebpage" );
 
-            if ( start < status.Messages.Count )
+            if ( status.HasSectionErrors )
                 return entityRef;
             
 			//look up by subject webpage
@@ -1139,15 +1139,15 @@ namespace Import.Services
 
             int entityRefId = 0;
             Guid entityRef = new Guid();
-            int start = status.Messages.Count;
+			status.HasSectionErrors=false;
             if ( string.IsNullOrWhiteSpace( input.Name ) )
                 status.AddError( "Invalid EntityBase, missing name" );
             //if ( string.IsNullOrWhiteSpace( input.Description ) )
             //    status.AddError( "Invalid EntityBase, missing Description" );
             if ( string.IsNullOrWhiteSpace( input.SubjectWebpage )  )
-                status.AddError( "Invalid EntityBase, missing SubjectWebpage" );
+                status.AddWarning( "Invalid EntityBase, missing SubjectWebpage" );
 
-            if ( start < status.Messages.Count )
+            if ( status.HasSectionErrors )
                 return entityRefId;
 
             //look up by subject webpage
@@ -1539,31 +1539,31 @@ namespace Import.Services
         #endregion
 
         #region  FinancialAlignmentObject
-        public static List<MC.FinancialAlignmentObject> FormatFinancialAssistance( List<MJ.FinancialAlignmentObject> input, ref SaveStatus status )
-        {
-            if ( input == null || input.Count == 0 )
-                return null;
+        //public static List<MC.FinancialAlignmentObject> FormatFinancialAssistance( List<MJ.FinancialAlignmentObject> input, ref SaveStatus status )
+        //{
+        //    if ( input == null || input.Count == 0 )
+        //        return null;
 
-            var list = new List<MC.FinancialAlignmentObject>();
-            foreach ( var item in input )
-            {
-                var fa = new MC.FinancialAlignmentObject
-                {
-                    AlignmentType = item.AlignmentType,
-                    Framework = item.Framework ?? "",
-                    FrameworkName = item.FrameworkName,
-                    TargetNode = item.TargetNode ?? "",
-                    TargetNodeDescription = item.TargetNodeDescription,
-                    TargetNodeName = item.TargetNodeName,
-                    Weight = item.Weight
-                };
-                fa.AlignmentDate = MapDate( item.AlignmentDate, "AlignmentDate", ref status );
-                fa.CodedNotation = item.CodedNotation;
-                list.Add( fa );
-            }
+        //    var list = new List<MC.FinancialAlignmentObject>();
+        //    foreach ( var item in input )
+        //    {
+        //        var fa = new MC.FinancialAlignmentObject
+        //        {
+        //            AlignmentType = item.AlignmentType,
+        //            Framework = item.Framework ?? "",
+        //            FrameworkName = item.FrameworkName,
+        //            TargetNode = item.TargetNode ?? "",
+        //            TargetNodeDescription = item.TargetNodeDescription,
+        //            TargetNodeName = item.TargetNodeName,
+        //            Weight = item.Weight
+        //        };
+        //        fa.AlignmentDate = MapDate( item.AlignmentDate, "AlignmentDate", ref status );
+        //        fa.CodedNotation = item.CodedNotation;
+        //        list.Add( fa );
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
         #endregion
 

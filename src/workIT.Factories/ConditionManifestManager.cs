@@ -91,8 +91,16 @@ namespace workIT.Factories
 						
 						efEntity.OrganizationId = parentOrgId;
 						efEntity.EntityStateId = 3;
-						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-					
+						if ( IsValidDate( status.EnvelopeCreatedDate ) )
+							efEntity.Created = status.LocalCreatedDate;
+						else
+							efEntity.Created = DateTime.Now;
+						//
+						if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+							efEntity.LastUpdated = status.LocalUpdatedDate;
+						else
+							efEntity.LastUpdated = DateTime.Now;
+
 						if ( IsValidGuid( entity.RowId ) )
 							efEntity.RowId = entity.RowId;
 						else
@@ -156,17 +164,28 @@ namespace workIT.Factories
 							if ( (efEntity.EntityStateId ?? 1) == 1 )
 								efEntity.EntityStateId = 3;
 
+							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+							{
+								efEntity.Created = status.LocalCreatedDate;
+							}
+							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
+							{
+								efEntity.LastUpdated = status.LocalUpdatedDate;
+							}
 							//has changed?
 							if ( HasStateChanged( context ) )
 							{
-								efEntity.LastUpdated = System.DateTime.Now;
+								if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+									efEntity.LastUpdated = status.LocalUpdatedDate;
+								else
+									efEntity.LastUpdated = DateTime.Now;
 
 								count = context.SaveChanges();
 							}
                             else
                             {
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
-                                new EntityManager().UpdateModifiedDate( entity.RowId, ref status );
+                                //new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
                             }
 
                             if ( !UpdateParts( entity, ref status ) )
@@ -181,6 +200,9 @@ namespace workIT.Factories
 								ActivityObjectId = entity.Id
 							};
 							new ActivityManager().SiteActivityAdd( sa );
+
+							//if ( isValid || partsUpdateIsValid )
+								new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
 						}
 					}
 				}
@@ -226,7 +248,7 @@ namespace workIT.Factories
 			emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
 			emanager.SaveList( entity.Renewal, Entity_ConditionProfileManager.ConnectionProfileType_Renewal, entity.RowId, ref status );
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		} //
 
 
@@ -365,7 +387,7 @@ namespace workIT.Factories
 						int orgId = efEntity.OrganizationId ?? 0;
                         //need to remove from Entity.
                         //-using before delete trigger - verify won't have RI issues
-                        string msg = string.Format( " ConditionManifest. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+                        string msg = string.Format( " ConditionManifest. Id: {0}, Name: {1}, Ctid: {2}.", efEntity.Id, efEntity.Name, efEntity.CTID );
                         //leaving as a delete
                         context.ConditionManifest.Remove( efEntity );
                         //efEntity.EntityStateId = 0;
@@ -415,6 +437,7 @@ namespace workIT.Factories
 			//&& ( profile.EstimatedCost == null || profile.EstimatedCost.Count == 0 )
 			if ( string.IsNullOrWhiteSpace( profile.ProfileName ) )
 			{
+				//actually optional
 				status.AddError( "A Condition Manifest name must be entered" );
 			}
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
@@ -433,7 +456,7 @@ namespace workIT.Factories
 				status.AddWarning( "The Subject Webpage Url is invalid " + commonStatusMessage );
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		#endregion
@@ -449,14 +472,7 @@ namespace workIT.Factories
 
 				if ( from != null && from.Id > 0 )
 				{
-					entity.RowId = from.RowId;
-					entity.Id = from.Id;
-					entity.EntityStateId = ( int ) ( from.EntityStateId ?? 1 );
-					entity.Name = from.Name;
-					entity.Description = from.Description;
-					entity.SubjectWebpage = from.SubjectWebpage;
-					entity.CTID = from.CTID;
-					entity.CredentialRegistryId = from.CredentialRegistryId;
+					MapFromDB( from, entity );
 				}
 			}
 
@@ -473,26 +489,14 @@ namespace workIT.Factories
 
 				if ( from != null && from.Id > 0 )
 				{
-					entity.RowId = from.RowId;
-					entity.Id = from.Id;
-					entity.Name = from.Name;
-					entity.EntityStateId = ( int ) ( from.EntityStateId ?? 1 );
-					entity.Description = from.Description;
-					entity.SubjectWebpage = from.SubjectWebpage;
-
-					entity.CTID = from.CTID;
-					entity.CredentialRegistryId = from.CredentialRegistryId;
+					MapFromDB( from, entity );
 				}
 			}
 			return entity;
 		}
-		public static ThisEntity Get( int id,
-			bool forEditView = false )
+		public static ThisEntity Get( int id)
 		{
 			ThisEntity entity = new ThisEntity();
-			bool includingProfiles = false;
-			if ( forEditView )
-				includingProfiles = true;
 
 			using ( var context = new EntityContext() )
 			{
@@ -502,10 +506,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB( item, entity,
-						true, //includingProperties
-						includingProfiles,
-						forEditView );
+					MapFromDB( item, entity );
 				}
 			}
 
@@ -531,34 +532,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					entity.Id = item.Id;
-					entity.RowId = item.RowId;
-					entity.Name = item.Name;
-					entity.Description = item.Description;
-					entity.SubjectWebpage = item.SubjectWebpage;
-
-					entity.OrganizationId = ( int ) ( item.OrganizationId ?? 0 );
-					entity.OwningOrganization = new Organization();
-					if ( item.OrganizationId > 0 )
-					{
-						//if ( item.Organization != null && item.Organization.Id > 0 )
-						//{
-						//	entity.OwningOrganization.Id = item.Organization.Id;
-						//	entity.OwningOrganization.Name = item.Organization.Name;
-						//	entity.OwningOrganization.RowId = item.Organization.RowId;
-						//	entity.OwningOrganization.SubjectWebpage = item.Organization.SubjectWebpage;
-
-						//	//OrganizationManager.ToMapCommon( item.Organization, entity.OwningOrganization, false, false, false, false, false );
-						//}
-						//else
-						{
-							entity.OwningOrganization = OrganizationManager.GetForSummary( entity.OrganizationId );
-							entity.OwningAgentUid = entity.OwningOrganization.RowId;
-						}
-
-						entity.OrganizationName = entity.OwningOrganization.Name;
-						entity.OwningAgentUid = entity.OwningOrganization.RowId;
-					}
+					MapFromDB( item, entity );
 				}
 			}
 
@@ -606,7 +580,7 @@ namespace workIT.Factories
 								to.ProfileName = from.ConditionManifest.Name;
 							} else
 							{
-								MapFromDB( from.ConditionManifest, to, true, true, false );
+								MapFromDB( from.ConditionManifest, to );
 							}
 							list.Add( to );
 						}
@@ -661,7 +635,7 @@ namespace workIT.Factories
 							}
 							else
 							{
-								MapFromDB( from.ConditionManifest, to, true, true, false );
+								MapFromDB( from.ConditionManifest, to );
 							}
 							list.Add( to );
 						}
@@ -821,10 +795,7 @@ namespace workIT.Factories
 			
 
 		}
-		public static void MapFromDB( DBEntity from, ThisEntity to,
-				bool includingProperties = false,
-				bool includingProfiles = true,
-				bool forEditView = true )
+		public static void MapFromDB( DBEntity from, ThisEntity to )
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -834,24 +805,9 @@ namespace workIT.Factories
 
 			if ( to.OrganizationId > 0 )
 			{
-				//if ( from.Organization != null && from.Organization.Id > 0 )
-				//{
-				//	//ensure there is no infinite loop
-				//	//the following results in an infinite loop
-				//	//OrganizationManager.ToMapCommon( from.Organization, to.OwningOrganization, false, false, false, false, false );
-				//	//maybe: ToMapForSummary
-				//	//OrganizationManager.ToMapForSummary( from.Organization, to.OwningOrganization );
-
-				//	to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
-				//	to.OwningAgentUid = to.OwningOrganization.RowId;
-				//} else
-				{
-					to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
+				to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
+				if ( to.OwningOrganization != null && to.OwningOrganization.Id > 0 )
 					to.OwningAgentUid = to.OwningOrganization.RowId;
-				}
-
-				to.OrganizationName = to.OwningOrganization.Name;
-				to.OwningAgentUid = to.OwningOrganization.RowId;
 			}
 
 			to.Name = from.Name;

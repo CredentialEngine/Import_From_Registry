@@ -48,4 +48,24 @@ namespace workIT.Models
         public System.DateTime Created { get; set; }
         public System.DateTime LastUpdated { get; set; }
     }
+
+	public class Import_PendingRequest
+	{
+		public int Id { get; set; }
+		public System.DateTime Created { get; set; }
+		public string Environment { get; set; }
+		public string DataOwnerCTID { get; set; }
+		public string PublisherCTID { get; set; }
+		public string PublishMethodURI { get; set; }
+		public string PublishingEntityType { get; set; }
+		public string EntityCtid { get; set; }
+		public string EnvelopeId { get; set; }
+		public string EntityName { get; set; }
+		public System.DateTime EnvelopeLastUpdated { get; set; }
+		public bool WasChanged { get; set; }
+		public bool WasProcessed { get; set; }
+		public bool ImportWasSuccessful { get; set; }
+		//null if import unsuccesful
+		public System.DateTime ImportedDate { get; set; }
+	}
 }

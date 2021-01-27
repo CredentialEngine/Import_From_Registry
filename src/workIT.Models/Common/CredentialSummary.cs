@@ -35,6 +35,7 @@ namespace workIT.Models.Common
 		public string FriendlyName { get; set; }
 		public int EntityStateId { get; set; }
 		public string ListTitle { get; set; }
+		//public int ResultNumber { get; set; }
 		
 		public string Description { get; set; }
 		public string Version { get; set; }
@@ -50,6 +51,7 @@ namespace workIT.Models.Common
 		public string CredentialTypeSchema { get; set; }
 		public string CTID { get; set; }
 		public decimal TotalCost { get; set; }
+		public int CostProfileCount { get; set; }
 		public string CredentialRegistryId { get; set; }
 		//public int ManagingOrgId { get; set; }
 		//public string ManagingOrganization { get; set; }
@@ -75,6 +77,13 @@ namespace workIT.Models.Common
 		public CredentialConnectionsResult HasPartsList { get; set; }
 		public CredentialConnectionsResult IsPartOfList { get; set; }
 
+		//should just have one total?
+		public int RequiredAssessmentsCount { get; set; }
+		public int RecommendedAssessmentsCount { get; set; }
+		public int RequiredLoppCount { get; set; }
+		public int RecommendedLoppCount { get; set; }
+		//
+		
 		public int HasPartCount { get; set; }
 		public int IsPartOfCount { get; set; }
 		public int RequiresCount { get; set; }
@@ -91,7 +100,21 @@ namespace workIT.Models.Common
        // public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
         public List<string> Subjects { get; set; }
+		public List<string> DegreeConcentration { get; set; } = new List<string>();
+		public string HasDegreeConcentation
+		{
+			get
+			{
+				if ( DegreeConcentration == null || DegreeConcentration.Count == 0 )
+					return "";
+				else
+				{
+					var concentration = String.Join(";", DegreeConcentration);
 
+					return concentration;
+				}
+			}
+		}
 		public CodeItemResult IndustryResults { get; set; }
 		public CodeItemResult IndustryOtherResults { get; set; }
 		public CodeItemResult OccupationResults { get; set; }

@@ -1,28 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using workIT.Models;
-using workIT.Models.Common;
-using workIT.Models.ProfileModels;
-
-using ThisEntity = workIT.Models.Common.CostManifest;
-using EntityMgr = workIT.Factories.CostManifestManager;
-using workIT.Utilities;
-using workIT.Factories;
-
-using workIT.Models.Search;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Net.Http;
-using System.Web;
 using System.Reflection;
 using System.Runtime.Caching;
-
+using System.Text;
 using System.Threading;
+using System.Web;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
+
+using workIT.Factories;
+using workIT.Models;
+using workIT.Models.Common;
+using workIT.Models.Elastic;
+
 using workIT.Models.Helpers.CompetencyFrameworkHelpers;
+using workIT.Models.Search;
+using workIT.Utilities;
+
+using EntityMgr = workIT.Factories.CompetencyFrameworkManager;
+using MPM = workIT.Models.ProfileModels;
+using ThisEntity = workIT.Models.ProfileModels.CompetencyFramework;
 
 namespace workIT.Services
 {
@@ -32,9 +33,171 @@ namespace workIT.Services
 		ActivityServices activityMgr = new ActivityServices();
 		public List<string> messages = new List<string>();
 
+		#region import
+
+		public bool Import( ThisEntity entity, ref SaveStatus status )
+		{
+			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
+			//do a get, and add to cache before updating
+			if ( entity.Id > 0 )
+			{
+				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
+				//var detail = GetDetail( entity.Id );
+			}
+			bool isValid = new EntityMgr().Save( entity, ref status, true );
+			List<string> messages = new List<string>();
+			if ( entity.Id > 0 )
+			{
+				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				{
+					//update cache - not applicable yet
+					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+					//update Elastic
+					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+						ElasticServices.CompetencyFramework_UpdateIndex( entity.Id );
+					else
+					{
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
+						if ( messages.Count > 0 )
+							status.AddWarningRange( messages );
+					}
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+				}
+				else
+				{
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					if ( messages.Count > 0 )
+						status.AddWarningRange( messages );
+				}
+				//no caching needed yet
+				//CacheManager.RemoveItemFromCache( "cframework", entity.Id );
+			}
+
+			return isValid;
+		}
+
+		#endregion
+		#region retrieval
+		public static MPM.CompetencyFramework GetCompetencyFrameworkByCtid( string ctid )
+		{
+			MPM.CompetencyFramework entity = new MPM.CompetencyFramework();
+			entity = CompetencyFrameworkManager.GetByCtid( ctid );
+			return entity;
+		}
+
+		public static MPM.CompetencyFramework Get( int id )
+		{
+			MPM.CompetencyFramework entity = new MPM.CompetencyFramework();
+			entity = CompetencyFrameworkManager.Get( id );
+			return entity;
+		}
+
+		public static List<MPM.CompetencyFrameworkSummary> CompetencyFrameworkSearch( MainSearchInput data, ref int pTotalRows )
+		{
+			if ( UtilityManager.GetAppKeyValue( "usingElasticCompetencyFrameworkSearch", false ) )
+			{
+				return ElasticServices.CompetencyFrameworkSearch( data, ref pTotalRows );
+			}
+			else
+			{
+				var results = new List<MPM.CompetencyFrameworkSummary>();
+				var list = DoFrameworksSearch( data, ref pTotalRows );
+				//var list = ElasticManager.CompetencyFramework_SearchForElastic( data.fil, data.StartPage, data.PageSize, ref pTotalRows );
+				foreach ( var item in list )
+				{
+					results.Add( new MPM.CompetencyFrameworkSummary()
+					{
+						Id = item.Id,
+						Name = item.Name,
+						Description = item.Description,
+						SourceUrl = item.SourceUrl,
+						OrganizationName = item.PrimaryOrganizationName,
+						CTID = item.CTID
+						//EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
+						//EntityType = "CompetencyFramework"
+					} );
+				}
+				return results;
+			}
+
+		}//
+
+		public static List<CompetencyFrameworkIndex> DoFrameworksSearch( MainSearchInput data, ref int pTotalRows )
+		{
+			string where = "";
+
+			//only target full entities
+			where = " ( base.EntityStateId = 3 ) ";
+
+			//need to create a new category id for custom filters
+			//SearchServices.HandleCustomFilters( data, 61, ref where );
+
+			SetKeywordFilter( data.Keywords, false, ref where );
+			//SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, ref where );
+
+			//SetPropertiesFilter( data, ref where );
+			SearchServices.SetRolesFilter( data, ref where );
+			SearchServices.SetBoundariesFilter( data, ref where );
+
+			LoggingHelper.DoTrace( 6, "CompetencyFrameworkServices.DoFrameworksSearch(). Filter: " + where );
+			//return EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			return ElasticManager.CompetencyFramework_SearchForElastic( where, data.StartPage, data.PageSize, ref pTotalRows );
+		}
+		//
+		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
+		{
+			if ( string.IsNullOrWhiteSpace( keywords ) )
+				return;
+			//trim trailing (org)
+			if ( keywords.IndexOf( "('" ) > 0 )
+				keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
+
+			//OR base.Description like '{0}' 
+			string text = " (base.name like '{0}' OR base.SourceUrl like '{0}'  OR base.OrganizationName like '{0}'  ) ";
+			bool isCustomSearch = false;
+			//use Entity.SearchIndex for all
+			//string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join TransferValue c on b.EntityUid = c.RowId where (b.EntityTypeId = 3 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
+
+			//for ctid, needs a valid ctid or guid
+			if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
+			{
+				text = " ( CTID = '{0}' ) ";
+				isCustomSearch = true;
+			}
+			else if ( ServiceHelper.IsValidGuid( keywords ) )
+			{
+				text = " ( CTID = 'ce-{0}' ) ";
+				isCustomSearch = true;
+			}
+			else if ( keywords.ToLower() == "[hascredentialregistryid]" )
+			{
+				text = " ( len(Isnull(CredentialRegistryId,'') ) = 36 ) ";
+				isCustomSearch = true;
+			}
+
+
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
+
+			keywords = ServiceHelper.HandleApostrophes( keywords );
+			if ( keywords.IndexOf( "%" ) == -1 && !isCustomSearch )
+			{
+				keywords = SearchServices.SearchifyWord( keywords );
+			}
+
+			//skip url  OR base.Url like '{0}' 
+			if ( isBasic || isCustomSearch )
+				where = where + AND + string.Format( " ( " + text + " ) ", keywords );
+			else
+				where = where + AND + string.Format( " ( " + text + " ) ", keywords );
+
+		}
+		#endregion
 		#region Methods using registry search index
 		//Get a Competency Framework description set
-		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSet(string ctid)
+		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSet( string ctid )
 		{
 			var queryData = new JObject()
 			{
@@ -49,11 +212,11 @@ namespace workIT.Services
 			}
 			catch { }
 
-			var resultData = DoQuery(queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/SearchViaRegistry/", clientIP, "CompetencyFramework");
+			var resultData = DoQuery( queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/SearchViaRegistry/", clientIP, "CompetencyFramework" );
 
 			var resultSet = new CTDLAPICompetencyFrameworkResultSet()
 			{
-				Results = ParseResults<CTDLAPICompetencyFrameworkResult>(resultData.data),
+				Results = ParseResults<CTDLAPICompetencyFrameworkResult>( resultData.data ),
 				RelatedItems = resultData.extra.RelatedItems,
 				TotalResults = resultData.extra.TotalResults
 			};
@@ -62,45 +225,337 @@ namespace workIT.Services
 		}
 		//
 
-		//Use the Credential Registry to search for competency frameworks
-		public static CTDLAPICompetencyFrameworkResultSet SearchViaRegistry(MainSearchInput data, bool asDescriptionSet = false)
+		//Temporary workaround while Mike is trying to fix issues with the Assistant API
+		//This functionality should instead be handled by the assistant API so that logging and whatnot can be handled there
+		//Although not having that step in the middle does make this go faster...
+
+
+		//TODO: Add caching
+
+
+		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSetsTemporary( List<string> ctids, int relatedItemsLimit = 10 )
 		{
-			//Handle blind searches
-			if (string.IsNullOrWhiteSpace(data.Keywords))
+			//Get keys
+			var key = UtilityManager.GetAppKeyValue( "CredentialRegistryAuthorizationToken" );
+			var url = UtilityManager.GetAppKeyValue( "GetDescriptionSetByCTIDEndpoint" );
+			var baseURL = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+			var debug = new JObject();
+
+			//Create clients
+			var authorizedClient = new HttpClient();
+			authorizedClient.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "Token " + key );
+			var regularClient = new HttpClient();
+
+			//Create intermediate containers
+			var relatedItemMaps = new List<JObject>();
+			var allRelatedURIs = new List<string>();
+			var fetchGraphs = new List<string>();
+			var retrievedResources = new List<JObject>();
+
+			//For each CTID, get the description set summaries
+			foreach ( var ctid in ctids )
 			{
-				data.Keywords = "search:anyValue";
+				try
+				{
+					var requestURL = url + ctid + ( relatedItemsLimit > 0 ? "?limit=" + relatedItemsLimit : "" );
+
+					var httpResult = authorizedClient.GetAsync( requestURL ).Result;
+					var httpResultBody = httpResult.Content.ReadAsStringAsync().Result;
+					var resultData = JArray.Parse( httpResultBody );
+
+					var itemMap = new JObject();
+					itemMap[ "ResourceURI" ] = baseURL + "/resources/" + ctid;
+					var relatedItems = new List<JObject>();
+
+					foreach ( JObject rawMap in resultData )
+					{
+						var uris = ( ( JArray ) rawMap[ "uris" ] ).Select( m => m.ToString() ).ToList();
+						allRelatedURIs.AddRange( uris );
+						relatedItems.Add( new JObject()
+						{
+							{ "Path", rawMap[ "path" ].ToString() },
+							{  "URIs", JArray.FromObject( uris ) },
+							{  "TotalURIs", ( int ) rawMap[ "total" ] }
+						} );
+
+						if( uris.Any( m => m.IndexOf( "_:" ) == 0 ) )
+						{
+							fetchGraphs.Add( baseURL + "/graph/" + ctid );
+						}
+					}
+					itemMap[ "RelatedItems" ] = JArray.FromObject( relatedItems );
+
+					relatedItemMaps.Add( itemMap );
+				}
+				catch ( Exception ex )
+				{
+					debug[ "Error getting related data for " + ctid ] = ex.Message;
+				}
 			}
 
+			//Remove duplicates in the tracking of all related URIs
+			allRelatedURIs = allRelatedURIs.Distinct().ToList();
+
+			//For each item above that involves a bnode, get the @graph data in order to get the bnode data
+			//Also hang onto any non-bnode data that happens to be in the list of related URIs
+			foreach( var uri in fetchGraphs )
+			{
+				try
+				{
+					var rawResult = regularClient.GetAsync( uri ).Result;
+					var rawData = rawResult.Content.ReadAsStringAsync().Result;
+					var resultData = JObject.Parse( rawData );
+
+					var items = ( JArray ) resultData[ "@graph" ];
+					retrievedResources.AddRange( items.Where( m => allRelatedURIs.Contains( m[ "@id" ].ToString() ) ).Select( m => ( JObject ) m ).ToList() );
+				}
+				catch ( Exception ex )
+				{
+					debug[ "Error getting graph for " + uri ] = ex.Message;
+				}
+			}
+
+			//Figure out what hasn't been gotten yet
+			var loadedURIs = retrievedResources.Select( m => m[ "@id" ].ToString() ).ToList();
+			var remainingRelatedURIs = allRelatedURIs.Where( m => !loadedURIs.Contains( m ) ).ToList();
+			var remainingRelatedCTIDs = remainingRelatedURIs.Where( m => m.Contains( "/ce-" ) ).Select( m => "ce-" + m.Split( new string[] { "/ce-" }, StringSplitOptions.RemoveEmptyEntries ).Last() ).ToList();
+
+			//Then go get it
+			if( remainingRelatedCTIDs.Count() > 0 )
+			{
+				try
+				{
+					var query = new JObject()
+					{
+						{ "ctids", JArray.FromObject( remainingRelatedCTIDs ) }
+					};
+					var fetchedResourcesResult = authorizedClient.PostAsync( baseURL + "/resources/search", new StringContent( query.ToString( Formatting.None ) ) ).Result;
+					var fetchedResourcesData = fetchedResourcesResult.Content.ReadAsStringAsync().Result;
+					var fetchedResources = JArray.Parse( fetchedResourcesData );
+					retrievedResources.AddRange( fetchedResources.Select( m => ( JObject ) m ).ToList() );
+				}
+				catch ( Exception ex )
+				{
+					debug[ "Error getting related data by CTIDs" ] = ex.Message;
+				}
+			}
+
+			//Construct the result set
+			var resultSet = new CTDLAPICompetencyFrameworkResultSet()
+			{
+				Results = ctids.Select( m => new CTDLAPICompetencyFrameworkResult() { CTID = m } ).ToList(),
+				RelatedItemsMap = JArray.FromObject( relatedItemMaps ),
+				RelatedItems = JArray.FromObject( retrievedResources ),
+				TotalResults = ctids.Count(),
+				Debug = debug
+			};
+
+			//Return the data
+			return resultSet;
+		}
+		//
+
+		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSetsByCTIDs( List<string> ctids, bool includeRelatedData = true, int relatedURIsLimit = 10, int relatedItemsLimit = 10 )
+		{
+			var result = new CTDLAPICompetencyFrameworkResultSet();
+			try
+			{
+				//Get the data
+				var descriptionSet = DescriptionSetServices.GetDescriptionSetsByCTIDs( ctids, includeRelatedData, relatedURIsLimit, relatedItemsLimit );
+				var registryURL = ConfigHelper.GetConfigValue( "credentialRegistryUrl", "" );
+
+				//Convert the data to use the old format
+				result.Results = ctids.Select( m => new CTDLAPICompetencyFrameworkResult()
+				{
+					_ID = registryURL + "resources/" + m,
+					Name = new LanguageMap( "" ),
+					Description = new LanguageMap( "" ),
+					_Type = "",
+					CTID = m,
+					RawData = new JObject() {
+							{ "@id", registryURL + "resources/" + m },
+							{ "ceterms:ctid", m }
+						}.ToString( Formatting.None )
+				} ).ToList();
+
+				result.RelatedItems = JArray.FromObject( descriptionSet.RelatedItems );
+				result.RelatedItemsMap = JArray.FromObject( descriptionSet.RelatedItemsMap );
+				result.TotalResults = ctids.Count();
+				result.Debug = descriptionSet.DebugInfo;
+			}
+			catch ( Exception ex )
+			{
+				result.Debug[ "Error Getting Description Sets" ] = ex.Message;
+			}
+
+			return result;
+		}
+
+		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSetsFaster( List<string> ctids, bool includeRelatedData = true, int relatedItemsLimit = 10 )
+		{
+			var debug = new JObject();
+			try
+			{
+				var request = new JObject()
+				{
+					{ "DescriptionSetCTIDs", JArray.FromObject(ctids) },
+					{ "DescriptionSetRelatedItemsLimit", relatedItemsLimit },
+					{ "DescriptionSetIncludeData", includeRelatedData }
+				};
+
+				var clientIP = "unknown";
+				try
+				{
+					clientIP = HttpContext.Current.Request.UserHostAddress;
+				}
+				catch { }
+
+				//Get API key and URL
+				var apiKey = ConfigHelper.GetConfigValue( "MyCredentialEngineAPIKey", "" );
+				var apiURL = ConfigHelper.GetConfigValue( "GetDescriptionSetsByCTIDsEndpoint", "" );
+				var registryURL = ConfigHelper.GetConfigValue( "credentialRegistryUrl", "" );
+
+				//Get the data
+				var client = new HttpClient();
+				client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
+				client.DefaultRequestHeaders.Referrer = new Uri( "https://credentialfinder.org/Finder/GetCompetencyFrameworkDescriptionSets/" );
+				client.Timeout = new TimeSpan( 0, 10, 0 );
+				debug[ "API URL" ] = apiURL;
+				var rawResult = client.PostAsync( apiURL, new StringContent( request.ToString( Formatting.None ), Encoding.UTF8, "application/json" ) ).Result;
+				var rawResultContent = rawResult.Content.ReadAsStringAsync().Result;
+				debug[ "Raw Result Text" ] = rawResultContent;
+				debug[ "Raw Result Status" ] = rawResult.StatusCode.ToString();
+				var parsedResult = JObject.Parse( rawResultContent );
+				var parsedResultData = parsedResult[ "data" ];
+
+				debug[ "Inner Debug" ] = parsedResultData[ "Debug" ];
+				var resultSet = new CTDLAPICompetencyFrameworkResultSet()
+				{
+					Results = ctids.Select( m => new CTDLAPICompetencyFrameworkResult()
+					{
+						_ID = registryURL + "resources/" + m,
+						Name = new LanguageMap( "" ),
+						Description = new LanguageMap( "" ),
+						_Type = "",
+						CTID = m,
+						RawData = new JObject() { 
+							{ "@id", registryURL + "resources/" + m },
+							{ "ceterms:ctid", m }
+						}.ToString( Formatting.None )
+					} ).ToList(),
+					RelatedItems = ( JArray ) parsedResultData[ "RelatedItems" ],
+					RelatedItemsMap = ( JArray ) parsedResultData[ "RelatedItemsMap" ],
+					TotalResults = ctids.Count(),
+					Debug = debug
+				};
+
+				return resultSet;
+			}
+			catch ( Exception ex )
+			{
+				debug[ "Error Getting Description Sets" ] = ex.Message;
+				return new CTDLAPICompetencyFrameworkResultSet() { Debug = debug };
+			}
+		}
+		//
+
+		//Get multiple description sets using new methods
+		public static CTDLAPICompetencyFrameworkResultSet GetCompetencyFrameworkDescriptionSets( List<string> ctids, int relatedItemsLimit = 10 )
+		{
 			var queryData = new JObject()
 			{
-				//Get competency frameworks...
 				{ "@type", "ceasn:CompetencyFramework" },
-				{ "search:termGroup", new JObject()
-				{
-					//Where name or description or CTID matches the keywords, or...
-					{ "ceasn:name", data.Keywords },
-					{ "ceasn:description", data.Keywords },
-					{ "ceterms:ctid", data.Keywords },
-					//Where the framework contains a competency (via reverse connection) with competency text that contains the keywords
-					{ "ceasn:isPartOf", new JObject() {
-						{ "ceasn:competencyText", data.Keywords },
-						{ "ceterms:ctid", data.Keywords },
-						{ "search:operator", "search:orTerms" }
-					} },
-					//Or where the creator or publisher have a name or CTID that matches the keywords
-					{ "ceasn:creator", new JObject() {
-						{ "ceterms:name", data.Keywords },
-						{ "ceterms:ctid", data.Keywords },
-						{ "search:operator", "search:orTerms" }
-					} },
-					{ "ceasn:publisher", new JObject() {
-						{ "ceterms:name", data.Keywords },
-						{ "ceterms:ctid", data.Keywords },
-						{ "search:operator", "search:orTerms" }
-					} },
-					{ "search:operator", "search:orTerms" }
-				} }
+				{ "ceterms:ctid", JArray.FromObject( ctids ) }
 			};
+
+			var clientIP = "unknown";
+			try
+			{
+				clientIP = HttpContext.Current.Request.UserHostAddress;
+			}
+			catch { }
+
+			var resultData = DoQuery( queryData, 0, ctids.Count(), "", true, "https://credentialfinder.org/Finder/SearchViaRegistry/", clientIP, "Resource_RelatedURIs_Graph_RelatedData", true, relatedItemsLimit );
+
+			var resultSet = new CTDLAPICompetencyFrameworkResultSet()
+			{
+				Results = ParseResults<CTDLAPICompetencyFrameworkResult>( resultData.data ),
+				RelatedItems = resultData.extra.RelatedItems,
+				RelatedItemsMap = resultData.extra.RelatedItemsMap,
+				TotalResults = resultData.extra.TotalResults,
+				Debug = resultData.extra.DebugInfo
+			};
+
+			return resultSet;
+		}
+		//
+
+		//Use the Credential Registry to search for competency frameworks
+		public static CTDLAPICompetencyFrameworkResultSet SearchViaRegistry( MainSearchInput data, bool asDescriptionSet = false )
+		{
+			data.Keywords = ( data.Keywords ?? "" ).Trim();
+
+			//Handle blind searches
+			var queryData = new JObject()
+			{
+				{ "@type", "ceasn:CompetencyFramework" }
+			};
+
+			//Otherwise, look for the value in various places
+			if ( !string.IsNullOrWhiteSpace( data.Keywords ) )
+			{
+				//Normalize the text
+				var normalized = Regex.Replace( Regex.Replace( data.Keywords.ToLower().Trim(), "[^a-z0-9-\" ]", " " ), " +", " " );
+				var ctids = Regex.Matches( normalized, @"\b(ce-[a-f0-9-]{0,36})\b" ).Cast<Match>().Select( m => m.Value ).ToList();
+				var wordsAndPhrases = normalized.Split( ' ' ).Where( m => !ctids.Contains( m.Replace( "\"", "" ) ) ).ToList();
+				var keywords = string.Join( " ", wordsAndPhrases );
+
+				//Basic skeleton
+				queryData = new JObject()
+				{
+					{ "@type", "ceasn:CompetencyFramework" },
+					{ "search:termGroup", new JObject()
+					{
+						{ "search:operator", "search:orTerms" },
+						{ "ceasn:creator", new JObject() },
+						{ "ceasn:publisher", new JObject() },
+						{ "ceasn:isPartOf", new JObject() }
+					} }
+				};
+
+				//Add CTID-based query data
+				if( ctids.Count() > 0 )
+				{
+					var ctidList = JArray.FromObject( ctids );
+					queryData[ "search:termGroup" ][ "ceterms:ctid" ] = ctidList;
+					queryData[ "search:termGroup" ][ "ceasn:isPartOf" ][ "ceterms:ctid" ] = ctidList;
+					queryData[ "search:termGroup" ][ "ceasn:creator" ][ "ceterms:ctid" ] = ctidList;
+					queryData[ "search:termGroup" ][ "ceasn:publisher" ][ "ceterms:ctid" ] = ctidList;
+				}
+
+				//Add non-CTID-based query data
+				if( keywords.Count() > 0 )
+				{
+					//Framework
+					queryData[ "search:termGroup" ][ "ceasn:name" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:description" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:source" ] = keywords;
+					//Creator
+					queryData[ "search:termGroup" ][ "ceasn:creator" ][ "ceterms:name" ] = keywords;
+					//queryData[ "search:termGroup" ][ "ceasn:creator" ][ "ceterms:subjectWebpage" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:creator" ][ "search:operator" ] = "search:orTerms";
+					//Publisher
+					queryData[ "search:termGroup" ][ "ceasn:publisher" ][ "ceterms:name" ] = keywords;
+					//queryData[ "search:termGroup" ][ "ceasn:publisher" ][ "ceterms:subjectWebpage" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:publisher" ][ "search:operator" ] = "search:orTerms";
+					//Competencies
+					queryData[ "search:termGroup" ][ "ceasn:isPartOf" ][ "ceasn:competencyLabel" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:isPartOf" ][ "ceasn:competencyText" ] = keywords;
+					//queryData[ "search:termGroup" ][ "ceasn:isPartOf" ][ "ceasn:comment" ] = keywords;
+					queryData[ "search:termGroup" ][ "ceasn:isPartOf" ][ "search:operator" ] = "search:orTerms";
+				}
+
+			}
 
 			var skip = data.PageSize * (data.StartPage - 1);
 			var take = data.PageSize;
@@ -116,45 +571,50 @@ namespace workIT.Services
 			var orderDescending = true;
 			TranslateSortOrder(data.SortOrder, ref orderBy, ref orderDescending);
 
-			var resultData = DoQuery(queryData, skip, take, orderBy, orderDescending, "https://credentialfinder.org/Finder/SearchViaRegistry/", clientIP, asDescriptionSet ? "CompetencyFramework" : "");
+			var resultData = DoQuery(queryData, skip, take, orderBy, orderDescending, "https://credentialfinder.org/Finder/SearchViaRegistry/", clientIP, asDescriptionSet ? ( data.UseSPARQL ? "Resource" : "CompetencyFramework" ) : "", data.UseSPARQL);
 
 			if (resultData.valid)
 			{
 				var resultSet = new CTDLAPICompetencyFrameworkResultSet()
 				{
-					Results = ParseResults<CTDLAPICompetencyFrameworkResult>(resultData.data),
+					Results = ParseResults<CTDLAPICompetencyFrameworkResult>( resultData.data ),
 					RelatedItems = resultData.extra.RelatedItems,
 					TotalResults = resultData.extra.TotalResults,
+					RelatedItemsMap = resultData.extra.RelatedItemsMap,
+					Debug = resultData.extra.DebugInfo
 				};
-				try
+				if ( !data.UseSPARQL )
 				{
-					var cacheSuccess = false;
-					var cacheident = "";
-					resultSet.PerResultRelatedItems = GetRelatedItemsForResults(resultData.data, resultData.extra.RelatedItems, data.Keywords == "search:anyValue", ref cacheSuccess, ref cacheident);
-					resultSet.Debug = new JObject()
+					try
 					{
-						{ "Keywords", data.Keywords },
-						{ "Use Cache", data.Keywords == "search:anyValue" },
-						{ "Cache Succss", cacheSuccess },
-						{ "Cache ID", cacheident }
-					};
-				}
-				catch (Exception ex)
-				{
-					resultSet.PerResultRelatedItems = new List<CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult>()
-					{
-						new CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult()
+						var cacheSuccess = false;
+						var cacheident = "";
+						resultSet.PerResultRelatedItems = GetRelatedItemsForResults( resultData.data, resultData.extra.RelatedItems, data.Keywords == "search:anyValue", ref cacheSuccess, ref cacheident );
+						resultSet.Debug = new JObject()
 						{
-							Competencies = new CTDLAPIRelatedItemForSearchResult()
+							{ "Keywords", data.Keywords },
+							{ "Use Cache", data.Keywords == "search:anyValue" },
+							{ "Cache Succss", cacheSuccess },
+							{ "Cache ID", cacheident }
+						};
+					}
+					catch ( Exception ex )
+					{
+						resultSet.PerResultRelatedItems = new List<CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult>()
+						{
+							new CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult()
 							{
-								Label = "Error loading competencies: " + ex.Message,
-								Samples = new List<JObject>()
+								Competencies = new CTDLAPIRelatedItemForSearchResult()
 								{
-									JObject.FromObject(ex)
+									Label = "Error loading competencies: " + ex.Message,
+									Samples = new List<JObject>()
+									{
+										JObject.FromObject(ex)
+									}
 								}
 							}
-						}
-					};
+						};
+					}
 				}
 
 				return resultSet;
@@ -293,55 +753,76 @@ namespace workIT.Services
 		}
 		//
 
-
-		public void UpdateCompetencyFrameworkReportTotals()
+		/// <summary>
+		/// Update totals related to competency frameworks
+		/// </summary>
+		/// <param name="usingCFTotals">If true, the totals will be retrieved using "@type","ceasn:CompetencyFramework", otherwise use "@type","ceasn:Competency" in searches</param>
+		public void UpdateCompetencyFrameworkReportTotals(bool usingCFTotals = true, bool includingRelationships = true)
 		{
+			LoggingHelper.DoTrace( 5, thisClassName + ".UpdateCompetencyFrameworkReportTotals started" );
 			var mgr = new CodesManager();
-			bool usingCFTotals = true;
+			//bool usingCFTotals = true;
 			try
 			{
-				mgr.UpdateEntityTypes(10, GetCompetencyFrameworkTermTotal(null));
-				if (usingCFTotals)
-				{
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasEducationLevels", GetCompetencyFrameworkTermTotal("ceasn:educationLevelType"));
-
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasAlignFrom", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:alignFrom"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasAlignTo", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:alignTo"));
-
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasBroadAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:broadAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasExactAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:exactAlignment"));
-
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasMajorAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:majorAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasMinorAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:minorAlignment"));
-
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasNarrowAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:narrowAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyFrameworksWithCompetencyTermTotal("ceasn:prerequisiteAlignment"));
-				}
+				var total = GetCompetencyFrameworkTermTotal( null );
+				if ( total  > 0 )
+					mgr.UpdateEntityTypes(10, total ,false);
 				else
 				{
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasEducationLevels", GetCompetencyTermTotal("ceasn:educationLevelType"));
 
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasAlignFrom", GetCompetencyTermTotal("ceasn:alignFrom"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasAlignTo", GetCompetencyTermTotal("ceasn:alignTo"));
+				}
+				mgr.UpdateEntityStatistic( 10, "frameworkReport:Competencies", GetCompetencyTermTotal( null ), false );
 
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasBroadAlignment", GetCompetencyTermTotal("ceasn:broadAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasExactAlignment", GetCompetencyTermTotal("ceasn:exactAlignment"));
+				if ( includingRelationships )
+				{
 
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasMajorAlignment", GetCompetencyTermTotal("ceasn:majorAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasMinorAlignment", GetCompetencyTermTotal("ceasn:minorAlignment"));
+					if ( usingCFTotals )
+					{
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasEducationLevels", GetCompetencyFrameworkTermTotal( "ceasn:educationLevelType" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasOccupationType", GetCompetencyFrameworkTermTotal( "ceterms:occupationType" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasIndustryType", GetCompetencyFrameworkTermTotal( "ceterms:industryType" ) );
 
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasNarrowAlignment", GetCompetencyTermTotal("ceasn:narrowAlignment"));
-					mgr.UpdateEntityStatistic(10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyTermTotal("ceasn:prerequisiteAlignment"));
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignFrom", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:alignFrom" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignTo", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:alignTo" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasBroadAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:broadAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasExactAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:exactAlignment" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMajorAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:majorAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMinorAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:minorAlignment" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasNarrowAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:narrowAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyFrameworksWithCompetencyTermTotal( "ceasn:prerequisiteAlignment" ) );
+					}
+					else
+					{
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasEducationLevels", GetCompetencyTermTotal( "ceasn:educationLevelType" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignFrom", GetCompetencyTermTotal( "ceasn:alignFrom" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasAlignTo", GetCompetencyTermTotal( "ceasn:alignTo" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasBroadAlignment", GetCompetencyTermTotal( "ceasn:broadAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasExactAlignment", GetCompetencyTermTotal( "ceasn:exactAlignment" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMajorAlignment", GetCompetencyTermTotal( "ceasn:majorAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasMinorAlignment", GetCompetencyTermTotal( "ceasn:minorAlignment" ) );
+
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasNarrowAlignment", GetCompetencyTermTotal( "ceasn:narrowAlignment" ) );
+						mgr.UpdateEntityStatistic( 10, "frameworkReport:HasPrerequisiteAlignment", GetCompetencyTermTotal( "ceasn:prerequisiteAlignment" ) );
+					}
 				}
 			}
 			catch (Exception ex)
 			{
 				LoggingHelper.LogError(ex, "Services.UpdateCompetencyFrameworkReportTotals");
 			}
+
+			LoggingHelper.DoTrace( 5, thisClassName + ".UpdateCompetencyFrameworkReportTotals completed" );
 		}
 		//
 		public int GetCompetencyFrameworkTermTotal(string searchTerm)
 		{
+			bool useSparQL = UtilityManager.GetAppKeyValue( "usingSparQLForSearch", false );
 			var queryData = new JObject()
 			{
 				//Get competency frameworks...
@@ -352,9 +833,10 @@ namespace workIT.Services
 				queryData.Add(searchTerm, "search:anyValue");
 			}
 
-			var resultData = DoQuery(queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/GetCompetencyTermTotal/");
+			var resultData = DoQuery(queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/GetCompetencyTermTotal/", null, null, useSparQL);
 			return resultData.extra.TotalResults;
 		}
+
 		//
 		public int GetCompetencyTermTotal(string searchTerm)
 		{
@@ -368,7 +850,7 @@ namespace workIT.Services
 				queryData.Add(searchTerm, "search:anyValue");
 			}
 
-			var resultData = DoQuery(queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/GetCompetencyTermTotal/");
+			var resultData = DoQuery(queryData, 0, 1, "", true, "https://credentialfinder.org/Finder/GetCompetencyTermTotal/", null, null, true);
 			return resultData.extra.TotalResults;
 		}
 		//
@@ -440,7 +922,15 @@ namespace workIT.Services
 		}
 		//
 
-		private static CTDLAPIJSONResponse DoQuery(JObject query, int skip, int take, string orderBy, bool orderDescending, string referrer = null, string clientIP = null, string descriptionSetType = null)
+		private static void Log( string text )
+		{
+			try
+			{
+				//System.IO.File.AppendAllText( "C:/@logs/finderlogtemp.txt", text + "\r\n" );
+			}
+			catch { }
+		}
+		private static CTDLAPIJSONResponse DoQuery(JObject query, int skip, int take, string orderBy, bool orderDescending, string referrer = null, string clientIP = null, string descriptionSetType = null, bool useSPARQL = false, int relatedItemsLimit = 10)
 		{
 			var testGUID = Guid.NewGuid().ToString();
 			var queryWrapper = new JObject()
@@ -449,17 +939,32 @@ namespace workIT.Services
 				{ "Skip", skip },
 				{ "Take", take },
 				{ "OrderBy", orderBy },
-				{ "OrderDescending", orderDescending }
+				{ "OrderDescending", orderDescending },
+				{ "IncludeDebugInfo", true }
 			};
 			if (!string.IsNullOrWhiteSpace(descriptionSetType))
 			{
 				queryWrapper["DescriptionSetType"] = descriptionSetType;
 			}
-			var queryJSON = JsonConvert.SerializeObject(queryWrapper);
+			if( relatedItemsLimit > 0 ) //Enable using 0 to turn off the limit
+			{
+				queryWrapper[ "DescriptionSetRelatedURIsLimit" ] = relatedItemsLimit;
+				queryWrapper[ "DescriptionSetRelatedItemsLimit" ] = relatedItemsLimit;
+			}
 
 			//Get API key and URL
-			var apiKey = ConfigHelper.GetConfigValue("CredentialEngineAPIKey", "");
+			var apiKey = ConfigHelper.GetConfigValue("MyCredentialEngineAPIKey", "");
 			var apiURL = ConfigHelper.GetConfigValue("AssistantCTDLJSONSearchAPIUrl", "");
+
+			Log( "-----" );
+			//Testing the SPARQL query stuff
+			if ( useSPARQL )
+			{
+				apiURL = apiURL.Replace( "/ctdl", "/ctdltosparql" );
+				Log( "Test 1" );
+				Log( apiURL );
+				Log( apiKey );
+			}
 
 			//Make it a little easier to track the source of the requests
 			referrer = (string.IsNullOrWhiteSpace(referrer) ? "https://credentialfinder.org/Finder/" : referrer);
@@ -473,16 +978,26 @@ namespace workIT.Services
 			}
 
 			//Do the query
+			Log( "Query" );
+			Log( queryWrapper.ToString() );
+			Log( "" );
+			Log( "Test 2" );
+			var queryJSON = JsonConvert.SerializeObject(queryWrapper);
 			var client = new HttpClient();
 			client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "ApiToken " + apiKey);
 			client.DefaultRequestHeaders.Referrer = new Uri(referrer);
+			client.Timeout = new TimeSpan( 0, 10, 0 );
 			var result = client.PostAsync(apiURL, new StringContent(queryJSON, Encoding.UTF8, "application/json")).Result;
 			var rawResultData = result.Content.ReadAsStringAsync().Result ?? "{}";
 
+			Log( "Raw result:" );
+			Log( rawResultData );
 			var resultData = JsonConvert.DeserializeObject<CTDLAPIJSONResponse>(rawResultData, new JsonSerializerSettings()
 			{
 				//Ignore errors
 				Error = delegate (object sender, Newtonsoft.Json.Serialization.ErrorEventArgs e) {
+					Log( "Error:" );
+					Log( e.ToString() );
 					e.ErrorContext.Handled = true;
 				}
 			}) ?? new CTDLAPIJSONResponse();
@@ -522,23 +1037,29 @@ namespace workIT.Services
 			switch (searchSortOrder)
 			{
 				case "alpha":
-					{
-						orderBy = "name";
-						orderDescending = false;
-						break;
-					}
+				{
+					orderBy = "name";
+					orderDescending = false;
+					break;
+				}
 				case "newest":
-					{
-						orderBy = "updated";
-						orderDescending = true;
-						break;
-					}
+				{
+					orderBy = "updated";
+					orderDescending = true;
+					break;
+				}
+				case "relevance":
+				{
+					orderBy = "relevance";
+					orderDescending = true;
+					break;
+				}
 				default:
-					{
-						orderBy = "";
-						orderDescending = false;
-						break;
-					}
+				{
+					orderBy = "";
+					orderDescending = true;
+					break;
+				}
 			}
 		}
 
@@ -562,22 +1083,13 @@ namespace workIT.Services
 			}
 			public int TotalResults { get; set; }
 			public JArray RelatedItems { get; set; }
+			public JArray RelatedItemsMap { get; set; }
+			public JObject DebugInfo { get; set; }
 		}
 		//
 		#endregion
-		public static EducationFramework GetEducationFrameworkByCtid(string ctid)
-		{
-			EducationFramework entity = new EducationFramework();
-			entity = EducationFrameworkManager.GetByCtid(ctid);
-			return entity;
-		}
 
-		public static EducationFramework Get(int id)
-		{
-			EducationFramework entity = new EducationFramework();
-			entity = EducationFrameworkManager.Get(id);
-			return entity;
-		}
+
 
 		public static List<CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult> GetRelatedItemsForResults(JArray rawResults, JArray rawRelatedItems, bool useCache, ref bool cacheSuccess, ref string cacheident)
 		{

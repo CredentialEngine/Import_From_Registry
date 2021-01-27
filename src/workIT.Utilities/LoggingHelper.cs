@@ -186,7 +186,6 @@ namespace workIT.Utilities
 						{
 							System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
 							f.Directory.Create(); // If the directory already exists, this method does nothing.
-
 						}
 
 						StreamWriter file = File.AppendText( outputFile );
@@ -197,74 +196,109 @@ namespace workIT.Utilities
 
 					if (notifyAdmin)
                     {
-                        if (ShouldMessagesBeSkipped(message) == false)
+                        if (ShouldMessagesBeSkipped(message) == false && !IsADuplicateRequest( message ) )
                             EmailManager.NotifyAdmin(subject, message);
-                    }
+
+						StoreLastError( message );
+					}
                    
                 }
                 catch ( Exception ex )
                 {
                     //eat any additional exception
-                    DoTrace( 5, thisClassName + ".LogError(string message, bool notifyAdmin). Exception: " + ex.Message );
+                    DoTrace( 5, thisClassName + ".LogError(string message, bool notifyAdmin). Exception while logging. \r\nException: " + ex.Message + ".\r\n Original message: " + message );
                 }
             }
         } //
 		private static bool ShouldMessagesBeSkipped(string message)
 		{
 
-			if ( message.IndexOf( "Server cannot set status after HTTP headers have been sent" ) > 0 )
+			if ( message.IndexOf( "Server cannot set status after HTTP headers have been sent" ) > -1 )
 				return true;
 
 			return false;
 		}
+		public static void StoreLastError( string message )
+		{
+			string sessionKey = GetCurrentSessionId() + "_lastError";
 
-        #endregion
+			try
+			{
+				if ( HttpContext.Current != null && HttpContext.Current.Session != null )
+				{
+					HttpContext.Current.Session[ sessionKey ] = message;
+				}
+			}
+			catch
+			{
+			}
+
+		} //
+		public static bool IsADuplicateRequest( string message )
+		{
+			string sessionKey = GetCurrentSessionId() + "_lastError";
+			bool isDup = false;
+			try
+			{
+				if ( HttpContext.Current.Session != null )
+				{
+					string lastAction = HttpContext.Current.Session[ sessionKey ].ToString();
+					if ( lastAction.ToLower() == message.ToLower() )
+					{
+						LoggingHelper.DoTrace( 7, "ActivityServices. Duplicate message: " + message );
+						return true;
+					}
+				}
+			}
+			catch
+			{
+
+			}
+			return isDup;
+		}
+		public static string GetCurrentSessionId()
+		{
+			string sessionId = "unknown";
+
+			try
+			{
+				//NOTE: ignore Object not found exception when called from a batch process
+				if ( HttpContext.Current != null && HttpContext.Current.Session != null )
+				{
+					sessionId = HttpContext.Current.Session.SessionID;
+				}
+			}
+			catch
+			{
+			}
+			return sessionId;
+		}
+		#endregion
 
 
-        #region === Application Trace Methods ===
-        /// <summary>
-        /// IsTestEnv - determines if the current environment is a testing/development
-        /// </summary>
-        /// <returns>True if localhost - implies testing</returns>
-        //public static bool IsTestEnv()
-        //{
-        //    string host = HttpContext.Current.Request.Url.Host.ToString();
+		#region === Application Trace Methods ===
+		/// <summary>
+		/// IsTestEnv - determines if the current environment is a testing/development
+		/// </summary>
+		/// <returns>True if localhost - implies testing</returns>
+		//public static bool IsTestEnv()
+		//{
+		//    string host = HttpContext.Current.Request.Url.Host.ToString();
 
-        //    if ( host.ToLower() == "localhost" )
-        //        return true;
-        //    else
-        //        return false;
+		//    if ( host.ToLower() == "localhost" )
+		//        return true;
+		//    else
+		//        return false;
 
-        //} //
+		//} //
 
-        /// <summary>
-        /// Handle trace requests - typically during development, but may be turned on to track code flow in production.
-        /// </summary>
-        /// <param name="label">Label control that will display a trace message</param>
-        /// <param name="message">The message to be sent to the trace log as well as to the trace control</param>
-        //public static void DoTrace( System.Web.UI.WebControls.Label label, string message )
-        //{
-        //    try
-        //    {
-        //        label.Text += message + "<br>";
 
-        //        label.Visible = true;
-
-        //        DoTrace( message );
-        //    }
-        //    catch
-        //    {
-        //        // ignore error for now - future to log it
-        //    }
-
-        //} // end
-
-        /// <summary>
-        /// Handle trace requests - typically during development, but may be turned on to track code flow in production.
-        /// </summary>
-        /// <param name="message">Trace message</param>
-        /// <remarks>This is a helper method that defaults to a trace level of 10</remarks>
-        public static void DoTrace( string message )
+		/// <summary>
+		/// Handle trace requests - typically during development, but may be turned on to track code flow in production.
+		/// </summary>
+		/// <param name="message">Trace message</param>
+		/// <remarks>This is a helper method that defaults to a trace level of 10</remarks>
+		public static void DoTrace( string message )
         {
             //default level to 8
             int appTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 8 );
@@ -274,13 +308,26 @@ namespace workIT.Utilities
         }
 
 
+        /// <summary>
+        /// Handle trace requests - with addition of a log prefix to enable a custom log file
+        /// </summary>
+        /// <param name="level"></param>
+        /// <param name="message"></param>
+        /// <param name="logPrefix">If present, will be prefixed to logfile name after the date.</param>
+        public static void DoTrace(int level, string message, string logPrefix)
+        {
+
+            DoTrace( level, message, true, logPrefix );
+        }
+
+
 		/// <summary>
 		/// Handle trace requests - typically during development, but may be turned on to track code flow in production.
 		/// </summary>
 		/// <param name="level"></param>
 		/// <param name="message"></param>
 		/// <param name="showingDatetime">If true, precede message with current date-time, otherwise just the message> The latter is useful for data dumps</param>
-		public static void DoTrace( int level, string message, bool showingDatetime = true )
+		public static void DoTrace( int level, string message, bool showingDatetime = true, string logPrefix = "")
 		{
 			//TODO: Future provide finer control at the control level
 			string msg = "";
@@ -295,14 +342,18 @@ namespace workIT.Utilities
 			string datePrefix1 = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
 			string datePrefix = System.DateTime.Today.ToString( "yyyy-dd" );
 			string logFile = UtilityManager.GetAppKeyValue( "path.trace.log", "" );
-
+			if ( !string.IsNullOrWhiteSpace( logPrefix ) )
+				datePrefix += "_" + logPrefix;
 			//Allow if the requested level is <= the application thresh hold
 			if ( string.IsNullOrWhiteSpace( logFile ) || level > appTraceLevel )
 			{
 				return;
 			}
 			string outputFile = "";
-
+            if (message.IndexOf( "UPPER CASE URI" ) > -1 || message.IndexOf( "GRAPH URI" ) > -1 )
+            {
+                logFile = logFile.Replace( "[date]", "[date]_URI_ISSUES" );
+            }
 			//added retries where log file is in use
 			for ( int i = 1; i <= NumberOfRetries; ++i )
 			{
@@ -326,7 +377,8 @@ namespace workIT.Utilities
 
 					file.WriteLine( msg );
 					file.Close();
-					Console.WriteLine( msg );
+                    if ( level > 0)
+					    Console.WriteLine( msg );
 					break;
 				}
 				catch ( IOException e ) when ( i <= NumberOfRetries )
@@ -339,6 +391,17 @@ namespace workIT.Utilities
 				{
 					//ignore errors
 				}
+			}
+		}
+		public static void WriteLogFileForReason( int level, string reason, string filename, string message,
+			string datePrefixOverride = "", bool appendingText = true, int cacheForHours = 2 )
+		{
+			if ( !LoggingHelper.IsMessageInCache( reason ) )
+			{
+				AddMessageToCache( reason, cacheForHours );
+				WriteLogFile( level, filename, message, datePrefixOverride, appendingText );
+				if ( reason.Length > 10 )
+					LoggingHelper.LogError( reason, true, "Finder: CredentialSearch Elastic error" );
 			}
 		}
 		public static void WriteLogFile( int level, string filename, string message, 
@@ -398,6 +461,83 @@ namespace workIT.Utilities
 			}
 
 		}
+		public static bool IsMessageInCache( string message )
+		{
+			if ( string.IsNullOrWhiteSpace( message ) )
+				return false;
+			string key = UtilityManager.GenerateMD5String( message );
+			try
+			{
+				if ( HttpRuntime.Cache[ key ] != null )
+				{
+					var msgExists = ( string )HttpRuntime.Cache[ key ];
+					if ( msgExists.ToLower() == message.ToLower() )
+					{
+						LoggingHelper.DoTrace( 7, "LoggingHelper. Duplicate message: " + message );
+						return true;
+					}
+				}
+			}
+			catch
+			{
+			}
+
+			return false;
+		}
+		public static void AddMessageToCache( string message, int cacheForHours = 2 )
+		{
+			string key = UtilityManager.GenerateMD5String( message );
+			
+			if ( HttpContext.Current != null )
+			{
+				if ( HttpContext.Current.Cache[ key ] != null )
+				{
+					HttpRuntime.Cache.Remove( key );
+				}
+				else
+				{
+					System.Web.HttpRuntime.Cache.Insert( key, message, null, DateTime.Now.AddHours( cacheForHours ), TimeSpan.Zero );
+				}
+			}		
+		}
+		public static bool IsADuplicateRecentSessionMessage( string message )
+		{
+			string sessionKey = UtilityManager.GenerateMD5String(message);
+			bool isDup = false;
+			try
+			{
+				if ( HttpContext.Current.Session != null )
+				{
+					string msgExists = HttpContext.Current.Session[ sessionKey ].ToString();
+					if ( msgExists.ToLower() == message.ToLower() )
+					{
+						LoggingHelper.DoTrace( 7, "LoggingHelper. Duplicate message: " + message );
+						return true;
+					}
+				}
+			}
+			catch
+			{
+
+			}
+			return isDup;
+		}
+		public static void StoreSessionMessage( string message )
+		{
+			string sessionKey = UtilityManager.GenerateMD5String( message );
+
+			try
+			{
+				if ( HttpContext.Current.Session != null )
+				{
+					HttpContext.Current.Session[ sessionKey ] = message;
+				}
+			}
+			catch
+			{
+			}
+
+		} //
 		public static void DoBotTrace( int level, string message )
 		{
 			string msg = "";
@@ -445,4 +585,18 @@ namespace workIT.Utilities
 
         #endregion
     }
+	public class CachedItem
+	{
+		public CachedItem()
+		{
+			lastUpdated = DateTime.Now;
+		}
+		public DateTime lastUpdated { get; set; }
+
+	}
+	public class RecentMessage : CachedItem
+	{
+		public string Message { get; set; }
+
+	}
 }

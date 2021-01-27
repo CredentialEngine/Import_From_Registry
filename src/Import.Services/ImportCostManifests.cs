@@ -66,38 +66,6 @@ namespace Import.Services
 			}
 		}
 
-		/// <summary>
-		/// Retrieve an resource from the registry by ctid and do import
-		/// </summary>
-		/// <param name="ctid"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool ImportByResourceId( string ctid, SaveStatus status )
-		{
-			//this is currently specific, assumes envelop contains a credential
-			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
-			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				string payload = RegistryServices.GetResourceByCtid( ctid, ref ctdlType, ref statusMessage );
-
-				if ( !string.IsNullOrWhiteSpace( payload ) )
-				{
-					input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-					//ctdlType = RegistryServices.GetResourceType( payload );
-					return Import( input, "", status );
-				}
-				else
-					return false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportByResourceId()" );
-				return false;
-			}
-		}
 
 		public bool ImportByPayload( string payload, SaveStatus status )
 		{
@@ -111,9 +79,11 @@ namespace Import.Services
 			}
 			else
             {
-                input = JsonConvert.DeserializeObject<InputEntity>( payload );
-                return Import( input, "", status );
-            }
+				//input = JsonConvert.DeserializeObject<InputEntity>( payload );
+				//return Import( input, "", status );
+				status.AddError( "A valid graph object must be provided for a cost manifest." );
+				return false;
+			}
         }
 		#endregion
 
@@ -124,12 +94,25 @@ namespace Import.Services
 				status.AddError( "A valid ReadEnvelope must be provided." );
 				return false;
 			}
-
+			//
+			DateTime createDate = new DateTime();
+			DateTime envelopeUpdateDate = new DateTime();
+			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+			{
+				status.SetEnvelopeCreated( createDate );
+			}
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			{
+				status.SetEnvelopeUpdated( envelopeUpdateDate );
+			}
+			//
 			string payload = item.DecodedResource.ToString();
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_costManifest", payload, "", false );
+
+			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
 				//if ( payload.IndexOf( "\"en\":" ) > 0 )
 				return ImportV3( payload, "", status );
@@ -138,84 +121,86 @@ namespace Import.Services
 			}
 			else
             {
-                LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-                LoggingHelper.WriteLogFile( 1, "costManifest_" + item.EnvelopeIdentifier, payload, "", false );
-                input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+				status.AddError( "A valid graph object must be provided for a cost manifest." );
+				return false;
+				//LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
+    //            LoggingHelper.WriteLogFile( 1, "costManifest_" + item.EnvelopeIdentifier, payload, "", false );
+    //            input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
 
-                return Import( input, envelopeIdentifier, status );
+    //            return Import( input, envelopeIdentifier, status );
             }
 		}
-		public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
-		{
-			List<string> messages = new List<string>();
-			bool importSuccessfull = false;
-            EntityServices mgr = new EntityServices();
-            //try
-            //{
-            //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-            string ctid = input.Ctid;
-			string referencedAtId = input.CtdlId;
-			LoggingHelper.DoTrace( 5, "		name: " + input.Name );
-			LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
-			LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
-			LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
-            status.Ctid = ctid;
+		//public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
+		//{
+		//	List<string> messages = new List<string>();
+		//	bool importSuccessfull = false;
+  //          EntityServices mgr = new EntityServices();
+  //          //try
+  //          //{
+  //          //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+  //          string ctid = input.Ctid;
+		//	string referencedAtId = input.CtdlId;
+		//	LoggingHelper.DoTrace( 5, "		name: " + input.Name );
+		//	LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
+		//	LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+		//	LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
+  //          status.Ctid = ctid;
 
-            if ( status.DoingDownloadOnly )
-                return true;
+  //          if ( status.DoingDownloadOnly )
+  //              return true;
 
-            if ( !DoesEntityExist( input.Ctid, ref output ) )
-			{
-				output.RowId = Guid.NewGuid();
-			}
+  //          if ( !DoesEntityExist( input.Ctid, ref output ) )
+		//	{
+		//		output.RowId = Guid.NewGuid();
+		//	}
 
-			//re:messages - currently passed to mapping but no errors are trapped??
-			//				- should use SaveStatus and skip import if errors encountered (vs warnings)
+		//	//re:messages - currently passed to mapping but no errors are trapped??
+		//	//				- should use SaveStatus and skip import if errors encountered (vs warnings)
 
-			output.Name = input.Name;
-			output.Description = input.Description;
+		//	output.Name = input.Name;
+		//	output.Description = input.Description;
 
-			output.CTID = input.Ctid;
-			output.CredentialRegistryId = envelopeIdentifier;
-			output.CostDetails = input.CostDetails;
+		//	output.CTID = input.Ctid;
+		//	output.CredentialRegistryId = envelopeIdentifier;
+		//	output.CostDetails = input.CostDetails;
 
-			output.OwningAgentUid = MappingHelper.MapOrganizationReferencesGuid( input.CostManifestOf, ref status );
+		//	output.OwningAgentUid = MappingHelper.MapOrganizationReferencesGuid( input.CostManifestOf, ref status );
 
-			output.StartDate = MappingHelper.MapDate( input.StartDate, "StartDate", ref status );
-			output.EndDate = MappingHelper.MapDate( input.EndDate, "StartDate", ref status );
+		//	output.StartDate = MappingHelper.MapDate( input.StartDate, "StartDate", ref status );
+		//	output.EndDate = MappingHelper.MapDate( input.EndDate, "StartDate", ref status );
 
-			output.EstimatedCosts = MappingHelper.FormatCosts( input.EstimatedCost, ref status );
+		//	output.EstimatedCosts = MappingHelper.FormatCosts( input.EstimatedCost, ref status );
 
-			status.DocumentId = output.Id;
-			status.DocumentRowId = output.RowId;
+		//	status.DocumentId = output.Id;
+		//	status.DocumentRowId = output.RowId;
 
-			//=== if any messages were encountered treat as warnings for now
-			if ( messages.Count > 0 )
-				status.SetMessages( messages, true );
+		//	//=== if any messages were encountered treat as warnings for now
+		//	if ( messages.Count > 0 )
+		//		status.SetMessages( messages, true );
 
-			importSuccessfull = mgr.Import( output, ref status );
-			//just in case
-			if ( status.HasErrors )
-				importSuccessfull = false;
+		//	importSuccessfull = mgr.Import( output, ref status );
+		//	//just in case
+		//	if ( status.HasErrors )
+		//		importSuccessfull = false;
 
-			//if record was added to db, add to/or set EntityResolution as resolved
-			int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
-						ctid,
-						CodesManager.ENTITY_TYPE_COST_MANIFEST,
-						output.RowId,
-						output.Id,
-						false,
-						ref messages,
-						output.Id > 0 );
-   //     }
-			//catch ( Exception ex )
-			//{
+		//	//if record was added to db, add to/or set EntityResolution as resolved
+		//	int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+		//				ctid,
+		//				CodesManager.ENTITY_TYPE_COST_MANIFEST,
+		//				output.RowId,
+		//				output.Id,
+		//				false,
+		//				ref messages,
+		//				output.Id > 0 );
+  // //     }
+		//	//catch ( Exception ex )
+		//	//{
 
-   //             LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Finder Import exception" );
-			//}
+  // //             LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Finder Import exception" );
+		//	//}
 
-			return importSuccessfull;
-		}
+		//	return importSuccessfull;
+		//}
 
         public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
         {
@@ -254,10 +239,13 @@ namespace Import.Services
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
             EntityServices mgr = new EntityServices();
-            MappingHelperV3 helper = new MappingHelperV3();
+            MappingHelperV3 helper = new MappingHelperV3(20);
             helper.entityBlankNodes = bnodes;
-  
-            string ctid = input.Ctid;
+			helper.entityBlankNodes = bnodes;
+			helper.CurrentEntityCTID = input.Ctid;
+			helper.CurrentEntityName = input.Name.ToString();
+
+			string ctid = input.Ctid;
             string referencedAtId = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
@@ -283,8 +271,9 @@ namespace Import.Services
             output.CostDetails = input.CostDetails;
 
             output.OwningAgentUid = helper.MapOrganizationReferencesGuid( "CostManifest.OwningAgentUid", input.CostManifestOf, ref status );
-
-            output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
+			helper.CurrentOwningAgentUid = output.OwningAgentUid;
+			//
+			output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
             output.EndDate = helper.MapDate( input.EndDate, "StartDate", ref status );
 
             output.EstimatedCosts = helper.FormatCosts( input.EstimatedCost, ref status );

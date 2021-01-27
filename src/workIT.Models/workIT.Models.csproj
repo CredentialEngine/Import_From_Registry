@@ -44,9 +44,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web.Extensions" />
@@ -64,32 +61,48 @@
     <Compile Include="Common\Address.cs" />
     <Compile Include="Common\Agent.cs" />
     <Compile Include="Common\BaseObject.cs" />
+    <Compile Include="Common\CommonSearchSummary.cs" />
     <Compile Include="Common\CompetencyFramework.cs" />
+    <Compile Include="Common\ConceptScheme.cs" />
     <Compile Include="Common\ConditionManifest.cs" />
     <Compile Include="Common\ContactPoint.cs" />
     <Compile Include="Common\CostManifest.cs" />
     <Compile Include="Common\Credential.cs" />
     <Compile Include="Common\CredentialAlignmentObject.cs" />
     <Compile Include="Common\CredentialSummary.cs" />
+    <Compile Include="Common\EarningsProfile.cs" />
+    <Compile Include="Common\EmploymentOutcomeProfile.cs" />
     <Compile Include="Common\Entity.cs" />
     <Compile Include="Common\Enumeration.cs" />
     <Compile Include="Common\FinancialAlignmentObject.cs" />
     <Compile Include="Common\GeoCoordinates.cs" />
+    <Compile Include="Common\HoldersProfile.cs" />
     <Compile Include="Common\IdentifierValue.cs" />
     <Compile Include="Common\JurisdictionProfile.cs" />
     <Compile Include="Common\LanguageMap.cs" />
+    <Compile Include="Common\MonetaryAmount.cs" />
     <Compile Include="Common\Organization.cs" />
     <Compile Include="Common\OrganizationAssertion.cs" />
     <Compile Include="Common\OrganizationSummary.cs" />
+    <Compile Include="Common\OutcomesBaseObject.cs" />
+    <Compile Include="Common\Pathway.cs" />
+    <Compile Include="Common\PathwayComponent.cs" />
+    <Compile Include="Common\PathwayComponentCondition.cs" />
+    <Compile Include="Common\PathwaySet.cs" />
+    <Compile Include="Common\PathwaySummary.cs" />
     <Compile Include="Common\PhoneNumber.cs" />
     <Compile Include="Common\Place.cs" />
     <Compile Include="Common\QuantitativeValue.cs" />
     <Compile Include="Common\ReferenceFramework.cs" />
     <Compile Include="Common\SiteMessage.cs" />
+    <Compile Include="Common\TransferValueProfile.cs" />
+    <Compile Include="Common\ValueProfile.cs" />
     <Compile Include="Common\Widget.cs" />
     <Compile Include="Common\WidgetV2.cs" />
+    <Compile Include="DescriptionSet.cs" />
     <Compile Include="Elastic\Address.cs" />
     <Compile Include="Elastic\BaseIndex.cs" />
+    <Compile Include="Elastic\CommonIndex.cs" />
     <Compile Include="Elastic\CompetencyFrameworkIndex.cs" />
     <Compile Include="Elastic\IIndex.cs" />
     <Compile Include="Elastic\LearningOppIndex.cs" />
@@ -98,6 +111,8 @@
     <Compile Include="Elastic\CommonClasses.cs" />
     <Compile Include="Elastic\CredentialIndex.cs" />
     <Compile Include="Elastic\OrganizationIndex.cs" />
+    <Compile Include="Elastic\PathwayIndex.cs" />
+    <Compile Include="Helpers\BenchmarkPropertyTotal.cs" />
     <Compile Include="Helpers\Compare.cs" />
     <Compile Include="Helpers\CompetencyFrameworkHelpers.cs" />
     <Compile Include="Helpers\FileReference.cs" />
@@ -113,6 +128,7 @@
     <Compile Include="ProfileModels\AssessmentProfile.cs" />
     <Compile Include="ProfileModels\Assessment_Summary.cs" />
     <Compile Include="ProfileModels\BaseProfile.cs" />
+    <Compile Include="ProfileModels\CompetencyFramework.cs" />
     <Compile Include="ProfileModels\ConditionProfile.cs" />
     <Compile Include="ProfileModels\CostProfile.cs" />
     <Compile Include="ProfileModels\DurationProfile.cs" />
@@ -131,6 +147,10 @@
     <Compile Include="ProfileModels\VerificationServiceProfile.cs" />
     <Compile Include="ProfileModels\VerificationStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QData\DataProfile.cs" />
+    <Compile Include="QData\DataSetProfile.cs" />
+    <Compile Include="QData\DataSetTimeFrame.cs" />
+    <Compile Include="QData\SubjectProfile.cs" />
     <Compile Include="SaveStatus.cs" />
     <Compile Include="Search\BaseSearchModel.cs" />
     <Compile Include="Search\MainSearch.cs" />
@@ -139,11 +159,10 @@
     <Compile Include="SiteActivity.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config">
-      <SubType>Designer</SubType>
-    </None>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>12.0.3</Version>
+    </PackageReference>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

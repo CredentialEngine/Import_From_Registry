@@ -186,7 +186,7 @@ namespace workIT.Factories
 
 			return efEntity.Id;
 		}
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+        public bool DeleteAll( Entity parent, ref SaveStatus status, DateTime? lastUpdated = null )
         {
             bool isValid = true;
             //Entity parent = EntityManager.GetEntity( parentUid );
@@ -195,20 +195,43 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_ConditionProfile.RemoveRange( context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			try 
+			{ 
+				using ( var context = new EntityContext() )
+				{
+					//20-12-03 mp - getting deadlock errors. 
+					//			- trying this here and individual deletes for addresses to assess
+					//20-12-09 mp - didn't help, try using loop
+					//context.Database.ExecuteSqlCommand( "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;" );
+					//context.Entity_ConditionProfile.RemoveRange( context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id ) );
+		//            int count = context.SaveChanges();
+		//            if ( count > 0 )
+		//            {
+		//                isValid = true;
+		//            }
 
+
+					var results = context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id && ( lastUpdated == null || s.LastUpdated < lastUpdated ) )
+	.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					foreach ( var item in results )
+					{
+						context.Entity_ConditionProfile.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
+					}
+				}
+		
+			} catch (Exception ex)
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+		LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+			}
             return isValid;
         }
         public bool UpdateParts(ThisEntity entity, ref SaveStatus status)
@@ -268,7 +291,7 @@ namespace workIT.Factories
 				Entity_CredentialManager ecm = new Entity_CredentialManager();
 				foreach ( int id in entity.TargetCredentialIds )
 				{
-					ecm.Add( entity.RowId, id, ref newId, ref status );
+					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 				}
 			}
 
@@ -277,7 +300,7 @@ namespace workIT.Factories
 				Entity_AssessmentManager eam = new Entity_AssessmentManager();
 				foreach ( int id in entity.TargetAssessmentIds )
 				{
-					newId = eam.Add( entity.RowId, id, true, ref status );
+					newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 				}
 			}
 
@@ -286,8 +309,8 @@ namespace workIT.Factories
 				Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
 				foreach ( int id in entity.TargetLearningOpportunityIds )
 				{
-					LoggingHelper.DoTrace( 6, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
-					newId = elm.Add( entity.RowId, id, true, ref status );
+					LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
+					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 				}
 			}
 
@@ -300,7 +323,7 @@ namespace workIT.Factories
 				//	newId = ecm.Add( entity.RowId, id, true, ref status );
 				//}
 			}
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		/// <summary>
@@ -432,7 +455,7 @@ namespace workIT.Factories
 			if ( hasCreditHourData && hasCreditUnitData )
 				status.AddWarning( "Error: Data can be entered for Credit Hour related properties or Credit Unit related properties, but not for both." );
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 		#endregion
 
@@ -486,9 +509,91 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
-		
 
-		
+		/// <summary>
+		/// get all assessments related to condition profiles for the parent entity
+		/// Current use is for onclick of a gray box in the search results
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		public static List<AssessmentProfile> GetAllAssessments( int topParentTypeId, int topParentEntityBaseId )
+		{
+			var list = new List<AssessmentProfile>();
+			Entity parent = EntityManager.GetEntity( topParentTypeId, topParentEntityBaseId );
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_ConditionProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.ConnectionTypeId )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							list.AddRange( Entity_AssessmentManager.GetAll( item.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART ));
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAllAssessments" );
+			}
+			return list;
+		}//
+		/// <summary>
+		/// get all LearningOpportunities related to condition profiles for the parent entity
+		/// Current use is for onclick of a gray box in the search results
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		public static List<LearningOpportunityProfile> GetAllLearningOpportunities( int topParentTypeId, int topParentEntityBaseId )
+		{
+			var list = new List<LearningOpportunityProfile>();
+			Entity parent = EntityManager.GetEntity( topParentTypeId, topParentEntityBaseId );
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_ConditionProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.ConnectionTypeId )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							list.AddRange( Entity_LearningOpportunityManager.LearningOpps_GetAll( item.RowId, true ) );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAllLearningOpportunities" );
+			}
+			return list;
+		}//
+
+
 		public static ThisEntity GetAs_IsPartOf(Guid rowId)
 		{
 			ThisEntity entity = new ThisEntity();
@@ -619,6 +724,19 @@ namespace workIT.Factories
 			else
 				output.Weight = null;
 			//======================================================================
+			// can have just CreditUnitTypeDescription.Will need a policy if both are found?
+			//	-possibly create a second CreditValue?
+			output.CreditUnitTypeDescription = null;
+			if ( !string.IsNullOrWhiteSpace( input.CreditUnitTypeDescription ) )
+				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
+			//progressive move to use list and json
+			//output.CreditValueJson = null;
+			if ( input.CreditValueList != null && input.CreditValueList.Any() )
+			{
+				//output.CreditValueJson = input.CreditValueJson;
+				input.CreditValue = input.CreditValueList[ 0 ];
+			}
+			
 			if ( input.CreditValue.HasData() )
 			{
 				if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
@@ -631,37 +749,46 @@ namespace workIT.Factories
 					{
 						//if not get by schema
 						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-						output.CreditUnitTypeId = code.Id;
+						if ( code.Id > 0 )
+							output.CreditUnitTypeId = code.Id;
+						else
+						{
+							output.CreditHourType = item.SchemaName;
+							//message
+							LoggingHelper.LogError( string.Format( "ConditionProfile: EntityId: '{0}'. CreditUnit schema of {1} was not found.", input.ParentId, item.SchemaName ) );
+						}
 					}
 				}
 				output.CreditUnitValue = input.CreditValue.Value;
 				output.CreditUnitMaxValue = input.CreditValue.MaxValue;
 				if ( input.CreditValue.MaxValue > 0 )
 					output.CreditUnitValue = input.CreditValue.MinValue;
-				output.CreditUnitTypeDescription = input.CreditValue.Description;
+				if (!string.IsNullOrWhiteSpace( input.CreditValue.Description ) )
+					output.CreditUnitTypeDescription = input.CreditValue.Description;
+				
 			}
-			else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
-			{
+			//else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
+			//{
 
-				//output.CreditHourType = GetData( input.CreditHourType, null );
-				//output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
-				//output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
-				if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
-				{
-					//get Id if available
-					EnumeratedItem item = input.CreditUnitType.GetFirstItem();
-					if ( item != null && item.Id > 0 )
-						output.CreditUnitTypeId = item.Id;
-					else
-					{
-						//if not get by schema
-						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-						output.CreditUnitTypeId = code.Id;
-					}
-				}
-				output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
-				output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
-			}
+			//	//output.CreditHourType = GetData( input.CreditHourType, null );
+			//	//output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
+			//	//output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
+			//	if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
+			//	{
+			//		//get Id if available
+			//		EnumeratedItem item = input.CreditUnitType.GetFirstItem();
+			//		if ( item != null && item.Id > 0 )
+			//			output.CreditUnitTypeId = item.Id;
+			//		else
+			//		{
+			//			//if not get by schema
+			//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+			//			output.CreditUnitTypeId = code.Id;
+			//		}
+			//	}
+			//	output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
+			//	output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
+			//}
 
 			if (IsValidDate(input.DateEffective))
 				output.DateEffective = DateTime.Parse(input.DateEffective);
@@ -670,114 +797,123 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB(DBEntity from, ThisEntity to
+		public static void MapFromDB(DBEntity input, ThisEntity output
 				, bool includingProperties
 				, bool incudingResources
 				, bool isForCredentialDetails
 				, bool getMinimumOnly = false //will be true for link checker
 			) 
 		{
-			MapFromDB_Basics( from, to, isForCredentialDetails );
-			to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
+			MapFromDB_Basics( input, output, isForCredentialDetails );
+			output.EstimatedCosts = CostProfileManager.GetAll( output.RowId );
 
 			if ( getMinimumOnly )
 				return;
 			//========================================================
 			//TODO - determine what is really needed for the detail page for conditions
 
-			to.Experience = from.Experience;
-			to.MinimumAge = GetField(from.MinimumAge, 0);
-			to.YearsOfExperience = GetField(from.YearsOfExperience, 0m);
-			to.Weight = GetField( from.Weight, 0m );
+			output.Experience = input.Experience;
+			output.MinimumAge = GetField(input.MinimumAge, 0);
+			output.YearsOfExperience = GetField(input.YearsOfExperience, 0m);
+			output.Weight = GetField( input.Weight, 0m );
 
 			//=========================================================
 			//populate QV
-			to.CreditValue = FormatQuantitiveValue( to.CreditUnitTypeId, to.CreditUnitValue, to.CreditUnitMaxValue, to.CreditUnitTypeDescription );
-			if ( to.CreditValue.HasData() )
+			output.CreditValue = FormatQuantitiveValue( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
+			if ( output.CreditValue.HasData() )
 			{
-				to.CreditUnitType = to.CreditValue.CreditUnitType;
-				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
-				to.CreditUnitTypeDescription = to.CreditValue.Description;
+				//pending
+				output.CreditValueList.Add( output.CreditValue );
+				//
+				output.CreditUnitType = output.CreditValue.CreditUnitType;
+				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+				output.CreditUnitTypeDescription = output.CreditValue.Description;
 
-				to.CreditUnitValue = to.CreditValue.Value;
-				to.CreditUnitMaxValue = to.CreditValue.MaxValue;
+				output.CreditUnitValue = output.CreditValue.Value;
+				output.CreditUnitMaxValue = output.CreditValue.MaxValue;
+				if ( output.CreditUnitMaxValue > 0 )
+				{
+					output.CreditUnitValue = output.CreditValue.MinValue;
+					output.CreditUnitMinValue = output.CreditValue.MinValue;
+					output.CreditValueIsRange = true;
+				}
 			}
 			else
 			{
 				//check for old
-				to.CreditUnitTypeId = ( from.CreditUnitTypeId ?? 0 );
-				to.CreditUnitTypeDescription = from.CreditUnitTypeDescription;
-				to.CreditUnitValue = from.CreditUnitValue ?? 0M;
-				to.CreditUnitMaxValue = from.CreditUnitMaxValue ?? 0M;
+				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
+				output.CreditUnitValue = input.CreditUnitValue ?? 0M;
+				output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
 				//temp handling of clock hpurs
-				//to.CreditHourType = from.CreditHourType ?? "";
-				//to.CreditHourValue = ( from.CreditHourValue ?? 0M );
-				//if ( to.CreditHourValue > 0 )
+				//output.CreditHourType = input.CreditHourType ?? "";
+				//output.CreditHourValue = ( input.CreditHourValue ?? 0M );
+				//if ( output.CreditHourValue > 0 )
 				//{
-				//	to.CreditUnitValue = to.CreditHourValue;
-				//	to.CreditUnitTypeDescription = to.CreditHourType;
+				//	output.CreditUnitValue = output.CreditHourValue;
+				//	output.CreditUnitTypeDescription = output.CreditHourType;
 				//}
 			}
 
 			//======================================================================
 
-			if ( IsValidDate(from.DateEffective))
-				to.DateEffective = ((DateTime)from.DateEffective).ToShortDateString();
+			if ( IsValidDate(input.DateEffective))
+				output.DateEffective = ((DateTime)input.DateEffective).ToShortDateString();
 			else
-				to.DateEffective = "";
+				output.DateEffective = "";
 			
 
-			to.Condition = Entity_ReferenceManager.GetAll(to.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM);
+			output.Condition = Entity_ReferenceManager.GetAll(output.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM);
 
-			to.SubmissionOf = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM );
-			to.SubmissionOfDescription = from.SubmissionOfDescription;
-			//to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
+			output.SubmissionOf = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM );
+			output.SubmissionOfDescription = input.SubmissionOfDescription;
+			//output.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( output.RowId, "requires" );
 			var frameworksList = new Dictionary<string, RegistryImport>();
-            to.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( to.RowId, ref frameworksList);
-            if ( to.RequiresCompetenciesFrameworks.Count > 0 )
+            output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, ref frameworksList);
+            if ( output.RequiresCompetenciesFrameworks.Count > 0 )
             {
-                to.HasCompetencies = true;
-                to.FrameworkPayloads = frameworksList;
+                output.HasCompetencies = true;
+                output.FrameworkPayloads = frameworksList;
             }
 
             
 
 			if (includingProperties)
 			{
-				to.AudienceLevel = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
-				to.ApplicableAudienceType = EntityPropertyManager.FillEnumeration(to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE);
+				output.AudienceLevel = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
+				output.ApplicableAudienceType = EntityPropertyManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE);
 
-				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(to.RowId);
+				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId);
 
-				to.ResidentOf = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT);
+				output.ResidentOf = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT);
 
 			}
 
 
 			if (incudingResources)
 			{
-				//if for the detail page, want to include more info, but not all
-				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, isForCredentialDetails );
+				//if for the detail page, want output include more info, but not all
+				output.TargetCredential = Entity_CredentialManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForCredentialDetails );
 
 				//assessment
 				//for entity.condition(ec) - entity = ec.rowId
-				to.TargetAssessment = Entity_AssessmentManager.GetAll(to.RowId );
-				foreach ( AssessmentProfile ap in to.TargetAssessment )
+				output.TargetAssessment = Entity_AssessmentManager.GetAll(output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
+				foreach ( AssessmentProfile ap in output.TargetAssessment )
 					
 				{
 					if ( ap.HasCompetencies || ap.ChildHasCompetencies )
 					{
-						to.ChildHasCompetencies = true;
+						output.ChildHasCompetencies = true;
 						break;
 					}
 				}	
 
-				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, false, isForCredentialDetails );
-				foreach (LearningOpportunityProfile e in to.TargetLearningOpportunity)
+				output.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( output.RowId, false, isForCredentialDetails );
+				foreach (LearningOpportunityProfile e in output.TargetLearningOpportunity)
 				{
 					if (e.HasCompetencies || e.ChildHasCompetencies)
 					{
-						to.ChildHasCompetencies = true;
+						output.ChildHasCompetencies = true;
 						break;
 					}
 				}

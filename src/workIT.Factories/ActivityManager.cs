@@ -15,6 +15,7 @@ using workIT.Utilities;
 using Views = workIT.Data.Views;
 using ViewContext = workIT.Data.Views.workITViews;
 using EntityContext = workIT.Data.Tables.workITEntities;
+using System.Runtime.InteropServices;
 
 namespace workIT.Factories
 {
@@ -116,7 +117,7 @@ namespace workIT.Factories
                 try
                 {
                     log.CreatedDate = System.DateTime.Now;
-                    if ( log.ActivityType == null || log.ActivityType.Length < 5 )
+                    if ( log.ActivityType == null || log.ActivityType.Length < 3 )
                         log.ActivityType = "Audit";
 
                     context.ActivityLog.Add( log );
@@ -166,7 +167,8 @@ namespace workIT.Factories
             to.TargetObjectId = from.TargetObjectId;
             to.SessionId = from.SessionId;
             to.IPAddress = from.IPAddress;
-            to.Referrer = from.Referrer;
+			to.Referrer = from.Referrer;
+            //to.Referrer = !string.IsNullOrEmpty(from.Referrer) && from.Referrer.lentg;
             to.IsBot = from.IsBot;
 
         }
@@ -220,7 +222,8 @@ namespace workIT.Factories
             bool isDup = false;
             try
             {
-                if ( HttpContext.Current.Session != null )
+				
+				if ( HttpContext.Current.Session != null )
                 {
                     string lastAction = HttpContext.Current.Session[sessionKey].ToString();
                     if ( lastAction.ToLower() == actionComment.ToLower() )

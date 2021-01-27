@@ -14,16 +14,21 @@ namespace Import.Services
 {
     public class RegistryServices
     {
-		public static string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "CredentialEngineAPIKey" );
+		public static string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
 
-		public RegistryServices()
+        public static string REGISTRY_ACTION_DELETE = "Registry Delete";
+        public static string REGISTRY_ACTION_PURGE = "Registry Purge";
+        public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
+        public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
+
+        public RegistryServices()
 		{
 			//Community
 		}
 		public string Community { get; set; }
 
 		#region Registry search
-		public static List<ReadEnvelope> Search( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community )
+		public static List<ReadEnvelope> Search( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder="asc" )
 		{
 
 			string document = "";
@@ -37,8 +42,9 @@ namespace Import.Services
 
 			SetPaging( pageNbr, pageSize, ref filter );
 			SetDateFilters( startingDate, endingDate, ref filter );
+            SetSortOrder( ref filter, sortOrder );
 
-			serviceUri += filter.Length > 0 ? filter : "";
+            serviceUri += filter.Length > 0 ? filter : "";
 			//future proof
 			
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
@@ -71,7 +77,11 @@ namespace Import.Services
 				//Link contains links for paging
 				var hdr2 = response.GetResponseHeader( "Link" );
 				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
-
+				//20-07-02 mp - seems the header name is now X-Total
+				if ( pTotalRows == 0)
+				{
+					Int32.TryParse( response.GetResponseHeader( "X-Total" ), out pTotalRows );
+				}
 				//map to the list
 				list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
 
@@ -88,9 +98,25 @@ namespace Import.Services
 			{
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			}
-			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
-			serviceUri = string.Format( serviceUri, community );
-			return serviceUri;
+			//
+			if ( UtilityManager.GetAppKeyValue( "usingAssistantRegistrySearch", false ) )
+			{
+				string serviceUri = UtilityManager.GetAppKeyValue( "assistantCredentialRegistrySearch" );
+				if ( !string.IsNullOrWhiteSpace( community ) )
+					serviceUri += "community=" + community + "&";
+
+				return serviceUri;
+			}
+			else
+			{
+				string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+				serviceUri = string.Format( serviceUri, community );
+				return serviceUri;
+			}
+			//
+			//string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+			//serviceUri = string.Format( serviceUri, community );
+			//return serviceUri;
 		}
 		public static string GetEnvelopeUrl(string envelopeId, string community = "")
 		{
@@ -112,12 +138,7 @@ namespace Import.Services
 			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
 
 			string registryUrl = string.Format( serviceUri, community, ctid );
-			//not sure about this anymore
-            //actually dependent on the purpose. If doing an import, then need graph
-			if ( UtilityManager.GetAppKeyValue( "usingGraphDocuments", true ) )
-			{
-                registryUrl = registryUrl.Replace( "/resources/", "/graph/" );
-			}
+
 			return registryUrl;
 		}
 		//public static string GetRegistryEnvelopeUrl(string community)
@@ -154,12 +175,15 @@ namespace Import.Services
 				AND = "&";
 			}
 		}
-		private static void SetSortOrder( ref string where )
+		private static void SetSortOrder( ref string where, string sortOrder = "asc" )
 		{
 			string AND = "";
 			if ( where.Length > 0 )
 				AND = "&";
-			where = where + AND + "sort_by=updated_at&sort_order=asc";
+			if ( string.IsNullOrWhiteSpace( sortOrder ) )
+				sortOrder = "asc";
+            //this is the default anyway - maybe not, seems like dsc is the default
+			where = where + AND + "sort_by=updated_at&sort_order=" + sortOrder;
 		}
 
 		private static void SetDateFilters( string startingDate, string endingDate, ref string where )
@@ -195,6 +219,7 @@ namespace Import.Services
 			//start by checking for just properly formatted date
 			if ( !string.IsNullOrWhiteSpace( date ) && date.Length == 10 )
 			{
+                //apparently this is not necessary!!
 				formatedDate = string.Format( "{0}T00:00:00", date );
 			}
 			else if ( !string.IsNullOrWhiteSpace( date ) )
@@ -271,8 +296,14 @@ namespace Import.Services
                         //break;
                         case "costmanifest":
                             return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
-                        //break;
-                        default:
+						case "competencyframework":
+							return new ImportCompetencyFramesworks().CustomProcessEnvelope( envelope, status );
+						case "pathway":
+							return new ImportPathways().CustomProcessEnvelope( envelope, status );
+						case "transfervalueprofile":
+							return new ImportTransferValue().CustomProcessEnvelope( envelope, status );
+						//break;
+						default:
                             //default to credential
                             return new ImportCredential().CustomProcessRequest( envelope, status );
                             //break;
@@ -306,16 +337,65 @@ namespace Import.Services
 
             string statusMessage = "";
             string ctdlType = "";
-            string payload = "";
+            //string payload = "";
             try
             {
-                payload = GetResourceByCtid( ctid, ref ctdlType, ref statusMessage );
+				//TODO - should get envelope by ctid in order to get envelope dates
+				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+				if ( envelope == null || string.IsNullOrWhiteSpace( envelope.EnvelopeType ) )
+				{
+					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
+					if ( defCommunity != community )
+						envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType, community );
+				}
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, CTID: {1} ", ctdlType, ctid ) );
+					ctdlType = ctdlType.Replace( "ceterms:", "" );
+
+					switch ( ctdlType.ToLower() )
+					{
+						case "credentialorganization":
+						case "qacredentialorganization": //what distinctions do we need for QA orgs?
+						case "organization":
+							return new ImportOrganization().CustomProcessEnvelope( envelope, status );
+						//break;CredentialOrganization
+						case "assessmentprofile":
+							return new ImportAssessment().CustomProcessEnvelope( envelope, status );
+						//break;
+						case "learningopportunityprofile":
+							return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
+						//break;
+						case "conditionmanifest":
+							return new ImportAssessment().CustomProcessEnvelope( envelope, status );
+						//break;
+						case "costmanifest":
+							return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
+						case "competencyframework":
+							return new ImportCompetencyFramesworks().CustomProcessEnvelope( envelope, status );
+						case "pathway":
+							return new ImportPathways().CustomProcessEnvelope( envelope, status );
+						case "transfervalueprofile":
+							return new ImportTransferValue().CustomProcessEnvelope( envelope, status );
+						//break;
+						default:
+							//default to credential
+							return new ImportCredential().CustomProcessRequest( envelope, status );
+							//break;
+					}
+				}
+				else
+					return false;
+				
+				/*======OLD ===================
+				payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage );
 				if (string.IsNullOrWhiteSpace(payload))
 				{
 					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
 					if ( defCommunity != community )
-						payload = GetResourceByCtid( ctid, ref ctdlType, ref statusMessage, community );
+						payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage, community );
 				}
 				if ( !string.IsNullOrWhiteSpace( payload ) )
                 {
@@ -340,8 +420,20 @@ namespace Import.Services
                         //break;
                         case "costmanifest":
                             return new ImportCostManifests().ImportByPayload( payload, status );
-                        //break;
-                        default:
+						case "competencyframework":
+							return new ImportCompetencyFramesworks().Import( payload, "", status );
+						case "conceptscheme":
+						case "skos:conceptscheme":
+							return new ImportConceptSchemes().Import( payload, "", status );
+						case "pathway":
+							return new ImportPathways().Import( payload, "", status );
+						case "pathwayset":
+							return new ImportPathwaySets().Import( payload, "", status );
+						case "transfervalue":
+						case "transfervalueprofile":
+							return new ImportTransferValue().Import( payload, "", status );
+						//break;
+						default:
                             //default to credential
                             return new ImportCredential().ImportByPayload( payload, status );
                             //break;
@@ -349,10 +441,11 @@ namespace Import.Services
                 }
                 else
                     return false;
+				*/
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, string.Format( "ImportCredential.ImportByEnvelopeId(). ctdlType: {0}", ctdlType ) );
+                LoggingHelper.LogError( ex, string.Format( "ImportCredential.ImportByCtid(). ctdlType: {0}", ctdlType ) );
                 status.AddError( ex.Message );
                 if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
                 {
@@ -364,9 +457,9 @@ namespace Import.Services
 
 
         /// <summary>
-        /// Retrieve an envelope from the registry
+        /// Retrieve an envelope from the registry - using either envelopeId or CTID (same format)
         /// </summary>
-        /// <param name="envelopeId"></param>
+        /// <param name="envelopeId">20-12-07 - sometimes CTID will be passed as will work as expected.</param>
         /// <param name="statusMessage"></param>
         /// <param name="ctdlType"></param>
         /// <returns></returns>
@@ -377,7 +470,7 @@ namespace Import.Services
 			if (string.IsNullOrWhiteSpace( community ) )
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			string serviceUri = GetEnvelopeUrl( envelopeId, community );
-
+            //
 			serviceUri = string.Format( serviceUri, envelopeId );
             LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeId: {0}, serviceUri: {1} ", envelopeId, serviceUri ) );
             ReadEnvelope envelope = new ReadEnvelope();
@@ -425,20 +518,86 @@ namespace Import.Services
             }
             catch ( Exception exc )
             {
-                LoggingHelper.LogError( exc, "RegistryServices.GetEnvelope" );
+				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelope. Not found for envelopeId: {0}", envelopeId ) );
+				else 
+					LoggingHelper.LogError( exc, string.Format( "RegistryServices.GetEnvelope. EnvelopeId: {0}", envelopeId ) );
                 statusMessage = exc.Message;
             }
             return envelope;
         }
+		public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType, string community = "" )
+		{
+			string document = "";
+			//need to pass in an override community - eventually
+			if ( string.IsNullOrWhiteSpace( community ) )
+				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+			string serviceUri = GetEnvelopeUrl( ctid, community );
+			//
+			serviceUri = string.Format( serviceUri, ctid );
+			LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope ctid: {0}, serviceUri: {1} ", ctid, serviceUri ) );
+			ReadEnvelope envelope = new ReadEnvelope();
 
-        /// <summary>
-        /// Use search to get the envelope for a ctid
-        /// </summary>
-        /// <param name="ctid"></param>
-        /// <param name="statusMessage"></param>
-        /// <param name="ctdlType"></param>
-        /// <returns></returns>
-        public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType, string community = "")
+			try
+			{
+				// Create a request for the URL.         
+				WebRequest request = WebRequest.Create( serviceUri );
+				// If required by the server, set the credentials.
+				request.Credentials = CredentialCache.DefaultCredentials;
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
+
+				//Get the response.
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+
+				// Get the stream containing content returned by the server.
+				Stream dataStream = response.GetResponseStream();
+
+				// Open the stream using a StreamReader for easy access.
+				StreamReader reader = new StreamReader( dataStream );
+				// Read the content.
+				document = reader.ReadToEnd();
+
+				// Cleanup the streams and the response.
+
+				reader.Close();
+				dataStream.Close();
+				response.Close();
+
+				//map to the default envelope
+				envelope = JsonConvert.DeserializeObject<ReadEnvelope>( document );
+
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					string payload = envelope.DecodedResource.ToString();
+					ctdlType = RegistryServices.GetResourceType( payload );
+
+					//return ProcessProxy( mgr, item, status );
+				}
+			}
+			catch ( Exception exc )
+			{
+				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelopeByCtid. Not found for CTID: {0}", ctid ) );
+				else
+					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelopeByCtid: " + ctid );
+				statusMessage = exc.Message;
+			}
+			return envelope;
+		}
+
+		/// <summary>
+		/// Use search to get the envelope for a ctid
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <param name="statusMessage"></param>
+		/// <param name="ctdlType"></param>
+		/// <returns></returns>
+		[Obsolete]
+		public static ReadEnvelope GetEnvelopeByCtidSearch( string ctid, ref string statusMessage, ref string ctdlType, string community = "")
         {
             string document = "";
 			//perhaps this should be done in the caller. It could check the default or previous import source
@@ -446,7 +605,6 @@ namespace Import.Services
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			string additionalCommunity = UtilityManager.GetAppKeyValue( "additionalCommunity" );
 
-			string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "CredentialEngineAPIKey" );
 			//
 
 			string searchUrl = GetRegistrySearchUrl( community );
@@ -498,7 +656,10 @@ namespace Import.Services
             }
             catch ( Exception exc )
             {
-                LoggingHelper.LogError( exc, "RegistryServices.GetEnvelopeByCtid" );
+				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelopeByCtid. Not found for envelopeId: {0}", ctid ) );
+				else
+					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelopeByCtid for " + ctid );
                 statusMessage = exc.Message;
             }
             return envelope;
@@ -517,6 +678,16 @@ namespace Import.Services
             return GetResourceByUrl( resourceIdUrl, ref ctdlType, ref statusMessage );
         }
 
+        public static string GetResourceGraphByCtid(string ctid, ref string ctdlType, ref string statusMessage, string community = "")
+        {
+            string registryUrl = GetResourceUrl( ctid, community );
+            //not sure about this anymore
+            //actually dependent on the purpose. If doing an import, then need graph
+            //here will always want graph
+            registryUrl = registryUrl.Replace( "/resources/", "/graph/" );         
+
+            return GetResourceByUrl( registryUrl, ref ctdlType, ref statusMessage );
+        }
         /// <summary>
         /// Retrieve a resource from the registry by resourceId
         /// </summary>
@@ -564,11 +735,11 @@ namespace Import.Services
                 if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
                 {
                     //need to surface these better
-                    statusMessage = "ERROR - resource was (still) not found in registry: " + resourceUrl;
+                    statusMessage = "ERROR - resource was not found in registry: " + resourceUrl;
                 }
                 else
                 {
-                    LoggingHelper.LogError( exc, "RegistryServices.GetResource" );
+                    LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl" );
                     statusMessage = exc.Message;
                 }
             }
@@ -628,9 +799,14 @@ namespace Import.Services
             return ctdlType;
         }
 
+		/// <summary>
+		/// Handle import of records with a 'pending' state (entityStateId=1)
+		/// </summary>
+		/// <returns></returns>
         public string ImportPending()
         {
             string status = "";
+            LoggingHelper.DoTrace( 1, "Import.Services.RegistryServices.ImportPending - start" );
             new ImportCredential().ImportPendingRecords();
 
             new ImportOrganization().ImportPendingRecords();
@@ -639,6 +815,7 @@ namespace Import.Services
 
             new ImportLearningOpportunties().ImportPendingRecords();
 
+            LoggingHelper.DoTrace( 1, "Import.Services.RegistryServices.ImportPending - completed" );
             return status;
         }
 
@@ -705,15 +882,35 @@ namespace Import.Services
                     BaseObject = JsonConvert.DeserializeObject<RegistryBaseObject>( main );
                     CtdlType = BaseObject.CdtlType;
                     Ctid = BaseObject.Ctid;
-					//not important to fully resolve yet
-					if ( BaseObject.Name != null )
-						Name = BaseObject.Name.ToString();
-					else if ( CtdlType == "ceasn:CompetencyFramework" )
-					{
-						Name = ( BaseObject.CompetencyFrameworkName ?? "" ).ToString();
-					}
-					else
-						Name = "?????";
+                    //not important to fully resolve yet
+                    if ( BaseObject.Name != null )
+                    {
+                        Name = BaseObject.Name.ToString();
+                        if (Name.IndexOf("{") > -1 && Name.IndexOf( ":" ) > 1)
+                        {
+                            int pos = Name.IndexOf( "\"", Name.IndexOf( ":" ) );
+                            int endpos = Name.IndexOf( "\"", pos+1 );
+                            if ( pos > 1 && endpos > pos )
+                            {
+                                Name = Name.Substring( pos + 1, endpos - ( pos + 1 ) );
+                            }
+                        }
+                        if ( BaseObject.Name is LanguageMap )
+                        {
+
+                        }
+                    }
+                    else if ( CtdlType == "ceasn:CompetencyFramework" )
+                    {
+                        Name = ( BaseObject.CompetencyFrameworkName ?? "" ).ToString();
+                    }
+                    else
+                        Name = "?????";
+
+                    //if ( BaseObject.Name.GetType())
+                    //{
+
+                    //}
 				}
                 else
                 {
@@ -722,6 +919,15 @@ namespace Import.Services
                     CtdlType = BaseObject.CdtlType;
                     Ctid = BaseObject.Ctid;
                     Name = BaseObject.Name.ToString();
+                    if ( Name.IndexOf( "{" ) > -1 && Name.IndexOf( ":" ) > 1 )
+                    {
+                        int pos = Name.IndexOf( "\"", Name.IndexOf( ":" ) );
+                        int endpos = Name.IndexOf( "\"", pos + 1 );
+                        if ( pos > 1 && endpos > pos )
+                        {
+                            Name = Name.Substring( pos + 1, endpos - ( pos + 1 ) );
+                        }
+                    }
                 }
                 CtdlType = CtdlType.Replace( "ceterms:", "" );
 				CtdlType = CtdlType.Replace( "ceasn:", "" );

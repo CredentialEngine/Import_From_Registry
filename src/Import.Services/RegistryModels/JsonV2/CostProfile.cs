@@ -12,8 +12,8 @@ namespace RA.Models.JsonV2
             Type = "ceterms:CostProfile";
             Jurisdiction = new List<JurisdictionProfile>();
 			//Region = null;
-            AudienceType = new List<CredentialAlignmentObject>();
-            ResidencyType = new List<CredentialAlignmentObject>();
+            //AudienceType = new List<CredentialAlignmentObject>();
+            //ResidencyType = new List<CredentialAlignmentObject>();
 			//Condition = new List<string>();
 
 		}
@@ -48,7 +48,7 @@ namespace RA.Models.JsonV2
 		public List<JurisdictionProfile> Jurisdiction { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:directCostType" )]
-        public CredentialAlignmentObject DirectCostType { get; set; } = new CredentialAlignmentObject();
+        public CredentialAlignmentObject DirectCostType { get; set; } //= new CredentialAlignmentObject();
 
         //[JsonProperty( PropertyName = "ceterms:directCostType" )]
         //public List<CredentialAlignmentObject> DirectCostTypes { get; set; } = new List<CredentialAlignmentObject>();

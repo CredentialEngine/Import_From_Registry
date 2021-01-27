@@ -37,19 +37,23 @@ namespace workIT.Services
             //do a get, and add to cache before updating
             if ( entity.Id > 0 )
             {
-                var detail = GetDetail( entity.Id, false );
+				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
+				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )	{
+					var detail = GetDetail( entity.Id, false );
+				}
             }
             bool isValid = new EntityMgr().Save( entity, ref status );
             List<string> messages = new List<string>();
 
             if ( entity.Id > 0 )
             {
-				CacheManager.RemoveItemFromCache( "credential", entity.Id );
+				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )
+					CacheManager.RemoveItemFromCache( "credential", entity.Id );
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
                     ThreadPool.QueueUserWorkItem( UpdateCaches2, entity );
-                    new SearchPendingReindexManager().Add( 1, entity.Id, 1, ref messages );
+                   
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
                         status.AddWarningRange( messages );
@@ -76,14 +80,15 @@ namespace workIT.Services
                 return;
             var cred = ( entity as Models.Common.Credential );
             new CacheManager().PopulateEntityRelatedCaches( cred.RowId );
-            //update Elastic
-            if ( Utilities.UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
+			//update Elastic
+			List<string> messages = new List<string>();
+
+			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
                 ElasticServices.Credential_UpdateIndex( cred.Id );
-            else
-            {
-                ElasticServices.Credential_UpdateIndex( cred.Id );
-            }
-        }
+			else
+				new SearchPendingReindexManager().Add( 1, cred.Id, 1, ref messages );
+
+		}
         static void UpdateCaches( Object uuid )
         {
             if ( uuid == null || !ServiceHelper.IsValidGuid( uuid.ToString() ) )
@@ -118,38 +123,55 @@ namespace workIT.Services
                 new SearchPendingReindexManager().Add( 1, item, 1, ref messages );
             }
         }
-        #endregion
+		#endregion
 
-        #region search 
-        /// <summary>
-        /// Credential autocomplete
-        /// Needs to check authorization level for credential
-        /// </summary>
-        /// <param name="keyword"></param>
-        /// <param name="maxTerms"></param>
-        /// <returns></returns>
-        public static List<object> Autocomplete( string keyword, int maxTerms = 25)
-        {
-            int userId = 0;
-            string where = "";
-            int pTotalRows = 0;
-            AppUser user = AccountServices.GetCurrentUser();
-            if ( user != null && user.Id > 0 )
-                userId = user.Id;
-            SetAuthorizationFilter( user, ref where );
+		#region search 
+		/// <summary>
+		/// Credential autocomplete
+		/// Needs to check authorization level for credential
+		/// </summary>
+		/// <param name="keyword"></param>
+		/// <param name="maxTerms"></param>
+		/// <returns></returns>
+		public static List<object> Autocomplete( string keywords, int maxTerms = 25 )
+		{
+			int userId = 0;
+			string where = " base.EntityStateId = 3 ";
+			string AND = "";
+			int pTotalRows = 0;
+			AppUser user = AccountServices.GetCurrentUser();
+			if ( user != null && user.Id > 0 )
+				userId = user.Id;
 
-			SetKeywordFilter( keyword, true, ref where );
+			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialAutocomplete", false ) )
+			{
+				return ElasticServices.CredentialAutoComplete( keywords, maxTerms, ref pTotalRows );
+			}
+			else
+			{
+				bool usingLinqAutocomplete = true;
+				if ( usingLinqAutocomplete )
+				{
+					return CredentialManager.AutocompleteInternal( keywords, 1, maxTerms, ref pTotalRows );
+				}
+				else 
+				{
+					string text = " (base.name like '{0}'  OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
+					//SetKeywordFilter( keywords, true, ref where );
+					keywords = ServiceHelper.HandleApostrophes( keywords );
+					if ( keywords.IndexOf( "%" ) == -1 )
+					{
+						keywords = SearchServices.SearchifyWord( keywords );
+					}
+					if ( where.Length > 0 )
+						AND = " AND ";
+					where = where + AND + string.Format( " ( " + text + " ) ", keywords );
 
-            if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
-            {
-                return ElasticServices.CredentialAutoComplete( keyword, maxTerms, ref pTotalRows );
-            }
-            else
-            {
-                return CredentialManager.Autocomplete( where, 1, maxTerms, ref pTotalRows );
-            }
-            // return new List<string>();
-        }
+					return CredentialManager.AutocompleteDB( where, 1, maxTerms, ref pTotalRows );
+				}
+				// return new List<string>();
+			}
+		}
         public static List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
         {
             int userId = 0;
@@ -158,7 +180,6 @@ namespace workIT.Services
             AppUser user = AccountServices.GetCurrentUser();
             if ( user != null && user.Id > 0 )
                 userId = user.Id;
-            SetAuthorizationFilter( user, ref where );
 
             SetCompetenciesAutocompleteFilter( keyword, ref where );
 
@@ -211,8 +232,6 @@ namespace workIT.Services
             where = where.Replace( "[USERID]", user.Id.ToString() );
 
             SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_CREDENTIAL, ref where );
-
-            //SetAuthorizationFilter( user, ref where );
 
             SearchServices.HandleCustomFilters( data, 58, ref where );
 
@@ -279,8 +298,8 @@ namespace workIT.Services
 
 			//OR CreatorOrgs like '{0}' 
 			bool isCustomSearch = false;
-            //OR base.Description like '{0}'  
-            string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}' OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
+            //OR base.Description like '{0}'  OR base.SubjectWebpage like '{0}'
+            string text = " (base.name like '{0}'  OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
             //for ctid, needs a valid ctid or guid
             if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
             {
@@ -342,36 +361,6 @@ namespace workIT.Services
 
         }
 
-        /// <summary>
-        /// determine which results a user may view, and eventually edit
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="user"></param>
-        /// <param name="where"></param>
-        private static void SetAuthorizationFilter( AppUser user, ref string where )
-        {
-            //string AND = "";
-
-            //if ( where.Length > 0 )
-            //    AND = " AND ";
-            //if ( user == null || user.Id == 0 )
-            //{
-            //	//public only records
-            //	where = where + AND + string.Format( " (base.StatusId = {0}) ", CodesManager.ENTITY_STATUS_PUBLISHED );
-            //	return;
-            //}
-
-            //if ( AccountServices.IsUserSiteStaff( user )
-            //  || AccountServices.CanUserViewAllContent( user) )
-            //{
-            //	//can view all, edit all
-            //	return;
-            //}
-
-            ////can only view where status is published, or associated with the org
-            //where = where + AND + string.Format( "((base.StatusId = {0}) OR (base.Id in (SELECT cs.Id FROM [dbo].[Organization.Member] om inner join [Credential_Summary] cs on om.ParentOrgId = cs.ManagingOrgId where userId = {1}) ))", CodesManager.ENTITY_STATUS_PUBLISHED, user.Id );
-
-        }
         private static void SetPropertiesFilter( MainSearchInput data, ref string where )
         {
             string AND = "";

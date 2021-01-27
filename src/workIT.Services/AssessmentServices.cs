@@ -28,9 +28,13 @@ namespace workIT.Services
             //do a get, and add to cache before updating
             if ( entity.Id > 0 )
             {
-                //need to force caching here
-                var detail = GetDetail( entity.Id );
-            }
+				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+				{
+					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+						GetDetail( entity.Id );
+				}
+			}
             bool isValid = new EntityMgr().Save( entity, ref status );
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
@@ -41,8 +45,8 @@ namespace workIT.Services
                 {
                     //update cache
                     new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-                    //update Elastic
-                    if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
+                    //update Elastic - this if makes no sense, it is either update elastic immediate or add to pending
+                    if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
                         ElasticServices.Assessment_UpdateIndex( entity.Id );
                     else
                     {
@@ -193,11 +197,11 @@ namespace workIT.Services
             //use Entity.SearchIndex for all
             string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where (b.EntityTypeId = 3 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
 
-            string subjectsEtc = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.Reference] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] in (34 ,35) and a.TextValue like '{0}' )) ";
+            //string subjectsEtc = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.Reference] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] in (34 ,35) and a.TextValue like '{0}' )) ";
 
-            string frameworkItems = " OR (RowId in (SELECT EntityUid FROM [dbo].[Entity.FrameworkItemSummary] a where CategoryId= 23 and entityTypeId = 3 AND  a.title like '{0}' ) ) ";
+            //string frameworkItems = " OR (RowId in (SELECT EntityUid FROM [dbo].[Entity.FrameworkItemSummary] a where CategoryId= 23 and entityTypeId = 3 AND  a.title like '{0}' ) ) ";
 
-            string otherFrameworkItems = " OR (RowId in (SELECT EntityUid FROM [dbo].[Entity_Reference_Summary] a where  a.TextValue like '{0}' ) ) ";
+            //string otherFrameworkItems = " OR (RowId in (SELECT EntityUid FROM [dbo].[Entity_Reference_Summary] a where  a.TextValue like '{0}' ) ) ";
 
             string AND = "";
             if ( where.Length > 0 )
@@ -313,7 +317,7 @@ namespace workIT.Services
         private static void SetFrameworksFilter( MainSearchInput data, ref string where )
         {
             string AND = "";
-            string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([FrameworkGroup] in ({1})  OR ([CodeId] in ({2}) )  ))  ) ";
+            //string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([FrameworkGroup] in ({1})  OR ([CodeId] in ({2}) )  ))  ) ";
             string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([ReferenceFrameworkId] in ({2}) )  )) ) ";
             //Updated to use FiltersV2
             string next = "";
@@ -403,7 +407,7 @@ namespace workIT.Services
 			}
 
 			DateTime start = DateTime.Now;
-			ThisEntity entity = EntityMgr.GetDetails( id);
+			ThisEntity entity = EntityMgr.GetForDetail( id);
 
 			DateTime end = DateTime.Now;
 			int elasped = ( end - start ).Seconds;

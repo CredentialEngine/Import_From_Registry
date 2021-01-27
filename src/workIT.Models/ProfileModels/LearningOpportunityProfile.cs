@@ -8,15 +8,15 @@ using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-    [Serializable]
-    public class LearningOpportunityProfile : BaseProfile
+    [Serializable] 
+    public class LearningOpportunityProfile : TopLevelObject
 	{
 		public LearningOpportunityProfile()
 		{
-			OwningOrganization = new Organization();
+			//OwningOrganization = new Organization();
 
 			EstimatedCost = new List<CostProfile>();
-			FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
+			//FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
 			DeliveryType = new Enumeration();
             InstructionalProgramType = new Enumeration();
@@ -61,13 +61,13 @@ namespace workIT.Models.ProfileModels
 			CredentialsList = new CredentialConnectionsResult();
 		}
 
-		public string Name { get; set; }
-		public string FriendlyName { get; set; }
-		public string SubjectWebpage { get; set; }
+		//public string Name { get; set; }
+		//public string FriendlyName { get; set; }
+		//public string SubjectWebpage { get; set; }
 
-		public int EntityStateId { get; set; }
-		public string CredentialRegistryId { get; set; }
-		public string CTID { get; set; }
+		//public int EntityStateId { get; set; }
+		//public string CredentialRegistryId { get; set; }
+		//public string CTID { get; set; }
 
 		/// <summary>
 		/// Single is the primary for now
@@ -79,73 +79,38 @@ namespace workIT.Models.ProfileModels
 		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
 
 		public string AvailableOnlineAt { get; set; }
-		//public List<TextValueProfile> Auto_AvailableOnlineAt { get
-		//	{
-		//		var result = new List<TextValueProfile>();
-		//		if ( !string.IsNullOrWhiteSpace( AvailableOnlineAt ) )
-		//		{
-		//			result.Add( new TextValueProfile() { TextValue = AvailableOnlineAt } );
-		//		}
-		//		return result;
-		//	} }
-		//public List<GeoCoordinates> AvailableAt
-		//{
-		//	get
-		//	{
-		//		return Addresses.ConvertAll( m => new GeoCoordinates()
-		//		{
-		//			Address = m,
-		//			Latitude = m.Latitude,
-		//			Longitude = m.Longitude,
-		//			Name = m.Name
-		//			//Url = ???
-		//		} ).ToList();
-		//	}
-		//	set
-		//	{
-		//		Addresses = value.ConvertAll( m => new Address()
-		//		{
-		//			GeoCoordinates = m,
-		//			Latitude = m.Latitude,
-		//			Longitude = m.Longitude,
-		//			Name = m.Name
-		//			//??? = m.Url
-		//		} ).ToList();
-		//	}
-		//} //Alias used for publishing
-		
 
 		/// <summary>
 		/// OwningAgentUid
 		///  (Nov2016)
 		/// </summary>
-		public Guid OwningAgentUid { get; set; }
+		//public Guid OwningAgentUid { get; set; }
 		/// <summary>
 		/// Inflate OwningAgentUid for display 
 		/// </summary>
-		public Organization OwningOrganization { get; set; }
-		public string OrganizationName
-		{
-			get
-			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Name;
-				else
-					return "";
-			}
-		}
-		public int OwningOrganizationId
-		{
-			get
-			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Id;
-				else
-					return 0;
-			}
-        }
-        public string OwnerOrganizationName { get; set; }
-		public string PrimaryOrganizationCTID { get; set; }
+		//public Organization OwningOrganization { get; set; }
+		//public string OrganizationName
+		//{
+		//	get
+		//	{
+		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+		//			return OwningOrganization.Name;
+		//		else
+		//			return "";
+		//	}
+		//}
+		//public int OwningOrganizationId
+		//{
+		//	get
+		//	{
+		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+		//			return OwningOrganization.Id;
+		//		else
+		//			return 0;
+		//	}
+		//}
+        //public string OwnerOrganizationName { get; set; }
+		//public string PrimaryOrganizationCTID { get; set; }
 		public Enumeration OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
 
@@ -153,7 +118,13 @@ namespace workIT.Models.ProfileModels
 		/// CodedNotation replaces IdentificationCode
 		/// </summary>
 		public string CodedNotation { get; set; }
-
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// </summary>	
+		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		//or could store this as json
+		public string IdentifierJson { get; set; }
 		//public int InLanguageId { get; set; }
 		//public string InLanguage { get; set; }
 		//public string InLanguageCode { get; set; }
@@ -161,14 +132,20 @@ namespace workIT.Models.ProfileModels
 
 		//not sure if will use this?
 		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
-		[Obsolete]
-		public string CreditHourType { get; set; }
-		[Obsolete]
-		public decimal CreditHourValue { get; set; }
+		//20-07-24 updating to handle a list
+		public List<QuantitativeValue> CreditValueList { get; set; } = new List<QuantitativeValue>();
+		public string CreditValueJson { get; set; }
+
+		//[Obsolete]
+		//public string CreditHourType { get; set; }
+		//[Obsolete]
+		//public decimal CreditHourValue { get; set; }
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public int CreditUnitTypeId { get; set; }
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
+		public decimal CreditUnitMinValue { get; set; }
+
 		public decimal CreditUnitMaxValue { get; set; }
 		public bool CreditValueIsRange { get; set; }
 
@@ -232,7 +209,10 @@ namespace workIT.Models.ProfileModels
 		public List<LearningOpportunityProfile> IsPartOf { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
-
+		/// <summary>
+		/// List of ETPL Credentials where is a member
+		/// </summary>
+		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
 		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
@@ -253,13 +233,19 @@ namespace workIT.Models.ProfileModels
 
 		public List<JurisdictionProfile> Region { get; set; }
 		public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
+		public Enumeration AssessmentMethodType { get; set; } = new Enumeration();
+
+		public string AssessmentMethodDescription { get; set; }
+		public string LearningMethodDescription { get; set; }
 
 		public Enumeration LearningMethodType { get; set; }
         public CodeItemResult LearningMethodTypes { get; set; } = new CodeItemResult();
         public List<CostProfile> EstimatedCost { get; set; }
+		public string ExpirationDate { get; set; }
 
-		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		//public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
+		public string FinancialAssistanceJson { get; set; }
 
 		public string ListTitle { get; set; }
 
@@ -320,7 +306,10 @@ namespace workIT.Models.ProfileModels
         public int AdvancedStandingFromCount { get; set; }
         public int PreparationForCount { get; set; }
         public int PreparationFromCount { get; set; }
-        public int CommonCostsCount { get; set; }
+		public int CostProfilesCount { get; set; }
+		public int NumberOfCostProfileItems { get; set; }
+
+		public int CommonCostsCount { get; set; }
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }

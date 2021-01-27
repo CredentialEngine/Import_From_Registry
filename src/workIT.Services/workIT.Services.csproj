@@ -44,15 +44,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Elasticsearch.Net, Version=6.0.0.0, Culture=neutral, PublicKeyToken=96c599bbe3e70f5d, processorArchitecture=MSIL">
-      <HintPath>..\packages\Elasticsearch.Net.6.8.2\lib\net461\Elasticsearch.Net.dll</HintPath>
-    </Reference>
-    <Reference Include="Nest, Version=6.0.0.0, Culture=neutral, PublicKeyToken=96c599bbe3e70f5d, processorArchitecture=MSIL">
-      <HintPath>..\packages\NEST.6.8.2\lib\net461\Nest.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -72,20 +63,25 @@
     <Compile Include="ActivityServices.cs" />
     <Compile Include="AssessmentServices.cs" />
     <Compile Include="CompetencyFrameworkServices.cs" />
+    <Compile Include="ConceptSchemeServices.cs" />
     <Compile Include="ConditionManifestServices.cs" />
     <Compile Include="CostManifestServices.cs" />
     <Compile Include="CredentialServices.cs" />
+    <Compile Include="DescriptionSetServices.cs" />
     <Compile Include="ElasticServices.cs" />
     <Compile Include="EnumerationServices.cs" />
     <Compile Include="FileReferenceServices.cs" />
     <Compile Include="LearningOpportunityServices.cs" />
     <Compile Include="MicroSearchServicesV2.cs" />
     <Compile Include="OrganizationServices.cs" />
+    <Compile Include="PathwayServices.cs" />
+    <Compile Include="ProfileServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReportServices.cs" />
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
     <Compile Include="ThirdPartyApiServices.cs" />
+    <Compile Include="TransferValueServices.cs" />
     <Compile Include="WidgetQueryFilters.cs" />
     <Compile Include="WidgetServices.cs" />
   </ItemGroup>
@@ -105,7 +101,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NEST">
+      <Version>6.8.2</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>12.0.3</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

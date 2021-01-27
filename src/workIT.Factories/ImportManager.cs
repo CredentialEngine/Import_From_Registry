@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using workIT.Models;
+using WM= workIT.Models;
 using ThisEntity = workIT.Models.RegistryImport;
 using DBEntity = workIT.Data.Tables.Import_Staging;
 using EntityContext = workIT.Data.Tables.workITEntities;
@@ -21,6 +22,8 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "ImportManager";
 
+
+		#region Import_Staging
 		public int Add( ThisEntity entity, ref List<string> messages )
 		{
 			DBEntity efEntity = new DBEntity();
@@ -231,6 +234,7 @@ namespace workIT.Factories
 
 			return msgCount;
 		}
+		#endregion
 
 		#region Import resolution methods
 		//Import_EntityResolution
@@ -322,7 +326,50 @@ namespace workIT.Factories
 
 			return 0;
 		}
+		public static bool Delete_Import_EntityResolution( int id, ref string statusMessage )
+		{
+			bool isValid = false;
+			if ( id == 0 )
+			{
+				statusMessage = "Error - missing an identifier for the Assessment";
+				return false;
+			}
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					context.Configuration.LazyLoadingEnabled = false;
+					var efEntity = context.Import_EntityResolution
+								.SingleOrDefault( s => s.Id == id );
 
+					if ( efEntity != null && efEntity.Id > 0 )
+					{
+						context.Import_EntityResolution.Remove( efEntity );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							isValid = true;							
+						}
+					}
+					else
+					{
+						statusMessage = "Error - Delete_Import_EntityResolution failed, as record was not found.";
+					}
+				}
+				catch ( Exception ex )
+				{
+					statusMessage = FormatExceptions( ex );
+					LoggingHelper.LogError( ex, thisClassName + ".Delete_Import_EntityResolution()" );
+
+					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+					{
+						statusMessage = "Error: this Import_EntityResolution cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this assessment can be deleted.";
+					}
+				}
+			}
+			return isValid;
+
+		}
 		public static void HandleResolvedEntity( EM.Import_EntityResolution entity )
 		{
 
@@ -390,8 +437,24 @@ namespace workIT.Factories
 					{
 						if (!(entity.IsResolved ?? false))
                         {
-                            //check
+                            
                         }
+						//check - if entity exists. If not, then probably deleted, and so should remove this record
+						var e = EntityManager.GetEntity( (Guid)entity.EntityUid, false );
+						if (e == null || e.Id == 0)
+						{
+							string statusMessage = "";
+							Delete_Import_EntityResolution( entity.Id, ref statusMessage );
+
+							return new EM.Import_EntityResolution();
+						} else
+						{
+							//check if entityId is accurate
+							if (entity.ReferencedEntityTypeId != e.EntityTypeId)
+							{
+
+							}
+						}
 					}
 				}
 			}
@@ -418,7 +481,23 @@ namespace workIT.Factories
 
 					if ( entity != null && entity.Id > 0 )
 					{
+						//check - if entity exists. If not, then probably deleted, and so should remove this record
+						var e = EntityManager.GetEntity( ( Guid )entity.EntityUid, false );
+						if ( e == null || e.Id == 0 )
+						{
+							string statusMessage = "";
+							Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
+							return new EM.Import_EntityResolution();
+						}
+						else
+						{
+							//check if entityId is accurate
+							if ( entity.ReferencedEntityTypeId != e.EntityTypeId )
+							{
+
+							}
+						}
 					}
 				}
 			}
@@ -431,5 +510,224 @@ namespace workIT.Factories
 
 		#endregion
 
+		#region Import.PendingRequest
+		/// <summary>
+		/// Select specific entity type. 
+		/// Only return records not already processed, and have wasChanged = true 
+		/// TODO- should deletes also be returned and have caller process as found?
+		/// </summary>
+		/// <param name="entityType">If blankd, will select all</param>
+		/// <returns></returns>
+		public static List<WM.Import_PendingRequest> SelectPendingList(string entityType )
+		{
+			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
+			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
+			/*
+			 * 
+				Assessment
+				CompetencyFramework
+				ConceptScheme
+				ConditionManifest
+				CostManifest
+				Credential
+				LearningOpportunity
+				Organization
+			 */
+			//may not want to depend upon WasChanged yet!!!
+			bool onlySelectIfWasChanged = UtilityManager.GetAppKeyValue( "onlySelectIfWasChanged", true );
+			try
+			{
+				string prevCTID = "";
+				using ( var context = new EntityContext() )
+				{
+					var search = context.Import_PendingRequest
+							.Where( s => (s.WasChanged == true || onlySelectIfWasChanged == false)
+								&& s.WasProcessed == false
+								//may want an registry action property instead
+								&& s.PublishMethodURI != "DELETE" && s.PublishMethodURI != "Transfer of Owner"
+								&& ( s.PublishingEntityType == entityType ) 
+								)
+							.OrderBy( s => s.PublishingEntityType )
+							.ThenBy( s => s.EntityCtid )
+							.ThenBy( x => x.Created )
+							.ToList();
+					//  || string.IsNullOrWhiteSpace( entityType )
+					if ( search != null && search.Count > 0 )
+					{
+						foreach ( var item in search )
+						{
+							entity = new WM.Import_PendingRequest
+							{
+								Id = item.Id,
+								EnvelopeId = item.EnvelopeId,
+								Environment = item.Environment,
+								EntityName = item.EntityName,
+								EntityCtid = item.EntityCtid,
+								PublishMethodURI = item.PublishMethodURI,
+								 PublishingEntityType = item.PublishingEntityType
+								 //EnvelopeLastUpdated = item.EnvelopeLastUpdated
+							};
+							//entity.EntityTypedId = item.EntityTypedId; //derive??
+							if ( prevCTID != entity.EntityCtid.ToLower() )
+								list.Add( entity );
+
+							prevCTID = entity.EntityCtid.ToLower();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".SelectPendingList" );
+			}
+			return list;
+		}//
+
+		public static List<WM.Import_PendingRequest> SelectAllPendingExceptList(string excludeEntityType)
+		{
+			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
+			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
+			/*
+			 * 
+				Assessment
+				CompetencyFramework
+				ConceptScheme
+				ConditionManifest
+				CostManifest
+				Credential
+				LearningOpportunity
+				Organization
+			 */
+			try
+			{
+				string prevCTID = "";
+				using ( var context = new EntityContext() )
+				{
+					var search = context.Import_PendingRequest
+							.Where( s => s.WasChanged == true
+								&& s.WasProcessed == false
+								&& s.PublishMethodURI != "DELETE" && s.PublishMethodURI != "Transfer of Owner"
+								&& ( s.PublishingEntityType != excludeEntityType ) 
+								)
+							.OrderBy( s => s.PublishingEntityType )
+							.ThenBy( s => s.EntityCtid )
+							.ThenBy( x => x.Created )
+							.ToList();
+
+					if ( search != null && search.Count > 0 )
+					{
+						foreach ( var item in search )
+						{
+							entity = new WM.Import_PendingRequest
+							{
+								Id = item.Id,
+								EnvelopeId = item.EnvelopeId,
+								Environment = item.Environment,
+								EntityName = item.EntityName,
+								EntityCtid = item.EntityCtid,
+								PublishMethodURI = item.PublishMethodURI,
+								PublishingEntityType = item.PublishingEntityType
+								//EnvelopeLastUpdated = item.EnvelopeLastUpdated
+							};
+							//entity.EntityTypedId = item.EntityTypedId; //derive??
+							if ( prevCTID != entity.EntityCtid.ToLower() )
+								list.Add( entity );
+
+							prevCTID = entity.EntityCtid.ToLower();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".SelectPendingList" );
+			}
+			return list;
+		}//
+
+		public static List<WM.Import_PendingRequest> SelectAllPendingDeletes()
+		{
+			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
+			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
+
+			try
+			{
+				string prevCTID = "";
+				using ( var context = new EntityContext() )
+				{
+					var search = context.Import_PendingRequest
+							.Where( s => s.WasChanged == true
+								&& s.WasProcessed == false
+								&& (s.PublishMethodURI == REGISTRY_ACTION_DELETE || s.PublishMethodURI == REGISTRY_ACTION_PURGE)
+								)
+							.OrderBy( s => s.PublishingEntityType )
+							.ThenBy( s => s.EntityCtid)
+							.ThenBy( x => x.Created )
+							.ToList();
+
+					if ( search != null && search.Count > 0 )
+					{
+						foreach ( var item in search )
+						{
+							entity = new WM.Import_PendingRequest
+							{
+								Id = item.Id,
+								EnvelopeId = item.EnvelopeId,
+								Environment = item.Environment,
+								EntityName = item.EntityName,
+								EntityCtid = item.EntityCtid,
+								PublishMethodURI = item.PublishMethodURI,
+								PublishingEntityType = item.PublishingEntityType
+								//EnvelopeLastUpdated = item.EnvelopeLastUpdated
+							};
+							//entity.EntityTypedId = item.EntityTypedId; //derive??
+							if ( prevCTID != entity.EntityCtid.ToLower() )
+								list.Add( entity );
+
+							prevCTID = entity.EntityCtid.ToLower();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".SelectPendingList" );
+			}
+			return list;
+		}//
+
+		public bool SetImport_PendingRequestHandled( int recordId, bool importWasSuccessful )
+		{
+			bool isValid = false;
+			if ( recordId <= 0 )
+			{
+				return false;
+			}
+			using ( var context = new EntityContext() )
+			{
+				var efEntity = context.Import_PendingRequest
+							.FirstOrDefault( s => s.Id == recordId );
+
+				if ( efEntity != null && efEntity.Id > 0 )
+				{
+					efEntity.WasProcessed = true;
+					efEntity.ImportWasSuccessful = importWasSuccessful;
+					if ( importWasSuccessful )
+						efEntity.ImportedDate = DateTime.Now;
+					int count = context.SaveChanges();
+					if ( count >= 0 )
+					{
+						isValid = true;
+					}
+				}
+				else
+				{
+					LoggingHelper.LogError( thisClassName + string.Format( ".SetImport_PendingRequestHandled - record was not found. recordId: {0}", recordId ), true );
+				}
+			}
+
+			return isValid;
+		}///
+		#endregion
 	}
 }

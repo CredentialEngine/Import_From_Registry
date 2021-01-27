@@ -23,7 +23,15 @@ namespace workIT.Factories
 		static string thisClassName = "Entity_CredentialManager";
 
 		#region Entity Persistance ===================
-		public bool SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
+		/// <summary>
+		/// Add a has part relationship targetting a credential
+		/// </summary>
+		/// <param name="list"></param>
+		/// <param name="parentUid"></param>
+		/// <param name="status"></param>
+		/// <param name="relationshipTypeId">Defaults to 1. Can be a 3 for an ETPL relationship</param>
+		/// <returns></returns>
+		public bool SaveHasPartList( List<int> list, Guid parentUid, ref SaveStatus status, int relationshipTypeId = 1 )
 		{
 			if ( list == null || list.Count == 0 )
 				return true;
@@ -32,7 +40,7 @@ namespace workIT.Factories
 			bool isAllValid = true;
 			foreach ( int item in list )
 			{
-				Add( parentUid, item, ref newId, ref status );
+				Add( parentUid, item, relationshipTypeId, ref newId, ref status );
 				if ( newId == 0 )
 					isAllValid = false;
 			}
@@ -64,7 +72,7 @@ namespace workIT.Factories
 					continue;
 				}
 
-				Add( partOfEntity, credentialId,  ref newId, ref status );
+				Add( partOfEntity, credentialId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF,  ref newId, ref status );
 				if ( newId == 0 )
 					isAllValid = false;
 			}
@@ -80,7 +88,7 @@ namespace workIT.Factories
 		/// <param name="newId">Return record id of the new record</param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Add( Guid parentUid, int credentialId,
+		public bool Add( Guid parentUid, int credentialId, int relationshipTypeId,
 			ref int newId,
 			ref SaveStatus status )
 		{
@@ -103,11 +111,11 @@ namespace workIT.Factories
 				return false;
 			}
 
-			return Add( parent, credentialId, ref newId, ref status );
+			return Add( parent, credentialId, relationshipTypeId, ref newId, ref status );
 		}
 
-        private bool Add( Entity parent, int credentialId,
-                ref int newId, ref SaveStatus status )
+        private bool Add( Entity parent, int credentialId, int relationshipTypeId,
+				ref int newId, ref SaveStatus status )
         {
             bool isValid = true;
             int count = 0;
@@ -125,9 +133,10 @@ namespace workIT.Factories
                 status.AddWarning( thisClassName + ".Add() Error: a valid credential was not provided." );
                 return false;
             }
+			if ( relationshipTypeId == 0 )
+				relationshipTypeId = 1;
 
-
-            DBEntity efEntity = new DBEntity();
+			DBEntity efEntity = new DBEntity();
             try
             {
                 using ( var context = new EntityContext() )
@@ -143,13 +152,16 @@ namespace workIT.Factories
                         return true;
                     }
 
-                    //add
-                    efEntity = new DBEntity();
-                    efEntity.CredentialId = credentialId;
-                    efEntity.EntityId = parent.Id;
-                    efEntity.Created = DateTime.Now;
+					//add
+					efEntity = new DBEntity
+					{
+						CredentialId = credentialId,
+						RelationshipTypeId = relationshipTypeId,
+						EntityId = parent.Id,
+						Created = DateTime.Now
+					};
 
-                    context.Entity_Credential.Add( efEntity );
+					context.Entity_Credential.Add( efEntity );
                     count = context.SaveChanges();
 
                     newId = efEntity.Id;
@@ -179,16 +191,48 @@ namespace workIT.Factories
         public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
-            //Entity parent = EntityManager.GetEntity( parentUid );
-            if ( parent == null || parent.Id == 0 )
+			int count = 0;
+			if ( parent == null || parent.Id == 0 )
             {
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
             using ( var context = new EntityContext() )
             {
-                context.Entity_Credential.RemoveRange( context.Entity_Credential.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
+				//check if target is a reference object and is only in use here
+				var results = context.Entity_Credential
+							.Where( s => s.EntityId == parent.Id )
+							.ToList();
+				if ( results == null || results.Count == 0 )
+				{
+					return true;
+				}
+
+				foreach ( var item in results )
+				{
+					//if a reference, delete actual credential if not used elsewhere
+					if ( item.Credential != null && item.Credential.EntityStateId == 2 )
+					{
+						//do a getall. If only one, delete it.
+						var exists = context.Entity_Credential
+							.Where( s => s.CredentialId == item.CredentialId )
+							.ToList();
+						if ( exists != null && exists.Count() == 1 )
+						{
+							var statusMsg = "";
+							//this method will also add pending reques to remove from elastic.
+							new CredentialManager().Delete( item.CredentialId, ref statusMsg );
+						}
+					}
+					context.Entity_Credential.Remove( item );
+					count = context.SaveChanges();
+					if ( count > 0 )
+					{
+
+					}
+				}
+				context.Entity_Credential.RemoveRange( context.Entity_Credential.Where( s => s.EntityId == parent.Id ) );
+                 count = context.SaveChanges();
                 if ( count > 0 )
                 {
                     isValid = true;
@@ -201,17 +245,21 @@ namespace workIT.Factories
 
             return isValid;
         }
-        #endregion
+		#endregion
 
-        #region  retrieval ==================
-
-        /// <summary>
-        /// get all the base credentials for an EntityCredential
-        /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
-        /// </summary>
-        /// <param name="parentUid"></param>
-        /// <returns></returns>
-        public static List<Credential> GetAll( Guid parentUid, bool isForDetailPageCondition = false )
+		#region  retrieval ==================
+		public static List<Credential> GetAllSummary( Guid parentUid, int relationshipTypeId )
+		{
+			//note even the summary should include indicator of competencies
+			return GetAll( parentUid, relationshipTypeId );
+		}
+		/// <summary>
+		/// get all the base credentials for an EntityCredential
+		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		public static List<Credential> GetAll( Guid parentUid, int relationshipTypeId = 1, bool isForDetailPageCondition = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<Credential> list = new List<Credential>();
@@ -228,7 +276,7 @@ namespace workIT.Factories
 					//context.Configuration.LazyLoadingEnabled = false;
 
 					List<DBEntity> results = context.Entity_Credential
-							.Where( s => s.EntityId == parent.Id)
+							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
 							.OrderBy( s => s.Id )
 							.ToList();
 
@@ -256,26 +304,27 @@ namespace workIT.Factories
 			return list;
 		}//
 
-		public static void MapToDB( ThisEntity from, DBEntity to )
-		{
-			//want to ensure fields from create are not wiped
-			if ( to.Id == 0 )
-			{
-				if ( IsValidDate( from.Created ) )
-					to.Created = from.Created;
-			}
-			to.Id = from.Id;
-			to.CredentialId = from.CredentialId;
-			to.EntityId = from.ParentId;
+		//public static void MapToDB( ThisEntity from, DBEntity to )
+		//{
+		//	//want to ensure fields from create are not wiped
+		//	if ( to.Id == 0 )
+		//	{
+		//		if ( IsValidDate( from.Created ) )
+		//			to.Created = from.Created;
+		//	}
+		//	to.Id = from.Id;
+		//	to.CredentialId = from.CredentialId;
+		//	to.RelationshipTypeId = from.RelationshipTypeId;
+		//	to.EntityId = from.ParentId;
 			
-		}
+		//}
 		public static void MapFromDB( DBEntity from, ThisEntity to, bool isForDetailPageCondition = false )
 		{
 			to.Id = from.Id;
 			to.CredentialId = from.CredentialId;
 			to.ParentId = from.EntityId;
-            
-			
+			to.RelationshipTypeId = from.RelationshipTypeId;
+
 			//to.Credential = from.Credential;
 			to.Credential = new Credential();
 			if ( from.Credential != null && from.Credential.Id > 0 )

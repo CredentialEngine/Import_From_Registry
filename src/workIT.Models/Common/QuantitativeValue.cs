@@ -11,14 +11,17 @@ namespace workIT.Models.Common
 		//public int Id { get; set; }
 		//public int EntityId { get; set; }
 
-		//Used for publishing
+		//Used for QV related to credits. Will not use for financial
 		public Enumeration CreditUnitType { get; set; } = new Enumeration();
 		public int CreditTypeId { get; set; }
+
 		public string UnitText { get; set; }
 		public string Label { get; set; }
 		public decimal Value { get; set; }
 		public decimal MinValue { get; set; }
 		public decimal MaxValue { get; set; }
+		public decimal Percentage { get; set; }
+		
 		public string Description { get; set; }
 		//helper
 		public bool IsRange {
@@ -33,7 +36,7 @@ namespace workIT.Models.Common
 
 		public bool HasData()
 		{
-			if ( Value > 0 || MinValue > 0 || MaxValue > 0
+			if ( Value != 0 || MinValue != 0 || MaxValue != 0 || Percentage != 0
 				|| ( Description ?? "" ).Length > 2 )
 			{
 				return true;
@@ -71,7 +74,7 @@ namespace workIT.Models.Common
 
 			//if not using format method, we may not have a consistant state.
 			//if values entered without unit, reject
-			if ( Value > 0 || MinValue > 0 || MaxValue > 0 )
+			if ( Value > 0 || MinValue > 0 || MaxValue > 0 || Percentage > 0 )
 			{
 				if ( CreditTypeId == 0 && string.IsNullOrWhiteSpace( UnitText ) && string.IsNullOrWhiteSpace( Description ) )
 				{
@@ -82,9 +85,5 @@ namespace workIT.Models.Common
 
 			return true;
 		}
-		//public System.DateTime Created { get; set; }
-		//public int CreatedById { get; set; }
-		//public DateTime LastUpdated { get; set; }
-		//public int LastUpdatedById { get; set; }
 	}
 }

@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-    /// <summary>
-    /// Class to represent a LanguageMap and related components
-    /// </summary>
-    public class LanguageMap : Dictionary<string, string>
+	/// <summary>
+	/// Class to represent a LanguageMap and related components
+	/// </summary>
+	[Serializable]
+	public class LanguageMap : Dictionary<string, string>
     {
         public LanguageMap() { }
         public LanguageMap( string text )
@@ -78,8 +79,8 @@ namespace workIT.Models.Common
             return list;
         }
     }
-    
-    public class LanguageMapList : Dictionary<string, List<string>>
+
+	public class LanguageMapList : Dictionary<string, List<string>>
     {
         public LanguageMapList() { }
         public LanguageMapList( List<string> items )
@@ -128,8 +129,7 @@ namespace workIT.Models.Common
             return new List<string>();
         }
     }
-
-    public class LanguageItem
+	public class LanguageItem
     {
         public string Language { get; set; }
         public string Text { get; set; }

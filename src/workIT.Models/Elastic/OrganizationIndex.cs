@@ -20,7 +20,6 @@ namespace workIT.Models.Elastic
             IndustryCodeNotations = new List<string>();
             OrganizationServiceTypeIds = new List<int>();
             OrganizationTypeIds = new List<int>();
-            Addresses = new List<Address>();
             TextValues = new List<string>();
             PropertyValues = new List<int>();
             Codes = new List<int>();
@@ -69,7 +68,7 @@ namespace workIT.Models.Elastic
         public int AddressesCount { get; set; }
         //TBD
         //public List<AddressLocation> AddressLocations { get; set; }
-        public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
+        //public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 
         public List<int> OrganizationTypeIds { get; set; }
         public List<IndexProperty> OrganizationTypes { get; set; } = new List<IndexProperty>();
@@ -138,20 +137,26 @@ namespace workIT.Models.Elastic
 		public bool HasAssessmentsQAPerformed { get; set; }
 		public bool HasLoppsQAPerformed { get; set; }
 		public List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; } = new List<QualityAssurancePerformed>();
-		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
-		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
-		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = new List<IndexReferenceFramework>();
 		//counts
 		public int VerificationProfilesCount { get; set; }
         public int CostManifestsCount { get; set; }
         public int ConditionManifestsCount { get; set; }
-        public int SubsidiariesCount { get; set; }
+		public int PathwaysCount { get; set; }
+		public int PathwaySetsCount { get; set; }
+		public int TransferValueProfilesCount { get; set; }
+
+
+		public int SubsidiariesCount { get; set; }
         public int DepartmentsCount { get; set; }
         public int HasIndustriesCount { get; set; }
-        public List<int> ReportFilters { get; set; } = new List<int>();
+        //public List<int> ReportFilters { get; set; } = new List<int>();
 		//placeholder to satisfy IIndex
 		public bool IsAvailableOnline { get; }
+		public List<IndexSubject> Subjects { get; set; }
 	}
 
 }

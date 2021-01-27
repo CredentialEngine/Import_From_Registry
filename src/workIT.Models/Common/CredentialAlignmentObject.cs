@@ -59,6 +59,7 @@ namespace workIT.Models.Common
 		/// Name of the framework
 		/// </summary>
 		public string FrameworkName { get; set; }
+		public bool IsAnonymousFramework { get; set; }
 		/// <summary>
 		/// Url for the framework
         /// TODO - inconsistancies between the urls???

@@ -118,7 +118,7 @@ namespace workIT.Factories
         public static int ENTITY_TYPE_COST_PROFILE_ITEM = 6;
         public static int ENTITY_TYPE_LEARNING_OPP_PROFILE = 7;
         public static int ENTITY_TYPE_PATHWAY = 8;
-        public static int ENTITY_TYPE_PERSON = 9;
+        public static int ENTITY_TYPE_RUBRIC = 9;
 
         public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;
 		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;
@@ -133,14 +133,32 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
         public static int ENTITY_TYPE_COST_MANIFEST = 20;
 		public static int ENTITY_TYPE_FINANCIAL_ASST_PROFILE = 21;
+		public static int ENTITY_TYPE_ACCREDIT_ACTION_PROFILE = 22;
+		//
+		public static int ENTITY_TYPE_PATHWAY_SET = 23;
+		public static int ENTITY_TYPE_PATHWAY_COMPONENT = 24;
+		public static int ENTITY_TYPE_COMPONENT_CONDITION = 25;
+		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
+		//
+		public static int ENTITY_TYPE_EARNINGS_PROFILE = 28;
+		public static int ENTITY_TYPE_HOLDERS_PROFILE = 29;
+		public static int ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE = 30;
+		public static int ENTITY_TYPE_DATASET_PROFILE = 31;
+		//
+		public static int ENTITY_TYPE_JOB_PROFILE = 32;
+		public static int ENTITY_TYPE_TASK_PROFILE = 33;
+		public static int ENTITY_TYPE_WORKROLE_PROFILE = 34;
+		public static int ENTITY_TYPE_OCCUPATIONS_PROFILE = 35;
+
+		//
+
 		/// <summary>
 		/// Placeholder for stats, will not actually have an entity
 		/// </summary>
 
-		public static int ENTITY_TYPE_DURATION_PROFILE = 22;
+		public static int ENTITY_TYPE_DURATION_PROFILE = 61;
+
 		
-		//not used
-		public static int ENTITY_TYPE_TASK_PROFILE = 25;
 		#endregion
 		#region constants - entity status
 		public static int ENTITY_STATUS_IN_PROGRESS = 1;
@@ -322,7 +340,8 @@ namespace workIT.Factories
                             val.CodeId = item.CodeId == null ? 0 : ( int )item.CodeId;
 							val.ParentId = category.Id;
                             val.Name = item.Title;
-                            
+                            //20-04-15 mparsons - added use of CategoryId here, looking for consisent use of this vs sometimes id, and sometimes categoryId
+                            val.CategoryId = item.CategoryId;
 							if ( category.Id == 65)
 							{
 								val.Value = item.Title;
@@ -330,6 +349,13 @@ namespace workIT.Factories
 							else
 							{
 								val.Value = item.CodeId == null ? "" : (( int )item.CodeId).ToString();
+							}
+							if ( category.Id == 4 || category.Id == 14 || category.Id == 18 || category.Id == 21 )
+							{
+								//get description
+								var cd = Codes_PropertyValue_Get( category.Id, item.Title );
+								if ( cd != null && !string.IsNullOrWhiteSpace( cd.Description ) )
+									val.Description = cd.Description;
 							}
 							val.Totals = item.Totals ?? 0;
                             if ( IsDevEnv() )
@@ -345,7 +371,7 @@ namespace workIT.Factories
         }
 		#endregion
 		#region Counts.EntityStatistic
-		public void UpdateEntityStatistic( int entityTypeId, string schemaName, int total )
+		public void UpdateEntityStatistic( int entityTypeId, string schemaName, int total, bool allowingZero = true )
 		{
 			try
 			{
@@ -355,8 +381,8 @@ namespace workIT.Factories
 					&& s.SchemaName == schemaName );
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
-
-						efEntity.Totals = total;
+						if (total > 0 || allowingZero )
+							efEntity.Totals = total;
 
 						if ( HasStateChanged( context ) )
 						{
@@ -395,17 +421,22 @@ namespace workIT.Factories
 
 					foreach ( var item in results )
 					{
+                        //20-04-15 mparsons - appears that for entity statistics, we have to use the entitytypeId for the categoryId
 						code = new CodeItem
 						{
 							Id = ( int )item.Id,
-							CategoryId = ( int )( item.CategoryId ?? 0 ),
-							Title = item.Title,
+							//CategoryId = ( int )( item.CategoryId ?? 0 ),
+                            CategoryId = item.EntityTypeId,
+                            Title = item.Title,
 							SchemaName = item.SchemaName,
 							Description = item.Description,
 						};
 						code.Description = item.Description;
 						code.Totals = item.Totals ?? 0;
+						if (item.SchemaName == "frameworkReport:Competencies" )
+						{
 
+						}
 						list.Add( code );
 					}
 				}
@@ -486,6 +517,7 @@ namespace workIT.Factories
                         {
                             val = new EnumeratedItem
                             {
+                                //note the search appears to expect categoryId to be in Id
                                 Id = item.Id,
                                 CodeId = 0, //??
                                 ParentId = entity.Id, //??
@@ -858,7 +890,7 @@ namespace workIT.Factories
 
         }
 
-        private static List<CodeItem> Property_GetValues( int categoryId, string categoryTitle, bool insertingSelectTitle = true, bool getAll = true )
+        public static List<CodeItem> Property_GetValues( int categoryId, string categoryTitle, bool insertingSelectTitle = true, bool getAll = true )
         {
             List<CodeItem> list = new List<CodeItem>();
             CodeItem code;
@@ -867,6 +899,7 @@ namespace workIT.Factories
             {
                 List<Codes_PropertyValue> results = context.Codes_PropertyValue
                     .Where( s => s.CategoryId == categoryId
+                            && (s.IsActive == true)
                             && ( s.Totals > 0 || getAll ) )
                             .OrderBy( s => s.SortOrder ).ThenBy( s => s.Title )
                             .ToList();
@@ -977,6 +1010,7 @@ namespace workIT.Factories
 
                 Codes_PropertyValue item = context.Codes_PropertyValue
                     .FirstOrDefault( s => s.CategoryId == categoryId
+                            && ( s.IsActive == true )
                             && s.SchemaName.Trim() == schemaName.Trim() );
                 if ( item != null && item.Id > 0 )
                 {
@@ -1011,6 +1045,7 @@ namespace workIT.Factories
             {
                 List<Codes_PropertyValue> results = context.Codes_PropertyValue
                     .Where( s => s.CategoryId == categoryId
+                            && ( s.IsActive == true )
                             && s.Title.ToLower() == title.ToLower() )
                             .ToList();
 
@@ -1041,6 +1076,7 @@ namespace workIT.Factories
             {
                 List<Codes_PropertyValue> results = context.Codes_PropertyValue
                     .Where( s => s.CategoryId == categoryId
+                            && ( s.IsActive == true )
                             && ( s.SchemaName.ToLower() == schemaName.ToLower() )
                             )
                             .ToList();
@@ -1689,122 +1725,122 @@ namespace workIT.Factories
 
         //	return list;
         //}
-        public static List<CodeItem> NAICS_SearchInUse( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            keyword = keyword.Trim();
-            if ( pageSize == 0 )
-                pageSize = 100;
-            int skip = 0;
-            if ( pageNumber > 1 )
-                skip = ( pageNumber - 1 ) * pageSize;
-            string notKeyword = "Except " + keyword;
+        //public static List<CodeItem> NAICS_SearchInUse( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity = new CodeItem();
+        //    keyword = keyword.Trim();
+        //    if ( pageSize == 0 )
+        //        pageSize = 100;
+        //    int skip = 0;
+        //    if ( pageNumber > 1 )
+        //        skip = ( pageNumber - 1 ) * pageSize;
+        //    string notKeyword = "Except " + keyword;
 
-            using ( var context = new ViewContext() )
-            {
-                List<Entity_FrameworkIndustryCodeSummary> results = context.Entity_FrameworkIndustryCodeSummary
-                        .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CodedNotation.Contains( keyword )
-                        || s.Name.Contains( keyword ) )
-                        && ( s.Totals > 0 )
-                        )
-                    .OrderBy( s => s.Name )
-                    .Skip( skip )
-                    .Take( pageSize )
-                    .ToList();
-                totalRows = context.Entity_FrameworkIndustryCodeSummary
-                        .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CodedNotation.Contains( keyword )
-                        || s.Name.Contains( keyword ) )
-                        && ( s.Totals > 0 )
-                        )
-                    .ToList().Count();
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<Entity_FrameworkIndustryCodeSummary> results = context.Entity_FrameworkIndustryCodeSummary
+        //                .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CodedNotation.Contains( keyword )
+        //                || s.Name.Contains( keyword ) )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .OrderBy( s => s.Name )
+        //            .Skip( skip )
+        //            .Take( pageSize )
+        //            .ToList();
+        //        totalRows = context.Entity_FrameworkIndustryCodeSummary
+        //                .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CodedNotation.Contains( keyword )
+        //                || s.Name.Contains( keyword ) )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .ToList().Count();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( Views.Entity_FrameworkIndustryCodeSummary item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = ( int )item.Id;
-                        entity.Name = item.Name;// + " ( " + item.NaicsCode + " )";
-                        entity.Description = "";// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
-                        entity.URL = item.TargetNode;
-                        entity.SchemaName = item.CodedNotation;
-                        entity.Code = item.CodeGroup.ToString();
-                        entity.Totals = item.Totals ?? 0;
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( Views.Entity_FrameworkIndustryCodeSummary item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = ( int )item.Id;
+        //                entity.Name = item.Name;// + " ( " + item.NaicsCode + " )";
+        //                entity.Description = "";// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
+        //                entity.URL = item.TargetNode;
+        //                entity.SchemaName = item.CodedNotation;
+        //                entity.Code = item.CodeGroup.ToString();
+        //                entity.Totals = item.Totals ?? 0;
 
-                        list.Add( entity );
-                    }
-                }
-            }
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
-        public static List<CodeItem> ReferenceFramework_SearchInUse( int categoryId, int entityTypeId, string headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            keyword = keyword.Trim();
-            if ( headerId == "0" )
-                headerId = "";
+        //    return list;
+        //}
+        //public static List<CodeItem> ReferenceFramework_SearchInUse( int categoryId, int entityTypeId, string headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity = new CodeItem();
+        //    keyword = keyword.Trim();
+        //    if ( headerId == "0" )
+        //        headerId = "";
 
-            if ( pageSize == 0 )
-                pageSize = 100;
-            int skip = 0;
-            if ( pageNumber > 1 )
-                skip = ( pageNumber - 1 ) * pageSize;
-            string notKeyword = "Except " + keyword;
+        //    if ( pageSize == 0 )
+        //        pageSize = 100;
+        //    int skip = 0;
+        //    if ( pageNumber > 1 )
+        //        skip = ( pageNumber - 1 ) * pageSize;
+        //    string notKeyword = "Except " + keyword;
 
-            using ( var context = new ViewContext() )
-            {
-                List<Entity_ReferenceFramework_Totals> results = context.Entity_ReferenceFramework_Totals
-                        .Where( s => ( headerId == "" || s.CodeGroup == headerId )
-                        && ( s.CategoryId == categoryId )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CodedNotation.Contains( keyword )
-                        || s.Name.Contains( keyword ) )
-                        && ( s.Totals > 0 )
-                        )
-                    .OrderBy( s => s.Name )
-                    .Skip( skip )
-                    .Take( pageSize )
-                    .ToList();
-                totalRows = context.Entity_ReferenceFramework_Totals
-                        .Where( s => ( headerId == "" || s.CodeGroup == headerId )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CodedNotation.Contains( keyword )
-                        || s.Name.Contains( keyword ) )
-                        && ( s.Totals > 0 )
-                        )
-                    .ToList().Count();
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<Entity_ReferenceFramework_Totals> results = context.Entity_ReferenceFramework_Totals
+        //                .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+        //                && ( s.CategoryId == categoryId )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CodedNotation.Contains( keyword )
+        //                || s.Name.Contains( keyword ) )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .OrderBy( s => s.Name )
+        //            .Skip( skip )
+        //            .Take( pageSize )
+        //            .ToList();
+        //        totalRows = context.Entity_ReferenceFramework_Totals
+        //                .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CodedNotation.Contains( keyword )
+        //                || s.Name.Contains( keyword ) )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .ToList().Count();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( Views.Entity_ReferenceFramework_Totals item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = ( int )item.ReferenceFrameworkId;
-                        entity.Name = item.Name;
-                        entity.Description = "";
-                        entity.URL = item.TargetNode;
-                        entity.Code = item.CodedNotation;
-                        entity.CodeGroup = item.CodeGroup ?? "";
-                        entity.Totals = item.Totals ?? 0;
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( Views.Entity_ReferenceFramework_Totals item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = ( int )item.ReferenceFrameworkId;
+        //                entity.Name = item.Name;
+        //                entity.Description = "";
+        //                entity.URL = item.TargetNode;
+        //                entity.Code = item.CodedNotation;
+        //                entity.CodeGroup = item.CodeGroup ?? "";
+        //                entity.Totals = item.Totals ?? 0;
 
-                        list.Add( entity );
-                    }
-                }
-            }
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
         //public static List<CodeItem> NAICS_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0 )
         //{
         //	List<CodeItem> list = new List<CodeItem>();
@@ -1841,323 +1877,323 @@ namespace workIT.Factories
         //	return list;
         //}
 
-        public static List<CodeItem> NAICS_Categories( string sortField = "Description", bool includeCategoryCode = false )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity;
-            using ( var context = new ViewContext() )
-            {
-                //List<NAICS> results = context.NAICS
-                //	.Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10)
-                //	.OrderBy( s => s.NaicsCode )
-                //	.ToList();
-                var Query = from P in context.NAICS
-                            .Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10 )
-                            select P;
+        //public static List<CodeItem> NAICS_Categories( string sortField = "Description", bool includeCategoryCode = false )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity;
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        //List<NAICS> results = context.NAICS
+        //        //	.Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10)
+        //        //	.OrderBy( s => s.NaicsCode )
+        //        //	.ToList();
+        //        var Query = from P in context.NAICS
+        //                    .Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10 )
+        //                    select P;
 
-                if ( sortField == "NaicsGroup" )
-                {
-                    Query = Query.OrderBy( p => p.NaicsGroup );
-                }
-                else
-                {
-                    Query = Query.OrderBy( p => p.NaicsTitle );
-                }
-                var results = Query.ToList();
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( NAIC item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = Int32.Parse( item.NaicsCode );
+        //        if ( sortField == "NaicsGroup" )
+        //        {
+        //            Query = Query.OrderBy( p => p.NaicsGroup );
+        //        }
+        //        else
+        //        {
+        //            Query = Query.OrderBy( p => p.NaicsTitle );
+        //        }
+        //        var results = Query.ToList();
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( NAIC item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = Int32.Parse( item.NaicsCode );
 
-                        if ( includeCategoryCode )
-                        {
-                            if ( sortField == "NaicsGroup" )
-                                entity.Title = item.NaicsCode + " - " + item.NaicsTitle;
-                            else
-                                entity.Title = item.NaicsTitle + " (" + item.NaicsCode + ")";
-                        }
-                        else
-                            entity.Title = item.NaicsTitle;
+        //                if ( includeCategoryCode )
+        //                {
+        //                    if ( sortField == "NaicsGroup" )
+        //                        entity.Title = item.NaicsCode + " - " + item.NaicsTitle;
+        //                    else
+        //                        entity.Title = item.NaicsTitle + " (" + item.NaicsCode + ")";
+        //                }
+        //                else
+        //                    entity.Title = item.NaicsTitle;
 
-                        entity.URL = item.URL;
-                        entity.Totals = ( int )( item.Totals ?? 0 );
-                        entity.CategorySchema = "ctdl:NaicsGroup";
+        //                entity.URL = item.URL;
+        //                entity.Totals = ( int )( item.Totals ?? 0 );
+        //                entity.CategorySchema = "ctdl:NaicsGroup";
 
-                        list.Add( entity );
-                    }
-                }
-            }
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
-        public static List<CodeItem> NAICS_CategoriesInUse( int entityTypeId )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            //CodeItem code;
-            //, string sortField = "Description"
-            //using ( var context = new ViewContext() )
-            //{
+        //    return list;
+        //}
+        //public static List<CodeItem> NAICS_CategoriesInUse( int entityTypeId )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    //CodeItem code;
+        //    //, string sortField = "Description"
+        //    //using ( var context = new ViewContext() )
+        //    //{
 
-            //	List<Entity_FrameworkIndustryGroupSummary> results = context.Entity_FrameworkIndustryGroupSummary
-            //				.Where( s => s.EntityTypeId == entityTypeId )
-            //				.OrderBy( x => x.FrameworkGroupTitle )
-            //				.ToList();
+        //    //	List<Entity_FrameworkIndustryGroupSummary> results = context.Entity_FrameworkIndustryGroupSummary
+        //    //				.Where( s => s.EntityTypeId == entityTypeId )
+        //    //				.OrderBy( x => x.FrameworkGroupTitle )
+        //    //				.ToList();
 
-            //	if ( results != null && results.Count > 0 )
-            //	{
-            //		foreach ( Views.Entity_FrameworkIndustryGroupSummary item in results )
-            //		{
-            //			code = new CodeItem();
-            //			code.Id = ( int ) item.CodeGroup;
-            //			code.Title = item.FrameworkGroupTitle;
-            //			code.Totals = ( int ) ( item.groupCount ?? 0 );
-            //			code.CategorySchema = "ctdl:IndustryGroup";
-            //			list.Add( code );
-            //		}
-            //	}
-            //}
-            return list;
-        }
+        //    //	if ( results != null && results.Count > 0 )
+        //    //	{
+        //    //		foreach ( Views.Entity_FrameworkIndustryGroupSummary item in results )
+        //    //		{
+        //    //			code = new CodeItem();
+        //    //			code.Id = ( int ) item.CodeGroup;
+        //    //			code.Title = item.FrameworkGroupTitle;
+        //    //			code.Totals = ( int ) ( item.groupCount ?? 0 );
+        //    //			code.CategorySchema = "ctdl:IndustryGroup";
+        //    //			list.Add( code );
+        //    //		}
+        //    //	}
+        //    //}
+        //    return list;
+        //}
 		#endregion
 
 
-		#region CIPS
-		public static List<CodeItem> CIP_Get( string code )
-		{
-			string search = code;
-			//for now, just exact
-			//if ( code.IndexOf( "." ) == -1 )
-			//{
-			//	//if exact is provided, with decimals, use it only, otherwise get all related
-			//	search = code.Replace( "-", "" );
-			//	search = search.Substring( 0, search.IndexOf( "." ) );
-			//}
-			var list = new List<CodeItem>();
-			CodeItem item = new CodeItem();
-			using ( var context = new ViewContext() )
-			{
-				var records = context.CIPCode2010
-				.Where( s => s.CIPCode == search ).ToList();
-				foreach ( var record in records )
-				{
-					if ( record != null && record.Id > 0 )
-					{
-						item.Id = record.Id;
-						item.Name = record.CIPTitle;
-						item.Description = record.CIPDefinition;
-						item.Code = record.CIPCode;
-						item.URL = record.Url;
-						list.Add( item );
-					}
-				}
-			}
-			return list;
-		}
+		#region CIPS	NOT USED
+		//public static List<CodeItem> CIP_Get( string code )
+		//{
+		//	string search = code;
+		//	//for now, just exact
+		//	//if ( code.IndexOf( "." ) == -1 )
+		//	//{
+		//	//	//if exact is provided, with decimals, use it only, otherwise get all related
+		//	//	search = code.Replace( "-", "" );
+		//	//	search = search.Substring( 0, search.IndexOf( "." ) );
+		//	//}
+		//	var list = new List<CodeItem>();
+		//	CodeItem item = new CodeItem();
+		//	using ( var context = new ViewContext() )
+		//	{
+		//		var records = context.CIPCode2010
+		//		.Where( s => s.CIPCode == search ).ToList();
+		//		foreach ( var record in records )
+		//		{
+		//			if ( record != null && record.Id > 0 )
+		//			{
+		//				item.Id = record.Id;
+		//				item.Name = record.CIPTitle;
+		//				item.Description = record.CIPDefinition;
+		//				item.Code = record.CIPCode;
+		//				item.URL = record.Url;
+		//				list.Add( item );
+		//			}
+		//		}
+		//	}
+		//	return list;
+		//}
 
-		public static List<CodeItem> CIPS_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            string header = headerId.ToString();
-            if ( headerId > 0 && headerId < 10 )
-                header = "0" + header;
-            keyword = keyword.Trim();
-            if ( pageSize == 0 )
-                pageSize = 100;
-            int skip = 0;
-            if ( pageNumber > 1 )
-                skip = ( pageNumber - 1 ) * pageSize;
+		//public static List<CodeItem> CIPS_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+  //      {
+  //          List<CodeItem> list = new List<CodeItem>();
+  //          CodeItem entity = new CodeItem();
+  //          string header = headerId.ToString();
+  //          if ( headerId > 0 && headerId < 10 )
+  //              header = "0" + header;
+  //          keyword = keyword.Trim();
+  //          if ( pageSize == 0 )
+  //              pageSize = 100;
+  //          int skip = 0;
+  //          if ( pageNumber > 1 )
+  //              skip = ( pageNumber - 1 ) * pageSize;
 
-            using ( var context = new ViewContext() )
-            {
-                List<CIPCode2010> results = context.CIPCode2010
-                        .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
-                        && ( keyword == ""
-                        || s.CIPCode.Contains( keyword )
-                        || s.CIPTitle.Contains( keyword )
-                        )
-                        && ( s.Totals > 0 || getAll )
-                        )
-                    .OrderBy( s => s.CIPTitle )
-                    .Skip( skip )
-                    .Take( pageSize )
-                    .ToList();
+  //          using ( var context = new ViewContext() )
+  //          {
+  //              List<CIPCode2010> results = context.CIPCode2010
+  //                      .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
+  //                      && ( keyword == ""
+  //                      || s.CIPCode.Contains( keyword )
+  //                      || s.CIPTitle.Contains( keyword )
+  //                      )
+  //                      && ( s.Totals > 0 || getAll )
+  //                      )
+  //                  .OrderBy( s => s.CIPTitle )
+  //                  .Skip( skip )
+  //                  .Take( pageSize )
+  //                  .ToList();
 
-                totalRows = context.CIPCode2010
-                        .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
-                        && ( keyword == ""
-                        || s.CIPCode.Contains( keyword )
-                        || s.CIPTitle.Contains( keyword ) )
-                        && ( s.Totals > 0 || getAll )
-                        )
-                    .ToList().Count();
+  //              totalRows = context.CIPCode2010
+  //                      .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
+  //                      && ( keyword == ""
+  //                      || s.CIPCode.Contains( keyword )
+  //                      || s.CIPTitle.Contains( keyword ) )
+  //                      && ( s.Totals > 0 || getAll )
+  //                      )
+  //                  .ToList().Count();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( CIPCode2010 item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = item.Id;
-                        entity.Name = item.CIPTitle + " ( " + item.CIPCode + " )";
-                        entity.Description = item.CIPDefinition;
-                        //entity.URL = item.URL;
-                        entity.Code = item.CIPCode;
-                        entity.CodeGroup = item.CIPFamily;
-                        entity.Totals = item.Totals ?? 0;
-                        list.Add( entity );
-                    }
-                }
-            }
+  //              if ( results != null && results.Count > 0 )
+  //              {
+  //                  foreach ( CIPCode2010 item in results )
+  //                  {
+  //                      entity = new CodeItem();
+  //                      entity.Id = item.Id;
+  //                      entity.Name = item.CIPTitle + " ( " + item.CIPCode + " )";
+  //                      entity.Description = item.CIPDefinition;
+  //                      //entity.URL = item.URL;
+  //                      entity.Code = item.CIPCode;
+  //                      entity.CodeGroup = item.CIPFamily;
+  //                      entity.Totals = item.Totals ?? 0;
+  //                      list.Add( entity );
+  //                  }
+  //              }
+  //          }
 
-            return list;
-        }
-        public static List<CodeItem> CIPS_SearchInUse( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            string header = headerId.ToString();
-            if ( headerId > 0 && headerId < 10 )
-                header = "0" + header;
-            keyword = keyword.Trim();
-            if ( pageSize == 0 )
-                pageSize = 100;
-            int skip = 0;
-            if ( pageNumber > 1 )
-                skip = ( pageNumber - 1 ) * pageSize;
+  //          return list;
+  //      }
+        //public static List<CodeItem> CIPS_SearchInUse( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity = new CodeItem();
+        //    string header = headerId.ToString();
+        //    if ( headerId > 0 && headerId < 10 )
+        //        header = "0" + header;
+        //    keyword = keyword.Trim();
+        //    if ( pageSize == 0 )
+        //        pageSize = 100;
+        //    int skip = 0;
+        //    if ( pageNumber > 1 )
+        //        skip = ( pageNumber - 1 ) * pageSize;
 
-            using ( var context = new ViewContext() )
-            {
-                List<Entity_FrameworkCIPCodeSummary> results = context.Entity_FrameworkCIPCodeSummary
-                        .Where( s => ( headerId == 0 || s.CodeGroup == header )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CIPCode.Contains( keyword )
-                        || s.CIPTitle.Contains( keyword )
-                        )
-                        && ( s.Totals > 0 )
-                        )
-                    .OrderBy( s => s.CIPTitle )
-                    .Skip( skip )
-                    .Take( pageSize )
-                    .ToList();
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<Entity_FrameworkCIPCodeSummary> results = context.Entity_FrameworkCIPCodeSummary
+        //                .Where( s => ( headerId == 0 || s.CodeGroup == header )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CIPCode.Contains( keyword )
+        //                || s.CIPTitle.Contains( keyword )
+        //                )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .OrderBy( s => s.CIPTitle )
+        //            .Skip( skip )
+        //            .Take( pageSize )
+        //            .ToList();
 
-                totalRows = context.Entity_FrameworkCIPCodeSummary
-                        .Where( s => ( headerId == 0 || s.CodeGroup == header )
-                        && ( s.EntityTypeId == entityTypeId )
-                        && ( keyword == ""
-                        || s.CIPCode.Contains( keyword )
-                        || s.CIPTitle.Contains( keyword )
-                        )
-                        && ( s.Totals > 0 )
-                        )
-                    .ToList().Count();
+        //        totalRows = context.Entity_FrameworkCIPCodeSummary
+        //                .Where( s => ( headerId == 0 || s.CodeGroup == header )
+        //                && ( s.EntityTypeId == entityTypeId )
+        //                && ( keyword == ""
+        //                || s.CIPCode.Contains( keyword )
+        //                || s.CIPTitle.Contains( keyword )
+        //                )
+        //                && ( s.Totals > 0 )
+        //                )
+        //            .ToList().Count();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( Views.Entity_FrameworkCIPCodeSummary item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = ( int )item.Id;
-                        entity.Name = item.CIPTitle + " ( " + item.CIPCode + " )";
-                        //entity.Description = item.CIPDefinition;
-                        entity.URL = item.URL;
-                        entity.Code = item.CIPCode;
-                        entity.CodeGroup = item.CodeGroup;
-                        entity.Totals = item.Totals ?? 0;
-                        list.Add( entity );
-                    }
-                }
-            }
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( Views.Entity_FrameworkCIPCodeSummary item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = ( int )item.Id;
+        //                entity.Name = item.CIPTitle + " ( " + item.CIPCode + " )";
+        //                //entity.Description = item.CIPDefinition;
+        //                entity.URL = item.URL;
+        //                entity.Code = item.CIPCode;
+        //                entity.CodeGroup = item.CodeGroup;
+        //                entity.Totals = item.Totals ?? 0;
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
-        public static List<CodeItem> CIPS_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0 )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity = new CodeItem();
-            keyword = keyword.Trim();
-            if ( pageSize == 0 )
-                pageSize = 100;
+        //public static List<CodeItem> CIPS_Autocomplete( int headerId = 0, string keyword = "", int pageSize = 0 )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity = new CodeItem();
+        //    keyword = keyword.Trim();
+        //    if ( pageSize == 0 )
+        //        pageSize = 100;
 
-            using ( var context = new ViewContext() )
-            {
-                List<CIPCode2010> results = context.CIPCode2010
-                        .Where( s => ( headerId == 0 || s.CIPFamily == headerId.ToString() )
-                        && ( keyword == ""
-                        || s.CIPTitle.Contains( keyword )
-                        || s.CIPDefinition.Contains( keyword ) ) )
-                        .OrderBy( s => s.CIPCode )
-                        .ToList();
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<CIPCode2010> results = context.CIPCode2010
+        //                .Where( s => ( headerId == 0 || s.CIPFamily == headerId.ToString() )
+        //                && ( keyword == ""
+        //                || s.CIPTitle.Contains( keyword )
+        //                || s.CIPDefinition.Contains( keyword ) ) )
+        //                .OrderBy( s => s.CIPCode )
+        //                .ToList();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( CIPCode2010 item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = item.Id;
-                        entity.Name = item.CIPTitle;
-                        entity.Description = item.CIPTitle + " ( " + item.CIPCode + " )";
-                        //entity.URL = item.URL;
-                        entity.Totals = item.Totals ?? 0;
-                        list.Add( entity );
-                    }
-                }
-            }
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( CIPCode2010 item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = item.Id;
+        //                entity.Name = item.CIPTitle;
+        //                entity.Description = item.CIPTitle + " ( " + item.CIPCode + " )";
+        //                //entity.URL = item.URL;
+        //                entity.Totals = item.Totals ?? 0;
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
-        public static List<CodeItem> CIPS_Categories( string sortField = "CIPFamily" )
-        {
-            List<CodeItem> list = new List<CodeItem>();
-            CodeItem entity;
-            using ( var context = new ViewContext() )
-            {
-                //List<CIPS> results = context.CIPS
-                //	.Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10)
-                //	.OrderBy( s => s.NaicsCode )
-                //	.ToList();
-                var Query = from P in context.CIPCode2010
-                            .Where( s => s.CIPCode.Length == 2 )
-                            select P;
+        //public static List<CodeItem> CIPS_Categories( string sortField = "CIPFamily" )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
+        //    CodeItem entity;
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        //List<CIPS> results = context.CIPS
+        //        //	.Where( s => s.NaicsCode.Length == 2 && s.NaicsGroup > 10)
+        //        //	.OrderBy( s => s.NaicsCode )
+        //        //	.ToList();
+        //        var Query = from P in context.CIPCode2010
+        //                    .Where( s => s.CIPCode.Length == 2 )
+        //                    select P;
 
-                if ( sortField == "CIPFamily" )
-                {
-                    Query = Query.OrderBy( p => p.CIPFamily );
-                }
-                else
-                {
-                    Query = Query.OrderBy( p => p.CIPTitle );
-                }
-                var results = Query.ToList();
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( CIPCode2010 item in results )
-                    {
-                        entity = new CodeItem();
-                        entity.Id = Int32.Parse( item.CIPFamily );
-                        if ( sortField == "CIPFamily" )
-                            entity.Title = item.CIPCode + " - " + item.CIPTitle;
-                        else
-                            entity.Title = item.CIPTitle + " (" + item.CIPCode + ")";
-                        //entity.URL = item.URL;
+        //        if ( sortField == "CIPFamily" )
+        //        {
+        //            Query = Query.OrderBy( p => p.CIPFamily );
+        //        }
+        //        else
+        //        {
+        //            Query = Query.OrderBy( p => p.CIPTitle );
+        //        }
+        //        var results = Query.ToList();
+        //        if ( results != null && results.Count > 0 )
+        //        {
+        //            foreach ( CIPCode2010 item in results )
+        //            {
+        //                entity = new CodeItem();
+        //                entity.Id = Int32.Parse( item.CIPFamily );
+        //                if ( sortField == "CIPFamily" )
+        //                    entity.Title = item.CIPCode + " - " + item.CIPTitle;
+        //                else
+        //                    entity.Title = item.CIPTitle + " (" + item.CIPCode + ")";
+        //                //entity.URL = item.URL;
 
-                        entity.Totals = ( int )( item.Totals ?? 0 );
-                        entity.CategorySchema = "ctdl:CipsGroup";
-                        list.Add( entity );
-                    }
-                }
-            }
+        //                entity.Totals = ( int )( item.Totals ?? 0 );
+        //                entity.CategorySchema = "ctdl:CipsGroup";
+        //                list.Add( entity );
+        //            }
+        //        }
+        //    }
 
-            return list;
-        }
+        //    return list;
+        //}
 
-        public static List<CodeItem> CIPS_CategoriesInUse( int entityTypeId, string sortField = "codeId" )
-        {
-            List<CodeItem> list = new List<CodeItem>();
+        //public static List<CodeItem> CIPS_CategoriesInUse( int entityTypeId, string sortField = "codeId" )
+        //{
+        //    List<CodeItem> list = new List<CodeItem>();
             //CodeItem code;
 
             //using ( var context = new ViewContext() )
@@ -2192,8 +2228,8 @@ namespace workIT.Factories
             //		}
             //	}
             //}
-            return list;
-        }
+        //    return list;
+        //}
         #endregion
 
 
@@ -2281,7 +2317,7 @@ namespace workIT.Factories
 
 
         
-        public void UpdateEntityTypes(int id, int total )
+        public void UpdateEntityTypes(int id, int total, bool allowingZero = true )
         {
             try
             {
@@ -2290,10 +2326,10 @@ namespace workIT.Factories
                     var efEntity = context.Codes_EntityTypes.SingleOrDefault( s => s.Id == id );
                     if ( efEntity != null && efEntity.Id > 0 )
                     {
+						if ( total > 0 || allowingZero )
+							efEntity.Totals = total;
 
-                        efEntity.Totals = total;
-
-                        if ( HasStateChanged( context ) )
+						if ( HasStateChanged( context ) )
                         {
 
                             int count = context.SaveChanges();

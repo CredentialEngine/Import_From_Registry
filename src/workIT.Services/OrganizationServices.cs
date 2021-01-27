@@ -51,13 +51,17 @@ namespace workIT.Services
             //do a get, and add to cache before updating
             if ( entity.Id > 0 )
             {
-                var detail = GetDetail( entity.Id, false );
-            }
+				if ( UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 ) > 0 )
+				{
+					var detail = GetDetail( entity.Id, false );
+				}
+			}
             bool isValid = new EntityMgr().Save( entity, ref status );
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
             {
-				CacheManager.RemoveItemFromCache( "organization", entity.Id );
+				if ( UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 ) > 0)
+					CacheManager.RemoveItemFromCache( "organization", entity.Id );
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
@@ -93,13 +97,15 @@ namespace workIT.Services
                 return;
             var org = ( entity as Models.Common.Organization );
             new CacheManager().PopulateEntityRelatedCaches( org.RowId );
-            //may need to update elastic for creds, etc
-
-            //update Elastic
-            if ( Utilities.UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
+			//may need to update elastic for creds, etc
+			List<string> messages = new List<string>();
+			//update Elastic
+			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
                 ElasticServices.Organization_UpdateIndex( org.Id );
+			else
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, org.Id, 1, ref messages );
 
-        }
+		}
         public static ThisEntity GetBySubjectWebpage( string swp )
         {
             ThisEntity entity = new ThisEntity();
@@ -264,7 +270,7 @@ namespace workIT.Services
         private static void SetFrameworksFilter( MainSearchInput data, ref string where )
         {
             string AND = "";
-            string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Organization c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([CodeId] in ({2}) )  )) ) ";
+            //string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Organization c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([CodeId] in ({2}) )  )) ) ";
 
             string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Organization c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([ReferenceFrameworkId] in ({2}) )  )) ) ";
 
@@ -445,9 +451,10 @@ namespace workIT.Services
             if ( skippingCache == false
                 && HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
             {
-                var cache = ( CachedOrganization )HttpRuntime.Cache[ key ];
+                var cache = new CachedOrganization();
                 try
                 {
+					cache = ( CachedOrganization )HttpRuntime.Cache[ key ];
                     if ( cache.lastUpdated > maxTime )
                     {
                         LoggingHelper.DoTrace( 6, string.Format( "===OrganizationServices.GetDetail === Using cached version of Organization, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
@@ -457,7 +464,7 @@ namespace workIT.Services
                 }
                 catch ( Exception ex )
                 {
-                    LoggingHelper.DoTrace( 6, thisClassName + ".GetDetail === exception " + ex.Message );
+                    LoggingHelper.DoTrace( 6, thisClassName + ".GetDetail. Get OrganizationCache === exception " + ex.Message );
                 }
             }
             else
@@ -476,30 +483,37 @@ namespace workIT.Services
 			//&& elasped > 2
 			if ( key.Length > 0 && cacheMinutes > 0 )
 			{
-                var newCache = new CachedOrganization()
-                {
-                    Item = entity,
-                    lastUpdated = DateTime.Now
-                };
-                if ( HttpContext.Current != null )
-                {
-                    if ( HttpContext.Current.Cache[ key ] != null )
-                    {
-                        HttpRuntime.Cache.Remove( key );
-                        HttpRuntime.Cache.Insert( key, newCache );
+				try
+				{
+					var newCache = new CachedOrganization()
+					{
+						Item = entity,
+						lastUpdated = DateTime.Now
+					};
+					if ( HttpContext.Current != null )
+					{
+						if ( HttpContext.Current.Cache[ key ] != null )
+						{
+							HttpRuntime.Cache.Remove( key );
+							HttpRuntime.Cache.Insert( key, newCache );
 
-                        LoggingHelper.DoTrace( 5, string.Format( "===OrganizationServices.GetDetail $$$ Updating cached version of Organization, Id: {0}, {1}", entity.Id, entity.Name ) );
+							LoggingHelper.DoTrace( 5, string.Format( "===OrganizationServices.GetDetail $$$ Updating cached version of Organization, Id: {0}, {1}", entity.Id, entity.Name ) );
 
-                    }
-                    else
-                    {
-                        LoggingHelper.DoTrace( 5, string.Format( "===OrganizationServices.GetDetail ****** Inserting new cached version of Organization, Id: {0}, {1}", entity.Id, entity.Name ) );
+						}
+						else
+						{
+							LoggingHelper.DoTrace( 5, string.Format( "===OrganizationServices.GetDetail ****** Inserting new cached version of Organization, Id: {0}, {1}", entity.Id, entity.Name ) );
 
-                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
-                    }
-                }
-            }
-            else
+							System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
+						}
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".GetDetail. Updating OrganizationCache === exception " + ex.Message );
+				}
+			}
+			else
             {
                 LoggingHelper.DoTrace( 7, string.Format( "===OrganizationServices.GetDetail $$$$$$ skipping caching of Organization, Id: {0}, {1}, elasped:{2}", entity.Id, entity.Name, elasped ) );
             }

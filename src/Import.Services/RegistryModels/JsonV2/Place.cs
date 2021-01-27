@@ -24,6 +24,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:name" )]
 		public LanguageMap Name { get; set; }
 
+		//2020-12-15 - adding back use of description
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
@@ -39,6 +40,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:addressRegion" )]
 		public LanguageMap AddressRegion { get; set; }
 
+		/// <summary>
+		/// Named area or division within a region, such as a county in the U.S. or Canada.
+		/// </summary>
+		[JsonProperty( "ceterms:addressSubRegion" )]
+		public LanguageMap SubRegion { get; set; }
+		//
 		[JsonProperty( "ceterms:postalCode" )]
 		public string PostalCode { get; set; }
 

@@ -10,7 +10,7 @@ namespace workIT.Models.Elastic
 			
 			Subjects = new List<IndexSubject>();
 			Competencies = new List<IndexCompetency>();
-			Addresses = new List<Address>();
+			//Addresses = new List<Address>();
 			//QualityAssurance = new List<IndexQualityAssurance>();
 
 		}
@@ -67,8 +67,9 @@ namespace workIT.Models.Elastic
 		public int CredentialStatusId { get; set; }
 		public string ImageURL { get; set; }
 		public decimal TotalCost { get; set; }
+		public int CostProfileCount { get; set; }
 
-
+		public int NumberOfCostProfileItems { get; set; }
 		public string AvailableOnlineAt { get; set; }
 		public bool IsAvailableOnline
 		{
@@ -144,6 +145,7 @@ namespace workIT.Models.Elastic
 		public int RecommendedLoppCount { get; set; }
 		public int BadgeClaimsCount { get; set; }
 		public int ProcessProfilesCount { get; set; }
+		public int HoldersProfileCount { get; set; }
 		public int RevocationProfilesCount { get; set; }
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
@@ -172,14 +174,14 @@ namespace workIT.Models.Elastic
 		public List<IndexSubject> Subjects { get; set; }
 		//public List<string> SubjectAreas { get; set; }
 
-		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
-		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
-		public List<IndexReferenceFramework> Classifications { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = new List<IndexReferenceFramework>();
 
 		public List<IndexCompetency> Competencies { get; set; }
 
-		public List<Address> Addresses { get; set; }
+		//public List<Address> Addresses { get; set; }
 
 		//public List<string> AddressLocations { get { return Addresses.Select( x => x.AddressRegion ).ToList(); } }
 
@@ -188,7 +190,6 @@ namespace workIT.Models.Elastic
 		//public List<string> IndustryCodeGroups { get; set; }
 		//public List<string> IndustryCodeNotations { get; set; }
 
-		public int NumberOfCostProfileItems { get; set; }
 
 		public bool HasVerificationType_Badge { get; set; }
 		//public string AlternateName { get; set; }
@@ -217,7 +218,7 @@ namespace workIT.Models.Elastic
 		/// The question remains how to take advantage of these in searches? Perhaps giving an higher wieght.
 		/// </summary>
 		public List<string> PremiumValues { get; set; } = new List<string>();
-		public List<int> ReportFilters { get; set; } = new List<int>();
+		
 
 		//public List<int> PropertyValues { get; set; }
 		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();

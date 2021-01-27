@@ -9,7 +9,7 @@ using workIT.Models.Common;
 namespace workIT.Models.ProfileModels
 {
     [Serializable]
-    public class AssessmentProfile : BaseProfile
+    public class AssessmentProfile : TopLevelObject
 	{
 		public AssessmentProfile()
 		{
@@ -27,7 +27,7 @@ namespace workIT.Models.ProfileModels
 			Addresses = new List<Address>();
 			CommonCosts = new List<CostManifest>();
 			EstimatedCost = new List<CostProfile>();
-			FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
+			//FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			CommonConditions = new List<ConditionManifest>();
 
 			Requires = new List<ConditionProfile>();
@@ -63,42 +63,43 @@ namespace workIT.Models.ProfileModels
 			InLanguageCodeList = new List<TextValueProfile>();
 			VersionIdentifierList = new List<Entity_IdentifierValue>();
 		}
-		public string Name { get; set; }
-		public string FriendlyName { get; set; }
-		public int EntityStateId { get; set; }
-
-		public System.Guid OwningAgentUid { get; set; }
+		//public string Name { get; set; }
+		//public string FriendlyName { get; set; }
+		//public int EntityStateId { get; set; }
+		//public string CTID { get; set; }
+		//public string CredentialRegistryId { get; set; }
+		//public System.Guid OwningAgentUid { get; set; }
+		//public string SubjectWebpage { get; set; }
 		/// <summary>
 		/// Inflate OwningAgentUid for display 
 		/// </summary>
-		public Organization OwningOrganization { get; set; }
-        public string OwnerOrganizationName { get; set; }
-        public string OrganizationName
-		{
-			get
-			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Name;
-				else
-					return "";
-			}
-		}
-		public int OwningOrganizationId
-		{
-			get
-			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Id;
-				else
-					return 0;
-			}
-        }
+		//public Organization OwningOrganization { get; set; }
+		//public string OwnerOrganizationName { get; set; }
+		//public string OrganizationName
+		//{
+		//	get
+		//	{
+		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+		//			return OwningOrganization.Name;
+		//		else
+		//			return "";
+		//	}
+		//}
+		//public int OwningOrganizationId
+		//{
+		//	get
+		//	{
+		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+		//			return OwningOrganization.Id;
+		//		else
+		//			return 0;
+		//	}
+  //      }
 		public Enumeration OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
-		public string PrimaryOrganizationCTID { get; set; }
+		//public string PrimaryOrganizationCTID { get; set; }
 
-		public string CTID { get; set; }
-		public string CredentialRegistryId { get; set; }
+
 		//public int InLanguageId { get; set; }
 		//public string InLanguage { get; set; }
 		//public string InLanguageCode { get; set; }
@@ -106,6 +107,9 @@ namespace workIT.Models.ProfileModels
 
 		//not sure if will use this?
 		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		//20-07-24 updating to handle a list
+		public List<QuantitativeValue> CreditValueList { get; set; } = new List<QuantitativeValue>();
+		public string CreditValueJson { get; set; }
 
 		[Obsolete]
 		public string CreditHourType { get; set; }
@@ -125,6 +129,8 @@ namespace workIT.Models.ProfileModels
 		public Enumeration DeliveryType { get; set; }
 		public string DeliveryTypeDescription { get; set; }
 		//public string VerificationMethodDescription { get; set; }
+		public string AssessmentMethodDescription { get; set; }
+		public string LearningMethodDescription { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
 		public List<ProcessProfile> AdministrationProcess { get; set; }
@@ -132,9 +138,10 @@ namespace workIT.Models.ProfileModels
 		public List<ProcessProfile> MaintenanceProcess { get; set; }
 
 		public List<CostProfile> EstimatedCost { get; set; }
-	
-		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		public string ExpirationDate { get; set; }
+		//public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
+		public string FinancialAssistanceJson { get; set; }
 
 		public List<DurationProfile> EstimatedDuration { get; set; }
         //public List<TextValueProfile> ResourceUrl { get; set; } = new List<TextValueProfile>();
@@ -155,7 +162,7 @@ namespace workIT.Models.ProfileModels
         public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 
-		public string SubjectWebpage { get; set; }
+		
 
 		public string AvailableOnlineAt { get; set; }
 
@@ -169,11 +176,22 @@ namespace workIT.Models.ProfileModels
 		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
 
 		public string CodedNotation { get; set; }
-
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// </summary>	
+		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		//or could store this as json
+		public string IdentifierJson { get; set; }
 		public List<string> WhereReferenced { get; set; }
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; }
 		public List<Credential> IsPartOfCredential { get; set; }
 		public List<LearningOpportunityProfile> IsPartOfLearningOpp { get; set; }
+
+		/// <summary>
+		/// List of ETPL Credentials where is a member
+		/// </summary>
+		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
 		public List<Address> Addresses { get; set; }
 		public string AvailabilityListing { get; set; }
 
@@ -242,7 +260,10 @@ namespace workIT.Models.ProfileModels
         public int AdvancedStandingFromCount { get; set; }
         public int PreparationForCount { get; set; }
         public int PreparationFromCount { get; set; }
-        public int CommonCostsCount { get; set; }
+		public int CostProfilesCount { get; set; }
+		public int NumberOfCostProfileItems { get; set; }
+
+		public int CommonCostsCount { get; set; }
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }

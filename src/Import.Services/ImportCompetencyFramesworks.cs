@@ -1,28 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using EntityServices = workIT.Services.CompetencyFrameworkServices;
-using InputGraph = RA.Models.JsonV2.CompetencyFrameworksGraph;
-using InputEntity = RA.Models.JsonV2.CompetencyFramework;
-using InputCompetency = RA.Models.JsonV2.Competency;
-using ThisEntity = workIT.Models.Common.CompetencyFramework;
-using Framework = workIT.Models.ProfileModels.EducationFramework;
-using BNode = RA.Models.JsonV2.BlankNode;
-
-using workIT.Utilities;
 using workIT.Factories;
 using workIT.Models;
-using Import.Services;
+using workIT.Services;
+using workIT.Utilities;
+
+using BNode = RA.Models.JsonV2.BlankNode;
+using EntityServices = workIT.Services.CompetencyFrameworkServices;
+using Framework = workIT.Models.ProfileModels.CompetencyFramework;
+using InputCompetency = RA.Models.JsonV2.Competency;
+using InputEntity = RA.Models.JsonV2.CompetencyFramework;
+using InputGraph = RA.Models.JsonV2.CompetencyFrameworksGraph;
+using MC = workIT.Models.Common;
+using ThisEntity = workIT.Models.Common.CompetencyFramework;
 
 namespace Import.Services
 {
-    public class ImportCompetencyFramesworks
+	public class ImportCompetencyFramesworks
     {
         int entityTypeId = CodesManager.ENTITY_TYPE_CASS_COMPETENCY_FRAMEWORK;
         string thisClassName = "ImportCompetencyFramesworks";
@@ -31,7 +30,107 @@ namespace Import.Services
         ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-		public bool ProcessEnvelope( EntityServices mgr, ReadEnvelope item, SaveStatus status )
+		/// <summary>
+		/// Retrieve an envelop from the registry and do import
+		/// </summary>
+		/// <param name="envelopeId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
+		{
+			//this is currently specific, assumes envelop contains a credential
+			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
+
+			if ( string.IsNullOrWhiteSpace( envelopeId ) )
+			{
+				status.AddError( thisClassName + ".ImportByEnvelope - a valid envelope id must be provided" );
+				return false;
+			}
+
+			string statusMessage = "";
+			EntityServices mgr = new EntityServices();
+			string ctdlType = "";
+			try
+			{
+				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					return CustomProcessEnvelope( envelope, status );
+				}
+				else
+					return false;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".ImportByEnvelopeId()" );
+				status.AddError( ex.Message );
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
+				}
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Retrieve an resource from the registry by ctid and do import
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool ImportByCtid( string ctid, SaveStatus status )
+		{
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				status.AddError( thisClassName + ".ImportByCtid - a valid ctid must be provided" );
+				return false;
+			}
+
+			//this is currently specific, assumes envelop contains a credential
+			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
+			string statusMessage = "";
+			EntityServices mgr = new EntityServices();
+			string ctdlType = "";
+			try
+			{
+				//probably always want to get by envelope
+				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					return CustomProcessEnvelope( envelope, status );
+				}
+				else
+					return false;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".ImportByCtid(). CTID: {0}", ctid ) );
+				status.AddError( ex.Message );
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
+				}
+				return false;
+			}
+		}
+		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
+		{
+			//handle
+			bool importSuccessfull = ProcessEnvelope( item, status );
+			List<string> messages = new List<string>();
+			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
+			//store envelope
+			int newImportId = importHelper.Add( item, CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, status.Ctid, importSuccessfull, importError, ref messages );
+			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+			{
+				//add indicator of current recored
+				string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, thisClassName );
+				importHelper.AddMessages( newImportId, status, ref messages );
+			}
+			return importSuccessfull;
+		}
+
+		public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
         {
             if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
             {
@@ -43,11 +142,11 @@ namespace Import.Services
 			DateTime envelopeUpdateDate = new DateTime();
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
-				//entity.DocumentUpdatedAt = updateDate;
+				status.SetEnvelopeCreated( createDate );
 			}
 			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
 			{
-				//entity.DocumentUpdatedAt = envelopeUpdateDate;
+				status.SetEnvelopeUpdated( envelopeUpdateDate );	
 			}
 
 			string payload = item.DecodedResource.ToString();
@@ -62,15 +161,16 @@ namespace Import.Services
             //LoggingHelper.DoTrace( 5, "		framework name: " + framework.name.ToString() );
 
             //just store input for now
-            return Import( mgr, payload, envelopeIdentifier, status );
+            return Import( payload, envelopeIdentifier, status );
 
             //return true;
         } //
 
-        public bool Import( EntityServices mgr, string payload, string envelopeIdentifier, SaveStatus status )
+        public bool Import( string payload, string envelopeIdentifier, SaveStatus status )
         {
+			LoggingHelper.DoTrace( 7, "ImportCompetencyFramesworks - entered." );
             List<string> messages = new List<string>();
-			MappingHelperV3 helper = new MappingHelperV3();
+			MappingHelperV3 helper = new MappingHelperV3(10);
 			bool importSuccessfull = true;
 			InputEntity input = new InputEntity();
 			InputCompetency comp = new InputCompetency();
@@ -97,8 +197,7 @@ namespace Import.Services
 					if ( main.IndexOf( "ceasn:CompetencyFramework" ) > -1 )
 					{
 						input = JsonConvert.DeserializeObject<InputEntity>( main );
-					}
-					
+					}					
 				}
 				else
 				{
@@ -136,15 +235,18 @@ namespace Import.Services
 			LoggingHelper.DoTrace( 5, "		name: " + input.name.ToString() );
 
 			string framework = input.name.ToString();
+			var org = new MC.Organization();
 			string orgCTID = "";
 			string orgName = "";
 			List<string> publisher = input.publisher;
+			//20-06-11 - need to get creator, publisher, owner where possible
+			//	include an org reference with name, swp, and??
 			//should check creator first? Or will publisher be more likely to have an account Ctid?
 			if ( publisher != null && publisher.Count() > 0 )
 			{
 				orgCTID = ResolutionServices.ExtractCtid( publisher[ 0 ] );
 				//look up org name
-				orgName = OrganizationManager.GetByCtid( orgCTID ).Name ?? "missing";
+				org = OrganizationManager.GetByCtid( orgCTID );
 			}
 			else
 			{
@@ -154,14 +256,15 @@ namespace Import.Services
 				{
 					orgCTID = ResolutionServices.ExtractCtid( creator[ 0 ] );
 					//look up org name
-					orgName = OrganizationManager.GetByCtid( orgCTID ).Name ?? "missing";
+					org = OrganizationManager.GetByCtid( orgCTID );
 				}
 			}
+
 
 			if ( status.DoingDownloadOnly )
             	return true;
 
-			//add updating educationFramework
+			//add/updating CompetencyFramework
 			Framework ef = new Framework();
 			if ( !DoesEntityExist( input.CTID, ref ef ) )
 			{
@@ -171,23 +274,60 @@ namespace Import.Services
 			}
 			helper.currentBaseObject = ef;
 			ef.ExistsInRegistry = true;
+			//?store competencies in string?
+			if (competencies != null && competencies.Count > 0)
+			{
+				ef.TotalCompetencies = competencies.Count();
+				foreach(var c in competencies )
+				{
+					ef.Competencies.Add( new workIT.Models.Elastic.IndexCompetency()
+					{
+						Name = c.competencyText.ToString()
+						//Description = c.comment != null && c.comment.Count() > 0 ? c.comment[0].ToString()	
+					} );
+				}
+			}
+			//20-07-02 just storing the index ready competencies
+			//ef.CompentenciesJson = JsonConvert.SerializeObject( competencies, MappingHelperV3.GetJsonSettings() );
+			ef.CompentenciesStore = JsonConvert.SerializeObject( ef.Competencies, MappingHelperV3.GetJsonSettings() );
 
-			ef.FrameworkName = helper.HandleLanguageMap( input.name, ef, "Name" );
+			//test 
+			//ElasticManager.LoadCompetencies( ef.Name, ef.CompentenciesStore );
+			ef.CompetencyFrameworkGraph = glist;
+			ef.TotalCompetencies = competencies.Count();
+
+			ef.Name = helper.HandleLanguageMap( input.name, ef, "Name" );
+			ef.Description = helper.HandleLanguageMap( input.description, ef, "description" );
 			ef.CTID = input.CTID;
 			ef.OrganizationCTID = orgCTID;
+			if ( org != null && org.Id > 0 ) 
+			{
+				orgName = org.Name;
+				ef.OrganizationId = org.Id;
+				helper.CurrentOwningAgentUid = org.RowId;
+			}
+			
 			ef.CredentialRegistryId = envelopeIdentifier;
+			//additions
+			//ef.ind
 			//can only handle one source
 			int pcnt = 0;
-			foreach ( var url in input.source )
+			if ( input.source != null )
 			{
-				pcnt++;
-				ef.SourceUrl = url;
-				break;
+				foreach ( var url in input.source )
+				{
+					pcnt++;
+					ef.SourceUrl = url;
+					break;
+				}
 			}
 			ef.FrameworkUri = input.CtdlId;
-			new EducationFrameworkManager().Save( ef, ref status, true );
+			//adding common import pattern
+
+			new CompetencyFrameworkServices().Import( ef, ref status );
+
 			//
-			
+
 			//
 			//framework checks
 			if ( input.inLanguage == null || input.inLanguage.Count() == 0)
@@ -206,7 +346,7 @@ namespace Import.Services
 		public bool DoesEntityExist( string ctid, ref Framework entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetEducationFrameworkByCtid( ctid );
+			entity = EntityServices.GetCompetencyFrameworkByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

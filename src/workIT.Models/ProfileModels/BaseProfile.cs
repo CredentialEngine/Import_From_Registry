@@ -15,7 +15,7 @@ namespace workIT.Models.ProfileModels
 		{
 			//Regions = new List<GeoCoordinates>();
 			Jurisdiction = new List<JurisdictionProfile>();
-			ViewHeading = "";
+			//ViewHeading = "";
 			ParentSummary = "";
 		}
 		public string ProfileName { get; set; }
@@ -23,7 +23,7 @@ namespace workIT.Models.ProfileModels
 		public string ProfileSummary { get; set; }
 
 		public string ParentSummary { get; set; }
-		public string ViewHeading { get; set; }
+		//public string ViewHeading { get; set; }
 		//public List<GeoCoordinates> Regions { get; set; }
 		/// <summary>
 		/// The geo-political region in which the described resource is applicable.

@@ -284,6 +284,7 @@ namespace workIT.Utilities
                 {
                     output = "";
                 }
+				//line breaks? - would not want arbitrarily remove these
                 //one last??
                 //output = FilterText( output );
             }

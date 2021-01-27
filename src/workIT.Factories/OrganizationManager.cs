@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Runtime.InteropServices;
+
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Elastic;
@@ -19,8 +21,6 @@ namespace workIT.Factories
 		static string thisClassName = "OrganizationManager";
 		EntityManager entityMgr = new EntityManager();
 		Entity_ReferenceManager erm = new Entity_ReferenceManager();
-
-		string statusMessage = "";
 
 		#region Organization - persistance ==================
 
@@ -79,7 +79,7 @@ namespace workIT.Factories
 							{
 								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "Organization/{0}", efEntity.Id );
 								//notify, and???
-								EmailManager.NotifyAdmin( "Previously Deleted Organization has been reactivated", string.Format( "<a href='{2}'>Organization: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
+								//EmailManager.NotifyAdmin( "Previously Deleted Organization has been reactivated", string.Format( "<a href='{2}'>Organization: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "Organization",
@@ -100,9 +100,21 @@ namespace workIT.Factories
 								
 							}
 
+							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+							{
+								efEntity.Created = status.LocalCreatedDate;
+							}
+							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
+							{
+								efEntity.LastUpdated = status.LocalUpdatedDate;
+							}
+							//has changed?
 							if ( HasStateChanged( context ) )
 							{
-								efEntity.LastUpdated = System.DateTime.Now;
+								if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+									efEntity.LastUpdated = status.LocalUpdatedDate;
+								else
+									efEntity.LastUpdated = DateTime.Now;
 								//NOTE efEntity.EntityStateId is set to 0 in delete method )
 								count = context.SaveChanges();
 								//can be zero if no data changed
@@ -178,7 +190,7 @@ namespace workIT.Factories
 		/// add a Organization
 		/// </summary>
 		/// <param name="entity"></param>
-		/// <param name="statusMessage"></param>
+		/// <param name="status"></param>
 		/// <returns></returns>
 		private int Add( ThisEntity entity, ref SaveStatus status )
 		{
@@ -192,8 +204,16 @@ namespace workIT.Factories
 						efEntity.RowId = entity.RowId;
 					else
 						efEntity.RowId = Guid.NewGuid();
-					efEntity.Created = System.DateTime.Now;
-					efEntity.LastUpdated = System.DateTime.Now;
+					if ( IsValidDate( status.EnvelopeCreatedDate ) )
+					{
+						efEntity.Created = status.LocalCreatedDate;
+						efEntity.LastUpdated = status.LocalCreatedDate;
+					}
+					else
+					{
+						efEntity.Created = System.DateTime.Now;
+						efEntity.LastUpdated = System.DateTime.Now;
+					}
 					efEntity.EntityStateId = 3;
 
 					context.Organization.Add( efEntity );
@@ -266,6 +286,8 @@ namespace workIT.Factories
 					efEntity.Description = entity.Description;
 					efEntity.SubjectWebpage = entity.SubjectWebpage;
 					efEntity.ISQAOrganization = entity.ISQAOrganization;
+					efEntity.AvailabilityListing = entity.AvailabilityListing;
+
 					if ( IsValidGuid( entity.RowId ) )
 						efEntity.RowId = entity.RowId;
 					else
@@ -283,7 +305,8 @@ namespace workIT.Factories
 						if ( entity.ISQAOrganization )
 						{
 							AddQAOrgTypeProperty( entity, ref status );
-						}
+						}						
+
 						SiteActivity sa = new SiteActivity()
 						{
 							ActivityType = "Organization",
@@ -294,11 +317,12 @@ namespace workIT.Factories
 						};
 						new ActivityManager().SiteActivityAdd( sa );
 
-						if ( erm.Add( entity.SocialMediaPages, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA, true ) == false )
-						{
-							//isAllValid = false;
-						}
-
+						//if ( erm.Add( entity.SocialMediaPages, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA, true ) == false )
+						//{
+						//	//isAllValid = false;
+						//}
+						//call updateParts to handle recent and future additions
+						UpdateParts( entity, ref status );
 
 						return efEntity.Id;
 					}
@@ -396,6 +420,57 @@ namespace workIT.Factories
 			return 0;
 		}
 
+		public bool UpdateJson( int recordId, string json )
+		{
+			//SaveStatus status
+			bool isValid = true;
+			int count = 0;
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					DBEntity efEntity = context.Organization
+							.SingleOrDefault( s => s.Id == recordId );
+					if ( efEntity != null && efEntity.Id > 0 )
+					{
+						efEntity.JsonProperties = json;
+
+						if ( HasStateChanged( context ) )
+						{
+							efEntity.LastUpdated = DateTime.Now;
+
+							count = context.SaveChanges();
+							//can be zero if no data changed
+							if ( count >= 0 )
+							{
+								isValid = true;
+							}
+							else
+							{
+								//?no info on error
+								LoggingHelper.LogError( string.Format( "Error - the Json update was not successful for organization: {0}, Id: {1}. But no reason is present.", efEntity.Name, efEntity.Id ), false );
+								isValid = false;
+							}
+						}
+					}
+					else
+					{
+						LoggingHelper.LogError( string.Format( "Error - UpdateJson failed, as record was not found. recordId: {0}", recordId ), false );
+						isValid = false;
+					}
+				}
+
+			}
+			catch ( Exception ex )
+			{
+				string message = FormatExceptions( ex );
+				LoggingHelper.LogError( thisClassName + ".UpdateJson(). Error - the save was not successful. " + message, false );
+				isValid = false;
+			}
+
+			return isValid;
+		}
+
 
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
@@ -425,16 +500,28 @@ namespace workIT.Factories
 
 			if ( erm.Add( entity.AlternateNames, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME, false ) == false )
 				isAllValid = false;
-
-			if ( erm.Add( entity.SocialMediaPages, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA, true ) == false )
-				isAllValid = false;
-
 			//how to handle notifications on 'other'?
 			if ( erm.Add( entity.IdentificationCodes, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_IDENTIFIERS, true ) == false )
 				isAllValid = false;
 
+			if ( erm.Add( entity.SocialMediaPages, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA, true ) == false )
+				isAllValid = false;
+
+
 			if ( erm.Add( entity.Emails, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE, true ) == false )
 				isAllValid = false;
+
+			//contact points (does delete all - check on implications from address manager)
+			new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
+
+			//addresses
+			new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref status );
+
+			if ( entity.EntityStateId < 3 )
+				return isAllValid;
+
+			//==========================================
+
 
 			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
 			erfm.DeleteAll( relatedEntity, ref status );
@@ -473,7 +560,7 @@ namespace workIT.Factories
 			//first clear all propertiesd
 			mgr.DeleteAll( relatedEntity, ref status );
 
-			if ( mgr.AddProperties( entity.AgentType, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE, true, ref status ) == false )
+			if ( mgr.AddProperties( entity.AgentType, entity.RowId, CodesManager.ENTITY_TYPE_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE, entity.EntityStateId == 3, ref status ) == false )
 				isAllValid = false;
 
 			//TODO - may want a check to toggle the IsQaOrg property. It is used for other checks
@@ -495,8 +582,8 @@ namespace workIT.Factories
 
 		public void AddProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
 		{
-			//AlternativeIdentifier
-			new Entity_IdentifierValueManager().SaveList( entity.AlternativeIdentifierList, entity.RowId, Entity_IdentifierValueManager.ORGANIZATION_AlternativeIdentifier, ref status );
+			//Identifier
+			new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.ORGANIZATION_Identifier, ref status, true );
 
 			//ProcessProfile
 			Entity_ProcessProfileManager ppm = new Factories.Entity_ProcessProfileManager();
@@ -509,11 +596,6 @@ namespace workIT.Factories
 			ppm.SaveList( entity.ReviewProcess, Entity_ProcessProfileManager.REVIEW_PROCESS_TYPE, entity.RowId, ref status );
 			ppm.SaveList( entity.RevocationProcess, Entity_ProcessProfileManager.REVOKE_PROCESS_TYPE, entity.RowId, ref status );
 
-			//contact points (does delete all - check on implications from address manager)
-			new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
-
-			//addresses
-			new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref status );
 
 			//JurisdictionProfile 
 			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
@@ -756,7 +838,7 @@ namespace workIT.Factories
 						}
 						//need to remove from Entity.
 						//-using before delete trigger - verify won't have RI issues
-						string msg = string.Format( " Organization. Id: {0}, Name: {1}, Ctid: {2}, EnvelopeId: {3}", efEntity.Id, efEntity.Name, efEntity.CTID, envelopeId );
+						string msg = string.Format( " Organization. Id: {0}, Name: {1}, Ctid: {2}.", efEntity.Id, efEntity.Name, efEntity.CTID );
 
 						//18-04-05 mparsons - change to set inactive, and notify - seems to have been some incorrect deletes
 
@@ -827,7 +909,7 @@ namespace workIT.Factories
 
 			if ( string.IsNullOrWhiteSpace( profile.AgentDomainType ) )
 			{
-				status.AddWarning( "The type of this organization is required. It should be either CredentialOrganization, or QAOrganization. Defaulting to CredentialOrganization" );
+				status.AddWarning( "The type of this organization is required. It should be either CredentialOrganization, or QACredentialOrganization. Defaulting to CredentialOrganization" );
 				profile.AgentDomainType = "CredentialOrganization";
 				profile.AgentTypeId = 1;
 			}
@@ -855,7 +937,7 @@ namespace workIT.Factories
 			}
 
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 
@@ -871,9 +953,7 @@ namespace workIT.Factories
 
 			using ( var context = new Data.Tables.workITEntities() )
 			{
-				DBEntity item = context.Organization.FirstOrDefault( s => s.Id == id
-						//&& s.StatusId <= CodesManager.ENTITY_STATUS_PUBLISHED 
-						);
+				DBEntity item = context.Organization.FirstOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -913,6 +993,8 @@ namespace workIT.Factories
 		public static ThisEntity GetBySubjectWebpage( string swp )
 		{
 			ThisEntity to = new ThisEntity();
+			if ( string.IsNullOrWhiteSpace( swp ) )
+				return to;
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
@@ -937,6 +1019,8 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static ThisEntity GetByName_SubjectWebpage( string name, string swp )
 		{
+			//20-12-17 - other checks are allowing searching with a null swp. As this search does partials, continue to not allowing nulls - will need to revisit
+
 			ThisEntity to = new ThisEntity();
 			//truncate the protocal identifier
 			if ( string.IsNullOrWhiteSpace( swp ) )
@@ -976,6 +1060,11 @@ namespace workIT.Factories
 						if ( cntr == 1 || to.Id == 0 )
 						{
 							//hmmm if input was https and found http, and a reference, should update to https!
+							if (hasHttps && from.SubjectWebpage.StartsWith("http:"))
+							{
+
+							}
+							//
 							MapFromDB_ForSummary( from, to );
 						}
 						else
@@ -1190,53 +1279,62 @@ namespace workIT.Factories
 						pTotalRows = 0;
 					}
 				}
-
-				foreach ( DataRow dr in result.Rows )
+				try
 				{
-					item = new ThisEntity();
-					item.Id = GetRowColumn( dr, "Id", 0 );
-					item.Name = GetRowColumn( dr, "Name", "missing" );
-					item.FriendlyName = FormatFriendlyTitle( item.Name );
 
-					if ( idsOnly || autocomplete )
+					foreach ( DataRow dr in result.Rows )
 					{
+						item = new ThisEntity();
+						item.Id = GetRowColumn( dr, "Id", 0 );
+						item.Name = GetRowColumn( dr, "Name", "missing" );
+						item.FriendlyName = FormatFriendlyTitle( item.Name );
+						item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+
+						if ( idsOnly || autocomplete )
+						{
+							list.Add( item );
+							continue;
+						}
+						item.Description = GetRowColumn( dr, "Description", "" );
+						string rowId = GetRowColumn( dr, "RowId" );
+						item.RowId = new Guid( rowId );
+						
+						item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						//item.CanEditRecord = GetRowColumn( dr, "CanEditRecord", false );
+						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+						item.ImageUrl = GetRowColumn( dr, "ImageUrl", "" );
+						if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
+							item.IsACredentialingOrg = true;
+						item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
+
+						//item.FrameworksOwnedByResults = dr[ "FrameworksOwnedByList" ].ToString();
+
+						//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
+
+						//all addressess
+						//int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
+						//if ( addressess > 0 )
+						//{
+						//    //item.Addresses = AddressProfileManager.GetAllOrgAddresses( item.Id );
+						//    item.Addresses = Entity_AddressManager.GetAll( item.RowId );
+						//    //just in case (short term
+						//    if ( item.Addresses.Count > 0 )
+						//        item.Address = item.Addresses[0];
+						//}
+
+						//Edit - Added to fill out gray boxes in results - NA 5/12/2017
+						item.AgentType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
+						item.OrganizationSectorType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
+						//End Edit
+
 						list.Add( item );
-						continue;
 					}
-					item.Description = GetRowColumn( dr, "Description", "" );
-					string rowId = GetRowColumn( dr, "RowId" );
-					item.RowId = new Guid( rowId );
-					item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					//item.CanEditRecord = GetRowColumn( dr, "CanEditRecord", false );
-					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
-
-					item.ImageUrl = GetRowColumn( dr, "ImageUrl", "" );
-					if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
-						item.IsACredentialingOrg = true;
-					item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
-
-					//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
-
-					//all addressess
-					//int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
-					//if ( addressess > 0 )
-					//{
-					//    //item.Addresses = AddressProfileManager.GetAllOrgAddresses( item.Id );
-					//    item.Addresses = Entity_AddressManager.GetAll( item.RowId );
-					//    //just in case (short term
-					//    if ( item.Addresses.Count > 0 )
-					//        item.Address = item.Addresses[0];
-					//}
-
-					//Edit - Added to fill out gray boxes in results - NA 5/12/2017
-					item.AgentType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
-					item.OrganizationSectorType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
-					//End Edit
-
-					list.Add( item );
 				}
-
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, thisClassName + ".Search()" );
+				}
 				return list;
 
 			}
@@ -1492,11 +1590,20 @@ namespace workIT.Factories
 			if ( IsValidDate( from.LastUpdated ) )
 				output.LastUpdated = ( DateTime ) from.LastUpdated;
 
+			//
+			List<ContactPoint> orphans = new List<ContactPoint>();
+			output.Addresses = Entity_AddressManager.GetAll( from.RowId, ref orphans );
+
 			output.AvailabilityListing = from.AvailabilityListing;
 			output.AgentPurpose = from.AgentPurpose;
+			output.Emails =Entity_ReferenceManager.GetAll( from.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
 			output.MissionAndGoalsStatement = from.MissionAndGoalsStatement;
 
 			output.ISQAOrganization = from.ISQAOrganization == null ? false : ( bool ) from.ISQAOrganization;
+			if ( output.ISQAOrganization )
+				output.AgentDomainType = "QACredentialOrganization";
+			else
+				output.AgentDomainType = "CredentialOrganization";
 			output.SocialMediaPages = Entity_ReferenceManager.GetAll( from.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
 		}
 
@@ -1521,170 +1628,176 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB_Common( DBEntity from, ThisEntity to,
+		public static void MapFromDB_Common( DBEntity input, ThisEntity output,
 					bool includingProperties,
 					bool includeCredentials,
 					bool includingRoles,
 					bool includingQAWhereUsed )
 
 		{
-			if ( to == null )
-				to = new ThisEntity();
-			to.Id = from.Id;
-			to.RowId = from.RowId;
+			if ( output == null )
+				output = new ThisEntity();
+			output.Id = input.Id;
+			output.RowId = input.RowId;
 
-			to.Name = from.Name;
-			to.Description = from.Description;
-			to.SubjectWebpage = from.SubjectWebpage;
-			to.EntityStateId = from.EntityStateId ?? 1;
+			output.Name = input.Name;
+			output.Description = input.Description;
+			output.SubjectWebpage = input.SubjectWebpage;
+			output.EntityStateId = input.EntityStateId ?? 1;
 
-			if ( from.ImageURL != null && from.ImageURL.Trim().Length > 0 )
-				to.ImageUrl = from.ImageURL;
+			if ( input.ImageURL != null && input.ImageURL.Trim().Length > 0 )
+				output.ImageUrl = input.ImageURL;
 			else
-				to.ImageUrl = null;
-			to.CredentialRegistryId = from.CredentialRegistryId;
-			to.CTID = from.CTID;
+				output.ImageUrl = null;
+			output.CredentialRegistryId = input.CredentialRegistryId;
+			output.CTID = input.CTID;
 			//TODO
-			//to.AlternativeIdentifier = from.AlternativeIdentifier;
-			to.AlternativeIdentifierList = Entity_IdentifierValueManager.GetAll( to.RowId, Entity_IdentifierValueManager.ORGANIZATION_AlternativeIdentifier );
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime ) from.Created;
+			//output.AlternativeIdentifier = input.AlternativeIdentifier;
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.ORGANIZATION_Identifier );
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime ) input.Created;
 
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime ) input.LastUpdated;
 
-			//need to use the service types as well. See assignment for to.AgentType below
-			to.ISQAOrganization = from.ISQAOrganization == null ? false : ( bool ) from.ISQAOrganization;
+			//need output use the service types as well. See assignment for output.AgentType below
+			output.ISQAOrganization = input.ISQAOrganization == null ? false : ( bool ) input.ISQAOrganization;
+			if ( output.ISQAOrganization )
+				output.AgentDomainType = "QACredentialOrganization";
+			else
+				output.AgentDomainType = "CredentialOrganization";
+			//output.IsThirdPartyOrganization = input.IsThirdPartyOrganization != null ? ( bool ) input.IsThirdPartyOrganization : false;
 
-			//to.IsThirdPartyOrganization = from.IsThirdPartyOrganization != null ? ( bool ) from.IsThirdPartyOrganization : false;
-
-			to.AgentType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
-			if ( to.AgentType.HasItems() )
+			output.AgentType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
+			if ( output.AgentType.HasItems() )
 			{
-				EnumeratedItem item = to.AgentType.Items.FirstOrDefault( s => s.SchemaName == "orgType:QualityAssurance" );
+				EnumeratedItem item = output.AgentType.Items.FirstOrDefault( s => s.SchemaName == "orgType:QualityAssurance" );
 				if ( item != null && item.Id > 0 )
-					to.ISQAOrganization = true;
+					output.ISQAOrganization = true;
 			}
-			Entity relatedEntity = EntityManager.GetEntity( to.RowId );
+			Entity relatedEntity = EntityManager.GetEntity( output.RowId );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
 			{
-				to.EntityId = relatedEntity.Id;
-				to.EntityLastUpdated = relatedEntity.LastUpdated;
+				output.EntityId = relatedEntity.Id;
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 			}
 
 			//=========================================================
-			to.AgentPurpose = from.AgentPurpose;
-			to.AgentPurposeDescription = from.AgentPurposeDescription;
-			to.MissionAndGoalsStatement = from.MissionAndGoalsStatement;
-			to.MissionAndGoalsStatementDescription = from.MissionAndGoalsStatementDescription;
+			output.AgentPurpose = input.AgentPurpose;
+			output.AgentPurposeDescription = input.AgentPurposeDescription;
+			output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
+			output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
 
-			to.AvailabilityListing = from.AvailabilityListing;
+			output.AvailabilityListing = input.AvailabilityListing;
 
 			//map, although not currently used in interface
-			to.FoundingDate = from.FoundingDate;
+			output.FoundingDate = input.FoundingDate;
 
-			to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+			output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
 			//TODO: remove this one, or not
-			to.AlternateNames = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
-			to.AlternateName = Entity_ReferenceManager.GetAllToList( to.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+			output.AlternateNames = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+			output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
 			//properties
 			if ( includingProperties )
 			{
 				List<ContactPoint> orphans = new List<ContactPoint>();
-				to.Addresses = Entity_AddressManager.GetAll( to.RowId, ref orphans );
-				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, Addresses: {1}, orphanContacts: {2}", to.Id, to.Addresses.Count(), orphans.Count ) );
+				output.Addresses = Entity_AddressManager.GetAll( output.RowId, ref orphans );
+				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, Addresses: {1}, orphanContacts: {2}", output.Id, output.Addresses.Count(), orphans.Count ) );
 				//these will be mostly (all) under address
-				//really should have display to show contact points per address
-				//then how to handle CPs without address!
-				//any contacts imported with an empty address, would have been added to the org
-				to.ContactPoint = Entity_ContactPointManager.GetAll( to.RowId );
-				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, ContactPoint: {1}", to.Id, to.ContactPoint.Count() ) );
-				if ( to.Addresses != null && to.Addresses.Count > 0 )
+				//really should have display output show contact points per address
+				//then how output handle CPs without address!
+				//any contacts imported with an empty address, would have been added output the org
+				output.ContactPoint = Entity_ContactPointManager.GetAll( output.RowId );
+				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, ContactPoint: {1}", output.Id, output.ContactPoint.Count() ) );
+				if ( output.Addresses != null && output.Addresses.Count > 0 )
 				{
 
 				}
 				if ( orphans.Count > 0 )
 				{
-					to.ContactPoint.AddRange( orphans );
+					output.ContactPoint.AddRange( orphans );
 				}
 				//detail page expects social media in contact points
-				if ( to.ContactPoint == null )
-					to.ContactPoint = new List<ContactPoint>();
-				to.SocialMediaPages = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
-				if ( to.SocialMediaPages != null && to.SocialMediaPages.Count > 0 )
+				if ( output.ContactPoint == null )
+					output.ContactPoint = new List<ContactPoint>();
+				output.SocialMediaPages = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
+				if ( output.SocialMediaPages != null && output.SocialMediaPages.Count > 0 )
 				{
-					LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, SocialMediaPages: {1}", to.Id, to.SocialMediaPages.Count() ) );
+					LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, SocialMediaPages: {1}", output.Id, output.SocialMediaPages.Count() ) );
 					ContactPoint cp = new ContactPoint();
-					cp.SocialMedia.AddRange( to.SocialMediaPages );
-					to.ContactPoint.Add( cp );
+					cp.SocialMedia.AddRange( output.SocialMediaPages );
+					output.ContactPoint.Add( cp );
 				}
 
 				//this shouldn't be used anymore
-				//to.PhoneNumbers = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE );
-				//LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, PhoneNumbers: {1}", to.Id, to.PhoneNumbers.Count() ) );
-				to.Emails = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
-				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, Emails: {1}", to.Id, to.Emails.Count() ) );
+				//output.PhoneNumbers = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE );
+				//LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, PhoneNumbers: {1}", output.Id, output.PhoneNumbers.Count() ) );
+				output.Emails = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
+				LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".MapFromDB. OrgId: {0}, Emails: {1}", output.Id, output.Emails.Count() ) );
 				//not ideal?
-				if ( to.Emails != null && to.Emails.Count > 0 )
+				if ( output.Emails != null && output.Emails.Count > 0 )
 				{
 					ContactPoint cp = new ContactPoint();
 					cp.Name = "Email";
-					cp.Email.AddRange( to.Emails );
-					to.ContactPoint.Add( cp );
+					cp.Email.AddRange( output.Emails );
+					output.ContactPoint.Add( cp );
 				}
 				//using Entity.Property in workIT, rather than Organization.Service
-				//OrganizationServiceManager.FillOrganizationService( from, to );
-				to.ServiceType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
+				//OrganizationServiceManager.FillOrganizationService( input, output );
+				output.ServiceType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
 
 				//sector type? - as an enumeration, will be stored in properties
-				to.OrganizationSectorType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
-				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId );
+				output.OrganizationSectorType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
+				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
 
-				to.IdentificationCodes = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_IDENTIFIERS );
+				output.IdentificationCodes = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_IDENTIFIERS );
 
 
-				//to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-				to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-				//to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+				//output.Industry = Entity_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+				output.Industry = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+				//output.OtherIndustries = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 				//}
 			}
 
 			if ( includeCredentials )
             {
-				to.TotalCredentials = Entity_AgentRelationshipManager.CredentialCount_ForOwningOfferingOrg( to.RowId );
-				to.TotalAssessments = Entity_AgentRelationshipManager.AssessmentCount_ForOwningOfferingOrg( to.RowId );
-				to.TotalLopps = Entity_AgentRelationshipManager.LoppCount_ForOwningOfferingOrg( to.RowId );
-				to.TotalFrameworks = EducationFrameworkManager.FrameworkCount_ForOwningOrg( to.CTID );
+				output.TotalCredentials = Entity_AgentRelationshipManager.CredentialCount_ForOwningOfferingOrg( output.RowId );
+				output.TotalAssessments = Entity_AgentRelationshipManager.AssessmentCount_ForOwningOfferingOrg( output.RowId );
+				output.TotalLopps = Entity_AgentRelationshipManager.LoppCount_ForOwningOfferingOrg( output.RowId );
+				output.TotalFrameworks = CompetencyFrameworkManager.FrameworkCount_ForOwningOrg( output.CTID );
+				output.TotalTransferValueProfiles = TransferValueProfileManager.Count_ForOwningOrg( output.RowId );
+				output.TotalPathways = PathwayManager.Count_ForOwningOrg( output.RowId );
+				output.TotalPathwaySets = PathwaySetManager.Count_ForOwningOrg( output.RowId );
 				//-FrameworkCount_ForOwningOrg
-				if ( to.TotalCredentials > 0 )
-					to.IsACredentialingOrg = true;
+				if ( output.TotalCredentials > 0 )
+					output.IsACredentialingOrg = true;
 			}
             else
             {
-                //need to distinguish QA from non-QA credentials
-                //if ( CountCredentials( from ) > 0 )
-                //	to.IsACredentialingOrg = true;
+                //need output distinguish QA input non-QA credentials
+                //if ( CountCredentials( input ) > 0 )
+                //	output.IsACredentialingOrg = true;
             }
 
 			if ( includingRoles )
 			{
-				GetOrgRoles( from, to );
+				GetOrgRoles( input, output );
 			}
 
 			if ( includingQAWhereUsed )
 			{
-				//to.QualityAssuranceActor = Entity_QualityAssuranceActionManager.QualityAssuranceActionProfile_GetAllForAgent( to.RowId );
+				//output.QualityAssuranceActor = Entity_QualityAssuranceActionManager.QualityAssuranceActionProfile_GetAllForAgent( output.RowId );
 			}
 			if ( includingProperties )
 			{
-				to.HasConditionManifest = ConditionManifestManager.GetAll( to.Id, false );
-				to.HasCostManifest = CostManifestManager.GetAll( to.Id, false );
+				output.HasConditionManifest = ConditionManifestManager.GetAll( output.Id, false );
+				output.HasCostManifest = CostManifestManager.GetAll( output.Id, false );
 			}
 
-			MapProcessProfiles( from, to );
+			MapProcessProfiles( input, output );
 
-			//need to distiguish between edit, list, and detail
-			to.VerificationServiceProfiles = Entity_VerificationProfileManager.GetAll( to.RowId );
+			//need output distiguish between edit, list, and detail
+			output.VerificationServiceProfiles = Entity_VerificationProfileManager.GetAll( output.RowId );
 
 
 		}

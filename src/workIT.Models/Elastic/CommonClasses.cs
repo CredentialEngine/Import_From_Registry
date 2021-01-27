@@ -39,8 +39,12 @@ namespace workIT.Models.Elastic
     {
         public string Name { get; set; }
         public string Description { get; set; }
-    }
-    public class IndexProperty
+		//public string CompetencyLabel { get; set; }
+		//public string CompetencyText { get; set; }
+		//public string Comment { get; set; }
+		///competencyCategory
+	}
+	public class IndexProperty
     {
         public int Id { get; set; }
         public int CategoryId { get; set; }
@@ -74,14 +78,22 @@ namespace workIT.Models.Elastic
         public int EntityStateId { get; set; }
 
     }
+	public class EntityReference
+	{
+		public int EntityStateId { get; set; }
+		public int EntityTypeId { get; set; }
+		public string EntityType { get; set; }
+		public int EntityBaseId { get; set; }
+		public string EntityName { get; set; }
 
+	}
 	public class AgentRelationshipForEntity
 	{
 		public int OrgId { get; set; }
 		public string AgentName { get; set; }
 		public string AgentUrl { get; set; }
 		public int EntityStateId { get; set; }
-
+		public bool IsDirectAssertion { get; set; }
 		//includes all roles QA: 1,2,10,12, others: 6,7,11,13,20,21
 		public List<int> RelationshipTypeIds { get; set; } = new List<int>();
 		//relationships from the context of the parent entity. For example Accredited By
@@ -120,7 +132,14 @@ namespace workIT.Models.Elastic
         public int RoleId { get; set; }
 
     }
-    public class Connection
+	public class IndexWidgetTag
+	{
+		//may make this an integer
+		//provider, QA, entity list
+		public string Purpose { get; set; }
+		public int WidgetId { get; set; }
+	}
+	public class Connection
     {
         public int Id { get; set; }
         //public string Name { get; set; }

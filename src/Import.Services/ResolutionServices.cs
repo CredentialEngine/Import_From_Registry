@@ -14,7 +14,7 @@ namespace Import.Services
 	public class ResolutionServices
 	{
 
-		public static Guid ResolveEntityByRegistryAtIdToGuid( string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved )
+		public static Guid ResolveEntityByRegistryAtIdToGuid( string property, string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved )
 		{
 			Guid entityUid = new Guid();
 			string ctid = "";
@@ -29,7 +29,10 @@ namespace Import.Services
 			{
 				//should probably ensure a registry url
 				ctid = ExtractCtid( referencedAtId.Trim() );
+				if ( ctid == "ce-fa6c139f-0615-401f-9920-6ec8c445baca" )
+				{
 
+				}
 				EM.Import_EntityResolution item = ImportManager.Import_EntityResolution_GetById( referencedAtId );
 
 				if ( item != null && item.Id > 0 )
@@ -38,10 +41,9 @@ namespace Import.Services
 					//need to make sure valid
 					//actually should always be valid
 					//if ( BaseFactory.IsGuidValid( item.EntityUid ) )
-					return ( Guid ) item.EntityUid;
-
-					//add activity or error
-					//return entityUid;
+					//20-07-30 mparsons - why is EntityUid returned here?
+					//check this
+					return ( Guid )item.EntityUid;
 				}
 				else
 				{
@@ -81,8 +83,7 @@ namespace Import.Services
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
-					status.AddError( statusMsg );
-					//need to know what property would need to be fixed - really shouldn't happen
+					status.AddError( "Credential Add Pending failed for: " + property + ". " + statusMsg );
 					entityUid = new Guid();
 				}
 			}
@@ -92,8 +93,7 @@ namespace Import.Services
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
-					status.AddError( statusMsg );
-					//need to know what property would need to be fixed - really shouldn't happen
+					status.AddError( "Assessment Add Pending failed for: " + property + ". " + statusMsg );
 					entityUid = new Guid();
 				}
 			}
@@ -103,20 +103,18 @@ namespace Import.Services
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
-					status.AddError( statusMsg );
-					//need to know what property would need to be fixed - really shouldn't happen
+					status.AddError( "Learning Opportunity Add Pending failed for: " + property + ". " + statusMsg );
 					entityUid = new Guid();
 				}
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_COST_MANIFEST )
 			{
-                //should know the parent org, add to this method
+				//should know the parent org, add to this method
 				newEntityId = new CostManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
-					status.AddError( statusMsg );
-					//need to know what property would need to be fixed - really shouldn't happen
+					status.AddError( "CostManifest Add Pending failed for: " + property + ". " + statusMsg );
 					entityUid = new Guid();
 				}
 			}
@@ -126,15 +124,53 @@ namespace Import.Services
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
+					status.AddError( "ConditionManifest Add Pending failed for: " + property + ". " + statusMsg );
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
+			{
+				//not sure we will ever have a reference to a TVP?
+				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( "TransferValue Add Pending failed for: " + property + ". " + statusMsg );
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
+			{
+				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( "Pathway Add Pending failed for: " + property + ". " + statusMsg );
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
+			{
+				if ( ctid == "ce-fa6c139f-0615-401f-9920-6ec8c445baca" )
+				{
+
+				}
+				//need pathwayCTID for this ce-abcb5fe0-8fde-4f06-9d70-860cd5bdc763
+				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
 					status.AddError( statusMsg );
 					//need to know what property would need to be fixed - really shouldn't happen
 					entityUid = new Guid();
 				}
-			} else
-            {
-                //for properties like organization.Offers, we don't know what the entity type is.
-                //SO.....
-            }
+			}
+			else
+			{
+				//for properties like organization.Offers, we don't know what the entity type is.
+				//SO.....
+			}
+
 			if ( BaseFactory.IsGuidValid( entityUid) )
 			{
 				int id = importManager.Import_EntityResolutionAdd( referencedAtId,
@@ -158,7 +194,7 @@ namespace Import.Services
 		}
 		public static int ResolveEntityByRegistryAtId( string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved )
 		{
-			Guid entityUid = new Guid();
+			Guid entityUid = Guid.NewGuid();
 			int newEntityId = 0;
 			string ctid = "";
 			List<string> messages = new List<string>();
@@ -168,7 +204,7 @@ namespace Import.Services
 			{
 				//should probably ensure a registry url
 				ctid = ExtractCtid( referencedAtId.Trim() );
-				LoggingHelper.DoTrace( 6, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId: EntityTypeId: {0}, referencedAtId: {1} ", entityTypeId, referencedAtId ) );
+				LoggingHelper.DoTrace( 7, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId: EntityTypeId: {0}, referencedAtId: {1} ", entityTypeId, referencedAtId ) );
 
 				EM.Import_EntityResolution item = ImportManager.Import_EntityResolution_GetById( referencedAtId );
 
@@ -179,9 +215,6 @@ namespace Import.Services
 					//actually should always be valid
 					//if ( BaseFactory.IsGuidValid( item.EntityUid ) )
 					return (int)item.EntityBaseId;
-
-					//add activity or error
-					//return entityUid;
 				}
 				else
 				{
@@ -202,7 +235,7 @@ namespace Import.Services
 			{
 				
 				ctid = ExtractCtid( referencedAtId.Trim() );
-				LoggingHelper.DoTrace( 6, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId. referencedAtId appears to be a ctid EntityTypeId: {0}, referencedAtId: {1}, ctid: {2} ", entityTypeId, referencedAtId, ctid ) );
+				LoggingHelper.DoTrace( 7, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId. referencedAtId appears to be a ctid EntityTypeId: {0}, referencedAtId: {1}, ctid: {2} ", entityTypeId, referencedAtId, ctid ) );
 				if ( IsCtidValid( ctid, ref messages ) )
 				{
 					EM.Import_EntityResolution item2 = ImportManager.Import_EntityResolution_GetByCtid( ctid );
@@ -212,14 +245,13 @@ namespace Import.Services
 						return ( int ) item2.EntityBaseId;
 					} else
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId. DID NOT RESOLVE VIA CTID referencedAtId appears to be a ctid EntityTypeId: {0}, ctid: {2} ", entityTypeId, referencedAtId, ctid ) );
+						LoggingHelper.DoTrace( 5, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId. DID NOT RESOLVE VIA CTID referencedAtId appears to be a ctid EntityTypeId: {0}, ctid: {2} ", entityTypeId, referencedAtId, ctid ) );
 					}
 				}
 
 			}
 			//add an import entry - need to do the base first
 			ImportManager importManager = new ImportManager();
-			entityUid = Guid.NewGuid();
 			
 			string statusMsg = "";
 			if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
@@ -277,6 +309,30 @@ namespace Import.Services
 					entityUid = new Guid();
 				}
 			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
+			{
+				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( statusMsg );
+					//need to know what property would need to be fixed - really shouldn't happen
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
+			{
+				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( statusMsg );
+					//need to know what property would need to be fixed - really shouldn't happen
+					entityUid = new Guid();
+				}
+			}
+
+			//
 			if ( newEntityId  > 0)
 			{
 				int id = importManager.Import_EntityResolutionAdd( referencedAtId,
@@ -518,7 +574,7 @@ namespace Import.Services
 		/// <param name="ctid"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public static int GetEntityIdFromResource( string ctid )
+		public static int GetEntityTypeIdFromResource( string ctid )
 		{
 			string statusMessage = "";
 			string ctdlType = "";

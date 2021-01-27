@@ -154,7 +154,7 @@ namespace workIT.Factories
 					string message = FormatExceptions( ex );
 					status.AddError( thisClassName + " - Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1}), UserId: {2}", parent.EntityBaseName, parent.EntityBaseId ) );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 					isValid = false;
 				}
 			}
@@ -372,7 +372,7 @@ namespace workIT.Factories
 			//	}
 			//}
 			
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		public static void MapToDB( ThisEntity from, DBEntity to )

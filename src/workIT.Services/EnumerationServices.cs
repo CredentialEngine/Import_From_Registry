@@ -253,7 +253,6 @@ namespace workIT.Services
         /// <returns></returns>
         public MC.Enumeration GetLearningOppAgentRoles( MC.EnumerationType interfaceType )
         {
-            //MC.Enumeration e = Entity_AgentRelationshipManager.GetLearningOppAgentRoles( false );
             MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
             e.InterfaceType = interfaceType;
             e.ShowOtherValue = true;
@@ -275,38 +274,7 @@ namespace workIT.Services
             return e;
         }
 
-        //public MC.Enumeration GetEntityQARoles( MC.EnumerationType interfaceType, string entityType = "Credential", bool getAll = true )
-        //{
-        //	//get roles as entity to org
-        //	MC.Enumeration e = OrganizationRoleManager.GetEntityQARoles();
-        //	e.InterfaceType = interfaceType;
-        //	e.ShowOtherValue = false;
-        //	return e;
-        //}
 
-        //public MC.Enumeration GetEntityOfferedByRoles( MC.EnumerationType interfaceType )
-        //{
-        //	//get roles as entity to org
-        //	MC.Enumeration e = OrganizationRoleManager.GetEntityOfferedByRoles();
-        //	e.InterfaceType = interfaceType;
-        //	e.ShowOtherValue = false;
-        //	return e;
-        //}
-        /// <summary>
-        /// Get only QA roles
-        /// - used by editor - for 3rd party QA??
-        /// </summary>
-        /// <param name="interfaceType"></param>
-        /// <param name="entityType"></param>
-        /// <returns></returns>
-        //public MC.Enumeration GetCredentialAgentQAActions( MC.EnumerationType interfaceType, string entityType = "Credential", bool getAll = true )
-        //      {
-        //          //get roles as entity to org
-        //          MC.Enumeration e = OrganizationRoleManager.GetEntityAgentQAActions( false, getAll, entityType );
-        //          e.InterfaceType = interfaceType;
-        //          e.ShowOtherValue = true;
-        //          return e;
-        //      }
         public MC.Enumeration GetEntityAgentQAActions( MC.EnumerationType interfaceType, int parentEntityTypeId, bool getAll = true, bool isInverseRole = false )
         {
             //get roles as entity to org
@@ -424,12 +392,12 @@ namespace workIT.Services
 
         #endregion
 
-        #region SOC
-        public static List<CodeItem> Occupation_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
-        {
-            //return CodesManager.SOC_Search( headerId, keyword, pageNumber, pageSize,  ref totalRows, getAll );
-            return CodesManager.ReferenceFramework_SearchInUse( 11, 1, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
-        }
+        #region SOC	NOT USED
+        //public static List<CodeItem> Occupation_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+        //{
+        //    //return CodesManager.SOC_Search( headerId, keyword, pageNumber, pageSize,  ref totalRows, getAll );
+        //    return CodesManager.ReferenceFramework_SearchInUse( 11, 1, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
+        //}
        
         //public static MC.Enumeration SOC_Categories_Enumeration( bool getAll = true )
         //{
@@ -453,15 +421,15 @@ namespace workIT.Services
         //}
 
         #endregion
-        #region NAICS
-        public static List<CodeItem> Industry_Search( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
-        {
-            //int totalRows = 0;
-            //if ( entityTypeId == 0)
-            //	return CodesManager.NAICS_Search( headerId, keyword, pageNumber, pageSize, getAll, ref totalRows );
-            //else
-            return CodesManager.ReferenceFramework_SearchInUse( 10, entityTypeId, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
-        }
+        #region NAICS		NOT UISED
+        //public static List<CodeItem> Industry_Search( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+        //{
+        //    //int totalRows = 0;
+        //    //if ( entityTypeId == 0)
+        //    //	return CodesManager.NAICS_Search( headerId, keyword, pageNumber, pageSize, getAll, ref totalRows );
+        //    //else
+        //    return CodesManager.ReferenceFramework_SearchInUse( 10, entityTypeId, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
+        //}
         //public static List<CodeItem> NAICS_Autocomplete( int credentialId, int headerId = 0, string keyword = "", int maxRows = 25 )
         //{
         //	//need a getAll option for this as well!
@@ -487,32 +455,32 @@ namespace workIT.Services
         //	};
         //	return result;
         //}
-        public static MC.Enumeration NAICS_CategoriesInUse_Enumeration( int entityTypeId )
-        {
-            var data = new List<CodeItem>();
-            //show all until the custom one is fixed
-            //data = CodesManager.NAICS_Categories()
+        //public static MC.Enumeration NAICS_CategoriesInUse_Enumeration( int entityTypeId )
+        //{
+        //    var data = new List<CodeItem>();
+        //    //show all until the custom one is fixed
+        //    //data = CodesManager.NAICS_Categories()
 
-            data = CodesManager.NAICS_CategoriesInUse( entityTypeId );
+        //    data = CodesManager.NAICS_CategoriesInUse( entityTypeId );
 
-            var result = new MC.Enumeration()
-            {
-                Id = 10,
-                Name = "North American Industry Classification System (NAICS)",
-                Items = ConvertCodeItemsToEnumeratedItems( data )
-            };
-            return result;
-        }
+        //    var result = new MC.Enumeration()
+        //    {
+        //        Id = 10,
+        //        Name = "North American Industry Classification System (NAICS)",
+        //        Items = ConvertCodeItemsToEnumeratedItems( data )
+        //    };
+        //    return result;
+        //}
         #endregion
-        #region CIPS
-        public static List<CodeItem> CIPS_Search( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
-        {
-            //int totalRows = 0;
-            //if ( entityTypeId == 0 )
-            //	return CodesManager.CIPS_Search( headerId, keyword, pageNumber, pageSize, ref totalRows, getAll );
-            //else
-            return CodesManager.ReferenceFramework_SearchInUse( 23, entityTypeId, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
-        }
+        #region CIPS NOT USED
+        //public static List<CodeItem> CIPS_Search( int entityTypeId, int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+        //{
+        //    //int totalRows = 0;
+        //    //if ( entityTypeId == 0 )
+        //    //	return CodesManager.CIPS_Search( headerId, keyword, pageNumber, pageSize, ref totalRows, getAll );
+        //    //else
+        //    return CodesManager.ReferenceFramework_SearchInUse( 23, entityTypeId, headerId.ToString(), keyword, pageNumber, pageSize, ref totalRows );
+        //}
         //public static List<CodeItem> CIPS_Search( int headerId = 0, string keyword = "", int pageNumber = 1, int maxRows = 25 )
         //{
         //	int totalRows = 0;
@@ -541,35 +509,22 @@ namespace workIT.Services
         //	};
         //	return result;
         //}
-        public static MC.Enumeration CIPS_CategoriesInUse_Enumeration( int entityTypeId )
-        {
-            //show all until the custom one is fixed
-            //var data1 = CodesManager.CIPS_Categories();
-            var data = CodesManager.CIPS_CategoriesInUse( entityTypeId );
-
-            var result = new MC.Enumeration()
-            {
-                Id = 23,
-                Name = "Classification of Instructional Programs (CIP)",
-                Items = ConvertCodeItemsToEnumeratedItems( data )
-            };
-            return result;
-        }
-        #endregion
-        #region Competency framework
-        //public static MC.Enumeration CompetencyFrameworks()
+        //public static MC.Enumeration CIPS_CategoriesInUse_Enumeration( int entityTypeId )
         //{
-        //	//return CodesManager.CompetencyFrameworks_GetAll();
-        //	var data = CodesManager.CompetencyFrameworks_GetAll();
-        //	var result = new MC.Enumeration()
-        //	{
-        //		Id = 11,
-        //		Name = "Competency Frameworks",
-        //		Items = ConvertCodeItemsToEnumeratedItems( data )
-        //	};
-        //	return result;
+        //    //show all until the custom one is fixed
+        //    //var data1 = CodesManager.CIPS_Categories();
+        //    var data = CodesManager.CIPS_CategoriesInUse( entityTypeId );
+
+        //    var result = new MC.Enumeration()
+        //    {
+        //        Id = 23,
+        //        Name = "Classification of Instructional Programs (CIP)",
+        //        Items = ConvertCodeItemsToEnumeratedItems( data )
+        //    };
+        //    return result;
         //}
         #endregion
+
         #region Helpers
         public static List<MC.EnumeratedItem> ConvertCodeItemsToEnumeratedItems( List<CodeItem> input )
         {

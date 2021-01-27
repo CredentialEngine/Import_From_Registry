@@ -10,6 +10,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Import.Services;
 
+using EntityServices = workIT.Services.CompetencyFrameworkServices;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Utilities;
@@ -18,26 +19,31 @@ namespace CTI.Import
 {
 	public class RegistryImport
 	{
-        static string thisClassName = "RegistryImport";
-		public RegistryImport( string community)
+		static string thisClassName = "RegistryImport";
+		public RegistryImport( string community )
 		{
 			Community = community;
 		}
 		public string Community { get; set; }
-        ImportCredential credImportMgr = new ImportCredential();
-        ImportOrganization orgImportMgr = new ImportOrganization();
-        ImportAssessment asmtImportMgr = new ImportAssessment();
-        ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
-        ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
-        ImportCostManifests cstManImportMgr = new ImportCostManifests();
+		ImportServiceHelpers importMgr = new ImportServiceHelpers();
 
-        public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
+		ImportCredential credImportMgr = new ImportCredential();
+		ImportOrganization orgImportMgr = new ImportOrganization();
+		ImportAssessment asmtImportMgr = new ImportAssessment();
+		ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
+		ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
+		ImportCostManifests cstManImportMgr = new ImportCostManifests();
+		ImportCompetencyFramesworks cfImportMgr = new ImportCompetencyFramesworks();
+		ImportPathways pathwayImportMgr = new ImportPathways();
+		ImportTransferValue tvpImportMgr = new ImportTransferValue();
 
-        public string Import( string registryEntityType, int entityTypeId, string startingDate, string endingDate, int maxRecords, bool downloadOnly, ref int recordsImported )
-        {
+		public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
+
+		public string Import( string registryEntityType, int entityTypeId, string startingDate, string endingDate, int maxRecords, bool downloadOnly, ref int recordsImported, string sortOrder = "asc" )
+		{
 
 			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_" + registryEntityType, true );
-			if (!importingThisType )
+			if ( !importingThisType )
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Skipping import of {0}  ***************** ", registryEntityType ) );
 				return "Skipped import of " + registryEntityType;
@@ -45,186 +51,269 @@ namespace CTI.Import
 			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Importing {0}  ***************** ", registryEntityType ) );
 			//JsonEntity input = new JsonEntity();
 			ReadEnvelope envelope = new ReadEnvelope();
-            List<ReadEnvelope> list = new List<ReadEnvelope>();
-            //EntityServices mgr = new EntityServices();
-            ImportServiceHelpers importMgr = new ImportServiceHelpers();
-            string entityType = registryEntityType;
-            CodeItem ci = CodesManager.Codes_EntityType_Get( entityTypeId );
-            if ( ci != null && ci.Id > 0 )
-                entityType = ci.Title;
-            int pageNbr = 1;
-            int pageSize = 25;
-            string importError = "";
-            string importResults = "";
-            string importNote = "";
-            //ThisEntity output = new ThisEntity();
-            List<string> messages = new List<string>();
+			List<ReadEnvelope> list = new List<ReadEnvelope>();
 
-            int cntr = 0;
-            int pTotalRows = 0;
+			string entityType = registryEntityType;
+			CodeItem ci = CodesManager.Codes_EntityType_Get( entityTypeId );
+			if ( ci != null && ci.Id > 0 )
+				entityType = ci.Title;
+			int pageNbr = 1;
+			int pageSize = UtilityManager.GetAppKeyValue( "importPageSize", 100 );
+			string importResults = "";
+			string importNote = "";
+			//ThisEntity output = new ThisEntity();
+			List<string> messages = new List<string>();
 
-            int exceptionCtr = 0;
-            string statusMessage = "";
-            bool isComplete = false;
-            bool importSuccessfull = true;
-            int newImportId = 0;
-            SaveStatus status = new SaveStatus();
+			int cntr = 0;
+			int actualTotalRows = 0;
+			int pTotalRows = 0;
 
-            //will need to handle multiple calls - watch for time outs
-            while ( pageNbr > 0 && !isComplete )
-            {
+			int exceptionCtr = 0;
+			string statusMessage = "";
+			bool isComplete = false;
+			bool importSuccessfull = true;
+
+			//will need to handle multiple calls - watch for time outs
+			while ( pageNbr > 0 && !isComplete )
+			{
 				//19-09-22 chg to use RegistryServices to remove duplicate services
-                list = RegistryServices.Search( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, Community );
+				list = RegistryServices.Search( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, Community, sortOrder );
 
 				//list = RegistryImport.GetLatest( registryEntityType, startingDate, endingDate, pageNbr, pageSize, ref pTotalRows, ref statusMessage, Community );
 
 				if ( list == null || list.Count == 0 )
-                {
-                    isComplete = true;
-                    if ( pageNbr == 1 )
-                    {
-                        //importNote = registryEntityType + ": No records where found for date range ";
+				{
+					isComplete = true;
+					if ( pageNbr == 1 )
+					{
+						//importNote = registryEntityType + ": No records where found for date range ";
 
-                        //Console.WriteLine( thisClassName + importNote );
-                        LoggingHelper.DoTrace( 4, registryEntityType + ": No records where found for date range. " );
-                    }
-                    break;
-                }
+						//Console.WriteLine( thisClassName + importNote );
+						LoggingHelper.DoTrace( 4, registryEntityType + ": No records where found for date range. " );
+					}
+					else if ( cntr < actualTotalRows )
+					{
+						//if no data found and have not processed actual rows, could have been an issue with the search.
+						//perhaps should be an error to ensure followup
+						LoggingHelper.DoTrace( 2, string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ) );
+						LoggingHelper.LogError( string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ), true, "Finder Import Ended Early" );
+					}
+					break;
+				}
+				if ( pageNbr == 1 )
+				{
+					actualTotalRows = pTotalRows;
+					LoggingHelper.DoTrace( 2, string.Format( "Import {0} Found {1} records to process.", registryEntityType, pTotalRows ) );
+				}
 
-                foreach ( ReadEnvelope item in list )
-                {
-                    cntr++;
-                    string payload = item.DecodedResource.ToString();
-                    newImportId = 0;
-                    LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} EnvelopeIdentifier {2} ", cntr, registryEntityType, item.EnvelopeIdentifier ) );
-                    messages = new List<string>();
-                    status = new SaveStatus();
-                    status.DoingDownloadOnly = downloadOnly;
-                    status.ValidationGroup = string.Format( "{0} Import", registryEntityType );
-                    importError = "";
-                    importSuccessfull = false;
+				foreach ( ReadEnvelope item in list )
+				{
+					cntr++;
 
-                    try
-                    {
-                        //Console.WriteLine( string.Format( "{0}. {1} EnvelopeIdentifier {2} ", cntr, registryEntityType, item.EnvelopeIdentifier ) );
-                        if ( payload.IndexOf( "@graphXXX" ) > 0 )
-                        {
-                            DisplayMessages( string.Format( "{0}. {1} Import Encountered an envelope using @graph which is not handled yet: {2} ", cntr, entityTypeId, item.EnvelopeIdentifier ) );
-                        }
-                        else
-                        {
-                            switch ( entityTypeId )
-                            {
+					importSuccessfull = ProcessEnvelope( item, registryEntityType, entityTypeId, cntr, downloadOnly );
 
-                                case 1:
-                                    importSuccessfull = credImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                case 2:
-                                    importSuccessfull = orgImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                case 3:
-                                    importSuccessfull = asmtImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                case 7:
-                                    importSuccessfull = loppImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                case 19:
-                                    importSuccessfull = cndManImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                case 20:
-                                    importSuccessfull = cstManImportMgr.ProcessEnvelope( item, status );
-                                    break;
-                                default:
-                                    DisplayMessages( string.Format( "{0}. Invalid Entity type encountered: {1} ", cntr, entityTypeId ) );
-                                    break;
-                            }
-                        }
+					if ( maxRecords > 0 && cntr >= maxRecords )
+					{
+						break;
+					}
+				} //end foreach 
 
-                    }
-                    catch ( Exception ex )
-                    {
-                        if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-                        {
-                            importError = "The referenced registry document is using an old schema. Please republish it with the latest schema!";
-                            status.AddError( importError );
-                        }
-                        else
-                        {
-                            LoggingHelper.LogError( ex, string.Format( entityType + " Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), false, "CredentialFinder Import exception" );
-                            status.AddError( ex.Message );
-                            importError = ex.Message;
-                        }
+				pageNbr++;
+				if ( ( maxRecords > 0 && cntr >= maxRecords ) )
+				{
+					isComplete = true;
+					LoggingHelper.DoTrace( 2, string.Format( "Import {2} EARLY EXIT. Completed {0} records out of a total of {1} for {2} ", cntr, pTotalRows, registryEntityType ) );
 
-                        //make continue on exceptions an option
-                        exceptionCtr++;
-                        if ( maxExceptions > 0 && exceptionCtr > maxExceptions )
-                        {
-                            //arbitrarily stop if large number of exceptions
-                            importNote = string.Format( thisClassName + " - {0} Many exceptions ({1}) were encountered during import - abandoning.", entityType, exceptionCtr );
-                            //Console.WriteLine( importNote );
-                            LoggingHelper.DoTrace( 1, importNote );
-                            LoggingHelper.LogError( importNote, true, thisClassName + "- many exceptions" );
-                            isComplete = true;
-                            break;
-                        }
-                    }
-                    finally
-                    {
-                        if ( !importSuccessfull )
-                        {
-                            if ( string.IsNullOrWhiteSpace( importError ) )
-                            {
-                                importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
-                            }
-                        }
-                        //store document
-                        //add indicator of success
-                        newImportId = importMgr.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
-                        if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
-                        {
-                            //add indicator of current recored
-                            string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, registryEntityType );
-                            importMgr.AddMessages( newImportId, status, ref messages );
-                        }
+				}
+				else if ( cntr >= actualTotalRows )
+				{
+					isComplete = true;
+					//LoggingHelper.DoTrace( 2, string.Format( "Completed {0} records out of a total of {1} for {2}", cntr, pTotalRows, registryEntityType ) );
 
-                    } //finally
-
-                    if ( maxRecords > 0 && cntr > maxRecords )
-                    {
-                        break;
-                    }
-                } //end foreach 
-
-                pageNbr++;
-                if ( ( maxRecords > 0 && cntr > maxRecords ) || cntr > pTotalRows )
-                {
-                    isComplete = true;
-                    LoggingHelper.DoTrace( 2, string.Format( "Import {2} EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows, registryEntityType ) );
-
-                }
-                //if ( pageNbr * pageSize < pTotalRows )
-                //	pageNbr++;
-                //else
-                //	isComplete = true;
-            }
-            importResults = string.Format( "Import {0} - Processed {1} records, with {2} exceptions. \r\n", registryEntityType, cntr, exceptionCtr );
-            if ( !string.IsNullOrWhiteSpace( importNote ) )
-                importResults += importNote;
+				}
+				//if ( pageNbr * pageSize < pTotalRows )
+				//	pageNbr++;
+				//else
+				//	isComplete = true;
+			}
+			importResults = string.Format( "Import {0} - Processed {1} records, with {2} exceptions. \r\n", registryEntityType, cntr, exceptionCtr );
+			LoggingHelper.DoTrace( 2, importResults );
+			if ( !string.IsNullOrWhiteSpace( importNote ) )
+				importResults += importNote;
 
 			recordsImported += cntr;
 
 			return importResults;
-        }
-        public static string DisplayMessages( string message )
-        {
-            LoggingHelper.DoTrace( 1, message );
-            //Console.WriteLine( message );
+		}
+		public bool ProcessEnvelope( ReadEnvelope item, string registryEntityType, int entityTypeId, int cntr, bool doingDownloadOnly = false )
+		{
+			bool importSuccessfull = false;
+			if ( item == null || item.DecodedResource == null )
+				return false;
 
-            return message;
-        }
+			string payload = item.DecodedResource.ToString();
+			int newImportId = 0;
+			DateTime started = DateTime.Now;
+			DateTime envelopeUpdateDate = new DateTime();
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			{
+
+			}
+			LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} CTID {2}, Updated: {3} ", cntr, registryEntityType, item.EnvelopeCetermsCtid, envelopeUpdateDate.ToString() ) );
+			var messages = new List<string>();
+			var status = new SaveStatus
+			{
+				DoingDownloadOnly = doingDownloadOnly,
+				ValidationGroup = string.Format( "{0} Import", registryEntityType )
+			};
+			string importError = "";
+			importSuccessfull = false;
+
+			try
+			{
+				switch ( entityTypeId )
+				{
+
+					case 1:
+						importSuccessfull = credImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 2:
+						importSuccessfull = orgImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 3:
+						importSuccessfull = asmtImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 7:
+						importSuccessfull = loppImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 8:    //
+							   //DisplayMessages( string.Format( "{0}. Pathways ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+						importSuccessfull = pathwayImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 9:    //
+						DisplayMessages( string.Format( "{0}. Rubrics ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+						return true;
+					case 10:
+					case 17:
+						importSuccessfull = cfImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 11:    //concept scheme
+								//DisplayMessages( string.Format( "{0}. Concept Schemes ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+						importSuccessfull = new ImportConceptSchemes().ProcessEnvelope( item, status );
+						return true;
+
+					case 19:
+						importSuccessfull = cndManImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 20:
+						importSuccessfull = cstManImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 23:
+						importSuccessfull = new ImportPathwaySets().ProcessEnvelope( item, status );
+						//DisplayMessages( string.Format( "{0}. PathwaySets ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+
+						break;
+					case 26:
+						importSuccessfull = tvpImportMgr.ProcessEnvelope( item, status );
+						//DisplayMessages( string.Format( "{0}. TransferValueProfiles ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+
+						break;
+					default:
+						DisplayMessages( string.Format( "{0}. Invalid Entity type encountered: {1} ", cntr, entityTypeId ) );
+						break;
+				}
+			}
+			catch ( Exception ex )
+			{
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					importError = "The referenced registry document is using an old schema. Please republish it with the latest schema!";
+					status.AddError( importError );
+				}
+				else
+				{
+					LoggingHelper.LogError( ex, string.Format( registryEntityType + " Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), true, "CredentialFinder Import exception" );
+					status.AddError( ex.Message );
+					importError = ex.Message;
+				}
+
+				//make continue on exceptions an option
+				//exceptionCtr++;
+				//if ( maxExceptions > 0 && exceptionCtr > maxExceptions )
+				//{
+				//    //arbitrarily stop if large number of exceptions
+				//    importNote = string.Format( thisClassName + " - {0} Many exceptions ({1}) were encountered during import - abandoning.", entityType, exceptionCtr );
+				//    //Console.WriteLine( importNote );
+				//    LoggingHelper.DoTrace( 1, importNote );
+				//    LoggingHelper.LogError( importNote, true, thisClassName + "- many exceptions" );
+				//    isComplete = true;
+				//    break;
+				//}
+			}
+			finally
+			{
+				if ( !importSuccessfull )
+				{
+					if ( string.IsNullOrWhiteSpace( importError ) )
+					{
+						importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
+					}
+				}
+				//store document
+				//add indicator of success
+				newImportId = importMgr.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
+				if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+				{
+					//add indicator of current recored
+					string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, registryEntityType );
+					//ensure status has info on the current context, so can be include in messages. Or N/A. The message has the Import.Staging record as the parent 
+					importMgr.AddMessages( newImportId, status, ref messages );
+				}
+
+				TimeSpan duration = DateTime.Now.Subtract( started );
+				LoggingHelper.DoTrace( 2, string.Format( "         Total Duration: {0:N2} seconds ", duration.TotalSeconds ) );
+			} //finally
+
+
+			return importSuccessfull;
+		}
+		public bool GetEnvelopePayload( ReadEnvelope item, SaveStatus status, ref string payload )
+		{
+			if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
+			{
+				status.AddError( "A valid ReadEnvelope must be provided." );
+				return false;
+			}
+			//
+			DateTime createDate = new DateTime();
+			DateTime envelopeUpdateDate = new DateTime();
+			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+			{
+				status.EnvelopeCreatedDate = createDate;
+			}
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			{
+				status.EnvelopeUpdatedDate = envelopeUpdateDate;
+			}
+			//
+			payload = item.DecodedResource.ToString();
+			string envelopeIdentifier = item.EnvelopeIdentifier;
+			string ctdlType = RegistryServices.GetResourceType( payload );
+			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
+
+
+			return true;
+		}
+		public static string DisplayMessages( string message )
+		{
+			LoggingHelper.DoTrace( 1, message );
+			//Console.WriteLine( message );
+
+			return message;
+		}
 
 		//actually may want to pass community, to allow multiple calls
-        public static List<ReadEnvelope> GetLatest( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community)
+		public static List<ReadEnvelope> GetLatest( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community )
 		{
 			string document = "";
 			string filter = "";
@@ -253,7 +342,7 @@ namespace CTI.Import
 				request.Credentials = CredentialCache.DefaultCredentials;
 
 				//Get the response.
-				HttpWebResponse response = ( HttpWebResponse ) request.GetResponse();
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 
 				// Get the stream containing content returned by the server.
 				Stream dataStream = response.GetResponseStream();
@@ -272,11 +361,15 @@ namespace CTI.Import
 				//Link contains links for paging
 				var hdr = response.GetResponseHeader( "Link" );
 				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
-
+				//20-07-02 mp - seems the header name is now X-Total
+				if ( pTotalRows == 0 )
+				{
+					Int32.TryParse( response.GetResponseHeader( "X-Total" ), out pTotalRows );
+				}
 				//map to the list
 				list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
 
-				
+
 			}
 			catch ( Exception exc )
 			{
@@ -286,6 +379,18 @@ namespace CTI.Import
 		}
 
 
+		/// <summary>
+		/// Get list of deleted records for the requested time period.
+		/// </summary>
+		/// <param name="community"></param>
+		/// <param name="type"></param>
+		/// <param name="startingDate">Date must be in UTC</param>
+		/// <param name="endingDate">Date must be in UTC</param>
+		/// <param name="pageNbr"></param>
+		/// <param name="pageSize"></param>
+		/// <param name="pTotalRows"></param>
+		/// <param name="statusMessage"></param>
+		/// <returns></returns>
 		public static List<ReadEnvelope> GetDeleted( string community, string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage )
 		{
 			string document = "";
@@ -312,7 +417,7 @@ namespace CTI.Import
 
 				// If required by the server, set the credentials.
 				request.Credentials = CredentialCache.DefaultCredentials;
-				HttpWebResponse response = ( HttpWebResponse ) request.GetResponse();
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 				Stream dataStream = response.GetResponseStream();
 
 				// Open the stream using a StreamReader for easy access.
@@ -329,7 +434,11 @@ namespace CTI.Import
 				//Link contains links for paging
 				var hdr = response.GetResponseHeader( "Link" );
 				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
-
+				//20-07-02 mp - seems the header name is now X-Total
+				if ( pTotalRows == 0 )
+				{
+					Int32.TryParse( response.GetResponseHeader( "X-Total" ), out pTotalRows );
+				}
 				//map to the default envelope
 				list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
 

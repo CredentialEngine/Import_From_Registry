@@ -31,7 +31,8 @@ namespace workIT.Factories
                     {
                         command.CommandType = CommandType.StoredProcedure;
                         command.Parameters.Add( new SqlParameter( "@PopulateType", populateType ) );
-                        command.CommandTimeout = 300;
+						//20-04-20 mparsons - 300 was no longer enough for credential summary!!!
+                        command.CommandTimeout = 600;
                         command.ExecuteNonQuery();
                         command.Dispose();
                         c.Close();
@@ -75,67 +76,80 @@ namespace workIT.Factories
 
 
 			string connectionString = MainConnection();
-			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			try
 			{
-				using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
+				using ( SqlConnection c = new SqlConnection( connectionString ) )
 				{
-					c.Open();
-					command.CommandType = CommandType.StoredProcedure;
-					command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-                    command.CommandTimeout = 300;
-                    command.ExecuteNonQuery();
-					command.Dispose();
-					c.Close();
+					using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
+					{
+						c.Open();
+						command.CommandType = CommandType.StoredProcedure;
+						command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+						command.CommandTimeout = 300;
+						command.ExecuteNonQuery();
+						command.Dispose();
+						c.Close();
 
+					}
+
+					using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
+					{
+						c.Open();
+						command.CommandType = CommandType.StoredProcedure;
+						command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+						command.CommandTimeout = 300;
+						command.ExecuteNonQuery();
+						command.Dispose();
+						c.Close();
+
+					}
 				}
-
-				using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
-				{
-					c.Open();
-					command.CommandType = CommandType.StoredProcedure;
-					command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-                    command.CommandTimeout = 300;
-                    command.ExecuteNonQuery();
-					command.Dispose();
-					c.Close();
-
-				}
+			}catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, "CacheManager.PopulateEntityRelatedCaches (Entity_Cache_Populate)" );
 			}
 
-			if ( e.EntityTypeId == 1 )
+			try
 			{
-				using ( SqlConnection c = new SqlConnection( connectionString ) )
+				if ( e.EntityTypeId == 1 )
 				{
-					c.Open();
-
-					//using ( SqlCommand command = new SqlCommand( "[Credential.SummaryCache]", c ) )
-					using ( SqlCommand command = new SqlCommand( "[Populate_Credential_SummaryCache]", c ) )
+					using ( SqlConnection c = new SqlConnection( connectionString ) )
 					{
-						command.CommandType = CommandType.StoredProcedure;
-						command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
-                        command.CommandTimeout = 300;
-                        command.ExecuteNonQuery();
-						command.Dispose();
-						c.Close();
+						c.Open();
 
+						//using ( SqlCommand command = new SqlCommand( "[Credential.SummaryCache]", c ) )
+						using ( SqlCommand command = new SqlCommand( "[Populate_Credential_SummaryCache]", c ) )
+						{
+							command.CommandType = CommandType.StoredProcedure;
+							command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
+							command.CommandTimeout = 300;
+							command.ExecuteNonQuery();
+							command.Dispose();
+							c.Close();
+
+						}
+					}
+
+					using ( SqlConnection c = new SqlConnection( connectionString ) )
+					{
+						c.Open();
+
+						using ( SqlCommand command = new SqlCommand( "[Populate_Competencies_cache]", c ) )
+						{
+							command.CommandType = CommandType.StoredProcedure;
+							command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
+							command.CommandTimeout = 300;
+							command.ExecuteNonQuery();
+							command.Dispose();
+							c.Close();
+
+						}
 					}
 				}
-
-				using ( SqlConnection c = new SqlConnection( connectionString ) )
-				{
-					c.Open();
-
-					using ( SqlCommand command = new SqlCommand( "[Populate_Competencies_cache]", c ) )
-					{
-						command.CommandType = CommandType.StoredProcedure;
-						command.Parameters.Add( new SqlParameter( "@CredentialId", e.EntityBaseId ) );
-                        command.CommandTimeout = 300;
-                        command.ExecuteNonQuery();
-						command.Dispose();
-						c.Close();
-
-					}
-				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "CacheManager.PopulateEntityRelatedCaches (Populate_Credential_SummaryCache)" );
 			}
 
 			if ( e.EntityTypeId == 2 )
@@ -182,12 +196,13 @@ namespace workIT.Factories
 
         public void UpdateCodeTableCounts()
         {
+			LoggingHelper.DoTrace( 5, "CacheManager.UpdateCodeTableCounts - started" );
             string connectionString = MainConnection();
             try
             {
-                //running this after add/update of an org will only be partly complete. 
-                //would need to run it after any of cred, asmt, and lopp
-                using ( SqlConnection c = new SqlConnection( connectionString ) )
+				//running this after add/update of an org will only be partly complete. 
+				//would need to run it after any of cred, asmt, and lopp
+				using ( SqlConnection c = new SqlConnection( connectionString ) )
                 {
                     c.Open();
 
@@ -206,8 +221,9 @@ namespace workIT.Factories
                 LoggingHelper.LogError( ex, "UpdateCodeTableCounts", false );
 
             }
-
-        }
+			//NOT seeing this!!!!!
+			LoggingHelper.DoTrace( 5, "CacheManager.UpdateCodeTableCounts - completed" );
+		}
         #region credentials 
         /// <summary>
         /// 
@@ -269,7 +285,7 @@ namespace workIT.Factories
 					if ( HttpContext.Current.Cache[ key ] != null )
 					{
 						HttpRuntime.Cache.Remove( key );
-						HttpRuntime.Cache.Insert( key, newCache );
+						HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 
 						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddCredentialToCache $$$ Updating cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
 
@@ -346,7 +362,7 @@ namespace workIT.Factories
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "%%%CacheManager.AddLearningOpportunityToCache ****** Inserting new cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
+						LoggingHelper.DoTrace( 7, string.Format( "%%%CacheManager.AddLearningOpportunityToCache ****** Inserting new cached version of LearningOpportunity, Id: {0}, {1}", entity.Id, entity.Name ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}
@@ -416,7 +432,7 @@ namespace workIT.Factories
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "===CacheManager.AddConditionProfileToCache ****** Inserting new cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddConditionProfileToCache ****** Inserting new cached version of ConditionProfile, Id: {0}, {1}", entity.Id, entity.ProfileName ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}

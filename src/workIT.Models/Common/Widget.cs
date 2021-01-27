@@ -6,62 +6,74 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
-    [Serializable]
-    public class Widget : BaseObject
-    {
-        public Widget()
-        {
-            OwningOrganizationIdsList = new List<int>();
-        }
-        //  public int Id { get; set; }
+	[Serializable]
+	public class Widget : BaseObject
+	{
+		public Widget()
+		{
+			OwningOrganizationIdsList = new List<int>();
+		}
+		//  public int Id { get; set; }
 
-        public string OrgCTID { get; set; }
-        public string OrganizationName { get; set; }
+		public string OrgCTID { get; set; }
+		public string OrganizationName { get; set; }
 
-        public string Name { get; set; }
+		public string Name { get; set; }
 
-        public string WidgetAlias { get; set; }
-        public string CustomURL { get; set; }
+		public string WidgetAlias { get; set; }
+		public string CustomURL { get; set; }
 
-        /// <summary>
-        /// JSON version of WidgetFilters class serialized to DB
-        /// </summary>
-        public string SearchFilters { get; set; }
-        public WidgetFilters WidgetFilters { get; set; } = new WidgetFilters();
-        
-        #region Style related 
-        public string WidgetStylesUrl { get; set; }
+		/// <summary>
+		/// JSON version of WidgetFilters class serialized to DB
+		/// </summary>
+		public string SearchFilters { get; set; }
+		public WidgetFilters WidgetFilters { get; set; } = new WidgetFilters();
+
+		public bool HasCredentialPotentialResults { get; set; }
+		#region Style related 
+		public string WidgetStylesUrl { get; set; }
 		//may not be used, as is part of json
-        public string LogoUrl { get; set; }
+		public string LogoUrl { get; set; }
 		public string LogoFileName { get; set; }
 		public string CustomStylesFileName { get; set; }
-        public string CustomStylesURL { get; set; }
-        public WidgetStyles WidgetStyles { get; set; } = new WidgetStyles();
+		public string CustomStylesURL { get; set; }
+		public WidgetStyles WidgetStyles { get; set; } = new WidgetStyles();
 
-        /// <summary>
-        /// JSON version of WidgetStyles to store in database
-        /// </summary>
-        public string CustomStyles { get; set; }
-        #endregion
+		/// <summary>
+		/// JSON version of WidgetStyles to store in database
+		/// </summary>
+		public string CustomStyles { get; set; }
+		#endregion
 
-        #region filters
-        public bool IncludeIfAvailableOnline { get; set; }
+		#region filters
+		public bool IncludeIfAvailableOnline { get; set; }
 
-        public List<int> OwningOrganizationIdsList { get; set; }
-        public string OwningOrganizationIds { get; set; }
-        public string CountryFilters { get; set; }
-        public string CityFilters { get; set; }
-        public string RegionFilters { get; set; }
-        public List<string> CountriesList { get; set; }
+		public List<int> OwningOrganizationIdsList { get; set; }
+		public string OwningOrganizationIds { get; set; }
+		public string CountryFilters { get; set; }
+		public string CityFilters { get; set; }
+		public string RegionFilters { get; set; }
+		public List<string> CountriesList { get; set; }
 
-        public List<string> CitiesList { get; set; }
-        public List<string> RegionsList { get; set; }
-        #endregion
+		public List<string> CitiesList { get; set; }
+		public List<string> RegionsList { get; set; }
+		#endregion
 
-        //will probably need a separate table for all the options, although could be a JSON blob
-        //OR just use styles
-    }
-    [Serializable]
+		//will probably need a separate table for all the options, although could be a JSON blob
+		//OR just use styles
+	}
+
+	[Serializable]
+	public class WidgetResource 
+	{
+		public int WidgetId { get; set; }
+		public string WidgetSection { get; set; }
+		public int EntityTypeId { get; set; }
+		public int RecordId { get; set; }
+		public string ResourceName { get; set; }
+	}
+
+	[Serializable]
     public class WidgetFilters
     {
 		//NOT USED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -159,7 +171,8 @@ namespace workIT.Models.Common
     [Serializable]
     public class CredentialFilters
     {
-        public bool HideCredentialTypes { get; set; }
+		public bool HasPotentialResults { get; set; }
+		public bool HideCredentialTypes { get; set; }
         public bool HideAudienceLevelTypes { get; set; }
         public bool HideApplicableAudienceTypes { get; set; }
         public bool HideCredentialConnections { get; set; }
@@ -175,22 +188,22 @@ namespace workIT.Models.Common
     [Serializable]
     public class OrganizationFilters
     {
-
-        public string Keywords { get; set; }
+		public bool HasPotentialResults { get; set; }
+		public string Keywords { get; set; }
 
     }
     [Serializable]
     public class AssessmentFilters
     {
-
-        public string Keywords { get; set; }
+		public bool HasPotentialResults { get; set; }
+		public string Keywords { get; set; }
 
     }
     [Serializable]
     public class LearningOpportunityFilters
     {
-
-        public string Keywords { get; set; }
+		public bool HasPotentialResults { get; set; }
+		public string Keywords { get; set; }
 
     }
 }

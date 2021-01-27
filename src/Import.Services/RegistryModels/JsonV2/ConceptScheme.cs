@@ -6,11 +6,11 @@ namespace RA.Models.JsonV2
 {
 	public class ConceptSchemeGraph
 	{
-		[JsonIgnore]
-		public static string classType = "skos:ConceptScheme";
+		//[JsonIgnore]
+		//public static string classType = "skos:ConceptScheme";
 		public ConceptSchemeGraph()
 		{
-			Type = classType;
+			//Type = classType;
 			Context = "https://credreg.net/ctdlasn/schema/context/json";
 		}
 		[JsonProperty( "@context" )]
@@ -27,22 +27,20 @@ namespace RA.Models.JsonV2
 
 		[JsonIgnore]
 		[JsonProperty( "@type" )]
-		public string Type { get; set; }
+		public string Type { get; set; } = "skos:ConceptScheme";
 
 		[JsonIgnore]
 		[JsonProperty( "ceterms:ctid" )]
 		public string CTID { get; set; }
 	}
-	public class ConceptScheme : JsonLDDocument
+	public class ConceptScheme //: JsonLDDocument
 	{
-		[JsonIgnore]
-		public static string classType = "skos:ConceptScheme";
+	
 		public ConceptScheme()
 		{
-			Type = classType;
 		}
 		[JsonProperty( "@type" )]
-		public string Type { get; set; }
+		public string Type { get; set; } = "skos:ConceptScheme";
 
 		[JsonProperty( "@id" )]
 		public string CtdlId { get; set; }
@@ -50,12 +48,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string CTID { get; set; }
 
+		//20-08-05 not sure was ever valid?
+		//[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
+		//public List<string> AltIdentifier { get; set; }
 
-		[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
-		public List<string> altIdentifier { get; set; }
-
-		[JsonProperty( PropertyName = "skos:changeNote" )]
-		public LanguageMapList ChangeNote { get; set; }
+		//20-08-05 no longer on credReg.net
+		//[JsonProperty( PropertyName = "skos:changeNote" )]
+		//public LanguageMapList ChangeNote { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
 		public LanguageMapList ConceptKeyword { get; set; }
@@ -76,13 +75,13 @@ namespace RA.Models.JsonV2
 		public string DateModified { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:description" )]
-		public LanguageMap Description { get; set; } = new LanguageMap();
+		public LanguageMap Description { get; set; } 
 
 		[JsonProperty( PropertyName = "skos:hasTopConcept" )]
-		public List<string> HasTopConcept { get; set; } = new List<string>();
+		public List<string> HasTopConcept { get; set; } 
 
-		[JsonProperty( PropertyName = "skos:historyNote" )]
-		public LanguageMap HistoryNote { get; set; }
+		//[JsonProperty( PropertyName = "skos:historyNote" )]
+		//public LanguageMap HistoryNote { get; set; }
 
 		//[JsonProperty( PropertyName = "ceasn:inLanguage" )]
 		//public string InLanguage { get; set; } 
@@ -90,13 +89,13 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
-		public List<string> InLanguage { get; set; } = new List<string>();
+		public List<string> InLanguage { get; set; } 
 
 		[JsonProperty( PropertyName = "ceasn:license" )]
 		public string License { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:name" )]
-		public LanguageMap Name { get; set; } = new LanguageMap();
+		public LanguageMap Name { get; set; } 
 
 		[JsonProperty( PropertyName = "ceasn:publicationStatusType" )]
 		public string PublicationStatusType { get; set; }
@@ -115,25 +114,25 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceasn:source" )]
-		public string Source { get; set; }
+		public object Source { get; set; }
 
 	}
 
 	/// <summary>
 	/// Concept
 	/// </summary>
-	public class Concept : JsonLDDocument
+	public class Concept //: JsonLDDocument
 	{
 
-		[JsonIgnore]
-		public static string classType = "skos:Concept";
+		//[JsonIgnore]
+		//public static string classType = "skos:Concept";
 		public Concept()
 		{
-			Type = classType;
+			//Type = classType;
 		}
 
 		[JsonProperty( "@type" )]
-		public string Type { get; set; }
+		public string Type { get; set; } = "skos:Concept";
 
 		[JsonProperty( "@id" )]
 		public string CtdlId { get; set; }
@@ -169,7 +168,11 @@ namespace RA.Models.JsonV2
 		public LanguageMapList HiddenLabel { get; set; }
 
 		[JsonProperty( PropertyName = "skos:inScheme" )]
-		public string InScheme { get; set; }
+		public object InScheme { get; set; }
+		//public string InScheme { get; set; }
+
+		//[JsonProperty( PropertyName = "skos:inSchemeList" )]
+		//public List<string> InSchemeList { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
 		public List<string> InLanguage { get; set; }
@@ -216,16 +219,16 @@ namespace RA.Models.JsonV2
 	}
 
 	#region Plain graph
-	public class ConceptSchemePlain : JsonLDDocument
+	public class ConceptSchemePlain //: JsonLDDocument
 	{
-		[JsonIgnore]
-		public static string classType = "skos:ConceptScheme";
+		//[JsonIgnore]
+		//public static string classType = "skos:ConceptScheme";
 		public ConceptSchemePlain()
 		{
-			Type = classType;
+			//Type = classType;
 		}
 		[JsonProperty( "@type" )]
-		public string Type { get; set; }
+		public string Type { get; set; } = "skos:ConceptScheme";
 
 		[JsonProperty( "@id" )]
 		public string CtdlId { get; set; }
@@ -234,11 +237,11 @@ namespace RA.Models.JsonV2
 		public string CTID { get; set; }
 
 
-		[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
-		public List<string> altIdentifier { get; set; }
+		//[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
+		//public List<string> altIdentifier { get; set; }
 
-		[JsonProperty( PropertyName = "skos:changeNote" )]
-		public List<string> ChangeNote { get; set; }
+		//[JsonProperty( PropertyName = "skos:changeNote" )]
+		//public List<string> ChangeNote { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
 		public List<string> ConceptKeyword { get; set; }
@@ -264,8 +267,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "skos:hasTopConcept" )]
 		public List<string> HasTopConcept { get; set; } = new List<string>();
 
-		[JsonProperty( PropertyName = "skos:historyNote" )]
-		public string HistoryNote { get; set; }
+		//[JsonProperty( PropertyName = "skos:historyNote" )]
+		//public string HistoryNote { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
 		public List<string> InLanguage { get; set; } = new List<string>();
@@ -300,7 +303,7 @@ namespace RA.Models.JsonV2
 	/// <summary>
 	/// Concept
 	/// </summary>
-	public class ConceptPlain
+	public class ConceptPlain : Concept
 	{
 
 		[JsonIgnore]
@@ -310,98 +313,79 @@ namespace RA.Models.JsonV2
 			Type = classType;
 		}
 
-		[JsonProperty( "@type" )]
-		public string Type { get; set; }
+		//[JsonProperty( "@type" )]
+		//public string Type { get; set; }
 
-		[JsonProperty( "@id" )]
-		public string CtdlId { get; set; }
+		//[JsonProperty( "@id" )]
+		//public string CtdlId { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string CTID { get; set; }
+		//[JsonProperty( PropertyName = "ceterms:ctid" )]
+		//public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "skos:altLabel" )]
-		public object AltLabel { get; set; }
+		public new object AltLabel { get; set; }
 
-		[JsonProperty( PropertyName = "skos:broader" )]
-		public string Broader { get; set; }
+		//[JsonProperty( PropertyName = "skos:broader" )]
+		//public string Broader { get; set; }
 
-		[JsonProperty( PropertyName = "skos:broadMatch" )]
-		public List<string> BroadMatch { get; set; }
+		//[JsonProperty( PropertyName = "skos:broadMatch" )]
+		//public List<string> BroadMatch { get; set; }
 
 		[JsonProperty( PropertyName = "skos:changeNote" )]
-		public List<string> ChangeNote { get; set; }
+		public new List<string> ChangeNote { get; set; }
 
 		[JsonProperty( PropertyName = "skos:closeMatch" )]
-		public List<string> CloseMatch { get; set; }
+		public new List<string> CloseMatch { get; set; }
 
 		//[JsonProperty( PropertyName = "skos:dateModified" )]
 		//public string DateModified { get; set; }
 
 		[JsonProperty( PropertyName = "skos:definition" )]
-		public string Definition { get; set; }
+		public new string Definition { get; set; }
 
-		[JsonProperty( PropertyName = "skos:exactMatch" )]
-		public List<string> ExactMatch { get; set; }
+		//[JsonProperty( PropertyName = "skos:exactMatch" )]
+		//public List<string> ExactMatch { get; set; }
 
 		[JsonProperty( PropertyName = "skos:hiddenLabel" )]
-		public List<string> HiddenLabel { get; set; }
+		public new List<string> HiddenLabel { get; set; }
 
-		[JsonProperty( PropertyName = "skos:inScheme" )]
-		public List<string> InScheme { get; set; }
+		//[JsonProperty( PropertyName = "skos:inScheme" )]
+		//public List<string> InScheme { get; set; }
 
-		[JsonProperty( PropertyName = "skos:inSchemeList" )]
-		public List<string> InSchemeList { get; set; }
+		//[JsonProperty( PropertyName = "skos:inSchemeList" )]
+		//public List<string> InSchemeList { get; set; }
 
-		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
-		public List<string> InLanguage { get; set; }
+		//[JsonProperty( PropertyName = "ceasn:inLanguage" )]
+		//public List<string> InLanguage { get; set; }
 
-		[JsonProperty( PropertyName = "skos:narrower" )]
-		public List<string> Narrower { get; set; }
+		//[JsonProperty( PropertyName = "skos:narrower" )]
+		//public List<string> Narrower { get; set; }
 
-		[JsonProperty( PropertyName = "skos:narrowMatch" )]
-		public List<string> NarrowMatch { get; set; }
+		//[JsonProperty( PropertyName = "skos:narrowMatch" )]
+		//public List<string> NarrowMatch { get; set; }
 
-		[JsonProperty( PropertyName = "skos:notation" )]
-		public string Notation { get; set; }
+		//[JsonProperty( PropertyName = "skos:notation" )]
+		//public string Notation { get; set; }
 
 		[JsonProperty( PropertyName = "skos:note" )]
-		public List<string> Note { get; set; }
+		public new List<string> Note { get; set; }
 
 
 		[JsonProperty( PropertyName = "skos:prefLabel" )]
-		public string PrefLabel { get; set; }
+		public new string PrefLabel { get; set; }
 
-		[JsonProperty( PropertyName = "skos:related" )]
-		public List<string> Related { get; set; }
+		//[JsonProperty( PropertyName = "skos:related" )]
+		//public List<string> Related { get; set; }
 
-		[JsonProperty( PropertyName = "skos:relatedMatch" )]
-		public List<string> RelatedMatch { get; set; }
+		//[JsonProperty( PropertyName = "skos:relatedMatch" )]
+		//public List<string> RelatedMatch { get; set; }
 
-		[JsonProperty( PropertyName = "meta:supersededBy" )]
-		public string SupersededBy { get; set; }
-
-		[JsonProperty( PropertyName = "skos:topConceptOfTest" )]
-		public object TopConceptOfTest { get; set; }
-
-		[JsonProperty( PropertyName = "skos:topConceptOfTest2" )]
-		public object TopConceptOfTest2 { get; set; }
-
-		[JsonProperty( PropertyName = "skos:topConceptOf2" )]
-		public string TopConceptOf2 { get; set; }
+		//[JsonProperty( PropertyName = "meta:supersededBy" )]
+		//public string SupersededBy { get; set; }
 
 		[JsonProperty( PropertyName = "skos:topConceptOf" )]
-		public List<string> TopConceptOf { get; set; }
+		public new object TopConceptOf { get; set; }
 
-		//TBD....................
-
-		//[JsonProperty( PropertyName = "navy:codeNEC" )]
-		//public string CodeNEC { get; set; }
-
-		//[JsonProperty( PropertyName = "navy:legacyCodeNEC" )]
-		//public string LegacyCodeNEC { get; set; }
-
-		//[JsonProperty( PropertyName = "navy:SourceCareerFieldCode" )]
-		//public List<string> SourceCareerFieldCode { get; set; }
 
 	}
 	#endregion

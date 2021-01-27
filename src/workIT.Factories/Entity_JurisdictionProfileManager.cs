@@ -233,7 +233,7 @@ namespace workIT.Factories
 				//}
 			}
 				
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		/// <summary>

@@ -18,7 +18,6 @@ namespace workIT.Services
 	public class ServiceHelper
 	{
 		public static int DefaultMiles = 25;
-		private static string thisClassName = "ServiceHelper";
 		static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
 		//
 		/// <summary>

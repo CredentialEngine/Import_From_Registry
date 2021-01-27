@@ -8,7 +8,7 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-	public class ConditionManifestExpanded : BaseObject //Schema-based structure for ConditionManifest, used for publishing
+	public class ConditionManifestExpanded : TopLevelObject 
 	{
 		public ConditionManifestExpanded()
 		{
@@ -19,15 +19,15 @@ namespace workIT.Models.Common
 				prop.SetValue( this, new List<ConditionProfile>() );
 			}
 		}
-		public string Name { get; set; }
-		public string Description { get; set; }
-		public string SubjectWebpage { get; set; }
-		public string CTID { get; set; }
+		//public string Name { get; set; }
+		//public string Description { get; set; }
+		//public string SubjectWebpage { get; set; }
+		//public string CTID { get; set; }
 
-		/// <summary>
-		/// Inflate OwningAgentUid for display 
-		/// </summary>
-		public Organization OwningOrganization { get; set; }
+		///// <summary>
+		///// Inflate OwningAgentUid for display 
+		///// </summary>
+		//public Organization OwningOrganization { get; set; }
 		
 		public List<ConditionProfile> ConditionProfiles { get; set; }
 
@@ -83,12 +83,12 @@ namespace workIT.Models.Common
 	}
     //
     [Serializable]
-    public class ConditionManifest : BaseObject
+    public class ConditionManifest : TopLevelObject
 	{
 		
 		public ConditionManifest ()
 		{
-			OwningOrganization = new Organization();
+			//OwningOrganization = new Organization();
 			//TargetCredential = new List<Credential>();
 			//CommonConditions = new List<ConditionManifest>();
 			ConditionProfiles = new List<ConditionProfile>();
@@ -99,34 +99,29 @@ namespace workIT.Models.Common
 			Corequisite = new List<ConditionProfile>();
 			Renewal = new List<ConditionProfile>();
 		}
-		public int OrganizationId { get; set; }
+		//public int OrganizationId { get; set; }
 
-		public Guid OwningAgentUid { get; set; }
+		//public Guid OwningAgentUid { get; set; }
 		/// <summary>
 		/// Inflate OwningAgentUid for display 
 		/// </summary>
-		public Organization OwningOrganization { get; set; }
+		//public Organization OwningOrganization { get; set; }
 		
-		public string OrganizationName { get; set; }
+		//public string OrganizationName { get; set; }
 
-		public string Name { get; set; }
+		//public string Name { get; set; }
 
-		public string ProfileName
-		{
-			get { return this.Name; }
-			set { this.Name = value; }
-		}
-		public string Description { get; set; }
-		public string SubjectWebpage { get; set; }
-		//public string ConditionType { get; set; }
-		//public int ConditionTypeId { get; set; }
-		public int EntityStateId { get; set; }
-		public string CTID { get; set; }
-		public string CredentialRegistryId { get; set; }
+		//public string ProfileName
+		//{
+		//	get { return this.Name; }
+		//	set { this.Name = value; }
+		//}
+		//public string Description { get; set; }
+		//public string SubjectWebpage { get; set; }
+		//public int EntityStateId { get; set; }
+		//public string CTID { get; set; }
+		//public string CredentialRegistryId { get; set; }
 
-		//public List<Credential> TargetCredential { get; set; }
-
-		//public List<ConditionManifest> CommonConditions { get; set; }
 
 		public List<ConditionProfile> ConditionProfiles { get; set; }
 
@@ -138,7 +133,7 @@ namespace workIT.Models.Common
 		public List<ConditionProfile> Renewal { get; set; }
 		
 	}
-
+	//
 	public class Entity_CommonCondition
 	{
 		public int Id { get; set; }

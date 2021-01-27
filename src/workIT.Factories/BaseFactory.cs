@@ -20,8 +20,16 @@ namespace workIT.Factories
 {
 	public class BaseFactory
 	{
+		public static string REGISTRY_ACTION_DELETE = "Registry Delete";
+		public static string REGISTRY_ACTION_PURGE = "Registry Purge";
+		public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
+		public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
 		protected static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
 		public string commonStatusMessage = "";
+
+		public static int RELATIONSHIP_TYPE_HAS_PART		= 1;
+		public static int RELATIONSHIP_TYPE_IS_PART_OF		= 2;
+		public static int RELATIONSHIP_TYPE_IsETPLResource	= 3;
 
 		public static bool IsDevEnv()
 		{
@@ -86,6 +94,52 @@ namespace workIT.Factories
 			return conn;
 		}
 		#endregion
+
+		#region Assignments
+
+
+
+		public decimal Assign( decimal input, decimal currentValue, bool doesEntityExist )
+		{
+			decimal value = 0;
+			if ( doesEntityExist )
+			{
+				value = input == -99 ? 0 : input == -100 ? currentValue : input;
+			}
+			else if ( input > 0 )
+			{
+				//don't allow delete for initial
+				value = input;
+			}
+			return value;
+		}
+
+		/// <summary>
+		/// Assign an integer
+		/// NOTE: currently doesn't allow negatives
+		/// ALSO: assumes a previous check for required status
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="currentValue"></param>
+		/// <param name="doesEntityExist"></param>
+		/// <returns></returns>
+		public int Assign( int input, int currentValue, bool doesEntityExist )
+		{
+			int value = 0;
+			if ( doesEntityExist )
+			{
+				//use -99 to force to zero
+				//use -100 to force to current - why??
+				value = input == -99 ? 0 : input == -100 ? currentValue : input;
+			}
+			else if ( input > 0 )
+			{
+				//don't allow delete for initial
+				value = input;
+			}
+			return value;
+		}
+
 		protected static CodeItemResult Fill_CodeItemResults( DataRow dr, string fieldName, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
 		{
 			string list = GetRowPossibleColumn( dr, fieldName, "" );
@@ -96,9 +150,14 @@ namespace workIT.Factories
 
 		protected static CodeItemResult Fill_CodeItemResults( string list, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
 		{
+			
 			//string list = dr[ fieldName ].ToString();
 			CodeItemResult item = new CodeItemResult() { CategoryId = categoryId };
-			item.HasAnIdentifer = hasAnIdentifer;
+
+			if ( string.IsNullOrWhiteSpace( list ) )
+				return item;
+
+			
 			if ( categoryId == 10 || categoryId == 11 || categoryId == 23 )
 				item.UsingCodedNotation = true;
 
@@ -107,27 +166,58 @@ namespace workIT.Factories
 			string title = "";
 			string schema = "";
 			string code = "";
-			if ( !string.IsNullOrWhiteSpace( list ) )
+
+			var codeGroup = list.Split( '|' );
+			foreach ( string codeSet in codeGroup )
 			{
-				var codeGroup = list.Split( '|' );
-				foreach ( string codeSet in codeGroup )
+				var codes = codeSet.Split( '~' );
+				schema = "";
+				totals = 0;
+				id = 0;
+				if ( hasAnIdentifer )
 				{
-					var codes = codeSet.Split( '~' );
-					schema = "";
-					totals = 0;
-					id = 0;
-					if ( hasAnIdentifer )
+					if ( item.UsingCodedNotation )
 					{
-						if ( item.UsingCodedNotation )
+						//check for coded notation
+						//note can be empty if 'other' type
+						//so can just ignore
+						code = codes[ 0 ];
+						if ( code.IndexOf( "-" ) > -1 || code.IndexOf( ".00" ) > -1 )
+						{ }
+						//note: now passing actual soc code so will not be an integer
+						//code = code.Replace( "-", "" );
+						if ( codes.Length > 1 )
+							title = codes[ 1 ].Trim();
+						if ( codes.Length > 2 && hasSchemaName )
+							schema = codes[ 2 ];
+						if ( codes.Length > 3 && hasTotals )
+							totals = Int32.Parse( codes[ 3 ] );
+					}
+					else
+					{
+						//check for an integer (for codeId)
+						//note check category, as codes like Naics can be integers
+						Int32.TryParse( codes[ 0 ].Trim(), out id );
+						if ( id > 0 )
 						{
-							//check for coded notation
-							//note can be empty if 'other' type
-							//so can just ignore
+							title = codes[ 1 ].Trim();
+							if ( hasSchemaName )
+							{
+								schema = codes[ 2 ];
+
+								if ( hasTotals )
+									totals = Int32.Parse( codes[ 3 ] );
+							}
+							else
+							{
+								if ( hasTotals )
+									totals = Int32.Parse( codes[ 2 ] );
+							}
+						}
+						else
+						{
+							//check for coded notation anyway
 							code = codes[ 0 ];
-							if ( code.IndexOf( "-" ) > -1 || code.IndexOf( ".00" ) > -1 )
-							{ }
-							//note: now passing actual soc code so will not be an integer
-							//code = code.Replace( "-", "" );
 							if ( codes.Length > 1 )
 								title = codes[ 1 ].Trim();
 							if ( codes.Length > 2 && hasSchemaName )
@@ -135,50 +225,19 @@ namespace workIT.Factories
 							if ( codes.Length > 3 && hasTotals )
 								totals = Int32.Parse( codes[ 3 ] );
 						}
-						else
-						{
-							//check for an integer (for codeId)
-							//note check category, as codes like Naics can be integers
-							Int32.TryParse( codes[ 0 ].Trim(), out id );
-							if ( id > 0 )
-							{
-								title = codes[ 1 ].Trim();
-								if ( hasSchemaName )
-								{
-									schema = codes[ 2 ];
-
-									if ( hasTotals )
-										totals = Int32.Parse( codes[ 3 ] );
-								}
-								else
-								{
-									if ( hasTotals )
-										totals = Int32.Parse( codes[ 2 ] );
-								}
-							}
-							else
-							{
-								//check for coded notation anyway
-								code = codes[ 0 ];
-								if ( codes.Length > 1 )
-									title = codes[ 1 ].Trim();
-								if ( codes.Length > 2 && hasSchemaName )
-									schema = codes[ 2 ];
-								if ( codes.Length > 3 && hasTotals )
-									totals = Int32.Parse( codes[ 3 ] );
-							}
-						}
 					}
-					else
-					{
-						//currently if no Id, assume only text value
-						title = codes[ 0 ].Trim();
-					}
-
-
-					item.Results.Add( new Models.CodeItem() { Id = id, Code = code, Title = title, SchemaName = schema, Totals = totals } );
 				}
+				else
+				{
+					//currently if no Id, assume only text value
+					title = codes[ 0 ].Trim();
+				}
+
+
+				item.Results.Add( new Models.CodeItem() { Id = id, Code = code, Title = title, SchemaName = schema, Totals = totals } );
 			}
+			if (item.Results.Any())
+				item.HasAnIdentifer = hasAnIdentifer;
 
 			return item;
 		}
@@ -191,7 +250,7 @@ namespace workIT.Factories
 			if ( list == null || list.Count == 0 )
 				return item;
 
-			item.HasAnIdentifer = hasAnIdentifer;
+			//item.HasAnIdentifer = hasAnIdentifer;
 			if ( categoryId == 10 || categoryId == 11 || categoryId == 23 )
 				item.UsingCodedNotation = true; //????
 
@@ -207,7 +266,8 @@ namespace workIT.Factories
 					CodeTitle = codeItem.CodeTitle
 				} );
 			}
-
+			if ( item.Results.Any() )
+				item.HasAnIdentifer = hasAnIdentifer;
 			return item;
 		}
 
@@ -219,7 +279,7 @@ namespace workIT.Factories
 			if ( list == null || list.Count == 0 )
 				return item;
 
-			item.HasAnIdentifer = hasAnIdentifer;
+			//item.HasAnIdentifer = hasAnIdentifer;
 
 			foreach ( var codeItem in list )
 			{
@@ -231,7 +291,8 @@ namespace workIT.Factories
 					SchemaName = codeItem.SchemaName
 				} );
 			}
-
+			if ( item.Results.Any() )
+				item.HasAnIdentifer = hasAnIdentifer;
 			return item;
 		}
 
@@ -273,7 +334,7 @@ namespace workIT.Factories
 			}
 			return qv;
 		}
-		public static QuantitativeValue FormatQuantitiveValue( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description )
+		public static QuantitativeValue FormatQuantitiveValue( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description, string creditUnitType = "" )
 		{
 			QuantitativeValue qv = new QuantitativeValue()
 			{
@@ -299,10 +360,18 @@ namespace workIT.Factories
 					qv.UnitText = match.SchemaName;
 					qv.Label = match.Name;
 				}
+			} else if ( !string.IsNullOrEmpty( creditUnitType ))
+			{
+				creditUnitType = creditUnitType.Replace( "ceterms:", "" );
+				qv.CreditUnitType = new Enumeration();
+				qv.CreditUnitType.Items.Add( new EnumeratedItem() { SchemaName = creditUnitType });
+				qv.UnitText = creditUnitType;
 			}
 			return qv;
 		}
 
+
+		#endregion
 		#region data retrieval
 
 		/// <summary>
@@ -383,7 +452,7 @@ namespace workIT.Factories
 		public static AgentRelationshipResult Fill_AgentRelationship( string list, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true, string entityType = "" )
 		{
 			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
-			item.HasAnIdentifer = hasAnIdentifer;
+			
 			AgentRelationship code = new AgentRelationship();
 
 			int id = 0;
@@ -391,6 +460,7 @@ namespace workIT.Factories
 			{
 				if ( !string.IsNullOrWhiteSpace( list ) )
 				{
+					item.HasAnIdentifer = hasAnIdentifer;
 					var codeGroup = list.Split( '|' );
 					foreach ( string codeSet in codeGroup )
 					{
@@ -453,7 +523,7 @@ namespace workIT.Factories
 		public static AgentRelationshipResult Fill_AgentRelationship( List<AgentRelationshipForEntity> list, int categoryId, string entityType, bool selectingQAOnly = true )
 		{
 			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
-			item.HasAnIdentifer = true; //????
+
 			AgentRelationship code = new AgentRelationship();
 			List<int> qaRoles = new List<int>() { 1, 2, 10, 12 };
 			List<int> nonQAaRoles = new List<int>() { 6,7,11,13 };
@@ -463,6 +533,8 @@ namespace workIT.Factories
 			 */
 			foreach ( var i in list )
 			{
+				item.HasAnIdentifer = true; //????
+
 				//code.RelationshipId = i.RelationshipTypeIds.FirstOrDefault();
 				int cntr = -1;
 				string relationship = "";
@@ -494,86 +566,12 @@ namespace workIT.Factories
 			}
 			return item;
 		}
-		[Obsolete]
-		public static AgentRelationshipResult Fill_AgentRelationship( List<IndexQualityAssurance> list, int categoryId, string entityType, bool selectingQAOnly = true )
-		{
-			AgentRelationshipResult item = new AgentRelationshipResult() { CategoryId = categoryId };
-			item.HasAnIdentifer = true; //????
-			AgentRelationship code = new AgentRelationship();
-			try
-			{
-				
-				foreach ( var i in list )
-				{
-					code = new AgentRelationship();
-					if ( selectingQAOnly && i.IsQARole == false )
-						continue;
 
-					code.RelationshipId = i.RelationshipTypeId;
-					code.Relationship = i.SourceToAgentRelationship;
 
-					code.AgentId = i.AgentRelativeId;
-					code.Agent = i.AgentName;
-					code.EntityStateId = i.EntityStateId;
-					if ( code.EntityStateId == 2 && !IsProduction() && code.Agent.IndexOf( "[reference]" ) == -1 )
-					{
-						code.Agent += " [reference] ";
-						code.IsThirdPartyOrganization = true;
-					}
-					code.AgentUrl = i.AgentUrl;
-
-					if ( !string.IsNullOrEmpty( entityType ) )
-					{
-						code.EntityType = entityType.ToLower();
-						code.Relationship = entityType + " " + i.SourceToAgentRelationship;
-					}
-
-					item.Results.Add( code );
-				}
-			} catch (Exception ex)
-			{
-				LoggingHelper.LogError( ex, string.Format(" Fill_AgentRelationship( List<IndexQualityAssurance> list, int categoryId: {0}, string entityType: {1}, bool selectingQAOnly = true )", categoryId, entityType) );
-			}
-			return item;
-		}
-
-		//public static TargetAssertionResult Fill_TargetAssertion( List<IndexQualityAssurancePerformed> list, int categoryId, string entityType = "" )
-		//{
-		//	TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
-		//	item.HasAnIdentifer = true; //????
-		//	TargetAssertion code = new TargetAssertion();
-
-		//	foreach ( var i in list )
-		//	{
-		//		code = new TargetAssertion();
-
-		//		code.AssertionId = i.AssertionTypeId;
-		//		code.Assertion = i.SourceToAgentRelationship;
-
-		//		code.TargetId = i.TargetEntityBaseId;
-		//		code.Target = i.TargetEntityName;
-		//		code.EntityStateId = i.EntityStateId;
-		//		if ( code.EntityStateId == 2 && !IsProduction() && code.Target.IndexOf( "[reference]" ) == -1 )
-		//		{
-		//			code.Target += " [reference] ";
-		//			code.IsThirdPartyOrganization = true;
-		//		}
-		//		code.TargetEntitySubjectWebpage = i.TargetEntitySubjectWebpage;
-
-		//		if ( !string.IsNullOrEmpty( entityType ) )
-		//		{
-		//			code.EntityType = entityType.ToLower();
-		//			code.Assertion = entityType + " " + i.SourceToAgentRelationship;
-		//		}
-
-		//		item.Results.Add( code );
-		//	}
-		//	return item;
-		//}
 		public static TargetAssertionResult Fill_TargetQaAssertion( List<QualityAssurancePerformed> list, int categoryId, string entityType = "" )
 		{
 			TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
-			item.HasAnIdentifer = true; //????
+			
 			TargetAssertion code = new TargetAssertion();
 
 			foreach ( var i in list )
@@ -596,6 +594,9 @@ namespace workIT.Factories
 
 				item.Results.Add( code );
 			}
+			if( item.Results.Any())
+				item.HasAnIdentifer = true; //????
+
 			return item;
 		}
 		#endregion
@@ -1417,7 +1418,94 @@ namespace workIT.Factories
 			byte[] bytes = System.Text.Encoding.GetEncoding( "Cyrillic" ).GetBytes( text );
 			return System.Text.Encoding.ASCII.GetString( bytes );
 		}
+		#region Common Utility Methods
+		public static string HandleApostrophes( string strValue )
+		{
 
+			if ( strValue.IndexOf( "'" ) > -1 )
+			{
+				strValue = strValue.Replace( "'", "''" );
+			}
+			if ( strValue.IndexOf( "''''" ) > -1 )
+			{
+				strValue = strValue.Replace( "''''", "''" );
+			}
+
+			return strValue;
+		}
+		public static string SearchifyWord( string word )
+		{
+			string keyword = word.Trim() + "^";
+
+
+			//if ( keyword.ToLower().LastIndexOf( "es^" ) > 4 )
+			//{
+			//	//may be too loose
+			//	//keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "es" ) );
+			//}
+			//else 
+			if ( keyword.ToLower().LastIndexOf( "s^" ) > 4 )
+			{
+				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "s" ) );
+			}
+
+			if ( keyword.ToLower().LastIndexOf( "ing^" ) > 3 )
+			{
+				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ing^" ) );
+			}
+			else if ( keyword.ToLower().LastIndexOf( "ed^" ) > 4 )
+			{
+				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ed^" ) );
+			}
+			else if ( keyword.ToLower().LastIndexOf( "ion^" ) > 3 )
+			{
+				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ion^" ) );
+			}
+			else if ( keyword.ToLower().LastIndexOf( "ive^" ) > 3 )
+			{
+				keyword = keyword.Substring( 0, keyword.ToLower().LastIndexOf( "ive^" ) );
+			}
+
+			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
+			{
+				var env = UtilityManager.GetAppKeyValue( "envType" );
+				//not sure of this
+				if ( env != "production" && keyword.IndexOf( "*" ) == -1 )
+				{
+					//keyword = "*" + keyword.Trim() + "*";
+					//keyword = keyword.Replace( "&", "*" ).Replace( " and ", "*" ).Replace( " in ", "*" ).Replace( " of ", "*" ).Replace( " for ", "*" ).Replace( " with ", "*" );
+					//keyword = keyword.Replace( " from ", "*" );
+					//keyword = keyword.Replace( " a ", "*" );
+					//keyword = keyword.Replace( " - ", "*" );
+					//keyword = keyword.Replace( " * ", "*" );
+
+					////just replace all spaces with *?
+					//keyword = keyword.Replace( "  ", "*" );
+					//keyword = keyword.Replace( " ", "*" );
+					//keyword = keyword.Replace( "**", "*" );
+				}
+			}
+			else if ( keyword.IndexOf( "%" ) == -1 )
+			{
+				keyword = "%" + keyword.Trim() + "%";
+				keyword = keyword.Replace( "&", "%" ).Replace( " and ", "%" ).Replace( " in ", "%" ).Replace( " of ", "%" ).Replace( " for ", "%" ).Replace( " with ", "%" );
+				keyword = keyword.Replace( " from ", "%" );
+				keyword = keyword.Replace( " a ", "%" );
+				keyword = keyword.Replace( " - ", "%" );
+				keyword = keyword.Replace( " % ", "%" );
+
+				//just replace all spaces with %?
+				keyword = keyword.Replace( "  ", "%" );
+				keyword = keyword.Replace( " ", "%" );
+				keyword = keyword.Replace( "%%", "%" );
+			}
+
+
+			keyword = keyword.Replace( "^", "" );
+			return keyword;
+		}
+
+		#endregion
 		protected string HandleDBValidationError( System.Data.Entity.Validation.DbEntityValidationException dbex, string source, string title )
 		{
 			string message = string.Format( "{0} DbEntityValidationException, Name: {1}", source, title );
@@ -1437,7 +1525,7 @@ namespace workIT.Factories
 
 			return message;
 		}
-
+		
 		public static string FormatExceptions( Exception ex )
 		{
 			string message = ex.Message;
@@ -1450,6 +1538,14 @@ namespace workIT.Factories
 					message += "; \r\nInnerException2: " + ex.InnerException.InnerException.Message;
 				}
 			}
+			//if ( ex. != null )
+			//{
+			//	message += "; \r\nInnerException: " + ex.InnerException.Message;
+			//	if ( ex.InnerException.InnerException != null )
+			//	{
+			//		message += "; \r\nInnerException2: " + ex.InnerException.InnerException.Message;
+			//	}
+			//}
 
 			return message;
 		}

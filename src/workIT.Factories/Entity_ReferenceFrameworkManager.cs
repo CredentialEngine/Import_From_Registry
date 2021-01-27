@@ -15,7 +15,6 @@ using ViewContext = workIT.Data.Views.workITViews;
 using ThisEntity = workIT.Models.Common.Entity_ReferenceFramework;
 
 using workIT.Utilities;
-//using CM = workIT.Models.Common;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
@@ -34,7 +33,7 @@ namespace workIT.Factories
 			bool isAllValid = true;
 			foreach ( CredentialAlignmentObjectProfile item in list )
 			{
-				int newId = Add( parentEntityId, categoryId, item, ref status );
+				int newId = Add( parentEntityId, categoryId, item, ref status, false );
 			}
 
 			return isAllValid;
@@ -64,63 +63,63 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool OnetSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
-		{
-			if ( list == null || list.Count == 0 )
-				return true;
+		//public bool OnetSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
+		//{
+		//	if ( list == null || list.Count == 0 )
+		//		return true;
 
-			bool isAllValid = true;
-			CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
-			foreach ( string code in list )
-			{
-				item = new CredentialAlignmentObjectProfile();
-				//look up SOC
-				var records = CodesManager.SOC_Get( code );
-				foreach ( var record in records )
-				{
-					if ( record != null && record.Id > 0 )
-					{
-						item.Id = record.Id;
-						item.TargetNodeName = record.Title;
-						item.Description = record.Description;
-						item.CodedNotation = record.Code;
-						item.TargetNode = record.URL;
-						Add( parentEntityId, categoryId, item, ref status, false );
-					}
-				}
-			}
+		//	bool isAllValid = true;
+		//	CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
+		//	foreach ( string code in list )
+		//	{
+		//		item = new CredentialAlignmentObjectProfile();
+		//		//look up SOC
+		//		var records = CodesManager.SOC_Get( code );
+		//		foreach ( var record in records )
+		//		{
+		//			if ( record != null && record.Id > 0 )
+		//			{
+		//				item.Id = record.Id;
+		//				item.TargetNodeName = record.Title;
+		//				item.Description = record.Description;
+		//				item.CodedNotation = record.Code;
+		//				item.TargetNode = record.URL;
+		//				Add( parentEntityId, categoryId, item, ref status, false );
+		//			}
+		//		}
+		//	}
 
-			return isAllValid;
-		}
+		//	return isAllValid;
+		//}
 
-		public bool CIPSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
-		{
-			if ( list == null || list.Count == 0 )
-				return true;
+		//public bool CIPSaveList( int parentEntityId, int categoryId, List<string> list, ref SaveStatus status )
+		//{
+		//	if ( list == null || list.Count == 0 )
+		//		return true;
 
-			bool isAllValid = true;
-			CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
-			foreach ( string code in list )
-			{
-				item = new CredentialAlignmentObjectProfile();
-				//look up SOC
-				var records = CodesManager.SOC_Get( code );
-				foreach ( var record in records )
-				{
-					if ( record != null && record.Id > 0 )
-					{
-						item.Id = record.Id;
-						item.TargetNodeName = record.Title;
-						item.Description = record.Description;
-						item.CodedNotation = record.Code;
-						item.TargetNode = record.URL;
-						Add( parentEntityId, categoryId, item, ref status, false );
-					}
-				}
-			}
+		//	bool isAllValid = true;
+		//	CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
+		//	foreach ( string code in list )
+		//	{
+		//		item = new CredentialAlignmentObjectProfile();
+		//		//look up SOC
+		//		var records = CodesManager.SOC_Get( code );
+		//		foreach ( var record in records )
+		//		{
+		//			if ( record != null && record.Id > 0 )
+		//			{
+		//				item.Id = record.Id;
+		//				item.TargetNodeName = record.Title;
+		//				item.Description = record.Description;
+		//				item.CodedNotation = record.Code;
+		//				item.TargetNode = record.URL;
+		//				Add( parentEntityId, categoryId, item, ref status, false );
+		//			}
+		//		}
+		//	}
 
-			return isAllValid;
-		}
+		//	return isAllValid;
+		//}
 
 		/// <summary>
 		/// Add a Entity framework Item
@@ -130,7 +129,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates = true )
+		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates )
 		{
 
 			DBEntity efEntity = new DBEntity();

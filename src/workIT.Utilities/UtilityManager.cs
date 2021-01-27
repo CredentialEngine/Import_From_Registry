@@ -7,6 +7,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
+using System.Runtime.Caching;
+using System.Net.Http;
 
 namespace workIT.Utilities
 {
@@ -76,6 +78,26 @@ namespace workIT.Utilities
                 appValue = defaultValue;
 				if ( HasMessageBeenPreviouslySent( keyName ) == false )
 					LoggingHelper.LogError( string.Format( "@@@@ Error on appKey: {0},  using default of: {1}", keyName, defaultValue ) );
+            }
+
+            return appValue;
+        } //
+        public static decimal GetAppKeyValue(string keyName, decimal defaultValue)
+        {
+            decimal appValue = -1;
+
+            try
+            {
+                var dv = GetAppKeyValue( keyName, "" );
+                appValue = decimal.Parse( dv );
+
+                // If we get here, then number is an decimal, otherwise we will use the default
+            }
+            catch
+            {
+                appValue = defaultValue;
+                if ( HasMessageBeenPreviouslySent( keyName ) == false )
+                    LoggingHelper.LogError( string.Format( "@@@@ Error on appKey: {0},  using default of: {1}", keyName, defaultValue ) );
             }
 
             return appValue;
@@ -520,6 +542,57 @@ namespace workIT.Utilities
 
 		#endregion
 
+		#region HTTP Request Helpers
 
-    }
+		public static URLResult GetHttpData( string url, bool getFromCacheIfPossible = true, bool addToCache = true, int cacheMinutes = 30 )
+		{
+			var data = ( URLResult ) MemoryCache.Default[ url ];
+			if ( data == null || !getFromCacheIfPossible )
+			{
+				data = new URLResult();
+				try
+				{
+					var rawResult = new HttpClient().GetAsync( url ).Result;
+
+					data.IsSuccessStatusCode = rawResult.IsSuccessStatusCode;
+					data.ReasonPhrase = rawResult.ReasonPhrase ?? "";
+					data.StatusCode = rawResult.StatusCode.ToString();
+
+					if ( rawResult.IsSuccessStatusCode )
+					{
+						data.Content = rawResult.Content.ReadAsStringAsync().Result;
+					}
+
+					if ( addToCache )
+					{
+						MemoryCache.Default.Remove( url );
+						MemoryCache.Default.Add( url, data, DateTime.Now.AddMinutes( cacheMinutes ) );
+					}
+				}
+				catch ( Exception ex )
+				{
+					return new URLResult()
+					{
+						Content = null,
+						IsSuccessStatusCode = false,
+						ReasonPhrase = ex.Message,
+						StatusCode = "999"
+					};
+				}
+			}
+			return data;
+		}
+
+		[Serializable]
+		public class URLResult
+		{
+			public string Content { get; set; }
+			public bool IsSuccessStatusCode { get; set; }
+			public string ReasonPhrase { get; set; }
+			public string StatusCode { get; set; }
+		}
+		//
+
+		#endregion
+	}
 }

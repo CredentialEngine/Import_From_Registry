@@ -40,7 +40,7 @@ namespace workIT.Services
                     //update cache
                     new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
                     //update Elastic
-                    if ( Utilities.UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
+                    if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
                         ElasticServices.LearningOpp_UpdateIndex( entity.Id );
                     else
                     {
@@ -296,7 +296,7 @@ namespace workIT.Services
 
             //string otherFrameworkItems = " OR (RowId in (SELECT EntityUid FROM [dbo].[Entity_Reference_Summary] a where  a.TextValue like '{0}' ) ) ";
 
-            string competencies = " OR ( base.Id in (SELECT LearningOpportunityId FROM [dbo].LearningOpportunity_Competency_Summary  where [Description] like '{0}' ) ) ";
+            //string competencies = " OR ( base.Id in (SELECT LearningOpportunityId FROM [dbo].LearningOpportunity_Competency_Summary  where [Description] like '{0}' ) ) ";
             string AND = "";
             if ( where.Length > 0 )
                 AND = " AND ";
@@ -375,7 +375,7 @@ namespace workIT.Services
         private static void SetFrameworksFilter( MainSearchInput data, ref string where )
         {
             string AND = "";
-            string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([FrameworkGroup] in ({1})  OR ([CodeId] in ({2}) )  ))  ) ";
+            //string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([FrameworkGroup] in ({1})  OR ([CodeId] in ({2}) )  ))  ) ";
 
             string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([ReferenceFrameworkId] in ({2}) )  )) ) ";
             //Updated to use FiltersV2

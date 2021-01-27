@@ -64,7 +64,7 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:jurisdiction" )]
         public List<JurisdictionProfile> Jurisdiction { get; set; }
 
-        //[JsonProperty( PropertyName = "ceterms:region" )]
-        //public List<GeoCoordinates> Region { get; set; }
+        [JsonProperty( PropertyName = "ceterms:offeredIn" )]
+        public List<JurisdictionProfile> OfferedIn { get; set; }
     }
 }

@@ -133,6 +133,8 @@ namespace workIT.Factories
             try
             {
                 //TODO - update this method - can't exist, as all are deleted
+				//20-11-20 mp - where assertion comes from the QA org, then will not have been deleted - but should it?
+				//				- here we need to distinguish direction
                 if ( AgentEntityRoleExists( entityId, agentUid, roleId ) )
                 {
                     //status.AddError( "Error: the selected relationship already exists!" );
@@ -217,20 +219,25 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_AgentRelationship.RemoveRange( context.Entity_AgentRelationship.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
-
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					context.Entity_AgentRelationship.RemoveRange( context.Entity_AgentRelationship.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//if doing a delete on spec, may not have been any properties
+					}
+				}
+			} catch( Exception ex)
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll( Entity parent, ref SaveStatus status )" );
+			}
             return isValid;
         }
 

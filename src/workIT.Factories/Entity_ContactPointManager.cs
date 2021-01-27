@@ -261,7 +261,7 @@ namespace workIT.Factories
 				status.AddWarning( "A contact point must have at least one phone, email, or URL" );
 
 			
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		#endregion

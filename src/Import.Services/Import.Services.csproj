@@ -44,9 +44,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />
@@ -61,19 +58,23 @@
     <Compile Include="ImportCompetencyFramesworks.cs" />
     <Compile Include="Envelope.cs" />
     <Compile Include="ImportAssessment.cs" />
+    <Compile Include="ImportConceptScheme.cs" />
     <Compile Include="ImportConditionManifests.cs" />
     <Compile Include="ImportCostManifests.cs" />
     <Compile Include="ImportLearningOpportunties.cs" />
     <Compile Include="ImportOrganization.cs" />
     <Compile Include="ImportCredential.cs" />
+    <Compile Include="ImportPathways.cs" />
+    <Compile Include="ImportPathwaySets.cs" />
     <Compile Include="ImportServiceHelpers.cs" />
-    <Compile Include="MappingHelper.cs" />
+    <Compile Include="ImportTransferValue.cs" />
     <Compile Include="MappingHelperV3.cs" />
     <Compile Include="NavyServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RegistryModels\CredentialDescriptionSet.cs" />
     <Compile Include="RegistryModels\JsonV2\Agent.cs" />
     <Compile Include="RegistryModels\JsonV2\AssessmentProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\BlankNode.cs" />
     <Compile Include="RegistryModels\JsonV2\Competency.cs" />
     <Compile Include="RegistryModels\JsonV2\CompetencyFramework.cs" />
     <Compile Include="RegistryModels\JsonV2\ConceptScheme.cs" />
@@ -85,17 +86,32 @@
     <Compile Include="RegistryModels\JsonV2\Credential.cs" />
     <Compile Include="RegistryModels\JsonV2\CredentialAlignmentObject.cs" />
     <Compile Include="RegistryModels\JsonV2\DurationProfile.cs" />
-    <Compile Include="RegistryModels\JsonV2\FinancialAlignmentObject.cs" />
+    <Compile Include="RegistryModels\JsonV2\EarningsProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\EmploymentOutcomeProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\EntityBase.cs" />
     <Compile Include="RegistryModels\JsonV2\FinancialAssistanceProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\HelpersClass.cs" />
+    <Compile Include="RegistryModels\JsonV2\HoldersProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\IdentifierValue.cs" />
     <Compile Include="RegistryModels\JsonV2\JsonLDDocument.cs" />
     <Compile Include="RegistryModels\JsonV2\JurisdictionProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\LanguageMap.cs" />
     <Compile Include="RegistryModels\JsonV2\LearningOpportunityProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\MonetaryAmount.cs" />
     <Compile Include="RegistryModels\JsonV2\OrganizationBase.cs" />
+    <Compile Include="RegistryModels\JsonV2\Pathway.cs" />
+    <Compile Include="RegistryModels\JsonV2\PathwayComponent.cs" />
+    <Compile Include="RegistryModels\JsonV2\PathwaySet.cs" />
     <Compile Include="RegistryModels\JsonV2\Place.cs" />
     <Compile Include="RegistryModels\JsonV2\ProcessProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\QData\DataProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\QData\DataSetProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\QData\DataSetTimeFrame.cs" />
+    <Compile Include="RegistryModels\JsonV2\QData\SubjectProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\QuantitativeValue.cs" />
+    <Compile Include="RegistryModels\JsonV2\Rubric.cs" />
+    <Compile Include="RegistryModels\JsonV2\TransferValueProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\ValueProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\VerificationServiceProfile.cs" />
     <Compile Include="RegistryModels\Json\Agent.cs" />
     <Compile Include="RegistryModels\Json\AssessmentProfile.cs" />
@@ -146,7 +162,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>12.0.3</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

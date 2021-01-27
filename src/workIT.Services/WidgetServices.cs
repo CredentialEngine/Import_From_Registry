@@ -75,8 +75,11 @@ namespace workIT.Services
 
             return item;
         }
-
-        public static List<Widget> GetWidgetsForOrganization( string ctid )
+		public static List<Widget> GetAllWidgets()
+		{
+			return Manager.GetAllWidgets();
+		}
+		public static List<Widget> GetWidgetsForOrganization( string ctid )
         {
             return Manager.GetWidgetsForOrganization( ctid );
         }
@@ -84,48 +87,72 @@ namespace workIT.Services
         {
             return Manager.GetAllOrganizationsWithWidgets( );
         }
-        //[Obsolete]
-        //public static bool Activate( int widgetId, string message )
-        //{
 
-        //    var widget = WidgetServices.Get( widgetId );
-        //    if ( widget == null || widget.Id == 0 )
-        //    {
-        //        message = "ERROR - the requested Widget record was not found ";
-        //        return false;
-        //    }
-        //    else
-        //    {
-        //        if ( HttpContext.Current != null && HttpContext.Current.Session != null )
-        //        {
-        //            //may already be in session, so remove and read
-        //            if ( HttpContext.Current.Session[ "currentWidget" + widget.Id ] != null )
-        //            {
-        //                HttpContext.Current.Session.Remove( "currentWidget" + widget.Id );
-        //            }
-        //            HttpContext.Current.Session[ "currentWidget" + widget.Id ] = widget;
-        //            return true;
-        //        }
-        //    }
-        //    message = "Unable to acquire the current session. Widget not activated.";
-        //    return false;
-        //} //
-        //public static bool Activate( Widget widget, string message )
-        //{
-        //    if ( HttpContext.Current != null && HttpContext.Current.Session != null )
-        //    {
-        //        //may already be in session, so remove and readd
-        //        if ( HttpContext.Current.Session[ "currentWidget" + widget.Id ] != null )
-        //        {
-        //            HttpContext.Current.Session.Remove( "currentWidget" + widget.Id );
-        //        }
-        //        HttpContext.Current.Session[ "currentWidget" + widget.Id ] = widget;
-        //        return true;
-        //    }
-        //    message = "Unable to acquire the current session. Widget not activated.";
-        //    return false;
-        //} //
-        public static bool IsWidgetMode()
+		/// <summary>
+		/// Add Widget.Selection
+		/// </summary>
+		/// <param name="widgetId"></param>
+		/// <param name="purpose"></param>
+		/// <param name="entityTypeId"></param>
+		/// <param name="recordId"></param>
+		public bool AddWidgetSelection( string index, int widgetId, int entityTypeId, string widgetSection, string widgetProperty, int recordId, string resourceName, ref List<string> messages )
+		{
+			//AddWidgetSelection( index, widgetID, entityTypeID, widgetSection, widgetProperty, recordID, resourceName, ref messages );
+			//may need to record whether already exists and perhaps? skip the elastic update. Or have elastic also do an exists check
+			bool alreadyExists = false;
+			var status = "";
+			if ( mgr.WidgetSelectionAdd( widgetId, widgetSection, entityTypeId, recordId, resourceName, ref messages, ref alreadyExists ) )
+			{
+				switch ( entityTypeId )
+				{
+					case 1:
+						if (!new ElasticServices().CredentialResourceAddWidgetId( index, widgetId, widgetProperty, recordId.ToString(), alreadyExists, ref status ))
+						{
+							messages.Add( status );
+							return false;
+						}
+						return true;
+					default:
+						messages.Add( "Error there is no elastic method to add a resource of type: " + entityTypeId.ToString() );
+						return false;
+				}
+
+			} else
+			{
+				return false;
+			}
+			
+		}
+
+		public bool RemoveWidgetSelection( string index, int widgetId, int entityTypeId, string widgetSection, string widgetProperty,  int recordId, ref List<string> messages )
+		{
+			var status = "";
+
+			if ( mgr.WidgetSelectionDelete( widgetId, widgetSection, entityTypeId, recordId, ref messages ) )
+			{
+				switch ( entityTypeId )
+				{
+					case 1:
+						if (!new ElasticServices().CredentialResourceRemoveWidgetId( index, widgetId, widgetProperty, recordId.ToString(), ref status ))
+						{
+							messages.Add( status );
+							return false;
+						}
+						return true;
+					default:
+						messages.Add( "Error there is no elastic method to remove a resource of type: " + entityTypeId.ToString() );
+						return false;
+				}
+				
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		#region Mostly obsolete 
+		public static bool IsWidgetMode()
         {
             if ( HttpContext.Current != null && HttpContext.Current.Session != null )
             {
@@ -187,5 +214,7 @@ namespace workIT.Services
 
             return item;
         }
-    }
+
+		#endregion 
+	}
 }

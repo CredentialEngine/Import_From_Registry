@@ -25,8 +25,17 @@ namespace workIT.Factories
     {
         string thisClassName = "Entity_AssertionManager";
 
-        #region Persistance
-        public bool SaveList( int parentId, int roleId, List<Guid> targetUids, ref SaveStatus status )
+		#region Persistance
+		/// <summary>
+		/// Save list of assertions
+		/// TODO - need to handle change of owner. The old owner is not being deleted. 
+		/// </summary>
+		/// <param name="parentId"></param>
+		/// <param name="roleId"></param>
+		/// <param name="targetUids"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool SaveList( int parentId, int roleId, List<Guid> targetUids, ref SaveStatus status )
         {
 
             if ( targetUids == null || targetUids.Count == 0 || roleId < 1 )
@@ -44,6 +53,9 @@ namespace workIT.Factories
 				//check for add to AgentRelationship, if present
 				//we don't know what the target is, so can't create a pending record!!!
 				//NO SHOULD NOT DO THIS, OTHERWISE HAVE DIRECT AND INDIRECT FROM ONE TRANSACTION
+				//20-11-20 mp	- scenario is that QA org adds assertion, which may not exist from target perspecitive
+				//				- so this does need to happen. What are the cautions?
+				//				- or don't do explicitly, and have the search handle both sides!
 				if ( targetEntity.Id > 0 )
 				{
 					//emgr.Save( targetEntity.Id, parentEntity.EntityUid, roleId, ref status );
@@ -138,6 +150,7 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
+			try { 
             using ( var context = new EntityContext() )
             {
                 context.Entity_Assertion.RemoveRange( context.Entity_Assertion.Where( s => s.EntityId == parent.Id ) );
@@ -151,8 +164,12 @@ namespace workIT.Factories
                     //if doing a delete on spec, may not have been any properties
                 }
             }
-
-            return isValid;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll( Entity parent, ref SaveStatus status )" );
+			}
+			return isValid;
         }
         #endregion
 
@@ -320,6 +337,8 @@ namespace workIT.Factories
                     orp.TargetEntitySubjectWebpage = entity.TargetEntitySubjectWebpage;
                     orp.TargetEntityStateId = ( int )entity.TargetEntityStateId;
                     orp.AgentToSourceRelationship = entity.AgentToSourceRelationship;
+					//20-10-10 - targetCTID was not being populated
+					orp.TargetCTID = entity.AgentCTID;
                     if ( list.Count() < maxRecords )
                         list.Add( orp );
 
@@ -472,7 +491,7 @@ namespace workIT.Factories
 			{
 				//first check how long this step takes
 				DateTime start = DateTime.Now;
-				LoggingHelper.DoTrace( 4, "FillCountsForOrganizationQAPerformed start" );
+				LoggingHelper.DoTrace( 7, "FillCountsForOrganizationQAPerformed start" );
 				//List<Views.Organization_CombinedQAPerformed> agentRoles = context.Organization_CombinedQAPerformed
 				//	.Where( s => s.OrgUid == org.RowId
 				//		 && s.IsQARole == true
@@ -518,7 +537,7 @@ namespace workIT.Factories
 							};
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
-				LoggingHelper.DoTrace( 4, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
+				LoggingHelper.DoTrace( 6, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
 
 				var results = query.Distinct().ToList();
 				if ( results != null && results.Count() > 0 )
@@ -533,7 +552,7 @@ namespace workIT.Factories
 
 					DateTime listEnd = DateTime.Now;
 					elasped = listEnd.Subtract( end ).TotalSeconds;
-					LoggingHelper.DoTrace( 4, string.Format( "FillCountsForOrganizationQAPerformed loaded list seconds: {0}", elasped ) );
+					LoggingHelper.DoTrace( 7, string.Format( "FillCountsForOrganizationQAPerformed loaded list seconds: {0}", elasped ) );
 				}
 			}
 

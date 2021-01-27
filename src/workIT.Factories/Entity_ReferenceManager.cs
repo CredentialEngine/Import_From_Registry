@@ -25,9 +25,7 @@ namespace workIT.Factories
     {
         static string thisClassName = "Entity_ReferenceManager";
         static int defaultCategoryId = CodesManager.PROPERTY_CATEGORY_REFERENCE_URLS;
-        int maxReferenceTextLength = UtilityManager.GetAppKeyValue( "maxReferenceTextLength", 600 );
-        int maxKeywordLength = UtilityManager.GetAppKeyValue( "maxKeywordLength", 200 );
-        int maxReferenceUrlLength = UtilityManager.GetAppKeyValue( "maxReferenceUrlLength", 600 );
+        
 
         #region Entity Persistance ===================
         public void AddLanguages( List<ThisEntity> profiles,
@@ -183,7 +181,7 @@ namespace workIT.Factories
                 return false;
             }
 
-            int count = 0;
+            //int count = 0;
             DBEntity efEntity = new DBEntity();
             Entity parent = EntityManager.GetEntity( parentUid );
             if ( parent == null || parent.Id == 0 )
@@ -374,8 +372,12 @@ namespace workIT.Factories
             ref SaveStatus status )
         {
             status.HasSectionErrors = false;
+			int maxKeywordLength = UtilityManager.GetAppKeyValue( "maxKeywordLength", 200 );
+			int maxReferenceTextLength = UtilityManager.GetAppKeyValue( "maxReferenceTextLength", 600 );
+			int maxReferenceUrlLength = UtilityManager.GetAppKeyValue( "maxReferenceUrlLength", 600 );
 
-            isEmpty = false;
+
+			isEmpty = false;
             //check if empty
             if ( string.IsNullOrWhiteSpace( profile.TextTitle )
                 && string.IsNullOrWhiteSpace( profile.TextValue )
@@ -496,7 +498,7 @@ namespace workIT.Factories
             //	status.AddWarning( "A text value must be entered" );
             //	isValid = false;
             //}
-            return !status.HasSectionErrors;
+            return status.WasSectionValid;
         }
 
         #endregion

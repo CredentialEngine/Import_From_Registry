@@ -1,0 +1,512 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{22DB7FDE-7F0B-4A48-9261-1FAB15767CAE}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>workIT.Data</RootNamespace>
+    <AssemblyName>workIT.Data</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Staging|AnyCPU'">
+    <OutputPath>bin\Staging\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EntityFramework">
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer">
+      <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Accounts\Account.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Accounts.Context.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Accounts.Context.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Accounts.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Accounts.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Accounts.edmx</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Account_Summary.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\AspNetRole.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\AspNetUser.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\AspNetUserClaim.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\AspNetUserLogin.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\AspNetUserRole.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Organization.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\Organization_Member.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Accounts\System_ProxyCodes.cs">
+      <DependentUpon>Accounts.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tables\ActivityLog.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Assessment.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_AssertionType.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_ConditionProfileType.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_CredentialAgentRelationship.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_EntityTypes.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_PropertyCategory.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_PropertyValue.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_State.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\ConditionManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\CostManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_EntityStatistic.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_RegionTotals.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_SiteTotals.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Credential.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Credential_SummaryCache.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\EducationFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Address.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_AgentRelationship.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Assertion.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Assessment.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Cache.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CommonCondition.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CommonCost.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Competency.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ConditionManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ConditionProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ContactPoint.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CostManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CostProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CostProfileItem.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Credential.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_DurationProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_FinancialAlignmentProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_FinancialAssistanceProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_FrameworkItem.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_IdentifierValue.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_JurisdictionProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_LanguageMaps.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_LearningOpportunity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Organization.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ProcessProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Property.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Reference.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ReferenceConnection.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ReferenceFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_RevocationProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_VerificationProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_VerificationStatus.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\GeoCoordinate.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Import_EntityResolution.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Import_Message.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Import_PendingRequest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Import_Staging.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\LearningOpportunity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Organization.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Reference_Frameworks.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\SearchPendingReindex.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Widget.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\workIT.Context.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workIT.Context.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\workIT.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\workIT.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workIT.edmx</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Activity_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Agent_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Assessment_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\CIPCode2010.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\CIPCode2010_JobFamily.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\CodesProperty_Counts_ByEntity.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\CodesProperty_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Codes_Countries.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Codes_Currency.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Codes_Language.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\CostProfile_SummaryForSearch.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Credential_Assets.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Credential_Assets_AgentRelationship_Totals.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\EntityCompetencyFramework_Items_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\EntityProperty_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_AgentRelationshipIdCSV.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_Assertion_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_FrameworkCIPCodeSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_FrameworkIndustryCodeSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_FrameworkItemSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_LearningOpportunity_IsPartOfSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_ReferenceFramework_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_ReferenceFramework_Totals.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_Reference_Summary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_Relationship_AgentSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_Subjects.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExistingCountries_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExistingCountryRegions_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ExistingRegionCities_list.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\NAIC.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\NAICS_NaicsGroup.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ONET_SOC.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ONET_SOC_JobFamily.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Organization_CombinedConnections.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Organization_CombinedQAPerformed.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Query_IndianaCredentials.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Query_IndianapolisCredentials.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\SiteTotalsSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\workITViews.Context.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workITViews.Context.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\workITViews.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\workITViews.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>workITViews.edmx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EntityDeploy Include="Tables\workIT.edmx">
+      <Generator>EntityModelCodeGenerator</Generator>
+      <LastGenOutput>workIT.Designer.cs</LastGenOutput>
+    </EntityDeploy>
+  </ItemGroup>
+  <ItemGroup>
+    <EntityDeploy Include="Accounts\Accounts.edmx">
+      <Generator>EntityModelCodeGenerator</Generator>
+      <LastGenOutput>Accounts.Designer.cs</LastGenOutput>
+    </EntityDeploy>
+    <None Include="Accounts\Accounts.edmx.diagram">
+      <DependentUpon>Accounts.edmx</DependentUpon>
+    </None>
+    <None Include="App.Config" />
+    <None Include="packages.config" />
+    <None Include="Tables\workIT.edmx.diagram">
+      <DependentUpon>workIT.edmx</DependentUpon>
+    </None>
+    <EntityDeploy Include="Views\workITViews.edmx">
+      <Generator>EntityModelCodeGenerator</Generator>
+      <LastGenOutput>workITViews.Designer.cs</LastGenOutput>
+    </EntityDeploy>
+    <None Include="Views\workITViews.edmx.diagram">
+      <DependentUpon>workITViews.edmx</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Accounts\Accounts.Context.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>Accounts.edmx</DependentUpon>
+      <LastGenOutput>Accounts.Context.cs</LastGenOutput>
+    </Content>
+    <Content Include="Accounts\Accounts.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>Accounts.edmx</DependentUpon>
+      <LastGenOutput>Accounts.cs</LastGenOutput>
+    </Content>
+    <Content Include="DatabaseWarning.txt" />
+    <Content Include="Tables\workIT.Context.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>workIT.edmx</DependentUpon>
+      <LastGenOutput>workIT.Context.cs</LastGenOutput>
+    </Content>
+    <Content Include="Tables\workIT.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>workIT.edmx</DependentUpon>
+      <LastGenOutput>workIT.cs</LastGenOutput>
+    </Content>
+    <Content Include="Views\workITViews.Context.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>workITViews.edmx</DependentUpon>
+      <LastGenOutput>workITViews.Context.cs</LastGenOutput>
+    </Content>
+    <Content Include="Views\workITViews.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>workITViews.edmx</DependentUpon>
+      <LastGenOutput>workITViews.cs</LastGenOutput>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

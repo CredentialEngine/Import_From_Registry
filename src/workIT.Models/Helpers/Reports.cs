@@ -135,6 +135,10 @@ namespace workIT.Models.Helpers.Reports
 			{
 				return AgentServiceTypes.Items.ConvertAll( m => new CodeItem() { Id = m.Id, SchemaName = m.SchemaName, Totals = m.Totals, Name = m.Name, Description = m.Description, CategoryId = m.ParentId, Code = m.CodeId.ToString() } ).Where( m => m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
 			}
+			else if ( categorySchema == "ceterms:PathwayComponentType" )
+			{
+				return PropertiesTotals.Where( m => m.ParentSchemaName == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
+			}
 			else
 			{
 				return PropertiesTotals.Where( m => m.CategorySchema == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
@@ -178,6 +182,14 @@ namespace workIT.Models.Helpers.Reports
 
 		public Statistic GetSingleStatistic( string schemaName, string idPrefix, List<string> tags, bool allowSearchability, string title = "", string description = "", bool includeEmpty = false, int overrideSortOrder = -1 )
 		{
+			if (schemaName == "frameworkReport:Competencies" )
+			{
+
+			}
+			else if ( schemaName == "frameworkReport:PathwayComponents" )
+			{
+
+			}
 			var m = PropertiesTotals.Concat( PropertiesTotalsByEntity ).FirstOrDefault( x => x.SchemaName == schemaName.Trim() && x.Totals > ( includeEmpty ? -1 : 0 ) );
 			if ( m == null ) return new Statistic();
 			else return new Statistic(

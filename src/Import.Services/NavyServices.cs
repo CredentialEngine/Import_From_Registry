@@ -16,8 +16,9 @@ using MC = workIT.Models.Common;
 
 namespace Import.Services
 {
-	public class NavyServices : MappingHelperV3
+	public class NavyServices 
 	{
+		MappingHelperV3 helper = new MappingHelperV3();
 		public static MC.Enumeration MapRatingsListToEnumermation(List<string> input)
 		{
 			//TBD = do we need anything for emumeration, or just items?
@@ -75,10 +76,10 @@ namespace Import.Services
 						CodedNotation = rating.CodedNotation ?? ""
 					};
 
-					entity.TargetNodeName = HandleLanguageMap( rating.Name, currentBaseObject, "TargetNodeName" );
-					entity.TargetNodeName_Map = lastLanguageMapString;
-					entity.TargetNodeDescription = HandleLanguageMap( rating.Description, currentBaseObject, "TargetNodeDescription", false );
-					entity.TargetNodeDescription_Map = lastLanguageMapString;
+					entity.TargetNodeName = helper.HandleLanguageMap( rating.Name, helper.currentBaseObject, "TargetNodeName" );
+					entity.TargetNodeName_Map = helper.lastLanguageMapString;
+					entity.TargetNodeDescription = helper.HandleLanguageMap( rating.Description, helper.currentBaseObject, "TargetNodeDescription", false );
+					entity.TargetNodeDescription_Map = helper.lastLanguageMapString;
 
 					//if ( !string.IsNullOrWhiteSpace( item.Framework ) )
 					//{

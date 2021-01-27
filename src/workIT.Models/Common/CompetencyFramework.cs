@@ -29,6 +29,9 @@ namespace workIT.Models.Common
         public string CTID { get; set; }
     }
 
+    /// <summary>
+    /// CompetencyFramework used by the graph search
+    /// </summary>
     public class CompetencyFramework : BaseObject
     {
 
@@ -46,6 +49,7 @@ namespace workIT.Models.Common
         //required
         public string Ctid { get; set; }
 
+		public int TotalCompetencies { get; set; }
         public List<string> alignFrom { get; set; } = new List<string>();
 
         public List<string> alignTo { get; set; } = new List<string>();
@@ -204,9 +208,52 @@ namespace workIT.Models.Common
     {
         public List<CTDLAPICompetencyFrameworkResult> Results { get; set; }
         public JArray RelatedItems { get; set; }
+        public JArray RelatedItemsMap { get; set; }
         public int TotalResults { get; set; }
         public List<CTDLAPICompetencyFrameworkRelatedItemSetForSearchResult> PerResultRelatedItems { get; set; }
         public JObject Debug { get; set; }
+    }
+    public class CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItem
+    {
+        public CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItem()
+        {
+			RelatedItems = new List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem>();
+        }
+
+        public string ResourceURI { get; set; }
+        public JObject DebugInfo { get; set; }
+        public List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem> RelatedItems { get; set; }
+
+        public CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem GetRelatedItemsForPath_ExactMatch( string path )
+        {
+            return RelatedItems.FirstOrDefault( m => m.Path.ToLower() == path.ToLower() ) ?? new CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem();
+        }
+        public List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem> GetRelatedItemsForPath_PartialMatch( string path )
+        {
+            return RelatedItems.Where( m => m.Path.ToLower().Contains( path.ToLower() ) ).ToList();
+        }
+        public List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem> GetRelatedItemsForPath_StartsWithMatch( string path )
+        {
+            return RelatedItems.Where( m => m.Path.ToLower().IndexOf( path.ToLower() ) == 0 ).ToList();
+        }
+        public List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem> GetRelatedItemsForPath_EndsWithMatch( string path )
+        {
+            return RelatedItems.Where( m => System.Text.RegularExpressions.Regex.IsMatch( m.Path, path + "$", System.Text.RegularExpressions.RegexOptions.IgnoreCase ) ).ToList();
+        }
+        public List<CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem> GetRelatedItemsForPath_RegexMatch( string pathRegex )
+        {
+            return RelatedItems.Where( m => System.Text.RegularExpressions.Regex.IsMatch( m.Path, pathRegex, System.Text.RegularExpressions.RegexOptions.IgnoreCase ) ).ToList();
+        }
+    }
+    public class CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem
+    {
+        public CTDLAPICompetencyFrameworkResultSetRelatedItemsMapItemListItem()
+        {
+            URIs = new List<string>();
+        }
+        public string Path { get; set; }
+        public List<string> URIs { get; set; }
+		public int TotalURIs { get; set; }
     }
     //
 

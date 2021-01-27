@@ -31,20 +31,35 @@ namespace workIT.Models.Elastic
 
 		public List<string> Author { get; set; } = new List<string>();
 		public List<string> Creator { get; set; } = new List<string>();
-
+		public string SourceUrl { get; set; }
 		public List<string> EducationLevelType { get; set; } = new List<string>();
 
 		public List<string> Identifier { get; set; } = new List<string>();
 
 		public List<string> Keyword { get; set; } = new List<string>();
+
+		//optional
+		public string CompetencyFrameworkGraph { get; set; }
+
+		public List<string> TopChildCompetencies { get; set; } = new List<string>();
 		//add all competencies
-		public List<string> Competencies { get; set; } = new List<string>();
+		public int TotalCompetencies { get; set; }
+		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
 
-		// set true if is referenced by any assessments
+		// set count for references by other entities
 		//Or maybe just a list of assessment ids
-		public bool ReferencedByAssessments { get; set; }
-		public bool ReferencedByCredentials { get; set; }
-		public bool ReferencedByLearningOpportunities { get; set; }
+		public int ReferencedByAssessments { get; set; }
+		public int ReferencedByCredentials { get; set; }
+		public int ReferencedByLearningOpportunities { get; set; }
+
+		public List<BaseIndex> RelatedCredentials { get; set; } = new List<BaseIndex>();
+		public List<BaseIndex> RelatedAssessment { get; set; } = new List<BaseIndex>();
+		public List<BaseIndex> RelatedLearningOpportunities { get; set; } = new List<BaseIndex>();
+
+		//public List<int> ReportFilters { get; set; } = new List<int>();
+
+
+		//extras for IIndex??
 	}
 }

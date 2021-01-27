@@ -31,9 +31,10 @@ namespace workIT.Models.Helpers
         public List<Organization> Organizations { get; set; }
         public List<LearningOpportunityProfile> LearningOpportunities { get; set; }
         public List<AssessmentProfile> Assessments { get; set; }
+		public List<Pathway> Pathways { get; set; } = new List<Pathway>();
 
-        //Get the value of a property for each object in a list - useful for ensuring data goes with the appropriate object even when one object in the list has no data for that property
-        public static List<CellData> GetData<T>( string propertyName, List<T> sources )
+		//Get the value of a property for each object in a list - useful for ensuring data goes with the appropriate object even when one object in the list has no data for that property
+		public static List<CellData> GetData<T>( string propertyName, List<T> sources )
         {
             var result = new List<CellData>();
             try

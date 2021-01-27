@@ -50,7 +50,7 @@ namespace workIT.Factories
 				Save( item, parent, ref status );
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		} //
 
 		/// <summary>
@@ -192,7 +192,7 @@ namespace workIT.Factories
 				status.AddWarning( "The 'Revocation Criteria Url' format is invalid. " + commonStatusMessage );
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		#endregion

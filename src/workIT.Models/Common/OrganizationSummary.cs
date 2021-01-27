@@ -36,6 +36,9 @@ namespace workIT.Models.Common
         public AgentRelationshipResult QualityAssurance { get; set; }
         public TargetAssertionResult QualityAssurancePerformed { get; set; }
         public int QualityAssuranceCombinedTotal { get; set; }
-    }
+
+
+
+	}
 
 }

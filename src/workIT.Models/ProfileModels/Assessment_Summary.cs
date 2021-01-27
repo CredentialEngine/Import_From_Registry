@@ -25,7 +25,7 @@ namespace workIT.Models.ProfileModels
             Addresses = new List<Address>();
             CommonCosts = new List<CostManifest>();
             EstimatedCost = new List<CostProfile>();
-            FinancialAssistance = new List<FinancialAlignmentObject>();
+            //FinancialAssistance = new List<FinancialAlignmentObject>();
             CommonConditions = new List<ConditionManifest>();
 
             Requires = new List<ConditionProfile>();
@@ -115,7 +115,7 @@ namespace workIT.Models.ProfileModels
 
         public List<CostProfile> EstimatedCost { get; set; }
 
-        public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
+        //public List<FinancialAlignmentObject> FinancialAssistance { get; set; }
 
         public List<DurationProfile> EstimatedDuration { get; set; }
         public List<TextValueProfile> ResourceUrl { get; set; }

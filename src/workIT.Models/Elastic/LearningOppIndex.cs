@@ -14,8 +14,6 @@ namespace workIT.Models.Elastic
             RequiresCompetencies = new List<IndexCompetency>();
             RelationshipTypes = new List<int>();
             SubjectAreas = new List<string>();
-            Classifications = new List<IndexReferenceFramework>();
-            Addresses = new List<Address>();
         }
         //public int Id { get; set; }
         //public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
@@ -90,29 +88,31 @@ namespace workIT.Models.Elastic
 		public List<string> PremiumValues { get; set; } = new List<string>();
 		public bool HasSubjects { get; set; }
 		//public new List<string> SubjectAreas { get; set; }
+		public List<IndexSubject> Subjects { get; set; }
 
 		public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
         //public List<IndexProperty> LearningMethodTypes { get; set; } = new List<IndexProperty>();
         //public List<IndexProperty> DeliveryMethodTypes { get; set; } = new List<IndexProperty>();
 		public List<IndexProperty> LoppProperties { get; set; } = new List<IndexProperty>();
-		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
+		//
+		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 
-		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
-		public List<IndexReferenceFramework> Classifications { get; set; }
+		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = new List<IndexReferenceFramework>();
         //QAAgentAndRoles - List actual orgIds and names for roles
         public string Org_QAAgentAndRoles { get; set; }
         //public List<int> QualityAssurances { get; set; } = new List<int>();
         //public List<IndexQualityAssurance> QualityAssurance { get; set; }
 
 		//public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
-		public string CodedNotation { get; set; }
+		//public string CodedNotation { get; set; }
      
         public int CompetenciesCount { get; set; }
         public string ListTitle { get; set; }
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
 		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
-		public List<int> ReportFilters { get; set; } = new List<int>();
+		//public List<int> ReportFilters { get; set; } = new List<int>();
 
 		//-actual connection type (no credential info)
 		public string ConnectionsList { get; set; }
@@ -129,7 +129,7 @@ namespace workIT.Models.Elastic
 		//  public int AvailableAddresses { get; set; }
 		//public int AddressesCount { get; set; }
 
-		public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
+		//public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 		public string TypesResults { get; set; }
 		public List<string> Keyword { get; set; } = new List<string>();
 		public bool HasOccupations { get; set; }
@@ -146,7 +146,10 @@ namespace workIT.Models.Elastic
         public int IsRecommendedForCount { get; set; }
         public int IsRequiredForCount { get; set; }
         public int PreparationFromCount { get; set; }
-        public int CommonCostsCount { get; set; }
+		public int CostProfilesCount { get; set; }
+		public int NumberOfCostProfileItems { get; set; }
+
+		public int CommonCostsCount { get; set; }
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }

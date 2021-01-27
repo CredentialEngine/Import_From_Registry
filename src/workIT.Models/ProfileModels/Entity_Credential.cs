@@ -12,7 +12,8 @@ namespace workIT.Models.ProfileModels
 	{
 
 		public int CredentialId { get; set; }
-		public Guid CredentialUid { get; set; }
+		public int RelationshipTypeId { get; set; }
+		//public Guid CredentialUid { get; set; }
 		public string CredentialTitle { get; set; }
 		public Credential Credential { get; set; } = new Credential();
 		public string ProfileSummary { get; set; }

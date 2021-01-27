@@ -14,6 +14,7 @@ namespace workIT.Models
 			HasErrors = false;
 			CodeValidationType = "warn";
 			DetailPageUrl = "";
+			Timezone = TimeZone.CurrentTimeZone;
 		}
 
 		public string ValidationGroup { get; set; }
@@ -24,7 +25,28 @@ namespace workIT.Models
 		public int DocumentId { get; set; }
 		public string DetailPageUrl { get; set; }
 		public string Ctid { get; set; }
-
+		public int RecordsAdded { get; set; }
+		public int RecordsFailed { get; set; }
+		public int RecordsUpdated { get; set; }
+		public TimeZone Timezone { get; set; }
+		public DateTime EnvelopeCreatedDate { get; set; }
+		public DateTime EnvelopeUpdatedDate { get; set; }
+		public DateTime LocalCreatedDate { get; set; }
+		public DateTime LocalUpdatedDate { get; set; }
+		public void SetEnvelopeCreated( DateTime date)
+		{
+			EnvelopeCreatedDate = date;
+			//TimeZone zone = TimeZone.CurrentTimeZone;
+			// Demonstrate ToLocalTime and ToUniversalTime.
+			LocalCreatedDate = Timezone.ToLocalTime( date );
+		}
+		public void SetEnvelopeUpdated(DateTime date)
+		{
+			EnvelopeUpdatedDate = date;
+			//TimeZone zone = TimeZone.CurrentTimeZone;
+			// Demonstrate ToLocalTime and ToUniversalTime.
+			LocalUpdatedDate = Timezone.ToLocalTime( date );
+		}
 		/// <summary>
 		/// CodeValidationType - actions for code validation
 		/// rigid-concepts must match ctdl 
@@ -42,9 +64,20 @@ namespace workIT.Models
 		/// Reset HasSectionErrors to false at the start of a new section of validation. Then check at th end of the section for any errors in the section
 		/// </summary>
 		public bool HasSectionErrors { get; set; }
+		public bool WasSectionValid
+		{
+			get { return !HasSectionErrors; }
+		}
 		public void AddError( string message )
 		{
 			Messages.Add( new Models.StatusMessage() { Message = message } );
+			HasErrors = true;
+			HasSectionErrors = true;
+		}
+		public void AddErrorRange( List<string> messages )
+		{
+			foreach ( string msg in messages )
+				Messages.Add( new Models.StatusMessage() { Message = msg } );
 			HasErrors = true;
 			HasSectionErrors = true;
 		}

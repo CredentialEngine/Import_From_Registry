@@ -88,11 +88,11 @@ namespace RA.Models.Json
         [JsonProperty( PropertyName = "ceterms:weight" )]
         public decimal Weight { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:creditHourType" )]
-        public string CreditHourType { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:creditHourType" )]
+        //public string CreditHourType { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:creditHourValue" )]
-        public decimal CreditHourValue { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:creditHourValue" )]
+        //public decimal CreditHourValue { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:creditUnitType" )]
         public CredentialAlignmentObject CreditUnitType { get; set; } //Used for publishing

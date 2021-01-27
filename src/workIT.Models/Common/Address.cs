@@ -18,7 +18,7 @@ namespace workIT.Models.Common
         public string Name_Map { get; set; }
         public string Address1 { get; set; }
         public string Address1_Map { get; set; }
-        public string Address2 { get; set; }
+        //public string Address2 { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
 
 		public string City { get; set; }
@@ -27,10 +27,10 @@ namespace workIT.Models.Common
 		public string AddressRegion { get; set; }
 		public bool HasShortRegion { get; set; }
         public string AddressRegion_Map { get; set; }
-        //
-        //public string AddressRegionFull { get; set; }
-       
-        public string Country { get; set; }
+		//
+		//public string AddressRegionFull { get; set; }
+		public string SubRegion { get; set; }
+		public string Country { get; set; }
         public string Country_Map { get; set; }
 
         public string PostalCode { get; set; }
@@ -43,8 +43,8 @@ namespace workIT.Models.Common
 			string address = "";
 			if ( !string.IsNullOrWhiteSpace( Address1 ) )
 				address = Address1;
-			if ( !string.IsNullOrWhiteSpace( Address2 ) )
-				address += separator + Address2;
+			//if ( !string.IsNullOrWhiteSpace( Address2 ) )
+			//	address += separator + Address2;
 			if ( !string.IsNullOrWhiteSpace( City ) )
 				address += separator + City;
 			if ( !string.IsNullOrWhiteSpace( AddressRegion ) )
@@ -68,7 +68,7 @@ namespace workIT.Models.Common
 			bool hasAddress = true;
 
 			if ( string.IsNullOrWhiteSpace( Address1 )
-			&& string.IsNullOrWhiteSpace( Address2 )
+			//&& string.IsNullOrWhiteSpace( Address2 )
 			&& string.IsNullOrWhiteSpace( City )
 			&& string.IsNullOrWhiteSpace( AddressRegion )
 			&& string.IsNullOrWhiteSpace( PostalCode )

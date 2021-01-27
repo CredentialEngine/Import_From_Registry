@@ -79,5 +79,40 @@ namespace workIT.Services
 
 			return list;
 		}
+
+		public static List<BenchmarkPropertyTotal> Search( string classType, string pFilter, string pOrderBy, bool IsDescending, int pageNumber, int pageSize, ref int pTotalRows )
+		{
+
+			//probably should validate valid order by - or do in proc
+			if ( string.IsNullOrWhiteSpace( pOrderBy ) )
+			{
+				//not handling desc yet				
+				//parms.IsDescending = true;
+				pOrderBy = "Id";
+			}
+			else
+			{
+				if ( pOrderBy == "Order" )
+					pOrderBy = "Id";
+				else if ( pOrderBy == "Title" )
+					pOrderBy = "Label";
+				else if ( pOrderBy == "CodeTitle" )
+					pOrderBy = "Policy";
+				else if ( pOrderBy == "Group" )
+					pOrderBy = "PropertyGroup";
+				else if ( pOrderBy == "Totals" )
+					pOrderBy = "Total";
+
+				if ( "id label policy propertygroup total".IndexOf( pOrderBy.ToLower() ) == -1 )
+				{
+					pOrderBy = "Id";
+				}
+			}
+			if ( IsDescending )
+				pOrderBy += " DESC";
+
+			var list = ReportsManager.Search( classType, pFilter, pOrderBy, pageNumber, pageSize, ref pTotalRows );
+			return list;
+		}
 	}
 }

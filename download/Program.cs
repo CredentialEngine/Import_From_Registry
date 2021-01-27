@@ -90,6 +90,19 @@ namespace Download
 				}
 				importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Community: {0}, Updates since: {1} {2}", defaultCommunity, startingDate, usingUTC_ForTime ? " (UTC)" : "" ) );
 			}
+			//else if ( scheduleType == "sinceLastRun" )
+			//{
+			//	if ( usingUTC_ForTime )
+			//	{
+			//		startingDate = zone.ToUniversalTime( lastRun.Created ).ToString( "yyyy-MM-ddTHH:mm:ss" );
+			//	}
+			//	else
+			//	{
+			//		startingDate = lastRun.Created.ToString( "yyyy-MM-ddTHH:mm:ss" );
+			//	}
+			//	endingDate = "";
+			//	importResults = importResults + "<br/>" + DisplayMessages( string.Format( " - Updates since: {0} {1}", startingDate, usingUTC_ForTime ? " (UTC)" : "" ) );
+			//}
 			else if ( scheduleType == "adhoc" )
 			{
 				startingDate = UtilityManager.GetAppKeyValue( "startingDate", "" );
@@ -159,25 +172,6 @@ namespace Download
 			string sortOrder = "asc";
 			if ( deleteAction != 1 )
 			{
-				//
-				importResults = importResults + "<br/>" + registryImport.Retrieve( "competency_framework", CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-
-				//Coming soon TransferValue
-				importResults = importResults + "<br/>" + registryImport.Retrieve( "transfer_value_profile", CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
-
-
-				//pathways 
-				//should we try to combine pathways and pathway sets?
-				if ( UtilityManager.GetAppKeyValue( "importing_pathway", true ) )
-				{
-					importResults = importResults + "<br/>" + registryImport.Retrieve( "pathway", CodesManager.ENTITY_TYPE_PATHWAY, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-				}
-				//
-				if ( UtilityManager.GetAppKeyValue( "importing_pathwayset", true ) )
-				{
-					//can't do this until registry fixture is updated.
-					importResults = importResults + "<br/>" + registryImport.Retrieve( "pathway_set", CodesManager.ENTITY_TYPE_PATHWAY_SET, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-				}
 
 				//do manifests 
 				importResults = importResults + "<br/>" + registryImport.Retrieve( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
@@ -196,12 +190,39 @@ namespace Download
 				//
 				importResults = importResults + "<br/>" + registryImport.Retrieve( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
+				//
+				importResults = importResults + "<br/>" + registryImport.Retrieve( "competency_framework", CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+
+				//TVP
+				if ( UtilityManager.GetAppKeyValue( "importing_transfer_value_profile", true ) )
+				{
+					if ( UtilityManager.GetAppKeyValue( "envType" ) == "development" && System.DateTime.Now.ToString( "yyyy-MM-dd" ) == "2020-07-20" )
+					{
+						maxImportRecords = 50;
+						sortOrder = "dsc";
+					}
+					importResults = importResults + "<br/>" + registryImport.Retrieve( "transfer_value_profile", CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
+				}
+
+				//pathways 
+				//should we try to combine pathways and pathway sets?
+				if ( UtilityManager.GetAppKeyValue( "importing_pathway", true ) )
+				{
+					importResults = importResults + "<br/>" + registryImport.Retrieve( "pathway", CodesManager.ENTITY_TYPE_PATHWAY, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				}
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_pathwayset", true ) )
+				{
+					//can't do this until registry fixture is updated.
+					importResults = importResults + "<br/>" + registryImport.Retrieve( "pathway_set", CodesManager.ENTITY_TYPE_PATHWAY_SET, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				}
+
 
 				//handle organizations
 				//might be better to do last, then can populate placeholders, try first
 				//
-				importResults = importResults + "<br/>" + registryImport.Retrieve( "organization", CodesManager.ENTITY_TYPE_ORGANIZATION, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-
+				importResults = importResults + "<br/>" + registryImport.Retrieve( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				//
 				TimeSpan duration = DateTime.Now.Subtract( local );
 				LoggingHelper.DoTrace( 1, string.Format( "********* COMPLETED {0:c} minutes *********", duration.TotalMinutes ));
 			}

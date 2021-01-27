@@ -27,6 +27,10 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty(PropertyName = "ceterms:financialAssistanceType ")]
       public List<CredentialAlignmentObject> FinancialAssistanceType { get; set; }
-	
+
+		//
+		[JsonProperty( PropertyName = "ceterms:financialAssistanceValue" )]
+		public List<QuantitativeValue> FinancialAssistanceValue { get; set; } = null;
+
 	}
 }

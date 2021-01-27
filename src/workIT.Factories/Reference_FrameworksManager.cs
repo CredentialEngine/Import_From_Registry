@@ -113,7 +113,7 @@ namespace workIT.Factories
 
 				if ( entity.Id == 0 )
 				{
-					// - need to check for existance
+					// - Add
 					efEntity = new DBEntity();
 					MapToDB( entity, efEntity );
 
@@ -196,7 +196,7 @@ namespace workIT.Factories
 			//if we don't require url, we can't resolve potentially duplicate framework names
 
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		#endregion
@@ -211,7 +211,7 @@ namespace workIT.Factories
 		}
 
 		/// <summary>
-		/// Look for existing record or add if not foud
+		/// Look for existing record or add if not found
 		/// </summary>
 		/// <param name="frameworkUrl"></param>
 		/// <param name="frameworkName"></param>
@@ -315,25 +315,31 @@ namespace workIT.Factories
 
 			entity.Items = new List<EnumeratedItem>();
 			EnumeratedItem item = new EnumeratedItem();
-
-			using ( var context = new ViewContext() )
+			try
 			{
-				List<Views.Entity_ReferenceFramework_Summary> results = context.Entity_ReferenceFramework_Summary
-					.Where( s => s.EntityUid == parentUid
-						&& s.CategoryId == categoryId )
-					.OrderBy( s => s.Name )
-					.ToList();
-
-				if ( results != null && results.Count > 0 )
+				using ( var context = new ViewContext() )
 				{
-					foreach ( var prop in results )
-					{
-						item = new EnumeratedItem();
-						MapFromDB( prop, item );
-						entity.Items.Add( item );
-					}
-				}
+					List<Views.Entity_ReferenceFramework_Summary> results = context.Entity_ReferenceFramework_Summary
+						.Where( s => s.EntityUid == parentUid
+							&& s.CategoryId == categoryId )
+						.OrderBy( s => s.Name )
+						.ToList();
 
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( var prop in results )
+						{
+							item = new EnumeratedItem();
+							MapFromDB( prop, item );
+							entity.Items.Add( item );
+						}
+					}
+
+					return entity;
+				}
+			}catch(Exception ex)
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".FillEnumeration" );
 				return entity;
 			}
 		}
@@ -373,7 +379,7 @@ namespace workIT.Factories
 			}
 			to.Description = from.Description;
 			to.TargetNode = from.TargetNode ?? "";
-			to.ExternalFrameworkId = from.ExternalFrameworkId;
+			//to.ExternalFrameworkId = from.ExternalFrameworkId;
 
 		} //
 
@@ -390,7 +396,7 @@ namespace workIT.Factories
 			}
 			to.Description = from.Description;
 			to.TargetNode = from.TargetNode;
-			to.ExternalFrameworkId = (int) (from.ExternalFrameworkId ?? 0);
+			//to.ExternalFrameworkId = (int) (from.ExternalFrameworkId ?? 0);
 		}
 
 

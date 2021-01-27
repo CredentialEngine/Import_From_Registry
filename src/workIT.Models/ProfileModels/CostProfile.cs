@@ -63,6 +63,7 @@ namespace workIT.Models.ProfileModels
 		/// Not persisted, just used for display
 		/// </summary>
 		public string ProfileName { get; set; }
+		public string CostDescription { get; set; }
 		public Enumeration DirectCostType { get; set; }
 		public int CostTypeId { get; set; }
 		public string CostTypeName { get; set; }

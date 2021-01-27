@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.IO;
+using System.Net;
 
 using Download.Models;
 using Download.Services;
-using System.Net;
-using System.IO;
+
+using Newtonsoft.Json;
 
 namespace Download
 {
@@ -37,7 +35,6 @@ namespace Download
 
 			int pageNbr = 1;
 			int pageSize = UtilityManager.GetAppKeyValue( "importPageSize", 100 );
-			string importError = "";
 			string importResults = "";
 			string importNote = "";
 			//ThisEntity output = new ThisEntity();
@@ -49,8 +46,6 @@ namespace Download
 			int exceptionCtr = 0;
 			string statusMessage = "";
 			bool isComplete = false;
-			bool importSuccessfull = true;
-			int newImportId = 0;
 			
 			//will need to handle multiple calls - watch for time outs
 			while ( pageNbr > 0 && !isComplete )
@@ -77,15 +72,43 @@ namespace Download
 					string envelopeIdentifier = item.EnvelopeIdentifier;
 					string ctid = item.EnvelopeCetermsCtid;
 					string payload = item.DecodedResource.ToString();
-					LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} ctid {2} ", cntr, registryEntityType, ctid ) );
+					DateTime createDate = new DateTime();
+					DateTime envelopeUpdateDate = new DateTime();
+					if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+					{
+						//status.SetEnvelopeCreated( createDate );
+					}
+					if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+					{
+						//status.SetEnvelopeUpdated( envelopeUpdateDate );
+					}
+					var ctdlType = RegistryServices.GetResourceType( payload );
+					LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} ctid {2}, lastUpdated: {3} ", cntr, registryEntityType, ctid, envelopeUpdateDate ) );
 
-					string ctdlType = RegistryServices.GetResourceType( payload );
-					string envelopeUrl = RegistryHelper.GetEnvelopeUrl( envelopeIdentifier );
-
-					//LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
 					//to overwrite an existing file, suppress the date prefix (" "), or use an alternate prefix
 					LoggingHelper.WriteLogFile( 1, registryEntityType + "_" + ctid, payload, "", false );
-
+					//TODO - add optional save to a database
+					//		- will need entity type, ctid, name, description (maybe), created and lastupdated from envelope,payload
+					//		- only doing adds, allows for history, user can choose to do updates
+					if (UtilityManager.GetAppKeyValue( "savingToDatabase", false ) )
+					{
+						var resource = new CredentialRegistryResource()
+						{
+							EntityType = registryEntityType,
+							CTID = ctid,
+							DownloadDate = DateTime.Now,
+							Created = createDate,
+							LastUpdated = envelopeUpdateDate,
+							CredentialRegistryGraph = payload
+						};
+						statusMessage = "";
+						//optionally save record to a database
+						if ( new DatabaseServices().Add( resource, ref statusMessage ) == 0 )
+						{
+							//error handling
+						}
+					}
+					
 					if ( maxRecords > 0 && cntr >= maxRecords )
 					{
 						break;
@@ -169,7 +192,11 @@ namespace Download
 				//Link contains links for paging
 				var hdr = response.GetResponseHeader( "Link" );
 				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
-
+				//20-07-02 mp - seems the header name is now X-Total
+				if ( pTotalRows == 0 )
+				{
+					Int32.TryParse( response.GetResponseHeader( "X-Total" ), out pTotalRows );
+				}
 				//map to the default envelope
 				list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
 
@@ -205,8 +232,7 @@ namespace Download
 			SetSortOrder( ref filter, sortOrder );
 
 			serviceUri += filter.Length > 0 ? filter : "";
-			//future proof
-
+			//
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
 			try
 			{
@@ -260,48 +286,20 @@ namespace Download
 			{
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			}
-			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
-			serviceUri = string.Format( serviceUri, community );
-			return serviceUri;
-		}
-		public static string GetEnvelopeUrl( string envelopeId, string community = "" )
-		{
-			if ( string.IsNullOrWhiteSpace( community ) )
+			if (UtilityManager.GetAppKeyValue( "usingAssistantRegistrySearch", false ) )
 			{
-				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
-			}
-			string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
-
-			string registryEnvelopeUrl = string.Format( serviceUri, community, envelopeId );
-			return registryEnvelopeUrl;
-		}
-		public static string GetResourceUrl( string ctid, string community = "" )
-		{
-			if ( string.IsNullOrWhiteSpace( community ) )
+				string serviceUri = UtilityManager.GetAppKeyValue( "assistantCredentialRegistrySearch" );
+				if ( !string.IsNullOrWhiteSpace( community ))
+					serviceUri += "community=" + community + "&";
+				
+				return serviceUri;
+			} else
 			{
-				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+				string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistrySearch" );
+				serviceUri = string.Format( serviceUri, community );
+				return serviceUri;
 			}
-			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
-
-			string registryUrl = string.Format( serviceUri, community, ctid );
-
-			return registryUrl;
-		}
-		//public static string GetRegistryEnvelopeUrl(string community)
-		//{
-		//	//the app key should be changed to be more meaningful!!
-		//	string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
-		//	serviceUri = string.Format( serviceUri, community );
-		//	return serviceUri;
-		//}
-		public static string GetRegistryUrl( string appKey, string community )
-		{
-			//requires all urls to have a parameter?
-			//or, check if the default community exists
-			//also have to handle an absence community
-			string serviceUri = UtilityManager.GetAppKeyValue( appKey );
-			serviceUri = string.Format( serviceUri, community );
-			return serviceUri;
+			
 		}
 
 		private static void SetPaging( int pageNbr, int pageSize, ref string where )

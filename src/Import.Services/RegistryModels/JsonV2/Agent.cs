@@ -10,7 +10,8 @@ namespace RA.Models.JsonV2
 		public static string classType = "ceterms:CredentialOrganization";
 
 		public Agent()
-        {
+        {			
+			Type = "ceterms:CredentialOrganization";
 			IndustryType = new List<CredentialAlignmentObject>();
 			Naics = new List<string>();
 			//Keyword = new List<string>();
@@ -22,10 +23,6 @@ namespace RA.Models.JsonV2
             //AgentPurpose = new List<string>();
             ServiceType = new List<CredentialAlignmentObject>();
             AvailabilityListing = new List<string>();
-			AlternativeIdentifier = new List<IdentifierValue>();
-			//AlternateName = new List<string>();
-			Type = "ceterms:CredentialOrganization";
-
 			SameAs = new List<string>();
 			SocialMedia = new List<string>();
             Address = new List<Place>();
@@ -85,6 +82,15 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; } //URL
 
+		/// <summary>
+		/// The status type of this Organization. 
+		/// The default is Active. 
+		/// ConceptScheme: ceterms:StatusCategory
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:lifecycleStatusType" )]
+		public CredentialAlignmentObject LifecycleStatusType { get; set; }
+		
+		//INs
 		[JsonProperty( PropertyName = "ceterms:accreditedIn" )]
         public List<JurisdictionProfile> AccreditedIn { get; set; }
 
@@ -97,6 +103,7 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:regulatedIn" )]
         public List<JurisdictionProfile> RegulatedIn { get; set; }
 
+		//
         [JsonProperty( PropertyName = "ceterms:sameAs" )]
 		public List<string> SameAs { get; set; } //URL
 
@@ -105,6 +112,14 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:socialMedia" )]
 		public List<string> SocialMedia { get; set; }
+
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric Identifier value.
+		/// List of URIs 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		public List<IdentifierValue> Identifier { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:image" )]
 		public string Image { get; set; } //Image URL
@@ -132,8 +147,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:keyword" )]
         public LanguageMapList Keyword { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:alternativeIdentifier" )]
-		public List<IdentifierValue> AlternativeIdentifier { get; set; }
+		//20-10-31 - replace by Identifier
+		//[JsonProperty( PropertyName = "ceterms:alternativeIdentifier" )]
+		//public List<IdentifierValue> AlternativeIdentifier { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:missionAndGoalsStatement" )]
 		public string MissionAndGoalsStatement { get; set; } //URL
@@ -177,7 +193,18 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:availabilityListing" )]
         public List<string> AvailabilityListing { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:serviceType" )]
+
+		/// <summary>
+		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.
+		/// URI
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:transferValueStatement" )]
+		public string TransferValueStatement { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:transferValueStatementDescription" )]
+		public LanguageMap TransferValueStatementDescription { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:serviceType" )]
         public List<CredentialAlignmentObject> ServiceType { get; set; }
 
         //public Jurisdiction Jurisdiction { get; set; }

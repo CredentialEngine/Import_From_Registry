@@ -204,10 +204,10 @@ namespace workIT.Factories
 			//
 
 			if ( profile.Price < 1)
-				status.AddWarning( thisClassName + ". Error - A cost must be entered" );
+				status.AddWarning( thisClassName + ". A cost must be entered with a cost item." );
 
 		
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 		private int GetCodeItemId( Enumeration entity, ref SaveStatus status )
 		{
@@ -336,7 +336,9 @@ namespace workIT.Factories
 						adapter.SelectCommand = command;
 						adapter.Fill( result );
 					}
-					string rows = command.Parameters[ 4 ].Value.ToString();
+					//string rows = command.Parameters[ 4 ].Value.ToString();
+					string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+
 					try
 					{
 						pTotalRows = Int32.Parse( rows );
@@ -364,8 +366,9 @@ namespace workIT.Factories
 					item.Currency = GetRowColumn( dr, "Currency", "" );
 					item.CurrencySymbol = GetRowColumn( dr, "CurrencySymbol", "" );
 					item.Price = GetRowPossibleColumn( dr, "Price", 0M );
-
-					//item.Description = string.Format( "{0} {1} ({2})", item.CurrencySymbol, item.Price, item.ParentEntityType );
+					//
+					if ( item.Price <= 0)
+						item.CostDescription = GetRowColumn( dr, "CostDescription", "" );
 					list.Add( item );
 				}
 

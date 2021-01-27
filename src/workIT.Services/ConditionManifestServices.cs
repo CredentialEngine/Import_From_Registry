@@ -53,7 +53,7 @@ namespace workIT.Services
 
 		public static ConditionManifest GetDetail( int profileId, AppUser user )
 		{
-			ConditionManifest profile = ConditionManifestManager.Get( profileId, false );
+			ConditionManifest profile = ConditionManifestManager.Get( profileId );
 		
 			return profile;
 		}

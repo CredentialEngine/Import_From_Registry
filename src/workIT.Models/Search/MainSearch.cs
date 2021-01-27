@@ -19,8 +19,12 @@ namespace workIT.Models.Search
 			SortOrder = "relevance";
 			Filters = new List<MainSearchFilter>();
 			FiltersV2 = new List<MainSearchFilterV2>();
+			ElasticConfigs = new List<ElasticSearchFilterConfig>();
 		}
 		public int WidgetId { get; set; }
+		public bool MustHaveWidget { get; set; }
+		public bool MustNotHaveWidget { get; set; }
+		//TBD - value in passing the widget - or an object with properties significant for search filters
 		public string SearchType { get; set; }
 		public int StartPage { get; set; }
 		public int PageSize { get; set; }
@@ -29,8 +33,17 @@ namespace workIT.Models.Search
 		public string CompetenciesKeywords { get; set; }
 		public string SortOrder { get; set; }
 		public bool UseSimpleSearch { get; set; }
+		public bool UseSPARQL { get; set; }
 		public List<MainSearchFilter> Filters { get; set; }
 		public List<MainSearchFilterV2> FiltersV2 { get; set; }
+		//yes, need to make this more general
+		public bool HasCredentialPotentialResults { get; set; }
+		/// <summary>
+		/// Currently will only be used for the search related to the widget potential results.
+		/// The search method can only handle 'known' filter types. At least one must be present, otherwise ignored
+		/// </summary>
+		public List<string> CustomSearchInFields { get; set; } = new List<string>();
+		public List<ElasticSearchFilterConfig> ElasticConfigs { get; set; } //Used to tweak elasticsearch filters/boosting configs. Development only.
 
 		public List<string> GetFilterValues_Strings( string name )
 		{
@@ -120,6 +133,12 @@ namespace workIT.Models.Search
 			catch { }
 			try
 			{
+				//for some reason, when called from the finder API, the integer like CategoryId are not recognized
+				var v = Values[ key ];
+				if ( v != null && int.TryParse( v.ToString(), out int goodInt ) )
+				{
+					return goodInt;
+				}
 				return ( int ) Values[ key ];
 			}
 			catch { }
@@ -187,11 +206,28 @@ namespace workIT.Models.Search
 		{
 			try
 			{
+				//char leveltype = '"';
+				//var text = GetValueOrDefault( "TextValue", "" ).Replace("\"", "");
 				return GetValueOrDefault( "TextValue", "" );
 			}
 			catch
 			{
 				return "";
+			}
+		}
+		public CodeItem AsDateItem()
+		{
+			try
+			{
+				return new CodeItem()
+				{
+					Name = GetValueOrDefault( "PropertyName", "" ),
+					Code = GetValueOrDefault( "TextValue", "" )
+				};
+			}
+			catch
+			{
+				return new CodeItem();
 			}
 		}
 		public CodeItem AsQaText()
@@ -422,12 +458,17 @@ namespace workIT.Models.Search
 		{
 			TotalResults = 0;
 			Results = new List<MainSearchResult>();
+			Debug = new JObject();
+			RelatedItems = new JArray();
+			RelatedItemsMap = new JArray();
 		}
 
 		public string SearchType { get; set; }
 		public int TotalResults { get; set; }
 		public List<MainSearchResult> Results { get; set; }
 		public JArray RelatedItems { get; set; }
+		public JArray RelatedItemsMap { get; set; }
+		public JObject Debug { get; set; }
 	}
 	//
 
@@ -438,6 +479,7 @@ namespace workIT.Models.Search
 			Properties = new Dictionary<string, object>();
 			Tags = new List<TagSet>();
 			TagsV2 = new List<Helpers.SearchTag>();
+			Buttons = new List<Helpers.SearchResultButton>();
 		}
 		public string Name { get; set; }
 		public string FriendlyName { get; set; }
@@ -446,6 +488,7 @@ namespace workIT.Models.Search
 		public Dictionary<string, object> Properties { get; set; }
 		public List<TagSet> Tags { get; set; }
 		public List<Models.Helpers.SearchTag> TagsV2 { get; set; } //In development
+		public List<Models.Helpers.SearchResultButton> Buttons { get; set; }
 	}
 	//
 
@@ -462,6 +505,8 @@ namespace workIT.Models.Search
 		public int CategoryId { get; set; }
 		public List<TagItem> Items { get; set; }
 		public List<CostTagItem> CostItems { get; set; }
+		public List<FinancialTagItem> FinancialItems { get; set; } = new List<FinancialTagItem>();
+		public List<EntityTagItem> EntityTagItems { get; set; } = new List<EntityTagItem>();
 		public List<QAPerformedTagItem> QAItems { get; set; } = new List<QAPerformedTagItem>();
 		public int Count { get; set; }
 	}
@@ -482,6 +527,23 @@ namespace workIT.Models.Search
 		public string CostType { get; set; }
 		public string CurrencySymbol { get; set; }
 		public string SourceEntity { get; set; }
+	}
+	public class FinancialTagItem
+	{
+		public int CodeId { get; set; } //FinancialAssistanceId
+		public string Label { get; set; } //Used when all else fails
+		public string AssistanceTypes{ get; set; }
+
+		public string Description { get; set; }
+	}
+	public class EntityTagItem
+	{
+		public int TargetEntityBaseId { get; set; }
+		public string TargetEntityType { get; set; }
+		public string TargetEntityName { get; set; }
+		public string TargetEntitySubjectWebpage { get; set; }
+		public bool IsReference { get; set; }
+		public int TargetEntityTypeId { get; set; }
 	}
 	public class QAPerformedTagItem
 	{
@@ -577,4 +639,13 @@ namespace workIT.Models.Search
 	}
 	//
 
+	public class ElasticSearchFilterConfig
+	{
+		public string SearchType { get; set; }
+		public string QueryType { get; set; }
+		public string QuerySubType { get; set; }
+		public string FieldName { get; set; }
+		public int Boost { get; set; }
+	}
+	//
 }

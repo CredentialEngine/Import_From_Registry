@@ -14,14 +14,25 @@ namespace RA.Models.JsonV2
         public LanguageMap() { }
         public LanguageMap( string text )
         {
-            this.Add( "en", text );
+            this.Add( "en-US", text );
         }
         public LanguageMap( string languageCode, string text )
         {
             this.Add( languageCode, text );
         }
-
-        public override string ToString()
+		/// <summary>
+		/// Return true if the language map is empty
+		/// !!doesnt' work
+		/// </summary>
+		/// <returns></returns>
+		public bool IsEmpty()
+		{
+			if ( this == null || this.Count == 0 )
+				return true;
+			else
+				return false;
+		}
+		public override string ToString()
         {
             //if nothing found for default, should return first one
             string value = ToString( "en" );
@@ -70,7 +81,7 @@ namespace RA.Models.JsonV2
         public LanguageMapList() { }
         public LanguageMapList( List<string> items )
         {
-            this.Add( "en", items );
+            this.Add( "en-US", items );
         }
         public LanguageMapList( string languageCode, List<string> items )
         {

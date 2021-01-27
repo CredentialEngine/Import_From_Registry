@@ -123,6 +123,11 @@ namespace workIT.Models.ProfileModels
 
 		//not sure if will use this?
 		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		//20-07-24 updating to handle a list
+		public List<QuantitativeValue> CreditValueList { get; set; } = new List<QuantitativeValue>();
+		public string CreditValueJson { get; set; }
+
+
 		[Obsolete]
 		public string CreditHourType { get; set; }
 		[Obsolete]
@@ -131,6 +136,8 @@ namespace workIT.Models.ProfileModels
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
+		public decimal CreditUnitMinValue { get; set; }
+		
 		public decimal CreditUnitMaxValue { get; set; }
 		public bool CreditValueIsRange { get; set; }
 		/// <summary>

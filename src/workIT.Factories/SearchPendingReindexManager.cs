@@ -23,8 +23,6 @@ namespace workIT.Factories
     public class SearchPendingReindexManager : BaseFactory
     {
         static string thisClassName = "SearchPendingReindexManager";
-        string statusMessage = "";
-        EntityManager entityMgr = new EntityManager();
         public static int Reindex_Add_Request = 1;
         public static int Reindex_Delete_Request = 2;
 
@@ -122,7 +120,7 @@ namespace workIT.Factories
         /// Update a Record
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="statusMessage"></param>
+        /// <param name="messages"></param>
         /// <returns></returns>
         public bool Update( ThisEntity entity, ref List<String> messages )
         {
@@ -155,7 +153,7 @@ namespace workIT.Factories
                             else
                             {
                                 //?no info on error
-                                statusMessage = "Error - the update was not successful. ";
+                                messages.Add( "Error - the update was not successful. ");
                                 string message = string.Format( thisClassName + ".Update Failed. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}, RecordId: {1}", entity.EntityTypeId, entity.RecordId );
                                 //EmailManager.NotifyAdmin( thisClassName + ". ConditionProfile_Update Failed", message );
                             }
@@ -164,7 +162,7 @@ namespace workIT.Factories
                     }
                     else
                     {
-                        statusMessage = "Error - update failed, as record was not found.";
+						messages.Add( "Error - update failed, as record was not found.");
                     }
                 }
             }
@@ -212,8 +210,7 @@ namespace workIT.Factories
                                 }
                                 else
                                 {
-                                    //?no info on error
-                                    statusMessage = "Error - the update was not successful. ";
+									//?no info on error
                                     messages.Add( string.Format( thisClassName + ".Update Failed. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}, RecordId: {1}", efEntity.EntityTypeId, efEntity.RecordId ));
                                     //EmailManager.NotifyAdmin( thisClassName + ". ConditionProfile_Update Failed", message );
                                 }

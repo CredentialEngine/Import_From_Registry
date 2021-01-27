@@ -47,7 +47,8 @@ namespace workIT.Models.Common
         public List<string> SearchFeatures { get; set; }
 		public string CustomCssUrl { get; set; }
 		public List<ColorPair> WidgetColors { get; set; }
-
+		//
+		public bool HasCredentialPotentialResults { get; set; }
 
 		//Internal classes
 		//Location Set
@@ -72,6 +73,7 @@ namespace workIT.Models.Common
 		{
 			public FilterSet()
 			{
+				HideFiltersAndItems = new List<SearchFilterAndItems>();
 				InitializeLists( this );
 			}
 			//Relationships
@@ -86,6 +88,8 @@ namespace workIT.Models.Common
             //public List<string> HideSearches { get; set; }
 			//Checkbox Filters
 			public List<string> HideFilters { get; set; }
+			public List<string> HideCredentialTypeFilters { get; set; }
+			public List<SearchFilterAndItems> HideFiltersAndItems { get; set; }
 			public OrganizationRole QualityAssurance { get; set; }
 			public OrganizationRole Provider { get; set; }
 			
@@ -123,6 +127,7 @@ namespace workIT.Models.Common
 			public Dictionary<string, object> Properties { get; set; }
 		}
 		//
+		
 		public class OrganizationRole
 		{
 			public OrganizationRole()
@@ -134,6 +139,16 @@ namespace workIT.Models.Common
 			 public List<Reference> Organizations { get; set; }
 
 		}
+		//
+
+		public class SearchFilterAndItems
+		{
+			public string Identifier { get; set; }
+			public bool Selected { get; set; }
+			public List<int> ItemIDs { get; set; }
+		}
+		//
+
 		//
 		//Utility
 		public static void InitializeLists( object self )

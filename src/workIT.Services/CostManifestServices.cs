@@ -52,7 +52,7 @@ namespace workIT.Services
 
 		public static CostManifest GetDetail( int profileId, AppUser user )
 		{
-			CostManifest profile = CostManifestManager.Get( profileId, false );
+			CostManifest profile = CostManifestManager.Get( profileId );
 			
 			return profile;
 		}

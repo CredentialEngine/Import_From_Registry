@@ -14,7 +14,7 @@ namespace workIT.Models.ProfileModels
 		}
 		public int Id { get; set; }
 		public int EntityId { get; set; }
-		public int EducationFrameworkId { get; set; }
+		public int CompetencyFrameworkId { get; set; }
 
 		public string CodedNotation { get; set; }
 		public string TargetNodeName { get; set; }

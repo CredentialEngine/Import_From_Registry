@@ -7,7 +7,7 @@ using workIT.Models.ProfileModels;
 namespace workIT.Models.Common
 {
     [Serializable]
-    public class Credential : BaseObject
+    public class Credential : TopLevelObject
 	{
 		public Credential()
 		{
@@ -22,7 +22,7 @@ namespace workIT.Models.Common
 			EmbeddedCredentials = new List<Credential>();
 
 			EstimatedCosts = new List<CostProfile>();
-		    FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
+		    //FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
             RenewalFrequency = new DurationItem();
 			HasPartIds = new List<int>();
@@ -95,27 +95,29 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Credential name
 		/// </summary>
-		public string Name { get; set; }
-        public DateTime RegistryLastUpdated { get; set; }
+		//public string Name { get; set; }
+		// public string Description { get; set; }
+		public DateTime RegistryLastUpdated { get; set; }
 		/// <summary>
 		/// OwningAgentUid
 		///  (Nov2016)
 		/// </summary>
-		public Guid OwningAgentUid { get; set; }
-		public Organization OwningOrganization { get; set; }
+		//public Guid OwningAgentUid { get; set; }
+		//public Organization OwningOrganization { get; set; }
 
-        public int OwningOrganizationId
-        {
-            get
-            {
-                if (OwningOrganization != null && OwningOrganization.Id > 0)
-                    return OwningOrganization.Id;
-                else
-                    return 0;
-            }
-        }
-
-        public Enumeration OwnerRoles { get; set; }
+		//public int OwningOrganizationId
+		//{
+		//    get
+		//    {
+		//        if (OwningOrganization != null && OwningOrganization.Id > 0)
+		//            return OwningOrganization.Id;
+		//        else
+		//            return 0;
+		//    }
+		//}
+		public CredentialExternalProperties CredentialExternalProperties { get; set; } = new CredentialExternalProperties();
+		public string JsonProperties { get; set; }
+		public Enumeration OwnerRoles { get; set; }
 		public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
 
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
@@ -130,7 +132,7 @@ namespace workIT.Models.Common
         //use for import and detail, so maybe don't need AlternateName
         public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
-        public string Description { get; set; }
+       
 		/// <summary>
 		/// Single is the primary for now
 		/// </summary>
@@ -140,12 +142,12 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
 
-		public int EntityStateId { get; set; }
-		public string CTID { get; set; }
+//		public int EntityStateId { get; set; }
+		//public string CTID { get; set; }
 		/// <summary>
 		/// Envelope Idenfier from the Credential Registry
 		/// </summary>
-		public string CredentialRegistryId { get; set; }
+		//public string CredentialRegistryId { get; set; }
 		
 		public string LatestVersion { get; set; }
 
@@ -154,7 +156,7 @@ namespace workIT.Models.Common
 		public string SupersededBy { get; set; } //URL
 		public string Supersedes { get; set; } //URL
 										
-		public string SubjectWebpage { get; set; }
+		//public string SubjectWebpage { get; set; }
 		
 
 
@@ -169,8 +171,8 @@ namespace workIT.Models.Common
 		public string ISICV4 { get; set; }
 		public List<Address> Addresses { get; set; }
 		
-		
-		public List<JurisdictionProfile> Jurisdiction { get; set; }
+
+		//public List<JurisdictionProfile> Jurisdiction { get; set; }
 		//public List<JurisdictionProfile> Region { get; set; }
 		public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
 
@@ -196,6 +198,25 @@ namespace workIT.Models.Common
 		public List<Credential> IsPartOf { get; set; } //pseudo-"parent" credentials that this credential is a part of or included with (could be multiple)
 		public List<int> HasPartIds { get; set; }
 		public List<int> IsPartOfIds { get; set; }
+		// ==================================================================
+		public List<Credential> ETPLCredentials { get; set; } = new List<Credential>();
+		public List<AssessmentProfile> ETPLAssessments { get; set; } = new List<AssessmentProfile>();
+		public List<LearningOpportunityProfile> ETPLLearningOpportunities { get; set; } = new List<LearningOpportunityProfile>();
+		//for detail page, use a generic class
+		public List<TopLevelObject> HasETPLMembers { get; set; } = new List<TopLevelObject>();
+		/// <summary>
+		/// List of ETPL Credentials where is a member
+		/// </summary>
+		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
+		//used by import
+		public List<Guid> HasETPLResourceUids { get; set; } = new List<Guid>();
+		//public List<TopLevelObject> HasETPLAssessments { get; set; } = new List<TopLevelObject>();
+		public List<int> HasETPLAssessmentsIds { get; set; } = new List<int>();
+		//public List<TopLevelObject> HasETPLCredentials{ get; set; } = new List<TopLevelObject>();
+		public List<int> HasETPLCredentialsIds { get; set; } = new List<int>();
+		//public List<TopLevelObject> HasETPLLopps { get; set; } = new List<TopLevelObject>();
+		public List<int> HasETPLLoppsIds { get; set; } = new List<int>();
+		// ==================================================================
 
 		/// <summary>
 		/// placeholder for all Processes
@@ -227,7 +248,7 @@ namespace workIT.Models.Common
 				};
 			}
 			set { Industry = value; }
-		} //Used for publishing
+		} //used by detail page
 		public List<TextValueProfile> OtherIndustries { get; set; }
 		public Enumeration Occupation { get; set; }
 		public Enumeration OccupationType
@@ -352,8 +373,14 @@ namespace workIT.Models.Common
 		//public int ManagingOrgId { get; set; }
 		public string CredentialId { get; set; }
 		public string CodedNotation { get; set; }
-	
 
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// </summary>	
+		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		//or could store this as json
+		public string IdentifierJson { get; set; }
 		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> Subject { get; set; }
 
@@ -406,10 +433,15 @@ namespace workIT.Models.Common
 		//	get { return CostProfileMerged.FlattenCosts( EstimatedCosts ); }
 		//} //
 
-		public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		//public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
+		public string FinancialAssistanceJson { get; set; }
 		//public List<CredentialAlignmentObjectProfile> RequiresCompetencies { get; set; }
 
+		public List<EarningsProfile> EarningsProfile { get; set; } = new List<EarningsProfile>();
+
+		public List<HoldersProfile> HoldersProfile { get; set; } = new List<HoldersProfile>();
+		public List<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; } = new List<EmploymentOutcomeProfile>();
 
 		/// <summary>
 		/// Credentials related by a condition profile
@@ -441,5 +473,10 @@ namespace workIT.Models.Common
 
 
 		public bool HasVerificationType_Badge { get; set; }
+	}
+	[Serializable]
+	public class CredentialExternalProperties
+	{
+		public List<Address> Addresses { get; set; } = new List<Address>();
 	}
 }

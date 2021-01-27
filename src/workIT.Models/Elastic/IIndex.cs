@@ -20,17 +20,32 @@ namespace workIT.Models.Elastic
 
 		bool IsAvailableOnline { get; }
 
-		List<Address> Addresses { get; set; }
         DateTime Created { get; set; }
-        List<string> Keyword { get; set; }
+		DateTime LastUpdated { get; set; }
+		List<string> QualityAssurancePhrase { get; set; }
+		List<string> Keyword { get; set; }
 		List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; }
 		//List<QualityAssurancePerformed> QualityAssurancePerformed { get; set; }
 		List<IndexReferenceFramework> Occupations { get; set; }
 		List<IndexReferenceFramework> Industries { get; set; }
-		List<IndexReferenceFramework> Classifications { get; set; } 
+		//20-10-29 renamed from Classifications
+		List<IndexReferenceFramework> InstructionalPrograms { get; set; }
+		List<string> Industry { get; set; } 
+
+		List<string> Occupation { get; set; }
+		List<string> InstructionalProgram { get; set; } 
+		//
+		List<Address> Addresses { get; set; }
+		//List<string> Locations { get; set; }
+		List<string> Cities { get; set; } 
+		List<string> Regions { get; set; } 
+		List<string> Countries { get; set; } 
+
 		List<string> TextValues { get; set; }
 		List<string> SubjectAreas { get; set; }
 		List<string> PremiumValues { get; set; }
 		List<int> ReportFilters { get; set; }
+		List<int> ResourceForWidget { get; set; }
+		List<IndexSubject> Subjects { get; set; }
 	}
 }

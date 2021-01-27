@@ -24,8 +24,24 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_LearningOpportunityManager";
 
-	
+
 		#region Entity LearningOpp Persistance ===================
+		public bool SaveList( List<int> list, Guid parentUid, ref SaveStatus status, int relationshipTypeId = 1 )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+			int newId = 0;
+
+			bool isAllValid = true;
+			foreach ( int item in list )
+			{
+				newId = Add( parentUid, item, relationshipTypeId, false, ref status );
+				if ( newId == 0 )
+					isAllValid = false;
+			}
+
+			return isAllValid;
+		}
 		/// <summary>
 		/// Add a learning opp to a parent (typically a stub was created, so can be associated before completing the full profile)
 		/// </summary>
@@ -34,7 +50,7 @@ namespace workIT.Factories
 		/// <param name="messages"></param>
 		/// <returns></returns>
 		public int Add( Guid parentUid, 
-					int learningOppId, 
+					int learningOppId, int relationshipTypeId,
 					bool allowMultiples,
 					ref SaveStatus status,
 					bool warnOnDuplicate = true
@@ -47,7 +63,9 @@ namespace workIT.Factories
 				status.AddError( string.Format( "A valid Learning Opportunity identifier was not provided to the {0}.Add method.", thisClassName ) );
 				return 0;
 			}
-			
+			if ( relationshipTypeId == 0 )
+				relationshipTypeId = 1;
+
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -62,7 +80,7 @@ namespace workIT.Factories
 				{
 					//first check for duplicates
 					efEntity = context.Entity_LearningOpportunity
-							.SingleOrDefault( s => s.EntityId == parent.Id && s.LearningOpportunityId == learningOppId );
+							.FirstOrDefault( s => s.EntityId == parent.Id && s.LearningOpportunityId == learningOppId && s.RelationshipTypeId == relationshipTypeId );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -76,20 +94,22 @@ namespace workIT.Factories
 					if ( allowMultiples == false )
 					{
 						//check if one exists, and replace if found
-						efEntity = context.Entity_LearningOpportunity
-							.FirstOrDefault( s => s.EntityId == parent.Id );
-						if ( efEntity != null && efEntity.Id > 0 )
-						{
-							efEntity.LearningOpportunityId = learningOppId;
+						//		&& s.RelationshipTypeId == relationshipTypeId 
+						//efEntity = context.Entity_LearningOpportunity
+						//	.FirstOrDefault( s => s.EntityId == parent.Id );
+						//if ( efEntity != null && efEntity.Id > 0 )
+						//{
+						//	efEntity.LearningOpportunityId = learningOppId;
 
-							count = context.SaveChanges();
+						//	count = context.SaveChanges();
 
-							return efEntity.Id;
-						}
+						//	return efEntity.Id;
+						//}
 					}
 					efEntity = new DBEntity();
 					efEntity.EntityId = parent.Id;
 					efEntity.LearningOpportunityId = learningOppId;
+					efEntity.RelationshipTypeId = relationshipTypeId > 0 ? relationshipTypeId : 1;
 					efEntity.Created = System.DateTime.Now;
 
 					context.Entity_LearningOpportunity.Add( efEntity );
@@ -129,45 +149,80 @@ namespace workIT.Factories
 			return id;
 		}
 
-       
+       /// <summary>
+	   /// Delete all relationships for parent
+	   /// NOTE: there should be a check for reference entities, and delete if no other references.
+	   /// OR: have a clean up process to delete orphans. 
+	   /// </summary>
+	   /// <param name="parent"></param>
+	   /// <param name="status"></param>
+	   /// <returns></returns>
         public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
-            //Entity parent = EntityManager.GetEntity( parentUid );
+			int count = 0;
             if ( parent == null || parent.Id == 0 )
             {
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_LearningOpportunity.RemoveRange( context.Entity_LearningOpportunity.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
+			using ( var context = new EntityContext() )
+			{
+				//check if target is a reference object and is only in use here
+				var results = context.Entity_LearningOpportunity
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.LearningOpportunity.Name )
+							.ToList();
+				if ( results == null || results.Count == 0 )
+				{
+					return true;
+				}
+
+				foreach ( var item in results )
+				{
+					//if a reference, delete actual LearningOpportunity if not used elsewhere
+					if ( item.LearningOpportunity != null && item.LearningOpportunity.EntityStateId == 2 )
+					{
+						//do a getall. If only one, delete it.
+						var exists = context.Entity_LearningOpportunity
+							.Where( s => s.LearningOpportunityId == item.LearningOpportunityId )
+							.ToList();
+						if ( exists != null && exists.Count() == 1 )
+						{
+							var statusMsg = "";
+							//this method will also add pending request to remove from elastic.
+							//20-12-18 mp - Only done for a reference lopp but what about a full lopp that may now be an orphan? We are not allowing lopps without parent, but will still exist in registry!!!
+							new LearningOpportunityManager().Delete( item.LearningOpportunityId, ref statusMsg );
+						}
+					}
+					context.Entity_LearningOpportunity.Remove( item );
+					count = context.SaveChanges();
+					if ( count > 0 )
+					{ 
+
+					}
+				}
             }
 
             return isValid;
         }
-        #endregion
+		#endregion
 
-
-        /// <summary>
-        /// Get all learning opportunties for the parent
-        /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
-        /// </summary>
-        /// <param name="parentUid"></param>
-        /// <param name="forProfilesList"></param>
-        /// <returns></returns>
-        public static List<ThisEntity> LearningOpps_GetAll( Guid parentUid,
+		public static List<ThisEntity> GetAllSummary( Guid parentUid, int relationshipTypeId )
+		{
+			//note even the summary should include indicator of competencies
+			return LearningOpps_GetAll( parentUid, false, false,  relationshipTypeId );
+		}
+		/// <summary>
+		/// Get all learning opportunties for the parent
+		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <param name="forProfilesList"></param>
+		/// <returns></returns>
+		public static List<ThisEntity> LearningOpps_GetAll( Guid parentUid,
 					bool forProfilesList,
-					bool isForCredentialDetails = false )
+					bool isForCredentialDetails = false, int relationshipTypeId = 1 )
 		{
 			List<ThisEntity> list = new List<ThisEntity>();
 			ThisEntity entity = new ThisEntity();
@@ -191,7 +246,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					List<DBEntity> results = context.Entity_LearningOpportunity
-							.Where( s => s.EntityId == parent.Id )
+							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
 							.OrderBy( s => s.LearningOpportunity.Name )
 							.ToList();
 
@@ -208,19 +263,6 @@ namespace workIT.Factories
 									LearningOpportunityManager.MapFromDB_Basic( item.LearningOpportunity, entity,
 								true );
 
-									//entity.Id = item.LearningOpportunityId;
-         //                           entity.RowId = item.LearningOpportunity.RowId;
-
-         //                           entity.Name = item.LearningOpportunity.Name;
-         //                           entity.Description = item.LearningOpportunity.Description == null ? "" : item.LearningOpportunity.Description;
-									//entity.EntityStateId = ( int )( item.LearningOpportunity.EntityStateId ?? 1 );
-									//entity.SubjectWebpage = item.LearningOpportunity.SubjectWebpage;
-         //                           entity.CTID = item.LearningOpportunity.CTID;
-                                    //also get costs - really only need the profile list view 
-                                    //entity.EstimatedCost = CostProfileManager.GetAllForList( entity.RowId );
-                                    //entity.CommonCosts = Entity_CommonCostManager.GetAll( entity.RowId );
-                                    //get durations - need this for search and compare
-                                    //entity.EstimatedDuration = DurationProfileManager.GetAll( entity.RowId );
                                     if ( isForCredentialDetails )
                                     {
 										entity.EstimatedDuration = DurationProfileManager.GetAll( entity.RowId );
@@ -281,7 +323,7 @@ namespace workIT.Factories
 			{
 				using ( var context = new ViewContext() )
 				{
-					List<Views.Entity_LearningOpportunity_IsPartOfSummary> results = context.Entity_LearningOpportunity_IsPartOfSummary
+					var results = context.Entity_LearningOpportunity_IsPartOfSummary
 							.Where( s => s.LearningOpportunityId == learningOpportunityId
 								&& s.EntityTypeId == parentTypeId )
 							.OrderBy( s => s.EntityTypeId ).ThenBy( s => s.ParentName )

@@ -253,7 +253,6 @@ namespace workIT.Factories
 				hasExactDuration = true;
 			if ( HasDurationItems( from.MinimumDuration ) || HasDurationItems( from.MaximumDuration ) )
 				hasRangeDuration = true;
-			string durationSummary = "";
 			string durationOnly = "";
 			to.TypeId = 0;
 			//validations should be done before here
@@ -526,7 +525,7 @@ namespace workIT.Factories
 				status.AddWarning( "Error - the description is too long, the maximum length is 1000 characters.<br/>" );
 				isEmpty = false;
 			}
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 		public static bool HasDurationItems( WM.DurationItem item )
 		{

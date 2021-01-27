@@ -22,18 +22,37 @@ namespace workIT.Factories
 	public class Entity_AssessmentManager : BaseFactory
 	{
 		static string thisClassName = "Entity_AssessmentManager";
-#region Entity Assessment Persistance ===================
-	
+		public static int RelationshipType_HasPart = 1;
+		#region Entity Assessment Persistance ===================
+
+		public bool SaveList( List<int> list, Guid parentUid, ref SaveStatus status, int relationshipTypeId = 1 )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+			int newId = 0;
+
+			bool isAllValid = true;
+			foreach ( int item in list )
+			{
+				newId = Add( parentUid, item, relationshipTypeId, false, ref status );
+				if ( newId == 0 )
+					isAllValid = false;
+			}
+
+			return isAllValid;
+		}
+
 		/// <summary>
 		/// Add an Entity assessment
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <param name="assessmentId"></param>
+		/// <param name="relationshipTypeId"></param>
 		/// <param name="allowMultiples">If false, check if an assessment exists. If found, do an update</param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
 		public int Add( Guid parentUid, 
-					int assessmentId,
+					int assessmentId, int relationshipTypeId,
 					bool allowMultiples,
 					ref SaveStatus status )
 		{
@@ -44,7 +63,8 @@ namespace workIT.Factories
 				status.AddError( string.Format( "A valid Assessment identifier was not provided to the {0}.EntityAssessment_Add method.", thisClassName ) );
 				return 0;
 			}
-
+			if ( relationshipTypeId == 0 )
+				relationshipTypeId = 1;
 
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
@@ -59,7 +79,7 @@ namespace workIT.Factories
 				{
 					//first check for duplicates
 					efEntity = context.Entity_Assessment
-							.SingleOrDefault( s => s.EntityId == parent.Id && s.AssessmentId == assessmentId );
+							.FirstOrDefault( s => s.EntityId == parent.Id && s.AssessmentId == assessmentId && s.RelationshipTypeId == relationshipTypeId );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -70,19 +90,20 @@ namespace workIT.Factories
 					if ( allowMultiples == false )
 					{
 						//check if one exists, and replace if found
-						efEntity = context.Entity_Assessment
-							.FirstOrDefault( s => s.EntityId == parent.Id  );
-						if ( efEntity != null && efEntity.Id > 0 )
-						{
-							efEntity.AssessmentId = assessmentId;
+						//efEntity = context.Entity_Assessment
+						//	.FirstOrDefault( s => s.EntityId == parent.Id  );
+						//if ( efEntity != null && efEntity.Id > 0 )
+						//{
+						//	efEntity.AssessmentId = assessmentId;
 
-							count = context.SaveChanges();
-							return efEntity.Id;
-						}
+						//	count = context.SaveChanges();
+						//	return efEntity.Id;
+						//}
 					}
 					efEntity = new DBEntity();
 					efEntity.EntityId = parent.Id;
 					efEntity.AssessmentId = assessmentId;
+					efEntity.RelationshipTypeId = relationshipTypeId > 0 ? relationshipTypeId : 1;
 					efEntity.Created = System.DateTime.Now;
 
 					context.Entity_Assessment.Add( efEntity );
@@ -120,41 +141,88 @@ namespace workIT.Factories
 			}
 			return id;
 		}
-        
-        //may not be necessary, as should be deleted when a condition profile is deleted.
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+
+		/// <summary>
+		/// Delete all relationships for parent - FOR REFERENCES, DELETE ACTUAL ASSESSMENT AS WELL
+		/// NOTE: there should be a check for reference entities, and delete if no other references.
+		/// OR: have a clean up process to delete orphans. 
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
-            //Entity parent = EntityManager.GetEntity( parentUid );
-            if ( parent == null || parent.Id == 0 )
+			int count = 0;
+
+			if ( parent == null || parent.Id == 0 )
             {
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
             using ( var context = new EntityContext() )
             {
-                context.Entity_Assessment.RemoveRange( context.Entity_Assessment.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+				//check if target is a reference object and is only in use here
+				var results = context.Entity_Assessment
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.Assessment.Name )
+							.ToList();
+				if ( results == null || results.Count == 0 )
+				{
+					return true;
+				}
+
+				foreach ( var item in results )
+				{
+					//if a reference, delete actual assessment if not used elsewhere
+					if ( item.Assessment != null && item.Assessment.EntityStateId == 2 )
+					{
+						//do a getall for the current assessmentId. If the assessment is only referenced once, delete the assessment as well.
+						var exists = context.Entity_Assessment
+							.Where( s => s.AssessmentId == item.AssessmentId )
+							.ToList();
+						if ( exists != null && exists.Count() == 1 )
+						{
+							var statusMsg = "";
+							//this method will also add pending reques to remove from elastic.
+							//20-11-11 mp - BE CLEAR - ONLY DONE FOR A REFERENCE
+							new AssessmentManager().Delete( item.AssessmentId, ref statusMsg );
+						}
+					}
+					context.Entity_Assessment.Remove( item );
+					count = context.SaveChanges();
+					if ( count > 0 )
+					{
+
+					}
+				}
+				//context.Entity_Assessment.RemoveRange( context.Entity_Assessment.Where( s => s.EntityId == parent.Id ) );
+				//            int count = context.SaveChanges();
+				//            if ( count > 0 )
+				//            {
+				//                isValid = true;
+				//            }
+				//            else
+				//            {
+				//                //if doing a delete on spec, may not have been any properties
+				//            }
+			}
 
             return isValid;
         }
-        #endregion
-        /// <summary>
-        /// Get all assessments for the provided entity
-        /// The returned entities are just the base
-        /// </summary>
-        /// <param name="parentUid"></param>
-        /// <returns></returnsThisEntity
-        public static List<AssessmentProfile> GetAll( Guid parentUid)
+		#endregion
+
+		public static List<AssessmentProfile> GetAllSummary( Guid parentUid, int relationshipTypeId )
+		{
+			return GetAll( parentUid,  relationshipTypeId );
+		}
+		/// <summary>
+		/// Get all assessments for the provided entity
+		/// The returned entities are just the base
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returnsThisEntity
+		public static List<AssessmentProfile> GetAll( Guid parentUid, int relationshipTypeId = 1 )
 		{
 			List<AssessmentProfile> list = new List<AssessmentProfile>();
 			AssessmentProfile entity = new AssessmentProfile();
@@ -167,7 +235,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					List<DBEntity> results = context.Entity_Assessment
-							.Where( s => s.EntityId == parent.Id )
+							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
 							.OrderBy( s => s.Assessment.Name )
 							.ToList();
 
@@ -221,7 +289,7 @@ namespace workIT.Factories
 						entity.Id = from.Id;
 						entity.AssessmentId = from.AssessmentId;
 						entity.EntityId = from.EntityId;
-
+						entity.RelationshipTypeId = from.RelationshipTypeId;
 						entity.ProfileSummary = from.Assessment.Name;
 						//to.Credential = from.Credential;
 						entity.Assessment = new AssessmentProfile();

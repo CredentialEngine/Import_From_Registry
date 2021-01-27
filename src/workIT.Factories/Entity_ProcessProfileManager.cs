@@ -206,7 +206,7 @@ namespace workIT.Factories
 				}
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 
 		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
@@ -231,7 +231,7 @@ namespace workIT.Factories
 				Entity_CredentialManager ecm = new Entity_CredentialManager();
 				foreach ( int id in entity.TargetCredentialIds )
 				{
-					ecm.Add( entity.RowId, id, ref newId, ref status );
+					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 				}
 			}
 
@@ -240,7 +240,7 @@ namespace workIT.Factories
 				Entity_AssessmentManager eam = new Entity_AssessmentManager();
 				foreach ( int id in entity.TargetAssessmentIds )
 				{
-					newId = eam.Add( entity.RowId, id, true, ref status );
+					newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 				}
 			}
 
@@ -249,11 +249,11 @@ namespace workIT.Factories
 				Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
 				foreach ( int id in entity.TargetLearningOpportunityIds )
 				{
-					newId = elm.Add( entity.RowId, id, true, ref status );
+					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 				}
 			}
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 		public bool Delete( int recordId, ref string statusMessage )
 		{
@@ -326,7 +326,7 @@ namespace workIT.Factories
 				status.AddWarning( "The Subject Webpage is invalid. " + commonStatusMessage );
 			
 
-			return !status.HasSectionErrors;
+			return status.WasSectionValid;
 		}
 		
 		#endregion
@@ -519,8 +519,8 @@ namespace workIT.Factories
 				
 				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId );
 				//will only be one, but could model with multiple
-				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId );
-				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId );
+				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
+				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 
 				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, true );
 			}

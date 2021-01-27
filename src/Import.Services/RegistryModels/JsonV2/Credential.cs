@@ -78,17 +78,19 @@ namespace RA.Models.JsonV2
             Renewal = new List<ConditionProfile>();
         }
 
-        [JsonProperty( "@id" )]
-        public string CtdlId { get; set; }
-
         /// <summary>
         /// Need a custom mapping to @type based on input value
         /// </summary>
         [JsonProperty( "@type" )]
         public string CredentialType { get; set; }
 
+        [JsonProperty( "@id" )]
+        public string CtdlId { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:name" )]
+		[JsonProperty( PropertyName = "ceterms:ctid" )]
+		public string Ctid { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:name" )]
         public LanguageMap Name { get; set; } = new LanguageMap();
 
         [JsonProperty( PropertyName = "ceterms:description" )]
@@ -98,8 +100,6 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:dateEffective" )]
         public string DateEffective { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:ctid" )]
-        public string Ctid { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:alternateName" )]
         public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
@@ -110,7 +110,7 @@ namespace RA.Models.JsonV2
 		/// ISIC Revision 4 Code
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:isicV4" )]
-		public string IsicV4 { get; set; }
+		public string ISICV4 { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
         public string SubjectWebpage { get; set; }
@@ -119,11 +119,31 @@ namespace RA.Models.JsonV2
 		public string CodedNotation { get; set; }
 		//public string CodedNotation { get; set; }
 
+		//TODO - this may change to URIs
+		//		- in this case, the earningProfile should have a credential reference like
+		[JsonProperty( PropertyName = "ceterms:earnings" )]
+		public List<string> Earnings { get; set; }
+
+		//TODO - this may change to URIs
+		//		- in this case, the employmentOutcomeProfile should have a credential reference like employmentOutcomeProfileFor
+		[JsonProperty( PropertyName = "ceterms:employmentOutcome" )]
+		public List<string> EmploymentOutcome { get; set; }
+
+		/// <summary>
+		/// HasETPLResource
+		/// Only valid for a QualityAssuranceCredential
+		/// List of entities that are members of (essentialing approved by the owner of the) the QACredential
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasETPLResource" )]
+		public List<string> HasETPLResource { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:hasPart" )]
 		public List<string> HasPart { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:holders" )]
+		public List<string> Holders { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:isPartOf" )]
+		[ JsonProperty( PropertyName = "ceterms:isPartOf" )]
 		public List<string> IsPartOf { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:availabilityListing" )]
@@ -171,8 +191,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; } = new List<CredentialAlignmentObject>();
 
-		[JsonProperty( PropertyName = "ceterms:alternativeOccupationType" )]
-		public LanguageMapList AlternativeOccupationType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeOccupationType" )]
+		//public LanguageMapList AlternativeOccupationType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
@@ -180,17 +200,17 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:naics" )]
 		public List<string> Naics { get; set; } = new List<string>();
 
-		[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
-		public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
+		//public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
 		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
 		//
-		[JsonProperty( PropertyName = "ceterms:alternativeInstructionalProgramType" )]
-		public LanguageMapList AlternativeInstructionalProgramType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeInstructionalProgramType" )]
+		//public LanguageMapList AlternativeInstructionalProgramType { get; set; } = new LanguageMapList();
 		//
 		[JsonProperty( PropertyName = "ceterms:keyword" )]
-        public LanguageMapList Keyword { get; set; } = new LanguageMapList();
+        public LanguageMapList Keyword { get; set; } 
 
 
 		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
@@ -228,6 +248,13 @@ namespace RA.Models.JsonV2
 		public List<string> CommonCosts { get; set; }
 
 		#endregion
+
+		/// <summary>
+		/// The salary value or range associated with this credential.
+		/// </summary>
+		[JsonProperty( PropertyName = "schema:baseSalary" )]
+		public MonetaryAmount BaseSalary { get; set; } 
+
 		[JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
         public List<DurationProfile> EstimatedDuration { get; set; }
 
@@ -242,8 +269,16 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "navy:hasRating" )]
 		public List<string> HasRating { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:hasRatingType" )]
-		public List<CredentialAlignmentObject> HasRatingType { get; set; } = new List<CredentialAlignmentObject>();
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric Identifier value.
+		/// List of URIs 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		public List<IdentifierValue> Identifier { get; set; }
+
+		//[JsonProperty( PropertyName = "ceterms:hasRatingType" )]
+		//public List<CredentialAlignmentObject> HasRatingType { get; set; } = new List<CredentialAlignmentObject>();
 
 		#region Condition Profiles
 		[JsonProperty( PropertyName = "ceterms:requires" )]
@@ -289,7 +324,9 @@ namespace RA.Models.JsonV2
 
 		//[JsonIgnore]
 		//[JsonProperty( PropertyName = "ceterms:financialAssistanceOLD" )]
-  //      public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+		//      public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
+
+
 
 		[JsonProperty( PropertyName = "ceterms:financialAssistance" )]
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; }
@@ -408,5 +445,6 @@ namespace RA.Models.JsonV2
 
         [JsonProperty( PropertyName = "ceterms:revocationCriteriaDescription" )]
         public LanguageMap RevocationCriteriaDescription { get; set; }
-    }
+
+	}
 }

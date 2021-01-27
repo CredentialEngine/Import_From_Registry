@@ -1,21 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.Entity_CommonCost;
+using workIT.Utilities;
+
 using DBEntity = workIT.Data.Tables.Entity_CommonCost;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
-using workIT.Utilities;
-using CM = workIT.Models.Common;
-
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
 namespace workIT.Factories
 {
 	public class Entity_CommonCostManager : BaseFactory
@@ -48,10 +40,9 @@ namespace workIT.Factories
 		/// <summary>
 		/// Add an Entity_CommonCost
 		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <param name="profileId"></param>
-		/// <param name="userId"></param>
-		/// <param name="messages"></param>
+		/// <param name="parent"></param>
+		/// <param name="costManifestId"></param>
+		/// <param name="status"></param>
 		/// <returns></returns>
 		private int Save( Entity parent,
 					int costManifestId,
@@ -122,7 +113,7 @@ namespace workIT.Factories
 				{
 					string message = FormatExceptions( ex );
 					status.AddError( "Error - the save was not successful. " + message );
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1}), EntityTypeId: {2}, costManifestId: {3}", parent.EntityBaseName,  parent.EntityBaseId, parent.EntityTypeId, costManifestId ) ); ;
 				}
 			}
 			return id;

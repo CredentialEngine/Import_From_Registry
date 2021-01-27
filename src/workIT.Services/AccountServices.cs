@@ -625,9 +625,9 @@ namespace workIT.Services
 			bool isSecure = false;
 			if ( UtilityManager.GetAppKeyValue( "usingSSL", false ) )
 				isSecure = true;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
 			string subject = "Reset Password for your Credential Finder account";
 
 			string email = EmailManager.GetEmailText( "ForgotPassword" );
@@ -661,9 +661,9 @@ namespace workIT.Services
 
 			
 			//string toEmail = user.Email;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
 			string subject = "Confirm Your Credential Finder Account";
 			string email = EmailManager.GetEmailText( "ConfirmAccount" );
 			string eMessage = "";
@@ -689,9 +689,9 @@ namespace workIT.Services
 			AppUser user = GetUserByEmail( userEmail );
 			string subject = "Forgot password attempt with unconfirmed email";
 
-			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "email@yourDomain.com" );
+			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "email@yourDomain.com" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
 			//string subject = "Forgot Password";
 			string email = "User: {0} attempted Forgot Password, and email has not been confirmed.<br/>Email: {1}<br/>Created: {2}";
 			string eMessage = "";
