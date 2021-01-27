@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width" />
+	<title>Credential Finder API</title>
+	@Styles.Render( "~/Content/css" )
+	@Scripts.Render( "~/bundles/modernizr" )
+</head>
+<body>
+	<div class="navbar navbar-inverse navbar-fixed-top">
+		<div class="container">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				@Html.ActionLink( "Credential Finder API", "Index", "Home", new { area = "" }, new { @class = "navbar-brand" } )
+			</div>
+			<div class="navbar-collapse collapse">
+				<ul class="nav navbar-nav">
+					@*<li>@Html.ActionLink("Home", "Index", "Home", new { area = "" }, null)</li>*@
+					<li>@Html.ActionLink( "API", "Index", "Help", new { area = "" }, null )</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	<div class="container body-content">
+		@RenderBody()
+		<hr />
+		<footer>
+			<div class="container">
+				<h2>Policies and Terms of Use:</h2>
+				<p>&copy; @DateTime.Now.Year - Credential Finder API</p>
+				<ul>
+					<li><a href="https://credentialengine.org/privacy-policy/" target="ceReference">Privacy Policy</a></li>
+					<li><a href="https://credentialengine.org/terms/" target="ceReference">Terms of Use</a></li>
+					<li><a href="https://credentialengine.org/Consistencys-agreement/" target="ceReference">Consistencys Agreement</a></li>
+					<li><a href="https://credreg.net/registry/policy#mindata" target="ceReference">Minimum Data Policy</a></li>
+					<li><a href="https://credreg.net/registry/policy#currency" target="ceReference">Data Currency Policy</a></li>
+
+				</ul>
+			</div>
+		</footer>
+	</div>
+
+	@Scripts.Render( "~/bundles/jquery" )
+	@Scripts.Render( "~/bundles/bootstrap" )
+	@RenderSection( "scripts", required: false )
+</body>
+</html>
