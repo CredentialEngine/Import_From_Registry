@@ -4,7 +4,17 @@ Sample project to import resources from the credential registry. While the code 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
 ## Updates
-### Febuary 10, 2020
+### January 27, 2021
+- Added new database backup for credFinder and ce_external
+- Added handling of many new properties since last update
+
+## Updates
+### November 17, 2020
+- Added new database backup from Sql Server 2016 (see **Database/credFinderGithub201117.zip**)
+- a common Sql user of ceGithub is used in the applications. There is Sql in the restore Sql to create the user if necessary, and associate with a newly restored database. 
+- Added handling of any new properties since last update
+
+### February 10, 2020
 - Updated to .Net 4.6.2
 - Added new database backup from Sql Server 2016 (see **Database/credFinderGithub200207_SS2016.zip**)
 - a common Sql user of ceGithub is used in the applications. There is Sql in the restore Sql to create the user if necessary, and associate with a newly restored database. 
