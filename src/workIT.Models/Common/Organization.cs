@@ -81,14 +81,7 @@ namespace workIT.Models.Common
 		//public int EntityStateId { get; set; }
 
 		public string FoundingDate { get; set; }
-		//public string FoundingYear { get; set; }
-		//public string FoundingMonth { get; set; }
-		//public string FoundingDay { get; set; }
-		//public string Founded
-		//{
-		//    get { return string.IsNullOrWhiteSpace(this.FoundingDate) ? GetListSpaced(this.FoundingDay) + GetListSpaced(this.FoundingMonth) + GetListSpaced(this.FoundingYear) : this.FoundingDate; }
-		//    set { this.FoundingDate = value; }
-		//}
+
 		public int EntityId
 		{
 			get { return this.ParentId; }
@@ -160,12 +153,12 @@ namespace workIT.Models.Common
 		public string AvailabilityListing { get; set; }
 		public List<string> AvailabilityListings { get; set; } = new List<string>();
 		//
-		public Enumeration OrganizationClaimType { get; set; }
+		//public Enumeration OrganizationClaimType { get; set; }
         public Enumeration ServiceType { get; set; }
 
 		public string ServiceTypeOther { get; set; }
 
-		public bool IsThirdPartyOrganization { get; set; }
+		//public bool IsThirdPartyOrganization { get; set; }
 
 		public bool IsACredentialingOrg { get; set; }
 
@@ -279,6 +272,8 @@ namespace workIT.Models.Common
 		public int TotalTransferValueProfiles { get; set; }
 		public int TotalPathways{ get; set; }
 		public int TotalPathwaySets { get; set; }
+		public int TotalCredentialsPublishedByThirdParty { get; set; }
+		public int TotalOrganizationsPublishedByThirdParty { get; set; }
 		public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }
         public List<AssessmentProfile> OwnedAssessments { get; set; } = new List<AssessmentProfile>();
@@ -366,7 +361,7 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string TransferValueStatementDescription { get; set; }
 
-		//QA =====================================
+		#region Process Profiles
 		public List<ProcessProfile> AppealProcess { get; set; }
 		public List<ProcessProfile> ComplaintProcess { get; set; }
 		public List<ProcessProfile> ReviewProcess { get; set; }
@@ -375,7 +370,7 @@ namespace workIT.Models.Common
 		public List<ProcessProfile> AdministrationProcess { get; set; }
 		public List<ProcessProfile> DevelopmentProcess { get; set; }
 		public List<ProcessProfile> MaintenanceProcess { get; set; }
-
+		#endregion
 		public List<VerificationStatus> VerificationStatus { get; set; }
 
     }

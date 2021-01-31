@@ -146,6 +146,12 @@ namespace workIT.Models.Elastic
 		public int BadgeClaimsCount { get; set; }
 		public int ProcessProfilesCount { get; set; }
 		public int HoldersProfileCount { get; set; }
+		public string HoldersProfileSummary { get; set; }
+		public int EarningsProfileCount { get; set; }
+		public string EarningsProfileSummary { get; set; }
+		public int EmploymentOutcomeProfileCount { get; set; }
+		public string EmploymentOutcomeProfileSummary { get; set; }
+		//
 		public int RevocationProfilesCount { get; set; }
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }

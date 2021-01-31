@@ -100,6 +100,8 @@
     <Compile Include="Common\Widget.cs" />
     <Compile Include="Common\WidgetV2.cs" />
     <Compile Include="DescriptionSet.cs" />
+    <Compile Include="Detail\BaseDisplay.cs" />
+    <Compile Include="Detail\OrganizationDetail.cs" />
     <Compile Include="Elastic\Address.cs" />
     <Compile Include="Elastic\BaseIndex.cs" />
     <Compile Include="Elastic\CommonIndex.cs" />

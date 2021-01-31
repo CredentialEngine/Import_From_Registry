@@ -23,7 +23,7 @@ namespace workIT.Models.Common
 		}
 		public int Id { get; set; }
 		public bool IsReferenceVersion { get; set; }
-        public bool CanEditRecord { get; set; }
+        //public bool CanEditRecord { get; set; }
 		//public bool CanUserEditEntity { 
 		//	get { return this.CanEditRecord; }
 		//	set { 
@@ -31,7 +31,7 @@ namespace workIT.Models.Common
 		//	}
 
 		//}
-		public bool CanViewRecord { get; set; }
+		//public bool CanViewRecord { get; set; }
 		public Guid RowId { get; set; }
 		/// <summary>
 		/// ParentId will typically be the Entity.Id related to the base class
@@ -45,12 +45,12 @@ namespace workIT.Models.Common
 
 		public DateTime Created { get; set; }
 		public int CreatedById { get; set; }
-		public string CreatedBy { get; set; }
+		//public string CreatedBy { get; set; }
 		public DateTime LastUpdated { get; set; }
 		public string CreatedDisplay { get { return Created == null ? "" : Created.ToShortDateString(); } }
 		public string LastUpdatedDisplay { get { return LastUpdated == null ? CreatedDisplay : LastUpdated.ToShortDateString(); } }
 		public int LastUpdatedById { get; set; }
-		public string LastUpdatedBy { get; set; }
+		//public string LastUpdatedBy { get; set; }
 		public DateTime EntityLastUpdated { get; set; }
 
 		//store language map properties
@@ -126,12 +126,14 @@ namespace workIT.Models.Common
 		public int OrganizationId { get; set; }
 		//for searches
 		public string PrimaryOrganizationName{ get; set; }
-		//
-		public int PublishedByOrganizationId { get; set; }
+		//3rdParty PublishedBy - really only need PublishedBy now?
+		//public int PublishedByOrganizationId { get; set; }
 
-		public string PublishedByOrganizationName { get; set; }
+		//public string PublishedByOrganizationName { get; set; }
 
-		public string PublishedByOrganizationCTID { get; set; }
+		//public string PublishedByOrganizationCTID { get; set; }
+		public List<Guid> PublishedBy { get; set; }
+
 		#endregion
 
 		//future when added for org, asmt, and lopp

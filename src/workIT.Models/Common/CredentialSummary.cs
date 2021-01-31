@@ -83,7 +83,13 @@ namespace workIT.Models.Common
 		public int RequiredLoppCount { get; set; }
 		public int RecommendedLoppCount { get; set; }
 		//
-		
+		public int HoldersProfileCount { get; set; }
+		public string HoldersProfileSummary { get; set; }
+		public int EarningsProfileCount { get; set; }
+		public string EarningsProfileSummary { get; set; }
+		public int EmploymentOutcomeProfileCount { get; set; }
+		public string EmploymentOutcomeProfileSummary { get; set; }
+
 		public int HasPartCount { get; set; }
 		public int IsPartOfCount { get; set; }
 		public int RequiresCount { get; set; }
