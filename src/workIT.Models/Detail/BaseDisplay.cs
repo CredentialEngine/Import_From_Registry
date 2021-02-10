@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using MPM=workIT.Models.ProfileModels;
+
 namespace workIT.Models.Detail
 {
 	[Serializable]
@@ -39,7 +41,37 @@ namespace workIT.Models.Detail
 	{
 		public string Label { get; set; }
 		public string URL { get; set; }
+		public int Count { get; set; }
+		public string Description { get; set; }
 	}
+
+	[Serializable]
+	public class OrganizationRoleProfile
+	{
+		/// <summary>
+		/// header
+		/// </summary>
+		public string Label { get; set; }
+		/// <summary>
+		/// If present, format the heading as a link
+		/// </summary>
+		public string URL { get; set; }
+		public string Description { get; set; }
+		/// <summary>
+		/// The Role could be with or with a URL
+		/// </summary>
+		public List<LabelLink> Roles = new List<LabelLink>();
+	}
+
+	[Serializable]
+	public class ProcessProfileGroup
+	{
+		public string Label { get; set; }
+		public string Description { get; set; }
+		public List<MPM.ProcessProfile> ProcessProfile { get; set; } = new List<MPM.ProcessProfile>();
+		
+	}
+
 	[Serializable]
 	public class JurisdictionProfile
 	{
