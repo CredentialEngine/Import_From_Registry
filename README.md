@@ -4,6 +4,12 @@ Sample project to import resources from the credential registry. While the code 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
 ## Updates
+### February 15, 2021
+- Primarily updates for the Credential Finder WebApi organization detail endpoint
+- As well, added handling of many new properties since last update
+
+
+## Updates
 ### January 27, 2021
 - Added new database backup for credFinder and ce_external
 - Added handling of many new properties since last update
