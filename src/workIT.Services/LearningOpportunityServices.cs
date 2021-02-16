@@ -8,13 +8,14 @@ using System.Web;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using ThisSearcvhEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using EntityMgr = workIT.Factories.LearningOpportunityManager;
 using workIT.Utilities;
 using workIT.Factories;
-
+using System.Threading;
 
 namespace workIT.Services
 {
@@ -25,44 +26,82 @@ namespace workIT.Services
 
         public bool Import( ThisEntity entity, ref SaveStatus status )
         {
-            //do a get, and add to cache before updating
-            if ( entity.Id > 0 )
+			LoggingHelper.DoTrace( 7,  thisClassName + ".Import - entered");
+			//do a get, and add to cache before updating
+			if ( entity.Id > 0 )
             {
 				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
-                var detail = GetDetail( entity.Id );
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+				{
+					if (System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+						GetDetail( entity.Id );
+				}
+				
             }
             bool isValid = new EntityMgr().Save( entity, ref status );
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
             {
-                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+					CacheManager.RemoveItemFromCache( "lopp_", entity.Id );
+
+				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
-                    //update cache
-                    new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-                    //update Elastic
-                    if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                        ElasticServices.LearningOpp_UpdateIndex( entity.Id );
-                    else
-                    {
-                        new SearchPendingReindexManager().Add( 7, entity.Id, 1, ref messages );
-                        if ( messages.Count > 0 )
-                            status.AddWarningRange( messages );
-                    }
-                }
+					//update cache
+					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+					//add owning org to reindex queue
+					
+				}
                 else
                 {
                     new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, entity.Id, 1, ref messages );
                     new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
                     if ( messages.Count > 0 )
                         status.AddWarningRange( messages );
-                }
-
-				CacheManager.RemoveItemFromCache( "lopp", entity.Id );
+                }				
 			}
 
             return isValid;
         }
+		static void UpdateCaches( Object entity )
+		{
+			if ( entity.GetType() != typeof( Models.ProfileModels.LearningOpportunityProfile ) )
+				return;
+			var document = ( entity as Models.ProfileModels.LearningOpportunityProfile );
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = 7,
+				EntityType = "LearningOpportunity",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
 
+			var statusMessage = "";
+			new EntityManager().EntityCacheSave( ec, ref statusMessage );
+
+
+			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
+			//update Elastic
+			List<string> messages = new List<string>();
+
+			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				ElasticHelper.LearningOpp_UpdateIndex( document.Id );
+			else
+				new SearchPendingReindexManager().Add( 7, document.Id, 1, ref messages );
+
+			new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
+		}
 		#endregion
 		#region retrievals
 		public static ThisEntity GetByCtid( string ctid )
@@ -196,7 +235,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticServices.LearningOppAutoComplete( keyword, maxTerms, ref totalRows );
+                return ElasticHelper.LearningOppAutoComplete( keyword, maxTerms, ref totalRows );
             }
             else
             {
@@ -224,7 +263,7 @@ namespace workIT.Services
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticServices.LearningOppSearch( data, ref pTotalRows );
+                return ElasticHelper.LearningOppSearch( data, ref pTotalRows );
             }
             else
             {

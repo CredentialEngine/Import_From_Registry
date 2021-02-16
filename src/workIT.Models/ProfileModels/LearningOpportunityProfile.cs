@@ -14,7 +14,7 @@ namespace workIT.Models.ProfileModels
 		public LearningOpportunityProfile()
 		{
 			//OwningOrganization = new Organization();
-
+			EntityTypeId = 7;
 			EstimatedCost = new List<CostProfile>();
 			//FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 			EstimatedDuration = new List<DurationProfile>();
@@ -155,6 +155,8 @@ namespace workIT.Models.ProfileModels
         public Enumeration AudienceType { get; set; } = new Enumeration();
 		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
 		public Enumeration AudienceLevelType { get; set; } = new Enumeration();
+		public CodeItemResult AssessmentMethodTypes { get; set; } = new CodeItemResult();
+
 		//
 		public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
         public string DeliveryTypeDescription { get; set; }
@@ -214,6 +216,9 @@ namespace workIT.Models.ProfileModels
 		/// </summary>
 		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
 		public List<TextValueProfile> Keyword { get; set; }
+
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+
 		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
         public List<string> WhereReferenced { get; set; }

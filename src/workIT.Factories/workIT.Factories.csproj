@@ -75,7 +75,9 @@
     <Compile Include="DataSetProfileManager.cs" />
     <Compile Include="DataSetTimeFrameManager.cs" />
     <Compile Include="DurationProfileManager.cs" />
+    <Compile Include="EarningsProfileManager.cs" />
     <Compile Include="ElasticManager.cs" />
+    <Compile Include="EmploymentOutcomeManager.cs" />
     <Compile Include="EntityManager.cs" />
     <Compile Include="EntityPropertyManager.cs" />
     <Compile Include="Entity_AddressManager.cs" />
@@ -89,6 +91,8 @@
     <Compile Include="Entity_ContactPointManager.cs" />
     <Compile Include="Entity_CredentialManager.cs" />
     <Compile Include="Entity_DataSetProfileManager.cs" />
+    <Compile Include="Entity_EarningsProfileManager.cs" />
+    <Compile Include="Entity_EmploymentOutcomeManager.cs" />
     <Compile Include="Entity_FinancialAssistanceProfileManager.cs" />
     <Compile Include="Entity_FrameworkItemManager.cs" />
     <Compile Include="Entity_HoldersProfileManager.cs" />

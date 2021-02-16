@@ -155,7 +155,7 @@ namespace Import.Services
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_conditionManifest", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_conditionManifest", payload, "", false );
 
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
@@ -175,7 +175,72 @@ namespace Import.Services
     //            return Import( input, envelopeIdentifier, status );
             }
 		}
-		
+		//public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
+		//{
+		//	List<string> messages = new List<string>();
+		//	bool importSuccessfull = false;
+  //          EntityServices mgr = new EntityServices();
+  //          //try
+  //          //{
+  //          //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
+  //          string ctid = input.Ctid;
+		//	string referencedAtId = input.CtdlId;
+		//	LoggingHelper.DoTrace( 5, "		name: " + input.Name );
+		//	LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
+		//	LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+		//	LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
+  //          status.Ctid = ctid;
+
+  //          if ( status.DoingDownloadOnly )
+  //              return true;
+
+  //          if ( !DoesEntityExist( input.Ctid, ref output ) )
+		//	{
+		//		output.RowId = Guid.NewGuid();
+		//	}
+
+		//	//re:messages - currently passed to mapping but no errors are trapped??
+		//	//				- should use SaveStatus and skip import if errors encountered (vs warnings)
+
+		//	output.Name = input.Name;
+		//	output.Description = input.Description;
+		//	output.CTID = input.Ctid;
+		//	output.CredentialRegistryId = envelopeIdentifier;
+		//	output.SubjectWebpage = input.SubjectWebpage;
+
+		//	output.OwningAgentUid = MappingHelper.MapOrganizationReferencesGuid( input.ConditionManifestOf, ref status );
+
+		//	output.Requires = MappingHelper.FormatConditionProfile( input.Requires, ref status );
+		//	output.Recommends = MappingHelper.FormatConditionProfile( input.Recommends, ref status );
+		//	output.EntryCondition = MappingHelper.FormatConditionProfile( input.EntryConditions, ref status );
+		//	output.Corequisite = MappingHelper.FormatConditionProfile( input.Corequisite, ref status );
+		//	output.Renewal = MappingHelper.FormatConditionProfile( input.Renewal, ref status );
+
+		//	status.DocumentId = output.Id;
+		//	status.DocumentRowId = output.RowId;
+
+		//	//=== if any messages were encountered treat as warnings for now
+		//	if ( messages.Count > 0 )
+		//		status.SetMessages( messages, true );
+
+		//	importSuccessfull = mgr.Import( output, ref status );
+		//	//just in case
+		//	if ( status.HasErrors )
+		//		importSuccessfull = false;
+
+		//	//if record was added to db, add to/or set EntityResolution as resolved
+		//	int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+		//				ctid,
+		//				CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,
+		//				output.RowId,
+		//				output.Id,
+		//				false,
+		//				ref messages,
+		//				output.Id > 0 );
+
+		//	return importSuccessfull;
+		//}
+ 
         public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
         {
             InputEntityV3 input = new InputEntityV3();
@@ -215,24 +280,24 @@ namespace Import.Services
             EntityServices mgr = new EntityServices();
             MappingHelperV3 helper = new MappingHelperV3(19);
             helper.entityBlankNodes = bnodes;
-			helper.CurrentEntityCTID = input.Ctid;
+			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
 
 			//try
 			//{
 			//input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-			string ctid = input.Ctid;
+			string ctid = input.CTID;
             string referencedAtId = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
             status.Ctid = ctid;
 
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            if ( !DoesEntityExist( input.CTID, ref output ) )
             {
                 output.RowId = Guid.NewGuid();
             }
@@ -242,7 +307,7 @@ namespace Import.Services
 
             output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
             output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-            output.CTID = input.Ctid;
+            output.CTID = input.CTID;
             output.CredentialRegistryId = envelopeIdentifier;
             output.SubjectWebpage = input.SubjectWebpage;
 

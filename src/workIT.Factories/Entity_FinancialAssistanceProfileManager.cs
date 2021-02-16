@@ -190,20 +190,33 @@ namespace workIT.Factories
 				status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
 				return false;
 			}
-			using ( var context = new EntityContext() )
+			try
 			{
-				context.Entity_FinancialAssistanceProfile.RemoveRange( context.Entity_FinancialAssistanceProfile.Where( s => s.EntityId == parent.Id ) );
-				int count = context.SaveChanges();
-				if ( count > 0 )
+				using ( var context = new EntityContext() )
 				{
-					isValid = true;
-				}
-				else
-				{
-					//if doing a delete on spec, may not have been any properties
+					var results = context.Entity_FinancialAssistanceProfile.Where( s => s.EntityId == parent.Id )
+					.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					context.Entity_FinancialAssistanceProfile.RemoveRange( context.Entity_FinancialAssistanceProfile.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//if doing a delete on spec, may not have been any properties
+					}
 				}
 			}
-
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+			}
+			
 			return isValid;
 		}
 		/// <summary>

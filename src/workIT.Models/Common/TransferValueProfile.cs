@@ -34,7 +34,10 @@ namespace workIT.Models.Common
 			ceterms:owns
 		 * 
 		 */
-
+		public TransferValueProfile()
+		{
+			EntityTypeId = 26;
+		}
 		#region Required 
 
 

@@ -319,10 +319,17 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:processStandardsDescription" )]
         public LanguageMap ProcessStandardsDescription { get; set; }
 
-
+		//URL
 		[JsonProperty( PropertyName = "ceterms:processStandards" )]
-		public string ProcessStandards { get; set; } //URL
-													 //
+		public string ProcessStandards { get; set; }
+		//
+		/// <summary>
+		/// Another source of information about the entity being described.
+		/// List of URIs
+		/// ceterms:sameAs
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:sameAs" )]
+		public List<string> SameAs { get; set; }
 
 		//S
 		[JsonProperty( PropertyName = "ceterms:scoringMethodDescription" )]

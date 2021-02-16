@@ -83,7 +83,7 @@ namespace RA.Models.JsonV2
         public LanguageMap Name { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:description" )]
         public LanguageMap Description { get; set; }
@@ -95,7 +95,16 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:keyword" )]
         public LanguageMapList Keyword { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:subject" )]
+		//
+		/// <summary>
+		/// Another source of information about the entity being described.
+		/// List of URIs
+		/// ceterms:sameAs
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:sameAs" )]
+		public List<string> SameAs { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:subject" )]
         public List<CredentialAlignmentObject> Subject { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:subjectWebpage" )]

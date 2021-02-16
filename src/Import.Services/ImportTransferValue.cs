@@ -159,7 +159,7 @@ namespace Import.Services
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 			LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_Pathway", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_TVP", payload, "", false );
 
 			//just store input for now
 			return Import( payload, envelopeIdentifier, status );
@@ -241,7 +241,11 @@ namespace Import.Services
 				output.OwningAgentUid = output.OwnedBy[ 0 ];
 				helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 			}
-		
+
+			//
+			output.DerivedFromForImport = helper.MapEntityReferenceGuids( "TransferValue.DerivedFrom", input.DerivedFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+			output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
+
 
 			//TBD - will replace codedNotation
 			//output.CodedNotation = input.CodedNotation;

@@ -14,7 +14,7 @@ namespace workIT.Models.Elastic
         {
             EntityTypeId = 2;
             AlternateNames = new List<string>();
-            Keyword = new List<string>();
+            //Keyword = new List<string>();
             //Industries = new List<CredentialFramework>();
             IndustryCodeGroups = new List<string>();
             IndustryCodeNotations = new List<string>();
@@ -65,7 +65,7 @@ namespace workIT.Models.Elastic
         /// </summary>
         public bool ISQAOrganization { get; set; }
 
-        public int AddressesCount { get; set; }
+        //public int AddressesCount { get; set; }
         //TBD
         //public List<AddressLocation> AddressLocations { get; set; }
         //public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
@@ -87,7 +87,7 @@ namespace workIT.Models.Elastic
         //note this is already included in TextValue
         public List<string> AlternateNames { get; set; }
 
-        public List<string> Keyword { get; set; }
+        //public List<string> Keyword { get; set; }
 		//public List<string> SubjectAreas { get; set; } = new List<string>();
 		/// <summary>
 		/// Source will be Entity.SearchIndex, including:

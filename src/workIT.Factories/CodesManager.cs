@@ -369,6 +369,36 @@ namespace workIT.Factories
 
             return entity;
         }
+
+		public static List<CodeItem> GetAllPathwayComponentStatistics()
+		{
+			List<CodeItem> list = new List<CodeItem>();
+			CodeItem code;
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Codes_PathwayComponentType.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( var item in results )
+					{
+						code = new CodeItem
+						{
+							Id = ( int )item.Id,
+							CategoryId = item.Id,
+							Title = item.Title,
+							SchemaName = item.SchemaName,
+							ParentSchemaName= "ceterms:PathwayComponentType",
+							Description = item.Description,
+						};
+						code.Description = item.Description;
+						code.Totals = item.Totals ?? 0;
+						list.Add( code );
+					}
+				}
+			}
+			return list;
+		}
 		#endregion
 		#region Counts.EntityStatistic
 		public void UpdateEntityStatistic( int entityTypeId, string schemaName, int total, bool allowingZero = true )
@@ -840,6 +870,7 @@ namespace workIT.Factories
                         code.Description = item.Description;
                         code.SchemaName = item.SchemaName;
                         code.Totals = item.Totals ?? 0;
+						//should only have one entry
                         break;
                     }
                 }
@@ -2433,20 +2464,24 @@ namespace workIT.Factories
 
             using ( var context = new EntityContext() )
             {
-                List<Codes_EntityTypes> results = context.Codes_EntityTypes
-                    .Where( s => s.Id < 4 || s.Id == 7 || s.Id==10)
-                            .OrderBy( s => s.Id )
+				//21-01-05 mparsons - need to future proof this so that don't have to update every time a new top level entity is identified. 
+				//					- currently the calling method will select out what is needed, so could return almost everything? - Codes_EntityTypes_GetAll
+				List<Codes_EntityTypes> results = context.Codes_EntityTypes
+                    .Where( s => "".Contains(s.Id.ToString()  )
+						|| s.Id < 4 || s.Id == 7 || s.Id == 8 || s.Id == 10 || s.Id == 11 || s.Id == 23 || s.Id == 26
+					)
+							.OrderBy( s => s.Id )
                             .ToList();
 
                 if ( results != null && results.Count > 0 )
                 {
 
-                    foreach ( Codes_EntityTypes item in results )
+                    foreach ( var item in results )
                     {
                         code = new CodeItem();
                         code.Id = item.Id;
                         code.Title = item.Title;
-                        code.Totals = ( int )item.Totals;
+                        code.Totals = item.Totals ?? 0;
 
                         code.Description = item.Description;
                         list.Add( code );

@@ -112,6 +112,8 @@ namespace workIT.Models.Elastic
         public string ListTitle { get; set; }
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
 		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
+		public List<int> AssessmentMethodTypeIds { get; set; } = new List<int>();
+
 		//public List<int> ReportFilters { get; set; } = new List<int>();
 
 		//-actual connection type (no credential info)
@@ -131,7 +133,7 @@ namespace workIT.Models.Elastic
 
 		//public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 		public string TypesResults { get; set; }
-		public List<string> Keyword { get; set; } = new List<string>();
+		//public List<string> Keyword { get; set; } = new List<string>();
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
 		public bool HasInstructionalPrograms { get; set; }

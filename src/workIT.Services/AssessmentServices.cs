@@ -8,12 +8,14 @@ using System.Web;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
 using ThisSearcvhEntity = workIT.Models.ProfileModels.AssessmentProfile;
 using EntityMgr = workIT.Factories.AssessmentManager;
 using workIT.Utilities;
 using workIT.Factories;
+using System.Threading;
 
 namespace workIT.Services
 {
@@ -39,21 +41,24 @@ namespace workIT.Services
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
             {
-				CacheManager.RemoveItemFromCache( "asmt", entity.Id );
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+					CacheManager.RemoveItemFromCache( "asmt", entity.Id );
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
-                    //update cache
-                    new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+					//update cache
+					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+
+					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
                     //update Elastic - this if makes no sense, it is either update elastic immediate or add to pending
-                    if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                        ElasticServices.Assessment_UpdateIndex( entity.Id );
-                    else
-                    {
-                        new SearchPendingReindexManager().Add( 3, entity.Id, 1, ref messages );
-                        if ( messages.Count > 0 )
-                            status.AddWarningRange( messages );
-                    }
+                    //if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+                    //    ElasticHelper.Assessment_UpdateIndex( entity.Id );
+                    //else
+                    //{
+                    //    new SearchPendingReindexManager().Add( 3, entity.Id, 1, ref messages );
+                    //    if ( messages.Count > 0 )
+                    //        status.AddWarningRange( messages );
+                    //}
                 }
                 else
                 {
@@ -66,26 +71,62 @@ namespace workIT.Services
 
             return isValid;
         }
+		static void UpdateCaches( Object entity )
+		{
+			if ( entity.GetType() != typeof( Models.ProfileModels.AssessmentProfile ) )
+				return;
+			var document = ( entity as Models.ProfileModels.AssessmentProfile );
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = 3,
+				EntityType = "AssessmentProfile",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			new EntityManager().EntityCacheSave( ec, ref statusMessage );
 
-        #endregion
+			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
+			//update Elastic
+			List<string> messages = new List<string>();
+
+			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				ElasticHelper.Assessment_UpdateIndex( document.Id );
+			else
+			{
+				new SearchPendingReindexManager().Add( 3, document.Id, 1, ref messages );
+			}
+			new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
+		}
+		#endregion
 
 
-        #region Searches 
-        //	public static List<CodeItem> SearchAsCodeItem( string keyword, int startingPageNbr, int pageSize, ref int totalRows )
-        //	{
-        //		List<ThisEntity> list = Search( keyword, startingPageNbr, pageSize, ref totalRows );
-        //		List<CodeItem> codes = new List<CodeItem>();
-        //		foreach (ThisEntity item in list) 
-        //		{
-        //			codes.Add(new CodeItem() {
-        //				Id = item.Id,
-        //				Name = item.Name,
-        //				Description = item.Description
-        //			});
-        //		}
-        //		return codes;
-        //}
-        public static List<object> Autocomplete( string keyword, int maxTerms = 25)
+		#region Searches 
+		//	public static List<CodeItem> SearchAsCodeItem( string keyword, int startingPageNbr, int pageSize, ref int totalRows )
+		//	{
+		//		List<ThisEntity> list = Search( keyword, startingPageNbr, pageSize, ref totalRows );
+		//		List<CodeItem> codes = new List<CodeItem>();
+		//		foreach (ThisEntity item in list) 
+		//		{
+		//			codes.Add(new CodeItem() {
+		//				Id = item.Id,
+		//				Name = item.Name,
+		//				Description = item.Description
+		//			});
+		//		}
+		//		return codes;
+		//}
+		public static List<object> Autocomplete( string keyword, int maxTerms = 25)
         {
 
             string where = "";
@@ -100,7 +141,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
             {
-                return ElasticServices.AssessmentAutoComplete( keyword, maxTerms, ref totalRows );
+                return ElasticHelper.AssessmentAutoComplete( keyword, maxTerms, ref totalRows );
             }
             else
             {
@@ -127,7 +168,7 @@ namespace workIT.Services
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
             {
-                return ElasticServices.AssessmentSearch( data, ref pTotalRows );
+                return ElasticHelper.AssessmentSearch( data, ref pTotalRows );
             }
             else
             {

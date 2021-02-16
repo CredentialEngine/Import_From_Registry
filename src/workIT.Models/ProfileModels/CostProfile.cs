@@ -51,7 +51,7 @@ namespace workIT.Models.ProfileModels
 			ProfileName = "";
 			DirectCostType = new Enumeration();
 			ResidencyType = new Enumeration();
-			ApplicableAudienceType = new Enumeration();
+			AudienceType = new Enumeration();
 		}
 
 		public int CostProfileId
@@ -73,7 +73,7 @@ namespace workIT.Models.ProfileModels
 
 		public Enumeration ResidencyType { get; set; }
 
-		public Enumeration ApplicableAudienceType { get; set; }
+		public Enumeration AudienceType { get; set; }
 
 		public string ParentEntityType { get; set; }
 		public string Currency { get; set; }
@@ -145,7 +145,7 @@ namespace workIT.Models.ProfileModels
                 {
                     cost.Items.Add( new CostProfileItem()
                     {
-                        ApplicableAudienceType = merged.AudienceType,
+                        AudienceType = merged.AudienceType,
                         DirectCostType = merged.CostType,
                         PaymentPattern = merged.PaymentPattern,
                         Price = merged.Price,

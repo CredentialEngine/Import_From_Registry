@@ -558,15 +558,22 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-			using ( var context = new EntityContext() )
+			try
 			{
-				context.Entity_HasPathwayComponent.RemoveRange( context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id ) );
-				int count = context.SaveChanges();
-				if ( count > 0 )
+				using ( var context = new EntityContext() )
 				{
-					isValid = true;
-					status.AddError( string.Format( "removed {0} related relationships.", count ) );
+					context.Entity_HasPathwayComponent.RemoveRange( context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+						status.AddError( string.Format( "removed {0} related relationships.", count ) );
+					}
 				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll( Guid parentUid, ref SaveStatus status )" );
 			}
 			return isValid;
 

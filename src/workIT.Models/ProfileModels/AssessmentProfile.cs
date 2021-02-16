@@ -14,7 +14,7 @@ namespace workIT.Models.ProfileModels
 		public AssessmentProfile()
 		{
 			//Publish_Type = "ceterms:AssessmentProfile";
-
+			EntityTypeId = 3;
 			AssessmentMethodType = new Enumeration();
 			AssessmentUseType = new Enumeration();
 			DeliveryType = new Enumeration();

@@ -47,7 +47,7 @@ namespace workIT.Models.Common
         public string CtdlId { get; set; }
 
         //required
-        public string Ctid { get; set; }
+        public string CTID { get; set; }
 
 		public int TotalCompetencies { get; set; }
         public List<string> alignFrom { get; set; } = new List<string>();

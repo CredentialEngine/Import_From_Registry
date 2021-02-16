@@ -23,7 +23,7 @@ namespace RA.Models.JsonV2
 		/// Unique identifier
 		/// </summary>
 		[JsonProperty( "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:name" )]
 		public LanguageMap Name { get; set; }
@@ -53,6 +53,12 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:numberAwarded" )]
 		public int NumberAwarded { get; set; }
+
+		/// <summary>
+		/// Rate computed by dividing the number of subjects passing an assessment by the total number taking the assessment.
+		/// </summary>
+		[JsonProperty( PropertyName = "qdata:passRate" )]
+		public List<QuantitativeValue> PassRate { get; set; }
 
 		/// <summary>
 		/// Jurisdiction Profile

@@ -408,15 +408,15 @@ namespace workIT.Factories
             }
             if ( string.IsNullOrWhiteSpace( profile.Description ) )
             {
-                status.AddWarning( "An Assessment Description must be entered" );
+                //status.AddWarning( "An Assessment Description must be entered" );
             }
             if ( !IsValidGuid( profile.OwningAgentUid ) )
             {
-                status.AddWarning( "An owning organization must be selected" );
+                //status.AddWarning( "An owning organization must be selected" );
             }
             if ( !string.IsNullOrWhiteSpace( profile.DateEffective ) && !IsValidDate( profile.DateEffective ) )
             {
-                status.AddWarning( "Please enter a valid effective date" );
+                status.AddWarning( "Invalid Assessment effective date" );
             }
 
             if ( string.IsNullOrWhiteSpace( profile.SubjectWebpage ) )
@@ -450,8 +450,8 @@ namespace workIT.Factories
             //if ( profile.CreditHourValue < 0 || profile.CreditHourValue > 10000 )
             //    status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
 
-            if ( profile.CreditUnitValue < 0 || profile.CreditUnitValue > 1000 )
-                status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
+            //if ( profile.CreditUnitValue < 0 || profile.CreditUnitValue > 1000 )
+            //    status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
 
 
             //can only have credit hours properties, or credit unit properties, not both
@@ -729,7 +729,7 @@ namespace workIT.Factories
 			{
 				//ConditionProfile =======================================
 				Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-                emanager.DeleteAll( relatedEntity, ref status );
+                //emanager.DeleteAll( relatedEntity, ref status );
 
                 emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
 				emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
@@ -1538,9 +1538,11 @@ status );
 			output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
             output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
-            //properties
-            try
-            {
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.ASSESSMENT_Identifier );
+
+			//properties
+			try
+			{
                 if ( includingProperties )
                 {
                     output.AssessmentMethodType = EntityPropertyManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type);

@@ -54,7 +54,7 @@ namespace workIT.Factories
 					PrimaryOrganizationId = item.PrimaryOrganizationId,
 					PrimaryOrganizationName = item.PrimaryOrganizationName,
 					//FrameworkUri = oi.FrameworkUri,
-					CredentialRegistryId = item.CredentialRegistryId,
+					//CredentialRegistryId = item.CredentialRegistryId,
 					EntityStateId = item.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = item.Created,
@@ -99,6 +99,8 @@ namespace workIT.Factories
 			bool usingEntityLastUpdatedDate = UtilityManager.GetAppKeyValue( "usingEntityLastUpdatedDateForIndexLastUpdated", true );
 			int cntr = 0;
 			DateTime started = DateTime.Now;
+			//
+			//string credentialSearchProc= UtilityManager.GetAppKeyValue( "credentialElasticSearchProc", "[Credential.ElasticSearch]" );
 			//special
 			bool populatingCredentialJsonProperties = UtilityManager.GetAppKeyValue( "populatingCredentialJsonProperties", false );
 
@@ -107,7 +109,7 @@ namespace workIT.Factories
 			{
 				c.Open();
 
-				using ( SqlCommand command = new SqlCommand( "[Credential.ElasticSearch]", c ) )
+				using ( SqlCommand command = new SqlCommand( "[Credential.ElasticSearch2]", c ) )
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
@@ -149,7 +151,7 @@ namespace workIT.Factories
 				//var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
 				//int costProfilesCount = 0;
 
-				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - loading {0} rows ", result.Rows.Count ) );
+				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - Page: {0} - loading {1} rows ", pageNumber, result.Rows.Count ) );
 				try
 				{
 
@@ -157,7 +159,7 @@ namespace workIT.Factories
 					{
 						cntr++;
 						if ( cntr % 200 == 0 )
-							LoggingHelper.DoTrace( 2, string.Format( " loading record: {0}", cntr ) );
+							LoggingHelper.DoTrace( 2, string.Format( " Page: {0} - loading record: {1}", pageNumber, cntr ) );
 						//avgMinutes = 0;
 						index = new CredentialIndex
 						{
@@ -217,7 +219,7 @@ namespace workIT.Factories
 						index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
 
 						index.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
-						index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
+						//index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
 
 						string date = GetRowColumn( dr, "EffectiveDate", "" );
 						if ( IsValidDate( date ) )
@@ -281,6 +283,18 @@ namespace workIT.Factories
 						index.BadgeClaimsCount = Int32.Parse( dr[ "badgeClaimsCount" ].ToString() );
 						index.RevocationProfilesCount = Int32.Parse( dr[ "RevocationProfilesCount" ].ToString() );
 						index.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
+						//
+						index.HoldersProfileCount = Int32.Parse( dr[ "HoldersProfileCount" ].ToString() );
+						if ( index.HoldersProfileCount > 0 )
+							index.HoldersProfileSummary = Entity_HoldersProfileManager.GetSummary( index.RowId );
+						//
+						index.EarningsProfileCount = Int32.Parse( dr[ "EarningsProfileCount" ].ToString() );
+						if ( index.EarningsProfileCount > 0 )
+							index.EarningsProfileSummary = Entity_EarningsProfileManager.GetSummary( index.RowId );
+						//
+						index.EmploymentOutcomeProfileCount = Int32.Parse( dr[ "EmploymentOutcomeProfileCount" ].ToString() );
+						if ( index.EmploymentOutcomeProfileCount > 0 )
+							index.EmploymentOutcomeProfileSummary = Entity_EmploymentOutcomeProfileManager.GetSummary( index.RowId );
 						//index.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
 						//index.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
 						//-actual connection type (no credential info), with the schema name, and number of connections
@@ -427,29 +441,6 @@ namespace workIT.Factories
 						if ( !string.IsNullOrWhiteSpace( addresses ) )
 						{
 							HandleAddresses( index, addresses );
-							//var xDoc = new XDocument();
-							//xDoc = XDocument.Parse( addresses );
-							//foreach ( var child in xDoc.Root.Elements() )
-							//{
-							//	string region = ( string )child.Attribute( "Region" ) ?? "";
-							//	string city = ( string )child.Attribute( "City" ) ?? "";
-							//	string country = ( string )child.Attribute( "Country" ) ?? "";
-							//	index.Addresses.Add( new Address
-							//	{
-							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-							//		City = ( string )child.Attribute( "City" ) ?? "",
-							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-							//		PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-							//		Country = ( string )child.Attribute( "Country" ) ?? ""
-							//	} );
-							//	AddLocation( index, city, "city" );
-							//	AddLocation( index, region, "region" );
-							//	AddLocation( index, country, "country" );
-							//}
-
 							if ( index.Addresses != null && index.Addresses.Count > 0 && populatingCredentialJsonProperties )
 							{
 								AddCredentialJsonProperties( index );
@@ -726,6 +717,11 @@ namespace workIT.Factories
 						AddReportProperty( index, index.RenewalCount, 58, "Has Renewal", "credReport:HasRenewal" );
 						AddReportProperty( index, index.ProcessProfilesCount, 58, "Has Process Profile", "credReport:HasProcessProfile" );
 						//
+						AddReportProperty( index, index.HoldersProfileCount, 58, "Has Holders Profile", "credReport:HasHoldersProfile" );
+						AddReportProperty( index, index.EarningsProfileCount, 58, "Has Earnings Profile", "credReport:HasEarningsProfile" );
+						AddReportProperty( index, index.EmploymentOutcomeProfileCount, 58, "Has Employment Outcome Profile", "credReport:HasEmploymentOutcomeProfile" );
+
+						//
 						AddReportProperty( index, index.HasSubjects, 58, "Has Subjects", "credReport:HasSubjects" );
 						AddReportProperty( index, index.HasOccupations, 58, "Has Occupations", "credReport:HasOccupations" );
 						AddReportProperty( index, index.HasIndustries, 58, "Has Industries", "credReport:HasIndustries" );
@@ -876,7 +872,7 @@ namespace workIT.Factories
 					OwnerOrganizationName = ci.OwnerOrganizationName,
 					CTID = ci.CTID,
 					PrimaryOrganizationCTID = ci.PrimaryOrganizationCTID,
-					CredentialRegistryId = ci.CredentialRegistryId,
+					//CredentialRegistryId = ci.CredentialRegistryId,
 					DateEffective = ci.DateEffective,
 					Created = ci.Created,
 					//define LastUpdated to be EntityLastUpdated
@@ -891,6 +887,10 @@ namespace workIT.Factories
 					//QARolesCount = ci.QARolesCount,
 					HasPartCount = ci.HasPartCount,
 					IsPartOfCount = ci.IsPartOfCount,
+					HoldersProfileCount = ci.HoldersProfileCount,
+					EarningsProfileCount = ci.EarningsProfileCount,
+					EmploymentOutcomeProfileCount = ci.EmploymentOutcomeProfileCount,
+
 					RequiresCount = ci.RequiresCount,
 					RecommendsCount = ci.RecommendsCount,
 					RequiredForCount = ci.RequiredForCount,
@@ -936,7 +936,13 @@ namespace workIT.Factories
 				index.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
 
 				index.ConnectionsList = Fill_CodeItemResults( ci.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
-
+				if (index.HoldersProfileCount > 0)
+					index.HoldersProfileSummary = ci.HoldersProfileSummary;
+				if ( index.EarningsProfileCount > 0 )
+					index.EarningsProfileSummary = ci.EarningsProfileSummary;
+				if ( index.EmploymentOutcomeProfileCount > 0 )
+					index.EmploymentOutcomeProfileSummary = ci.EmploymentOutcomeProfileSummary;
+				//
 				if ( includingHasPartIsPartWithConnections )
 				{
 					//manually add other connections
@@ -990,13 +996,15 @@ namespace workIT.Factories
 		#endregion
 
 		#region Organization Elastic Index
-		public static List<OrganizationIndex> Organization_SearchForElastic( string filter )
+		//public static List<OrganizationIndex> Organization_SearchForElastic( string filter )
+		//{
+		public static List<OrganizationIndex> Organization_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
 			var index = new OrganizationIndex();
 			var list = new List<OrganizationIndex>();
 			var result = new DataTable();
-			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
+			LoggingHelper.DoTrace( 2, "Organization_SearchForElastic - Starting. filter\r\n " + filter );
 			int cntr = 0;
 			int thisReportCategoryId = 59;
 			//special
@@ -1011,9 +1019,8 @@ namespace workIT.Factories
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
 					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
-					command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-					command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
-					//command.Parameters.Add( new SqlParameter( "@CurrentUserId", userId ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
@@ -1028,6 +1035,7 @@ namespace workIT.Factories
 							adapter.Fill( result );
 						}
 						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
 					}
 					catch ( Exception ex )
 					{
@@ -1039,15 +1047,14 @@ namespace workIT.Factories
 						return list;
 					}
 				}
+				LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic - Page: {0} - loading {1} rows ", pageNumber, result.Rows.Count ) );
 				try
 				{
-
-
 					foreach ( DataRow dr in result.Rows )
 					{
 						cntr++;
 						if ( cntr % 100 == 0 )
-							LoggingHelper.DoTrace( 2, string.Format( " Organization loading record: {0}", cntr ) );
+							LoggingHelper.DoTrace( 2, string.Format( " Page: {0} - loading record: {1}", pageNumber, cntr ) );
 						if ( cntr == 33 )
 						{
 
@@ -1075,7 +1082,7 @@ namespace workIT.Factories
 						index.PrimaryOrganizationCTID = index.CTID;
 						index.PrimaryOrganizationId = index.Id;
 						index.PrimaryOrganizationName = index.Name;
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						string date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
@@ -1487,7 +1494,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic - Complete loaded {0} records", cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -1549,7 +1556,7 @@ namespace workIT.Factories
 					RowId = oi.RowId,
 					Description = oi.Description,
 					CTID = oi.CTID,
-					CredentialRegistryId = oi.CredentialRegistryId,
+					//CredentialRegistryId = oi.CredentialRegistryId,
 					EntityStateId = oi.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = oi.Created,
@@ -1648,7 +1655,7 @@ namespace workIT.Factories
 		#endregion
 
 		#region Assessment Elastic Index 
-		public static List<AssessmentIndex> Assessment_SearchForElastic( string filter )
+		public static List<AssessmentIndex> Assessment_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
 			var index = new AssessmentIndex();
@@ -1664,8 +1671,8 @@ namespace workIT.Factories
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
 					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
-					command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-					command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
@@ -1680,6 +1687,8 @@ namespace workIT.Factories
 							adapter.Fill( result );
 						}
 						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
 					}
 					catch ( Exception ex )
 					{
@@ -1695,7 +1704,6 @@ namespace workIT.Factories
 				string assessesCompetencies = "";
 				try
 				{
-
 					foreach ( DataRow dr in result.Rows )
 					{
 						cntr++;
@@ -1725,7 +1733,7 @@ namespace workIT.Factories
 						if ( !string.IsNullOrWhiteSpace( codedNotation ) )
 							index.CodedNotation.Add( codedNotation );
 						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
 						index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
@@ -2209,7 +2217,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic - Complete loaded {0} records", cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
 				}
 				return list;
 			}
@@ -2287,7 +2295,7 @@ namespace workIT.Factories
 					CodedNotation = item.IdentificationCode,
 					CTID = item.CTID,
 					PrimaryOrganizationCTID = item.PrimaryOrganizationCTID,
-					CredentialRegistryId = item.CredentialRegistryId,
+					//CredentialRegistryId = item.CredentialRegistryId,
 					DateEffective = item.DateEffective,
 					Created = item.Created,
 					//define LastUpdated to be EntityLastUpdated
@@ -2356,9 +2364,10 @@ namespace workIT.Factories
 
 		#region LearningOpp Elastic Index 
 
-		public static List<LearningOppIndex> LearningOpp_SearchForElastic( string filter )
+		public static List<LearningOppIndex> LearningOpp_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
+
 			var index = new LearningOppIndex();
 			var list = new List<LearningOppIndex>();
 			var result = new DataTable();
@@ -2372,8 +2381,8 @@ namespace workIT.Factories
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
 					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
-					command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-					command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
@@ -2388,6 +2397,8 @@ namespace workIT.Factories
 							adapter.Fill( result );
 						}
 						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
 					}
 					catch ( Exception ex )
 					{
@@ -2428,7 +2439,7 @@ namespace workIT.Factories
 
 
 						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 
 						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
@@ -2664,7 +2675,8 @@ namespace workIT.Factories
 										index.AudienceTypeIds.Add( propertyValueId );
 									else if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
 										index.AudienceLevelTypeIds.Add( propertyValueId );
-
+									else if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
+										index.AssessmentMethodTypeIds.Add( propertyValueId );
 									//if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "PropertySchemaName" ) ) )
 									//	index.TextValues.Add( ( string )child.Attribute( "PropertySchemaName" ) );
 									//if ( !string.IsNullOrWhiteSpace( property ) )
@@ -2864,7 +2876,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "LearningOpp_SearchForElastic - Complete loaded {0} records", cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "LearningOpp_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
 				}
 				return list;
 			}
@@ -2891,7 +2903,7 @@ namespace workIT.Factories
 					CodedNotation = li.IdentificationCode,
 					CTID = li.CTID,
 					PrimaryOrganizationCTID = li.PrimaryOrganizationCTID,
-					CredentialRegistryId = li.CredentialRegistryId,
+					//CredentialRegistryId = li.CredentialRegistryId,
 					DateEffective = li.DateEffective,
 					Created = li.Created,
 					LastUpdated = li.LastUpdated,
@@ -2947,6 +2959,9 @@ namespace workIT.Factories
 				index.LearningMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Learning_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, false, false );
 				index.DeliveryMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
 				index.AudienceTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+				index.AssessmentMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
+
+				//
 				index.ListTitle = li.ListTitle;
 				list.Add( index );
 			}
@@ -3044,7 +3059,7 @@ namespace workIT.Factories
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
 
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 						index.CompetencyFrameworkGraph = GetRowPossibleColumn( dr, "CompetencyFrameworkGraph", "" );
 						index.TotalCompetencies = GetRowPossibleColumn( dr, "TotalCompetencies", 0 );
 						var competenciesStore = GetRowPossibleColumn( dr, "CompetenciesStore", "" );
@@ -3072,7 +3087,7 @@ namespace workIT.Factories
 						#region Custom Reports
 						int propertyId = 0;
 						//TODO
-						//indicator of in registry
+						//indicator of in registry - actually CTID would be as well
 						if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
 						{
 							if ( GetPropertyId( 69, "cfReport:IsInRegistry", ref propertyId ) )
@@ -3274,11 +3289,11 @@ namespace workIT.Factories
 		#endregion
 
 		#region Pathway Elastic Index
-		public static List<GenericIndex> Pathway_SearchForElastic( string filter )
+		public static List<PathwayIndex> Pathway_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
-			var index = new GenericIndex();
-			var list = new List<GenericIndex>();
+			var index = new PathwayIndex();
+			var list = new List<PathwayIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
 			int cntr = 0;
@@ -3291,8 +3306,8 @@ namespace workIT.Factories
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
 					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
-					command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-					command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
@@ -3307,10 +3322,12 @@ namespace workIT.Factories
 							adapter.Fill( result );
 						}
 						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
 					}
 					catch ( Exception ex )
 					{
-						index = new ManyInOneIndex();
+						index = new PathwayIndex();
 						index.Name = "EXCEPTION ENCOUNTERED";
 						index.Description = ex.Message;
 						list.Add( index );
@@ -3330,7 +3347,7 @@ namespace workIT.Factories
 
 						}
 
-						index = new ManyInOneIndex();
+						index = new PathwayIndex();
 						index.EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY;
 						index.EntityType = "Pathway";
 						index.Id = GetRowColumn( dr, "Id", 0 );
@@ -3353,7 +3370,7 @@ namespace workIT.Factories
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
 
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 						//index.PathwayGraph = GetRowPossibleColumn( dr, "PathwayGraph", "" );
 						//if ( !string.IsNullOrWhiteSpace( index.PathwayGraph ) )
 						//{
@@ -3395,54 +3412,42 @@ namespace workIT.Factories
 
 						#endregion
 						#region Subjects
-						var subjects = GetRowColumn( dr, "Subjects", "" );
+						var subjects = GetRowColumn( dr, "TextValues", "" );
 						if ( !string.IsNullOrWhiteSpace( subjects ) )
 						{
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( subjects );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								var cs = new IndexSubject();
-								var subject = child.Attribute( "Subject" );
-								if ( subject != null )
+								//var cs = new IndexSubject();
+								var textValue = child.Attribute( "TextValue" );
+								if ( textValue != null )
 								{
-									cs.Name = subject.Value;
-
-									//source is just direct/indirect, more want the sourceEntityType
-									var source = child.Attribute( "Source" );
-									if ( source != null )
-										cs.Source = source.Value;
-
+									var text = textValue.Value;
 									int outputId = 0;
-									var entityTypeId = child.Attribute( "EntityTypeId" );
-									if ( entityTypeId != null )
-										if ( Int32.TryParse( entityTypeId.Value, out outputId ) )
-											cs.EntityTypeId = outputId;
-
-									var referenceBaseId = child.Attribute( "ReferenceBaseId" );
-									if ( referenceBaseId != null )
-										if ( Int32.TryParse( referenceBaseId.Value, out outputId ) )
-											cs.ReferenceBaseId = outputId;
-									//may dump Subjects, for consistency
-									index.Subjects.Add( cs );
-									index.SubjectAreas.Add( cs.Name );
+									var categoryId = child.Attribute( "CategoryId" );
+									if ( categoryId != null )
+										if ( Int32.TryParse( categoryId.Value, out outputId ) )
+										{
+											if ( outputId == 34 )
+												index.SubjectAreas.Add( text );
+											else if ( outputId == 35 )
+												index.Keyword.Add( text );
+										}
 								}
 							}
-							//if ( index.Subjects.Count() > 0 )
+							//if ( index.SubjectAreas.Count() > 0 )
 							//	index.HasSubjects = true;
 						}
 						#endregion
 						#region Custom Reports
-						//int propertyId = 0;
-						//TODO
-						//indicator of in registry
-						//if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
-						//{
-						//	if ( GetPropertyId( 69, "cfReport:IsInRegistry", ref propertyId ) )
-						//		index.ReportFilters.Add( propertyId );
-						//}
-						//else if ( GetPropertyId( 69, "cfReport:IsNotInRegistry", ref propertyId ) )
-						//	index.ReportFilters.Add( propertyId );
+						int propertyId = 0;
+						if ( index.HasOccupations )
+							if ( GetPropertyId( 70, "pathwayReport:HasOccupations", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.HasIndustries )
+							if ( GetPropertyId( 70, "pathwayReport:HasIndustries", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
 
 						#endregion
 
@@ -3464,26 +3469,31 @@ namespace workIT.Factories
 		}
 
 
-		public static List<CM.PathwaySummary> Pathway_MapFromElastic( List<GenericIndex> Pathways )
+		public static List<CM.CommonSearchSummary> Pathway_MapFromElastic( List<PathwayIndex> Pathways, int pageNbr = 1, int pageSize = 50)
 		{
-			var list = new List<CM.PathwaySummary>();
+			var list = new List<CM.CommonSearchSummary>();
+			int rowNbr = ( pageNbr - 1 ) * pageSize;
 
 			foreach ( var item in Pathways )
 			{
-				var index = new CM.PathwaySummary
+				rowNbr++;
+
+				var index = new CM.CommonSearchSummary
 				{
 					Id = item.Id,
+					ResultNumber = rowNbr,
+
 					Name = item.Name,
 					FriendlyName = item.FriendlyName,
 					RowId = item.RowId,
 					Description = item.Description,
 					CTID = item.CTID,
 					SubjectWebpage = item.SubjectWebpage,
-					//OrganizationCTID = oi.OwnerOrganizationCTID,
-					//OrganizationId = oi.OwnerOrganizationId,
-					//OrganizationName = oi.PrimaryOrganizationName,
+					PrimaryOrganizationCTID = item.PrimaryOrganizationCTID,
+					PrimaryOrganizationId = item.PrimaryOrganizationId,
+					PrimaryOrganizationName = item.PrimaryOrganizationName,
 					//FrameworkUri = oi.FrameworkUri,
-					CredentialRegistryId = item.CredentialRegistryId,
+					//CredentialRegistryId = item.CredentialRegistryId,
 					EntityStateId = item.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = item.Created,
@@ -3505,8 +3515,10 @@ namespace workIT.Factories
 				if ( item.Occupations != null && item.Occupations.Count > 0 )
 					index.OccupationResults = Fill_CodeItemResults( item.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 				if ( item.Industries != null && item.Industries.Count > 0 )
-					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
-
+					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+				//
+				index.Subjects = item.SubjectAreas;
+				index.Keyword = item.Keyword;
 				list.Add( index );
 			}
 
@@ -3515,11 +3527,11 @@ namespace workIT.Factories
 		#endregion
 
 		#region PathwaySet Elastic Index
-		public static List<GenericIndex> PathwaySet_SearchForElastic( string filter )
+		public static List<PathwayIndex> PathwaySet_SearchForElastic( string filter )
 		{
 			string connectionString = DBConnectionRO();
-			var index = new GenericIndex();
-			var list = new List<GenericIndex>();
+			var index = new PathwayIndex();
+			var list = new List<PathwayIndex>();
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
 			int cntr = 0;
@@ -3551,7 +3563,7 @@ namespace workIT.Factories
 					}
 					catch ( Exception ex )
 					{
-						index = new ManyInOneIndex();
+						index = new PathwayIndex();
 						index.Name = "EXCEPTION ENCOUNTERED";
 						index.Description = ex.Message;
 						list.Add( index );
@@ -3567,7 +3579,7 @@ namespace workIT.Factories
 						if ( cntr % 100 == 0 )
 							LoggingHelper.DoTrace( 2, string.Format( " PathwaySet loading record: {0}", cntr ) );
 
-						index = new ManyInOneIndex();
+						index = new PathwayIndex();
 						index.EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET;
 						index.EntityType = "PathwaySet";
 						index.Id = GetRowColumn( dr, "Id", 0 );
@@ -3587,7 +3599,7 @@ namespace workIT.Factories
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
 
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						string date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
@@ -3677,7 +3689,7 @@ namespace workIT.Factories
 					//OrganizationId = oi.OwnerOrganizationId,
 					//OrganizationName = oi.PrimaryOrganizationName,
 					//FrameworkUri = oi.FrameworkUri,
-					CredentialRegistryId = oi.CredentialRegistryId,
+					//CredentialRegistryId = oi.CredentialRegistryId,
 					EntityStateId = oi.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = oi.Created,
@@ -3705,9 +3717,10 @@ namespace workIT.Factories
 
 
 		#region TransferValue Elastic Index
-		public static List<ManyInOneIndex> TransferValue_SearchForElastic( string filter )
+		public static List<ManyInOneIndex> TransferValue_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
+
 			var index = new ManyInOneIndex();
 			var list = new List<ManyInOneIndex>();
 			var result = new DataTable();
@@ -3722,8 +3735,8 @@ namespace workIT.Factories
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
 					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
-					command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-					command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
@@ -3738,6 +3751,8 @@ namespace workIT.Factories
 							adapter.Fill( result );
 						}
 						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
 					}
 					catch ( Exception ex )
 					{
@@ -3781,7 +3796,7 @@ namespace workIT.Factories
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
 
-						index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						string date = GetRowColumn( dr, "Created", "" );
 						if ( IsValidDate( date ) )
@@ -3827,7 +3842,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "TransferValue_SearchForElastic - Complete loaded {0} records", cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "TransferValue_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -3857,7 +3872,7 @@ namespace workIT.Factories
 					//OrganizationId = oi.OwnerOrganizationId,
 					//OrganizationName = oi.PrimaryOrganizationName,
 					//FrameworkUri = oi.FrameworkUri,
-					CredentialRegistryId = oi.CredentialRegistryId,
+					//CredentialRegistryId = oi.CredentialRegistryId,
 					EntityStateId = oi.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = oi.Created,

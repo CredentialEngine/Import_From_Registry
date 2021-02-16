@@ -241,7 +241,7 @@ namespace workIT.Factories
 
 			//CostProfile
 			CostProfileManager cpm = new Factories.CostProfileManager();
-			cpm.SaveList( entity.EstimatedCosts, entity.RowId, ref status );
+			cpm.SaveList( entity.EstimatedCost, entity.RowId, ref status );
 
 			return status.WasSectionValid;
 		} //
@@ -930,7 +930,7 @@ namespace workIT.Factories
 
 			//get Costs
 			//List<CostProfile> list = new List<CostProfile>();
-			to.EstimatedCosts = CostProfileManager.GetAll( to.RowId );
+			to.EstimatedCost = CostProfileManager.GetAll( to.RowId );
 
 
 		}

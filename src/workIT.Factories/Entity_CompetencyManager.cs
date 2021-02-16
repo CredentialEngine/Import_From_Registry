@@ -204,20 +204,30 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_Competency.RemoveRange( context.Entity_Competency.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.Entity_Competency.Where( s => s.EntityId == parent.Id )
+					.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
 
+					context.Entity_Competency.RemoveRange( context.Entity_Competency.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//if doing a delete on spec, may not have been any properties
+					}
+				}
+			}catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll", false );
+			}
             return isValid;
         }
         public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )

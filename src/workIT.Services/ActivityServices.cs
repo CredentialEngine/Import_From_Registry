@@ -242,7 +242,7 @@ namespace workIT.Services
 			string server = UtilityManager.GetAppKeyValue( "serverName", "" );
 			SiteActivity log = new SiteActivity();
 			if ( sessionId == null || sessionId.Length < 10 )
-				sessionId = HttpContext.Current.Session.SessionID;
+				sessionId = HttpContext.Current.Session== null ? "missing" : HttpContext.Current.Session.SessionID;
 
 			if ( ipAddress == null || ipAddress.Length < 10 )
 				ipAddress = ActivityManager.GetUserIPAddress();

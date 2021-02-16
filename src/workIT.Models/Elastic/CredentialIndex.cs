@@ -79,7 +79,7 @@ namespace workIT.Models.Elastic
 			}
 		}
 
-		public List<string> Keyword { get; set; } = new List<string>();
+		//public List<string> Keyword { get; set; } = new List<string>();
 		//Keep either Connectionslist or this
 
 		public int EstimatedTimeToEarn { get; set; }

@@ -9,6 +9,7 @@ using workIT.Models;
 using workIT.Models.Common;
 using ME = workIT.Models.Elastic;
 using workIT.Models.Search;
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using ThisEntity = workIT.Models.Common.Pathway;
 using PathwayComponent = workIT.Models.Common.PathwayComponent;
@@ -49,7 +50,7 @@ namespace workIT.Services
 					new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 					//update Elastic
 					if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
-						ElasticServices.Pathway_UpdateIndex( entity.Id );
+						ElasticHelper.Pathway_UpdateIndex( entity.Id );
 					else
 					{
 						new SearchPendingReindexManager().Add( 8, entity.Id, 1, ref messages );
@@ -344,17 +345,19 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
 			{
-				return ElasticServices.PathwaySearch( data, ref pTotalRows );
+				return ElasticHelper.PathwaySearch( data, ref pTotalRows );
 			}
 			else
 			{
 				List<CommonSearchSummary> results = new List<CommonSearchSummary>();
 				var list = DoPathwaySearch( data, ref pTotalRows );
+			
 				foreach ( var item in list )
 				{
 					results.Add( new CommonSearchSummary()
 					{
 						Id = item.Id,
+						ResultNumber = item.ResultNumber,
 						Name = item.Name,
 						FriendlyName = item.FriendlyName,
 						Description = item.Description,
@@ -418,7 +421,8 @@ namespace workIT.Services
 				keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
 			//OR base.Description like '{0}' 
-			string text = " (base.name like '{0}' OR base.SubjectWebpage like '{0}'  OR base.OrganizationName like '{0}'  ) ";
+			//OR base.SubjectWebpage like '{0}' 
+			string text = " (base.name like '{0}'  OR base.OrganizationName like '{0}'  ) ";
 			bool isCustomSearch = false;
 			//use Entity.SearchIndex for all
 			//string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join TransferValue c on b.EntityUid = c.RowId where (b.EntityTypeId = 3 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
@@ -448,7 +452,7 @@ namespace workIT.Services
 			keywords = ServiceHelper.HandleApostrophes( keywords );
 			if ( keywords.IndexOf( "%" ) == -1 && !isCustomSearch )
 			{
-				keywords = SearchServices.SearchifyWord( keywords );
+				keywords = SearchServices.SearchifyWord( keywords, false );
 			}
 
 			//skip url  OR base.Url like '{0}' 
@@ -501,7 +505,7 @@ namespace workIT.Services
 					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 					//update Elastic
 					if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
-						ElasticServices.Pathway_UpdateIndex( entity.Id );
+						ElasticHelper.Pathway_UpdateIndex( entity.Id );
 					else
 					{
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, entity.Id, 1, ref messages );
@@ -555,7 +559,7 @@ namespace workIT.Services
 		{
 			//if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
 			//{
-			//	return ElasticServices.PathwaySetSearch( data, ref pTotalRows );
+			//	return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
 			//}
 			//else
 			{
@@ -583,7 +587,7 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
 			{
-				return ElasticServices.PathwaySetSearch( data, ref pTotalRows );
+				return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
 			}
 			else
 			{

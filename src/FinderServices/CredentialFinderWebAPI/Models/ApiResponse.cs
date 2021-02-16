@@ -11,7 +11,7 @@ namespace CredentialFinderWebAPI.Models
 		{
 			Messages = new List<string>();
 		}
-		public string Result { get; set; }
+		public object Result { get; set; }
 
 		public bool Successful { get; set; }
 

@@ -10,7 +10,7 @@ namespace workIT.Models.Elastic
 	{
 
 		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
-		public List<string> Keyword { get; set; } = new List<string>();
+		//public List<string> Keyword { get; set; } = new List<string>();
 		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
 
 		public int OwnerOrganizationId

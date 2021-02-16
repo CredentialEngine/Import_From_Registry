@@ -606,7 +606,7 @@ namespace workIT.Factories
 					var search = context.Import_PendingRequest
 							.Where( s => s.WasChanged == true
 								&& s.WasProcessed == false
-								&& s.PublishMethodURI != "DELETE" && s.PublishMethodURI != "Transfer of Owner"
+								&& s.PublishMethodURI != "Registry Delete" && s.PublishMethodURI != "Transfer of Owner"
 								&& ( s.PublishingEntityType != excludeEntityType ) 
 								)
 							.OrderBy( s => s.PublishingEntityType )
@@ -626,7 +626,9 @@ namespace workIT.Factories
 								EntityName = item.EntityName,
 								EntityCtid = item.EntityCtid,
 								PublishMethodURI = item.PublishMethodURI,
-								PublishingEntityType = item.PublishingEntityType
+								PublishingEntityType = item.PublishingEntityType, 
+								PublisherCTID = item.PublisherCTID,
+								DataOwnerCTID= item.DataOwnerCTID
 								//EnvelopeLastUpdated = item.EnvelopeLastUpdated
 							};
 							//entity.EntityTypedId = item.EntityTypedId; //derive??

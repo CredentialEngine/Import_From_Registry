@@ -88,7 +88,7 @@ namespace RA.Models.JsonV2
         public string CtdlId { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:name" )]
         public LanguageMap Name { get; set; } = new LanguageMap();
@@ -132,7 +132,7 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// HasETPLResource
 		/// Only valid for a QualityAssuranceCredential
-		/// List of entities that are members of (essentialing approved by the owner of the) the QACredential
+		/// List of entities that are members of (essentially approved by the owner of the) the QACredential
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:hasETPLResource" )]
 		public List<string> HasETPLResource { get; set; }
@@ -183,6 +183,15 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:supersedes" )]
 		public string Supersedes { get; set; } //URL
+											   
+		//
+		/// <summary>
+		/// Another source of information about the entity being described.
+		/// List of URIs
+		/// ceterms:sameAs
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:sameAs" )]
+		public List<string> SameAs { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subject" )]
         public List<CredentialAlignmentObject> Subject { get; set; }

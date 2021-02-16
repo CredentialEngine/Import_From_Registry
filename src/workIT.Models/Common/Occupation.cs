@@ -11,8 +11,12 @@ namespace workIT.Models.Common
 	/// <summary>
 	/// Profession, trade, or career field that may involve training and/or a formal qualification.
 	/// </summary>
-	public class Occupation
+	public class Occupation : TopLevelObject
 	{
+		public Occupation()
+		{
+			EntityTypeId = 35;
+		}
 		/// <summary>
 		///  type
 		/// </summary>
@@ -27,17 +31,17 @@ namespace workIT.Models.Common
 		/// required
 		/// <see cref="https://credreg.net/ctdl/terms/ctid"/>
 		/// </summary>
-		public string CTID { get; set; }
+		//public string CTID { get; set; }
 
 		/// <summary>
 		/// Name
 		/// </summary>
-		public string Name { get; set; }
+		//public string Name { get; set; }
 
 		/// <summary>
 		/// Description
 		/// </summary>
-		public string Description { get; set; }
+		//public string Description { get; set; }
 
 
 		/// <summary>
@@ -147,7 +151,7 @@ namespace workIT.Models.Common
 		/// URL
 		/// Required
 		/// </summary>
-		public string SubjectWebpage { get; set; } //URL
+		//public string SubjectWebpage { get; set; } //URL
 
 		/// <summary>
 		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.

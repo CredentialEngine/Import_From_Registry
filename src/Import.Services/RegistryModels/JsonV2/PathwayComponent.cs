@@ -4,7 +4,10 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-
+	/// <summary>
+	/// History
+	/// 21-01-06 remove CodedNotation
+	/// </summary>
 	public class PathwayComponent
 	{
 		public PathwayComponent() { }

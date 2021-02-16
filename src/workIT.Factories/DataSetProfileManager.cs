@@ -77,7 +77,9 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
-						return false;
+					{
+						//return false;
+					}
 
 					if ( entity.Id > 0 )
 					{
@@ -116,6 +118,7 @@ namespace workIT.Factories
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
+							//will always use the envelop last updated?
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
@@ -167,7 +170,7 @@ namespace workIT.Factories
 						}
 						else
 						{
-							status.AddError( "Error - update failed, as record was not found." );
+							status.AddError( "Error - update failed, as DataSetProfile was not found." );
 						}
 					}
 					else

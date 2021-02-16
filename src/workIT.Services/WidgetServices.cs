@@ -9,6 +9,8 @@ using Newtonsoft.Json;
 using workIT.Models;
 using workIT.Models.Common;
 using Manager = workIT.Factories.WidgetManager;
+using ElasticHelper = workIT.Services.ElasticServices;
+
 namespace workIT.Services
 {
     public class WidgetServices
@@ -106,7 +108,7 @@ namespace workIT.Services
 				switch ( entityTypeId )
 				{
 					case 1:
-						if (!new ElasticServices().CredentialResourceAddWidgetId( index, widgetId, widgetProperty, recordId.ToString(), alreadyExists, ref status ))
+						if (!new ElasticHelper().CredentialResourceAddWidgetId( index, widgetId, widgetProperty, recordId.ToString(), alreadyExists, ref status ))
 						{
 							messages.Add( status );
 							return false;
@@ -133,7 +135,7 @@ namespace workIT.Services
 				switch ( entityTypeId )
 				{
 					case 1:
-						if (!new ElasticServices().CredentialResourceRemoveWidgetId( index, widgetId, widgetProperty, recordId.ToString(), ref status ))
+						if (!new ElasticHelper().CredentialResourceRemoveWidgetId( index, widgetId, widgetProperty, recordId.ToString(), ref status ))
 						{
 							messages.Add( status );
 							return false;

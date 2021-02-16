@@ -67,5 +67,15 @@ namespace workIT.Models
 		public bool ImportWasSuccessful { get; set; }
 		//null if import unsuccesful
 		public System.DateTime ImportedDate { get; set; }
+		public bool IsPublishedByThirdParty
+		{
+			get
+			{
+				if ( DataOwnerCTID.ToLower() == PublisherCTID.ToLower() )
+					return false;
+				else
+					return true;
+			}
+		}
 	}
 }

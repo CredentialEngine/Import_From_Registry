@@ -44,10 +44,10 @@ namespace Import.Services
 		public string ResourcePublicKey { get; set; }
 
 
-		[JsonProperty( PropertyName = "documentOwnedBy " )]
+		[JsonProperty( PropertyName = "owned_by" )]
 		public string documentOwnedBy { get; set; }
 
-		[JsonProperty( PropertyName = "documentPublishedBy  " )]
+		[JsonProperty( PropertyName = "published_by" )]
 		public string documentPublishedBy { get; set; }
 	}
 	public class UpdateEnvelope : Envelope

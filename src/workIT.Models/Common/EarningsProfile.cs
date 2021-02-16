@@ -14,7 +14,9 @@ namespace workIT.Models.Common
 	/// </summary>
 	public class EarningsProfile : OutcomesBaseObject
 	{
-
+		public EarningsProfile()
+		{
+		}
 		/// <summary>
 		///  Lower interquartile earnings.
 		/// </summary>

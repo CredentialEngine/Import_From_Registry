@@ -175,7 +175,14 @@ namespace workIT.Factories
             return isValid;
         }
 
-        public bool UpdateAll( int requestTypeId, ref List<String> messages, int entityTypeId = 0 )
+		/// <summary>
+		/// Update SearchPendingReindex
+		/// </summary>
+		/// <param name="requestTypeId">1-update, 2-delete</param>
+		/// <param name="messages"></param>
+		/// <param name="entityTypeId"></param>
+		/// <returns></returns>
+		public bool UpdateAll( int requestTypeId, ref List<String> messages, int entityTypeId = 0 )
         {
             bool isValid = false;
             int count = 0;

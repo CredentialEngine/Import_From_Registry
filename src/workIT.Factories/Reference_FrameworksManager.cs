@@ -376,6 +376,10 @@ namespace workIT.Factories
 			if ( !string.IsNullOrWhiteSpace( from.CodedNotation ) && from.CodedNotation.Length > 1 )
 			{
 				to.CodeGroup = from.CodedNotation.Substring(0,2);
+				if (!int.TryParse( to.CodeGroup , out int familyId) )
+				{
+					to.CodeGroup = "";
+				}
 			}
 			to.Description = from.Description;
 			to.TargetNode = from.TargetNode ?? "";

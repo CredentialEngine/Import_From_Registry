@@ -289,19 +289,33 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_JurisdictionProfile.RemoveRange( context.Entity_JurisdictionProfile.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.Entity_JurisdictionProfile.Where( s => s.EntityId == parent.Id )
+					.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					context.Entity_JurisdictionProfile.RemoveRange( context.Entity_JurisdictionProfile.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//if doing a delete on spec, may not have been any properties
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+			}
+
 
             return isValid;
         }
@@ -331,7 +345,9 @@ namespace workIT.Factories
 				List<DBEntity> Items = context.Entity_JurisdictionProfile
 							.Where( s => s.EntityId == parent.Id 
 								&& s.JProfilePurposeId == jprofilePurposeId )
-							.OrderBy( s => s.Id ).ToList();
+							.OrderBy( s => s.JProfilePurposeId )
+							.ThenBy(s => s.AssertedInTypeId)
+							.ThenBy(s => s.Id).ToList();
 
 				if ( Items.Count > 0 )
 				{
@@ -539,6 +555,7 @@ namespace workIT.Factories
 			{
 				to.AssertedInTypeId = (int)from.AssertedInTypeId;
 				to.AssertedInType = from.Codes_AssertionType.Title;
+				to.AssertedInType = ( to.AssertedInType ?? "" ).Replace( " By", " In" );
 				Enumeration ja = new Enumeration() { Name = "Jurisdiction Assertions"};
 				EnumeratedItem ei = new EnumeratedItem() { Id = to.AssertedInTypeId, Name = to.AssertedInType };
 				to.JurisdictionAssertion.Items.Add(ei);
@@ -580,7 +597,7 @@ namespace workIT.Factories
 
 			if ( GeoCoordinates_Exists( entity.ParentId, entity.GeoNamesId, entity.IsException ) )
 			{
-				status.AddWarning( "Error this Region has aleady been selected.");
+				//status.AddWarning( "Error this Region has aleady been selected.");
 				return 0;
 			}
 

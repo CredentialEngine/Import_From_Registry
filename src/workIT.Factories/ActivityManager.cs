@@ -59,7 +59,7 @@ namespace workIT.Factories
             //================================
             if ( isBot )
             {
-                LoggingHelper.DoBotTrace( 6, string.Format( ".SiteActivityAdd Skipping Bot: activity. Agent: {0}, Activity: {1}, Event: {2}, \r\nRelatedTargetUrl: {3}", agent, log.Activity, log.Event, log.RelatedTargetUrl ) );
+                //LoggingHelper.DoBotTrace( 6, string.Format( ".SiteActivityAdd Skipping Bot: activity. Agent: {0}, Activity: {1}, Event: {2}, \r\nRelatedTargetUrl: {3}", agent, log.Activity, log.Event, log.RelatedTargetUrl ) );
                 //should this be added with isBot attribute for referencing when crawled?
                 return 0;
             }
@@ -342,7 +342,8 @@ namespace workIT.Factories
             CommonTotals entity = new CommonTotals();
             using (var context = new ViewContext())
             {
-                Views.SiteTotalsSummary item = context.SiteTotalsSummaries
+				//21-01-05 mparsons - note that the view (SiteTotalsSummaries) states to no longer use it!!!!
+				Views.SiteTotalsSummary item = context.SiteTotalsSummaries
                         .SingleOrDefault(s => s.Id == 1);
 
                 if (item != null && item.Id > 0)

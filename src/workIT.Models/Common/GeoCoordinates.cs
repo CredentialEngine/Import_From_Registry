@@ -17,7 +17,7 @@ namespace workIT.Models.Common
 			ToponymName = "";
 			Region = "";
 			Country = "";
-			Bounds = new BoundingBox();
+			//Bounds = new BoundingBox();
 			//Address = new Address();  //Do not initialize this here, it will cause an infinite recursive loop with the constructor of GeoCoordinates
 		}
 
@@ -33,20 +33,7 @@ namespace workIT.Models.Common
         public string Name_Map { get; set; }
         public bool IsException { get; set; }
 		public Address Address { get; set; }
-		public List<Address> Auto_Address {  get
-			{
-				var result = new List<Address>();
-				if( Address != null )
-				{
-					result.Add( Address );
-				}
-				return result;
-			}
-			set
-			{
-				Address = value.FirstOrDefault();
-			}
-		}
+
 		public string ToponymName { get; set; }
 		public string Region { get; set; }
 		public string Country { get; set; }
@@ -76,7 +63,7 @@ namespace workIT.Models.Common
 		public string LocationFormatted { get { return string.IsNullOrWhiteSpace( this.Region ) ? this.Country : this.Region + ", " + this.Country; } }
 
 		public string ProfileSummary { get; set; }
-		public BoundingBox Bounds { get; set; }
+		public BoundingBox Bounds { get; set; } = new BoundingBox();
 
 	}
     //

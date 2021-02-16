@@ -20,7 +20,7 @@ namespace ImportHelpers
         public SaveStatus ImportByEnvelopeId( string envelopeId, bool handlingPendingRecords = false )
         {
             LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by envelopeId: {0}", envelopeId ) );
-            Import.Services.RegistryServices mgr = new Import.Services.RegistryServices();
+            var mgr = new ImportHelperServices();
             if ( mgr.ImportByEnvelopeId( envelopeId, status ) )
             {
 				if ( handlingPendingRecords )
@@ -35,9 +35,9 @@ namespace ImportHelpers
 		{
             //, bool doPendingTask = false 
             LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by ctid: {0}", ctid ) );
-			Import.Services.RegistryServices mgr = new Import.Services.RegistryServices();
+			var mgr = new ImportHelperServices();
 			//TODO - update to check for alternate community if not found with the default community
-            if ( mgr.ImportByCtid( ctid, status ))
+			if ( mgr.ImportByCtid( ctid, status ))
             {
 				if ( handlingPendingRecords )
 					new RegistryServices().ImportPending();
@@ -48,6 +48,7 @@ namespace ImportHelpers
             return status;
 		}
 		//
+		/*
 		public SaveStatus ImportCredential( string envelopeId, bool handlingPendingRecords = false)
 		{
 			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import credential by envelopeId: {0}", envelopeId ) );
@@ -167,5 +168,7 @@ namespace ImportHelpers
 			//	new ImportLearningOpportunties().ImportPendingRecords();
 			return status;
 		}
+
+		*/
 	}
 }

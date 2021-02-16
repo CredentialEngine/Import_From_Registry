@@ -1165,7 +1165,7 @@ namespace Import.Services
 				else if ( jp.GlobalJurisdiction.HasValue )
 				{
 					njp.MainJurisdiction = null;
-					njp.GlobalJurisdiction = jp.GlobalJurisdiction;
+					njp.GlobalJurisdiction = jp.GlobalJurisdiction ?? false;
 				}
 				else
 				{
@@ -1350,6 +1350,7 @@ namespace Import.Services
 				var profile = new MC.EarningsProfile
 				{
 					RowId = rowId,
+					CTID = input.CTID,
 					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
 					HighEarnings = input.HighEarnings,
 					LowEarnings = input.LowEarnings,
@@ -1370,17 +1371,17 @@ namespace Import.Services
 						var ctid = ResolutionServices.ExtractCtid( item );
 						if ( string.IsNullOrWhiteSpace( ctid ) )
 						{
-							status.AddError( string.Format( "Error: Unable to derive a ctid from the EarningsProfile.RelevantDataSet for EarningsProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.Ctid, item ) );
+							status.AddError( string.Format( "Error: Unable to derive a ctid from the EarningsProfile.RelevantDataSet for EarningsProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.CTID, item ) );
 							continue;
 						}
 						//get dataset profile
-						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.Ctid == ctid );
-						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.Ctid ) )
+						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.CTID == ctid );
+						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID ) )
 						{
-							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for EarningsProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.Ctid, ctid ) );
+							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for EarningsProfile (EP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.CTID, ctid ) );
 							continue;
 						}
-						var dspo = FormatDataSetProfile( input.Ctid, dspi, outcomesDTO, ref status );
+						var dspo = FormatDataSetProfile( input.CTID, dspi, outcomesDTO, ref status );
 						//may want to store the ctid, although will likely use relationships, or store the json
 						if ( dspo != null )
 						{
@@ -1410,13 +1411,13 @@ namespace Import.Services
 				if ( input == null )
 					continue;
 				Guid rowId = Guid.NewGuid();
-				LoggingHelper.DoTrace( 7, string.Format( "FormatHoldersProfile. parentCTID: {0}, CTID: {1}, ", parentCTID, input.Ctid ) );
+				LoggingHelper.DoTrace( 7, string.Format( "FormatHoldersProfile. parentCTID: {0}, CTID: {1}, ", parentCTID, input.CTID ) );
 
 				//holders profile doesn't have a name
 				var profile = new MC.HoldersProfile
 				{
 					RowId = rowId, //?????????????
-					CTID = input.Ctid,
+					CTID = input.CTID,
 					Name = HandleLanguageMap( input.Name, "Name" ),
 					Description = HandleLanguageMap( input.Description, "Description" ),
 					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
@@ -1436,17 +1437,17 @@ namespace Import.Services
 						var ctid = ResolutionServices.ExtractCtid( item );
 						if ( string.IsNullOrWhiteSpace( ctid ) )
 						{
-							status.AddError( string.Format( "Error: Unable to derive a ctid from the HoldersProfile.RelevantDataSet for HoldersProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.Ctid, item ) );
+							status.AddError( string.Format( "Error: Unable to derive a ctid from the HoldersProfile.RelevantDataSet for HoldersProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.CTID, item ) );
 							continue;
 						}
 						//get dataset profile
-						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.Ctid == ctid );
-						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.Ctid) )
+						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.CTID == ctid );
+						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID) )
 						{
-							status.AddError( string.Format("Error: Unable to find the DataSetProfile for HoldersProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.Ctid, ctid ));
+							status.AddError( string.Format("Error: Unable to find the DataSetProfile for HoldersProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.CTID, ctid ));
 							continue;
 						}
-						var dspo = FormatDataSetProfile( input.Ctid, dspi, outcomesDTO, ref status );
+						var dspo = FormatDataSetProfile( input.CTID, dspi, outcomesDTO, ref status );
 						//may want to store the ctid, although will likely use relationships, or store the json
 						if ( dspo != null )
 						{
@@ -1464,12 +1465,12 @@ namespace Import.Services
 		//
 		public MCQ.DataSetProfile FormatDataSetProfile( string parentCTID, MJ.QData.DataSetProfile input, OutcomesDTO outcomesDTO, ref SaveStatus status )
 		{
-			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetProfile. parentCTID: {0}, CTID: {1}, ", parentCTID, input.Ctid ) );
+			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetProfile. parentCTID: {0}, CTID: {1}, ", parentCTID, input.CTID ) );
 
 
 			var output = new MCQ.DataSetProfile()
 			{
-				CTID = input.Ctid,
+				CTID = input.CTID,
 				Name = HandleLanguageMap( input.Name, "Name" ),
 				Description = HandleLanguageMap( input.Description, "Description" ),
 				DataSuppressionPolicy = HandleLanguageMap( input.DataSuppressionPolicy, "DataSuppressionPolicy" ),
@@ -1496,10 +1497,10 @@ namespace Import.Services
 					var dspi = outcomesDTO.DataSetTimeFrames.FirstOrDefault( s => s.CtdlId.ToLower() == item.ToLower() );
 					if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CtdlId ) )
 					{
-						status.AddError( string.Format( "Error: Unable to find the DataSetTimeFrame for DataSetProfile (CTID: '{0}') using DataSetTimePeriod BNodeID: '{1}', parent CTID: '{2}'", input.Ctid, item, parentCTID ) );
+						status.AddError( string.Format( "Error: Unable to find the DataSetTimeFrame for DataSetProfile (CTID: '{0}') using DataSetTimePeriod BNodeID: '{1}', parent CTID: '{2}'", input.CTID, item, parentCTID ) );
 						continue;
 					}
-					var dspo = FormatDataSetTimeFrame( input.Ctid, dspi, outcomesDTO, ref status );
+					var dspo = FormatDataSetTimeFrame( input.CTID, dspi, outcomesDTO, ref status );
 					//maybe
 					if ( dspo != null )
 					{
@@ -1726,6 +1727,7 @@ namespace Import.Services
 				var profile = new MC.EmploymentOutcomeProfile
 				{
 					RowId = rowId,
+					CTID = input.CTID,
 					Name = HandleLanguageMap( input.Name, "Name" ),
 					Description = HandleLanguageMap( input.Description, "Description" ),
 					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
@@ -1742,17 +1744,17 @@ namespace Import.Services
 						var ctid = ResolutionServices.ExtractCtid( item );
 						if ( string.IsNullOrWhiteSpace( ctid ) )
 						{
-							status.AddError( string.Format( "Error: Unable to derive a ctid from the EmploymentOutcomeProfile.RelevantDataSet for EmploymentOutcomeProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.Ctid, item ) );
+							status.AddError( string.Format( "Error: Unable to derive a ctid from the EmploymentOutcomeProfile.RelevantDataSet for EmploymentOutcomeProfile (HP.CTID: '{0}') using RelevantDataSet URI: '{1}'", input.CTID, item ) );
 							continue;
 						}
 						//get dataset profile
-						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.Ctid == ctid );
-						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.Ctid ) )
+						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.CTID == ctid );
+						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID ) )
 						{
-							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for EmploymentOutcomeProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.Ctid, ctid ) );
+							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for EmploymentOutcomeProfile (EOP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.CTID, ctid ) );
 							continue;
 						}
-						var dspo = FormatDataSetProfile( input.Ctid, dspi, outcomesDTO, ref status );
+						var dspo = FormatDataSetProfile( input.CTID, dspi, outcomesDTO, ref status );
 						//may want to store the ctid, although will likely use relationships, or store the json
 						if ( dspo != null )
 						{
@@ -2864,7 +2866,10 @@ namespace Import.Services
 				output.Weight = input.Weight;
 
 				//output.CreditValue = HandleQuantitiveValue( input.CreditValue, "ConditionProfile.CreditHourType" );
-				output.CreditValueList = HandleValueProfileListToQVList( input.CreditValue, "ConditionProfile.CreditValue", true );
+				output.CreditValueList2 = HandleValueProfileListToQVList( input.CreditValue, "ConditionProfile.CreditValue", true );
+				//TODO - chg to output to ValueProfile
+				output.CreditValueList = HandleValueProfileList( input.CreditValue, "ConditionProfile.CreditValue" );
+				//
 				output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValueList, MappingHelperV3.GetJsonSettings() );
 
 				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
@@ -2904,7 +2909,8 @@ namespace Import.Services
 					output.AlternativeCondition = FormatConditionProfile( input.AlternativeCondition, ref status );
 
 				output.EstimatedCosts = FormatCosts( input.EstimatedCost, ref status );
-
+				//
+				output.CostManifestIds = MapEntityReferences( input.CommonCosts, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, ref status );
 				//jurisdictions
 				output.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
 				output.ResidentOf = MapToJurisdiction( input.ResidentOf, ref status );

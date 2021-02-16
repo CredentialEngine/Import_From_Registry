@@ -58,7 +58,7 @@ namespace Import.Services
                     LoggingHelper.DoTrace(1, string.Format("     - (). Successfully imported pending credential: {0}", item.Id));
             }
 		}   //
-
+		/*
 		/// <summary>
 		/// Retrieve an envelop from the registry and do import
 		/// </summary>
@@ -136,7 +136,7 @@ namespace Import.Services
 				return false;
 			}
 		}
-
+		*/
         /// <summary>
         /// NOTE: this will have to be updated to get by /graph/
         /// </summary>
@@ -153,17 +153,38 @@ namespace Import.Services
 			string payload = "";
 			try
 			{
-				payload = RegistryServices.GetResourceByUrl( resourceUrl, ref ctdlType, ref statusMessage );
-
-				if ( !string.IsNullOrWhiteSpace( payload ) )
+				//for consistency, we should extract the ctid, and then get the envelope
+				var ctid = ResolutionServices.ExtractCtid( resourceUrl );
+				//may need to check for a community?
+				if ( !string.IsNullOrWhiteSpace( ctid ) && ctid.Length == 39 )
 				{
-					return ImportV3( payload, "", status );
-                }
+					var envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+					if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+					{
+						return CustomProcessRequest( envelope, status );
+					}
+					else
+					{
+						status.AddError( "Error - ImportByResourceUrl Unable to find an envelope using CTID: " + ctid );
+						return false;
+					}
+				}
 				else
 				{
-					status.AddError( statusMessage );
+					status.AddError( "Error - ImportByResourceUrl Unable to extract a CTID from the provided URL: " + resourceUrl);
 					return false;
 				}
+				//payload = RegistryServices.GetResourceByUrl( resourceUrl, ref ctdlType, ref statusMessage );
+
+				//if ( !string.IsNullOrWhiteSpace( payload ) )
+				//{
+				//	return ImportV3( payload, "", status );
+    //            }
+				//else
+				//{
+				//	status.AddError( statusMessage );
+				//	return false;
+				//}
 			}
 			catch ( Exception ex )
 			{
@@ -182,18 +203,18 @@ namespace Import.Services
 			}
 		}
 
-        public bool ImportByPayload( string payload, SaveStatus status )
-		{
-            //if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-            //{
-                    return ImportV3( payload, "", status );
-            //}
-            //else
-            //{
-            //    input = JsonConvert.DeserializeObject<InputEntity>( payload );
-            //    return Import( input, "", status );
-            //}
-        }
+  //      public bool ImportByPayload( string payload, SaveStatus status )
+		//{
+  //          //if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+  //          //{
+  //                  return ImportV3( payload, "", status );
+  //          //}
+  //          //else
+  //          //{
+  //          //    input = JsonConvert.DeserializeObject<InputEntity>( payload );
+  //          //    return Import( input, "", status );
+  //          //}
+  //      }
 		/// <summary>
 		/// Custom version, typically called outside a scheduled import
 		/// </summary>
@@ -234,17 +255,27 @@ namespace Import.Services
 			{
 				status.SetEnvelopeUpdated( envelopeUpdateDate );
 			}
+			//
+			if ( item.documentPublishedBy != null )
+			{
+				if ( item.documentOwnedBy == null || ( item.documentPublishedBy != item.documentOwnedBy ))
+					status.DocumentPublishedBy = item.documentPublishedBy;
+			} else
+			{
+				//will need to check elsewhere
+				//OR as part of import check if existing one had 3rd party publisher
+			}
 
 			string payload = item.DecodedResource.ToString();
-			string envelopeIdentifier = item.EnvelopeIdentifier;
-			string ctdlType = RegistryServices.GetResourceType( payload );
-			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeCetermsCtid + "_credential", payload, "", false );
+			//status.EnvelopeId = item.EnvelopeIdentifier;
+			//string ctdlType = RegistryServices.GetResourceType( payload );
+			//string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel",5), item.EnvelopeCetermsCtid + "_credential", payload, "", false );
 
 			//if ( ImportServiceHelpers.IsAGraphResource( payload ) )
 			//{
 			//if ( payload.IndexOf( "\"en\":" ) > 0 )
-			return ImportV3( payload, envelopeIdentifier, status );
+			return ImportV3( payload, status );
                 //else
                 //    return ImportV2( payload, envelopeIdentifier, status );
             //}
@@ -260,7 +291,7 @@ namespace Import.Services
 		}
 
         
-        public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
+        public bool ImportV3( string payload, SaveStatus status )
         {
 			LoggingHelper.DoTrace( 7, thisClassName + ".ImportV3 - entered." );
 			DateTime started = DateTime.Now;
@@ -338,31 +369,36 @@ namespace Import.Services
             
             MappingHelperV3 helper = new MappingHelperV3(1);
             helper.entityBlankNodes = bnodes;
-			helper.CurrentEntityCTID = input.Ctid;
+			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
 
-			status.EnvelopeId = envelopeIdentifier;
+			//status.EnvelopeId = envelopeIdentifier;
             try
             {
                 //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-                ctid = input.Ctid;
+                ctid = input.CTID;
                 string referencedAtId = input.CtdlId;
 
                 LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
                 //LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-                //LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+                //LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
                 LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
                 status.Ctid = ctid;
 
                 if ( status.DoingDownloadOnly )
                     return true;
 
-                if ( !DoesEntityExist( input.Ctid, ref output ) )
-                {
-                    //set the rowid now, so that can be referenced as needed
-                    output.RowId = Guid.NewGuid();
-                }
-                helper.currentBaseObject = output;
+				if ( !DoesEntityExist( input.CTID, ref output ) )
+				{
+					//set the rowid now, so that can be referenced as needed
+					output.RowId = Guid.NewGuid();
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+				}
+				else
+				{
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
+				}
+				helper.currentBaseObject = output;
 
                 //start with language and may use with language maps
                 foreach ( var l in input.InLanguage )
@@ -386,10 +422,50 @@ namespace Import.Services
                 output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
                 output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
                 output.SubjectWebpage = input.SubjectWebpage;
-                output.CTID = input.Ctid;
+                output.CTID = input.CTID;
+				//TBD handling
+				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+				{
+					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+					var porg = OrganizationManager.GetByCtid( status.DocumentPublishedBy );
+					if ( porg != null && porg.Id > 0 )
+					{
+						//TODO - store this in a json blob??????????
+						//output.PublishedByOrganizationId = porg.Id;
+						//output.PublishedByOrganizationName = porg.Name;
+						//this will result in being added to Entity.AgentRelationship
+						output.PublishedBy = new List<Guid>() { porg.RowId };
+					} else
+					{
+						//if publisher not imported yet, all publishee stuff will be orphaned
+						var entityUid = Guid.NewGuid();
+						var statusMsg = "";
+						var resPos = referencedAtId.IndexOf( "/resources/" );
+						var swp = referencedAtId.Substring(0, (resPos + "/resources/".Length)) + status.DocumentPublishedBy;
+						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+
+					}
+				} else
+				{
+					//may need a check for existing published by to ensure not lost
+					if (output.Id > 0)
+					{
+						if (output.OrganizationRole != null && output.OrganizationRole.Any() )
+						{
+							var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+							if (publishedByList != null  && publishedByList.Any())
+							{
+								var pby = publishedByList[ 0 ].ActingAgentUid;
+								output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+
+							}
+						}
+
+					}
+				}
 
 				//warning this gets set to blank if doing a manual import by ctid
-				output.CredentialRegistryId = envelopeIdentifier;
+				output.CredentialRegistryId = status.EnvelopeId;
                 output.CredentialStatusType = helper.MapCAOToEnumermation( input.CredentialStatusType );
 
 				//BYs - do owned and offered first
@@ -531,23 +607,34 @@ namespace Import.Services
 				//for a QA credential - HasETPLResource
 				//this returns a list of guids
 				//perhaps would be more efficient to return a list of TopLevelObjects? - we should already know the latter after resolution, so store now rather than having to look up later
-				output.HasETPLResourceUids = helper.MapEntityReferenceGuids( "Credential.HasETPLResource", input.HasETPLResource, 0, ref status );
-				if ( output.HasETPLResourceUids != null && output.HasETPLResourceUids.Count() > 0 )
+				try
 				{
-					var tloList = ProfileServices.ResolveToTopLevelObject( output.HasETPLResourceUids, "Credential.HasETPLResource", ref status );
-					//could save the TLO, although we really only need the id later
-					output.HasETPLCredentialsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 1 ).Select( g => g.Id);
-					output.HasETPLAssessmentsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 3 ).Select( g => g.Id );
-					output.HasETPLLoppsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 7 ).Select( g => g.Id );					
+					output.HasETPLResourceUids = helper.MapEntityReferenceGuids( "Credential.HasETPLResource", input.HasETPLResource, 0, ref status );
+					if ( output.HasETPLResourceUids != null && output.HasETPLResourceUids.Count() > 0 )
+					{
+						var tloList = ProfileServices.ResolveToTopLevelObject( output.HasETPLResourceUids, "Credential.HasETPLResource", ref status );
+						//could save the TLO, although we really only need the id later
+						if ( tloList != null && tloList.Any() )
+						{
+							output.HasETPLCredentialsIds = ExtractEntityIds( tloList, 1 );
+							output.HasETPLAssessmentsIds = ExtractEntityIds( tloList, 3 );
+							output.HasETPLLoppsIds = ExtractEntityIds( tloList, 7 );
+							//output.HasETPLCredentialsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 1 ).Select( g => g.Id );
+							//output.HasETPLAssessmentsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 3 ).Select( g => g.Id );
+							//output.HasETPLLoppsIds = ( List<int> )tloList.Where( s => s.EntityTypeId == 7 ).Select( g => g.Id );
+						}
 
-					//output.HasETPLAssessments = tloList.Where( s => s.EntityTypeId == 3 ).ToList();
-					////
-					//output.HasETPLCredentials = tloList.Where( s => s.EntityTypeId == 1 ).ToList();
-					//var inputIds = output.HasETPLCredentials.Select( x => x.Id ).ToList();
-					////
-					//output.HasETPLLopps = tloList.Where( s => s.EntityTypeId == 7 ).ToList();
+						//output.HasETPLAssessments = tloList.Where( s => s.EntityTypeId == 3 ).ToList();
+						////
+						//output.HasETPLCredentials = tloList.Where( s => s.EntityTypeId == 1 ).ToList();
+						//var inputIds = output.HasETPLCredentials.Select( x => x.Id ).ToList();
+						////
+						//output.HasETPLLopps = tloList.Where( s => s.EntityTypeId == 7 ).ToList();
+					}
+				}catch(Exception ex)
+				{
+					LoggingHelper.LogError( ex, string.Format( "CredentialImport. Exception encountered for CTID: {0} during ETPL section", ctid ), false, "Credential Import ETPL exception" );
 				}
-
 				//Process profiles
 				output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
                 output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
@@ -643,7 +730,19 @@ namespace Import.Services
 
 			}
 			return importSuccessfull;
-        }
+		}
+
+		public List<int> ExtractEntityIds( List<TopLevelObject> list, int entityTypeId)
+		{
+			var output = new List<int>();
+			var results = list.Where( s => s.EntityTypeId == entityTypeId ).ToList();
+			if (results != null && results.Any())
+			{
+				output = results.Select( x => x.Id ).ToList();
+			}
+
+			return output;
+		}
 
         public bool DoesEntityExist( string ctid, ref ThisEntity entity )
         {
@@ -671,19 +770,19 @@ private bool Import( InputEntity input, string envelopeIdentifier, SaveStatus st
 	try
 	{
 		//input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-		string ctid = input.Ctid;
+		string ctid = input.CTID;
 		string referencedAtId = input.CtdlId;
 
 		LoggingHelper.DoTrace( 6, "		name: " + input.Name );
 		LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-		LoggingHelper.DoTrace( 6, "		ctid: " + input.Ctid );
+		LoggingHelper.DoTrace( 6, "		ctid: " + input.CTID );
 		LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
-		status.Ctid = ctid;
+		status.CTID = ctid;
 
 		if ( status.DoingDownloadOnly )
 			return true;
 
-		if (!DoesEntityExist( input.Ctid, ref output ))
+		if (!DoesEntityExist( input.CTID, ref output ))
 		{
 			//set the rowid now, so that can be referenced as needed
 			output.RowId = Guid.NewGuid();
@@ -700,7 +799,7 @@ private bool Import( InputEntity input, string envelopeIdentifier, SaveStatus st
 		output.Name = input.Name;
 		output.Description = input.Description;
 		output.SubjectWebpage = input.SubjectWebpage;
-		output.CTID = input.Ctid;
+		output.CTID = input.CTID;
 		output.CredentialRegistryId = envelopeIdentifier;
 		output.CredentialStatusType = MappingHelper.MapCAOToEnumermation( input.CredentialStatusType );
 		output.DateEffective = input.DateEffective;

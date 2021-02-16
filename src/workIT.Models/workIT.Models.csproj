@@ -102,11 +102,18 @@
     <Compile Include="DescriptionSet.cs" />
     <Compile Include="Detail\BaseDisplay.cs" />
     <Compile Include="Detail\OrganizationDetail.cs" />
+    <Compile Include="Detail\ProcessProfile.cs" />
+    <Compile Include="Detail\VerificationServiceProfile.cs" />
     <Compile Include="Elastic\Address.cs" />
     <Compile Include="Elastic\BaseIndex.cs" />
     <Compile Include="Elastic\CommonIndex.cs" />
     <Compile Include="Elastic\CompetencyFrameworkIndex.cs" />
+    <Compile Include="Elastic\ConditionManifest.cs" />
+    <Compile Include="Elastic\ConditionProfile.cs" />
+    <Compile Include="Elastic\CostManifest.cs" />
+    <Compile Include="Elastic\CostProfile.cs" />
     <Compile Include="Elastic\IIndex.cs" />
+    <Compile Include="Elastic\JurisdictionProfile.cs" />
     <Compile Include="Elastic\LearningOppIndex.cs" />
     <Compile Include="Elastic\AssessmentIndex.cs" />
     <Compile Include="Elastic\AudienceLevel.cs" />
@@ -114,6 +121,7 @@
     <Compile Include="Elastic\CredentialIndex.cs" />
     <Compile Include="Elastic\OrganizationIndex.cs" />
     <Compile Include="Elastic\PathwayIndex.cs" />
+    <Compile Include="Elastic\SearchHelpers.cs" />
     <Compile Include="Helpers\BenchmarkPropertyTotal.cs" />
     <Compile Include="Helpers\Compare.cs" />
     <Compile Include="Helpers\CompetencyFrameworkHelpers.cs" />

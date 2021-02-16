@@ -42,9 +42,9 @@ namespace workIT.Models.Common
 		public string CTID { get; set; }
 		public string Description { get; set; }
 		public string SubjectWebpage { get; set; }
-		public bool IsValid { get; set; }
+		public string DetailURL { get; set; }
 
-		public System.Guid RowId { get; set; }
+		//public System.Guid RowId { get; set; }
 		private int _entityTypeId { get; set; }
 		public int EntityTypeId
 		{
@@ -97,6 +97,30 @@ namespace workIT.Models.Common
 					case 26:
 						EntityType = "TransferValue";
 						break;
+					case 28:
+						EntityType = "EarningsProfile";
+						break;
+					case 29:
+						EntityType = "HoldersProfile";
+						break;
+					case 30:
+						EntityType = "EmploymentOutcomeProfile";
+						break;
+					case 31:
+						EntityType = "DataSetProfile";
+						break;
+					case 32:
+						EntityType = "JobProfile";
+						break;
+					case 33:
+						EntityType = "TaskProfile";
+						break;
+					case 34:
+						EntityType = "WorkRoleProfile";
+						break;
+					case 35:
+						EntityType = "OccupationProfile";
+						break;
 					default:
 						EntityType = string.Format( "Unexpected EntityTypeId of {0}", _entityTypeId );
 						break;
@@ -104,5 +128,37 @@ namespace workIT.Models.Common
 			}
 		}
 		public string EntityType { get; set; }
+	}
+
+	public class EntityCache
+	{
+		public int Id { get; set; }
+		public int EntityTypeId { get; set; }
+		public string EntityType { get; set; }
+		public int EntityStateId { get; set; }
+		public System.Guid EntityUid { get; set; }
+		public int BaseId { get; set; }
+		public string Name { get; set; }
+		public string Description { get; set; }
+		public string CTID { get; set; }
+		public int OwningOrgId { get; set; }
+		/// <summary>
+		/// Use OwningAgentUID to get OwningOrgId if not available
+		/// </summary>
+		public System.Guid OwningAgentUID { get; set; }
+		public string SubjectWebpage { get; set; }
+		public string ImageUrl { get; set; }
+		public int parentEntityId { get; set; }
+		public System.Guid parentEntityUid { get; set; }
+		public string parentEntityType { get; set; }
+		public int parentEntityTypeId { get; set; }
+
+		public System.DateTime Created { get; set; }
+
+		public System.DateTime LastUpdated { get; set; }
+		public System.DateTime CacheDate { get; set; }
+
+
+
 	}
 }

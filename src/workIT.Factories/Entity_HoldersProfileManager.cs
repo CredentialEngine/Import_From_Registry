@@ -1,21 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.Entity_HoldersProfile;
+using workIT.Utilities;
+
 using DBEntity = workIT.Data.Tables.Entity_HoldersProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
-using workIT.Utilities;
-using CM = workIT.Models.Common;
-using workIT.Models.ProfileModels;
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
 
 namespace workIT.Factories
 {
@@ -145,6 +137,7 @@ namespace workIT.Factories
 						new HoldersProfileManager().Delete( item.Id, ref messages );
 						if ( messages.Any() )
 							status.AddErrorRange( messages );
+						continue;
 					}
 					context.Entity_HoldersProfile.Remove( item );
 					count = context.SaveChanges();
@@ -206,6 +199,61 @@ namespace workIT.Factories
 				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
 			}
 			return list;
+		}
+		/// <summary>
+		/// Format a summary of the HoldersProfile for use in search and gray boxes
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		public static string GetSummary( Guid parentUid )
+		{
+			var list = new List<HoldersProfile>();
+			var entity = new HoldersProfile();
+
+			Entity parent = EntityManager.GetEntity( parentUid );
+			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			var summary = "";
+			var lineBreak = "";
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_HoldersProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							entity = new HoldersProfile();
+							if ( item.HoldersProfile != null && item.HoldersProfile.EntityStateId > 1 )
+							{
+								if ( !string.IsNullOrWhiteSpace(item.HoldersProfile.Name) )
+									summary = item.HoldersProfile.Name + lineBreak;
+								else if ( !string.IsNullOrWhiteSpace( item.HoldersProfile.Description) )
+								{
+									summary = item.HoldersProfile.Description.Length < 200 ? item.HoldersProfile.Description : item.HoldersProfile.Description.Substring(0, 200) + "  ... " + lineBreak;
+								}
+								else
+								{
+
+								}
+								if ( item.HoldersProfile.NumberAwarded > 0 )
+									summary += string.Format( " Number awarded: {0}", item.HoldersProfile.NumberAwarded );
+							}
+							lineBreak = "<\br>";
+						}
+					}
+					return summary;
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetSummary" );
+			}
+			return summary;
 		}
 		//unlikely to use
 		//public static ThisEntity Get( int parentId, int holdersProfileId )

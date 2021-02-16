@@ -48,27 +48,32 @@ namespace workIT.Factories
 
         }
 
-        //public void PopulateEntitySearchCache( int entityId )
-        //{
+		//public void PopulateEntitySearchCache( int entityId )
+		//{
 
-        //	string connectionString = MainConnection();
-        //	using ( SqlConnection c = new SqlConnection( connectionString ) )
-        //	{
-        //		c.Open();
+		//	string connectionString = MainConnection();
+		//	using ( SqlConnection c = new SqlConnection( connectionString ) )
+		//	{
+		//		c.Open();
 
-        //		using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
-        //		{
-        //			command.CommandType = CommandType.StoredProcedure;
-        //			command.Parameters.Add( new SqlParameter( "@EntityId", entityId ) );
+		//		using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
+		//		{
+		//			command.CommandType = CommandType.StoredProcedure;
+		//			command.Parameters.Add( new SqlParameter( "@EntityId", entityId ) );
 
-        //			command.ExecuteNonQuery();
-        //			command.Dispose();
-        //			c.Close();
+		//			command.ExecuteNonQuery();
+		//			command.Dispose();
+		//			c.Close();
 
-        //		}
-        //	}
-        //}
-        public void PopulateEntityRelatedCaches( Guid entityUid )
+		//		}
+		//	}
+		//}
+
+		/// <summary>
+		/// Populate Entity Related Caches
+		/// </summary>
+		/// <param name="entityUid"></param>
+		public void PopulateEntityRelatedCaches( Guid entityUid )
 		{
 			Entity e = EntityManager.GetEntity( entityUid );
 			if ( e == null || e.Id == 0 )
@@ -78,31 +83,35 @@ namespace workIT.Factories
 			string connectionString = MainConnection();
 			try
 			{
+				//TODO - make obsolete
 				using ( SqlConnection c = new SqlConnection( connectionString ) )
 				{
-					using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
+					//progressively make this obsolete
+					if ( e.EntityTypeId != 1 )
 					{
-						c.Open();
-						command.CommandType = CommandType.StoredProcedure;
-						command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-						command.CommandTimeout = 300;
-						command.ExecuteNonQuery();
-						command.Dispose();
-						c.Close();
-
+						using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
+						{
+							c.Open();
+							command.CommandType = CommandType.StoredProcedure;
+							command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+							command.CommandTimeout = 300;
+							command.ExecuteNonQuery();
+							command.Dispose();
+							c.Close();
+						}
 					}
+					//21-02-05 - is this still useful?
+					//using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
+					//{
+					//	c.Open();
+					//	command.CommandType = CommandType.StoredProcedure;
+					//	command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+					//	command.CommandTimeout = 300;
+					//	command.ExecuteNonQuery();
+					//	command.Dispose();
+					//	c.Close();
 
-					using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
-					{
-						c.Open();
-						command.CommandType = CommandType.StoredProcedure;
-						command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-						command.CommandTimeout = 300;
-						command.ExecuteNonQuery();
-						command.Dispose();
-						c.Close();
-
-					}
+					//}
 				}
 			}catch (Exception ex)
 			{

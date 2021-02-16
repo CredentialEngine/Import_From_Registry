@@ -154,7 +154,7 @@ namespace Import.Services
             string ctdlType = RegistryServices.GetResourceType( payload );
             string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
             LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-            LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_ConceptScheme", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_ConceptScheme", payload, "", false );
 
             //just store input for now
             return Import( payload, envelopeIdentifier, status );

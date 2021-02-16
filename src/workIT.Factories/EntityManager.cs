@@ -16,7 +16,7 @@ using Views = workIT.Data.Views;
 
 using ThisEntity = workIT.Models.Common.Entity;
 using DBentity = workIT.Data.Tables.Entity;
-
+using DBEntityCache = workIT.Data.Tables.Entity_Cache;
 using ViewContext = workIT.Data.Views.workITViews;
 using EntityContext = workIT.Data.Tables.workITEntities;
 
@@ -414,7 +414,13 @@ namespace workIT.Factories
 				{
 					entity.Id = item.Id;
 					entity.EntityTypeId = item.EntityTypeId;
-					//entity.EntityType = item.Codes_EntityTypes.Title;
+					//not why this was commented. Reusing with care
+					if ( item.Codes_EntityTypes != null )
+						entity.EntityType = item.Codes_EntityTypes.Title;
+					else
+					{
+						entity.EntityType = GetEntityType( entity.EntityTypeId );
+					}
 					entity.EntityUid = item.EntityUid;
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
@@ -437,7 +443,13 @@ namespace workIT.Factories
 				{
 					entity.Id = item.Id;
 					entity.EntityTypeId = item.EntityTypeId;
-					//entity.EntityType = item.Codes_EntityTypes.Title;
+					//not why this was commented. Reusing with care
+					if(item.Codes_EntityTypes!=null)
+						entity.EntityType = item.Codes_EntityTypes.Title;
+					else
+					{
+						entity.EntityType = GetEntityType( entity.EntityTypeId );
+					}
 					entity.EntityUid = item.EntityUid;
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
@@ -450,7 +462,141 @@ namespace workIT.Factories
 
 		}
 
-		//Entity_Cache
+		//
+		#endregion
+		#region Entity_Cache
+		public int EntityCacheSave( EntityCache input, ref string statusMessage )
+		{
+			LoggingHelper.DoTrace( 6, string.Format( "EntityCacheSave entered. EntityTypeId:{0}, CTID: '{1}', BaseId: {2}, Name: {3}", input.EntityTypeId, input.CTID, input.BaseId, input.Name) );
+
+			DBEntityCache efEntity = new DBEntityCache();
+			if ( input.Id == 0 )
+			{
+				var ec = GetEntity( input.EntityTypeId, input.BaseId );
+				if (ec != null && ec.Id > 0)
+				{
+					input.Id = ec.Id;
+					input.EntityType = ec.EntityType;
+					input.EntityTypeId = ec.EntityTypeId;
+					input.EntityUid = ec.EntityUid;
+					input.BaseId = ec.EntityBaseId;
+				}
+			}
+			if (input.OwningOrgId==0)
+			{
+				var org = OrganizationManager.GetBasics( input.OwningAgentUID );
+				if ( org != null )
+					input.OwningOrgId = org.Id;
+			}
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					if ( input.Id == 0)
+					{
+						//may need a look up just in case
+						efEntity.Id = input.Id;//entityId
+						efEntity.EntityTypeId = input.EntityTypeId;
+						efEntity.EntityType = input.EntityType;
+						efEntity.EntityUid = input.EntityUid;
+						//
+						efEntity.BaseId = input.BaseId;
+						efEntity.CTID = input.CTID;
+						efEntity.Name = input.Name;
+						efEntity.EntityStateId = input.EntityStateId;
+						efEntity.Description = input.Description ?? "";
+						efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
+						efEntity.ImageUrl = input.ImageUrl ?? "";
+						efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
+						efEntity.OwningOrgId = input.OwningOrgId;
+						//not sure we really need this
+						efEntity.parentEntityId = input.parentEntityId;
+						efEntity.parentEntityType = input.parentEntityType;
+						efEntity.parentEntityTypeId = input.parentEntityTypeId;
+						efEntity.parentEntityUid = input.parentEntityUid;
+
+						//
+						efEntity.Created = efEntity.LastUpdated = input.Created;
+						efEntity.CacheDate = System.DateTime.Now;
+
+						context.Entity_Cache.Add( efEntity );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							statusMessage = "successful";
+							return efEntity.Id;
+						}
+						else
+						{
+							//?no info on error
+							statusMessage = "Error - the add was not successful. ";
+							string message = thisClassName + string.Format( ". Add Failed", "Attempted to add an Entity. The process appeared to not work, but was not an exception, so we have no message, or no clue. Entity_Cache: Type: {0}, Name: {1}, BaseId: {2}", input.EntityType, input.Name, input.BaseId );
+							EmailManager.NotifyAdmin( "AssessmentManager. Assessment_Add Failed", message );
+							return 0;
+						}
+					} else
+					{
+						efEntity = context.Entity_Cache
+									.FirstOrDefault( s => s.Id == input.Id );
+
+						if ( efEntity != null && efEntity.Id > 0 )
+						{
+							//these cannot be updated
+							//efEntity.EntityTypeId = input.EntityTypeId;
+							//efEntity.EntityType = input.EntityType;
+							//efEntity.EntityUid = input.EntityUid;
+							//
+							//efEntity.BaseId = input.BaseId;
+							//maybe if was a pending, 
+							efEntity.CTID = input.CTID;
+							efEntity.Name = input.Name;
+							efEntity.EntityStateId = input.EntityStateId;
+							efEntity.Description = input.Description ?? "";
+							efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
+							efEntity.ImageUrl = input.ImageUrl ?? "";
+							efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
+							efEntity.OwningOrgId = input.OwningOrgId;
+							//
+							efEntity.parentEntityId = input.parentEntityId;
+							efEntity.parentEntityType = input.parentEntityType;
+							efEntity.parentEntityTypeId = input.parentEntityTypeId;
+							efEntity.parentEntityUid = input.parentEntityUid;
+
+							//
+							efEntity.LastUpdated = input.LastUpdated;
+							if ( HasStateChanged( context ) )
+							{
+								efEntity.CacheDate = System.DateTime.Now;
+
+								//NOTE efEntity.EntityStateId is set to 0 in delete method )
+								int count = context.SaveChanges();
+								//can be zero if no data changed
+								if ( count >= 0 )
+								{
+									return efEntity.Id;
+								}
+								else
+								{
+									//?no info on error
+									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update an Entity_Cache. The process appeared to not work, but was not an exception, so we have no message, or no clue. Entity_Cache: Type: {0}, Name: {1}, BaseId: {2}", input.EntityType, input.Name, input.BaseId );
+									EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+								}
+							}
+							
+						} else
+						{
+							
+						}
+					}					
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".EntityCacheSave(). Entity_Cache: Type: {0}, Name: {1}, BaseId: {2}", input.EntityType, input.Name, input.BaseId ) );
+				}
+			}
+
+			return 0;
+		}
 		//public static Entity GetEntity_FromCache( int entityId )
 		//{
 		//	Entity entity = new Entity();
@@ -483,7 +629,7 @@ namespace workIT.Factories
 		//		return entity;
 		//	}
 		//}
-		public static Entity Entity_Cache_Get( string ctid )
+		public static Entity EntityGetFromEntityCache( string ctid )
 		{
 			Entity entity = new Entity();
 			using ( var context = new EntityContext() )
@@ -532,7 +678,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				//20-12-16 NOTE: the swp can be null now. It could be a risk to allow just a match on name and type. Could add whether a reference
-				EM.Entity_Cache item = context.Entity_Cache
+				var item = context.Entity_Cache
 						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
 						 && s.Name.ToLower() == (name ?? "").ToLower()
 						 && s.SubjectWebpage == subjectWebpage );
@@ -561,8 +707,42 @@ namespace workIT.Factories
 				return entity;
 			}
 		}
-	
+
+		public static Entity EntityCacheGet( int entityTypeId, int entityBaseId )
+		{
+			Entity entity = new Entity();
+			using ( var context = new EntityContext() )
+			{
+				var item = context.Entity_Cache
+						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
+						 && s.BaseId == entityBaseId );
+
+				if ( item != null && item.Id > 0 )
+				{
+					entity.Id = item.Id;
+					entity.EntityTypeId = item.EntityTypeId;
+					entity.EntityType = item.EntityType;
+					entity.EntityUid = item.EntityUid;
+					entity.EntityBaseId = item.BaseId;
+					entity.EntityBaseName = item.Name;
+					entity.Created = ( DateTime )item.Created;
+					entity.LastUpdated = ( DateTime )item.LastUpdated;
+					if ( item.parentEntityId > 0 )
+					{
+						//NOTE	- can use the included Entity to get more info
+						//		- although may want to turn off lazy loading
+						entity.ParentEntity = new ThisEntity();
+						entity.ParentEntity.Id = item.parentEntityId ?? 0;
+						entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
+						entity.ParentEntity.EntityType = item.parentEntityType;
+						entity.ParentEntity.EntityUid = ( Guid )item.parentEntityUid;
+					}
+				}
+				return entity;
+			}
+		}
+
 		#endregion
 
-    }
+	}
 }

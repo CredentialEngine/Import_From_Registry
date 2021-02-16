@@ -214,7 +214,7 @@ namespace workIT.Factories
 						efEntity.Created = System.DateTime.Now;
 						efEntity.LastUpdated = System.DateTime.Now;
 					}
-					efEntity.EntityStateId = 3;
+					efEntity.EntityStateId = entity.EntityStateId = 3;
 
 					context.Organization.Add( efEntity );
 
@@ -323,7 +323,7 @@ namespace workIT.Factories
 						//}
 						//call updateParts to handle recent and future additions
 						UpdateParts( entity, ref status );
-
+						entity.Id = efEntity.Id;
 						return efEntity.Id;
 					}
 
@@ -647,6 +647,8 @@ namespace workIT.Factories
 			//probably should just check for existance of parent, and add there, except we won't know if it is a department or subsidiary relationship!
 			//or rational for uses Entity.Asserts
 			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PARENT_ORG, entity.ParentOrganization, ref status );
+			//
+			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 
 			return isAllValid;
 		}
@@ -1095,7 +1097,10 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static ThisEntity GetBasics( Guid rowId )
 		{
-			ThisEntity to = new ThisEntity();
+			ThisEntity output = new ThisEntity();
+			if ( !IsGuidValid( rowId ) )
+				return output;
+
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
@@ -1105,11 +1110,11 @@ namespace workIT.Factories
 
 				if ( from != null && from.Id > 0 )
 				{
-					MapFromDB_ForSummary( from, to );
+					MapFromDB_ForSummary( from, output );
 				}
 			}
 
-			return to;
+			return output;
 		}
 
 		/// <summary>
@@ -1454,115 +1459,6 @@ namespace workIT.Factories
 
 			}
 		}
-		//public static List<OrganizationIndex> GetAllForElastic( string filter = "" )
-		//{
-		//    string connectionString = DBConnectionRO();
-		//    OrganizationIndex item = new OrganizationIndex();
-		//    List<OrganizationIndex> list = new List<OrganizationIndex>();
-		//    var result = new DataTable();
-		//    using ( SqlConnection c = new SqlConnection( connectionString ) )
-		//    {
-		//        c.Open();
-
-		//        using ( SqlCommand command = new SqlCommand( "[Organization.ElasticSearch]", c ) )
-		//        {
-		//            command.CommandType = CommandType.StoredProcedure;
-		//            command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-		//            command.Parameters.Add( new SqlParameter( "@SortOrder", "" ) );
-		//            command.Parameters.Add( new SqlParameter( "@StartPageIndex", "0" ) );
-		//            command.Parameters.Add( new SqlParameter( "@PageSize", "0" ) );
-		//            //command.Parameters.Add( new SqlParameter( "@CurrentUserId", userId ) );
-
-		//            SqlParameter totalRows = new SqlParameter( "@TotalRows", "0" );
-		//            totalRows.Direction = ParameterDirection.Output;
-		//            command.Parameters.Add( totalRows );
-
-		//            try
-		//            {
-		//                using ( SqlDataAdapter adapter = new SqlDataAdapter() )
-		//                {
-		//                    adapter.SelectCommand = command;
-		//                    adapter.Fill( result );
-		//                }
-		//                string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
-		//            }
-		//            catch ( Exception ex )
-		//            {
-		//                item = new OrganizationIndex();
-		//                item.Name = "EXCEPTION ENCOUNTERED";
-		//                item.Description = ex.Message;
-		//                list.Add( item );
-
-		//                return list;
-		//            }
-		//        }
-
-		//        foreach ( DataRow dr in result.Rows )
-		//        {
-		//            item = new OrganizationIndex();
-		//            item.Id = GetRowColumn( dr, "Id", 0 );
-		//            item.EntityTypeId = 2;
-		//            item.Name = GetRowColumn( dr, "Name", "missing" );
-		//            item.FriendlyName = FormatFriendlyTitle( item.Name );
-
-		//            item.Description = GetRowColumn( dr, "Description", "" );
-		//            string rowId = GetRowColumn( dr, "RowId" );
-		//            item.RowId = new Guid( rowId );
-		//            item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-		//            item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-
-		//            string date = GetRowColumn( dr, "Created", "" );
-		//            if ( IsValidDate( date ) )
-		//                item.Created = DateTime.Parse( date );
-		//            date = GetRowColumn( dr, "LastUpdated", "" );
-		//            if ( IsValidDate( date ) )
-		//                item.LastUpdated = DateTime.Parse( date );
-
-
-		//            item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
-		//            item.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
-		//            if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
-		//                item.IsACredentialingOrg = true;
-		//            item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
-
-		//            //all addressess
-		//            item.Addresses = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
-		//            if ( item.Addresses > 0 )
-		//            {
-		//                //will handle differently
-		//                #region Addresses
-		//                var addresses = dr["Addresses"].ToString();
-		//                if ( !string.IsNullOrWhiteSpace( addresses ) )
-		//                {
-		//                    var xDoc = new XDocument();
-		//                    xDoc = XDocument.Parse( addresses );
-		//                    item.Addresses = xDoc.Root.Elements().Count();
-
-		//                    foreach ( var child in xDoc.Root.Elements() )
-		//                        item.AddressLocations.Add( new AddressLocation
-		//                        {
-		//                            Lat = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-		//                            Lon = double.Parse( ( string )child.Attribute( "Longitude" ) )
-		//                        } );
-		//                }
-		//                #endregion
-		//            }
-		//            //item.AgentType = EntityPropertyManager.FillEnumeration(item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE);
-		//            //item.OrganizationSectorType = EntityPropertyManager.FillEnumeration(item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE);
-
-		//            //
-		//            //item.NaicsResults = dr[ "NaicsList" ].ToString();
-		//            //item.NaicsResults = Fill_CodeItemResults( dr, "NaicsList", CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
-
-
-		//            list.Add( item );
-		//        }
-
-
-		//        return list;
-
-		//    }
-		//}
 		#endregion
 
 		#region helpers
@@ -1688,12 +1584,17 @@ namespace workIT.Factories
 			output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
 			output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
 
+			output.TransferValueStatement = input.TransferValueStatement;
+			output.TransferValueStatementDescription = input.TransferValueStatementDescription;
+
 			output.AvailabilityListing = input.AvailabilityListing;
 
 			//map, although not currently used in interface
 			output.FoundingDate = input.FoundingDate;
 
 			output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.ORGANIZATION_Identifier );
+
 			//TODO: remove this one, or not
 			output.AlternateNames = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
 			output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
@@ -1768,6 +1669,16 @@ namespace workIT.Factories
 				output.TotalTransferValueProfiles = TransferValueProfileManager.Count_ForOwningOrg( output.RowId );
 				output.TotalPathways = PathwayManager.Count_ForOwningOrg( output.RowId );
 				output.TotalPathwaySets = PathwaySetManager.Count_ForOwningOrg( output.RowId );
+				output.TotalConceptSchemes = ConceptSchemeManager.CountForOwningOrg( output.Id );
+				//TODO - would be better to do in one call and split on return
+				output.RevokesCredentials = Entity_AgentRelationshipManager.CredentialCount_ForRevokedByOrg( output.RowId );
+				output.RenewsCredentials = Entity_AgentRelationshipManager.CredentialCount_ForRenewedByOrg( output.RowId );
+				//Regulates is part of QA
+				//output.RegulatesCredentials = Entity_AgentRelationshipManager.CredentialCount_ForRegulatedByOrg( output.RowId );
+
+				//
+				output.TotalCredentialsPublishedByThirdParty = Entity_AgentRelationshipManager.CredentialCount_ForPublishedByOrg( output.RowId );
+				output.TotalOrganizationsPublishedByThirdParty = Entity_AgentRelationshipManager.OrganizationCount_ForPublishedByOrg( output.RowId );
 				//-FrameworkCount_ForOwningOrg
 				if ( output.TotalCredentials > 0 )
 					output.IsACredentialingOrg = true;
@@ -1894,54 +1805,56 @@ namespace workIT.Factories
 		//	to.ISQAOrganization = true;
 
 		//}
-		public static void MapToDB_Base( ThisEntity from, DBEntity to )
+		public static void MapToDB_Base( ThisEntity input, DBEntity output )
 		{
 
-			//want to ensure fields from create are not wiped
-			if ( to.Id == 0 )
+			//want output ensure fields input create are not wiped
+			if ( output.Id == 0 )
 			{
-				//need to ensure ctid and registry id are not overridden, if can update outside of the import
-				to.CTID = from.CTID;
+				//need output ensure ctid and registry id are not overridden, if can update outside of the import
+				output.CTID = input.CTID;
 			}
-			if ( !string.IsNullOrWhiteSpace( from.CredentialRegistryId ) )
-				to.CredentialRegistryId = from.CredentialRegistryId;
+			if ( !string.IsNullOrWhiteSpace( input.CredentialRegistryId ) )
+				output.CredentialRegistryId = input.CredentialRegistryId;
 
-			to.Id = from.Id;
-			to.Name = GetData( from.Name );
-			to.Description = GetData( from.Description );
-			to.AgentPurposeDescription = GetData( from.AgentPurposeDescription );
-			to.AgentPurpose = GetUrlData( from.AgentPurpose, null );
+			output.Id = input.Id;
+			output.Name = GetData( input.Name );
+			output.Description = GetData( input.Description );
+			output.AgentPurposeDescription = GetData( input.AgentPurposeDescription );
+			output.AgentPurpose = GetUrlData( input.AgentPurpose, null );
 
-			to.SubjectWebpage = GetUrlData( from.SubjectWebpage, null );
-			if ( from.AgentDomainType == "ceterms:QACredentialOrganization" )
-				to.ISQAOrganization = true;
-			else if ( from.AgentTypeId == 2 )
-				to.ISQAOrganization = true;
+			output.SubjectWebpage = GetUrlData( input.SubjectWebpage, null );
+			if ( input.AgentDomainType == "ceterms:QACredentialOrganization" )
+				output.ISQAOrganization = true;
+			else if ( input.AgentTypeId == 2 )
+				output.ISQAOrganization = true;
 
-			to.AvailabilityListing = GetUrlData( from.AvailabilityListing, null );
-			to.ImageURL = GetUrlData( from.ImageUrl, null );
+			output.AvailabilityListing = GetUrlData( input.AvailabilityListing, null );
+			output.ImageURL = GetUrlData( input.ImageUrl, null );
 
 
 			//FoundingDate is now a string
-			//interface must handle? Or do we have to fix here?
+			//interface must handle? Or do we have output fix here?
 			//depends if just text is passed or separates
 			//already validated
-			if ( !string.IsNullOrWhiteSpace( from.FoundingDate ) )
+			if ( !string.IsNullOrWhiteSpace( input.FoundingDate ) )
 			{
-				to.FoundingDate = from.FoundingDate;
-				if ( ( to.FoundingDate ?? "" ).Length > 20 )
+				output.FoundingDate = input.FoundingDate;
+				if ( ( output.FoundingDate ?? "" ).Length > 20 )
 				{
-					//status.AddError( "Organization Founding Date error - exceeds 20 characters: " + to.FoundingDate );
-					to.FoundingDate = to.FoundingDate.Substring( 0, 10 );
+					//status.AddError( "Organization Founding Date error - exceeds 20 characters: " + output.FoundingDate );
+					output.FoundingDate = output.FoundingDate.Substring( 0, 10 );
 				}
 			}
 			else
-				to.FoundingDate = null;
+				output.FoundingDate = null;
 
-			to.MissionAndGoalsStatement = GetUrlData( from.MissionAndGoalsStatement, null );
-			to.MissionAndGoalsStatementDescription = GetData( from.MissionAndGoalsStatementDescription );
+			output.MissionAndGoalsStatement = GetUrlData( input.MissionAndGoalsStatement, null );
+			output.MissionAndGoalsStatementDescription = GetData( input.MissionAndGoalsStatementDescription );
 
-			//to.ServiceTypeOther = from.ServiceTypeOther;
+			output.TransferValueStatement = GetUrlData( input.TransferValueStatement, null );
+			output.TransferValueStatementDescription = GetData( input.TransferValueStatementDescription );
+			//output.ServiceTypeOther = input.ServiceTypeOther;
 
 		}
 

@@ -36,7 +36,7 @@ namespace workIT.Models.Elastic
 
 		public List<string> Identifier { get; set; } = new List<string>();
 
-		public List<string> Keyword { get; set; } = new List<string>();
+		//public List<string> Keyword { get; set; } = new List<string>();
 
 		//optional
 		public string CompetencyFrameworkGraph { get; set; }

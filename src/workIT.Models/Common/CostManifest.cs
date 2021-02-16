@@ -13,10 +13,11 @@ namespace workIT.Models.Common
 
 		public CostManifest()
 		{
+			EntityTypeId = 20;
 			//OwningOrganization = new Organization();
 			//???
 			//CommonCosts = new List<CostManifest>();
-			EstimatedCosts = new List<CostProfile>();
+			EstimatedCost = new List<CostProfile>();
 
 		}
 		//public int OrganizationId { get; set; }
@@ -37,29 +38,25 @@ namespace workIT.Models.Common
 		//public string CTID { get; set; }
 		//public string CredentialRegistryId { get; set; }
 
+		//URL
 		public string CostDetails { get; set; }
 		public string StartDate { get; set; }
 		public string EndDate { get; set; }
 
-
-
-		public List<CostProfile> EstimatedCosts { get; set; }
-		//[Obsolete]
-		//public List<CostProfile> EstimatedCost { get { return EstimatedCosts; } set { EstimatedCosts = value; } } //Alias used for publishing
-		//public List<CostProfileMerged> EstimatedCost_Merged	{ get { return CostProfileMerged.FlattenCosts( EstimatedCosts ); } } //Alias used for publishing
+		public List<CostProfile> EstimatedCost { get; set; }
 	}
 
-	public class Entity_CommonCost
-	{
-		public int Id { get; set; }
-		public int EntityId { get; set; }
-		public int CostManifestId { get; set; }
-		public System.DateTime Created { get; set; }
-		public int CreatedById { get; set; }
+	//public class Entity_CommonCost
+	//{
+	//	public int Id { get; set; }
+	//	public int EntityId { get; set; }
+	//	public int CostManifestId { get; set; }
+	//	public System.DateTime Created { get; set; }
+	//	public int CreatedById { get; set; }
 
-		public CostManifest CostManifest { get; set; }
-		public string ProfileSummary { get; set; }
-	}
+	//	public CostManifest CostManifest { get; set; }
+	//	public string ProfileSummary { get; set; }
+	//}
 
 	public class Entity_CostManifest
 	{

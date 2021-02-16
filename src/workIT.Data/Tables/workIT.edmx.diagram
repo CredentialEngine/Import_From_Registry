@@ -4,12 +4,12 @@
   <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
-      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="98">
+      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="93">
         <EntityTypeShape EntityType="workITModel.ActivityLog" Width="1.5" PointX="38.375" PointY="4.5" />
         <EntityTypeShape EntityType="workITModel.Assessment" Width="2.5" PointX="0.5" PointY="21.875" FillColor="Yellow" />
         <EntityTypeShape EntityType="workITModel.Codes_AssertionType" Width="3" PointX="25.875" PointY="5.5" />
         <EntityTypeShape EntityType="workITModel.Codes_ConditionProfileType" Width="1.5" PointX="40.375" PointY="4.5" />
-        <EntityTypeShape EntityType="workITModel.Codes_CredentialAgentRelationship" Width="3.125" PointX="2.25" PointY="37.5" />
+        <EntityTypeShape EntityType="workITModel.Codes_CredentialAgentRelationship" Width="3.125" PointX="3.75" PointY="37.875" />
         <EntityTypeShape EntityType="workITModel.Codes_EntityTypes" Width="2" PointX="5.25" PointY="28.125" />
         <EntityTypeShape EntityType="workITModel.Codes_PropertyCategory" Width="1.5" PointX="9.25" PointY="11.625" />
         <EntityTypeShape EntityType="workITModel.Codes_PropertyValue" Width="1.5" PointX="11.5" PointY="11.375" />
@@ -54,7 +54,7 @@
         <EntityTypeShape EntityType="workITModel.Import_Message" Width="1.5" PointX="38.625" PointY="1.25" />
         <EntityTypeShape EntityType="workITModel.Import_Staging" Width="1.5" PointX="36.375" PointY="0.75" />
         <EntityTypeShape EntityType="workITModel.LearningOpportunity" Width="3.125" PointX="4.125" PointY="21.375" FillColor="Yellow" />
-        <EntityTypeShape EntityType="workITModel.Organization" Width="1.5" PointX="2.625" PointY="32" />
+        <EntityTypeShape EntityType="workITModel.Organization" Width="1.5" PointX="1.5" PointY="31.625" />
         <EntityTypeShape EntityType="workITModel.Reference_Frameworks" Width="1.5" PointX="12.25" PointY="17" />
         <EntityTypeShape EntityType="workITModel.SearchPendingReindex" Width="1.5" PointX="44.375" PointY="7.5" />
         <EntityTypeShape EntityType="workITModel.Widget" Width="2" PointX="36.375" PointY="9.5" />

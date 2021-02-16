@@ -32,7 +32,7 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( "ceterms:name" )]
 		public string Name { get; set; }
@@ -68,7 +68,7 @@ namespace RA.Models.JsonV2
 			Description = null;
 			Email = null;
 			SubjectWebpage = null;
-			Ctid = null;
+			CTID = null;
 			SocialMedia = null;
 		}
 	}

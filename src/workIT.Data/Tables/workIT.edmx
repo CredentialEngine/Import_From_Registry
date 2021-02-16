@@ -650,12 +650,12 @@
           <Property Name="EntityId" Type="int" Nullable="false" />
           <Property Name="CompetencyFrameworkId" Type="int" />
           <Property Name="Created" Type="datetime" />
-          <Property Name="TargetNodeName" Type="nvarchar" MaxLength="600" />
+          <Property Name="TargetNodeName" Type="nvarchar(max)" />
           <Property Name="TargetNodeDescription" Type="nvarchar(max)" />
           <Property Name="TargetNode" Type="varchar" MaxLength="600" />
           <Property Name="CodedNotation" Type="nvarchar" MaxLength="300" />
           <Property Name="Weight" Type="decimal" Precision="5" Scale="2" />
-          <Property Name="FrameworkName" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="FrameworkName" Type="varchar(max)" Nullable="false" />
           <Property Name="FrameworkUrl" Type="varchar" MaxLength="500" />
         </EntityType>
         <EntityType Name="Entity_ConditionManifest">
@@ -1216,6 +1216,8 @@
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="JsonProperties" Type="nvarchar(max)" />
+          <Property Name="TransferValueStatement" Type="varchar" MaxLength="600" />
+          <Property Name="TransferValueStatementDescription" Type="varchar(max)" />
         </EntityType>
         <EntityType Name="Pathway">
           <Key>
@@ -3642,12 +3644,12 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="EntityId" Type="Int32" Nullable="false" />
           <Property Name="Created" Type="DateTime" Precision="3" />
-          <Property Name="TargetNodeName" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNodeName" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="TargetNodeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="CodedNotation" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
           <Property Name="Weight" Type="Decimal" Precision="5" Scale="2" />
-          <Property Name="FrameworkName" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkName" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="FrameworkUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_Competency_Entity" FromRole="Entity_Competency" ToRole="Entity" />
           <Property Name="CompetencyFrameworkId" Type="Int32" />
@@ -4108,6 +4110,8 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <NavigationProperty Name="Entity_Organization" Relationship="workITModel.FK_Entity_Organization_Organization" FromRole="Organization" ToRole="Entity_Organization" />
           <Property Name="JsonProperties" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <NavigationProperty Name="ConceptScheme" Relationship="workITModel.FK_ConceptScheme_Organization" FromRole="Organization" ToRole="ConceptScheme" />
+          <Property Name="TransferValueStatement" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="TransferValueStatementDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="Reference_Frameworks">
           <Key>
@@ -6551,6 +6555,8 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySetMapping Name="Organization">
             <EntityTypeMapping TypeName="workITModel.Organization">
               <MappingFragment StoreEntitySet="Organization">
+                <ScalarProperty Name="TransferValueStatementDescription" ColumnName="TransferValueStatementDescription" />
+                <ScalarProperty Name="TransferValueStatement" ColumnName="TransferValueStatement" />
                 <ScalarProperty Name="JsonProperties" ColumnName="JsonProperties" />
                 <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
                 <ScalarProperty Name="Created" ColumnName="Created" />

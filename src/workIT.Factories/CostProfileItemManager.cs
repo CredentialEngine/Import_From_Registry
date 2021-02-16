@@ -153,7 +153,7 @@ namespace workIT.Factories
 
 			EntityPropertyManager mgr = new EntityPropertyManager();
 
-			if ( mgr.AddProperties( entity.ApplicableAudienceType, entity.RowId, CodesManager.ENTITY_TYPE_COST_PROFILE_ITEM, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false,  ref status ) == false )
+			if ( mgr.AddProperties( entity.AudienceType, entity.RowId, CodesManager.ENTITY_TYPE_COST_PROFILE_ITEM, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false,  ref status ) == false )
 			{
 				isAllValid = false;
 			}
@@ -275,7 +275,7 @@ namespace workIT.Factories
 			//properties
 			if ( includingProperties )
 			{
-				to.ApplicableAudienceType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
+				to.AudienceType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
 
 				to.ResidencyType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_RESIDENCY_TYPE );
 			}

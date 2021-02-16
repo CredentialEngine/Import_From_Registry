@@ -625,9 +625,9 @@ namespace workIT.Services
 			bool isSecure = false;
 			if ( UtilityManager.GetAppKeyValue( "usingSSL", false ) )
 				isSecure = true;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
 			string subject = "Reset Password for your Credential Finder account";
 
 			string email = EmailManager.GetEmailText( "ForgotPassword" );
@@ -661,9 +661,9 @@ namespace workIT.Services
 
 			
 			//string toEmail = user.Email;
-			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
+			string bcc = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
 			string subject = "Confirm Your Credential Finder Account";
 			string email = EmailManager.GetEmailText( "ConfirmAccount" );
 			string eMessage = "";
@@ -689,9 +689,9 @@ namespace workIT.Services
 			AppUser user = GetUserByEmail( userEmail );
 			string subject = "Forgot password attempt with unconfirmed email";
 
-			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
+			string toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );
 
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
 			//string subject = "Forgot Password";
 			string email = "User: {0} attempted Forgot Password, and email has not been confirmed.<br/>Email: {1}<br/>Created: {2}";
 			string eMessage = "";
@@ -776,8 +776,6 @@ namespace workIT.Services
 		public static AppUser SetUserByEmail( string email )
 		{
 			AppUser user = AccountManager.AppUser_GetByEmail( email );
-
-
 
 			AddUserToSession( HttpContext.Current.Session, user );
 			return user;

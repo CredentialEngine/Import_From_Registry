@@ -14,7 +14,8 @@ using ME = workIT.Models.Elastic;
 using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
-
+using ElasticHelper = workIT.Services.ElasticServices;
+using ElasticHelper7 = workIT.Services.ElasticServices7;
 using CF = workIT.Factories;
 using workIT.Models.Helpers;
 
@@ -27,7 +28,7 @@ namespace workIT.Services
 
 		public MainSearchResults MainSearch( MainSearchInput data, ref bool valid, ref string status, JObject debug = null )
 		{
-			debug = debug ?? new JObject();
+			//debug = debug ?? new JObject();
 
 			LoggingHelper.DoTrace( 6, "SearchServices.MainSearch - entered" );
 			//Sanitize input
@@ -48,6 +49,8 @@ namespace workIT.Services
 			{
 				data.SortOrder = "newest";
 			}
+			if ( data.PageSize < 10 || data.PageSize > 100 )
+				data.PageSize = 25;
 
 			//Determine search type
 			var searchType = data.SearchType;
@@ -60,13 +63,13 @@ namespace workIT.Services
 
 			//Do the search
 			var totalResults = 0;
-			switch ( searchType )
+			switch ( searchType.ToLower() )
 			{
 				case "credential":
 				{
 					if ( data.UseSimpleSearch )
 					{
-						var results = ElasticServices.CredentialSimpleSearch( data, ref totalResults );
+						var results = ElasticHelper.CredentialSimpleSearch( data, ref totalResults );
 						return ConvertCredentialResults( results, totalResults, searchType );
 					}
 					else
@@ -81,7 +84,7 @@ namespace workIT.Services
 				{
 					if ( data.UseSimpleSearch )
 					{
-						var results = ElasticServices.OrganizationSimpleSearch( data, ref totalResults );
+						var results = ElasticHelper.OrganizationSimpleSearch( data, ref totalResults );
 						return ConvertOrganizationResults( results, totalResults, searchType );
 					}
 					else
@@ -94,7 +97,7 @@ namespace workIT.Services
 				{
 					if ( data.UseSimpleSearch )
 					{
-						var results = ElasticServices.AssessmentSimpleSearch( data, ref totalResults );
+						var results = ElasticHelper.AssessmentSimpleSearch( data, ref totalResults );
 						return ConvertAssessmentResults( results, totalResults, searchType );
 					}
 					else
@@ -107,7 +110,7 @@ namespace workIT.Services
 				{
 					if ( data.UseSimpleSearch )
 					{
-						var results = ElasticServices.LearningOppSimpleSearch( data, ref totalResults );
+						var results = ElasticHelper.LearningOppSimpleSearch( data, ref totalResults );
 						return ConvertLearningOpportunityResults( results, totalResults, searchType );
 					}
 					else
@@ -118,7 +121,7 @@ namespace workIT.Services
 				}
 				case "cf":
 				{
-					var results = ElasticServices.CompetencyFrameworkSearch( data, ref totalResults );
+					var results = ElasticHelper.CompetencyFrameworkSearch( data, ref totalResults );
 					return ConvertCompetencyFrameworkResults2( results, totalResults, searchType );
 				}
 				case "competencyframeworkold":
@@ -153,7 +156,7 @@ namespace workIT.Services
 				case "transfervalue":
 				{
 					var results = TransferValueServices.Search( data, ref totalResults );
-					//var results2 = ElasticServices.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref totalResults );
+					//var results2 = ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref totalResults );
 					return ConvertTransferValueResults( results, totalResults, searchType );
 				}
 				default:
@@ -190,7 +193,7 @@ namespace workIT.Services
 						case "instructionalprogramtypes":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
 						case "organizations":
-							return ElasticServices.OrganizationQAAutoComplete( text, 1 );
+							return ElasticHelper.OrganizationQAAutoComplete( text, 1 );
 						default:
 							break;
 					}
@@ -205,7 +208,7 @@ namespace workIT.Services
 						case "industries":
 							return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_ORGANIZATION, text, 10 );
 						case "organizations":
-							return ElasticServices.OrganizationQAAutoComplete( text, 2 );
+							return ElasticHelper.OrganizationQAAutoComplete( text, 2 );
 						default:
 							break;
 					}
@@ -224,7 +227,7 @@ namespace workIT.Services
 						case "instructionalprogramtypes":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 );
 						case "organizations":
-							return ElasticServices.OrganizationQAAutoComplete( text, 3 );
+							return ElasticHelper.OrganizationQAAutoComplete( text, 3 );
 						default:
 							break;
 					}
@@ -243,7 +246,7 @@ namespace workIT.Services
 						case "instructionalprogramtypes":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
 						case "organizations":
-							return ElasticServices.OrganizationQAAutoComplete( text, 7 );
+							return ElasticHelper.OrganizationQAAutoComplete( text, 7 );
 						default:
 							break;
 					}
@@ -254,7 +257,7 @@ namespace workIT.Services
 					switch ( context.ToLower() )
 					{
 						case "mainsearch":
-							return ElasticServices.CompetencyFrameworkAutoComplete( text, 15, ref totalRows );
+							return ElasticHelper.CompetencyFrameworkAutoComplete( text, 15, ref totalRows );
 						//case "competencies":
 						//	return LearningOpportunityServices.Autocomplete( text, "competencies", 10 );
 						//case "subjects":
@@ -451,7 +454,7 @@ namespace workIT.Services
 		public enum TagTypes { CONNECTIONS, QUALITY, ASSESSMENT, AUDIENCE_LEVEL, AUDIENCE_TYPE, LEARNINGOPPORTUNITY, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, FINANCIAL, FRAMEWORKS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, OWNS_CREDENTIAL, OFFERS_CREDENTIAL, QAPERFORMED, SCORING_METHODS, REFERENCED_BY_CREDENTIAL, REFERENCED_BY_ASSESSMENT, REFERENCED_BY_LOPP, TRANSFERVALUE, PATHWAY, PATHWAYSET }
 
 		public enum ButtonSearchTypes { Organization, Credential, AssessmentProfile, LearningOpportunityProfile, CompetencyFramework, Pathway, PathwaySet }
-		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, Pathway, PathwaySet }
+		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, Pathway, PathwaySet, HoldersProfile, EarningsProfile, EmploymentOutcomeProfile }
 		public enum ButtonHandlerTypes { handler_RenderDetailPageLink, handler_RenderQualityAssurance, handler_RenderConnection, handler_RenderCheckboxFilter, handler_RenderExternalCodeFilter, handler_GetRelatedItemsViaAJAX } //use a string that is the function name itself for custom handlers
 		public enum ButtonTargetEntityTypes { Credential, Assessment, LearningOpportunity, CompetencyFramework, Competency, EstimatedCost, FinancialAssistance, QualityAssurancePerformed, TransferValue, Pathway, PathwaySet }
 
@@ -491,6 +494,7 @@ namespace workIT.Services
 
 					},
 					new List<TagSet>(),
+					//SearchTag is obsolete, use SearchResultButton
 					new List<Models.Helpers.SearchTag>()
 					{
 						//Credential Quality Assurance
@@ -901,6 +905,51 @@ namespace workIT.Services
 							TotalItems = subjects.Count(),
 							Items = item.Subjects.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//HoldersProfiles
+						new SearchResultButton()
+						{
+							CategoryLabel = item.HoldersProfileCount == 1 ? "Holders Profile" : "Holders Profiles",
+							CategoryType = ButtonCategoryTypes.HoldersProfile.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.HoldersProfileCount,
+							Items = new List<string>() { item.HoldersProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Holders Profile",
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//EarningsProfiles
+						new SearchResultButton()
+						{
+							CategoryLabel = item.EarningsProfileCount == 1 ? "Earnings Profile" : "Earnings Profiles",
+							CategoryType = ButtonCategoryTypes.EarningsProfile.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.EarningsProfileCount,
+							Items = new List<string>() { item.EarningsProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Earnings Profile",
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//EmploymentOutcomeProfiles
+						new SearchResultButton()
+						{
+							CategoryLabel = item.EmploymentOutcomeProfileCount == 1 ? "EmploymentOutcome Profile" : "EmploymentOutcome Profiles",
+							CategoryType = ButtonCategoryTypes.EmploymentOutcomeProfile.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.EmploymentOutcomeProfileCount,
+							Items = new List<string>() { item.EmploymentOutcomeProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Employment Outcome Profile",
 								TargetLabel = m,
 								TargetType = ButtonSearchTypes.Credential.ToString(),
 								TargetId = item.Id
@@ -2163,6 +2212,18 @@ namespace workIT.Services
 								AjaxQueryName = "GetSearchResultCompetencies",
 								TargetEntityType = ButtonTargetEntityTypes.Competency.ToString()
 							} )
+						},//Costs
+						new SearchResultButton()
+						{
+							CategoryLabel = item.NumberOfCostProfileItems == 1 ? "Estimated Cost" : "Estimated Costs",
+							CategoryType = ButtonCategoryTypes.EstimatedCost.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.NumberOfCostProfileItems,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultCosts",
+								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
+							} )
 						}
 					}
 				) );
@@ -2557,6 +2618,19 @@ namespace workIT.Services
 							{
 								AjaxQueryName = "GetSearchResultCompetencies",
 								TargetEntityType = ButtonTargetEntityTypes.Competency.ToString()
+							} )
+						},
+						//Costs
+						new SearchResultButton()
+						{
+							CategoryLabel = item.NumberOfCostProfileItems == 1 ? "Estimated Cost" : "Estimated Costs",
+							CategoryType = ButtonCategoryTypes.EstimatedCost.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.NumberOfCostProfileItems,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultCosts",
+								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
 							} )
 						}
 
@@ -2992,7 +3066,7 @@ namespace workIT.Services
 									},
 									new SearchResultButton()
 									{
-										CategoryLabel = alignedCompetencyTotal > 1 ? "Aligned Frameworks" : "Aligned Framework",
+										CategoryLabel = alignedCompetencyTotal > 1 ? "Aligned Competencies" : "Aligned Competency",
 										CategoryType = ButtonCategoryTypes.Connection.ToString(),
 										HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 										TotalItems = alignedCompetencyTotal,
@@ -3418,7 +3492,7 @@ namespace workIT.Services
 							Items = subjects.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
 								TargetLabel = m,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetType = ButtonSearchTypes.Pathway.ToString(),
 								TargetId = item.Id
 							} ) )
 						},
@@ -3527,7 +3601,54 @@ namespace workIT.Services
 		//
 		public static Entity GetEntityByCTID(string ctid)
 		{
-			var entity = CF.EntityManager.Entity_Cache_Get( ctid );
+			var entity = CF.EntityManager.EntityGetFromEntityCache( ctid );
+			if ( entity == null || entity.Id == 0 )
+			{
+				//TODO - need to improve use of entity_cache. HINT: just add/update as part of the import!
+				//TEMP, try credential
+				var cred = CredentialManager.GetByCtid( ctid );
+				if ( cred != null && cred.Id > 0 )
+				{
+					entity = CF.EntityManager.GetEntity( cred.RowId, false );
+					return entity;
+				} 
+			}
+			if ( entity == null || entity.Id == 0 )
+			{
+				var org = OrganizationManager.GetByCtid( ctid );
+				if ( org != null && org.Id > 0 )
+				{
+					entity = CF.EntityManager.GetEntity( org.RowId, false );
+					return entity;
+				}
+			}
+			if ( entity == null || entity.Id == 0 )
+			{
+				var record = AssessmentManager.GetByCtid( ctid );
+				if ( record != null && record.Id > 0 )
+				{
+					entity = CF.EntityManager.GetEntity( record.RowId, false );
+					return entity;
+				}
+			}
+			if ( entity == null || entity.Id == 0 )
+			{
+				var record = LearningOpportunityManager.GetByCtid( ctid );
+				if ( record != null && record.Id > 0 )
+				{
+					entity = EntityManager.GetEntity( record.RowId, false );
+					return entity;
+				}
+			}
+			if ( entity == null || entity.Id == 0 )
+			{
+				var record = CompetencyFrameworkManager.GetByCtid( ctid );
+				if ( record != null && record.Id > 0 )
+				{
+					entity = CF.EntityManager.GetEntity( record.RowId, false );
+					return entity;
+				}
+			}
 			return entity;
 		}
 	
@@ -3804,7 +3925,7 @@ namespace workIT.Services
 		/// </summary>
 		/// <param name="word"></param>
 		/// <returns></returns>
-		public static string SearchifyWord(string word)
+		public static string SearchifyWord(string word, bool forElasticSearch = true)
 		{
 			string keyword = word.Trim() + "^";
 
@@ -3837,7 +3958,8 @@ namespace workIT.Services
 				keyword = keyword.Substring(0, keyword.ToLower().LastIndexOf("ive^"));
 			}
 
-			if (UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false))
+			//Ohhh BAD - assumes all or none
+			if ( forElasticSearch && UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false))
 			{
 				var env = UtilityManager.GetAppKeyValue("envType");
 				//not sure of this

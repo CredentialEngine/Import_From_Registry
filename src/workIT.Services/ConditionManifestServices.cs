@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using ThisEntity = workIT.Models.Common.ConditionManifest;
 

@@ -11,7 +11,7 @@ using System.Web;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
-
+using ElasticHelper = workIT.Services.ElasticServices;
 using ThisEntity = workIT.Models.Common.Credential;
 using ThisSearchEntity = workIT.Models.Common.CredentialSummary;
 using EntityMgr = workIT.Factories.CredentialManager;
@@ -39,7 +39,8 @@ namespace workIT.Services
             {
 				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
 				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )	{
-					var detail = GetDetail( entity.Id, false );
+					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+						GetDetail( entity.Id );
 				}
             }
             bool isValid = new EntityMgr().Save( entity, ref status );
@@ -52,7 +53,7 @@ namespace workIT.Services
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
-                    ThreadPool.QueueUserWorkItem( UpdateCaches2, entity );
+                    ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
                    
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
@@ -74,39 +75,41 @@ namespace workIT.Services
 
             return isValid;
         }
-        static void UpdateCaches2( Object entity )
+        static void UpdateCaches( Object entity )
         {
             if ( entity.GetType() != typeof( Models.Common.Credential ) )
                 return;
-            var cred = ( entity as Models.Common.Credential );
-            new CacheManager().PopulateEntityRelatedCaches( cred.RowId );
+            var document = ( entity as Models.Common.Credential );
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = 1,
+				EntityType = "credential",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description  = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created=document.Created,
+				LastUpdated=document.LastUpdated,
+				ImageUrl=document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			new EntityManager().EntityCacheSave( ec, ref statusMessage );
+
+			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
 			//update Elastic
 			List<string> messages = new List<string>();
 
 			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                ElasticServices.Credential_UpdateIndex( cred.Id );
+                ElasticHelper.Credential_UpdateIndex( document.Id );
 			else
-				new SearchPendingReindexManager().Add( 1, cred.Id, 1, ref messages );
+				new SearchPendingReindexManager().Add( 1, document.Id, 1, ref messages );
 
 		}
-        static void UpdateCaches( Object uuid )
-        {
-            if ( uuid == null || !ServiceHelper.IsValidGuid( uuid.ToString() ) )
-                return;
-            //update 
-            Guid rowId = new Guid( uuid.ToString() );
-            new CacheManager().PopulateEntityRelatedCaches( rowId );
-            //update Elastic
-            //if ( Utilities.UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false) )
-            //    ElasticServices.UpdateCredentialIndex(entity.Id);
-            //else
-            //{
-            //    ElasticServices.UpdateCredentialIndex(entity.Id);
-
-
-            //}
-
-        }
         public void AddCredentialsToPendingReindex( List<Credential> list )
         {
             List<string> messages = new List<string>();
@@ -145,7 +148,7 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialAutocomplete", false ) )
 			{
-				return ElasticServices.CredentialAutoComplete( keywords, maxTerms, ref pTotalRows );
+				return ElasticHelper.CredentialAutoComplete( keywords, maxTerms, ref pTotalRows );
 			}
 			else
 			{
@@ -198,7 +201,7 @@ namespace workIT.Services
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
             {
-                return ElasticServices.Credential_Search( data, ref pTotalRows );
+                return ElasticHelper.Credential_Search( data, ref pTotalRows );
             }
             else
             {

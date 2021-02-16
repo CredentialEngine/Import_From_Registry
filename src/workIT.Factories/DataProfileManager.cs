@@ -45,6 +45,7 @@ namespace workIT.Factories
 				var existing = context.DataProfile.Where( s => s.DataSetTimeFrameId == dataSetTimeFrameId ).ToList();
 				if ( existing != null && existing.Any() )
 				{
+					//a possibility would to skip delete if input and output count are equal
 					if ( existing.Count() == 1 && icnt == 1 )
 						dataSetTimeFrameId = existing[ 0 ].Id;
 					else
@@ -67,6 +68,7 @@ namespace workIT.Factories
 
 			if ( input == null || !input.Any() )
 				return true;
+			//status.Messages = new List<StatusMessage>();
 			foreach ( var item in input )
 			{
 				if ( dataProfileId > 0 )
@@ -76,6 +78,8 @@ namespace workIT.Factories
 						item.Id = e.Id;
 				}
 				item.DataSetTimeFrameId = dataSetTimeFrameId;
+				//status.HasErrors = false;
+
 				if ( !Save( item, ref status ) )
 				{
 					allIsValid = false;
@@ -93,7 +97,9 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
-						return false;
+					{
+						//return false;
+					}
 
 					if ( entity.Id > 0 )
 					{
@@ -109,7 +115,7 @@ namespace workIT.Factories
 							//these classes should probably use the dates from the parent
 							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
-								efEntity.Created = status.LocalCreatedDate;
+								//efEntity.Created = status.LocalCreatedDate;
 							}
 							//has changed?
 							if ( HasStateChanged( context ) )
@@ -144,7 +150,7 @@ namespace workIT.Factories
 						}
 						else
 						{
-							status.AddError( "Error - update failed, as record was not found." );
+							status.AddError( "Error - update failed, as DataProfile was not found." );
 						}
 					}
 					else
@@ -195,12 +201,12 @@ namespace workIT.Factories
 					else
 						efEntity.RowId = Guid.NewGuid();
 
-					if ( IsValidDate( status.EnvelopeCreatedDate ) )
-					{
-						efEntity.Created = status.LocalCreatedDate;
-						efEntity.LastUpdated = status.LocalCreatedDate;
-					}
-					else
+					//if ( IsValidDate( status.EnvelopeCreatedDate ) )
+					//{
+					//	efEntity.Created = status.LocalCreatedDate;
+					//	efEntity.LastUpdated = status.LocalCreatedDate;
+					//}
+					//else
 					{
 						efEntity.Created = System.DateTime.Now;
 						efEntity.LastUpdated = System.DateTime.Now;

@@ -88,7 +88,7 @@ namespace Import.Services
 			}
 			catch ( Exception exc )
 			{
-				LoggingHelper.LogError( exc, "RegistryServices.Search" );
+				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri );
 			}
 			return list;
 		}
@@ -242,13 +242,16 @@ namespace Import.Services
 
 		#region Registry Gets
 
-
+		/*
 		/// <summary>
 		/// Retrieve an envelop from the registry and do import
+		/// Custom version for Import from Finder.Import
+		/// TODO - THIS IS SOMEWHAT HIDDEN HERE - easy to forget when adding new classes
 		/// </summary>
 		/// <param name="envelopeId"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
+		[Obsolete]
 		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
         {
             //this is currently specific, assumes envelop contains a credential
@@ -298,8 +301,22 @@ namespace Import.Services
                             return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
 						case "competencyframework":
 							return new ImportCompetencyFramesworks().CustomProcessEnvelope( envelope, status );
+						case "conceptscheme":
+							return new ImportConceptSchemes().CustomProcessEnvelope( envelope, status );
 						case "pathway":
 							return new ImportPathways().CustomProcessEnvelope( envelope, status );
+						case "pathwaysset":
+							return new ImportPathwaySets().CustomProcessEnvelope( envelope, status );
+						case "rating":
+						{
+							LoggingHelper.DoTrace( 1, string.Format( "ImportByEnvelopeId. Ratings ({0}-{1}) are not handled at this time. ", envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
+							return false;
+						}
+						case "rubric":
+						{
+							LoggingHelper.DoTrace( 1, string.Format( "ImportByEnvelopeId. Rubrics ({0}-{1}) are not handled at this time. ", envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
+							return false;
+						}
 						case "transfervalueprofile":
 							return new ImportTransferValue().CustomProcessEnvelope( envelope, status );
 						//break;
@@ -323,7 +340,7 @@ namespace Import.Services
                 return false;
             }
         }
-
+		[Obsolete]
         public bool ImportByCtid( string ctid, SaveStatus status )
         {
             //this is currently specific, assumes envelop contains a credential
@@ -388,60 +405,6 @@ namespace Import.Services
 				else
 					return false;
 				
-				/*======OLD ===================
-				payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage );
-				if (string.IsNullOrWhiteSpace(payload))
-				{
-					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
-					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
-					if ( defCommunity != community )
-						payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage, community );
-				}
-				if ( !string.IsNullOrWhiteSpace( payload ) )
-                {
-                    LoggingHelper.WriteLogFile( 5, ctid + "_ImportByCtid.json", payload, "", false );
-                    LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, ctid: {1} ", ctdlType, ctid ) );
-                    ctdlType = ctdlType.Replace( "ceterms:", "" );
-                    switch ( ctdlType.ToLower() )
-                    {
-                        case "credentialorganization":
-                        case "qacredentialorganization":
-                        case "organization":
-                            return new ImportOrganization().ImportByPayload( payload, status );
-                        //break;CredentialOrganization
-                        case "assessmentprofile":
-                            return new ImportAssessment().ImportByPayload( payload, status );
-                        //break;
-                        case "learningopportunityprofile":
-                            return new ImportLearningOpportunties().ImportByPayload( payload, status );
-                        //break;
-                        case "conditionmanifest":
-                            return new ImportConditionManifests().ImportByPayload( payload, status );
-                        //break;
-                        case "costmanifest":
-                            return new ImportCostManifests().ImportByPayload( payload, status );
-						case "competencyframework":
-							return new ImportCompetencyFramesworks().Import( payload, "", status );
-						case "conceptscheme":
-						case "skos:conceptscheme":
-							return new ImportConceptSchemes().Import( payload, "", status );
-						case "pathway":
-							return new ImportPathways().Import( payload, "", status );
-						case "pathwayset":
-							return new ImportPathwaySets().Import( payload, "", status );
-						case "transfervalue":
-						case "transfervalueprofile":
-							return new ImportTransferValue().Import( payload, "", status );
-						//break;
-						default:
-                            //default to credential
-                            return new ImportCredential().ImportByPayload( payload, status );
-                            //break;
-                    }
-                }
-                else
-                    return false;
-				*/
             }
             catch ( Exception ex )
             {
@@ -454,7 +417,7 @@ namespace Import.Services
                 return false;
             }
         }
-
+		*/
 
         /// <summary>
         /// Retrieve an envelope from the registry - using either envelopeId or CTID (same format)

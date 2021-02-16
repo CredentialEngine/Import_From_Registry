@@ -40,7 +40,7 @@ namespace workIT.Factories
 				{
 					var existing = context.Entity_EarningsProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
 					//
-					var result = existing.Where( ex => input.All( p2 => p2.CTID != ex.EarningsProfile.CTID ) );
+					var result = existing.Where( ex => input.All( p2 => p2.CTID.ToLower() != ex.EarningsProfile.CTID.ToLower() ) );
 					var messages = new List<string>();
 					foreach ( var item in result )
 					{
@@ -54,8 +54,8 @@ namespace workIT.Factories
 
 				foreach ( var item in input )
 				{
-					var hp = GetByCtid( item.CTID );
-					item.Id = hp.Id;
+					var profile = GetByCtid( item.CTID );
+					item.Id = profile.Id;
 					if ( !Save( item, parentEntity, ref status ) )
 					{
 						allIsValid = false;
@@ -78,7 +78,9 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
-						return false;
+					{
+						//return false;
+					}
 					//actually will always be an add
 					if ( entity.Id > 0 )
 					{
@@ -113,10 +115,10 @@ namespace workIT.Factories
 							if ( efEntity.EntityStateId != 2 )
 								efEntity.EntityStateId = 3;
 
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
-							{
-								efEntity.Created = status.LocalCreatedDate;
-							}
+							//if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+							//{
+							//	efEntity.Created = status.LocalCreatedDate;
+							//}
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
@@ -221,12 +223,13 @@ namespace workIT.Factories
 					else
 						efEntity.RowId = Guid.NewGuid();
 					efEntity.EntityStateId = 3;
-					if ( IsValidDate( status.EnvelopeCreatedDate ) )
-					{
-						efEntity.Created = status.LocalCreatedDate;
-						efEntity.LastUpdated = status.LocalCreatedDate;
-					}
-					else
+					//the envelope date may not reflect when the earning profile was added
+					//if ( IsValidDate( status.EnvelopeCreatedDate ) )
+					//{
+					//	efEntity.Created = status.LocalCreatedDate;
+					//	efEntity.LastUpdated = status.LocalCreatedDate;
+					//}
+					//else
 					{
 						efEntity.Created = System.DateTime.Now;
 						efEntity.LastUpdated = System.DateTime.Now;
@@ -238,8 +241,22 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
-						entity.Id = efEntity.Id;
-						entity.RowId = efEntity.RowId;
+						if ( efEntity.Id == 0 )
+						{
+							List<string> messages = new List<string>();
+							Delete( efEntity.Id, ref messages );
+
+							efEntity.RowId = Guid.NewGuid();
+							context.EarningsProfile.Add( efEntity );
+							count = context.SaveChanges();
+							entity.Id = efEntity.Id;
+							entity.RowId = efEntity.RowId;
+						}
+						else
+						{
+							entity.Id = efEntity.Id;
+							entity.RowId = efEntity.RowId;
+						}
 						//add log entry
 						SiteActivity sa = new SiteActivity()
 						{
@@ -251,7 +268,7 @@ namespace workIT.Factories
 						};
 						new ActivityManager().SiteActivityAdd( sa );
 						//TODO
-						//new Entity_EarningsProfileManager().Add( parentEntity.EntityUid, entity.Id, ref status );
+						new Entity_EarningsProfileManager().Add( parentEntity.EntityUid, entity.Id, ref status );
 
 						if ( UpdateParts( entity, ref status ) == false )
 						{

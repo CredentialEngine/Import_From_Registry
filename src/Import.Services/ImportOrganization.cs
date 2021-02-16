@@ -150,27 +150,49 @@ namespace Import.Services
 			string ctdlType = "";
 			try
 			{
-				string payload = RegistryServices.GetResourceByUrl(resourceUrl, ref ctdlType, ref statusMessage );
-
-				if ( !string.IsNullOrWhiteSpace( payload ) )
+				//for consistency, we should extract the ctid, and then get the envelope
+				var ctid = ResolutionServices.ExtractCtid( resourceUrl );
+				//may need to check for a community?
+				if ( !string.IsNullOrWhiteSpace( ctid ) && ctid.Length == 39 )
 				{
-                    if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-                    {
-                        //if ( payload.IndexOf( "\"en\":" ) > 0 )
-                            return ImportV3( payload, "", status );
-                        //else
-                        //    return ImportV2( payload, "", status );
-                    }
-                    else
-                    {
-						status.AddError( "Importing of an organization resource payload is no longer supported. Please provide a /graph/ input." );
+					var envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+					if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+					{
+						return CustomProcessRequest( envelope, status );
+					}
+					else
+					{
+						status.AddError( "Error - ImportByResourceUrl Unable to find an envelope using CTID: " + ctid );
 						return false;
-						//input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-      //                  return Import( input, "", status );
-                    }
+					}
 				}
 				else
+				{
+					status.AddError( "Error - ImportByResourceUrl Unable to extract a CTID from the provided URL: " + resourceUrl );
 					return false;
+				}
+
+				//string payload = RegistryServices.GetResourceByUrl(resourceUrl, ref ctdlType, ref statusMessage );
+
+				//if ( !string.IsNullOrWhiteSpace( payload ) )
+				//{
+    //                if ( ImportServiceHelpers.IsAGraphResource( payload ) )
+    //                {
+    //                    //if ( payload.IndexOf( "\"en\":" ) > 0 )
+    //                        return ImportV3( payload, "", status );
+    //                    //else
+    //                    //    return ImportV2( payload, "", status );
+    //                }
+    //                else
+    //                {
+				//		status.AddError( "Importing of an organization resource payload is no longer supported. Please provide a /graph/ input." );
+				//		return false;
+				//		//input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
+    //  //                  return Import( input, "", status );
+    //                }
+				//}
+				//else
+				//	return false;
 			}
 			catch ( Exception ex )
 			{
@@ -183,25 +205,27 @@ namespace Import.Services
 				return false;
 			}
 		}
-		public bool ImportByPayload( string payload, SaveStatus status )
+		/// <summary>
+		/// Custom version, typically called outside a scheduled import
+		/// </summary>
+		/// <param name="item"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool CustomProcessRequest( ReadEnvelope item, SaveStatus status )
 		{
 			//EntityServices mgr = new EntityServices();
-            if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-            {
-				//if ( payload.IndexOf( "\"en\":" ) > 0 )
-				return ImportV3( payload, "", status );
-				//else
-				//    return ImportV2( payload, "", status );
+			bool importSuccessfull = ProcessEnvelope( item, status );
+			List<string> messages = new List<string>();
+			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
+			//store envelope
+			int newImportId = importHelper.Add( item, 1, status.Ctid, importSuccessfull, importError, ref messages );
+			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+			{
+				//add indicator of current recored
+				string msg = string.Format( "========= Messages for Organization, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId );
+				importHelper.AddMessages( newImportId, status, ref messages );
 			}
-			else
-            {
-				status.AddError( "Importing of an organization resource payload is no longer supported. Please provide a /graph/ input." );
-				return false;
-				//do additional check in case of getting just the resource instead of /graph/
-				//input = JsonConvert.DeserializeObject<InputEntity>( payload );
-    //            return Import( input, "", status );
-            }
-            
+			return importSuccessfull;
 		}
 		#endregion
 		/// <summary>
@@ -244,19 +268,20 @@ namespace Import.Services
             {
                 status.SetEnvelopeUpdated( envelopeUpdateDate );
             }
-            //
-            //EntityServices mgr = new EntityServices();
-            string payload = item.DecodedResource.ToString();
-            string envelopeIdentifier = item.EnvelopeIdentifier;
+			if ( item.documentOwnedBy != null && item.documentPublishedBy != null && item.documentPublishedBy != item.documentOwnedBy )
+				status.DocumentPublishedBy = item.documentPublishedBy;
+			//
+			string payload = item.DecodedResource.ToString();
+            status.EnvelopeId = item.EnvelopeIdentifier;
             string ctdlType = RegistryServices.GetResourceType( payload );
-            string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_organization", payload, "", false );
+			//string envelopeUrl = RegistryServices.GetEnvelopeUrl( status.EnvelopeId );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_organization", payload, "", false );
 
 
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
                 //if ( payload.IndexOf( "\"en\":" ) > 0 )
-                   return ImportV3( payload, envelopeIdentifier, status );
+                   return ImportV3( payload, status );
                 //else
                 //    return ImportV2( payload, envelopeIdentifier, status );
             }
@@ -463,7 +488,7 @@ namespace Import.Services
   //          return importSuccessfull;
   //      }
 
-        public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
+        public bool ImportV3( string payload, SaveStatus status )
         {
 			DateTime started = DateTime.Now;
 			var saveDuration = new TimeSpan();
@@ -505,27 +530,31 @@ namespace Import.Services
                 entityBlankNodes = bnodes
             };
             helper.entityBlankNodes = bnodes;
-            helper.CurrentEntityCTID = input.Ctid;
+            helper.CurrentEntityCTID = input.CTID;
             helper.CurrentEntityName = input.Name.ToString();
 
 			try { 
-            string ctid = input.Ctid;
+            string ctid = input.CTID;
             string referencedAtId = input.CtdlId;
 
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
-            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
             status.Ctid = ctid;
 
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            if ( !DoesEntityExist( input.CTID, ref output ) )
             {
                 //set the rowid now, so that can be referenced as needed
                 output.RowId = Guid.NewGuid();
-            }
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+				} else
+			{
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ));
+			}
 
             helper.currentBaseObject = output;
 			helper.CurrentOwningAgentUid = output.RowId;
@@ -535,8 +564,23 @@ namespace Import.Services
             output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
             //map from idProperty to url
             output.SubjectWebpage = input.SubjectWebpage;
-            output.CTID = input.Ctid;
-            output.CredentialRegistryId = envelopeIdentifier;
+            output.CTID = input.CTID;
+			//TBD handling
+			if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+			{
+				//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+				var porg = OrganizationManager.GetByCtid( status.DocumentPublishedBy );
+				if ( porg != null && porg.Id > 0 )
+				{
+					//TODO - store this in a json blob??????????
+					//output.PublishedByOrganizationId = porg.Id;
+					//output.PublishedByOrganizationName = porg.Name;
+					//this will result in being added to Entity.AgentRelationship
+					output.PublishedBy = new List<Guid>() { porg.RowId };
+				}				
+			}
+
+				output.CredentialRegistryId = status.EnvelopeId; ;
             output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
             output.ImageUrl = input.Image;
 
@@ -549,7 +593,6 @@ namespace Import.Services
             output.AvailabilityListings = input.AvailabilityListing;
 
             output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
-            //output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
 			output.MissionAndGoalsStatementDescription = helper.HandleLanguageMap( input.MissionAndGoalsStatementDescription, output, "MissionAndGoalsStatementDescription" );
 
 			output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
@@ -574,6 +617,8 @@ namespace Import.Services
 			//agent type, map to enumeration
 			output.AgentType = helper.MapCAOListToEnumermation( input.AgentType );
 
+            output.TransferValueStatement = input.TransferValueStatement;
+			output.TransferValueStatementDescription = helper.HandleLanguageMap( input.TransferValueStatementDescription, output, "TransferValueStatementDescription" );
 
             //Manifests
             output.ConditionManifestIds = helper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status );
@@ -727,7 +772,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Organization Import exception" );
+				LoggingHelper.LogError( ex, string.Format( "OrganizationImportV3. Exception encountered in CTID: {0}", input.CTID ), false, "Organization Import exception" );
 			}
 			finally
 			{

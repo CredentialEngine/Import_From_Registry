@@ -430,7 +430,14 @@ namespace workIT.Factories
 			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
 				isAllValid = false;
 
+			//
+			Entity_ReferenceManager erm = new Entity_ReferenceManager();
 
+			if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_PATHWAY, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
+				isAllValid = false;
+
+			if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_PATHWAY, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
+				isAllValid = false;
 
 			return isAllValid;
 		}
@@ -748,6 +755,7 @@ namespace workIT.Factories
 			var result = new DataTable();
 			string org = "";
 			int orgId = 0;
+			int rowNbr = ( pageNumber - 1 ) * pageSize;
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
 			{
@@ -793,13 +801,20 @@ namespace workIT.Factories
 						return list;
 					}
 				}
+				//					ResultNumber = rowNbr,
 
 				foreach ( DataRow dr in result.Rows )
 				{
+					rowNbr++;
+
 					item = new ThisEntity();
+					item.ResultNumber = rowNbr;
+
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.Name = GetRowColumn( dr, "Name", "missing" );
 					item.FriendlyName = FormatFriendlyTitle( item.Name );
+					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+					item.OrganizationId = GetRowColumn( dr, "Id", 0 );
 					//for autocomplete, only need name
 					if ( autocomplete )
 					{
@@ -815,10 +830,13 @@ namespace workIT.Factories
 					item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
 					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
-
+					//
+					//item.Subjects = GetRowColumn( dr, "SubjectAreas", "" );
 
 					org = GetRowPossibleColumn( dr, "Organization", "" );
 					orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
+
+
 					if ( orgId > 0 )
 						item.OwningOrganization = new Organization() { Id = orgId, Name = org };
 

@@ -221,7 +221,9 @@ namespace workIT.Factories
 						{
 							var statusMsg = "";
 							//this method will also add pending reques to remove from elastic.
+							//actually this delete will probably also delete the Entity_Credential
 							new CredentialManager().Delete( item.CredentialId, ref statusMsg );
+							continue;
 						}
 					}
 					context.Entity_Credential.Remove( item );

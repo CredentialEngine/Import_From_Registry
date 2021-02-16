@@ -77,7 +77,7 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; } //URL
@@ -138,8 +138,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
         public List<CredentialAlignmentObject> IndustryType { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
-		public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
+		//public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:naics" )]
 		public List<string> Naics { get; set; }

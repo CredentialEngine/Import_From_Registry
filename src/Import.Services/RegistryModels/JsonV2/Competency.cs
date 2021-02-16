@@ -24,7 +24,7 @@ namespace RA.Models.JsonV2
 		public string CtdlId { get; set; }
 
 		[JsonProperty( "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		/// <summary>
 		/// Competency uris

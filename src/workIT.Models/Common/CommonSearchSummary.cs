@@ -51,6 +51,8 @@ namespace workIT.Models.Common
 		public List<string> Occupation { get; set; } = new List<string>();
 		public List<string> InstructionalProgram { get; set; } = new List<string>();
 
+		public List<string> Keyword { get; set; } = new List<string>();
+
 		public List<string> Subjects { get; set; } = new List<string>();
 		//
 		public List<int> ReportFilters { get; set; } = new List<int>();

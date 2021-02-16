@@ -37,16 +37,19 @@ namespace workIT.Services
 			//	the latter has a union with Counts.SiteTotals
 			totals.PropertiesTotalsByEntity = CodesManager.Property_GetTotalsByEntity();
             totals.PropertiesTotals.AddRange( CodesManager.GetAllEntityStatistics());
-            //using counts.SiteTotals - so based on the above, this should not be needed???
-            //var allSiteTotals = CodesManager.CodeEntity_GetCountsSiteTotals();
-            //totals.SOC_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 11 ).ToList();
-            //totals.CredentialIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 10 ).ToList();
-            //totals.CredentialCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
-            //totals.OrgIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 2 && s.CategoryId == 10 ).ToList();
-            //totals.AssessmentCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
-            //totals.LoppCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 7 && s.CategoryId == 23 ).ToList();
+			totals.PropertiesTotals.AddRange( CodesManager.GetAllPathwayComponentStatistics() );
 
-            return totals;
+			
+			//using counts.SiteTotals - so based on the above, this should not be needed???
+			//var allSiteTotals = CodesManager.CodeEntity_GetCountsSiteTotals();
+			//totals.SOC_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 11 ).ToList();
+			//totals.CredentialIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 1 && s.CategoryId == 10 ).ToList();
+			//totals.CredentialCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
+			//totals.OrgIndustry_Groups = allSiteTotals.Where( s => s.EntityTypeId == 2 && s.CategoryId == 10 ).ToList();
+			//totals.AssessmentCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 3 && s.CategoryId == 23 ).ToList();
+			//totals.LoppCIP_Groups = allSiteTotals.Where( s => s.EntityTypeId == 7 && s.CategoryId == 23 ).ToList();
+
+			return totals;
 		}
 
         public static List<HistoryTotal> HistoryReports( int entityTypeId )
@@ -58,7 +61,7 @@ namespace workIT.Services
         }
 
 		/// <summary>
-		/// Get Entity Codes with totals for Credential, Organization, assessments, and learning opp
+		/// Get Entity Codes with totals for top level entities like: Credential, Organization, assessments, and learning opp
 		/// </summary>
 		/// <returns></returns>
 		public static List<CodeItem> MainEntityTotals()

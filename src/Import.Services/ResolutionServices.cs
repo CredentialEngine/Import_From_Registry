@@ -494,40 +494,40 @@ namespace Import.Services
 		/// <summary>
 		/// Extract the ctid from a properly formatted registry URI
 		/// </summary>
-		/// <param name="registryId"></param>
+		/// <param name="registryURL"></param>
 		/// <returns></returns>
-		public static string ExtractCtid( string registryId )
+		public static string ExtractCtid( string registryURL )
 		{
 			string ctid = "";
-			if ( string.IsNullOrWhiteSpace( registryId ) )
+			if ( string.IsNullOrWhiteSpace( registryURL ) )
 				return "";
 
-			if ( registryId.Length == 39 && registryId.ToLower().IndexOf( "ce-" ) == 0 )
-				return registryId;
+			if ( registryURL.Length == 39 && registryURL.ToLower().IndexOf( "ce-" ) == 0 )
+				return registryURL;
 
-			int pos = registryId.ToLower().IndexOf( "/graph/ce-" );
+			int pos = registryURL.ToLower().IndexOf( "/graph/ce-" );
 			if ( pos > 1 )
 			{
-				ctid = registryId.Substring( pos + 7 );
+				ctid = registryURL.Substring( pos + 7 );
 			}
 			else
 			{
-				pos = registryId.ToLower().IndexOf( "/resources/ce-" );
+				pos = registryURL.ToLower().IndexOf( "/resources/ce-" );
 				if ( pos > 1 )
-					ctid = registryId.Substring( pos + 11 );
+					ctid = registryURL.Substring( pos + 11 );
 				else
 				{
 					//shouldn't happen, once all fixed. In case was published without ce-
-					pos = registryId.ToLower().IndexOf( "/resources/" );
+					pos = registryURL.ToLower().IndexOf( "/resources/" );
 					if ( pos > 10 )
 					{
-						ctid = "ce-" + registryId.Substring( pos + 11 );
+						ctid = "ce-" + registryURL.Substring( pos + 11 );
 					}
 					else
 					{
-						pos = registryId.ToLower().IndexOf( "/ce-" );
+						pos = registryURL.ToLower().IndexOf( "/ce-" );
 						if ( pos > -1 )
-							ctid = registryId.Substring( pos + 1 );
+							ctid = registryURL.Substring( pos + 1 );
 					}
 				}
 			}

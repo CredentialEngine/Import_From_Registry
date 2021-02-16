@@ -19,7 +19,7 @@ using System.Web;
 
 namespace CredentialFinderWebAPI.Controllers
 {
-	public class SearchController : ApiController
+	public class SearchController : BaseController
 	{
 		SearchServices searchService = new SearchServices();
 		bool valid = true;
@@ -43,11 +43,12 @@ namespace CredentialFinderWebAPI.Controllers
 
 			var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
 
-			//var result = MainSearch( query );
-			HttpContext.Current.Response.Clear();
-			HttpContext.Current.Response.ContentType = "application/json";
-			HttpContext.Current.Response.Write( finalResult );
-			HttpContext.Current.Response.End();
+			SendResponse( finalResult );
+
+			//HttpContext.Current.Response.Clear();
+			//HttpContext.Current.Response.ContentType = "application/json";
+			//HttpContext.Current.Response.Write( finalResult );
+			//HttpContext.Current.Response.End();
 		}
 
 
@@ -67,12 +68,13 @@ namespace CredentialFinderWebAPI.Controllers
 			var results = searchService.MainSearch( query, ref valid, ref status );
 
 			var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
+			SendResponse( finalResult );
 
 			//var result = MainSearch( query );
-			HttpContext.Current.Response.Clear();
-			HttpContext.Current.Response.ContentType = "application/json";
-			HttpContext.Current.Response.Write( finalResult );
-			HttpContext.Current.Response.End();
+			//HttpContext.Current.Response.Clear();
+			//HttpContext.Current.Response.ContentType = "application/json";
+			//HttpContext.Current.Response.Write( finalResult );
+			//HttpContext.Current.Response.End();
 		}
 
 
@@ -85,20 +87,19 @@ namespace CredentialFinderWebAPI.Controllers
 				var results = searchService.MainSearch( searchQuery, ref valid, ref status );
 
 				var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
+				SendResponse( finalResult );
 
-				HttpContext.Current.Response.Clear();
-				HttpContext.Current.Response.ContentType = "application/json";
-				HttpContext.Current.Response.Write( finalResult );
-				HttpContext.Current.Response.End();
 			}
 			catch ( Exception ex )
 			{
 				LoggingHelper.DoTrace( 1, "CredentialFinderWebAPI.Controllers. Exception: " + ex.Message );
-				//return something
-				HttpContext.Current.Response.Clear();
-				HttpContext.Current.Response.ContentType = "application/json";
-				HttpContext.Current.Response.Write( ex.Message );
-				HttpContext.Current.Response.End();
+				//return something - may want to wrap up pretty
+				SendResponse( "Error encountered: " +  ex.Message );
+
+				//HttpContext.Current.Response.Clear();
+				//HttpContext.Current.Response.ContentType = "application/json";
+				//HttpContext.Current.Response.Write( ex.Message );
+				//HttpContext.Current.Response.End();
 			}
 
 		}

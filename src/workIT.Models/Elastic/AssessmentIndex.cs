@@ -162,7 +162,7 @@ namespace workIT.Models.Elastic
         public int EntryConditionCount { get; set; }
         public string TypesResults { get; set; }
 
-        public List<string> Keyword { get; set; } = new List<string>();
+        //public List<string> Keyword { get; set; } = new List<string>();
         #endregion
 
     }

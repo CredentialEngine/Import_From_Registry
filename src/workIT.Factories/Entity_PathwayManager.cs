@@ -411,25 +411,30 @@ namespace workIT.Factories
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
-				status.AddError( "Error - the parent entity was not found.");
+				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-
-			using ( var context = new EntityContext() )
+			try
 			{
-				context.Entity_HasPathway.RemoveRange( context.Entity_HasPathway.Where( s => s.EntityId == parent.Id ) );
-				int count = context.SaveChanges();
-				if ( count >= 0 )
+				using ( var context = new EntityContext() )
 				{
-					isValid = true;
-				}
-				else
-				{
-					//may not be any?
-					//may be should to a read check first?
+					context.Entity_HasPathway.RemoveRange( context.Entity_HasPathway.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count >= 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//may not be any?
+						//may be should to a read check first?
+					}
 				}
 			}
-
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll( Guid parentUid, ref SaveStatus status )" );
+			}
 			return isValid;
 		}
 		public bool Delete( Guid parentUid, int recordId, ref string statusMessage )

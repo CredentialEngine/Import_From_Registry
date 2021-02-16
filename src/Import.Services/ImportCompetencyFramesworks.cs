@@ -154,7 +154,7 @@ namespace Import.Services
             string ctdlType = RegistryServices.GetResourceType( payload );
             string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
             LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-            LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_competencyFrameswork", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_competencyFrameswork", payload, "", false );
             //input = JsonConvert.DeserializeObject<InputGraph>( item.DecodedResource.ToString() );
 
             //InputEntity framework = GetFramework( input.Graph );
@@ -271,7 +271,13 @@ namespace Import.Services
 				//set the rowid now, so that can be referenced as needed
 				output.RowId = Guid.NewGuid();
 				ef.RowId = Guid.NewGuid();
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".Import(). Record was NOT found using CTID: '{0}'", input.CTID ) );
 			}
+			else
+			{
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.name, input.CTID ) );
+			}
+
 			helper.currentBaseObject = ef;
 			ef.ExistsInRegistry = true;
 			//?store competencies in string?
@@ -337,7 +343,7 @@ namespace Import.Services
 			}
 			//output.Name = helper.HandleLanguageMap( input.name, output, "Name" );
 			//output.description = helper.HandleLanguageMap( input.description, output, "Description" );
-			output.Ctid = input.CTID;
+			output.CTID = input.CTID;
 
 			return importSuccessfull;
         }

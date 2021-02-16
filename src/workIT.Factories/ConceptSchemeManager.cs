@@ -595,6 +595,25 @@ namespace workIT.Factories
 			}
 		} //
 
+
+		public static int CountForOwningOrg( int orgId )
+		{
+			int totalRecords = 0;
+			if ( orgId < 1 )
+				return totalRecords;
+
+			using ( var context = new EntityContext() )
+			{
+				var results = context.ConceptScheme.Where( s => s.OrgId == orgId ).ToList();
+				if ( results != null && results.Count > 0 )
+				{
+					totalRecords = results.Count();
+				}
+			}
+
+			return totalRecords;
+		}
+
 		#endregion
 
 		#region Concepts

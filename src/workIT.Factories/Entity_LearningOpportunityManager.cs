@@ -88,7 +88,8 @@ namespace workIT.Factories
 						{
 							status.AddWarning( string.Format( "Error - this Learning Opportunity has already been added to this profile.", thisClassName ) );
 						}
-						return 0;
+						id = efEntity.Id;
+						return id;
 					}
 
 					if ( allowMultiples == false )
@@ -192,7 +193,9 @@ namespace workIT.Factories
 							var statusMsg = "";
 							//this method will also add pending request to remove from elastic.
 							//20-12-18 mp - Only done for a reference lopp but what about a full lopp that may now be an orphan? We are not allowing lopps without parent, but will still exist in registry!!!
+							//actually this delete will probably also delete the Entity_LearningOpportunity
 							new LearningOpportunityManager().Delete( item.LearningOpportunityId, ref statusMsg );
+							continue;
 						}
 					}
 					context.Entity_LearningOpportunity.Remove( item );

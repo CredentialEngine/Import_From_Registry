@@ -18,6 +18,7 @@ using workIT.Utilities;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+using System.Data.Entity.Infrastructure;
 
 namespace workIT.Factories
 {
@@ -220,13 +221,53 @@ namespace workIT.Factories
 			}
 			return false;
 		}//
-        /// <summary>
-        /// Delete all properties for parent (in preparation for import)
-        /// </summary>
-        /// <param name="parent"></param>
-        /// <param name="messages"></param>
-        /// <returns></returns>
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+		public static List<ThisEntity> GetAll( Guid parentUid,  bool getMinimumOnly = false )
+		{
+			ThisEntity entity = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+			Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//context.Configuration.LazyLoadingEnabled = false;
+
+					List<DBEntity> results = context.Entity_ReferenceFramework
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.CategoryId )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							entity = new ThisEntity();
+							//TBD
+							//MapFromDB( item, entity );
+							list.Add( entity );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+			}
+			return list;
+		}//
+		/// <summary>
+		/// Delete all properties for parent (in preparation for import)
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
+		public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
             //Entity parent = EntityManager.GetEntity( parentUid );
@@ -235,18 +276,40 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-            using ( var context = new EntityContext() )
+
+			using ( var context = new EntityContext() )
             {
-                context.Entity_ReferenceFramework.RemoveRange( context.Entity_ReferenceFramework.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
+				var results = context.Entity_ReferenceFramework
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.CategoryId )
+							.ThenBy( s => s.Created )
+							.ToList();
+				if ( results == null || !results.Any() )
+					return true;
+				context.Entity_ReferenceFramework.RemoveRange( results );
+				//context.Entity_ReferenceFramework.RemoveRange( context.Entity_ReferenceFramework.Where( s => s.EntityId == parent.Id ) );
+				//attempt to address DbUpdateConcurrencyException
+				try
+				{
+					context.SaveChanges();
+				}
+				catch ( Exception cex )
+				{
+					isValid = false;
+
+					// Update the values of the entity that failed to save from the store
+					//don't want this
+					//cex.Entries.Single().Reload();
+					//OR
+					// Update original values from the database
+					//Don't think this is what we want either.
+					//var entry = cex.Entries.Single();
+					//entry.OriginalValues.SetValues( entry.GetDatabaseValues() );
+
+					var msg = BaseFactory.FormatExceptions( cex );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, DbUpdateConcurrencyException: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+				}
+
             }
 
             return isValid;

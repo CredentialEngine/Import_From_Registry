@@ -42,8 +42,9 @@ namespace workIT.Factories
                 return true;
             Entity parentEntity = EntityManager.GetEntity( parentId );
             Entity_AgentRelationshipManager emgr = new Entity_AgentRelationshipManager();
-
-            bool isAllValid = true;
+			var searchPendingReindexManager = new SearchPendingReindexManager();
+			var messages = new List<string>();
+			bool isAllValid = true;
             foreach ( Guid targetUid in targetUids )
             {
                 Entity targetEntity = EntityManager.GetEntity( targetUid );
@@ -56,10 +57,13 @@ namespace workIT.Factories
 				//20-11-20 mp	- scenario is that QA org adds assertion, which may not exist from target perspecitive
 				//				- so this does need to happen. What are the cautions?
 				//				- or don't do explicitly, and have the search handle both sides!
+				//21-02-02 mp - need to add all targets to be reindexed.
 				if ( targetEntity.Id > 0 )
 				{
-					//emgr.Save( targetEntity.Id, parentEntity.EntityUid, roleId, ref status );
-				}
+					emgr.Save( targetEntity.Id, parentEntity.EntityUid, roleId, ref status );
+
+					searchPendingReindexManager.Add( targetEntity.EntityTypeId, targetEntity.EntityBaseId, 1, ref messages );
+				};
             }
             return isAllValid;
         } //
@@ -99,6 +103,7 @@ namespace workIT.Factories
             else
             {
                 efEntity.TargetEntityTypeId = targetEntity.EntityTypeId;
+				//TODO - definition of IsPending
                 efEntity.IsPending = false;
             }
 
@@ -128,7 +133,7 @@ namespace workIT.Factories
 
         private static bool AgentEntityRoleExists( int entityId, Guid targetEntityUid, int roleId )
         {
-            EntityAgentRelationship item = new EntityAgentRelationship();
+            //EntityAgentRelationship item = new EntityAgentRelationship();
             using ( var context = new EntityContext() )
             {
                 EM.Entity_Assertion entity = context.Entity_Assertion.FirstOrDefault( s => s.EntityId == entityId
@@ -150,20 +155,25 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
                 return false;
             }
-			try { 
-            using ( var context = new EntityContext() )
-            {
-                context.Entity_Assertion.RemoveRange( context.Entity_Assertion.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.Entity_Assertion.Where( s => s.EntityId == parent.Id )
+					.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+					context.Entity_Assertion.RemoveRange( context.Entity_Assertion.Where( s => s.EntityId == parent.Id ) );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						isValid = true;
+					}
+					else
+					{
+						//if doing a delete on spec, may not have been any properties
+					}
+				}
 			}
 			catch ( Exception ex )
 			{
@@ -745,13 +755,14 @@ namespace workIT.Factories
 			using ( var context = new ViewContext() )
 			{
 				List<Views.Organization_CombinedConnections> agentRoles = context.Organization_CombinedConnections
-					.Where( s => s.TargetEntityTypeId == targetEntityTypeId && s.TargetEntityBaseId == recordId
-						 //&& s.IsQARole == true
-						 && s.TargetEntityStateId > 1 )
-						 .OrderBy( s => s.Organization )
-						 .ThenBy( s => s.RelationshipTypeId )
-						 .ThenBy( s => s.roleSource )
-					.ToList();
+					.Where( s => s.TargetEntityTypeId == targetEntityTypeId 
+							&& s.TargetEntityBaseId == recordId
+							//&& s.IsQARole == true
+							&& s.TargetEntityStateId > 1 )
+							.OrderBy( s => s.Organization )
+							.ThenBy( s => s.RelationshipTypeId )
+							.ThenBy( s => s.roleSource )
+						.ToList();
 
 				//for this view, we want to retrieve the QA organization info, we already have the target (ie. that is the current context).
 				foreach ( var entity in agentRoles )

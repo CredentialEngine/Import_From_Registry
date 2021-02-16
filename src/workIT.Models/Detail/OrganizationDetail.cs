@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using MC = workIT.Models.Common;
 using MD = workIT.Models.Detail;
+using ME = workIT.Models.Elastic;
 using MPM = workIT.Models.ProfileModels;
 
 namespace workIT.Models.Detail
@@ -21,7 +22,7 @@ namespace workIT.Models.Detail
 		/// Credentialing Organization or QA Credentialing Organization
 		/// </summary>
 		public string CTDLType { get; set; }
-
+		public string RecordLanguage { get; set; } = "en-US";
 		//URL
 		public string AgentPurpose { get; set; }
 		public string AgentPurposeDescription { get; set; }
@@ -35,6 +36,9 @@ namespace workIT.Models.Detail
 		public List<ContactPoint> ContactPoint { get; set; } = new List<ContactPoint>();
 		public List<string> Email { get; set; } = new List<string>();
 		public string FoundingDate { get; set; }
+		//
+		public List<ME.ConditionManifest> HasConditionManifest { get; set; }
+		public List<ME.CostManifest> HasCostManifest { get; set; }
 		//TBD
 		public List<MPM.Entity_IdentifierValue> Identifier { get; set; } = new List<MPM.Entity_IdentifierValue>();
 		//URL
@@ -45,7 +49,14 @@ namespace workIT.Models.Detail
 		//URL
 		public string MissionAndGoalsStatement { get; set; }
 		public string MissionAndGoalsStatementDescription { get; set; }
+		public List<string> SameAs { get; set; }
+		//this should be part of the contactPoints
+		public List<string> SocialMedia { get; set; }
 		public List<LabelLink> ServiceType { get; set; } = new List<LabelLink>();
+		//
+		public List<MC.TopLevelEntityReference> ParentOrganization { get; set; }
+		public List<MC.TopLevelEntityReference> Department { get; set; }
+		public List<MC.TopLevelEntityReference> SubOrganization { get; set; }
 		/// <summary>
 		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.
 		/// URI
@@ -56,8 +67,6 @@ namespace workIT.Models.Detail
 		/// </summary>
 		public string TransferValueStatementDescription { get; set; }
 
-		//TBD
-		public List<MPM.VerificationStatus> VerificationStatus { get; set; }
 		//codes
 		public string DUNS { get; set; }
 		public string FEIN { get; set; }
@@ -83,17 +92,33 @@ namespace workIT.Models.Detail
 
 		public List<OrganizationRoleProfile> QAReceived { get; set; } = new List<OrganizationRoleProfile>();
 
+		#region Jurisdiction
+		//in base class
+		//public List<ME.JurisdictionProfile> Jurisdiction { get; set; } = new List<ME.JurisdictionProfile>();
+		//Propose use JurisdictionAssertion for all assertedIn data
+		//JurisdictionAssertion
+		public List<ME.JurisdictionProfile> JurisdictionAssertion { get; set; } = new List<ME.JurisdictionProfile>();
+
+		public List<ME.JurisdictionProfile> AccreditedIn { get; set; } = new List<ME.JurisdictionProfile>();
+		public List<ME.JurisdictionProfile> ApprovedIn { get; set; } = new List<ME.JurisdictionProfile>();
+
+		public List<ME.JurisdictionProfile> RecognizedIn { get; set; } = new List<ME.JurisdictionProfile>();
+		public List<ME.JurisdictionProfile> RegulatedIn { get; set; } = new List<ME.JurisdictionProfile>();
+		#endregion
 		#region Process Profiles
 		//TBD
 		//public List<ProcessProfileGroup> ProcessProfiles { get; set; } = new List<ProcessProfileGroup>();
+		public List<MD.ProcessProfile> AdministrationProcess { get; set; } = new List<MD.ProcessProfile>();
 		public List<MD.ProcessProfile> AppealProcess { get; set; } = new List<MD.ProcessProfile>();
 		public List<MD.ProcessProfile> ComplaintProcess { get; set; } = new List<MD.ProcessProfile>();
-		public List<MD.ProcessProfile> ReviewProcess { get; set; } = new List<MD.ProcessProfile>();
-		public List<MD.ProcessProfile> RevocationProcess { get; set; } = new List<MD.ProcessProfile>();
-
-		public List<MD.ProcessProfile> AdministrationProcess { get; set; } = new List<MD.ProcessProfile>();
 		public List<MD.ProcessProfile> DevelopmentProcess { get; set; } = new List<MD.ProcessProfile>();
 		public List<MD.ProcessProfile> MaintenanceProcess { get; set; } = new List<MD.ProcessProfile>();
+		public List<MD.ProcessProfile> ReviewProcess { get; set; } = new List<MD.ProcessProfile>();
+		public List<MD.ProcessProfile> RevocationProcess { get; set; } = new List<MD.ProcessProfile>();
 		#endregion
+
+		//TBD
+		public List<MD.VerificationServiceProfile> VerificationServiceProfiles { get; set; }
+
 	}
 }

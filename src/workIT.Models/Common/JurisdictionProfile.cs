@@ -26,8 +26,8 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Alias used for publishing
 		/// </summary>
-		public bool? GlobalJurisdiction {
-			get { return IsGlobalJurisdiction; }
+		public bool GlobalJurisdiction {
+			get { return IsGlobalJurisdiction == null ? false : (bool)IsGlobalJurisdiction; }
 			set { IsGlobalJurisdiction = value; } } //
 
 		//[Obsolete]
@@ -39,15 +39,15 @@ namespace workIT.Models.Common
         public string ProfileSummary { get; set; }
 		public GeoCoordinates MainJurisdiction { get; set; }
 		//public List<GeoCoordinates> MainJurisdictions { get; set; }
-		public List<GeoCoordinates> Auto_MainJurisdiction { get
-			{
-				var result = new List<GeoCoordinates>();
-				if( MainJurisdiction != null && MainJurisdiction.Id > 0 )
-				{
-					result.Add( MainJurisdiction );
-				}
-				return result;
-			} }
+		//public List<GeoCoordinates> Auto_MainJurisdiction { get
+		//	{
+		//		var result = new List<GeoCoordinates>();
+		//		if( MainJurisdiction != null && MainJurisdiction.Id > 0 )
+		//		{
+		//			result.Add( MainJurisdiction );
+		//		}
+		//		return result;
+		//	} }
 		public List<GeoCoordinates> JurisdictionException { get; set; }
 
 		public Enumeration JurisdictionAssertion { get; set; }

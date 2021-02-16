@@ -73,6 +73,10 @@ namespace workIT.Models.Common
 			TARGETCOMPONENT = 6
 		}
 
+		public PathwayComponent()
+		{
+			EntityTypeId = 24;
+		}
 		/// <summary>
 		/// Type of PathwayComponent. 
 		/// Valid values (with or without ceterms:) :
@@ -211,6 +215,8 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string SourceData { get; set; }
 		public TopLevelEntityReference SourceCredential { get; set; } = null;
+		public TopLevelEntityReference SourceAssessment { get; set; } = null;
+		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 
 		/// <summary>
 		/// The webpage that describes this entity.
@@ -294,6 +300,8 @@ namespace workIT.Models.Common
 		public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
 
 		public TopLevelEntityReference SourceCredential { get; set; } = null;
+		public TopLevelEntityReference SourceAssessment { get; set; } = null;
+		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 	}
 
 	public class Entity_HasPathwayComponent

@@ -250,7 +250,7 @@ namespace Import.Services
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_assessment", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_assessment", payload, "", false );
 
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
@@ -525,12 +525,17 @@ namespace Import.Services
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input.CTID, ref output ) )
-            {
-                //set the rowid now, so that can be referenced as needed
-                output.RowId = Guid.NewGuid();
-            }
-            helper.currentBaseObject = output;
+			if ( !DoesEntityExist( input.CTID, ref output ) )
+			{
+				//set the rowid now, so that can be referenced as needed
+				output.RowId = Guid.NewGuid();
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+			}
+			else
+			{
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
+			}
+			helper.currentBaseObject = output;
 
             //start with language and may use with language maps
             foreach ( var l in input.InLanguage )

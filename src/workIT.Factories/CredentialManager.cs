@@ -12,7 +12,7 @@ using System.Data.Entity;
 using workIT.Models;
 using workIT.Models.Common;
 using CM = workIT.Models.Common;
-using workIT.Models.ProfileModels;
+using MPM = workIT.Models.ProfileModels;
 using EM = workIT.Data.Tables;
 using workIT.Utilities;
 
@@ -54,15 +54,15 @@ namespace workIT.Factories
 				{
 					//note for import, may still do updates?
 					if ( ValidateProfile( entity, ref status ) == false )
-					{
-						return false;
+					{//always want to complete import may want to log errors though
+						//return false;
 					}
 					//getting duplicates somehow
 					//second one seems less full featured, so could compare dates
 					if ( entity.Id > 0 )
 					{
 						DBEntity efEntity = context.Credential
-								.SingleOrDefault( s => s.Id == entity.Id );
+								.FirstOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							//delete the entity and re-add
@@ -767,7 +767,7 @@ namespace workIT.Factories
 
 			UpdateAssertedIns( entity, ref status );
 			//outcomes
-			HandleHoldersProfiles( entity, relatedEntity, ref status );
+			HandleOutcomeProfiles( entity, relatedEntity, ref status );
 
 			return isAllValid;
 		}
@@ -791,7 +791,11 @@ namespace workIT.Factories
 
 			//ConditionProfile 
 			Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-			emanager.DeleteAll( relatedEntity, ref status );
+			//arbitrarily delete all. 
+			//20-12-28 mp - there have been deadlock issues 
+			//20-12-28 - skip delete all from credential, etc. Rather checking  in save
+
+			//emanager.DeleteAll( relatedEntity, ref status );
 			try
 			{
 				emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
@@ -888,15 +892,21 @@ namespace workIT.Factories
 
 			return status.WasSectionValid;
 		}
-		public bool HandleHoldersProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool HandleOutcomeProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
 			HoldersProfileManager ecm = new HoldersProfileManager();
 			if ( ecm.SaveList( entity.HoldersProfile, relatedEntity, ref status ) == false )
 				status.HasSectionErrors = true;
-
-
+			//Earnings profile
+			var eapMgr = new EarningsProfileManager();
+			if ( eapMgr.SaveList( entity.EarningsProfile, relatedEntity, ref status ) == false )
+				status.HasSectionErrors = true;
+			//.TODO add employment outcome
+			var eoMgr = new EmploymentOutcomeProfileManager();
+			if ( eoMgr.SaveList( entity.EmploymentOutcomeProfile, relatedEntity, ref status ) == false )
+				status.HasSectionErrors = true;
 
 			return status.WasSectionValid;
 		}
@@ -1001,6 +1011,8 @@ namespace workIT.Factories
 			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RegulatedBy, entity.RegulatedBy, ref status );
 			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RevokedBy, entity.RevokedBy, ref status );
 			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RenewedBy, entity.RenewedBy, ref status );
+			//
+			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 			return isAllValid;
 		} //
 
@@ -1152,6 +1164,14 @@ namespace workIT.Factories
 						{
 
 						}
+						if ( !new Entity_EarningsProfileManager().DeleteAll( efEntity.RowId, ref status ) )
+						{
+
+						}
+						if ( !new Entity_EmploymentOutcomeProfileManager().DeleteAll( efEntity.RowId, ref status ) )
+						{
+
+						}
 						//same for earnings and others
 
 						//need to remove from Entity.
@@ -1214,29 +1234,41 @@ namespace workIT.Factories
 		#region credential - retrieval ===================
 		public static ThisEntity GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisEntity output = new ThisEntity();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity from = context.Credential
+				DBEntity input = context.Credential
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
-				if ( from != null && from.Id > 0 )
+				if ( input != null && input.Id > 0 )
 				{
-					entity.RowId = from.RowId;
-					entity.Id = from.Id;
-					entity.Name = from.Name;
-					entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
-					entity.Description = from.Description;
-					entity.SubjectWebpage = from.SubjectWebpage;
-					entity.CredentialTypeId = from.CredentialTypeId ?? 0;
+					output.RowId = input.RowId;
+					output.Id = input.Id;
+					output.Name = input.Name;
+					output.EntityStateId = ( int )( input.EntityStateId ?? 1 );
+					output.Description = input.Description;
+					output.SubjectWebpage = input.SubjectWebpage;
+					output.CredentialTypeId = input.CredentialTypeId ?? 0;
 
-					entity.ImageUrl = from.ImageUrl;
-					entity.CTID = from.CTID;
-					entity.CredentialRegistryId = from.CredentialRegistryId;
+					output.ImageUrl = input.ImageUrl;
+					output.CTID = input.CTID;
+					output.CredentialRegistryId = input.CredentialRegistryId;
+					//get this for use by import and preserving published by
+					if ( IsGuidValid( input.OwningAgentUid ) )
+					{
+						output.OwningAgentUid = ( Guid )input.OwningAgentUid;
+						output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+
+						//get roles
+						MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+						output.OwnerRoles = orp.AgentRole;
+					}
+					output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 1, output.Id, output.OwningOrganizationId );
+
 				}
 			}
 
-			return entity;
+			return output;
 		}
 		public static ThisEntity GetBySubjectWebpage( string swp )
 		{
@@ -2072,8 +2104,8 @@ namespace workIT.Factories
                 output.OwningAgentUid = ( Guid )input.OwningAgentUid;
                 output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
 
-                //get roles
-                OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				//get roles
+				MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
                 output.OwnerRoles = orp.AgentRole;
             }
 
@@ -2128,9 +2160,10 @@ namespace workIT.Factories
 			output.Supersedes = input.Supersedes;
 			output.SupersededBy = input.SupersededBy;
 
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier );
 
 
-            if ( IsValidDate( input.Created ) )
+			if ( IsValidDate( input.Created ) )
                 output.Created = ( DateTime )input.Created;
             if ( IsValidDate( input.LastUpdated ) )
                 output.LastUpdated = ( DateTime )input.LastUpdated;
@@ -2193,7 +2226,7 @@ namespace workIT.Factories
 
                 //just in case
                 if ( output.EstimatedCosts == null )
-                    output.EstimatedCosts = new List<CostProfile>();
+                    output.EstimatedCosts = new List<MPM.CostProfile>();
 
                 //profiles ==========================================
                 //output.FinancialAssistanceOLD = Entity_FinancialAlignmentProfileManager.GetAll( output.RowId );
@@ -2307,8 +2340,10 @@ namespace workIT.Factories
 			//outcomes
 			//should be able to get from Entity
 			output.HoldersProfile = Entity_HoldersProfileManager.GetAll( output.RowId, true );
+			output.EarningsProfile = Entity_EarningsProfileManager.GetAll( output.RowId, true );
+			output.EmploymentOutcomeProfile = Entity_EmploymentOutcomeProfileManager.GetAll( output.RowId, true );
 
-            if ( cr.IncludingJurisdiction )
+			if ( cr.IncludingJurisdiction )
             {
                 output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
                 //output.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
@@ -2319,7 +2354,7 @@ namespace workIT.Factories
                 //TODO - CredentialProcess is used in the detail pages. Should be removed and use individual profiles
 
                 output.CredentialProcess = Entity_ProcessProfileManager.GetAll(output.RowId);
-                foreach ( ProcessProfile item in output.CredentialProcess )
+                foreach ( MPM.ProcessProfile item in output.CredentialProcess )
                 {
                     if ( item.ProcessTypeId == Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE )
                         output.AdministrationProcess.Add(item);

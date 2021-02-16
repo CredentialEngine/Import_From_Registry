@@ -241,11 +241,17 @@ namespace Import.Services
 					return true;
 
 
-				//add/updating Pathway
 				if ( !DoesEntityExist( input.CTID, ref output ) )
 				{
+					//TODO - perhaps create a pending pathway immediately 
+
 					//set the rowid now, so that can be referenced as needed
 					output.RowId = Guid.NewGuid();
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+				}
+				else
+				{
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
 				}
 				helper.currentBaseObject = output;
 
@@ -397,17 +403,18 @@ namespace Import.Services
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.SourceData = input.SourceData;
-				//check for credential
-				if ( output.PathwayComponentType.ToLower().IndexOf("credential") > -1 )
+
+				if ( !string.IsNullOrWhiteSpace( output.SourceData ) && output.SourceData.IndexOf( "/resources/" ) > 0 )
 				{
-					if ( !string.IsNullOrWhiteSpace( output.SourceData ) && output.SourceData.IndexOf("/resources/") > 0 )
+					var ctid = ResolutionServices.ExtractCtid( output.SourceData );
+					if ( !string.IsNullOrWhiteSpace( ctid ) )
 					{
-						var ctid = ResolutionServices.ExtractCtid( output.SourceData );
-						if (!string.IsNullOrWhiteSpace(ctid))
+						if ( output.PathwayComponentType.ToLower().IndexOf( "credential" ) > -1 )
 						{
 							var target = CredentialManager.GetByCtid( ctid );
-							if ( target != null && target.Id > 0)
+							if ( target != null && target.Id > 0 )
 							{
+								//this approach 'buries' the cred from external references like credential in pathway
 								output.SourceCredential = new TopLevelEntityReference()
 								{
 									Id = target.Id,
@@ -415,13 +422,52 @@ namespace Import.Services
 									Description = target.Description,
 									CTID = target.CTID,
 									SubjectWebpage = target.SubjectWebpage,
-									RowId = target.RowId
+									//RowId = target.RowId
 								};
 								output.JsonProperties.SourceCredential = output.SourceCredential;
 							}
 						}
+						else if ( output.PathwayComponentType.ToLower().IndexOf( "assessmentcomp" ) > -1 )
+						{
+							var target = AssessmentManager.GetByCtid( ctid );
+							if ( target != null && target.Id > 0 )
+							{
+								//may not really need this, just the json
+								output.SourceAssessment = new TopLevelEntityReference()
+								{
+									Id = target.Id,
+									Name = target.Name,
+									Description = target.Description,
+									CTID = target.CTID,
+									SubjectWebpage = target.SubjectWebpage,
+									//RowId = target.RowId
+								};
+								output.JsonProperties.SourceAssessment = output.SourceAssessment;
+							}
+						}
+						else if ( output.PathwayComponentType.ToLower().IndexOf( "coursecomp" ) > -1 )
+						{
+							var target = LearningOpportunityManager.GetByCtid( ctid );
+							if ( target != null && target.Id > 0 )
+							{
+								//may not really need this, just the json
+								output.SourceLearningOpportunity = new TopLevelEntityReference()
+								{
+									Id = target.Id,
+									Name = target.Name,
+									Description = target.Description,
+									CTID = target.CTID,
+									SubjectWebpage = target.SubjectWebpage,
+									//RowId = target.RowId
+								};
+								output.JsonProperties.SourceLearningOpportunity = output.SourceLearningOpportunity;
+							}
+						}
 					}
+					
+
 				}
+				
 				output.CTID = input.CTID;
 				output.PathwayCTID = pathway.CTID;
 

@@ -157,6 +157,6 @@ namespace workIT.Models.ProfileModels
 		public int ReferencedByAssessments { get; set; }
 		public int ReferencedByCredentials { get; set; }
 		public int ReferencedByLearningOpportunities { get; set; }
-		public int ResultNumber { get; set; }
+		//public int ResultNumber { get; set; }
 	}
 }

@@ -819,7 +819,7 @@ namespace workIT.Factories
             {
                 //ConditionProfile =======================================
                 Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-                emanager.DeleteAll( relatedEntity, ref status );
+                //emanager.DeleteAll( relatedEntity, ref status );
 
                 emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
                 emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
@@ -1596,6 +1596,8 @@ namespace workIT.Factories
 
 			output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
 			output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.LEARNING_OPP_Identifier );
+
 			output.LearningMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type );
 			output.AssessmentMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type );
 

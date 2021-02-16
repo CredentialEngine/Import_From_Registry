@@ -12,6 +12,10 @@ using System.Web.UI.WebControls;
 using System.Web.SessionState;
 
 using workIT.Utilities;
+using MC = workIT.Models.Common;
+using MD = workIT.Models.Detail;
+using ME = workIT.Models.Elastic;
+using MPM = workIT.Models.ProfileModels;
 
 namespace workIT.Services
 {
@@ -120,7 +124,635 @@ namespace workIT.Services
 
 		#endregion
 
+		#region Mapping for Finder API
+		public static void MapEntitySearchLink( int orgId, string orgName, int entityCount, string labelTemplate, string searchType, ref List<MD.LabelLink> output, string roles = "6,7" )
+		{
+			//var output = new MD.LabelLink();
+			if ( orgId  < 1)
+				return;
+			//note need the friendly name
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//search?autosearch=true&amp;searchType=credential&amp;custom={n:'organizationroles',aid:957,rid:[6,7],p:'Bates+Technical+College',r:'',d:'Owns/Offers 2 Credential(s)'}
+			//var label = string.Format( "Owns/Offers {0} Credential(s)", entityCount );
+			try
+			{
+				var label = string.Format( labelTemplate, entityCount );
+				var custom = string.Format( "custom=(n:'organizationroles',aid:{0},rid:[{3}],p:'{1}',r:'',d:'{2}')", orgId, orgName, label, roles );
+				var url = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[{2}],p:'{3}',r:'',d:'{4}'))", searchType, orgId, roles, orgName, label );
+				url = url.Replace( "((", "{" ).Replace( "))", "}" );
+				url = url.Replace( "'", "%27" ).Replace( " ", "%20" );
+				//url = HttpUtility.UrlEncode( url );
 
+				output.Add( new MD.LabelLink()
+				{
+					Label = label,
+					Count = entityCount,
+					URL = url
+				});
+			} catch(Exception ex)
+			{
+				LoggingHelper.DoTrace( 1, "" + ex.Message );
+			}
+			//return output;
+
+		}
+
+		public static void  MapQAPerformedLink( int orgId, string orgName, int entityCount, string labelTemplate, string searchType, ref List<MD.LabelLink> output )
+		{
+			//var output = new MD.LabelLink();
+			if ( orgId < 1 )
+				return;
+			//note need the friendly name
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//search?autosearch=true&amp;searchType=credential&amp;custom={n:'organizationroles',aid:957,rid:[6,7],p:'Bates+Technical+College',r:'',d:'Owns/Offers 2 Credential(s)'}
+			//var label = string.Format( "Owns/Offers {0} Credential(s)", entityCount );
+			try
+			{
+				var label = string.Format( labelTemplate, entityCount );
+				var url = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[1,2,10,12],p:'{2}',r:'',d:'{3}'))", searchType, orgId, orgName, label );
+				url = url.Replace( "((", "{" ).Replace( "))", "}" );
+				url = url.Replace( "'", "%27" ).Replace( " ", "%20" );
+				//url = HttpUtility.UrlEncode( url );
+
+				output.Add( new MD.LabelLink()
+				{
+					Label = label,
+					Count = entityCount,
+					URL = url
+				});
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, "" + ex.Message );
+			}
+			//return output;
+
+		}
+
+		public static List<MD.LabelLink> MapPropertyLabelLinks( MC.Enumeration input, string searchType, bool formatUrl = true )
+		{
+			var output = new List<MD.LabelLink>();
+			if ( input == null || input.Items == null || input.Items.Count() == 0 )
+				return null;
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//https://sandbox.credentialengine.org/finder/search?autosearch=true&searchType=organization&filters=7-1185
+			foreach ( var item in input.Items)
+			{
+				var value = new MD.LabelLink()
+				{
+					Label = item.Name,//confirm this will be consistant					
+				};
+				if ( formatUrl )
+					value.URL = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );    //may be difficult to set generically?
+
+				output.Add( value );
+			}
+
+			return output;
+
+		}
+		public static MD.LabelLink MapPropertyLabelLink( MC.Enumeration input, string searchType, bool formatUrl = true )
+		{
+			var output = new MD.LabelLink();
+			if ( input == null || input.Items == null || input.Items.Count() == 0 )
+				return null;
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//https://sandbox.credentialengine.org/finder/search?autosearch=true&searchType=organization&filters=7-1185
+			foreach ( var item in input.Items )
+			{
+				var value = new MD.LabelLink()
+				{
+					Label = item.Name,//confirm this will be consistant					
+				};
+				if ( formatUrl )
+					value.URL = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );    //may be difficult to set generically?
+
+				output = value ;
+				break;
+			}
+
+			return output;
+
+		}
+		/// <summary>
+		/// prototype for industry 
+		/// Current detail page just does a keyword search.
+		/// Gray button link does an actual industry type search
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="searchType"></param>
+		/// <returns></returns>
+		public static List<MD.LabelLink> MapReferenceFrameworkLabelLink( MC.Enumeration input, string searchType )
+		{
+			var output = new List<MD.LabelLink>();
+			if ( input == null || input.Items == null || input.Items.Count() == 0 )
+				return output;
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//https://sandbox.credentialengine.org/finder/search?autosearch=true&searchType=organization&filters=7-1185
+			foreach ( var item in input.Items )
+			{
+				var value = new MD.LabelLink()
+				{
+					Label = item.Name,//confirm this will be consistant
+					//URL = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id )
+
+					URL = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&keywords={1}", searchType, item.Name )
+
+				};
+				output.Add( value );
+			}
+
+			return output;
+
+		}
+		public static List<MD.LabelLink> MapPropertyLabelLinks( List<MPM.TextValueProfile> input, string searchType )
+		{
+			var output = new List<MD.LabelLink>();
+			if ( input == null || input.Count() == 0 )
+				return output;
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+			//
+			//search?autosearch=true&amp;searchType=organization&amp;keywords=Career and Technical Education
+			foreach ( var item in input )
+			{
+				if ( !string.IsNullOrWhiteSpace( item.TextValue ) )
+				{
+					var value = new MD.LabelLink()
+					{
+						Label = item.TextValue,//confirm this will be consistant
+						URL = baseSiteURL + string.Format( "search?autosearch=true&searchType={0}&keywords={1}", searchType, item.TextValue )   
+					};
+					output.Add( value );
+				}
+			}
+
+			return output;
+
+		}
+		public static List<string> MapTextValueProfileToStringList( List<MPM.TextValueProfile> input )
+		{
+			var output = new List<string>();
+			if ( input == null || input.Count() == 0 )
+				return output;
+			//
+			//search?autosearch=true&amp;searchType=organization&amp;keywords=Career and Technical Education
+			foreach ( var item in input )
+			{
+				if ( !string.IsNullOrWhiteSpace( item.TextValue ) )
+				{
+					output.Add( item.TextValue.Trim() );
+				}
+			}
+
+			return output;
+
+		}
+		//
+
+		public static List<ME.JurisdictionProfile> MapJurisdiction( List<MC.JurisdictionProfile> input, string assertionType = "")
+		{
+			var output = new List<ME.JurisdictionProfile>();
+			if ( input == null || input.Count() == 0 )
+				return null;
+			//
+			foreach ( var item in input )
+			{
+				var pp = new ME.JurisdictionProfile()
+				{
+					Description = item.Description,
+					GlobalJurisdiction = item.GlobalJurisdiction,
+				};
+				//map address-need a helper to format the jurisdiction - rare
+				//**** need to handle GeoCoordinates
+				if ( item.MainJurisdiction != null  )
+				{
+					//check - likely the data is in 
+					if ( item.MainJurisdiction.Address != null )
+					{
+						pp.MainJurisdiction = new ME.Address()
+						{
+							Name = item.MainJurisdiction.Address.Name,
+							City = item.MainJurisdiction.Address.City,
+							AddressRegion = item.MainJurisdiction.Address.AddressRegion,
+							Country = item.MainJurisdiction.Address.Country,
+							Latitude = item.MainJurisdiction.Address.Latitude,
+							Longitude = item.MainJurisdiction.Address.Longitude
+						};
+					} else
+					{
+						pp.MainJurisdiction = new ME.Address()
+						{
+							Name = item.MainJurisdiction.Name,
+							AddressRegion = item.MainJurisdiction.Region,
+							Country = item.MainJurisdiction.Country,
+							Latitude = item.MainJurisdiction.Latitude,
+							Longitude = item.MainJurisdiction.Longitude
+						};
+					}
+				}
+				if ( item.JurisdictionException != null && item.JurisdictionException.Any() )
+				{
+					pp.JurisdictionException = new List<ME.Address>();
+					foreach ( var je in item.JurisdictionException )
+					{
+						if ( je.Address != null )
+						{
+							var j = new ME.Address()
+							{
+								Name = je.Address.Name,
+								City = je.Address.City,
+								AddressRegion = je.Address.AddressRegion,
+								Country = je.Address.Country,
+								Latitude = je.Address.Latitude,
+								Longitude = je.Address.Longitude
+							};
+							pp.JurisdictionException.Add( j );
+						}
+						else
+						{
+							var j = new ME.Address()
+							{
+								Name = je.Name,
+								AddressRegion = je.Region,
+								Country = je.Country,
+								Latitude = je.Latitude,
+								Longitude = je.Longitude
+							};
+							pp.JurisdictionException.Add( j );
+						}
+					}
+				}
+				//other
+				//for AssertedIns
+				pp.AssertedBy = null;
+				if ( !string.IsNullOrWhiteSpace( assertionType ) )
+				{
+					pp.AssertedInType = item.AssertedInType;
+					if ( item.AssertedByOrganization != null && !string.IsNullOrWhiteSpace( item.AssertedByOrganization.Name ) )
+					{
+						pp.AssertedBy = MapToEntityReference( item.AssertedByOrganization );
+					}
+				}
+
+				//
+				output.Add( pp );
+
+			};
+
+			return output;
+
+		}
+
+		//
+		public static List<MD.ProcessProfile> MapProcessProfile( int orgId, List<MPM.ProcessProfile> input )
+		{
+			var output = new List<MD.ProcessProfile>();
+			if ( input == null || input.Count() == 0 )
+				return output;
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+
+			//
+			foreach ( var item in input )
+			{
+				var pp = new MD.ProcessProfile()
+				{
+					//ProcessProfileType = item.ProcessType,
+					Description = item.Description,
+					DateEffective = item.DateEffective,
+					ProcessFrequency = item.ProcessFrequency,
+					ProcessMethod = item.ProcessMethod,
+					ProcessMethodDescription = item.ProcessMethodDescription,
+					ProcessStandards = item.ProcessStandards,
+					ProcessStandardsDescription = item.ProcessStandardsDescription,
+					ScoringMethodDescription = item.ScoringMethodDescription,
+					ScoringMethodExample = item.ScoringMethodExample,
+					ScoringMethodExampleDescription = item.ScoringMethodExampleDescription,
+					SubjectWebpage = item.SubjectWebpage,
+					VerificationMethodDescription = item.VerificationMethodDescription,
+				};
+				pp.ExternalInput = MapPropertyLabelLinks( item.ExternalInput, "organization", false );
+				pp.ProcessingAgent = null;
+				if ( item.ProcessingAgent != null && item.ProcessingAgent.Id > 0 && item.ProcessingAgent.Id != orgId )
+				{
+					if ( item.ProcessingAgent != null && !string.IsNullOrWhiteSpace( item.ProcessingAgent.Name ) )
+						pp.ProcessingAgent = MapToEntityReference( item.ProcessingAgent );
+				}
+			
+				if ( item.TargetAssessment != null && item.TargetAssessment.Any() )
+				{
+					foreach (var target in item.TargetAssessment)
+					{
+						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+							pp.TargetAssessment.Add( MapToEntityReference( target ) );
+					}
+				}
+				if ( item.TargetCredential != null && item.TargetCredential.Any() )
+				{
+					foreach ( var target in item.TargetCredential )
+					{
+						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+							pp.TargetCredential.Add( MapToEntityReference( target ) );
+					}
+				}
+				if ( item.TargetLearningOpportunity != null && item.TargetLearningOpportunity.Any() )
+				{
+					foreach ( var target in item.TargetLearningOpportunity )
+					{
+						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+							pp.TargetLearningOpportunity.Add( MapToEntityReference( target ) );
+					}
+				}
+				output.Add( pp );
+			}
+
+			return output;
+		}
+		public static List<MC.TopLevelEntityReference> MapToEntityReference( List<MC.TopLevelObject> input )
+		{
+			var output = new List<MC.TopLevelEntityReference>();
+			if ( input == null || !input.Any() )
+				return null;
+
+			foreach (var item in input)
+			{
+				var tlo = MapToEntityReference( item );
+				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Name ) ) 
+				{
+					output.Add( tlo );
+				}
+			}
+			if ( !output.Any() )
+				return null;
+
+			return output;
+		}
+
+		public static List<MC.TopLevelEntityReference> MapToEntityReference( List<MPM.OrganizationRoleProfile> input )
+		{
+			var output = new List<MC.TopLevelEntityReference>();
+			if ( input == null || !input.Any() )
+				return null;
+
+			foreach ( var item in input )
+			{
+				var tlo = MapToEntityReference( item );
+				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Name ) )
+				{
+					output.Add( tlo );
+				}
+			}
+			if ( !output.Any() )
+				return null;
+
+			return output;
+		}
+		public static MC.TopLevelEntityReference MapToEntityReference( MPM.OrganizationRoleProfile input )
+		{
+
+			if ( input == null || input.ActingAgent == null || string.IsNullOrWhiteSpace( input.ActingAgent.Name ) )
+				return null;
+
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+
+			var output = new MC.TopLevelEntityReference()
+			{
+				Id = input.Id,//need for links, or may need to create link here
+				Name = input.ActingAgent.Name,
+				SubjectWebpage = input.ActingAgent.SubjectWebpage,
+				Description = input.ActingAgent.Description,
+				CTID = input.ActingAgent.CTID, 
+				EntityTypeId = 2,
+			};
+			if ( !string.IsNullOrWhiteSpace( output.CTID ) )
+				output.DetailURL = baseSiteURL + "resources/" + output.CTID;
+
+			return output;
+
+		}
+
+		public static MC.TopLevelEntityReference MapToEntityReference( MC.TopLevelObject input )
+		{
+
+			if ( input == null || string.IsNullOrWhiteSpace( input.Name ) )
+				return null;// new MC.TopLevelEntityReference();	//or NULL
+
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+
+			var output = new MC.TopLevelEntityReference()
+			{
+				Id = input.Id,//need for links, or may need to create link here
+				Name = input.Name,
+				SubjectWebpage = input.SubjectWebpage,
+				Description = input.Description,
+				CTID = input.CTID,
+				EntityTypeId = input.EntityTypeId,
+			};
+			if ( !string.IsNullOrWhiteSpace( output.CTID ) )
+				output.DetailURL = baseSiteURL + "resources/" + output.CTID;
+
+			return output;
+
+		}
+
+		//==========================================
+
+		public static List<ME.CostManifest> MapToCostManifests( List<MC.CostManifest> input )
+		{
+
+			if ( input == null || !input.Any() )
+			{
+				return null;
+			}
+			var output = new List<ME.CostManifest>();
+			foreach ( var item in input )
+			{
+				//just in case
+				if ( string.IsNullOrWhiteSpace( item.CostDetails ) )
+					continue;
+				var cm = new ME.CostManifest()
+				{
+					Name = item.Name,
+					Description = item.Description,
+					CostDetails = item.CostDetails,
+					StartDate = item.StartDate,
+					EndDate = item.EndDate,
+					CTID = item.CTID,
+				};
+				//CostProfiles
+				if ( item.EstimatedCost != null && item.EstimatedCost.Any() )
+				{
+					cm.EstimatedCost = ServiceHelper.MapToCostProfiles( item.EstimatedCost );
+				}
+
+				output.Add( cm );
+			}
+			if ( !output.Any() )
+				return null;
+
+			return output;
+
+		}
+		public static List<ME.CostProfile> MapToCostProfiles( List<MPM.CostProfile> input )
+		{
+			var output = new List<ME.CostProfile>();
+			if ( input == null || !input.Any() )
+				return null;
+
+			foreach ( var item in input )
+			{
+				var tlo = MapToCostProfile( item );
+				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Description ) )
+				{
+					output.Add( tlo );
+				}
+			}
+			if ( !output.Any() )
+				return null;
+
+			return output;
+		}
+		public static ME.CostProfile MapToCostProfile( MPM.CostProfile input )
+		{
+
+			if ( input == null || string.IsNullOrWhiteSpace( input.Description ) )
+				return null;
+
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+
+			var output = new ME.CostProfile()
+			{
+				Name = input.ProfileName,
+				CostDetails = input.CostDetails,
+				Description = input.Description,
+				Currency = input.Currency,
+				CurrencySymbol = input.CurrencySymbol,
+				StartDate = input.StartDate,
+				EndDate = input.EndDate,
+			};
+			output.Condition = MapTextValueProfileTextValue( input.Condition );
+			output.Jurisdiction = MapJurisdiction( input.Jurisdiction );
+			//output.Region = MapJurisdiction( input.Region );
+			//items
+
+			if(input.Items  != null && input.Items.Any())
+			{
+				foreach(var item in input.Items )
+				{
+					var cpi = new ME.CostProfileItem() 
+					{ 
+						Price = item.Price,
+						PaymentPattern = item.PaymentPattern,
+						AudienceType = MapPropertyLabelLinks( item.AudienceType, "organization", false ),
+						ResidencyType = MapPropertyLabelLinks( item.ResidencyType, "organization", false ),
+					};
+					cpi.DirectCostType = MapPropertyLabelLink( item.DirectCostType, "organization", false );
+
+					output.CostItems.Add( cpi );
+				}
+			}
+
+			return output;
+
+		}
+
+		public static List<ME.ConditionProfile> MapToConditionProfiles( List<MPM.ConditionProfile> input )
+		{
+			var output = new List<ME.ConditionProfile>();
+			if ( input == null || !input.Any() )
+				return null;
+
+			foreach ( var item in input )
+			{
+				var tlo = MapToConditionProfile( item );
+				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Description ) )
+				{
+					output.Add( tlo );
+				}
+			}
+			return output;
+		}
+		public static ME.ConditionProfile MapToConditionProfile( MPM.ConditionProfile input, string searchType = "" )
+		{
+
+			if ( input == null || string.IsNullOrWhiteSpace( input.Description ) )
+				return null;
+
+			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
+
+			var output = new ME.ConditionProfile()
+			{
+				Name = input.ProfileName,
+				SubjectWebpage = input.SubjectWebpage,
+				Description = input.Description,
+				Experience = input.Experience,
+				AudienceLevelType = MapPropertyLabelLinks( input.AudienceLevelType, searchType, false ),
+				AudienceType = MapPropertyLabelLinks( input.AudienceType, searchType, false ),
+				CreditUnitTypeDescription = input.CreditUnitTypeDescription,
+				SubmissionOfDescription = input.SubmissionOfDescription,
+				Weight = input.Weight,
+				YearsOfExperience = input.YearsOfExperience
+			};
+			output.Condition = MapTextValueProfileTextValue( input.Condition );
+			output.Jurisdiction = MapJurisdiction( input.Jurisdiction );
+			output.ResidentOf = MapJurisdiction( input.ResidentOf );
+			output.SubmissionOf = MapTextValueProfileTextValue( input.SubmissionOf );
+			//CreditValue
+
+			//CommonCosts
+			output.CommonCosts = MapToCostManifests( input.CommonCosts );
+			//EstimatedCosts
+			output.EstimatedCost = MapToCostProfiles( input.EstimatedCost );
+
+			//targets
+			if ( input.TargetAssessment != null && input.TargetAssessment.Any() )
+			{
+				output.TargetAssessment = new List<MC.TopLevelEntityReference>();
+				foreach ( var target in input.TargetAssessment )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						output.TargetAssessment.Add( MapToEntityReference( target ) );
+				}
+			}
+			if ( input.TargetCredential != null && input.TargetCredential.Any() )
+			{
+				output.TargetCredential = new List<MC.TopLevelEntityReference>();
+				foreach ( var target in input.TargetCredential )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						output.TargetCredential.Add( MapToEntityReference( target ) );
+				}
+			}
+			if ( input.TargetLearningOpportunity != null && input.TargetLearningOpportunity.Any() )
+			{
+				output.TargetLearningOpportunity = new List<MC.TopLevelEntityReference>();
+				foreach ( var target in input.TargetLearningOpportunity )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						output.TargetLearningOpportunity.Add( MapToEntityReference( target ) );
+				}
+			}
+			return output;
+
+		}
+		public static List<string> MapTextValueProfileTextValue(List<MPM.TextValueProfile> input)
+		{
+			var output = new List<string>();
+			if ( input == null || !input.Any() )
+				return null;
+			foreach(var item in input)
+			{
+				if ( !string.IsNullOrWhiteSpace( item.TextValue ) )
+					output.Add( item.TextValue );
+			}
+
+			return output;
+		}
+		#endregion
 		#region Helpers and validaton
 		public static bool IsLocalHost()
 		{

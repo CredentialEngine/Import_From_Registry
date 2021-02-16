@@ -95,7 +95,9 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
-						return false;
+					{
+						//return false;
+					}
 
 					if ( entity.Id > 0 )
 					{
@@ -149,7 +151,7 @@ namespace workIT.Factories
 						}
 						else
 						{
-							status.AddError( "Error - update failed, as record was not found." );
+							status.AddError( "Error - update failed, as DataSetTimeFrame was not found." );
 						}
 					}
 					else

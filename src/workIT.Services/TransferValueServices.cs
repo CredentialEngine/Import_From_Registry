@@ -15,6 +15,7 @@ using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
 
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using workIT.Models.Search;
 using workIT.Utilities;
@@ -50,7 +51,7 @@ namespace workIT.Services
 					//update Elastic
 					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
 					{
-						//ElasticServices.TransferValueProfile_UpdateIndex( entity.Id );
+						//ElasticHelper.TransferValueProfile_UpdateIndex( entity.Id );
 					}
 					else
 					{
@@ -64,7 +65,7 @@ namespace workIT.Services
 				else
 				{
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, entity.Id, 1, ref messages );
-					if ( entity.OwningOrganizationId > 0 )
+					if ( entity.OwningOrganizationId  > 0)
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
@@ -78,13 +79,14 @@ namespace workIT.Services
 		public static MP.TransferValueProfile HandlingExistingEntity( string ctid, ref SaveStatus status )
 		{
 			MP.TransferValueProfile entity = new MP.TransferValueProfile();
+			//warning- 
 			entity = TransferValueProfileManager.GetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 			{
 				Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
 				if ( relatedEntity == null || relatedEntity.Id == 0 )
 				{
-					status.AddError( string.Format( "Error - the related Entity for transfer value: '{0}' ({1}), was not found.", entity.Name, entity.Id ) );
+					status.AddError( string.Format("Error - the related Entity for transfer value: '{0}' ({1}), was not found.", entity.Name, entity.Id) );
 					return entity;
 				}
 				//we know for this type, there will entity.learningopp, entity.assessment and entity.credential relationships, and quick likely blank nodes.
@@ -119,14 +121,14 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticTransferValueSearch", false ) )
 			{
-				//var results = ElasticServices.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref pTotalRows );
-				return ElasticServices.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, "TransferValue", data, ref pTotalRows );
+				//var results = ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref pTotalRows );
+				return ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, "TransferValue", data, ref pTotalRows );
 			}
 			else
 			{
 				List<CommonSearchSummary> results = new List<CommonSearchSummary>();
 				var list = DoSearch( data, ref pTotalRows );
-				foreach ( var item in list )
+				foreach (var item in list)
 				{
 					results.Add( new CommonSearchSummary()
 					{

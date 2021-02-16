@@ -112,6 +112,9 @@ namespace RA.Models.JsonV2
 		public List<CredentialAlignmentObject> TargetCompetency { get; set; }
 
 		//external classes =====================================
+		[JsonProperty( PropertyName = "ceterms:commonCosts" )]
+		public List<string> CommonCosts { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:estimatedCost" )]
         public List<CostProfile> EstimatedCost { get; set; }
 

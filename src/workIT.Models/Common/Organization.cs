@@ -13,6 +13,7 @@ namespace workIT.Models.Common
 	{
 		public Organization()
 		{
+			EntityTypeId = 2;
 			//AgentDomainType = "CredentialOrganization";
 			AgentTypeId = 1;
 
@@ -263,12 +264,16 @@ namespace workIT.Models.Common
 
 		//Identifiers is saved as an OrganizationProperty
 		public Enumeration Identifiers { get; set; }
-		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
 
 		public int TotalCredentials { get; set; }
 		public int TotalAssessments { get; set; }
 		public int TotalLopps{ get; set; }
 		public int TotalFrameworks { get; set; }
+		public int TotalConceptSchemes { get; set; }
+		public int RenewsCredentials { get; set; }
+		public int RevokesCredentials { get; set; }
+		public int RegulatesCredentials { get; set; }
+		//
 		public int TotalTransferValueProfiles { get; set; }
 		public int TotalPathways{ get; set; }
 		public int TotalPathwaySets { get; set; }
@@ -327,7 +332,7 @@ namespace workIT.Models.Common
 		public List<ContactPoint> ContactPoint { get; set; } = new List<ContactPoint>();
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
-		public List<TextValueProfile> Auto_SameAs { get { return SameAs; } set { SameAs = value; } } //Alias used for publishing
+		//public List<TextValueProfile> Auto_SameAs { get { return SameAs; } set { SameAs = value; } } //Alias used for publishing
 		public List<TextValueProfile> IdentificationCodes { get; set; } = new List<TextValueProfile>();
 		public string ID_DUNS { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:duns" )?.TextValue; } }
 		public string ID_FEIN { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:fein" )?.TextValue; } }
@@ -371,9 +376,10 @@ namespace workIT.Models.Common
 		public List<ProcessProfile> DevelopmentProcess { get; set; }
 		public List<ProcessProfile> MaintenanceProcess { get; set; }
 		#endregion
-		public List<VerificationStatus> VerificationStatus { get; set; }
+		//public List<VerificationStatus> VerificationStatus { get; set; }
+		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
 
-    }
+	}
 	[Serializable]
 	public class OrganizationExternalProperties
 	{

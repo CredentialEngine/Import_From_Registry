@@ -416,7 +416,11 @@ namespace workIT.Factories
 			}
 			//will be validated before getting here!
 			to.CredentialType = from.CredentialType;
-
+			if ( !string.IsNullOrWhiteSpace( to.CredentialType) && to.CredentialType.IndexOf("ctdl/terms") > 0)
+			{
+				int pos = to.CredentialType.IndexOf( "ctdl/terms" );
+				to.CredentialType = to.CredentialType.Substring( pos + 11 );
+			}
 
 			//not sure if this will just be a URI, or point to a concept
 			//if a concept, would probably need entity.hasConcept
@@ -470,6 +474,17 @@ namespace workIT.Factories
 					if ( pcp.SourceCredential != null && pcp.SourceCredential.Id > 0 )
 					{
 						to.SourceCredential = pcp.SourceCredential;
+						to.SourceData = "";
+					}
+					if ( pcp.SourceAssessment != null && pcp.SourceAssessment.Id > 0 )
+					{
+						to.SourceAssessment = pcp.SourceAssessment;
+						to.SourceData = "";
+					}
+					if ( pcp.SourceLearningOpportunity != null && pcp.SourceLearningOpportunity.Id > 0 )
+					{
+						to.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
+						to.SourceData = "";
 					}
 				}
 			}

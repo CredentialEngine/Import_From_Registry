@@ -6,11 +6,16 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Elastic
 {
-	public class PathwayIndex: BaseIndex, IIndex
+	//TBD
+	//public class PathwayIndex : GenericIndex, IIndex
+	//{
+	//}
+
+	public class PathwayIndex : BaseIndex, IIndex
 	{
 
 		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
-		public List<string> Keyword { get; set; } = new List<string>();
+		//public List<string> Keyword { get; set; } = new List<string>();
 		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
 
 		public int OwnerOrganizationId
@@ -37,5 +42,12 @@ namespace workIT.Models.Elastic
 		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = null;
 		public bool IsAvailableOnline { get; set; } = false;
 
+		public bool HasOccupations { get; set; }
+		public bool HasIndustries { get; set; }
+
+		public List<EntityReference> Pathways { get; set; } = null;
+		public bool HasPathwaysCount { get; set; }
+
+		public int ResultNumber { get; set; }
 	}
 }

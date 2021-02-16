@@ -43,15 +43,15 @@ namespace workIT.Utilities
 		/// <returns></returns>
 		public static bool SendSiteEmail( string subject, string message )
 		{
-			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "yoohoo@email.org" );
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string toEmail = UtilityManager.GetAppKeyValue( "contactUsMailTo", "mparsons@credentialengine.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
 
 		public static bool SendEmail( string toEmail, string subject, string message )
 		{
-			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
+			string fromEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
 			return SendEmail( toEmail, fromEmail, subject, message, "", "" );
 
 		} //
@@ -150,8 +150,8 @@ namespace workIT.Utilities
 			char[] delim = new char[ 1 ];
 			delim[ 0 ] = ',';
             MailMessage email = new MailMessage();
-            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "yoohoo@email.org" );
-			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );
+            string appEmail = UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
+			string systemAdminEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );
 			if ( string.IsNullOrWhiteSpace( BCC ) )
 				BCC = systemAdminEmail;
 			else
@@ -377,7 +377,7 @@ namespace workIT.Utilities
 			{
 				//need to be able to handle attachments
 			}
-            var parameters = email.GetContent();
+            var parameters = email.GetMultipartFormDataContent();
 			//var parameters2 = email.GetContent2();
 			//var client2 = new MailgunClient( sendingDomain, apiKey );
 	
@@ -385,6 +385,7 @@ namespace workIT.Utilities
 			{
 				using ( var client = new HttpClient() )
 				{
+					System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
 					client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue( "Basic", apiKeyEncoded );
 					var result = client.PostAsync( url, parameters ).Result;
 					//var result = client.PostAsync( url, parameters2 ).Result;
@@ -502,7 +503,7 @@ namespace workIT.Utilities
 		  /// <returns>True id message was sent successfully, otherwise false</returns>
 		public static bool NotifyAdmin( string subject, string message )
 		{
-			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "yoohoo@email.org" );	
+			string emailTo = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );	
 
 			return  NotifyAdmin( emailTo, subject, message );
         } 
@@ -636,6 +637,9 @@ namespace workIT.Utilities
 
 				}
 				if ( work.Length == 0 )
+				{
+					work = subject;
+				} else if ( work.Length > 120 )
 				{
 					work = subject;
 				}
@@ -811,6 +815,36 @@ namespace workIT.Utilities
                     data.Add( new KeyValuePair<string, string>( key, value ) );
                 }
             }
-        }
-    }
+			public MultipartFormDataContent GetMultipartFormDataContent()
+			{
+				var data = new MultipartFormDataContent();
+				AddMultipartFormData( data, "from", From );
+				AddMultipartFormData( data, "subject", Subject );
+				AddMultipartFormData( data, "html", BodyHtml );
+				AddMultipartFormData( data, "text", BodyText );
+				foreach ( var item in To )
+				{
+					AddMultipartFormData( data, "to", HandleProxyEmails( item ) );
+				}
+				foreach ( var item in CC )
+				{
+					AddMultipartFormData( data, "cc", HandleProxyEmails( item ) );
+				}
+				if ( !string.IsNullOrWhiteSpace( BCC ) )
+				{
+					AddMultipartFormData( data, "bcc", BCC );
+				}
+				return data;
+			}
+
+			private void AddMultipartFormData( MultipartFormDataContent content, string key, string value )
+			{
+				if ( !string.IsNullOrWhiteSpace( value ) )
+				{
+					content.Add( new StringContent( value ), key );
+				}
+			}
+
+		}
+	}
 }

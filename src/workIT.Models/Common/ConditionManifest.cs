@@ -88,6 +88,7 @@ namespace workIT.Models.Common
 		
 		public ConditionManifest ()
 		{
+			EntityTypeId = 19;
 			//OwningOrganization = new Organization();
 			//TargetCredential = new List<Credential>();
 			//CommonConditions = new List<ConditionManifest>();

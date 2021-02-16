@@ -4,14 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using MPM=workIT.Models.ProfileModels;
+using ME = workIT.Models.Elastic;
+
+using MPM =workIT.Models.ProfileModels;
 
 namespace workIT.Models.Detail
 {
 	[Serializable]
 	public class BaseDisplay
 	{
-		public int Id { get; set; }
+		public int? Id { get; set; }
 		public string CTID { get; set; }
 		/// <summary>
 		/// name
@@ -25,14 +27,14 @@ namespace workIT.Models.Detail
 		public DateTime EntityLastUpdated { get; set; }
 		public bool IsReferenceVersion { get; set; }
 
-		public int OrganizationId { get; set; }
+		public int? OrganizationId { get; set; }
 		public string OrganizationName { get; set; }
 		public string OrganizationSubjectWebpage { get; set; }
 
 		/// <summary>
 		/// The geo-political region in which the described resource is applicable.
 		/// </summary>
-		public List<JurisdictionProfile> Jurisdiction { get; set; } = new List<JurisdictionProfile>();
+		public List<ME.JurisdictionProfile> Jurisdiction { get; set; } = new List<ME.JurisdictionProfile>();
 
 	}
 
@@ -41,7 +43,7 @@ namespace workIT.Models.Detail
 	{
 		public string Label { get; set; }
 		public string URL { get; set; }
-		public int Count { get; set; }
+		public int? Count { get; set; }
 		public string Description { get; set; }
 	}
 
@@ -72,32 +74,9 @@ namespace workIT.Models.Detail
 		
 	}
 
-	[Serializable]
-	public class JurisdictionProfile
-	{
-		public JurisdictionProfile()
-		{
-		}
-
-		public bool GlobalJurisdiction { get; set; }
-
-		public string Description { get; set; }
-		//public GeoCoordinates MainJurisdiction { get; set; }
-		////public List<GeoCoordinates> MainJurisdictions { get; set; }
-
-		//public List<GeoCoordinates> JurisdictionException { get; set; }
-
-		//public Enumeration JurisdictionAssertion { get; set; }
-		//public List<Guid> AssertedByList { get; set; } = new List<Guid>();
-		///// <summary>
-		///// Inflate AssertedBy for display 
-		///// </summary>
-		//public Organization AssertedByOrganization { get; set; } = new Organization();
-	}
 	//
 	[Serializable]
-	public class Address 
-	{
+	public class Address 	{
 		public Address()
 		{
 		}

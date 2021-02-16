@@ -76,6 +76,14 @@ namespace workIT.Factories
 				}
 				//delete any addresses with last updated less than updateDate
 				DeleteAll( parent, ref status, updateDate );
+				//extra check where input count is less than output count
+				var latestAddresses = GetAll( parent.EntityUid );
+				if (latestAddresses.Count() > list.Count() )
+				{
+
+				}
+
+
 			}
 			return isAllValid;
 		}
@@ -106,7 +114,7 @@ namespace workIT.Factories
 								&& s.Address1 == entity.Address1
 								&& s.City == entity.City
 								&& ( s.PostalCode == entity.PostalCode || ( s.PostalCode ?? "" ).IndexOf( entity.PostalCode ?? "" ) == 0 )  //could have been normalized to full 
-																																									//&& s.Region == from.AddressRegion	//could have been expanded
+									//&& s.Region == from.AddressRegion	//could have been expanded
 							)
 							.OrderBy( s => s.Address1 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
 							.ToList();
@@ -120,9 +128,25 @@ namespace workIT.Factories
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							if ( HasStateChanged( context ) )
 							{
-								//Hmm this should come from the envelope!!
 								efEntity.LastUpdated = updateDate;
 								count = context.SaveChanges();
+							}
+
+							//if more than one, should delete the others
+							if ( exists.Count > 1 )
+							{
+								foreach ( var item in exists )
+								{
+									if ( item.Id != entity.Id )
+									{
+										context.Entity_Address.Remove( item );
+										var count2 = context.SaveChanges();
+										if ( count2 > 0 )
+										{
+
+										}
+									}
+								}
 							}
 						}
 						else
@@ -164,6 +188,7 @@ namespace workIT.Factories
 						
 						//handle contact points
 						//if address present, these need to be closely related
+						//if no address, then need to have created an empty Entity.Address!!! or put under parent.
 						if ( entity.Id > 0 )
 						{
 							new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
@@ -510,6 +535,8 @@ namespace workIT.Factories
 			to.City = from.City;
 			to.PostalCode = from.PostalCode;
 			to.Region = from.AddressRegion ?? "";
+			to.SubRegion = from.SubRegion ?? "";
+
 			to.Country = from.Country;
 			//likely provided
 			to.Latitude = from.Latitude;
@@ -635,8 +662,9 @@ namespace workIT.Factories
                             }
 
                         }
-                    }
-                }
+                    } else
+						LoggingHelper.DoTrace( 5, thisClassName + ".ResolveMissingGeodata - No records were found to normalize. " );
+				}
             }
             catch ( Exception ex )
             {
@@ -833,8 +861,8 @@ namespace workIT.Factories
             string address = "";
             if ( !string.IsNullOrWhiteSpace( dbaddress.Address1 ) )
                 address = dbaddress.Address1;
-            if ( !string.IsNullOrWhiteSpace( dbaddress.Address2 ) )
-                address += separator + dbaddress.Address2;
+            //if ( !string.IsNullOrWhiteSpace( dbaddress.Address2 ) )
+            //    address += separator + dbaddress.Address2;
             if ( !string.IsNullOrWhiteSpace( dbaddress.City ) )
                 address += separator + dbaddress.City;
             if ( !string.IsNullOrWhiteSpace( dbaddress.Region ) )

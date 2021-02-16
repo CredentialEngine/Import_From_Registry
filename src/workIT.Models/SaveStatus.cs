@@ -23,6 +23,8 @@ namespace workIT.Models
 		public string EnvelopeId { get; set; }
 		public Guid DocumentRowId { get; set; }
 		public int DocumentId { get; set; }
+		public string DocumentPublishedBy { get; set; }
+		//
 		public string DetailPageUrl { get; set; }
 		public string Ctid { get; set; }
 		public int RecordsAdded { get; set; }

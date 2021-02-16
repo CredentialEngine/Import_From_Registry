@@ -285,13 +285,13 @@ namespace workIT.Models.QData
 		/// Category of subject excluded from the data.
 		/// qdata:subjectExcluded
 		/// </summary>
-		public List<SubjectProfile> SubjectExcluded { get; set; } = new List<SubjectProfile>();
+		//public List<SubjectProfile> SubjectExcluded { get; set; } = new List<SubjectProfile>();
 
 		/// <summary>
 		/// Category of subject included in the data.
 		/// qdata:subjectIncluded
 		/// </summary>
-		public List<SubjectProfile> SubjectIncluded { get; set; } = new List<SubjectProfile>();
+		//public List<SubjectProfile> SubjectIncluded { get; set; } = new List<SubjectProfile>();
 
 		/// <summary>
 		/// Statement of earnings thresholds used in determining whether a sufficient level of workforce attachment has been achieved to qualify as employed during the chosen employment and earnings time period.

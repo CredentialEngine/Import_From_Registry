@@ -240,7 +240,7 @@ namespace workIT.Factories
 
             //ConditionProfile
             Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-            emanager.DeleteAll( relatedEntity, ref status );
+            //emanager.DeleteAll( relatedEntity, ref status );
 
             emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
 			emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );

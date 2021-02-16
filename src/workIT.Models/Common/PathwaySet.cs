@@ -10,7 +10,10 @@ namespace workIT.Models.Common
 {
     public class PathwaySet : TopLevelObject
     {
-
+		public PathwaySet()
+		{
+			EntityTypeId = 23;
+		}
 		public List<Pathway> Pathways { get; set; } = new List<Pathway>();
 		public List<string> HasPathway { get; set; } = new List<string>();
 
@@ -21,7 +24,7 @@ namespace workIT.Models.Common
 		public Enumeration OwnerRoles { get; set; } = new Enumeration();
 		//??
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
-		public int ResultNumber { get; set; }
+		//public int ResultNumber { get; set; }
 
 		#region Import
 		public List<Guid> HasPathwayList { get; set; } = new List<Guid>();

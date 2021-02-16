@@ -57,19 +57,63 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
+			//20-12-28 - skip delete all from credential, etc. Rather checking  in save
 
-			bool isAllValid = true;
-			foreach ( ThisEntity item in list )
+			//now be still do a delete all until implementing a balance line
+			//could set date and delete all before this date!
+			DateTime updateDate = DateTime.Now;
+			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
 			{
-				item.ConnectionProfileTypeId = conditionTypeId;
-				item.ConditionSubTypeId = subConnectionTypeId;
-				Save( item, parent, ref status );
+				updateDate = status.LocalUpdatedDate;
 			}
+
+			var currentConditions = GetAllForConditionType( parent, conditionTypeId, subConnectionTypeId );
+			bool isAllValid = true;
+			if ( list == null || list.Count == 0 )
+			{
+				if ( currentConditions != null && currentConditions.Any() )
+				{
+					//no input, and existing conditions, delete all
+					DeleteAllForConditionType( parent, conditionTypeId, subConnectionTypeId, ref status );
+				}
+				return true;
+			}
+			//may not need this if the new list version works
+			else if ( list.Count == 1 && currentConditions.Count == 1 )
+			{
+				//One of each, just do update of one
+				var entity = list[ 0 ];
+				entity.Id = currentConditions[ 0 ].Id;
+				entity.ConnectionProfileTypeId = conditionTypeId;
+				entity.ConditionSubTypeId = subConnectionTypeId;
+				Save( entity, parent, updateDate, ref status );
+			}
+			else
+			{
+				//may need to delete all here, as cannot easily/dependably look up a condition profile
+				if ( currentConditions.Count > 0)
+					DeleteAllForConditionType( parent, conditionTypeId, subConnectionTypeId, ref status );
+				foreach ( ThisEntity item in list )
+				{
+					item.ConnectionProfileTypeId = conditionTypeId;
+					item.ConditionSubTypeId = subConnectionTypeId;
+					Save( item, parent, updateDate, ref status );
+				}
+				//delete any entities with last updated less than updateDate
+				//DeleteAll( parent, ref status, updateDate );
+			}
+			//bool isAllValid = true;
+			//foreach ( ThisEntity item in list )
+			//{
+			//	item.ConnectionProfileTypeId = conditionTypeId;
+			//	item.ConditionSubTypeId = subConnectionTypeId;
+			//	Save( item, parent, ref status );
+			//}
 
 			return isAllValid;
 		}
 
-		private bool Save( ThisEntity item, Entity parent,  ref SaveStatus status  )
+		private bool Save( ThisEntity item, Entity parent, DateTime updateDate, ref SaveStatus status  )
 		{
 			bool isValid = true;
 			
@@ -109,7 +153,7 @@ namespace workIT.Factories
 							context.SaveChanges();
 						}
 						//regardless, check parts
-						isValid = UpdateParts( item, ref status );
+						isValid = UpdateParts( item, updateDate, ref status );
 					}
 					else
 					{
@@ -120,7 +164,7 @@ namespace workIT.Factories
 				}
 				else
 				{
-					int newId = Add( item, ref status );
+					int newId = Add( item, updateDate, ref status );
 					if ( newId == 0 || status.HasErrors )
 						isValid = false;
 				}
@@ -135,7 +179,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		private int Add(ThisEntity entity, ref SaveStatus status)
+		private int Add(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
 		{
 			DBEntity efEntity = new DBEntity();
 			using (var context = new EntityContext())
@@ -149,7 +193,7 @@ namespace workIT.Factories
                         efEntity.RowId = entity.RowId;
                     else
                         efEntity.RowId = Guid.NewGuid();
-                    efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
+                    efEntity.Created = efEntity.LastUpdated = updateDate;
 					
 					context.Entity_ConditionProfile.Add(efEntity);
 
@@ -160,7 +204,7 @@ namespace workIT.Factories
 						entity.Id = efEntity.Id;
 						entity.RowId = efEntity.RowId;
 
-						UpdateParts(entity, ref status);
+						UpdateParts(entity, updateDate, ref status );
 
 						return efEntity.Id;
 					}
@@ -211,8 +255,7 @@ namespace workIT.Factories
 		//            }
 
 
-					var results = context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id && ( lastUpdated == null || s.LastUpdated < lastUpdated ) )
-	.ToList();
+					var results = context.Entity_ConditionProfile.Where( s => s.EntityId == parent.Id && ( lastUpdated == null || s.LastUpdated < lastUpdated ) ).ToList();
 					if ( results == null || results.Count == 0 )
 						return true;
 
@@ -234,7 +277,46 @@ namespace workIT.Factories
 			}
             return isValid;
         }
-        public bool UpdateParts(ThisEntity entity, ref SaveStatus status)
+
+		public bool DeleteAllForConditionType( Entity parent, int conditionTypeId, int subConditionTypeId, ref SaveStatus status )
+		{
+			bool isValid = true;
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+				return false;
+			}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.Entity_ConditionProfile
+								.Where( s => s.EntityId == parent.Id && s.ConnectionTypeId == conditionTypeId && ( subConditionTypeId == 0 || s.ConditionSubTypeId == subConditionTypeId ) )
+								.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					foreach ( var item in results )
+					{
+						context.Entity_ConditionProfile.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAllForConditionType. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+			}
+			return isValid;
+		}
+
+		public bool UpdateParts(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
 		{
 			bool isAllValid = true;
 
@@ -246,14 +328,17 @@ namespace workIT.Factories
 				{
 					item.ConnectionProfileTypeId = ConnectionProfileType_Requirement;
 					item.ConditionSubTypeId = ConditionSubType_Alternative;
-					Save( item, parent, ref status );
+					Save( item, parent, updateDate, ref status );
 				}
 			}
 
 			//CostProfile
 			CostProfileManager cpm = new Factories.CostProfileManager();
 			cpm.SaveList( entity.EstimatedCosts, entity.RowId, ref status );
+			//
+			new Entity_CommonCostManager().SaveList( entity.CostManifestIds, entity.RowId, ref status );
 
+			//
 			EntityPropertyManager mgr = new EntityPropertyManager();
 			if ( mgr.AddProperties( entity.AudienceLevel, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, ref status ) == false )
 				isAllValid = false;
@@ -310,7 +395,8 @@ namespace workIT.Factories
 				foreach ( int id in entity.TargetLearningOpportunityIds )
 				{
 					LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
-					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+					//20-12-28 assuming adds here. OK - method checks for existing
+					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
 				}
 			}
 
@@ -506,6 +592,47 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+			}
+			return list;
+		}//
+
+		public static List<ThisEntity> GetAllForConditionType( Entity parent, int conditionTypeId, int subConnectionTypeId = 0 )
+		{
+			ThisEntity entity = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					//context.Configuration.LazyLoadingEnabled = false;
+
+					List<DBEntity> results = context.Entity_ConditionProfile
+							.Where( s => s.EntityId == parent.Id && s.ConnectionTypeId == conditionTypeId && ( subConnectionTypeId == 0 || s.ConditionSubTypeId == subConnectionTypeId ) )
+							.OrderBy( s => s.ConnectionTypeId )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							entity = new ThisEntity();
+							//??do we need all data? It will be replaced. The main issue will be references to lopps, asmts, etc. 
+							MapFromDB( item, entity, true, true, false, false );
+							list.Add( entity );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAllForConditionType" );
 			}
 			return list;
 		}//
@@ -809,6 +936,9 @@ namespace workIT.Factories
 
 			if ( getMinimumOnly )
 				return;
+			//
+			output.CommonCosts = Entity_CommonCostManager.GetAll( output.RowId );
+			
 			//========================================================
 			//TODO - determine what is really needed for the detail page for conditions
 
@@ -818,8 +948,9 @@ namespace workIT.Factories
 			output.Weight = GetField( input.Weight, 0m );
 
 			//=========================================================
-			//populate QV
-			output.CreditValue = FormatQuantitiveValue( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
+			//populate CreditValue
+			//TODO - chg to use JSON
+			output.CreditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
 			if ( output.CreditValue.HasData() )
 			{
 				//pending
@@ -838,22 +969,22 @@ namespace workIT.Factories
 					output.CreditValueIsRange = true;
 				}
 			}
-			else
-			{
-				//check for old
-				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-				output.CreditUnitValue = input.CreditUnitValue ?? 0M;
-				output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
-				//temp handling of clock hpurs
-				//output.CreditHourType = input.CreditHourType ?? "";
-				//output.CreditHourValue = ( input.CreditHourValue ?? 0M );
-				//if ( output.CreditHourValue > 0 )
-				//{
-				//	output.CreditUnitValue = output.CreditHourValue;
-				//	output.CreditUnitTypeDescription = output.CreditHourType;
-				//}
-			}
+			//else
+			//{
+			//	//check for old
+			//	output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+			//	output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
+			//	output.CreditUnitValue = input.CreditUnitValue ?? 0M;
+			//	output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
+			//	//temp handling of clock hpurs
+			//	//output.CreditHourType = input.CreditHourType ?? "";
+			//	//output.CreditHourValue = ( input.CreditHourValue ?? 0M );
+			//	//if ( output.CreditHourValue > 0 )
+			//	//{
+			//	//	output.CreditUnitValue = output.CreditHourValue;
+			//	//	output.CreditUnitTypeDescription = output.CreditHourType;
+			//	//}
+			//}
 
 			//======================================================================
 

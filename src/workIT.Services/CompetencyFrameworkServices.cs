@@ -16,6 +16,7 @@ using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Elastic;
+using ElasticHelper = workIT.Services.ElasticServices;
 
 using workIT.Models.Helpers.CompetencyFrameworkHelpers;
 using workIT.Models.Search;
@@ -54,7 +55,7 @@ namespace workIT.Services
 					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 					//update Elastic
 					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-						ElasticServices.CompetencyFramework_UpdateIndex( entity.Id );
+						ElasticHelper.CompetencyFramework_UpdateIndex( entity.Id );
 					else
 					{
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
@@ -97,7 +98,7 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCompetencyFrameworkSearch", false ) )
 			{
-				return ElasticServices.CompetencyFrameworkSearch( data, ref pTotalRows );
+				return ElasticHelper.CompetencyFrameworkSearch( data, ref pTotalRows );
 			}
 			else
 			{

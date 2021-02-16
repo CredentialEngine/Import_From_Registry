@@ -110,7 +110,7 @@ namespace Import.Services
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			LoggingHelper.WriteLogFile( 1, item.EnvelopeIdentifier + "_costManifest", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_costManifest", payload, "", false );
 
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
@@ -242,21 +242,21 @@ namespace Import.Services
             MappingHelperV3 helper = new MappingHelperV3(20);
             helper.entityBlankNodes = bnodes;
 			helper.entityBlankNodes = bnodes;
-			helper.CurrentEntityCTID = input.Ctid;
+			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
 
-			string ctid = input.Ctid;
+			string ctid = input.CTID;
             string referencedAtId = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.CostDetails );
-            LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
+            LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
             status.Ctid = ctid;
 
             if ( status.DoingDownloadOnly )
                 return true;
 
-            if ( !DoesEntityExist( input.Ctid, ref output ) )
+            if ( !DoesEntityExist( input.CTID, ref output ) )
             {
                 output.RowId = Guid.NewGuid();
             }
@@ -266,7 +266,7 @@ namespace Import.Services
             output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
             output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 
-            output.CTID = input.Ctid;
+            output.CTID = input.CTID;
             output.CredentialRegistryId = envelopeIdentifier;
             output.CostDetails = input.CostDetails;
 
@@ -276,7 +276,7 @@ namespace Import.Services
 			output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
             output.EndDate = helper.MapDate( input.EndDate, "StartDate", ref status );
 
-            output.EstimatedCosts = helper.FormatCosts( input.EstimatedCost, ref status );
+            output.EstimatedCost = helper.FormatCosts( input.EstimatedCost, ref status );
 
             status.DocumentId = output.Id;
             status.DocumentRowId = output.RowId;

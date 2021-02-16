@@ -69,6 +69,7 @@
     <Compile Include="CredentialServices.cs" />
     <Compile Include="DescriptionSetServices.cs" />
     <Compile Include="ElasticServices.cs" />
+    <Compile Include="ElasticServices7.cs" />
     <Compile Include="EnumerationServices.cs" />
     <Compile Include="FileReferenceServices.cs" />
     <Compile Include="LearningOpportunityServices.cs" />

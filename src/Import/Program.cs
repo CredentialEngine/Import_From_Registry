@@ -9,6 +9,7 @@ using workIT.Factories;
 using Import.Services;
 using workIT.Models;
 using workIT.Services;
+using ElasticHelper = workIT.Services.ElasticServices;
 namespace CTI.Import
 {
 	class Program
@@ -26,18 +27,22 @@ namespace CTI.Import
 
         static void Main( string[] args )
 		{
-			//NOTE: consider the IOER approach that all candidate records are first downloaded, and then a separate process does the import
-
-			
+						
 			LoggingHelper.DoTrace( 1, "======================= STARTING IMPORT =======================" );
-			DoImport( args );
-			LoggingHelper.DoTrace( 1, "======================= all done ==============================" );
+			//bool usingImportPendingProcess = UtilityManager.GetAppKeyValue( "usingImportPendingProcess", false );
+			//if ( usingImportPendingProcess )
+			//{
+			//	new ImportPendingRequests().Main();
+			//} else
+			{
+				DoImport( args );
+				LoggingHelper.DoTrace( 1, "======================= all done ==============================" );
+			}
 
-
+		
 		}
 
-
-		public static void DoImport( string[] args )
+		public static void DoImport(string[] args)
 		{
 			TimeZone zone = TimeZone.CurrentTimeZone;
 			// Demonstrate ToLocalTime and ToUniversalTime.
@@ -205,6 +210,14 @@ namespace CTI.Import
 				//****NOTE for the appKey of importing_entity_type, the entity_type must match the resource type in the registry -	NO plurals
 				//																													**********
 				//
+
+
+				//handle organizations
+				//might be better to do last, then can populate placeholders, try first
+				//
+				if ( UtilityManager.GetAppKeyValue( "importing_organization", true ) )
+					importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+
 				if ( UtilityManager.GetAppKeyValue( "importing_competency_framework", true ) )
 				{
 					//🛺🛺🛺importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( startingDate, endingDate, maxImportRecords, defaultCommunity, doingDownloadOnly );
@@ -267,12 +280,6 @@ namespace CTI.Import
 					importResults = importResults + "<br/>" + registryImport.Import( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
 
-				//handle organizations
-				//might be better to do last, then can populate placeholders, try first
-				//
-				if ( UtilityManager.GetAppKeyValue( "importing_organization", true ) )
-					importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, startingDate, endingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-
 				if ( !doingDownloadOnly && recordsImported > 0 )
 				{
 					if ( UtilityManager.GetAppKeyValue( "processingPendingRecords", true ) )
@@ -299,12 +306,12 @@ namespace CTI.Import
 							if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
 							{
 								LoggingHelper.DoTrace( 1, string.Format( "===  *****************  UpdateElastic  ***************** " ) );
-								ElasticServices.UpdateElastic( false, true );
+								ElasticHelper.UpdateElastic( false, true );
 							}
 						}
 						if ( !UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) )
 						{
-							HandleAddressGeoCoding();
+							//ImportPendingRequests.HandleAddressGeoCoding( Guid.NewGuid() );
 						}
 
 
@@ -335,44 +342,21 @@ namespace CTI.Import
 
 			}
 		}
-		public static void HandleAddressGeoCoding()
-		{
-			//should we do all?
-			int maxRecords = 0;
-			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleAddressGeoCoding - maxRecords: {0}", maxRecords ) );
-			DateTime started = DateTime.Now;
-			string report = "";
-			string messages = "";
-			var list = new Entity_AddressManager().ResolveMissingGeodata( ref messages, maxRecords );
 
-			var saveDuration = DateTime.Now.Subtract( started );
-			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".NormalizeAddresses - Completed - seconds: {0}", saveDuration.Seconds ) );
-			if ( !string.IsNullOrWhiteSpace( messages ) )
-				report = string.Format( "<p>Normalize Addresses. Duration: {0} seconds <br/>", saveDuration.Seconds ) + messages + "</p>";
-
-			foreach ( var address in list )
-			{
-				string msg = string.Format( " - Unable to resolve address: Id: {0}, address1: {1}, city: {2}, region: {3}, postalCode: {4}, country: {5} ", address.Id, address.Address1, address.City, address.AddressRegion, address.PostalCode, address.Country );
-				LoggingHelper.DoTrace( 2, msg );
-				report += System.Environment.NewLine + msg;
-			}
-			//no reporting of successes here 
-
-		}
-		public static string DisplayMessages( string message )
+        public static string DisplayMessages( string message )
 		{
 			LoggingHelper.DoTrace( 1, message );
 			//Console.WriteLine( message );
 
 			return message;
 		}
-		public static void LogStart()
-		{
-			new ActivityServices().AddActivity( new SiteActivity()
-			{ ActivityType = "System", Activity = "Import", Event = "Start", SessionId = "batch job", IPAddress = "local" }
-			);
+        public static void LogStart( )
+        {
+            new ActivityServices().AddActivity( new SiteActivity()
+                { ActivityType = "System", Activity = "Import", Event = "Start", SessionId="batch job", IPAddress= "local" } 
+            );
 
-		}
+        }
 		/// <summary>
 		/// Handle deleted records for the requested time period
 		/// </summary>
@@ -401,7 +385,7 @@ namespace CTI.Import
 			string importNote = "";
 			bool usingNewDeleteProcess = UtilityManager.GetAppKeyValue( "usingNewDeleteProcess", false );
 
-			LoggingHelper.DoTrace( 1, string.Format( "===  DELETE Check for: '{0}' to '{1}' ===", startingDate, endingDate ) );
+			LoggingHelper.DoTrace( 1, string.Format("===  DELETE Check for: '{0}' to '{1}' ===", startingDate, endingDate ) );
 			//startingDate = "2017-10-29T00:00:00";
 			try
 			{
@@ -416,7 +400,7 @@ namespace CTI.Import
 						{
 							importNote = "Deletes: No records where found for date range ";
 							//Console.WriteLine( thisClassName + ".HandleDeletes() - " + importNote );
-							LoggingHelper.DoTrace( 1, thisClassName + string.Format( ".HandleDeletes() Community: {0} - ", community ) + importNote );
+							LoggingHelper.DoTrace( 1, thisClassName + string.Format(".HandleDeletes() Community: {0} - ", community) + importNote );
 						}
 						break;
 					}
@@ -442,13 +426,12 @@ namespace CTI.Import
 							status.ValidationGroup = "Deletes";
 
 							//
-							if ( usingNewDeleteProcess )
-							{
+							if ( usingNewDeleteProcess ) {
 								Program.HandleDeleteRequest( cntr, item.EnvelopeIdentifier, ctid, ctdlType, ref statusMessage );
 								continue;
 							}
 
-
+						
 							//
 							//importError = "";
 							//each delete method will add an entry to SearchPendingReindex.
@@ -469,7 +452,7 @@ namespace CTI.Import
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								case "learningopportunityprofile":
-									DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
+									DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: '{1}'/'{2}' ", cntr, item.EnvelopeIdentifier, ctid ) );
 									if ( !new LearningOpportunityManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
@@ -544,22 +527,22 @@ namespace CTI.Import
 				if ( cntr > 0 )
 				{
 					messages = new List<string>();
-					ElasticServices.HandlePendingDeletes( ref messages );
+					ElasticHelper.HandlePendingDeletes( ref messages );
 				}
 
 				importResults = string.Format( "HandleDeletes - Processed {0} records, with {1} exceptions. \r\n", cntr, exceptionCtr );
 				if ( !string.IsNullOrWhiteSpace( importNote ) )
 					importResults += importNote;
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
 				LoggingHelper.LogError( ex, "Import.HandleDeletes" );
 			}
 			//actually only attepted at this time, need to account for errors!
-			recordsDeleted = cntr;
+			recordsDeleted= cntr;
 			return importResults;
 		}
-		public static bool HandleDeleteRequest( int cntr, string envelopeIdentifier, string ctid, string ctdlType, ref string statusMessage )
+		public static bool HandleDeleteRequest( int cntr, string envelopeIdentifier, string ctid, string ctdlType, ref string statusMessage)
 		{
 			statusMessage = "";
 
@@ -632,7 +615,7 @@ namespace CTI.Import
 					break;
 			}
 
-			if ( statusMessage.Length > 0 )
+			if ( statusMessage.Length > 0 ) 
 				isValid = false;
 
 			return isValid;

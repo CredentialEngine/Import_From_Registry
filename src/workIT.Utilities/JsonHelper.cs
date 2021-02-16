@@ -102,8 +102,21 @@ namespace workIT.Utilities
 
             return settings;
         }
-        //Force properties to be serialized in alphanumeric order
-        public class AlphaNumericContractResolver : DefaultContractResolver
+		public static JsonSerializerSettings GetJsonSettingsAll()
+		{
+			var settings = new JsonSerializerSettings()
+			{
+				NullValueHandling = NullValueHandling.Ignore,
+				DefaultValueHandling = DefaultValueHandling.Include,
+				ContractResolver = new EmptyNullResolver(),
+				Formatting = Formatting.Indented,
+				ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+			};
+
+			return settings;
+		}
+		//Force properties to be serialized in alphanumeric order
+		public class AlphaNumericContractResolver : DefaultContractResolver
         {
             protected override System.Collections.Generic.IList<JsonProperty> CreateProperties( System.Type type, MemberSerialization memberSerialization )
             {

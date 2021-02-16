@@ -11,7 +11,7 @@ namespace workIT.Models.Common
 	{
 		public Credential()
 		{
-
+			EntityTypeId = 1;
 			Addresses = new List<Address>();
 
 			AlternateName = new List<string>();
@@ -300,7 +300,7 @@ namespace workIT.Models.Common
 		public List<Guid> RevokedBy { get; set; }
 
 		public List<Guid> RenewedBy { get; set; }
-		public List<Guid> PublishedBy { get; set; }
+		//public List<Guid> PublishedBy { get; set; }
 		//INs
 		public List<JurisdictionProfile> AccreditedIn { get; set; }
 

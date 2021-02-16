@@ -8,6 +8,10 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
+	/// <summary>
+	/// History
+	/// 21-01-13 Added DevelopementProcess
+	/// </summary>
 	public class TransferValueProfile
 	{
 		public TransferValueProfile()

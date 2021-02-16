@@ -370,6 +370,56 @@ namespace workIT.Factories
 			return qv;
 		}
 
+		/// <summary>
+		/// TODO - need to handle percentage - will do once using JSON
+		/// DUMP THIS ASAP - A HACK
+		/// </summary>
+		/// <param name="creditUnitTypeId"></param>
+		/// <param name="creditUnitValue"></param>
+		/// <param name="creditUnitMaxValue"></param>
+		/// <param name="description"></param>
+		/// <param name="creditUnitType"></param>
+		/// <returns></returns>
+		public static ValueProfile FormatValueProfile( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description, string creditUnitType = "" )
+		{
+			ValueProfile qv = new ValueProfile()
+			{
+				Description = description ?? ""
+			};
+			if ( ( creditUnitMaxValue ?? 0M ) > 0 )
+			{
+				qv.MinValue = creditUnitValue ?? 0M;
+				qv.MaxValue = creditUnitMaxValue ?? 0M;
+			}
+			else
+			{
+				//need to distinguish if a percentage
+				qv.Value = creditUnitValue ?? 0M;
+			}
+			if ( ( creditUnitTypeId ?? 0 ) > 0 )
+			{
+				qv.CreditUnitType = new Enumeration();
+				var match = CodesManager.GetEnumeration( "creditUnit" ).Items.FirstOrDefault( m => m.CodeId == creditUnitTypeId );
+				if ( match != null )
+				{
+					qv.CreditUnitType.Items.Add( match );
+					//??store schema name or label, or both?
+					//qv.UnitText = match.SchemaName;
+					//qv.Label = match.Name;
+					qv.CreditUnitType = new Enumeration();
+					qv.CreditUnitType.Items.Add( new EnumeratedItem() { SchemaName = creditUnitType, Name = match.Name } );
+				}
+			}
+			else if ( !string.IsNullOrEmpty( creditUnitType ) )
+			{
+				creditUnitType = creditUnitType.Replace( "ceterms:", "" );
+				qv.CreditUnitType = new Enumeration();
+				qv.CreditUnitType.Items.Add( new EnumeratedItem() { SchemaName = creditUnitType } );
+				///qv.UnitText = creditUnitType;
+			}
+			return qv;
+		}
+
 
 		#endregion
 		#region data retrieval

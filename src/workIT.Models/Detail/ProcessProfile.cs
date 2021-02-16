@@ -6,20 +6,22 @@ using System.Threading.Tasks;
 
 using workIT.Models.Common;
 
+using ME = workIT.Models.Elastic;
 
 namespace workIT.Models.Detail
 {
 	[Serializable]
-	public class ProcessProfile : BaseDisplay
+	public class ProcessProfile 
 	{
 		public ProcessProfile()
 		{
-			ProcessTypeId = 1;
+			//ProcessTypeId = 1;
 		}
 		//only relevent if combining all process profiles 
-		public int ProcessTypeId { get; set; }
-		public string ProcessProfileType { get; set; }
+		//public int ProcessTypeId { get; set; }
+		//public string ProcessProfileType { get; set; }
 
+		public string Description { get; set; }
 		//only include where different from owner-rare
 		public TopLevelEntityReference ProcessingAgent { get; set; } = new TopLevelEntityReference();
 
@@ -39,37 +41,40 @@ namespace workIT.Models.Detail
 		//URL
 		public string ScoringMethodExample { get; set; }
 		public string ScoringMethodExampleDescription { get; set; }
+		public string SubjectWebpage { get; set; }
+
 		public string VerificationMethodDescription { get; set; }
 		//public string SubjectWebpage { get; set; }
 
+		public List<ME.JurisdictionProfile> Jurisdiction { get; set; } = new List<ME.JurisdictionProfile>();
 		/// <summary>
 		/// A geo-political area of the described resource.
 		/// </summary>
-		public List<JurisdictionProfile> Region { get; set; }= new List<JurisdictionProfile>();
+		public List<ME.JurisdictionProfile> Region { get; set; }= new List<ME.JurisdictionProfile>();
 
 		public List<TopLevelEntityReference> TargetAssessment { get; set; } = new List<TopLevelEntityReference>();
 		public List<TopLevelEntityReference> TargetLearningOpportunity { get; set; } = new List<TopLevelEntityReference>();
 		public List<TopLevelEntityReference> TargetCredential { get; set; } = new List<TopLevelEntityReference>();
 		public List<TopLevelEntityReference> TargetCompetencyFramework { get; set; } = new List<TopLevelEntityReference>();
 
-		public string ProcessType
-		{
-			get
-			{
-				if ( ProcessTypeId == 2 )
-					return "Appeal Process ";
-				else if ( ProcessTypeId == 3 )
-					return "Complaint Process ";
-				else if ( ProcessTypeId == 4 )
-					return "Criteria Process ";
-				else if ( ProcessTypeId == 5 )
-					return "Review Process ";
-				else if ( ProcessTypeId == 6 )
-					return "Revoke Process ";
-				else
-					return "Process Profile ";
-			}
-		}
+		//public string ProcessType
+		//{
+		//	get
+		//	{
+		//		if ( ProcessTypeId == 2 )
+		//			return "Appeal Process ";
+		//		else if ( ProcessTypeId == 3 )
+		//			return "Complaint Process ";
+		//		else if ( ProcessTypeId == 4 )
+		//			return "Criteria Process ";
+		//		else if ( ProcessTypeId == 5 )
+		//			return "Review Process ";
+		//		else if ( ProcessTypeId == 6 )
+		//			return "Revoke Process ";
+		//		else
+		//			return "Process Profile ";
+		//	}
+		//}
 	}
 	//
 }

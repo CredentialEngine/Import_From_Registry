@@ -488,7 +488,7 @@ namespace Import.Services
                 else if ( jp.GlobalJurisdiction.HasValue )
                 {
                     njp.MainJurisdiction = null;
-                    njp.GlobalJurisdiction = jp.GlobalJurisdiction;
+                    njp.GlobalJurisdiction = jp.GlobalJurisdiction ?? false;
                 }
                 else
                 {

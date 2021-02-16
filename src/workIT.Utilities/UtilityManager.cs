@@ -377,32 +377,16 @@ namespace workIT.Utilities
         /// get current url, including query parameters
         /// </summary>
         /// <returns></returns>
-        public static string GetCurrentUrl()
-        {
-            string url = GetPublicUrl( HttpContext.Current.Request.QueryString.ToString() );
+        //public static string GetCurrentUrl()
+        //{
+        //    string url = GetPublicUrl( HttpContext.Current.Request.QueryString.ToString() );
 
-            //url = "http://" + HttpContext.Current.Request.ServerVariables[ "HTTP_HOST" ] +  url ;
+        //    //url = "http://" + HttpContext.Current.Request.ServerVariables[ "HTTP_HOST" ] +  url ;
 
-            url = HttpUtility.UrlDecode( url );
+        //    url = HttpUtility.UrlDecode( url );
 
-            return url;
-        }//
-
-        /// <summary>
-        /// Return the public version of the current MCMS url - removes MCMS specific parameters
-        /// </summary>
-        public static string GetPublicUrl( string url )
-        {
-            string publicUrl = "";
-
-            //just take everything??
-            publicUrl = url;
-          
-            publicUrl = publicUrl.Replace( "%2f", "/" );
-            publicUrl = publicUrl.Replace( "%2e", "." );
-            publicUrl = publicUrl.Replace( "%3a", ":" );
-            return publicUrl;
-        } //
+        //    return url;
+        //}//
 
 
         #endregion

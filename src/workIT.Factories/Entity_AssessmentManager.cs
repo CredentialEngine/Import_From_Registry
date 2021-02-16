@@ -186,7 +186,9 @@ namespace workIT.Factories
 							var statusMsg = "";
 							//this method will also add pending reques to remove from elastic.
 							//20-11-11 mp - BE CLEAR - ONLY DONE FOR A REFERENCE
+							//actually this delete will probably also delete the Entity_Assessment
 							new AssessmentManager().Delete( item.AssessmentId, ref statusMsg );
+							continue;
 						}
 					}
 					context.Entity_Assessment.Remove( item );

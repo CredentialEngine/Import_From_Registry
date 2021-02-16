@@ -22,6 +22,10 @@ namespace workIT.Models.Common
 			HasChild=2
 			//IsPartOf = 3
 		}
+		public Pathway()
+		{
+			EntityTypeId = 8;
+		}
 		public int PathwayRelationshipTypeId { get; set; }
 
 		public PathwaySet PathwaySet { get; set; } = new PathwaySet();

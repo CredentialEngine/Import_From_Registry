@@ -225,6 +225,19 @@ namespace workIT.Factories
 								Comment = msg
 							} );
 							isValid = true;
+
+							//add pending request 
+							List<String> messages = new List<string>();
+							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, efEntity.Id, ref messages );
+
+							//delete all relationships
+							workIT.Models.SaveStatus status = new SaveStatus();
+							Entity_AgentRelationshipManager earmgr = new Entity_AgentRelationshipManager();
+							earmgr.DeleteAll( rowId, ref status );
+							//also check for any relationships
+							//There could be other orgs from relationships to be reindexed as well!
+
+							
 						}
 						if ( !string.IsNullOrWhiteSpace( orgCtid ) )
 						{
@@ -235,6 +248,9 @@ namespace workIT.Factories
 							if ( org != null && org.Id > 0 )
 							{
 								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, org.Id, 1, ref messages );
+
+								//also check for any relationships
+								new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( org.RowId );
 							}
 							else
 							{

@@ -172,7 +172,12 @@ namespace workIT.Factories
             }
             using ( var context = new EntityContext() )
             {
-                context.Entity_CostProfile.RemoveRange( context.Entity_CostProfile.Where( s => s.EntityId == parent.Id ) );
+				var results = context.Entity_CostProfile.Where( s => s.EntityId == parent.Id )
+					.ToList();
+				if ( results == null || results.Count == 0 )
+					return true;
+
+				context.Entity_CostProfile.RemoveRange( context.Entity_CostProfile.Where( s => s.EntityId == parent.Id ) );
                 int count = context.SaveChanges();
                 if ( count > 0 )
                 {
