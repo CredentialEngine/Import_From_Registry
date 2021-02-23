@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Common
 {
+	/// <summary>
+	/// why so we have a Place and an Address class
+	/// </summary>
     [Serializable]
     public class Place
 	{
@@ -35,6 +38,7 @@ namespace workIT.Models.Common
 		public double Longitude { get; set; }
 
 		public string GeoURI { get; set; }
+		public string IdentifierJson { get; set; }
 		public List<ContactPoint> ContactPoint { get; set; }
 	}
 

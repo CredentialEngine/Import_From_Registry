@@ -14,6 +14,14 @@ namespace workIT.Models.Common
 		///  ceterms:jobsObtained
 		/// </summary>
 		public int JobsObtained { get; set; }
+		public List<QuantitativeValue> JobsObtainedList { get; set; } = new List<QuantitativeValue>();
+
+		public EmploymentOutcomeProfileProperties JsonProperties { get; set; } = new EmploymentOutcomeProfileProperties();
+	}
+
+	public class EmploymentOutcomeProfileProperties
+	{
+		public List<QuantitativeValue> JobsObtainedList { get; set; } = new List<QuantitativeValue>();
 
 	}
 

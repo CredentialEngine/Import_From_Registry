@@ -25,6 +25,100 @@ namespace CredentialFinderWebAPI.Controllers
 		bool valid = true;
 		string status = "";
 
+		[HttpGet, Route( "Search/Initialize/{searchType}" )]
+		public void SearchInitialize( string searchType = "", bool getAll=false )
+		{
+			if ( string.IsNullOrWhiteSpace( searchType ) )
+				searchType = "credential";
+			List<string> messages = new List<string>();
+			var response = new ApiResponse();
+
+			var results = new JObject(); 
+			switch ( searchType.ToLower() )
+			{
+				case "credential": 
+					//this needs to be a generic class
+					var credentialFilters =SearchServices.GetCredentialFilters( getAll );
+					response.Result = credentialFilters;
+					break;
+				case "organization":
+				{
+					var filters = SearchServices.GetOrganizationFilters( getAll );
+					response.Result = filters;
+					break;
+				}
+				case "assessment":
+					//this needs to be a generic class
+					var asmtFilters = SearchServices.GetAssessmentFilters( getAll );
+					response.Result = asmtFilters;
+					break;
+				case "learningopportunity":
+				{
+					var loppFilters = SearchServices.GetLearningOppFilters( getAll );
+					response.Result = loppFilters;
+					break;
+				}
+				case "pathway":
+				{
+					var pwFilters = SearchServices.GetPathwayFilters( getAll );
+					response.Result = pwFilters;
+					break;
+				}
+				case "competencyframework":
+				{
+					var pwFilters = SearchServices.GetNoFilters( "Competency Framework" );
+					response.Result = pwFilters;
+					break;
+				}
+				case "transfervalue":
+				{
+					var pwFilters = SearchServices.GetNoFilters( "Transfer Value" );
+					response.Result = pwFilters;
+					break;
+				}
+				default:
+				{
+					valid = false;
+					messages.Add( "Unknown search mode: " + searchType);
+					break;
+				}
+			}
+			if ( messages.Any() )
+			{
+				SendResponse( messages );
+			}
+			else
+			{
+				response.Successful = true;
+				//response.Result = results;
+				//var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
+				SendResponse( response );
+			}
+			
+
+		}
+
+
+		//Do an autocomplete
+		[HttpGet, Route( "Search/autocomplete/{searchType}/{context}/{text}" )]
+
+		public void AutoComplete( string searchType, string context, string text, int widgetId = 0 )
+		{
+			var response = new ApiResponse();
+			var status = "";
+			var results = SearchServices.DoAutoComplete( searchType, context, text, widgetId );
+
+			var autoCompleteResults = results.Select( m => new FilterItem() { Label = m.ToString() } ).ToList();
+
+			//return JsonHelper.GetJsonWithWrapper( data, true, "", null );
+			//var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
+			//SendResponse( finalResult );
+
+			response.Successful = true;
+			response.Result = autoCompleteResults;
+			SendResponse( response );
+		}
+		//
 		/// <summary>
 		/// blind credential search
 		/// </summary>
@@ -70,11 +164,6 @@ namespace CredentialFinderWebAPI.Controllers
 			var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
 			SendResponse( finalResult );
 
-			//var result = MainSearch( query );
-			//HttpContext.Current.Response.Clear();
-			//HttpContext.Current.Response.ContentType = "application/json";
-			//HttpContext.Current.Response.Write( finalResult );
-			//HttpContext.Current.Response.End();
 		}
 
 

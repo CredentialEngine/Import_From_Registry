@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using workIT.Models.ProfileModels;
+
 namespace workIT.Models.Common
 {
     [Serializable]
@@ -36,6 +38,13 @@ namespace workIT.Models.Common
         public string PostalCode { get; set; }
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
+		/// <summary>
+		/// Identifier
+		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// </summary>	
+		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public string IdentifierJson { get; set; }
+
 		public bool IsMainAddress { get; set; }
 		public Guid ParentRowId { get; set; }
 		public string DisplayAddress(string separator = ", ")
@@ -47,6 +56,8 @@ namespace workIT.Models.Common
 			//	address += separator + Address2;
 			if ( !string.IsNullOrWhiteSpace( City ) )
 				address += separator + City;
+			if ( !string.IsNullOrWhiteSpace( SubRegion ) )
+				address += separator + SubRegion;
 			if ( !string.IsNullOrWhiteSpace( AddressRegion ) )
 				address += separator + AddressRegion;
 			if ( !string.IsNullOrWhiteSpace( PostalCode ) )

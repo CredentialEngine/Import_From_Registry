@@ -11,6 +11,8 @@ using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
 using ME = workIT.Models.Elastic;
+using MSR = workIT.Models.Search;
+
 using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
@@ -169,7 +171,7 @@ namespace workIT.Services
 		}
 
 		//Do an autocomplete
-		public static List<object> DoAutoComplete(string text, string context, string searchType, int widgetId = 0)
+		public static List<object> DoAutoComplete(string searchType, string context, string text, int widgetId = 0)
 		{
 			var results = new List<object>();
 			int totalRows = 0;
@@ -454,7 +456,7 @@ namespace workIT.Services
 		public enum TagTypes { CONNECTIONS, QUALITY, ASSESSMENT, AUDIENCE_LEVEL, AUDIENCE_TYPE, LEARNINGOPPORTUNITY, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, FINANCIAL, FRAMEWORKS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, OWNS_CREDENTIAL, OFFERS_CREDENTIAL, QAPERFORMED, SCORING_METHODS, REFERENCED_BY_CREDENTIAL, REFERENCED_BY_ASSESSMENT, REFERENCED_BY_LOPP, TRANSFERVALUE, PATHWAY, PATHWAYSET }
 
 		public enum ButtonSearchTypes { Organization, Credential, AssessmentProfile, LearningOpportunityProfile, CompetencyFramework, Pathway, PathwaySet }
-		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, Pathway, PathwaySet, HoldersProfile, EarningsProfile, EmploymentOutcomeProfile }
+		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, Pathway, PathwaySet, OutcomeData, HoldersProfile, EarningsProfile, EmploymentOutcomeProfile }
 		public enum ButtonHandlerTypes { handler_RenderDetailPageLink, handler_RenderQualityAssurance, handler_RenderConnection, handler_RenderCheckboxFilter, handler_RenderExternalCodeFilter, handler_GetRelatedItemsViaAJAX } //use a string that is the function name itself for custom handlers
 		public enum ButtonTargetEntityTypes { Credential, Assessment, LearningOpportunity, CompetencyFramework, Competency, EstimatedCost, FinancialAssistance, QualityAssurancePerformed, TransferValue, Pathway, PathwaySet }
 
@@ -913,13 +915,13 @@ namespace workIT.Services
 						//HoldersProfiles
 						new SearchResultButton()
 						{
-							CategoryLabel = item.HoldersProfileCount == 1 ? "Holders Profile" : "Holders Profiles",
-							CategoryType = ButtonCategoryTypes.HoldersProfile.ToString(),
+							CategoryLabel = item.HoldersProfileCount == 1 ? "Outcome Data" : "Outcome Data",
+							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 							TotalItems = item.HoldersProfileCount,
 							Items = new List<string>() { item.HoldersProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
-								ConnectionLabel = "Holders Profile",
+								ConnectionLabel = "Outcome Data",
 								TargetLabel = m,
 								TargetType = ButtonSearchTypes.Credential.ToString(),
 								TargetId = item.Id
@@ -4118,5 +4120,761 @@ namespace workIT.Services
 
 
 		#endregion
+
+		#region 
+		public static FilterQuery GetCredentialFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 1;
+			string searchType = "credential";
+			string label = "credential";
+			string labelPlural= "credentials";
+			string key = searchType + "_filters";
+
+			FilterQuery filters = new FilterQuery( searchType );
+			if ( IsFilterAvailableFromCache( searchType, ref filters ) )
+			{
+				return filters;
+			}
+			try
+			{
+				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				var credentialTypes = enumServices.GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
+				var credStatusTypes = enumServices.GetCredentialStatusType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
+				var credAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 18, entityTypeId, getAll );
+				var credLoppDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, entityTypeId, getAll );
+				var connections = enumServices.GetCredentialConnectionsFilters( EnumerationType.MULTI_SELECT, getAll );
+				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+				//frameworks
+
+
+				/* TODO
+				 * QA received accredited, approved, recognized, regulated 
+				 * other filters
+				 * Has any?
+				 *	industry, occupation, 
+				 * Connections
+				 * - ispartof, is prep, etc
+				 */
+
+
+				if ( credAsmtDeliveryTypes != null && credAsmtDeliveryTypes.Items.Any() )
+					filters.AssessmentDeliveryTypes = ConvertEnumeration( "assessmentdeliverytypes", credAsmtDeliveryTypes, "Select the type of Assessment delivery method(s)." );
+				//
+				if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+					filters.AudienceLevels = ConvertEnumeration( "audienceleveltypes", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
+				if ( audienceTypes != null && audienceTypes.Items.Any() )
+					filters.AudienceTypes = ConvertEnumeration( "audiencetypes", audienceTypes, string.Format("Select the applicable audience types that are the target of {0}. Note that many {0} will not have specific audience types.", labelPlural, labelPlural ));
+
+				filters.CredentialStatusTypes = ConvertEnumeration( "credentialstatustypes", credStatusTypes, "Select one or more status to display credentials for those Credential Status" );
+
+				filters.CredentialTypes = ConvertEnumeration( "credentialtypes", credentialTypes );
+				//
+				if ( connections != null && connections.Items.Any() )
+					filters.Connections = ConvertEnumeration( "credentialConnections", connections, string.Format("Select the connection type(s) to filter {0}:", labelPlural ));
+				//
+				if ( credLoppDeliveryTypes != null && credLoppDeliveryTypes.Items.Any() )
+					filters.LearningDeliveryTypes = ConvertEnumeration( "learningdeliverytypes", credLoppDeliveryTypes, "Select the type of Learning Opportunity delivery method(s)." );
+				//
+				if ( languages != null && languages.Items.Any() )
+					filters.Languages = ConvertEnumeration( "languages", languages, string.Format("Select one or more languages to display {0} for those languages.", labelPlural) );
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+					filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format("Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural) );
+
+				//competencies don't have an autocomplete
+				filters.Competencies = new MSR.Filter()
+				{
+					Label = "Competencies",
+					FilterName = "competencies",
+					HasAnyGuidance = string.Format( "Select 'Has Competencies' to search for {0} with any competencies.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+					HasAny = new FilterItem()
+					{
+						Label = "Has Competencies (any type)",
+						Value = "credReport:HasCompetencies"
+					}
+				};
+				//
+				filters.SubjectAreas = new MSR.Filter()
+				{
+					Label = "Subject Areas",
+					FilterName = "subjectAreas",
+					Description = "",
+					MicroSearchGuidance = string.Format("Enter a term(s) to show {0} with relevant subjects.", labelPlural),
+					SearchType = searchType,
+					SearchTypeContext = "subjects"
+				};
+				//
+				filters.Occupations =  new MSR.Filter()
+				{
+					Label = "Occupations",
+					FilterName = "occupations",
+					HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "occupations",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Occupations",
+						Value = "credReport:HasOccupations"
+					}
+				};
+				//
+				filters.Industries = new MSR.Filter()
+				{
+					Label = "Industries",
+					FilterName = "industries",
+					HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "industries",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Industries",
+						Value = "credReport:HasIndustries"
+					}
+				};
+				//
+				filters.InstructionalPrograms = new MSR.Filter()
+				{
+					Label = "Instructional Programs",
+					FilterName = "instructionalPrograms",
+					HasAnyGuidance = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select instructional programs to filter {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "instructionalprogramtypes",
+					HasAny = new FilterItem()
+					{
+						Label = "Has InstructionalPrograms",
+						Value = "credReport:HasCIP"
+					}
+				};
+				//=====QA
+				if ( qaReceived != null && qaReceived.Items.Any() )
+				{
+					var f = new MSR.Filter()
+					{
+						Label = "Quality Assurance",
+						FilterName = "qualityAssurance",
+						CategoryId = qaReceived.Id,
+						Description = string.Format("Select the type(s) of quality assurance to filter relevant {0}.", labelPlural),
+						MicroSearchGuidance = string.Format("Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label),
+						SearchType = searchType,
+						SearchTypeContext = "organizations",
+					};
+					filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+				}
+				//
+				AddFilterToCache( filters );
+			} catch(Exception ex)
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetCredentialFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+		public static FilterQuery GetOrganizationFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 2;
+			string searchType = "organization";
+			string label = "organization";
+			string labelPlural = "organizations";
+			FilterQuery filters = new FilterQuery( searchType );
+			try
+			{
+				var orgServiceTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+				var orgTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+				var orgSectorTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+				var claimTypes = enumServices.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, getAll );
+
+				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+				var qaPerformed = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll, true );
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+
+				if ( orgServiceTypes != null && orgServiceTypes.Items.Any() )
+					filters.OrganizationServiceTypes = ConvertEnumeration( "servicetypes", orgServiceTypes, "Select a service(s) offered by an organization." );
+				//
+				if ( orgTypes != null && orgTypes.Items.Any() )
+					filters.OrganizationTypes = ConvertEnumeration( "organizationtypes", orgTypes, "Select the organization type(s)" );
+				if ( orgSectorTypes != null && orgSectorTypes.Items.Any() )
+					filters.OrganizationSectorTypes = ConvertEnumeration( "sectortypes", orgSectorTypes, "Select the type of sector for an organization." );
+				if ( claimTypes != null && claimTypes.Items.Any() )
+					filters.VerificationClaimTypes = ConvertEnumeration( "claimTypes", claimTypes, "Select the type of claim for an organization." );
+				//
+				//
+				filters.Industries = new MSR.Filter()
+				{
+					Label = "Industries",
+					FilterName = "industries",
+					HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "industries",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Industries",
+						Value = "orgReport:HasIndustries"
+					}
+				};
+				//
+				if ( qaReceived != null && qaReceived.Items.Any() )
+				{
+					var f = new MSR.Filter()
+					{
+						Label = "Quality Assurance",
+						FilterName = "qualityAssurance",
+						CategoryId = qaReceived.Id,
+						Description = "Select the type(s) of quality assurance to filter relevant organizations.",
+						MicroSearchGuidance = "Optionally, find and select one or more organizations that perform organization Quality Assurance."
+					};
+					filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+				}
+
+				if ( qaPerformed != null && qaPerformed.Items.Any() )
+				{
+					var f = new MSR.Filter()
+					{
+						Label = "Quality Assurance Performed",
+						FilterName = "qualityAssurancePerformed",
+						CategoryId = qaPerformed.Id,
+						Description = "Select one or more types of quality assurance to display organizations that have performed the selected types of assurance.",
+					};
+					filters.QualityAssurancePerformed = ConvertEnumeration( f, qaPerformed );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetOrganizationFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+		public static FilterQuery GetAssessmentFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 3;
+			string searchType = "assessment";
+			string label = "assessment";
+			string labelPlural = "assessments";
+			FilterQuery filters = new FilterQuery( searchType );
+
+			try
+			{
+				var asmtMethodTypes = enumServices.GetEnumeration( "assessmentMethodType", EnumerationType.MULTI_SELECT, false, getAll );
+				var asmtUseTypes = enumServices.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, getAll );
+				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+				var connections = enumServices.GetAssessmentsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
+
+				//
+				var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
+				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+				//
+				var scoringMethodTypes = enumServices.GetEnumeration( "scoringMethod", EnumerationType.MULTI_SELECT, false, getAll );
+				/* TODO
+				 * 
+				 * QA received accredited, approved, recognized, regulated 
+				 * other filters
+				 * Has any?
+				 *	industry, occupation, 
+				 * Connections
+				 * - ispartof, is prep, etc
+				 */
+
+				if ( asmtMethodTypes != null && asmtMethodTypes.Items.Any() )
+					filters.AssessmentMethodTypes = ConvertEnumeration( "assessmentMethodType", asmtMethodTypes, "Select the assessment method(s) type." );
+				if ( asmtUseTypes != null && asmtUseTypes.Items.Any() )
+					filters.AssessmentUseTypes = ConvertEnumeration( "assessmentUse", asmtUseTypes, "Select the type(s) of assessment uses." );
+				if ( deliveryTypes != null && deliveryTypes.Items.Any() )
+					filters.AssessmentDeliveryTypes = ConvertEnumeration( "assessmentdeliverytypes", deliveryTypes, "Select the type of delivery method(s)." );
+
+				//
+				if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+					filters.AudienceLevels = ConvertEnumeration( "audienceleveltypes", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
+				if ( audienceTypes != null && audienceTypes.Items.Any() )
+					filters.AudienceTypes = ConvertEnumeration( "audiencetypes", audienceTypes, "Select the applicable audience types that are the target of assessments. Note that many assessments will not have specific audience types." );
+				//
+				if ( connections != null && connections.Items.Any() )
+					filters.Connections = ConvertEnumeration( "connections", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+				//
+				if ( languages != null && languages.Items.Any() )
+					filters.Languages = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+				if ( scoringMethodTypes != null && scoringMethodTypes.Items.Any() )
+					filters.ScoringMethodTypes = ConvertEnumeration( "scoringMethod", scoringMethodTypes, "Select the type of scoring method(s)." );
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+					filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+				//
+				//competencies don't have an autocomplete
+				filters.Competencies = new MSR.Filter()
+				{
+					Label = "Competencies",
+					FilterName = "competencies",
+					HasAnyGuidance = string.Format( "Select 'Has Assesses Competencies' to search for {0} with any competencies.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+					HasAny = new FilterItem()
+					{
+						Label = "Has Assesses Competencies",
+						Value = "asmtReport:HasCompetencies"
+					}
+				};
+				filters.SubjectAreas = new MSR.Filter()
+				{
+					Label = "Subject Areas",
+					FilterName = "subjectAreas",
+					Description = "",
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "subjects"
+				};
+				//
+				filters.Occupations = new MSR.Filter()
+				{
+					Label = "Occupations",
+					FilterName = "occupations",
+					HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "occupations",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Occupations",
+						Value = "asmtReport:HasOccupations"
+					}
+				};
+				//
+				filters.Industries = new MSR.Filter()
+				{
+					Label = "Industries",
+					FilterName = "industries",
+					HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "industries",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Industries",
+						Value = "asmtReport:HasIndustries"
+					}
+				};
+				//
+				filters.InstructionalPrograms = new MSR.Filter()
+				{
+					Label = "Instructional Programs",
+					FilterName = "instructionalPrograms",
+					HasAnyGuidance = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select instructional programs to filter {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "instructionalprogramtypes",
+					HasAny = new FilterItem()
+					{
+						Label = "Has InstructionalPrograms",
+						Value = "asmtReport:HasCIP"
+					}
+				};
+				//
+				if ( qaReceived != null && qaReceived.Items.Any() )
+				{
+					var f = new MSR.Filter()
+					{
+						Label = "Quality Assurance",
+						FilterName = "qualityAssurance",
+						CategoryId = qaReceived.Id,
+						Description = string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ),
+						MicroSearchGuidance = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
+						SearchType = searchType,
+						SearchTypeContext = "organizations",
+					};
+					filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetAssessmentFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+
+		public static FilterQuery GetLearningOppFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 7;
+			string searchType = "learningopportunity";
+			string label = "learning opportunity";
+			string labelPlural = "learningopportunities";
+			FilterQuery filters = new FilterQuery( searchType );
+
+			try
+			{
+				var asmtMethodTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, entityTypeId, getAll );
+				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+				var connections = enumServices.GetLearningOppsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
+
+				//
+				var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
+				var loppAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, entityTypeId, getAll );
+				var learningMethodTypes = enumServices.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false , getAll );
+				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+				/* TODO
+				 * QA received accredited, approved, recognized, regulated 
+				 * other filters
+				 * Has any?
+				 *	industry, occupation, 
+				 * Connections
+				 * - ispartof, is prep, etc
+				 */
+
+				if ( asmtMethodTypes != null && asmtMethodTypes.Items.Any() )
+					filters.AssessmentMethodTypes = ConvertEnumeration( "assessmentmethodtypes", asmtMethodTypes );
+				//
+				if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+					filters.AudienceLevels = ConvertEnumeration( "audienceleveltypes", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context.." );
+				if ( audienceTypes != null && audienceTypes.Items.Any() )
+					filters.AudienceTypes = ConvertEnumeration( "audiencetypes", audienceTypes, string.Format( "Select the applicable audience types that are the target of {0}. Note that many {0} will not have specific audience types.", labelPlural, labelPlural ) );
+				//
+				if ( connections != null && connections.Items.Any() )
+					filters.Connections = ConvertEnumeration( "loppConnections", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+				//
+				if ( deliveryTypes != null && deliveryTypes.Items.Any() )
+					filters.LearningDeliveryTypes = ConvertEnumeration( "learningdeliverytypes", deliveryTypes, "Select the type(s) of delivery method(s)." );
+
+				if ( loppAsmtDeliveryTypes != null && loppAsmtDeliveryTypes.Items.Any() )
+					filters.AssessmentDeliveryTypes = ConvertEnumeration( "assessmentdeliverytypes", loppAsmtDeliveryTypes, "Select the type(s) of assessment delivery method(s)." );
+				//
+				if ( languages != null && languages.Items.Any() )
+					filters.Languages = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+				//
+				if ( learningMethodTypes != null && learningMethodTypes.Items.Any() )
+					filters.LearningMethodTypes = ConvertEnumeration( "learningmethodtypes", learningMethodTypes, "Select the type(s) of learning method." );
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+					filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+				//
+				//competencies don't have an autocomplete
+				filters.Competencies = new MSR.Filter()
+				{
+					Label = "Competencies",
+					FilterName = "competencies",
+					HasAnyGuidance = string.Format( "Select 'Has Teaches Competencies' to search for {0} with any competencies.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+					HasAny = new FilterItem()
+					{
+						Label = "Has Teaches Competencies",
+						Value = "loppReport:HasCompetencies"
+					}
+				};
+				//
+				filters.SubjectAreas = new MSR.Filter()
+				{
+					Label = "Subject Areas",
+					FilterName = "subjectAreas",
+					Description = "",
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "subjects"
+				};
+				//
+				filters.Occupations = new MSR.Filter()
+				{
+					Label = "Occupations",
+					FilterName = "occupations",
+					HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "occupations",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Occupations",
+						Value = "loppReport:HasOccupations"
+					}
+				};
+				//
+				filters.Industries = new MSR.Filter()
+				{
+					Label = "Industries",
+					FilterName = "industries",
+					HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "industries",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Industries",
+						Value = "loppReport:HasIndustries"
+					}
+				};
+				//
+				filters.InstructionalPrograms = new MSR.Filter()
+				{
+					Label = "Instructional Programs",
+					FilterName = "instructionalPrograms",
+					HasAnyGuidance = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select instructional programs to filter {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "instructionalprogramtypes",
+					HasAny = new FilterItem()
+					{
+						Label = "Has InstructionalPrograms",
+						Value = "loppReport:HasCIP"
+					}
+				};
+				//
+				if ( qaReceived != null && qaReceived.Items.Any() )
+				{
+					var f = new MSR.Filter()
+					{
+						Label = "Quality Assurance",
+						FilterName = "qualityAssurance",
+						CategoryId = qaReceived.Id,
+						Description = string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ),
+						MicroSearchGuidance = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
+						SearchType = searchType,
+						SearchTypeContext = "organizations",
+					};
+					filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetLearningOppFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+
+		public static FilterQuery GetPathwayFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 8;
+			string searchType = "pathway";
+			string label = "Pathway";
+			string labelPlural = "pathways";
+			FilterQuery filters = new FilterQuery( searchType );
+
+			try
+			{
+
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+					filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+				//
+				filters.SubjectAreas = new MSR.Filter()
+				{
+					Label = "Subject Areas",
+					FilterName = "subjectAreas",
+					Description = "",
+					MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "subjects"
+				};
+				//
+				filters.Occupations = new MSR.Filter()
+				{
+					Label = "Occupations",
+					FilterName = "occupations",
+					HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "occupations",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Occupations",
+						Value = "pathwayReport:HasOccupations"
+					}
+				};
+				//
+				filters.Industries = new MSR.Filter()
+				{
+					Label = "Industries",
+					FilterName = "industries",
+					HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+					MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+					SearchType = searchType,
+					SearchTypeContext = "industries",
+					HasAny = new FilterItem()
+					{
+						Label = "Has Industries",
+						Value = "pathwayReport:HasIndustries"
+					}
+				};
+				
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+		public static FilterQuery GetNoFilters( string label )
+		{
+			FilterQuery filters = new FilterQuery(label);
+
+			try
+			{
+				filters.Connections = new MSR.Filter()
+				{
+					Label = label,
+					FilterName = label.ToLower().Replace(" ",""),
+					Description = string.Format( "There are no filters currently available for {0}.", label ),
+				};
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+		public static FilterQuery GetCompetencyFrameworkFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 10;
+			string searchType = "CompetencyFramework";
+			string label = "Competency Framework";
+			string labelPlural = "Competency Frameworks";
+			FilterQuery filters = new FilterQuery( searchType );
+
+			try
+			{
+				filters.Competencies = new MSR.Filter()
+				{
+					Label = "Competency Frameworks",
+					FilterName = "competencyFrameworks",
+					Description = string.Format( "There are no filters currently available for Competency Frameworks.", labelPlural ),
+					
+				};
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+
+		public static MSR.Filter ConvertEnumeration( MSR.Filter output, Enumeration e )
+		{
+			
+			foreach ( var item in e.Items )
+			{
+				output.Items.Add( new MSR.FilterItem()
+				{
+					Id = item.Id,
+					Label = item.Name,
+					Schema = item.SchemaName,
+					Value = item.SchemaName,
+					Description = item.Description
+				} );
+			}
+
+			return output;
+		}
+		public static MSR.Filter ConvertEnumeration( string filterName, Enumeration e, string guidance = "" )
+		{
+			var output = new MSR.Filter()
+			{
+				FilterName = filterName,
+				CategoryId = e.Id,
+				Label = e.Name,
+				Description = guidance
+			};
+			foreach ( var item in e.Items )
+			{
+				output.Items.Add( new MSR.FilterItem()
+				{
+					Id = item.Id,
+					Label = item.Name,
+					Schema = item.SchemaName,
+					Description = item.Description
+				} );
+			}
+
+			return output;
+		}
+
+		public static bool IsFilterAvailableFromCache( string searchType, ref FilterQuery output )
+		{
+			int cacheMinutes = 120;
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+			string key = searchType + "_queryFilter";
+
+			if ( HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
+			{
+				var cache = new CachedFilter();
+				try
+				{
+					cache = ( CachedFilter )HttpRuntime.Cache[ key ];
+					if ( cache.lastUpdated > maxTime )
+					{
+						LoggingHelper.DoTrace( 6, string.Format( "===SearchServices.IsFilterAvailableFromCache === Using cached version of FilterQuery, SearchType: {0}.", cache.Item.SearchType ) );
+						output= cache.Item;
+						return true;
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, "SearchServices.IsFilterAvailableFromCache. === exception " + ex.Message );
+				}
+			}
+			
+			return false;
+		}
+		public static void AddFilterToCache( FilterQuery entity )
+		{
+			int cacheMinutes = 120;
+
+			string key = entity.SearchType + "_queryFilter";
+
+			if ( cacheMinutes > 0 )
+			{
+				var newCache = new CachedFilter()
+				{
+					Item = entity,
+					lastUpdated = DateTime.Now
+				};
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Cache[ key ] != null )
+					{
+						HttpRuntime.Cache.Remove( key );
+						HttpRuntime.Cache.Insert( key, newCache );
+						LoggingHelper.DoTrace( 7, string.Format( "SearchServices.AddFilterToCache $$$ Updating cached version of FilterQuery, SearchType: {0}", entity.SearchType ) );
+
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 7, string.Format( "SearchServices.AddFilterToCache ****** Inserting new cached version of SearchType, SearchType: {0}", entity.SearchType ) );
+
+						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+					}
+				}
+			}
+
+			//return entity;
+		}
+
+		#endregion
+	}
+	public class CachedFilter
+	{
+		public CachedFilter()
+		{
+			lastUpdated = DateTime.Now;
+		}
+		public DateTime lastUpdated { get; set; }
+		public FilterQuery Item { get; set; }
+
 	}
 }

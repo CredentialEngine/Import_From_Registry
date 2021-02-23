@@ -27,6 +27,7 @@ namespace workIT.Models.Detail
 		public string AgentPurpose { get; set; }
 		public string AgentPurposeDescription { get; set; }
 		public List<LabelLink> AgentType { get; set; } = new List<LabelLink>();
+		//will only ever be one value, using an array for consistency
 		public List<LabelLink> AgentSectorType { get; set; } = new List<LabelLink>();
 		public List<string> AlternateName { get; set; } = new List<string>();
 

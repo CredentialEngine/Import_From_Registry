@@ -29,10 +29,11 @@ namespace workIT.Models.Common
         public string CTID { get; set; }
     }
 
-    /// <summary>
-    /// CompetencyFramework used by the graph search
-    /// </summary>
-    public class CompetencyFramework : BaseObject
+	/// <summary>
+	/// CompetencyFramework used by the graph search
+	/// ****21-02-22 THIS IS NOT USED BY IMPORT **************
+	/// </summary>
+	public class CompetencyFramework : BaseObject
     {
 
         public CompetencyFramework()

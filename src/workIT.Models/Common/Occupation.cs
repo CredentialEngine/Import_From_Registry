@@ -11,9 +11,9 @@ namespace workIT.Models.Common
 	/// <summary>
 	/// Profession, trade, or career field that may involve training and/or a formal qualification.
 	/// </summary>
-	public class Occupation : TopLevelObject
+	public class OccupationProfile : TopLevelObject
 	{
-		public Occupation()
+		public OccupationProfile()
 		{
 			EntityTypeId = 35;
 		}
@@ -55,7 +55,7 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Category or classification of this resource.
 		/// Where a more specific property exists, such as ceterms:naics, ceterms:isicV4, ceterms:credentialType, etc., use that property instead of this one.
-		/// URI to a competency
+		/// URI to a Concept
 		/// ceterms:classification
 		/// </summary>
 		public Enumeration Classification { get; set; } 

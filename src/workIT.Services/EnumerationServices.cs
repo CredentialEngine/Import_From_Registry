@@ -4,22 +4,48 @@ using System.Linq;
 using System.Web;
 using workIT.Models;
 using MC = workIT.Models.Common;
+using MSR = workIT.Models.Search;
 using workIT.Factories;
 
 namespace workIT.Services
 {
     public class EnumerationServices
     {
+		#region Search filters for API 
+		public MSR.Filter GetFilterList( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = false )
+		{
+			
+			MC.Enumeration e = CodesManager.GetEnumeration( dataSource, getAll );
+			var output = new MSR.Filter()
+			{
+				CategoryId = e.Id,
+				Label = e.Name,
+				Description = e.Description
+			};
+			foreach (var item in e.Items)
+			{
+				output.Items.Add( new MSR.FilterItem()
+				{
+					Id = item.Id,
+					Label = item.Name,
+					Schema = item.SchemaName,
+					Description = item.Description
+				} );
+			}
 
-        #region enumerations 
-        /// <summary>
-        /// Get an MC.Enumeration (by default a checkbox list) by schemaName
-        /// </summary>
-        /// <param name="dataSource"></param
-        /// <param name="interfaceType"></param>
-        /// <param name="showOtherValue">If true, a text box for entering other values will be displayed</param>
-        /// <returns></returns>
-        public MC.Enumeration GetEnumeration( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT,
+			return output;
+		}
+		#endregion
+
+		#region enumerations 
+		/// <summary>
+		/// Get an MC.Enumeration (by default a checkbox list) by schemaName
+		/// </summary>
+		/// <param name="dataSource"></param
+		/// <param name="interfaceType"></param>
+		/// <param name="showOtherValue">If true, a text box for entering other values will be displayed</param>
+		/// <returns></returns>
+		public MC.Enumeration GetEnumeration( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT,
                 bool showOtherValue = false,
                 bool getAll = true )
         {

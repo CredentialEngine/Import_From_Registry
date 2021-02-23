@@ -10,6 +10,7 @@ using System.Web;
 
 using workIT.Models;
 using workIT.Models.Common;
+using MCD=workIT.Models.Detail;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
 using ThisEntity = workIT.Models.Common.Credential;
@@ -21,65 +22,66 @@ using workIT.Factories;
 
 namespace workIT.Services
 {
-    public class CredentialServices
-    {
-        static string thisClassName = "CredentialServices";
+	public class CredentialServices
+	{
+		static string thisClassName = "CredentialServices";
 
-        public List<string> messages = new List<string>();
+		public List<string> messages = new List<string>();
 
-        public CredentialServices()
-        {
-        }
+		public CredentialServices()
+		{
+		}
 
-        #region import
-        public bool Import( ThisEntity entity, ref SaveStatus status )
-        {
-            //do a get, and add to cache before updating
-            if ( entity.Id > 0 )
-            {
+		#region import
+		public bool Import( ThisEntity entity, ref SaveStatus status )
+		{
+			//do a get, and add to cache before updating
+			if ( entity.Id > 0 )
+			{
 				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
-				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )	{
+				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )
+				{
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
 						GetDetail( entity.Id );
 				}
-            }
-            bool isValid = new EntityMgr().Save( entity, ref status );
-            List<string> messages = new List<string>();
+			}
+			bool isValid = new EntityMgr().Save( entity, ref status );
+			List<string> messages = new List<string>();
 
-            if ( entity.Id > 0 )
-            {
+			if ( entity.Id > 0 )
+			{
 				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )
 					CacheManager.RemoveItemFromCache( "credential", entity.Id );
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
-                {
-                    ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
-                   
+				{
+					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
-                        status.AddWarningRange( messages );
-                }
-                else
-                {
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
-                    //check for embedded items
-                    //has part
-                    AddCredentialsToPendingReindex( entity.HasPartIds );
-                    AddCredentialsToPendingReindex( entity.IsPartOfIds );
+						status.AddWarningRange( messages );
+				}
+				else
+				{
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					//check for embedded items
+					//has part
+					AddCredentialsToPendingReindex( entity.HasPartIds );
+					AddCredentialsToPendingReindex( entity.IsPartOfIds );
 
-                    if ( messages.Count > 0 )
-                        status.AddWarningRange( messages );
-                }
-            }
+					if ( messages.Count > 0 )
+						status.AddWarningRange( messages );
+				}
+			}
 
-            return isValid;
-        }
-        static void UpdateCaches( Object entity )
-        {
-            if ( entity.GetType() != typeof( Models.Common.Credential ) )
-                return;
-            var document = ( entity as Models.Common.Credential );
+			return isValid;
+		}
+		static void UpdateCaches( Object entity )
+		{
+			if ( entity.GetType() != typeof( Models.Common.Credential ) )
+				return;
+			var document = ( entity as Models.Common.Credential );
 			EntityCache ec = new EntityCache()
 			{
 				EntityTypeId = 1,
@@ -87,12 +89,12 @@ namespace workIT.Services
 				EntityStateId = document.EntityStateId,
 				EntityUid = document.RowId,
 				BaseId = document.Id,
-				Description  = document.Description,
+				Description = document.Description,
 				SubjectWebpage = document.SubjectWebpage,
 				CTID = document.CTID,
-				Created=document.Created,
-				LastUpdated=document.LastUpdated,
-				ImageUrl=document.ImageUrl,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				ImageUrl = document.ImageUrl,
 				Name = document.Name,
 				OwningAgentUID = document.OwningAgentUid,
 				OwningOrgId = document.OrganizationId
@@ -105,27 +107,27 @@ namespace workIT.Services
 			List<string> messages = new List<string>();
 
 			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                ElasticHelper.Credential_UpdateIndex( document.Id );
+				ElasticHelper.Credential_UpdateIndex( document.Id );
 			else
 				new SearchPendingReindexManager().Add( 1, document.Id, 1, ref messages );
 
 		}
-        public void AddCredentialsToPendingReindex( List<Credential> list )
-        {
-            List<string> messages = new List<string>();
-            foreach ( var item in list )
-            {
-                new SearchPendingReindexManager().Add( 1, item.Id, 1, ref messages );
-            }
-        }
-        public void AddCredentialsToPendingReindex( List<int> list )
-        {
-            List<string> messages = new List<string>();
-            foreach ( var item in list )
-            {
-                new SearchPendingReindexManager().Add( 1, item, 1, ref messages );
-            }
-        }
+		public void AddCredentialsToPendingReindex( List<Credential> list )
+		{
+			List<string> messages = new List<string>();
+			foreach ( var item in list )
+			{
+				new SearchPendingReindexManager().Add( 1, item.Id, 1, ref messages );
+			}
+		}
+		public void AddCredentialsToPendingReindex( List<int> list )
+		{
+			List<string> messages = new List<string>();
+			foreach ( var item in list )
+			{
+				new SearchPendingReindexManager().Add( 1, item, 1, ref messages );
+			}
+		}
 		#endregion
 
 		#region search 
@@ -157,7 +159,7 @@ namespace workIT.Services
 				{
 					return CredentialManager.AutocompleteInternal( keywords, 1, maxTerms, ref pTotalRows );
 				}
-				else 
+				else
 				{
 					string text = " (base.name like '{0}'  OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
 					//SetKeywordFilter( keywords, true, ref where );
@@ -175,87 +177,87 @@ namespace workIT.Services
 				// return new List<string>();
 			}
 		}
-        public static List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
-        {
-            int userId = 0;
-            string where = "";
+		public static List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
+		{
+			int userId = 0;
+			string where = "";
 
-            AppUser user = AccountServices.GetCurrentUser();
-            if ( user != null && user.Id > 0 )
-                userId = user.Id;
+			AppUser user = AccountServices.GetCurrentUser();
+			if ( user != null && user.Id > 0 )
+				userId = user.Id;
 
-            SetCompetenciesAutocompleteFilter( keyword, ref where );
+			SetCompetenciesAutocompleteFilter( keyword, ref where );
 
-            //return CredentialManager.Autocomplete( where, 1, maxTerms, userId, ref pTotalRows );
-            return new List<string>();
-        }
+			//return CredentialManager.Autocomplete( where, 1, maxTerms, userId, ref pTotalRows );
+			return new List<string>();
+		}
 
 
-        /// <summary>
-        /// Full credentials search
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="pTotalRows"></param>
-        /// <returns></returns>
-        public static List<ThisSearchEntity> Search( MainSearchInput data, ref int pTotalRows )
-        {
-            if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
-            {
-                return ElasticHelper.Credential_Search( data, ref pTotalRows );
-            }
-            else
-            {
-                return DoSearch( data, ref pTotalRows );
-            }
-        }
+		/// <summary>
+		/// Full credentials search
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="pTotalRows"></param>
+		/// <returns></returns>
+		public static List<ThisSearchEntity> Search( MainSearchInput data, ref int pTotalRows )
+		{
+			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
+			{
+				return ElasticHelper.Credential_Search( data, ref pTotalRows );
+			}
+			else
+			{
+				return DoSearch( data, ref pTotalRows );
+			}
+		}
 
-        /// <summary>
-        /// Full credentials search
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="pTotalRows"></param>
-        /// <returns></returns>
-        public static List<ThisSearchEntity> DoSearch( MainSearchInput data, ref int pTotalRows )
-        {
-            string where = "";
-            DateTime start = DateTime.Now;
-            //Stopwatch stopwatch = new Stopwatch();
-            //stopwatch.Start();
-            LoggingHelper.DoTrace( 6, string.Format( "===CredentialServices.Search === Started: {0}", start ) );
-            int userId = 0;
-            List<string> competencies = new List<string>();
+		/// <summary>
+		/// Full credentials search
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="pTotalRows"></param>
+		/// <returns></returns>
+		public static List<ThisSearchEntity> DoSearch( MainSearchInput data, ref int pTotalRows )
+		{
+			string where = "";
+			DateTime start = DateTime.Now;
+			//Stopwatch stopwatch = new Stopwatch();
+			//stopwatch.Start();
+			LoggingHelper.DoTrace( 6, string.Format( "===CredentialServices.Search === Started: {0}", start ) );
+			int userId = 0;
+			List<string> competencies = new List<string>();
 
-            AppUser user = AccountServices.GetCurrentUser();
-            if ( user != null && user.Id > 0 )
-                userId = user.Id;
-            //only target full entities
-            where = " ( base.EntityStateId = 3 ) ";
+			AppUser user = AccountServices.GetCurrentUser();
+			if ( user != null && user.Id > 0 )
+				userId = user.Id;
+			//only target full entities
+			where = " ( base.EntityStateId = 3 ) ";
 
-            SetKeywordFilter( data.Keywords, false, ref where );
-            where = where.Replace( "[USERID]", user.Id.ToString() );
+			SetKeywordFilter( data.Keywords, false, ref where );
+			where = where.Replace( "[USERID]", user.Id.ToString() );
 
-            SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_CREDENTIAL, ref where );
+			SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_CREDENTIAL, ref where );
 
-            SearchServices.HandleCustomFilters( data, 58, ref where );
+			SearchServices.HandleCustomFilters( data, 58, ref where );
 
-            //Should probably move this to its own method?
-            string agentRoleTemplate = " ( id in (SELECT [CredentialId] FROM [dbo].[CredentialAgentRelationships_Summary] where RelationshipTypeId = {0} and OrgId = {1})) ";
-            int roleId = 0;
-            int orgId = 0;
-            string AND = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
+			//Should probably move this to its own method?
+			string agentRoleTemplate = " ( id in (SELECT [CredentialId] FROM [dbo].[CredentialAgentRelationships_Summary] where RelationshipTypeId = {0} and OrgId = {1})) ";
+			int roleId = 0;
+			int orgId = 0;
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
 
-            //Updated to use FilterV2
-            foreach ( var filter in data.FiltersV2.Where( m => m.Name == "qualityAssuranceBy" ).ToList() )
-            {
-                roleId = filter.GetValueOrDefault( "RoleId", 0 );
-                orgId = filter.GetValueOrDefault( "AgentId", 0 );
-                where = where + AND + string.Format( agentRoleTemplate, roleId, orgId );
-                AND = " AND ";
-            }
+			//Updated to use FilterV2
+			foreach ( var filter in data.FiltersV2.Where( m => m.Name == "qualityAssuranceBy" ).ToList() )
+			{
+				roleId = filter.GetValueOrDefault( "RoleId", 0 );
+				orgId = filter.GetValueOrDefault( "AgentId", 0 );
+				where = where + AND + string.Format( agentRoleTemplate, roleId, orgId );
+				AND = " AND ";
+			}
 
-            /* //Retained for reference
+			/* //Retained for reference
 			foreach ( MainSearchFilter filter in data.Filters.Where( s => s.Name == "qualityAssuranceBy" ) )
 			{
 				if ( filter.Data.ContainsKey( "RoleId" ) )
@@ -266,34 +268,34 @@ namespace workIT.Services
 			}
 			*/
 
-            SetPropertiesFilter( data, ref where );
+			SetPropertiesFilter( data, ref where );
 
-            SearchServices.SetRolesFilter( data, ref where );
-            SearchServices.SetBoundariesFilter( data, ref where );
-            //need to fix rowId
+			SearchServices.SetRolesFilter( data, ref where );
+			SearchServices.SetBoundariesFilter( data, ref where );
+			//need to fix rowId
 
-            //naics, ONET
-            SetFrameworksFilter( data, ref where );
-            //Competencies
-            SetCompetenciesFilter( data, ref where, ref competencies );
-            SetCredCategoryFilter( data, ref where ); //Not updated for FiltersV2 - I don't think we're using this anymore - NA 5/11/2017
-            SetConnectionsFilter( data, ref where );
+			//naics, ONET
+			SetFrameworksFilter( data, ref where );
+			//Competencies
+			SetCompetenciesFilter( data, ref where, ref competencies );
+			SetCredCategoryFilter( data, ref where ); //Not updated for FiltersV2 - I don't think we're using this anymore - NA 5/11/2017
+			SetConnectionsFilter( data, ref where );
 
-            TimeSpan timeDifference = start.Subtract( DateTime.Now );
-            LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".Search(). Filter: {0}, elapsed: {1} ", where, timeDifference.TotalSeconds ) );
+			TimeSpan timeDifference = start.Subtract( DateTime.Now );
+			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".Search(). Filter: {0}, elapsed: {1} ", where, timeDifference.TotalSeconds ) );
 
-            List<ThisSearchEntity> list = EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
+			List<ThisSearchEntity> list = EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
 
-            //stopwatch.Stop();
-            timeDifference = start.Subtract( DateTime.Now );
-            LoggingHelper.DoTrace( 6, string.Format( "===CredentialServices.Search === Ended: {0}, Elapsed: {1}, Filter: {2}", DateTime.Now, timeDifference.TotalSeconds, where ) );
-            return list;
-        }
+			//stopwatch.Stop();
+			timeDifference = start.Subtract( DateTime.Now );
+			LoggingHelper.DoTrace( 6, string.Format( "===CredentialServices.Search === Ended: {0}, Elapsed: {1}, Filter: {2}", DateTime.Now, timeDifference.TotalSeconds, where ) );
+			return list;
+		}
 
-        private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
-        {
-            if ( string.IsNullOrWhiteSpace( keywords ) || string.IsNullOrWhiteSpace( keywords.Trim() ) )
-                return;
+		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
+		{
+			if ( string.IsNullOrWhiteSpace( keywords ) || string.IsNullOrWhiteSpace( keywords.Trim() ) )
+				return;
 
 			//trim trailing (org)
 			if ( keywords.LastIndexOf( "(" ) > 0 )
@@ -301,134 +303,134 @@ namespace workIT.Services
 
 			//OR CreatorOrgs like '{0}' 
 			bool isCustomSearch = false;
-            //OR base.Description like '{0}'  OR base.SubjectWebpage like '{0}'
-            string text = " (base.name like '{0}'  OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
-            //for ctid, needs a valid ctid or guid
-            if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
-            {
-                text = " ( CTID = '{0}' ) ";
-                isCustomSearch = true;
-            }
-            else if ( keywords.IndexOf( "in (" ) > -1 )
-            {
-                text = " base.Id  " + keywords;
-                isCustomSearch = true;
-            }
-            else if ( ServiceHelper.IsValidGuid( keywords ) )
-            {
-                text = " ( CTID = 'ce-{0}' ) ";
-                isCustomSearch = true;
-            }
-            else if ( ServiceHelper.IsInteger( keywords ) )
-            {
-                text = " ( Id = '{0}' ) ";
-                isCustomSearch = true;
-            }
-            else if ( keywords.ToLower() == "[hascredentialregistryid]" )
-            {
-                text = " ( len(Isnull(CredentialRegistryId,'') ) = 36 ) ";
-                isCustomSearch = true;
-            }
+			//OR base.Description like '{0}'  OR base.SubjectWebpage like '{0}'
+			string text = " (base.name like '{0}'  OR base.AlternateName like '{0}' OR OwningOrganization like '{0}'  ) ";
+			//for ctid, needs a valid ctid or guid
+			if ( keywords.IndexOf( "ce-" ) > -1 && keywords.Length == 39 )
+			{
+				text = " ( CTID = '{0}' ) ";
+				isCustomSearch = true;
+			}
+			else if ( keywords.IndexOf( "in (" ) > -1 )
+			{
+				text = " base.Id  " + keywords;
+				isCustomSearch = true;
+			}
+			else if ( ServiceHelper.IsValidGuid( keywords ) )
+			{
+				text = " ( CTID = 'ce-{0}' ) ";
+				isCustomSearch = true;
+			}
+			else if ( ServiceHelper.IsInteger( keywords ) )
+			{
+				text = " ( Id = '{0}' ) ";
+				isCustomSearch = true;
+			}
+			else if ( keywords.ToLower() == "[hascredentialregistryid]" )
+			{
+				text = " ( len(Isnull(CredentialRegistryId,'') ) = 36 ) ";
+				isCustomSearch = true;
+			}
 
-            //use Entity.SearchIndex for all
-            string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where (b.EntityTypeId = 1 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
+			//use Entity.SearchIndex for all
+			string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where (b.EntityTypeId = 1 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
 
-            //removed 10,11 as part of the frameworkItemSummary
-            //string keywordsFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.Reference] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = 35 and a.TextValue like '{0}' )) ";
+			//removed 10,11 as part of the frameworkItemSummary
+			//string keywordsFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.Reference] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = 35 and a.TextValue like '{0}' )) ";
 
-            //  string subjects = " OR  (base.EntityUid in (SELECT EntityUid FROM [Entity_Subjects] a where EntityTypeId = 1 AND a.Subject like '{0}' )) ";
+			//  string subjects = " OR  (base.EntityUid in (SELECT EntityUid FROM [Entity_Subjects] a where EntityTypeId = 1 AND a.Subject like '{0}' )) ";
 
-            //string frameworkItems = " OR (EntityUid in (SELECT EntityUid FROM [dbo].[Entity.FrameworkItemSummary_ForCredentials] a where  a.title like '{0}' ) ) ";
+			//string frameworkItems = " OR (EntityUid in (SELECT EntityUid FROM [dbo].[Entity.FrameworkItemSummary_ForCredentials] a where  a.title like '{0}' ) ) ";
 
-            // string otherFrameworkItems = " OR (EntityUid in (SELECT EntityUid FROM [dbo].[Entity_Reference_Summary] a where  a.TextValue like '{0}' ) ) ";
-            string AND = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
-            //
-            keywords = ServiceHelper.HandleApostrophes( keywords );
-            if ( keywords.IndexOf( "%" ) == -1 && !isCustomSearch )
-            {
-                keywords = SearchServices.SearchifyWord( keywords );
-                //keywords = "%" + keywords.Trim() + "%";
-                //keywords = keywords.Replace( "&", "%" ).Replace( " and ", "%" ).Replace( " in ", "%" ).Replace( " of ", "%" );
-                //keywords = keywords.Replace( " - ", "%" );
-                //keywords = keywords.Replace( " % ", "%" );
-            }
+			// string otherFrameworkItems = " OR (EntityUid in (SELECT EntityUid FROM [dbo].[Entity_Reference_Summary] a where  a.TextValue like '{0}' ) ) ";
+			string AND = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
+			//
+			keywords = ServiceHelper.HandleApostrophes( keywords );
+			if ( keywords.IndexOf( "%" ) == -1 && !isCustomSearch )
+			{
+				keywords = SearchServices.SearchifyWord( keywords );
+				//keywords = "%" + keywords.Trim() + "%";
+				//keywords = keywords.Replace( "&", "%" ).Replace( " and ", "%" ).Replace( " in ", "%" ).Replace( " of ", "%" );
+				//keywords = keywords.Replace( " - ", "%" );
+				//keywords = keywords.Replace( " % ", "%" );
+			}
 
-            //skip url  OR base.Url like '{0}' 
-            if ( isBasic || isCustomSearch )
-                where = where + AND + string.Format( " ( " + text + " ) ", keywords );
-            else
-                where = where + AND + string.Format( " ( " + text + indexFilter + " ) ", keywords );
-            //where = where + AND + string.Format( " ( " + text + keywordsFilter + subjects + frameworkItems + otherFrameworkItems + " ) ", keywords );
+			//skip url  OR base.Url like '{0}' 
+			if ( isBasic || isCustomSearch )
+				where = where + AND + string.Format( " ( " + text + " ) ", keywords );
+			else
+				where = where + AND + string.Format( " ( " + text + indexFilter + " ) ", keywords );
+			//where = where + AND + string.Format( " ( " + text + keywordsFilter + subjects + frameworkItems + otherFrameworkItems + " ) ", keywords );
 
-        }
+		}
 
-        private static void SetPropertiesFilter( MainSearchInput data, ref string where )
-        {
-            string AND = "";
-            string searchCategories = UtilityManager.GetAppKeyValue( "credSearchCategories", "21,37," );
-            SearchServices.SetPropertiesFilter( data, 1, searchCategories, ref where );
-            //string template1 = " ( base.Id in ( SELECT  [EntityBaseId] FROM [dbo].[EntityProperty_Summary] where EntityTypeId= 1 AND [PropertyValueId] in ({0}))) ";
-            //string template = " ( base.Id in ( SELECT  [EntityBaseId] FROM [dbo].[EntityProperty_Summary] where EntityTypeId= 1 AND {0} )) ";
-            //string credTypes = " ( base.CredentialTypeId in ({0}) ) ";
+		private static void SetPropertiesFilter( MainSearchInput data, ref string where )
+		{
+			string AND = "";
+			string searchCategories = UtilityManager.GetAppKeyValue( "credSearchCategories", "21,37," );
+			SearchServices.SetPropertiesFilter( data, 1, searchCategories, ref where );
+			//string template1 = " ( base.Id in ( SELECT  [EntityBaseId] FROM [dbo].[EntityProperty_Summary] where EntityTypeId= 1 AND [PropertyValueId] in ({0}))) ";
+			//string template = " ( base.Id in ( SELECT  [EntityBaseId] FROM [dbo].[EntityProperty_Summary] where EntityTypeId= 1 AND {0} )) ";
+			//string credTypes = " ( base.CredentialTypeId in ({0}) ) ";
 
-            //string properyListTemplate = " ( [PropertyValueId] in ({0}) ) ";
-            //string filterList = "";
-            //int prevCategoryId = 0;
-            ////Updated to use FiltersV2
-            //string next = "";
-            //string typesFilter = "";
-            //if ( where.Length > 0 )
-            //    AND = " AND ";
+			//string properyListTemplate = " ( [PropertyValueId] in ({0}) ) ";
+			//string filterList = "";
+			//int prevCategoryId = 0;
+			////Updated to use FiltersV2
+			//string next = "";
+			//string typesFilter = "";
+			//if ( where.Length > 0 )
+			//    AND = " AND ";
 
-            //var credSearchCategories = new List<int>();
-            //foreach ( var s in searchCategories.Split( ',' ) )
-            //    if ( !string.IsNullOrEmpty( s ) )
-            //        credSearchCategories.Add( int.Parse( s ) );
+			//var credSearchCategories = new List<int>();
+			//foreach ( var s in searchCategories.Split( ',' ) )
+			//    if ( !string.IsNullOrEmpty( s ) )
+			//        credSearchCategories.Add( int.Parse( s ) );
 
-            //foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
-            //{
-            //    var item = filter.AsCodeItem();
-            //    //if ( searchCategories.Contains( item.CategoryId.ToString() ) )
-            //    if ( credSearchCategories.Contains( item.CategoryId ) )
-            //    {
-            //        if ( item.CategoryId == 2 )
-            //        {
-            //            typesFilter += item.Id + ",";
-            //        }
-            //        else
-            //        {
-            //            //18-03-27 mp - these are all property values, so using an AND with multiple categories will always fail - removing prevCategoryId check
-            //            //if (item.CategoryId != prevCategoryId)
-            //            //{
-            //            //    if (prevCategoryId > 0)
-            //            //    {
-            //            //        next = next.Trim(',');
-            //            //        filterList += (filterList.Length > 0 ? " AND " : "") + string.Format(properyListTemplate, next);
-            //            //    }
-            //            //    prevCategoryId = item.CategoryId;
-            //            //    next = "";
-            //            //}
-            //            next += item.Id + ",";
-            //        }
-            //    }
-            //}
-            //next = next.Trim( ',' );
-            //typesFilter = typesFilter.Trim( ',' );
-            //if ( !string.IsNullOrWhiteSpace( next ) )
-            //{
-            //    //where = where + AND + string.Format( template, next );
-            //    filterList += ( filterList.Length > 0 ? " AND " : "" ) + string.Format( properyListTemplate, next );
-            //    where = where + AND + string.Format( template, filterList );
-            //    AND = " AND ";
-            //}
-            //if ( !string.IsNullOrWhiteSpace( typesFilter ) )
-            //{
-            //    where = where + AND + string.Format( credTypes, typesFilter );
-            //    AND = " AND ";
-            //}
-            /* //Retained for reference
+			//foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+			//{
+			//    var item = filter.AsCodeItem();
+			//    //if ( searchCategories.Contains( item.CategoryId.ToString() ) )
+			//    if ( credSearchCategories.Contains( item.CategoryId ) )
+			//    {
+			//        if ( item.CategoryId == 2 )
+			//        {
+			//            typesFilter += item.Id + ",";
+			//        }
+			//        else
+			//        {
+			//            //18-03-27 mp - these are all property values, so using an AND with multiple categories will always fail - removing prevCategoryId check
+			//            //if (item.CategoryId != prevCategoryId)
+			//            //{
+			//            //    if (prevCategoryId > 0)
+			//            //    {
+			//            //        next = next.Trim(',');
+			//            //        filterList += (filterList.Length > 0 ? " AND " : "") + string.Format(properyListTemplate, next);
+			//            //    }
+			//            //    prevCategoryId = item.CategoryId;
+			//            //    next = "";
+			//            //}
+			//            next += item.Id + ",";
+			//        }
+			//    }
+			//}
+			//next = next.Trim( ',' );
+			//typesFilter = typesFilter.Trim( ',' );
+			//if ( !string.IsNullOrWhiteSpace( next ) )
+			//{
+			//    //where = where + AND + string.Format( template, next );
+			//    filterList += ( filterList.Length > 0 ? " AND " : "" ) + string.Format( properyListTemplate, next );
+			//    where = where + AND + string.Format( template, filterList );
+			//    AND = " AND ";
+			//}
+			//if ( !string.IsNullOrWhiteSpace( typesFilter ) )
+			//{
+			//    where = where + AND + string.Format( credTypes, typesFilter );
+			//    AND = " AND ";
+			//}
+			/* //Retained for reference
 			foreach ( MainSearchFilter filter in data.Filters)
 			{
 				if ( searchCategories.IndexOf( filter.CategoryId.ToString() ) > -1 )
@@ -445,66 +447,66 @@ namespace workIT.Services
 				}
 			}
 			*/
-        }
-        private static void SetFrameworksFilter( MainSearchInput data, ref string where )
-        {
-            string AND = "";
-            //string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([Name] in ({2}) )  )) ) ";
+		}
+		private static void SetFrameworksFilter( MainSearchInput data, ref string where )
+		{
+			string AND = "";
+			//string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([Name] in ({2}) )  )) ) ";
 
-            string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([ReferenceFrameworkId] in ({2}) )  )) ) ";
+			string codeTemplate = " (base.Id in (SELECT c.id FROM [dbo].[Entity_ReferenceFramework_Summary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([ReferenceFrameworkId] in ({2}) )  )) ) ";
 
-            //string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([CodedNotation] in ({2}) )  )) ) ";
+			//string codeTemplate2 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and ([CodeGroup] in ({1})  OR ([CodedNotation] in ({2}) )  )) ) ";
 
-            //string codeTemplate1 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and [CodeId] in ({1}))  ) ";
+			//string codeTemplate1 = "  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = {0} and [CodeId] in ({1}))  ) ";
 
-            //Updated to use FiltersV2
-            string next = "";
-            string groups = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
-            var categoryID = 0;
-            foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.FRAMEWORK ) )
-            {
-                var item = filter.AsCodeItem();
-                var isTopLevel = filter.GetValueOrDefault<bool>( "IsTopLevel", false );
-                if ( item.CategoryId == 10 || item.Name == "industries" )
-                {
-                    categoryID = item.CategoryId;
-                    if ( isTopLevel )
-                        groups += item.Id + ",";
-                    else
-                    {
-                        next += item.Id + ",";
-                        // next += "'" + item.Code + "',";
-                    }
-                }
-                else if ( item.CategoryId == 11 || item.Name == "occupations" )
-                {
-                    categoryID = item.CategoryId;
-                    if ( isTopLevel )
-                        groups += item.Id + ",";
-                    else
-                    {
-                        next += item.Id + ",";
-                        //can't use code here, need to use codednotation?
-                        //next += "'" + item.Code + "',";
-                    }
-                }
-            }
-            if ( next.Length > 0 )
-                next = next.Trim( ',' );
-            else
-                next = "''";
-            if ( groups.Length > 0 )
-                groups = groups.Trim( ',' );
-            else
-                groups = "''";
-            if ( groups != "''" || next != "''" )
-            {
-                where = where + AND + string.Format( codeTemplate, categoryID, groups, next );
-            }
+			//Updated to use FiltersV2
+			string next = "";
+			string groups = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
+			var categoryID = 0;
+			foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.FRAMEWORK ) )
+			{
+				var item = filter.AsCodeItem();
+				var isTopLevel = filter.GetValueOrDefault<bool>( "IsTopLevel", false );
+				if ( item.CategoryId == 10 || item.Name == "industries" )
+				{
+					categoryID = item.CategoryId;
+					if ( isTopLevel )
+						groups += item.Id + ",";
+					else
+					{
+						next += item.Id + ",";
+						// next += "'" + item.Code + "',";
+					}
+				}
+				else if ( item.CategoryId == 11 || item.Name == "occupations" )
+				{
+					categoryID = item.CategoryId;
+					if ( isTopLevel )
+						groups += item.Id + ",";
+					else
+					{
+						next += item.Id + ",";
+						//can't use code here, need to use codednotation?
+						//next += "'" + item.Code + "',";
+					}
+				}
+			}
+			if ( next.Length > 0 )
+				next = next.Trim( ',' );
+			else
+				next = "''";
+			if ( groups.Length > 0 )
+				groups = groups.Trim( ',' );
+			else
+				groups = "''";
+			if ( groups != "''" || next != "''" )
+			{
+				where = where + AND + string.Format( codeTemplate, categoryID, groups, next );
+			}
 
-            /* //Retained for reference
+			/* //Retained for reference
 			foreach ( MainSearchFilter filter in data.Filters.Where( s => s.CategoryId == 10 || s.CategoryId == 11 ) )
 			{
 				string next = "";
@@ -518,142 +520,194 @@ namespace workIT.Services
 				where = where + AND + string.Format( codeTemplate, filter.CategoryId, next );
 			}
 			*/
-        }
-        private static void SetCompetenciesAutocompleteFilter( string keywords, ref string where )
-        {
-            List<string> competencies = new List<string>();
-            MainSearchInput data = new MainSearchInput();
-            MainSearchFilter filter = new MainSearchFilter() { Name = "competencies", CategoryId = 29 };
-            filter.Items.Add( keywords );
-            SetCompetenciesFilter( data, ref where, ref competencies );
+		}
+		private static void SetCompetenciesAutocompleteFilter( string keywords, ref string where )
+		{
+			List<string> competencies = new List<string>();
+			MainSearchInput data = new MainSearchInput();
+			MainSearchFilter filter = new MainSearchFilter() { Name = "competencies", CategoryId = 29 };
+			filter.Items.Add( keywords );
+			SetCompetenciesFilter( data, ref where, ref competencies );
 
-        }
-        private static void SetCompetenciesFilter( MainSearchInput data, ref string where, ref List<string> competencies )
-        {
-            string AND = "";
-            string OR = "";
-            string keyword = "";
-            //just learning opps
-            //string template = " ( base.Id in (SELECT distinct  CredentialId FROM [dbo].[ConditionProfile_Competencies_Summary]  where AlignmentType in ('teaches', 'assesses') AND ({0}) ) ) ";
-            //learning opps and asmts:
-            string template = " ( base.Id in (SELECT distinct  CredentialId FROM [dbo].[ConditionProfile_Competencies_Summary]  where ({0}) ) ) ";
-            //
-            string phraseTemplate = " ([Name] like '%{0}%' OR [TargetNodeDescription] like '%{0}%') ";
-            //
+		}
+		private static void SetCompetenciesFilter( MainSearchInput data, ref string where, ref List<string> competencies )
+		{
+			string AND = "";
+			string OR = "";
+			string keyword = "";
+			//just learning opps
+			//string template = " ( base.Id in (SELECT distinct  CredentialId FROM [dbo].[ConditionProfile_Competencies_Summary]  where AlignmentType in ('teaches', 'assesses') AND ({0}) ) ) ";
+			//learning opps and asmts:
+			string template = " ( base.Id in (SELECT distinct  CredentialId FROM [dbo].[ConditionProfile_Competencies_Summary]  where ({0}) ) ) ";
+			//
+			string phraseTemplate = " ([Name] like '%{0}%' OR [TargetNodeDescription] like '%{0}%') ";
+			//
 
-            //Updated to use FiltersV2
-            string next = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
-            foreach ( var filter in data.FiltersV2.Where( m => m.Name == "competencies" ) )
-            {
-                var text = filter.AsText();
+			//Updated to use FiltersV2
+			string next = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
+			foreach ( var filter in data.FiltersV2.Where( m => m.Name == "competencies" ) )
+			{
+				var text = filter.AsText();
 
-                //No idea what this is supposed to do
-                try
-                {
-                    if ( text.IndexOf( " - " ) > -1 )
-                    {
-                        text = text.Substring( text.IndexOf( " -- " ) + 4 );
-                    }
-                }
-                catch { }
+				//No idea what this is supposed to do
+				try
+				{
+					if ( text.IndexOf( " - " ) > -1 )
+					{
+						text = text.Substring( text.IndexOf( " -- " ) + 4 );
+					}
+				}
+				catch { }
 
-                competencies.Add( text.Trim() );
-                next += OR + string.Format( phraseTemplate, text.Trim() );
-                OR = " OR ";
+				competencies.Add( text.Trim() );
+				next += OR + string.Format( phraseTemplate, text.Trim() );
+				OR = " OR ";
 
-            }
-            if ( !string.IsNullOrWhiteSpace( next ) )
-            {
-                where = where + AND + string.Format( template, next );
-            }
-
-
-        }
-        //
-        private static void SetCredCategoryFilter( MainSearchInput data, ref string where )
-        {
-            string AND = "";
-            //check for org category (credentially, or QA). Only valid if one item
-            var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
-            if ( qaSettings.Count == 1 )
-            {
-                //ignore unless one filter
-                string item = qaSettings[ 0 ];
-                if ( where.Length > 0 )
-                    AND = " AND ";
-                if ( item == "includeNormal" ) //IsAQAOrganization = false
-                    where = where + AND + " ( base.CredentialTypeSchema <> 'qualityAssurance') ";
-                else if ( item == "includeQualityAssurance" )  //IsAQAOrganization = true
-                    where = where + AND + " ( base.CredentialTypeSchema = 'qualityAssurance') ";
-            }
-        }
-
-        public static void SetConnectionsFilter( MainSearchInput data, ref string where )
-        {
-            string AND = "";
-            string OR = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
+			}
+			if ( !string.IsNullOrWhiteSpace( next ) )
+			{
+				where = where + AND + string.Format( template, next );
+			}
 
 
-            ////Should probably get this from the database
-            Enumeration entity = CodesManager.GetCredentialsConditionProfileTypes();
+		}
+		//
+		private static void SetCredCategoryFilter( MainSearchInput data, ref string where )
+		{
+			string AND = "";
+			//check for org category (credentially, or QA). Only valid if one item
+			var qaSettings = data.GetFilterValues_Strings( "qualityAssurance" );
+			if ( qaSettings.Count == 1 )
+			{
+				//ignore unless one filter
+				string item = qaSettings[ 0 ];
+				if ( where.Length > 0 )
+					AND = " AND ";
+				if ( item == "includeNormal" ) //IsAQAOrganization = false
+					where = where + AND + " ( base.CredentialTypeSchema <> 'qualityAssurance') ";
+				else if ( item == "includeQualityAssurance" )  //IsAQAOrganization = true
+					where = where + AND + " ( base.CredentialTypeSchema = 'qualityAssurance') ";
+			}
+		}
 
-            var validConnections = new List<string>();
-            //{ 
-            //	"requires", 
-            //	"recommends", 
-            //	"requiredFor", 
-            //	"isRecommendedFor", 
-            //	//"renewal", //Not a connection type
-            //	"isAdvancedStandingFor", 
-            //	"advancedStandingFrom", 
-            //	"preparationFor", 
-            //	"preparationFrom", 
-            //	"isPartOf", 
-            //	"hasPart"	
-            //};
-            //validConnections = validConnections.ConvertAll( m => m.ToLower() ); //Makes comparisons easier when combined with the .ToLower() below
-            validConnections = entity.Items.Select( s => s.SchemaName.ToLower() ).ToList();
+		public static void SetConnectionsFilter( MainSearchInput data, ref string where )
+		{
+			string AND = "";
+			string OR = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
 
-            string conditionTemplate = " {0}Count > 0 ";
 
-            //Updated for FiltersV2
-            string next = "";
-            string condition = "";
-            if ( where.Length > 0 )
-                AND = " AND ";
-            foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ) )
-            {
-                var item = filter.AsCodeItem();
-                if ( item.CategoryId != 15 )
-                {
-                    continue;
-                }
+			////Should probably get this from the database
+			Enumeration entity = CodesManager.GetCredentialsConditionProfileTypes();
 
-                //Prevent query hijack attacks
-                if ( validConnections.Contains( item.SchemaName.ToLower() ) )
-                {
-                    condition = item.SchemaName;
-                    next += OR + string.Format( conditionTemplate, condition );
-                    OR = " OR ";
-                }
-            }
-            next = next.Trim();
-            next = next.Replace( "ceterms:", "" );
-            if ( !string.IsNullOrWhiteSpace( next ) )
-            {
-                where = where + AND + "(" + next + ")";
-            }
+			var validConnections = new List<string>();
+			//{ 
+			//	"requires", 
+			//	"recommends", 
+			//	"requiredFor", 
+			//	"isRecommendedFor", 
+			//	//"renewal", //Not a connection type
+			//	"isAdvancedStandingFor", 
+			//	"advancedStandingFrom", 
+			//	"preparationFor", 
+			//	"preparationFrom", 
+			//	"isPartOf", 
+			//	"hasPart"	
+			//};
+			//validConnections = validConnections.ConvertAll( m => m.ToLower() ); //Makes comparisons easier when combined with the .ToLower() below
+			validConnections = entity.Items.Select( s => s.SchemaName.ToLower() ).ToList();
 
-        }
+			string conditionTemplate = " {0}Count > 0 ";
 
-        #endregion
+			//Updated for FiltersV2
+			string next = "";
+			string condition = "";
+			if ( where.Length > 0 )
+				AND = " AND ";
+			foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ) )
+			{
+				var item = filter.AsCodeItem();
+				if ( item.CategoryId != 15 )
+				{
+					continue;
+				}
 
-        #region Retrievals
-        public static ThisEntity GetByCtid( string ctid )
+				//Prevent query hijack attacks
+				if ( validConnections.Contains( item.SchemaName.ToLower() ) )
+				{
+					condition = item.SchemaName;
+					next += OR + string.Format( conditionTemplate, condition );
+					OR = " OR ";
+				}
+			}
+			next = next.Trim();
+			next = next.Replace( "ceterms:", "" );
+			if ( !string.IsNullOrWhiteSpace( next ) )
+			{
+				where = where + AND + "(" + next + ")";
+			}
+
+		}
+
+		#endregion
+
+
+		#region methods for new API
+		public static MCD.CredentialDetail GetDetailForAPI( int id, bool skippingCache = false )
+		{
+			var org = GetDetail( id, skippingCache );
+			return MapToAPI( org );
+
+		}
+		public static MCD.CredentialDetail GetDetailByCtidForApi( string ctid, bool skippingCache = false )
+		{
+			var org = GetDetailByCtid( ctid, skippingCache );
+			return MapToAPI( org );
+		}
+		private static MCD.CredentialDetail MapToAPI( ThisEntity record )
+		{
+			var output = new MCD.CredentialDetail()
+			{
+				Id = record.Id,
+				Name = record.Name,
+				Description = record.Description,
+				SubjectWebpage = record.SubjectWebpage,
+				EntityTypeId = 1,
+				//EntityType="Organization"
+
+			};
+			//
+			//output.CTDLType = record.CredentialType; ;
+			//output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( org.AgentSectorType, "organization" );
+
+			output.AlternateName = record.AlternateName;
+			output.AvailabilityListing = record.AvailabilityListing;
+			output.CTID = record.CTID;
+
+			output.EntityLastUpdated = record.EntityLastUpdated;
+			output.EntityStateId = record.EntityStateId;
+			output.EntityTypeId = record.EntityTypeId;
+			output.FriendlyName = record.FriendlyName;
+			//
+			output.ImageUrl = record.ImageUrl;
+			//output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( record.IndustryType, "organization" );
+			output.IsReferenceVersion = record.IsReferenceVersion;
+			//
+			//if ( record.Keyword != null && record.Keyword.Any() )
+			//	output.Keyword = ServiceHelper.MapPropertyLabelLinks( record.Keyword, "organization" );
+
+			//
+			return output;
+		}
+		#endregion
+
+
+
+		#region Retrievals
+		public static ThisEntity GetByCtid( string ctid )
         {
             ThisEntity entity = new ThisEntity();
             if ( string.IsNullOrWhiteSpace( ctid ) )
@@ -681,19 +735,7 @@ namespace workIT.Services
             return CredentialManager.GetBasic( credentialId );
         }
 
-        /// <summary>
-        /// Get a minimal credential - typically for a link, or need just basic properties
-        /// </summary>
-        /// <param name="rowId"></param>
-        /// <returns></returns>
-        //public static ThisEntity GetBasicCredentialAsLink( Guid rowId )
-        //{
-        //    return CredentialManager.GetBasic( rowId, false, true );
-        //}
-        //public static ThisEntity GetBasicCredential( Guid rowId )
-        //{
-        //    return CredentialManager.GetBasic( rowId, false, false );
-        //}
+
 
         /// <summary>
         /// Get a credential for detailed display
@@ -830,17 +872,12 @@ namespace workIT.Services
             return entity;
         } //
 
-        //private void RemoveCredentialFromCache( int credentialId )
-        //{
-        //    CacheManager.RemoveItemFromCache( "credential", credentialId );
-        //    CacheManager.RemoveItemFromCache( "credentialCompare", credentialId );
-        //} //
 
-        #endregion
+		#endregion
 
-    }
+	}
 
-    public class CachedCredential
+	public class CachedCredential
     {
         public CachedCredential()
         {

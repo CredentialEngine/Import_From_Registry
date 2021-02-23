@@ -25,7 +25,7 @@ namespace workIT.Models.Detail
 		public int EntityStateId { get; set; }
 		public int EntityTypeId { get; set; }
 		public DateTime EntityLastUpdated { get; set; }
-		public bool IsReferenceVersion { get; set; }
+		//public bool IsReferenceVersion { get; set; }
 
 		public int? OrganizationId { get; set; }
 		public string OrganizationName { get; set; }

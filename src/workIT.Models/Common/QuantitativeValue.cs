@@ -44,6 +44,31 @@ namespace workIT.Models.Common
 
 			return false;
 		}
+		public string Summary()
+		{
+			if ( !HasData() )
+				return "";
+
+			var summary = "";
+			if ( Percentage > 0 )
+			{
+				return string.Format( "{0}% {1}", Percentage, Description ?? "" );
+			}
+			else if ( Value > 0 )
+			{
+				//check if integer
+				return string.Format( "{0} {1}", Value, Description ?? "" );
+			}
+			else if ( MinValue != 0 && MaxValue != 0 )
+			{
+				//check if integer
+				return string.Format( "{0} to {1} {2}", MinValue, MaxValue, Description ?? "" );
+			}
+			else
+				return Description;
+
+			return summary;
+		}
 		/// <summary>
 		/// To be valid:
 		/// - either 

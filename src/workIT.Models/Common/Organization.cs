@@ -99,6 +99,9 @@ namespace workIT.Models.Common
 		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 		public List<string> AlternateName { get; set; } = new List<string>();
 
+		/// <summary>
+		/// Why do we still have a single addres in use?
+		/// </summary>
 		public Address Address { get; set; } = new Address();
 
 		public List<Address> Addresses { get; set; } = new List<Address>();
@@ -120,6 +123,7 @@ namespace workIT.Models.Common
 			}
 		}
 		//Alias used for search
+		//as above, why do we still have a single address? for a default where needed?
 		public List<Address> Auto_Address
 		{
 			get
@@ -279,6 +283,8 @@ namespace workIT.Models.Common
 		public int TotalPathwaySets { get; set; }
 		public int TotalCredentialsPublishedByThirdParty { get; set; }
 		public int TotalOrganizationsPublishedByThirdParty { get; set; }
+		public int TotalAssessmentsPublishedByThirdParty { get; set; }
+		public int TotalLoppsPublishedByThirdParty { get; set; }
 		public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }
         public List<AssessmentProfile> OwnedAssessments { get; set; } = new List<AssessmentProfile>();

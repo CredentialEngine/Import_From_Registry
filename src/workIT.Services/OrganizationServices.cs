@@ -469,115 +469,115 @@ namespace workIT.Services
 			var org = GetDetailByCtid( ctid, skippingCache );
 			return MapToAPI( org );
 		}
-		private static MCD.OrganizationDetail MapToAPI( Organization org )
+		private static MCD.OrganizationDetail MapToAPI( Organization record )
 		{
 			var baseSiteURL = UtilityManager.GetAppKeyValue( "baseSiteURL" );
 
 
 			var output = new MCD.OrganizationDetail()
 			{
-				Id = org.Id,
-				Name = org.Name,
-				Description = org.Description,
-				SubjectWebpage = org.SubjectWebpage,
+				Id = record.Id,
+				Name = record.Name,
+				Description = record.Description,
+				SubjectWebpage = record.SubjectWebpage,
 				EntityTypeId = 2,
 				//EntityType="Organization"
 
 			};
-			output.CTDLType = org.AgentDomainType;
-			output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( org.AgentSectorType, "organization" );
-			output.AgentType = ServiceHelper.MapPropertyLabelLinks( org.AgentType, "organization" );
-			output.AgentPurpose = org.AgentPurpose;
-			output.AgentPurposeDescription = org.AgentPurposeDescription;
-			output.AlternateName = org.AlternateName;
-			output.AvailabilityListing = org.AvailabilityListings;
-			output.CTID = org.CTID;
-			if ( org.Emails != null && org.Emails.Any() )
-				output.Email = org.Emails.Select( s => s.TextValue ).ToList();
+			output.CTDLType = record.AgentDomainType;
+			output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( record.AgentSectorType, "organization" );
+			output.AgentType = ServiceHelper.MapPropertyLabelLinks( record.AgentType, "organization" );
+			output.AgentPurpose = record.AgentPurpose;
+			output.AgentPurposeDescription = record.AgentPurposeDescription;
+			output.AlternateName = record.AlternateName;
+			output.AvailabilityListing = record.AvailabilityListings;
+			output.CTID = record.CTID;
+			if ( record.Emails != null && record.Emails.Any() )
+				output.Email = record.Emails.Select( s => s.TextValue ).ToList();
 
-			output.EntityLastUpdated = org.EntityLastUpdated;
-			output.EntityStateId = org.EntityStateId;
-			output.EntityTypeId = org.EntityTypeId;
-			output.FoundingDate = org.FoundingDate;
-			output.FriendlyName = org.FriendlyName;
+			output.EntityLastUpdated = record.EntityLastUpdated;
+			output.EntityStateId = record.EntityStateId;
+			output.EntityTypeId = record.EntityTypeId;
+			output.FoundingDate = record.FoundingDate;
+			output.FriendlyName = record.FriendlyName;
 			//identifiers
-			output.Identifier = org.Identifier;
-			output.DUNS = org.ID_DUNS;
-			output.FEIN = org.ID_FEIN;
-			output.IPEDSID = org.ID_IPEDSID;
-			output.ISICV4 = org.ID_ISICV4;
-			output.LEICode = org.ID_LEICode;
-			output.NECS = org.ID_NECS;
-			output.OPEID = org.ID_OPEID;
+			output.Identifier = record.Identifier;
+			output.DUNS = record.ID_DUNS;
+			output.FEIN = record.ID_FEIN;
+			output.IPEDSID = record.ID_IPEDSID;
+			output.ISICV4 = record.ID_ISICV4;
+			output.LEICode = record.ID_LEICode;
+			output.NECS = record.ID_NECS;
+			output.OPEID = record.ID_OPEID;
 			//
-			output.ParentOrganization = ServiceHelper.MapToEntityReference( org.ParentOrganizations );
-			output.Department = ServiceHelper.MapToEntityReference( org.OrganizationRole_Dept );
-			output.ParentOrganization = ServiceHelper.MapToEntityReference( org.OrganizationRole_Subsidiary );
+			output.ParentOrganization = ServiceHelper.MapToEntityReference( record.ParentOrganizations );
+			output.Department = ServiceHelper.MapToEntityReference( record.OrganizationRole_Dept );
+			output.ParentOrganization = ServiceHelper.MapToEntityReference( record.OrganizationRole_Subsidiary );
 			//
-			output.Image = org.ImageUrl;
-			output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( org.IndustryType, "organization" );
-			output.IsReferenceVersion = org.IsReferenceVersion;
-			//output.Jurisdiction = org.Jurisdiction;
-			if ( org.Keyword != null && org.Keyword.Any() )
-				output.Keyword = ServiceHelper.MapPropertyLabelLinks( org.Keyword, "organization" );
+			output.Image = record.ImageUrl;
+			output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( record.IndustryType, "organization" );
+			//output.IsReferenceVersion = record.IsReferenceVersion;
+			//
+			if ( record.Keyword != null && record.Keyword.Any() )
+				output.Keyword = ServiceHelper.MapPropertyLabelLinks( record.Keyword, "organization" );
 
 
-			output.MissionAndGoalsStatement = org.MissionAndGoalsStatement;
-			output.MissionAndGoalsStatementDescription = org.MissionAndGoalsStatementDescription;
+			output.MissionAndGoalsStatement = record.MissionAndGoalsStatement;
+			output.MissionAndGoalsStatementDescription = record.MissionAndGoalsStatementDescription;
 			//this is NOT pertinent to organization
 			//output.OrganizationId = org.OrganizationId;
 			//output.OrganizationName = org.OrganizationName;
 			//output.OrganizationSubjectWebpage = "";
-			output.ServiceType = ServiceHelper.MapPropertyLabelLinks( org.ServiceType, "organization" );
-			output.SameAs = ServiceHelper.MapTextValueProfileTextValue( org.SameAs );
-			output.SocialMedia = ServiceHelper.MapTextValueProfileTextValue( org.SocialMediaPages );
+			output.ServiceType = ServiceHelper.MapPropertyLabelLinks( record.ServiceType, "organization" );
+			output.SameAs = ServiceHelper.MapTextValueProfileTextValue( record.SameAs );
+			output.SocialMedia = ServiceHelper.MapTextValueProfileTextValue( record.SocialMediaPages );
 
-			output.TransferValueStatement = org.TransferValueStatement;
-			output.TransferValueStatementDescription = org.TransferValueStatementDescription;
+			output.TransferValueStatement = record.TransferValueStatement;
+			output.TransferValueStatementDescription = record.TransferValueStatementDescription;
 
-			org.FriendlyName = HttpUtility.UrlEncode( org.Name );
+			record.FriendlyName = HttpUtility.UrlEncode( record.Name );
 			//searches
 			var links = new List<MCD.LabelLink>();
 			output.Connections = null;
-			if ( org.TotalCredentials > 0 )
+			if ( record.TotalCredentials > 0 )
 			{
 				//output.CredentialsSearch = ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential" );
 
 				//output.Connections.Add( output.CredentialsSearch );
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential", ref links );
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential", ref links );
 			}
-			if ( org.TotalLopps > 0 )
+			if ( record.TotalLopps > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalLopps, "Owns/Offers {0} Learning Opportunity(ies)", "learningopportunity", ref links );
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalLopps, "Owns/Offers {0} Learning Opportunity(ies)", "learningopportunity", ref links );
 			}
-			if ( org.TotalAssessments > 0 )
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalAssessments, "Owns/Offers {0} Assesment(s)", "assessment", ref links );
+			if ( record.TotalAssessments > 0 )
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalAssessments, "Owns/Offers {0} Assesment(s)", "assessment", ref links );
 
-			if ( org.TotalPathwaySets > 0 )
+			if ( record.TotalPathwaySets > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalPathwaySets, "Owns {0} Pathway Set(s)", "pathwayset", ref links );
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalPathwaySets, "Owns {0} Pathway Set(s)", "pathwayset", ref links );
 			}
-			if ( org.TotalPathways > 0 )
+			if ( record.TotalPathways > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalPathways, "Owns {0} Pathway(s)", "pathway", ref links );
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalPathways, "Owns {0} Pathway(s)", "pathway", ref links );
 			}
-			if ( org.TotalTransferValueProfiles > 0 )
+			if ( record.TotalTransferValueProfiles > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles(s)", "transfervalue", ref links );
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles(s)", "transfervalue", ref links );
 			}
 
-			if ( org.TotalFrameworks > 0 )
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links );
+			if ( record.TotalFrameworks > 0 )
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links );
 
-			if ( org.TotalConceptSchemes > 0 )
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.TotalConceptSchemes, "Owns {0} Concept Scheme(s)", "conceptscheme", ref links );
+			if ( record.TotalConceptSchemes > 0 )
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.TotalConceptSchemes, "Owns {0} Concept Scheme(s)", "conceptscheme", ref links );
 
-			if ( org.RevokesCredentials > 0 )
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.RevokesCredentials, "Revokes {0} Credential(s)", "credential", ref links, "11" );
+			if ( record.RevokesCredentials > 0 )
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.RevokesCredentials, "Revokes {0} Credential(s)", "credential", ref links, "11" );
 			//if ( org.RegulatesCredentials > 0 )
 			//	ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.RegulatesCredentials, "Regulates {0} Credential(s)", "credential", ref links, "12" );
-			if ( org.RenewsCredentials > 0 )
-				ServiceHelper.MapEntitySearchLink( org.Id, org.FriendlyName, org.RenewsCredentials, "Renews {0} Credential(s)", "credential", ref links, "13" );
+			if ( record.RenewsCredentials > 0 )
+				ServiceHelper.MapEntitySearchLink( record.Id, record.FriendlyName, record.RenewsCredentials, "Renews {0} Credential(s)", "credential", ref links, "13" );
 			
 			//
 			if ( links.Any() )
@@ -586,25 +586,25 @@ namespace workIT.Services
 			//QA performed
 			output.QAPerformed = new List<MCD.LabelLink>();
 			links = new List<MCD.LabelLink>();
-			if ( org.QAPerformedOnCredentialsCount > 0 )
-				ServiceHelper.MapQAPerformedLink( org.Id, org.FriendlyName, org.QAPerformedOnCredentialsCount, "QA Identified as Performed on {0} Credential{s}", "credential", ref links );
+			if ( record.QAPerformedOnCredentialsCount > 0 )
+				ServiceHelper.MapQAPerformedLink( record.Id, record.FriendlyName, record.QAPerformedOnCredentialsCount, "QA Identified as Performed on {0} Credential{s}", "credential", ref links );
 
-			if ( org.QAPerformedOnOrganizationsCount > 0 )
-				ServiceHelper.MapQAPerformedLink( org.Id, org.FriendlyName, org.QAPerformedOnOrganizationsCount, "QA Identified as Performed on {0} Organization(s)", "organization", ref links );
-			if ( org.QAPerformedOnAssessmentsCount > 0 )
-				ServiceHelper.MapQAPerformedLink( org.Id, org.FriendlyName, org.QAPerformedOnAssessmentsCount, "QA Identified as Performed on {0} Assessment(s)", "assessment", ref links );
+			if ( record.QAPerformedOnOrganizationsCount > 0 )
+				ServiceHelper.MapQAPerformedLink( record.Id, record.FriendlyName, record.QAPerformedOnOrganizationsCount, "QA Identified as Performed on {0} Organization(s)", "organization", ref links );
+			if ( record.QAPerformedOnAssessmentsCount > 0 )
+				ServiceHelper.MapQAPerformedLink( record.Id, record.FriendlyName, record.QAPerformedOnAssessmentsCount, "QA Identified as Performed on {0} Assessment(s)", "assessment", ref links );
 
-			if ( org.QAPerformedOnLoppsCount > 0 )
-				ServiceHelper.MapQAPerformedLink( org.Id, org.FriendlyName, org.QAPerformedOnLoppsCount, "QA Identified as Performed on {0} Learning Opportunity(ies)", "learningopportunity", ref links );
+			if ( record.QAPerformedOnLoppsCount > 0 )
+				ServiceHelper.MapQAPerformedLink( record.Id, record.FriendlyName, record.QAPerformedOnLoppsCount, "QA Identified as Performed on {0} Learning Opportunity(ies)", "learningopportunity", ref links );
 
 			if ( links.Any() )
 				output.QAPerformed = links;
 			//QA received
 			//==> need to exclude 30-published by 
-			if ( org.OrganizationRole_Recipient.Any() )
+			if ( record.OrganizationRole_Recipient.Any() )
 			{
 				output.QAReceived = new List<MCD.OrganizationRoleProfile>();
-				foreach ( var item in org.OrganizationRole_Recipient )
+				foreach ( var item in record.OrganizationRole_Recipient )
 				{
 					var orp = new MCD.OrganizationRoleProfile()
 					{
@@ -622,7 +622,7 @@ namespace workIT.Services
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = baseSiteURL + string.Format( "organization/detail/{0}", org.Id );
+						orp.URL = baseSiteURL + string.Format( "organization/detail/{0}", record.Id );
 					bool isPublishedByRole = false;
 					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
@@ -636,6 +636,7 @@ namespace workIT.Services
 								isPublishedByRole = true;
 								break;
 							}
+							//should this be the reverseTitle?
 							orp.Roles.Add( new MCD.LabelLink() { Label = ar.Name } );
 						}
 					}
@@ -644,27 +645,27 @@ namespace workIT.Services
 				}
 			}
 			//
-			MapAddress( org, ref output );
+			MapAddress( record, ref output );
 			//cost 
-			MapCostManifest( org, ref output );
+			MapCostManifest( record, ref output );
 
 			//conditions
-			MapConditionManifest( org, ref output );
+			MapConditionManifest( record, ref output );
 
 			//process profiles
-			MapProcessProfiles( org, ref output );
+			MapProcessProfiles( record, ref output );
 
 			//
-			MapJurisdictions( org, ref output );
+			MapJurisdictions( record, ref output );
 			//
-			MapVerificationServiceProfile( org, ref output );
+			MapVerificationServiceProfile( record, ref output );
 
 			return output;
 		}
 
 		public static void MapCostManifest( Organization org, ref MCD.OrganizationDetail output )
 		{
-			if ( org.HasConditionManifest == null || !org.HasConditionManifest.Any() )
+			if ( org.HasCostManifest == null || !org.HasCostManifest.Any() )
 			{
 				return;
 			}
@@ -696,7 +697,7 @@ namespace workIT.Services
 
 		private static void MapConditionManifest( Organization org, ref MCD.OrganizationDetail output )
 		{
-			if ( org.HasCostManifest == null || !org.HasCostManifest.Any() )
+			if ( org.HasConditionManifest == null || !org.HasConditionManifest.Any() )
 			{
 				return;
 			}
@@ -714,6 +715,11 @@ namespace workIT.Services
 					CTID = item.CTID,
 				};
 				//condition profiles
+				cm.Corequisite = ServiceHelper.MapToConditionProfiles( item.Corequisite );
+				cm.EntryCondition = ServiceHelper.MapToConditionProfiles( item.EntryCondition );
+				cm.Recommends = ServiceHelper.MapToConditionProfiles( item.Recommends );
+				cm.Renewal = ServiceHelper.MapToConditionProfiles( item.Renewal );
+				cm.Requires = ServiceHelper.MapToConditionProfiles( item.Requires );
 
 
 				output.HasConditionManifest.Add( cm );

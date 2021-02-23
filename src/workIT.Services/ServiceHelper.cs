@@ -674,6 +674,9 @@ namespace workIT.Services
 					output.Add( tlo );
 				}
 			}
+			if ( !output.Any() )
+				return null;
+
 			return output;
 		}
 		public static ME.ConditionProfile MapToConditionProfile( MPM.ConditionProfile input, string searchType = "" )
@@ -749,6 +752,8 @@ namespace workIT.Services
 				if ( !string.IsNullOrWhiteSpace( item.TextValue ) )
 					output.Add( item.TextValue );
 			}
+			if ( !output.Any() )
+				return null;
 
 			return output;
 		}

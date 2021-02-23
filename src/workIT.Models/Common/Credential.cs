@@ -216,6 +216,8 @@ namespace workIT.Models.Common
 		public List<int> HasETPLCredentialsIds { get; set; } = new List<int>();
 		//public List<TopLevelObject> HasETPLLopps { get; set; } = new List<TopLevelObject>();
 		public List<int> HasETPLLoppsIds { get; set; } = new List<int>();
+		public List<int> TargetPathwayIds { get; set; } = new List<int>();
+
 		// ==================================================================
 
 		/// <summary>
@@ -280,6 +282,7 @@ namespace workIT.Models.Common
 		public List<OrganizationRoleProfile> OfferedByOrganizationRole { get; set; }
 		public List<Organization> OfferedByOrganization { get; set; }
 
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
 		#region Import Profiles
 		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
