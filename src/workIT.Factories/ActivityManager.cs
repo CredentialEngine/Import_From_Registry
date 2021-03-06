@@ -203,12 +203,16 @@ namespace workIT.Factories
         {
             string sessionKey = GetCurrentSessionId() + "_lastHit";
 
-            try
-            {
-                if ( HttpContext.Current.Session != null )
-                {
-                    HttpContext.Current.Session[sessionKey] = actionComment;
-                }
+			try
+			{
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Session != null )
+					{
+						HttpContext.Current.Session[ sessionKey ] = actionComment;
+					}
+				}
+                
             }
             catch
             {
@@ -220,18 +224,21 @@ namespace workIT.Factories
         {
             string sessionKey = GetCurrentSessionId() + "_lastHit";
             bool isDup = false;
-            try
-            {
+			try
+			{
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Session != null )
+					{
+						string lastAction = HttpContext.Current.Session[ sessionKey ].ToString();
+						if ( lastAction.ToLower() == actionComment.ToLower() )
+						{
+							LoggingHelper.DoTrace( 7, "ActivityServices. Duplicate action: " + actionComment );
+							return true;
+						}
+					}
+				}
 				
-				if ( HttpContext.Current.Session != null )
-                {
-                    string lastAction = HttpContext.Current.Session[sessionKey].ToString();
-                    if ( lastAction.ToLower() == actionComment.ToLower() )
-                    {
-                        LoggingHelper.DoTrace( 7, "ActivityServices. Duplicate action: " + actionComment );
-                        return true;
-                    }
-                }
             }
             catch
             {
@@ -243,12 +250,16 @@ namespace workIT.Factories
         {
             string sessionId = "unknown";
 
-            try
-            {
-                if ( HttpContext.Current.Session != null )
-                {
-                    sessionId = HttpContext.Current.Session.SessionID;
-                }
+			try
+			{
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Session != null )
+					{
+						sessionId = HttpContext.Current.Session.SessionID;
+					}
+				}
+				
             }
             catch
             {
@@ -261,11 +272,15 @@ namespace workIT.Factories
             string ip = "unknown";
             try
             {
-                ip = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
-                if ( ip == null || ip == "" || ip.ToLower() == "unknown" )
-                {
-                    ip = HttpContext.Current.Request.ServerVariables["REMOTE_ADDR"];
-                }
+				if( HttpContext.Current != null)
+				{
+					ip = HttpContext.Current.Request.ServerVariables[ "HTTP_X_FORWARDED_FOR" ];
+					if ( ip == null || ip == "" || ip.ToLower() == "unknown" )
+					{
+						ip = HttpContext.Current.Request.ServerVariables[ "REMOTE_ADDR" ];
+					}
+				}
+               
             }
             catch ( Exception ex )
             {
@@ -277,22 +292,19 @@ namespace workIT.Factories
         private static string GetUserReferrer()
         {
             string lRefererPage = "";
-            try
-            {
-                if ( HttpContext.Current.Request.UrlReferrer != null )
-                {
-                    lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
-                    //check for link to us parm
-                    //??
+			try
+			{
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Request.UrlReferrer != null )
+					{
+						lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
+						//check for link to us parm
+						//??
 
-                    //handle refers from illinoisworknet.com 
-                    if ( lRefererPage.ToLower().IndexOf( ".illinoisworknet.com" ) > -1 )
-                    {
-                        //may want to keep reference to determine source of this condition. 
-                        //For ex. user may have let referring page get stale and so a new session was started when user returned! 
-
-                    }
-                }
+					}
+				}
+                
             }
             catch ( Exception ex )
             {
@@ -305,25 +317,29 @@ namespace workIT.Factories
         {
             string agent = "";
             isBot = false;
-            try
-            {
-                if ( HttpContext.Current.Request.UserAgent != null )
-                {
-                    agent = HttpContext.Current.Request.UserAgent;
-                }
+			try
+			{
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Request.UserAgent != null )
+					{
+						agent = HttpContext.Current.Request.UserAgent;
+					}
 
-                if ( agent.ToLower().IndexOf( "bot" ) > -1
-                    || agent.ToLower().IndexOf( "spider" ) > -1
-                    || agent.ToLower().IndexOf( "slurp" ) > -1
-                    || agent.ToLower().IndexOf( "crawl" ) > -1
-                    || agent.ToLower().IndexOf( "addthis.com" ) > -1
-                    )
-                    isBot = true;
-                if ( isBot )
-                {
-                    //what should happen? Skip completely? Should add attribute to track
-                    //user agent may NOT be available in this context
-                }
+					if ( agent.ToLower().IndexOf( "bot" ) > -1
+						|| agent.ToLower().IndexOf( "spider" ) > -1
+						|| agent.ToLower().IndexOf( "slurp" ) > -1
+						|| agent.ToLower().IndexOf( "crawl" ) > -1
+						|| agent.ToLower().IndexOf( "addthis.com" ) > -1
+						)
+						isBot = true;
+					if ( isBot )
+					{
+						//what should happen? Skip completely? Should add attribute to track
+						//user agent may NOT be available in this context
+					}
+				}
+                
             }
             catch ( Exception ex )
             {

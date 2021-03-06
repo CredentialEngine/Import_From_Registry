@@ -18,12 +18,7 @@ namespace CTI.Import
         public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
 		public static string envType = UtilityManager.GetAppKeyValue( "envType");
 		//
-		//ImportCredential credImportMgr = new ImportCredential();
-  //      ImportOrganization orgImportMgr = new ImportOrganization();
-  //      ImportAssessment asmtImportMgr = new ImportAssessment();
-  //      ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
-  //      ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
-  //      ImportCostManifests cstManImportMgr = new ImportCostManifests();
+
 
         static void Main( string[] args )
 		{

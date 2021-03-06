@@ -12,29 +12,29 @@ namespace workIT.Services
     public class EnumerationServices
     {
 		#region Search filters for API 
-		public MSR.Filter GetFilterList( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = false )
-		{
+		//public MSR.Filter GetFilterList( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = false )
+		//{
 			
-			MC.Enumeration e = CodesManager.GetEnumeration( dataSource, getAll );
-			var output = new MSR.Filter()
-			{
-				CategoryId = e.Id,
-				Label = e.Name,
-				Description = e.Description
-			};
-			foreach (var item in e.Items)
-			{
-				output.Items.Add( new MSR.FilterItem()
-				{
-					Id = item.Id,
-					Label = item.Name,
-					Schema = item.SchemaName,
-					Description = item.Description
-				} );
-			}
+		//	MC.Enumeration e = CodesManager.GetEnumeration( dataSource, getAll );
+		//	var output = new MSR.Filter()
+		//	{
+		//		CategoryId = e.Id,
+		//		Label = e.Name,
+		//		Description = e.Description
+		//	};
+		//	foreach (var item in e.Items)
+		//	{
+		//		output.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Id = item.Id,
+		//			Label = item.Name,
+		//			Schema = item.SchemaName,
+		//			Description = item.Description
+		//		} );
+		//	}
 
-			return output;
-		}
+		//	return output;
+		//}
 		#endregion
 
 		#region enumerations 

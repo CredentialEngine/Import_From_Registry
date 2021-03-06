@@ -655,56 +655,6 @@ namespace workIT.Services
 		#endregion
 
 
-		#region methods for new API
-		public static MCD.CredentialDetail GetDetailForAPI( int id, bool skippingCache = false )
-		{
-			var org = GetDetail( id, skippingCache );
-			return MapToAPI( org );
-
-		}
-		public static MCD.CredentialDetail GetDetailByCtidForApi( string ctid, bool skippingCache = false )
-		{
-			var org = GetDetailByCtid( ctid, skippingCache );
-			return MapToAPI( org );
-		}
-		private static MCD.CredentialDetail MapToAPI( ThisEntity record )
-		{
-			var output = new MCD.CredentialDetail()
-			{
-				Id = record.Id,
-				Name = record.Name,
-				Description = record.Description,
-				SubjectWebpage = record.SubjectWebpage,
-				EntityTypeId = 1,
-				//EntityType="Organization"
-
-			};
-			//
-			//output.CTDLType = record.CredentialType; ;
-			//output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( org.AgentSectorType, "organization" );
-
-			output.AlternateName = record.AlternateName;
-			output.AvailabilityListing = record.AvailabilityListing;
-			output.CTID = record.CTID;
-
-			output.EntityLastUpdated = record.EntityLastUpdated;
-			output.EntityStateId = record.EntityStateId;
-			output.EntityTypeId = record.EntityTypeId;
-			output.FriendlyName = record.FriendlyName;
-			//
-			output.ImageUrl = record.ImageUrl;
-			//output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( record.IndustryType, "organization" );
-			output.IsReferenceVersion = record.IsReferenceVersion;
-			//
-			//if ( record.Keyword != null && record.Keyword.Any() )
-			//	output.Keyword = ServiceHelper.MapPropertyLabelLinks( record.Keyword, "organization" );
-
-			//
-			return output;
-		}
-		#endregion
-
-
 
 		#region Retrievals
 		public static ThisEntity GetByCtid( string ctid )
