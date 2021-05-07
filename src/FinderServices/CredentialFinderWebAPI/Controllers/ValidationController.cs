@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-
+using System.Web.Http.Description;
 using CredentialFinderWebAPI.Models;
 using CredentialFinderWebAPI.Services;
 
@@ -14,7 +14,7 @@ namespace CredentialFinderWebAPI.Controllers
 {
     public class ValidationController : ApiController
     {
-		//[ApiExplorerSettings( IgnoreApi = true )]
+		[ApiExplorerSettings( IgnoreApi = true )]
 		[HttpGet, Route( "Validation/AssessmentConnection/{ctid}" )]
 		public ApiResponse ValidateAssessmentConnection( string ctid )
 		{
@@ -50,6 +50,8 @@ namespace CredentialFinderWebAPI.Controllers
 
 		}
 
+
+		[ApiExplorerSettings( IgnoreApi = true )]
 		[HttpGet, Route( "Validation/LearningOpportunityConnection/{ctid}" )]
 		public ApiResponse ValidateLearningOpportunityConnection( string ctid )
 		{
@@ -81,7 +83,7 @@ namespace CredentialFinderWebAPI.Controllers
 				LoggingHelper.DoTrace( 6, string.Format( "CredentialFinderWebAPI.ValidationController.ValidateLearningOpportunityConnection FAILED for LearningOpportunityCTID:{0}", ctid ) );
 				response.Messages.Add( "The LearningOpportunity is not connected to any credentials." );
 			}
-			return response; ;
+			return response; 
 
 		}
 

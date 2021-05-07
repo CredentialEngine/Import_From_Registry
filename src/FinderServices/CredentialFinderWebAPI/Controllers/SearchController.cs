@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
+using System.Text;
+using System.Web;
 using System.Web.Http;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 using CredentialFinderWebAPI.Models;
 
-using workIT.Models.Helpers;
-using workIT.Models.Search;
+using Newtonsoft.Json.Linq;
 
+using workIT.Models.Search;
 using workIT.Services;
 using workIT.Utilities;
-using System.Web;
+
+using API = workIT.Services.API;
+using APIModels = workIT.Models.API;
+
 
 namespace CredentialFinderWebAPI.Controllers
 {
@@ -25,61 +25,105 @@ namespace CredentialFinderWebAPI.Controllers
 		bool valid = true;
 		string status = "";
 
+
+		#region Initialize
+		[HttpPost, Route( "Search/load" )]
+		public void Load( SearchInitialize query )
+		{
+			if ( query == null )
+			{
+				query = new SearchInitialize() { SearchType = "credential" };
+			}
+
+			if ( string.IsNullOrWhiteSpace( query.SearchType ) )
+				query.SearchType = "credential";
+
+			DoInitialize( query );
+		}
+
 		[HttpGet, Route( "Search/Initialize/{searchType}" )]
-		public void SearchInitialize( string searchType = "", bool getAll=false )
+		public void SearchInitialize( string searchType = "", bool getAll = false )
 		{
 			if ( string.IsNullOrWhiteSpace( searchType ) )
 				searchType = "credential";
+
+			SearchInitialize query = new SearchInitialize() { SearchType = searchType };
+			DoInitialize( query );
+			
+
+		}
+
+		private void DoInitialize( SearchInitialize query )
+		{
+			if ( query == null )
+			{
+				query = new SearchInitialize() { SearchType = "credential" };
+			}
+
+			if ( string.IsNullOrWhiteSpace( query.SearchType ) )
+				query.SearchType = "credential";
 			List<string> messages = new List<string>();
 			var response = new ApiResponse();
-
-			var results = new JObject(); 
+			var searchType = query.SearchType.ToLower();
+			var results = new JObject();
 			switch ( searchType.ToLower() )
 			{
-				case "credential": 
+				case "credential":
 					//this needs to be a generic class
-					var credentialFilters =SearchServices.GetCredentialFilters( getAll );
+					var credentialFilters = API.SearchServices.GetCredentialFilters( query.GetAll );
 					response.Result = credentialFilters;
 					break;
 				case "organization":
 				{
-					var filters = SearchServices.GetOrganizationFilters( getAll );
+					var filters = API.SearchServices.GetOrganizationFilters( query.GetAll );
 					response.Result = filters;
 					break;
 				}
 				case "assessment":
 					//this needs to be a generic class
-					var asmtFilters = SearchServices.GetAssessmentFilters( getAll );
+					var asmtFilters = API.SearchServices.GetAssessmentFilters( query.GetAll );
 					response.Result = asmtFilters;
 					break;
 				case "learningopportunity":
 				{
-					var loppFilters = SearchServices.GetLearningOppFilters( getAll );
+					var loppFilters = API.SearchServices.GetLearningOppFilters( query.GetAll );
 					response.Result = loppFilters;
 					break;
 				}
 				case "pathway":
 				{
-					var pwFilters = SearchServices.GetPathwayFilters( getAll );
+					var pwFilters = API.SearchServices.GetPathwayFilters( query.GetAll );
 					response.Result = pwFilters;
 					break;
 				}
 				case "competencyframework":
 				{
-					var pwFilters = SearchServices.GetNoFilters( "Competency Framework" );
+					var pwFilters = API.SearchServices.GetNoFilters( "Competency Framework" );
+					response.Result = pwFilters;
+					break;
+				}
+				case "conceptscheme":
+				{
+					var pwFilters = API.SearchServices.GetNoFilters( "Concept Scheme" );
 					response.Result = pwFilters;
 					break;
 				}
 				case "transfervalue":
 				{
-					var pwFilters = SearchServices.GetNoFilters( "Transfer Value" );
+					var pwFilters = API.SearchServices.GetNoFilters( "Transfer Value" );
+					response.Result = pwFilters;
+					break;
+				}
+				case "pathwayset":
+				{
+					var pwFilters = API.SearchServices.GetNoFilters( "Pathway Set" );
 					response.Result = pwFilters;
 					break;
 				}
 				default:
 				{
 					valid = false;
-					messages.Add( "Unknown search mode: " + searchType);
+					messages.Add( "Unknown search mode: " + searchType );
 					break;
 				}
 			}
@@ -94,36 +138,104 @@ namespace CredentialFinderWebAPI.Controllers
 				//var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
 				SendResponse( response );
 			}
-			
+
+
+		}
+		#endregion
+
+		#region Autocomplete
+		//Do an autocomplete
+		[HttpPost, Route( "search/autocomplete" )]
+		public ApiResponse AutoCompletePost( AutoCompleteQuery query )
+		{
+			return DoAutoComplete( query );
+		}
+		[HttpGet, Route( "search/autocomplete/{searchType}/{context}/{text}" )]
+		public ApiResponse AutoCompleteGet( string searchType, string context, string text, int widgetId = 0 )
+		{
+			return DoAutoComplete( new AutoCompleteQuery() { SearchType = searchType, FilterURI = context, Text = text, WidgetId = widgetId } );
+		}
+
+		private ApiResponse DoAutoComplete( AutoCompleteQuery query )
+		{
+			query = query ?? new AutoCompleteQuery() { SearchType = "credential" };
+
+			try
+			{
+				//HttpContext.Current.Response.Clear();
+				//HttpContext.Current.Response.BufferOutput = true;
+				//HttpContext.Current.Response.AppendHeader( "Access-Control-Allow-Origin", "*" );
+				//string contentType = "application/json";
+				//HttpContext.Current.Response.ContentType = contentType;
+				//HttpContext.Current.Response.ContentEncoding = contentType == "application/json" ? Encoding.UTF8 : HttpContext.Current.Response.ContentEncoding;
+
+				var results = SearchServices.DoAutoComplete( query.SearchType, query.FilterURI, query.Text, query.WidgetId );
+				var acr = new AutoCompleteResponse();
+				acr.Items = results.Select( m => new FilterItem() { Label = m.ToString(), Text = m.ToString(), URI =query.FilterURI, InterfaceType = "interfaceType:Text" } ).ToList();
+				return new ApiResponse( acr, true, null );
+			}
+			catch( Exception ex )
+			{
+				return new ApiResponse( null, false, new List<string>() { "Error processing autocomplete request: " + ex.Message } );
+			}
+		}
+		#endregion
+		//
+
+
+		[HttpPost, Route( "Search/" )]
+		public ApiResponse Search( MainQuery query )
+		{
+			var debug = new JObject();
+			try
+			{
+				var translatedQuery = API.SearchServices.TranslateMainQueryToMainSearchInput( query );
+				var results = searchService.MainSearch( translatedQuery, ref valid, ref status, debug );
+				var translatedResults = API.SearchServices.TranslateMainSearchResultsToAPIResults( results, debug );
+				return new ApiResponse( translatedResults, true, null );
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "CredentialFinderWebAPI.Search. " + ex.Message + "\n\n" + debug.ToString() );
+				return new ApiResponse( debug, false, new List<string>() { string.Format( "Error encountered returning data. {0} ", ex.Message ), "See debug object for details." } );
+			}
 
 		}
 
-
-		//Do an autocomplete
-		[HttpGet, Route( "Search/autocomplete/{searchType}/{context}/{text}" )]
-
-		public void AutoComplete( string searchType, string context, string text, int widgetId = 0 )
+		[HttpGet, Route( "Search/{query}" )]
+		public void Index( MainQuery query )
+		{
+			Search( query );
+		}
+		[HttpPost, Route( "Search/query" )]
+		public void MainSearchOld( MainSearchInput searchQuery )
 		{
 			var response = new ApiResponse();
-			var status = "";
-			var results = SearchServices.DoAutoComplete( searchType, context, text, widgetId );
+			try
+			{
+				var results = searchService.MainSearch( searchQuery, ref valid, ref status );
 
-			var autoCompleteResults = results.Select( m => new FilterItem() { Label = m.ToString() } ).ToList();
+				//var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
+				response.Successful = true;
+				response.Result = results;
+				SendResponse( response );
 
-			//return JsonHelper.GetJsonWithWrapper( data, true, "", null );
-			//var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
-			//SendResponse( finalResult );
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "CredentialFinderWebAPI.MainSearchOld. " + ex.Message );
+				response.Messages.Add( string.Format( "Error encountered returning data. {0} ", ex.Message ) );
+				response.Successful = false;
+				SendResponse( response );
+			}
 
-			response.Successful = true;
-			response.Result = autoCompleteResults;
-			SendResponse( response );
 		}
-		//
+
 		/// <summary>
 		/// blind credential search
 		/// </summary>
-		[HttpGet, Route( "Search" )]
-		public void Index()
+		[HttpGet, Route( "SearchOld" )]
+		public void SearchOld()
 		{
 			MainSearchInput query = new MainSearchInput()
 			{
@@ -139,10 +251,6 @@ namespace CredentialFinderWebAPI.Controllers
 
 			SendResponse( finalResult );
 
-			//HttpContext.Current.Response.Clear();
-			//HttpContext.Current.Response.ContentType = "application/json";
-			//HttpContext.Current.Response.Write( finalResult );
-			//HttpContext.Current.Response.End();
 		}
 
 
@@ -167,31 +275,6 @@ namespace CredentialFinderWebAPI.Controllers
 		}
 
 
-		[HttpPost, Route( "Search/query" )]
-		public void MainSearch( MainSearchInput searchQuery )
-		{
-			var response = new ApiResponse();
-			try
-			{
-				var results = searchService.MainSearch( searchQuery, ref valid, ref status );
-
-				var finalResult = JObject.FromObject( new { data = results, valid = valid, status = status } );
-				SendResponse( finalResult );
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.DoTrace( 1, "CredentialFinderWebAPI.Controllers. Exception: " + ex.Message );
-				//return something - may want to wrap up pretty
-				SendResponse( "Error encountered: " +  ex.Message );
-
-				//HttpContext.Current.Response.Clear();
-				//HttpContext.Current.Response.ContentType = "application/json";
-				//HttpContext.Current.Response.Write( ex.Message );
-				//HttpContext.Current.Response.End();
-			}
-
-		}
 		//[HttpPost, Route( "Search/main2" )]
 		//public ApiResponse MainSearch2( MainSearchInput query )
 		//{
@@ -224,5 +307,20 @@ namespace CredentialFinderWebAPI.Controllers
 
 		//	return JsonHelper.GetJsonWithWrapper( data, valid, status, totalResults );
 		//}
+
+		[HttpPost, Route( "Search/GetTagSetItems" )]
+		public ApiResponse GetTagSetItems( APIModels.TagSetRequest request )
+		{
+			var tagSetItems = API.SearchServices.GetTagSetItems( request );
+			return new ApiResponse( tagSetItems, true, null );
+		}
+		//
+
+	}
+
+	public class SearchInitialize
+	{
+		public string SearchType { get; set; }
+		public bool GetAll { get; set; } = false;
 	}
 }

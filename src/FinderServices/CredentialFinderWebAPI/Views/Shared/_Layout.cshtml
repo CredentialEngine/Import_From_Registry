@@ -23,6 +23,56 @@
 					@*<li>@Html.ActionLink("Home", "Index", "Home", new { area = "" }, null)</li>*@
 					<li>@Html.ActionLink( "API", "Index", "Help", new { area = "" }, null )</li>
 				</ul>
+				<ul class="nav navbar-nav">
+					<li>@Html.ActionLink( "Finder Home Page", "FinderHome", "Home" )</li>
+				</ul>
+				@*</div>
+		<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">*@
+				<ul class="nav navbar-nav">
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown">Autocomplete<b class="caret"></b></a>
+						<ul class="dropdown-menu">
+							<li><a href="~/search/autocomplete/credential/mainsearch/math" target="searchInit">Credential</a></li>
+							<li><a href="~/search/autocomplete/credential/occupations/comp" target="searchInit">Credential-Occupation</a></li>
+							<li><a href="~/search/autocomplete/credential/industries/comp" target="searchInit">Credential-industry</a></li>
+							<li class="divider"></li>
+							<li><a href="~/search/autocomplete/organization/mainsearch/man" target="searchInit">Organization</a></li>
+							<li><a href="~/search/autocomplete/organization/industries/man" target="searchInit">Organization-Industry</a></li>
+							<li class="divider"></li>
+							<li><a href="~/search/autocomplete/Assessment/mainsearch/badge" target="searchInit">Assessment</a></li>
+							<li><a href="~/search/autocomplete/Assessment/occupations/data" target="searchInit">Assessment-Occupation</a></li>
+							<li><a href="~/search/autocomplete/Assessment/industries/comp" target="searchInit">Assessment-industry</a></li>
+							<li><a href="~/search/autocomplete/Assessment/instructionalprogramtypes/a" target="searchInit">Asmt-Programs</a></li>
+							<li class="divider"></li>
+							<li><a href="~/search/autocomplete/learningOpportunity/mainsearch/med" target="searchInit">learningOpportunity</a></li>
+							<li><a href="~/search/autocomplete/learningOpportunity/instructionalprogramtypes/a" target="searchInit">Lopp-Programs</a></li>
+						</ul>
+					</li>
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown">Initialize Search (GET)<b class="caret"></b></a>
+						<ul class="dropdown-menu">
+							<li><a href="~/search/Initialize/credential" target="searchInit">Credential</a></li>
+							<li><a href="~/search/Initialize/organization" target="searchInit">Organization</a></li>
+							<li><a href="~/search/Initialize/assessment" target="searchInit">Assessment</a></li>
+							<li><a href="~/search/Initialize/learningopportunity" target="searchInit">Learning Opportunity</a></li>
+							<li><a href="~/search/Initialize/pathway" target="searchInit">Pathway</a></li>
+							<li><a href="~/search/Initialize/CompetencyFramework" target="searchInit">Competency Frameworks</a></li>
+							<li><a href="~/search/Initialize/transferValue" target="searchInit">Transfer Value</a></li>
+						</ul>
+					</li>
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown">Detail Pages - sandbox <b class="caret"></b></a>
+						<ul class="dropdown-menu">
+							<li><a href="~/Organization/1290" target="searchInit">Organization - Full testing org BASIC DATA.</a></li>
+							<li><a href="~/Organization/1290?includeAllData" target="searchInit">Organization - Full testing org - ALL DATA.</a></li>
+							<li><a href="~/credential/4180" target="searchInit">Credential - all properties</a></li>
+							<li><a href="~/credential/8157" target="searchInit">Credential - Degree, and INs</a></li>
+							<li><a href="~/assessment/176" target="searchInit">Assessment - all properties</a></li>
+							<li><a href="~/learningopportunity/3749" target="searchInit">Learning Opportunity - all properties</a></li>
+						</ul>
+					</li>		
+
+				</ul>
 			</div>
 		</div>
 	</div>
