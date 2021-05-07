@@ -147,8 +147,10 @@ namespace RA.Models.JsonV2
 		///  Other credentials may use any framework of the class ceterms:OccupationClassification, such as the EU's ESCO, ISCO-08, and SOC 2010.
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
-		public List<CredentialAlignmentObject> OccupationType { get; set; } 
+		public List<CredentialAlignmentObject> OccupationType { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:requires" )]
+		public List<ConditionProfile> Requires { get; set; }
 
 		/// <summary>
 		/// Another source of information about the entity being described.

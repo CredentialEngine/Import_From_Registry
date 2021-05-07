@@ -371,6 +371,10 @@ namespace workIT.Models.QData
 		/// qdata:occupationRate
 		/// </summary>
 		public List<QuantitativeValue> OccupationRate { get; set; } = new List<QuantitativeValue>();
+		/// <summary>
+		/// Rate computed by dividing the number of subjects passing an assessment by the total number taking the assessment.
+		/// </summary>
+		public List<QuantitativeValue> PassRate { get; set; } = new List<QuantitativeValue>();
 
 		/// <summary>
 		///  Reference to an entity describing median earnings as well as earnings at various percentiles for holders or subjects in the region.

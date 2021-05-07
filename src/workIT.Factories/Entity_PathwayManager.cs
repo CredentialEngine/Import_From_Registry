@@ -223,7 +223,22 @@ namespace workIT.Factories
 		}//
 
 		#region Entity_HasPathway Persistance ===================
+		public bool SavePartList( List<int> list, Guid parentUid, ref SaveStatus status, int relationshipTypeId = 1 )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+			int newId = 0;
 
+			bool isAllValid = true;
+			foreach ( int item in list )
+			{
+				newId=Add( parentUid, item, relationshipTypeId, ref status );
+				if ( newId == 0 )
+					isAllValid = false;
+			}
+
+			return isAllValid;
+		}
 		/// <summary>
 		/// Add an Entity HasPathway
 		/// </summary>
@@ -236,27 +251,26 @@ namespace workIT.Factories
 		public int Add( Guid parentUid,
 					int pathwayId,
 					int pathwayRelationshipTypeId,
-					int userId,
-					ref List<string> messages )
+					ref SaveStatus status )
 		{
 			int id = 0;
-			int count = messages.Count();
+			status.HasSectionErrors=false;
 			if ( pathwayId == 0 )
 			{
-				messages.Add( string.Format( "A valid Entity_HasPathway identifier was not provided to the {0}.Add method.", thisClassName ) );
+				status.AddError( string.Format( "A valid Entity_HasPathway identifier was not provided to the {0}.Add method.", thisClassName ) );
 			}
 			if ( pathwayRelationshipTypeId == 0 )
 			{
 				pathwayRelationshipTypeId = 1;
 				//messages.Add( string.Format( "A valid Entity_HasPathway PathwayRelationshipTypeId was not provided to the {0}.Add method.", thisClassName ) );
 			}
-			if ( messages.Count > count )
+			if ( status.HasSectionErrors )
 				return 0;
 
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
-				messages.Add( "Error - the parent entity was not found." );
+				status.AddError( "Error - the parent entity was not found." );
 				return 0;
 			}
 			using ( var context = new EntityContext() )
@@ -271,7 +285,7 @@ namespace workIT.Factories
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
 						if ( ReturningErrorOnDuplicate )
-							messages.Add( string.Format( "Error - this Entity_HasPathway has already been added to this profile.", thisClassName ) );
+							status.AddError( string.Format( "Error - this Entity_HasPathway has already been added to this profile.", thisClassName ) );
 
 						return efEntity.Id;
 					}
@@ -286,7 +300,7 @@ namespace workIT.Factories
 					context.Entity_HasPathway.Add( efEntity );
 
 					// submit the change to database
-					count = context.SaveChanges();
+					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
 						//messages.Add( "Successful" );
@@ -296,22 +310,22 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						messages.Add( "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_HasPathway for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}, createdById: {3}", parentUid, parent.EntityType, pathwayId, userId );
+						status.AddError( thisClassName + "Error - the add was not successful." );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_HasPathway for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parentUid, parent.EntityType, pathwayId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
 				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 				{
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "Entity_Pathway" );
-					messages.Add( "Error - the save was not successful. " + message );
+					status.AddError( "Error - the save was not successful. " + message );
 					LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 
 				}
 				catch ( Exception ex )
 				{
 					string message = FormatExceptions( ex );
-					messages.Add( "Error - the save was not successful. " + message );
+					status.AddError( "Error - the save was not successful. " + message );
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 				}
 

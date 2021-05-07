@@ -106,7 +106,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_IdentifierValue for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}, createdById: {3}", parent.EntityUid, parent.EntityType, entity.IdentifierType );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}

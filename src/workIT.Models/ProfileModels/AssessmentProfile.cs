@@ -6,10 +6,13 @@ using System.Threading.Tasks;
 
 using workIT.Models.Common;
 
+using ApiEntity = workIT.Models.API.CompetencyFramework;
+
+
 namespace workIT.Models.ProfileModels
 {
     [Serializable]
-    public class AssessmentProfile : TopLevelObject
+    public class AssessmentProfile : TopLevelObject, IBaseObject
 	{
 		public AssessmentProfile()
 		{
@@ -106,15 +109,17 @@ namespace workIT.Models.ProfileModels
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
 		//not sure if will use this?
-		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		//public QuantitativeValue QVCreditValue { get; set; } = new QuantitativeValue();
+		//public ValueProfile CreditValue { get; set; } = new ValueProfile();
 		//20-07-24 updating to handle a list
-		public List<QuantitativeValue> CreditValueList { get; set; } = new List<QuantitativeValue>();
+		//public List<QuantitativeValue> QVCreditValueList { get; set; } = new List<QuantitativeValue>();
+		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
 		public string CreditValueJson { get; set; }
 
-		[Obsolete]
-		public string CreditHourType { get; set; }
-		[Obsolete]
-		public decimal CreditHourValue { get; set; }
+		//[Obsolete]
+		//public string CreditHourType { get; set; }
+		//[Obsolete]
+		//public decimal CreditHourValue { get; set; }
 
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public int CreditUnitTypeId { get; set; }
@@ -133,12 +138,14 @@ namespace workIT.Models.ProfileModels
 		public string LearningMethodDescription { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
+		//
+		public List<CodeItem> ProcessProfilesSummary { get; set; } = new List<CodeItem>();
 		public List<ProcessProfile> AdministrationProcess { get; set; }
 		public List<ProcessProfile> DevelopmentProcess { get; set; }
 		public List<ProcessProfile> MaintenanceProcess { get; set; }
 
 		public List<CostProfile> EstimatedCost { get; set; }
-		public string ExpirationDate { get; set; }
+		//public string ExpirationDate { get; set; }
 		//public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
 		public string FinancialAssistanceJson { get; set; }
@@ -151,18 +158,25 @@ namespace workIT.Models.ProfileModels
 		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
         public List<TextValueProfile> Keyword { get; set; }
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
-        //used by import, NOT the detail page
+
+		//used by import, NOT the detail page
 		public List<CredentialAlignmentObjectProfile> AssessesCompetencies { get; set; }
 		public int CompetenciesCount { get; set; }
+		public List<int> TargetPathwayIds { get; set; } = new List<int>();
+		public List<int> TargetAssessmentIds { get; set; } = new List<int>();
+		public List<string> TargetLearningResource { get; set; } = new List<string>();
 
-        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 
         //used by detail page, not the import
         public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
+		//used by finderAPI
+		public List<ApiEntity> AssessesFrameworks { get; set; }
+		public List<ApiEntity> RequiresFrameworks { get; set; }
 
-		
 
 		public string AvailableOnlineAt { get; set; }
 
@@ -245,7 +259,7 @@ namespace workIT.Models.ProfileModels
         /// </summary>
 
         public List<ConditionProfile> AdvancedStandingFrom { get; set; }
-        public List<ConditionProfile> AdvancedStandingFor { get; set; }
+        public List<ConditionProfile> IsAdvancedStandingFor { get; set; }
         public List<ConditionProfile> PreparationFrom { get; set; }
         public List<ConditionProfile> IsPreparationFor { get; set; }
         public List<ConditionProfile> IsRequiredFor { get; set; }

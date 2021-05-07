@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
+using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
@@ -58,7 +59,7 @@ namespace workIT.Models.Common
 		/// URI to a Concept
 		/// ceterms:classification
 		/// </summary>
-		public Enumeration Classification { get; set; } 
+		public List<string> Classification { get; set; } 
 
 		/// <summary>
 		/// Comment
@@ -93,7 +94,8 @@ namespace workIT.Models.Common
 		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// <see cref="https://purl.org/ctdl/terms/identifier"/>
 		/// </summary>
-		public List<IdentifierValue> Identifier { get; set; } 
+		public List<IdentifierValue> Identifier { get; set; }
+		public string IdentifierJson { get; set; }
 
 		/// <summary>
 		/// IndustryType
@@ -123,8 +125,8 @@ namespace workIT.Models.Common
 		/// Keyword or key phrase describing relevant aspects of an entity.
 		/// ceterms:keyword
 		/// </summary>
-		public List<string> Keyword { get; set; }
-
+		//public List<string> Keyword { get; set; }
+		public List<TextValueProfile> Keyword { get; set; }
 
 		/// <summary>
 		/// OccupationType
@@ -139,7 +141,8 @@ namespace workIT.Models.Common
 		/// List of URIs
 		/// ceterms:sameAs
 		/// </summary>
-		public List<string> SameAs { get; set; } 
+		//public List<string> SameAs { get; set; }
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
 		/// <summary>
 		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
@@ -157,7 +160,13 @@ namespace workIT.Models.Common
 		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
 		/// ceterms:versionIdentifier
 		/// </summary>
-		public List<IdentifierValue> VersionIdentifier { get; set; } 
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string VersionIdentifierJson { get; set; }
 
+
+		#region import
+		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
+		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		#endregion
 	}
 }

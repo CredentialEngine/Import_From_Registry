@@ -4,6 +4,23 @@ Sample project to import resources from the credential registry. While the code 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
 ## Updates
+### May 7, 2021
+- Credential Finder WebApi
+	- Detail Endpoints
+		- Updates for organization, credential, assessment, and learning opportunity detail endpoints
+		- Endpoints for on demand retrieval of Process Profiles, and Verification services
+	- Search endpoints initialization:
+		- retrieving all the filters for each search type
+		- Autocomplete endpoints
+		- Full search integration
+	- Home Page endpoint
+		- Retrieve totals for all top level documents (credentials, organizations, etc,)
+- Import
+	- Added Occupation 
+	- AggregateDataProfile is effectively replacing the use of HoldersProfile, EarningsProfile, and EmploymentOutcomeProfile
+
+
+
 ### February 15, 2021
 - Primarily updates for the Credential Finder WebApi organization detail endpoint
 - As well, added handling of many new properties since last update

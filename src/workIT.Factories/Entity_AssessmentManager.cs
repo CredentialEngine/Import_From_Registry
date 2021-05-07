@@ -118,7 +118,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Assessment for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, assessmentId: {2}", parentUid, parent.EntityType, assessmentId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -187,8 +187,8 @@ namespace workIT.Factories
 							//this method will also add pending reques to remove from elastic.
 							//20-11-11 mp - BE CLEAR - ONLY DONE FOR A REFERENCE
 							//actually this delete will probably also delete the Entity_Assessment
-							new AssessmentManager().Delete( item.AssessmentId, ref statusMsg );
-							continue;
+							//new AssessmentManager().Delete( item.AssessmentId, ref statusMsg );
+							//continue;
 						}
 					}
 					context.Entity_Assessment.Remove( item );
@@ -267,7 +267,8 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".EntityAssessments_GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".EntityAssessments_GetAll. Guid: {0}, parentType: {1} ({2}), ", parentUid, parent.EntityType, parent.EntityBaseId ) );
+
 			}
 			return list;
 		}

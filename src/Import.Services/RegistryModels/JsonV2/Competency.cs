@@ -127,8 +127,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:listID" )]
 		public string listID { get; set; }
 
-		//[JsonProperty( "ceasn:localSubject" )]
-		//public LanguageMapList localSubject { get; set; }
+		[JsonProperty( "ceasn:localSubject" )]
+		public LanguageMapList localSubject { get; set; }
 
 		#region alignments
 		/// <summary>
@@ -197,7 +197,17 @@ namespace RA.Models.JsonV2
 		/// URI
 		/// </summary>
 		[JsonProperty( "ceasn:taskEmbodied" )]
-		public List<string> taskEmbodied { get; set; } 
+		public List<string> taskEmbodied { get; set; }
+
+		[JsonProperty( "ceterms:occupationType" )]
+		public List<CredentialAlignmentObject> OccupationType { get; set; }
+
+		[JsonProperty( "ceterms:industryType" )]
+		public List<CredentialAlignmentObject> IndustryType { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
+		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
+
 
 		/// <summary>
 		/// An asserted measurement of the weight, degree, percent, or strength of a recommendation, requirement, or comparison.
@@ -219,6 +229,21 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( "navy:hasTrainingTask" )]
 		public List<string> hasTrainingTask { get; set; }
+
+		/// <summary>
+		/// CIP List is a helper when publishing from a graph. It will not be published
+		/// </summary>
+		[JsonProperty( "cipList" )]
+		public List<string> CIPList { get; set; }
+		/// <summary>
+		/// SOC List is a helper when publishing from a graph. It will not be published
+		/// </summary>
+		[JsonProperty( "socList" )]
+		public List<string> SOCList { get; set; }
+
+		/// NAICS List is a helper when publishing from a graph. It will not be published
+		[JsonProperty( "naicsList" )]
+		public List<string> NaicsList { get; set; }
 	}
 	public class CompetencyPlain : Competency
 	{

@@ -36,19 +36,22 @@ namespace workIT.Factories
 				//TODO - if one existing, and one input, do an update. We do have the CTID
 				//DeleteAll( parentEntity, ref status );
 				//
-				using ( var context = new EntityContext() )
-				{
-					var existing = context.Entity_EarningsProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
-					//
-					var result = existing.Where( ex => input.All( p2 => p2.CTID.ToLower() != ex.EarningsProfile.CTID.ToLower() ) );
-					var messages = new List<string>();
-					foreach ( var item in result )
-					{
-						Delete( item.Id, ref messages );
-					}
-					if ( messages.Any() )
-						status.AddErrorRange( messages );
-				}
+				//using ( var context = new EntityContext() )
+				//{
+
+
+				//	//var existing = context.Entity_EarningsProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
+				//	////
+				//	//var result = existing.Where( ex => input.All( p2 => p2.CTID.ToLower() != ex.EarningsProfile.CTID.ToLower() ) ).ToList();
+				//	//var messages = new List<string>();
+				//	//foreach ( var item in result )
+				//	//{
+				//	//	Delete( item.Id, ref messages );
+				//	//}
+				//	//if ( messages.Any() )
+				//	//	status.AddErrorRange( messages );
+				//}
+				DeleteAll( parentEntity, ref status );
 				if ( input == null || !input.Any() )
 					return true;
 
@@ -449,6 +452,10 @@ namespace workIT.Factories
 
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " EarningsProfile. Id: {0}, Ctid: {1}.", efEntity.Id, efEntity.CTID );
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						//21-04-22 mp - we have a trigger for this
+						//string statusMessage = "";
+						//new EntityManager().Delete( rowId, string.Format( "EarningsProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 						//
 						context.EarningsProfile.Remove( efEntity );
 						int count = context.SaveChanges();
@@ -658,7 +665,7 @@ namespace workIT.Factories
 			output.Description = input.Description == null ? "" : input.Description;
 			output.CTID = input.CTID;
 			if ( IsValidDate( input.DateEffective ) )
-				output.DateEffective = ( ( DateTime )input.DateEffective ).ToShortDateString();
+				output.DateEffective = ( ( DateTime )input.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				output.DateEffective = "";
 			//

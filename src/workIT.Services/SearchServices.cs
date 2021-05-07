@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Runtime.Caching;
 using System.Web;
 
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using workIT.Factories;
@@ -17,9 +18,10 @@ using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
 using ElasticHelper = workIT.Services.ElasticServices;
-using ElasticHelper7 = workIT.Services.ElasticServices7;
+//using ElasticHelper7 = workIT.Services.ElasticServices7;
 using CF = workIT.Factories;
 using workIT.Models.Helpers;
+using workIT.Models.API.RegistrySearchAPI;
 
 namespace workIT.Services
 {
@@ -27,10 +29,9 @@ namespace workIT.Services
 	{
 		//private static readonly object LoggingHelper;
 		DateTime checkDate = new DateTime( 2016, 1, 1 );
-
 		public MainSearchResults MainSearch( MainSearchInput data, ref bool valid, ref string status, JObject debug = null )
 		{
-			//debug = debug ?? new JObject();
+			debug = debug ?? new JObject();
 
 			LoggingHelper.DoTrace( 6, "SearchServices.MainSearch - entered" );
 			//Sanitize input
@@ -40,7 +41,34 @@ namespace workIT.Services
 			data.Keywords = data.Keywords.Trim();
 
 			//Sanitize input
-			var validSortOrders = new List<string>() { "newest", "oldest", "relevance", "alpha", "cost_lowest", "cost_highest", "duration_shortest", "duration_longest", "org_alpha" };
+			//need to translate sort order - should already be done, but not working in AB dev.
+			//sortOrder:MostRelevant, sortOrder:Oldest, sortOrder:Newest, sortOrder:AtoZ, sortOrder:ZtoA
+			if (!string.IsNullOrWhiteSpace( data.SortOrder ) && data.SortOrder.IndexOf("sortOrder:") == 0 )
+			{
+				switch ( data.SortOrder )
+				{
+					case "sortOrder:MostRelevant":
+						data.SortOrder = "relevance";
+						break;
+					case "sortOrder:Oldest":
+						data.SortOrder = "oldest";
+						break;	
+					case "sortOrder:Newest":
+						data.SortOrder = "newest";
+						break;
+					case "sortOrder:AtoZ":
+						data.SortOrder = "alpha";
+						break;
+					case "sortOrder:ZtoA":
+						data.SortOrder = "zalpha";
+						break;
+					default:
+						data.SortOrder = "newest";
+						break;
+
+				}
+			}
+			var validSortOrders = new List<string>() { "newest", "oldest", "relevance", "alpha", "cost_lowest", "cost_highest", "duration_shortest", "duration_longest", "org_alpha", "zalpha" };
 			if ( !validSortOrders.Contains( data.SortOrder ) )
 			{
 				data.SortOrder = validSortOrders.First();
@@ -62,6 +90,28 @@ namespace workIT.Services
 				status = "Unable to determine search mode";
 				return null;
 			}
+
+			//Testing
+			var finderAPITest = new JObject();
+			try
+			{
+				//this was already done in the API search controller!
+				var converted = Services.API.SearchServices.TranslateMainSearchInputToMainQuery( data );
+				finderAPITest.Add( "MainQuery", JObject.FromObject( converted, new JsonSerializer() { NullValueHandling = NullValueHandling.Ignore } ) );
+
+				var roundTrip = Services.API.SearchServices.TranslateMainQueryToMainSearchInput( converted );
+				finderAPITest.Add( "MainSearchInput", JObject.FromObject( roundTrip, new JsonSerializer() { NullValueHandling = NullValueHandling.Ignore } ) );
+			}
+			catch ( Exception ex )
+			{
+				finderAPITest.Add( "Error Converting MainSearchInput to MainQuery", ex.Message );
+			}
+			try
+			{
+				debug.Add( "Finder API Test", finderAPITest );
+			}
+			catch { }
+
 
 			//Do the search
 			var totalResults = 0;
@@ -135,8 +185,9 @@ namespace workIT.Services
 				case "competencyframeworks":
 				case "competencyframeworkdsp":
 				{
-					var results = CompetencyFrameworkServices.SearchViaRegistry( data, true );
-					return ConvertCompetencyFrameworkResults( results, searchType, data.UseSPARQL );
+					var results = CompetencyFrameworkServicesV2.SearchViaRegistry( data, true );
+					//debug.Add( "Raw Results Data", JObject.FromObject( results ) ); //Temporary
+					return ConvertCompetencyFrameworkResultsV2( results );
 				}
 				case "conceptscheme":
 				{
@@ -187,15 +238,23 @@ namespace workIT.Services
 						//case "competencies":
 						//	return CredentialServices.AutocompleteCompetencies( text, 10 );
 						case "subjects":
+						case "filter:subjects":
 							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
-						case "occupations":
+						case "occupations"://
+						case "filter:occupationtype":
 							return Autocomplete_Occupations( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
 						case "industries":
+						case "filter:industrytype":
 							return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
 						case "instructionalprogramtypes":
+						case "filter:instructionalprogramtype":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
 						case "organizations":
+						case "filter:organization":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 1 );
+						case "organizationnonqaroles":
+						case "filter:organizationnonqaroles":							
+							return ElasticHelper.OrganizationAutoComplete( text, 1, ref totalRows );
 						default:
 							break;
 					}
@@ -208,8 +267,10 @@ namespace workIT.Services
 						case "mainsearch":
 							return OrganizationServices.Autocomplete( text, 10, widgetId );
 						case "industries":
+						case "filter:industrytype":
 							return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_ORGANIZATION, text, 10 );
 						case "organizations":
+						case "filter:organization":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 2 );
 						default:
 							break;
@@ -225,10 +286,13 @@ namespace workIT.Services
 						//case "competencies":
 						//	return AssessmentServices.Autocomplete( text, "competencies", 10 );
 						case "subjects":
+						case "filter:subjects":
 							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
 						case "instructionalprogramtypes":
+						case "filter:instructionalprogramtype":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 );
 						case "organizations":
+						case "filter:organization":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 3 );
 						default:
 							break;
@@ -244,10 +308,13 @@ namespace workIT.Services
 						//case "competencies":
 						//	return LearningOpportunityServices.Autocomplete( text, "competencies", 10 );
 						case "subjects":
+						case "filter:subjects":
 							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
 						case "instructionalprogramtypes":
+						case "filter:instructionalprogramtype":
 							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
 						case "organizations":
+						case "filter:organization":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 7 );
 						default:
 							break;
@@ -469,6 +536,7 @@ namespace workIT.Services
 				var subjects = Deduplicate( item.Subjects );
 				var mergedQA = item.AgentAndRoles.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
 				var mergedConnections = item.CredentialsList.Results.ToList();
+				var iconUrl = GetCredentialIcon( item.CredentialTypeSchema.ToLower() );
 				//.Concat( item.IsPartOfList.Results ).Concat( item.HasPartsList.Results ).ToList();
 				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
@@ -489,14 +557,22 @@ namespace workIT.Services
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
 						{ "ResultImageUrl", item.ImageUrl ?? "" },
+						{ "ResultIconUrl", iconUrl ?? "" },
 						{ "HasDegreeConcentation", item.HasDegreeConcentation ?? "" },
 						{ "HasBadge", item.HasVerificationType_Badge }, //Indicate existence of badge here
                         { "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "Credential" },
+						{ "T_CTDLType", item.CredentialTypeSchema },
+						{ "T_CTDLTypeLabel", item.CredentialType },
+						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) },
+						{ "T_ImageURL", item.ImageUrl }
 
 					},
 					new List<TagSet>(),
-					//SearchTag is obsolete, use SearchResultButton
+					//SearchTag is OBSOLETE, use SearchResultButton
 					new List<Models.Helpers.SearchTag>()
 					{
 						//Credential Quality Assurance
@@ -511,8 +587,8 @@ namespace workIT.Services
 							//QAOrgRolesResults is a list of 1 role and 1 org (org repeating for each relevant role)
 							//e.g. [Accredited By] [Organization 1], [Approved By] [Organization 1], [Accredited By] [Organization 2], etc.
 							Items = mergedQA.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-							Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
-							QueryValues = new Dictionary<string, object>() {
+								Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
+								QueryValues = new Dictionary<string, object>() {
 									{ "Relationship", m.Relationship },
 									{ "TextValue", m.Agent },
 									{ "RelationshipId", m.RelationshipId },
@@ -617,7 +693,7 @@ namespace workIT.Services
 						new Models.Helpers.SearchTag()
 						{
 							CategoryName = "Types",
-							DisplayTemplate = "{#} Audience Type{s}",
+							DisplayTemplate = "{#} Audience Type(s)",
 							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
 							TotalItems = item.AudienceTypesResults.Results.Count(),
 							SearchQueryType = "code",
@@ -677,7 +753,7 @@ namespace workIT.Services
 						{
 							CategoryName = "LearningDeliveryTypes",
 							CategoryLabel = "Learning Delivery Types",
-							DisplayTemplate = "{#} Learning Delivery Type{s}",
+							DisplayTemplate = "{#} Learning Delivery Type(s)",
 							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
 							TotalItems = item.LearningDeliveryType.Results.Count(),
 							SearchQueryType = "code",
@@ -912,14 +988,14 @@ namespace workIT.Services
 								TargetId = item.Id
 							} ) )
 						},
-						//HoldersProfiles
+						//OutcomeProfiles
 						new SearchResultButton()
 						{
-							CategoryLabel = item.HoldersProfileCount == 1 ? "Outcome Data" : "Outcome Data",
+							CategoryLabel = item.AggregateDataProfileCount == 1 ? "Outcome Data" : "Outcome Data",
 							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.HoldersProfileCount,
-							Items = new List<string>() { item.HoldersProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							TotalItems = item.AggregateDataProfileCount,
+							Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
 								ConnectionLabel = "Outcome Data",
 								TargetLabel = m,
@@ -928,35 +1004,35 @@ namespace workIT.Services
 							} ) )
 						},
 						//EarningsProfiles
-						new SearchResultButton()
-						{
-							CategoryLabel = item.EarningsProfileCount == 1 ? "Earnings Profile" : "Earnings Profiles",
-							CategoryType = ButtonCategoryTypes.EarningsProfile.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.EarningsProfileCount,
-							Items = new List<string>() { item.EarningsProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								ConnectionLabel = "Earnings Profile",
-								TargetLabel = m,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
-								TargetId = item.Id
-							} ) )
-						},
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.EarningsProfileCount == 1 ? "Earnings Profile" : "Earnings Profiles",
+						//	CategoryType = ButtonCategoryTypes.EarningsProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.EarningsProfileCount,
+						//	Items = new List<string>() { item.EarningsProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		ConnectionLabel = "Earnings Profile",
+						//		TargetLabel = m,
+						//		TargetType = ButtonSearchTypes.Credential.ToString(),
+						//		TargetId = item.Id
+						//	} ) )
+						//},
 						//EmploymentOutcomeProfiles
-						new SearchResultButton()
-						{
-							CategoryLabel = item.EmploymentOutcomeProfileCount == 1 ? "EmploymentOutcome Profile" : "EmploymentOutcome Profiles",
-							CategoryType = ButtonCategoryTypes.EmploymentOutcomeProfile.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.EmploymentOutcomeProfileCount,
-							Items = new List<string>() { item.EmploymentOutcomeProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								ConnectionLabel = "Employment Outcome Profile",
-								TargetLabel = m,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
-								TargetId = item.Id
-							} ) )
-						},
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.EmploymentOutcomeProfileCount == 1 ? "EmploymentOutcome Profile" : "EmploymentOutcome Profiles",
+						//	CategoryType = ButtonCategoryTypes.EmploymentOutcomeProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.EmploymentOutcomeProfileCount,
+						//	Items = new List<string>() { item.EmploymentOutcomeProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		ConnectionLabel = "Employment Outcome Profile",
+						//		TargetLabel = m,
+						//		TargetType = ButtonSearchTypes.Credential.ToString(),
+						//		TargetId = item.Id
+						//	} ) )
+						//},
 						//Competencies
 						new SearchResultButton()
 						{
@@ -1002,6 +1078,34 @@ namespace workIT.Services
 			}
 			return output;
 		}
+		//
+
+		public static string GetCredentialIcon( string credentiaType )
+		{
+			//defaults
+			credentiaType = credentiaType.Replace( "ceterms:", "" );
+			string url = string.Format( "images/icons/flat_{0}.png", credentiaType);
+			//exceptions
+			if (credentiaType.IndexOf("badge") > -1)
+				url = "~/images/icons/flat_badge.png";
+			else if ( credentiaType.IndexOf( "certificate" ) > -1 )
+				url = "~/images/icons/flat_certificate.png";
+			else if( credentiaType.IndexOf( "degree" ) > -1 
+				|| credentiaType.IndexOf( "master" ) > -1
+				|| credentiaType.IndexOf( "doctorate" ) > -1 )
+				url = "~/images/icons/flat_degree.png";
+			else if ( credentiaType.IndexOf( "diploma" ) > -1
+				|| credentiaType.IndexOf( "generaleducat" ) > -1 )
+				url = "~/images/icons/flat_diploma.png";
+			else if ( credentiaType.IndexOf( "apprentice" ) > -1 )
+				url = "~/images/icons/flat_apprentice.png";
+
+			//need to use this as also called from finderAPI
+			string baseFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
+			url= baseFinderSiteURL + url.Replace("~/","");
+			return url;
+		}
+
 		//
 
 		public List<string> Deduplicate(List<string> items)
@@ -1336,191 +1440,197 @@ namespace workIT.Services
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
-						{ "Logo", item.ImageUrl },
-						{ "ResultImageUrl", item.ImageUrl ?? "" },
-						{ "Location", item.Address.Country ?? "" + ( string.IsNullOrWhiteSpace( item.Address.Country ) ? "" : " - " ) + item.Address.City + ( string.IsNullOrWhiteSpace( item.Address.City ) ? "" : ", " ) + item.Address.AddressRegion },
+						{ "Logo", item.Image },
+						{ "ResultImageUrl", item.Image ?? "" },
+						{ "Location", item.Address.AddressCountry ?? "" + ( string.IsNullOrWhiteSpace( item.Address.AddressCountry ) ? "" : " - " ) + item.Address.AddressLocality + ( string.IsNullOrWhiteSpace( item.Address.AddressLocality ) ? "" : ", " ) + item.Address.AddressRegion },
 						 { "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
 						{ "Coordinates", new { Type = "coordinates", Data = new { Latitude = item.Address.Latitude, Longitude = item.Address.Longitude } } },
 						{ "IsQA", item.ISQAOrganization ? "true" : "false" },
-
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "Organization" },
+						{ "T_CTDLType", item.ISQAOrganization ? "ceterms:QACredentialOrganization" : item.IsACredentialingOrg ? "ceterms:CredentialOrganization" : "ceterms:Organization" }, //Hack
+						{ "T_CTDLTypeLabel", item.ISQAOrganization ? "QA Credential Organization" : item.IsACredentialingOrg ? "Credential Organization" : "Organization" }, //Also a hack
+						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
-					new List<Models.Helpers.SearchTag>()
-					{
-                         //Quality Assurance
-                         new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Quality Assurance",
-							DisplayTemplate = "{#} Quality Assurance",
-							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
-							TotalItems = item.QualityAssurance.Results.Count(),
-							SearchQueryType = "merged", //Change this to "custom", or back to detail
-							Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-								Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
-								QueryValues = new Dictionary<string, object>() {
-										{ "Relationship", m.Relationship },
-										{ "TextValue", m.Agent },
-										{ "RelationshipId", m.RelationshipId },
-										{ "AgentId", m.AgentId },
-										{ "TargetType", "organization" },
-										{ "AgentUrl", m.AgentUrl},
-										{ "EntityStateId", m.EntityStateId },
-										{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-									}
-							} ).ToList()
-						},
-                         //Quality Assurance Performed
-                         new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Quality Assurance Performed",
-							DisplayTemplate = "{#} Quality Assurance Performed",
-							Name = "qualityassuranceperformed",
-							TotalItems = item.QualityAssuranceCombinedTotal,
+					new List<Models.Helpers.SearchTag>(),
+					//new List<Models.Helpers.SearchTag>()
+					//{
+     //                    //Quality Assurance
+     //                    new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "Quality Assurance",
+					//		DisplayTemplate = "{#} Quality Assurance",
+					//		Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+					//		TotalItems = item.QualityAssurance.Results.Count(),
+					//		SearchQueryType = "merged", //Change this to "custom", or back to detail
+					//		Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
+					//			Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
+					//			QueryValues = new Dictionary<string, object>() {
+					//					{ "Relationship", m.Relationship },
+					//					{ "TextValue", m.Agent },
+					//					{ "RelationshipId", m.RelationshipId },
+					//					{ "AgentId", m.AgentId },
+					//					{ "TargetType", "organization" },
+					//					{ "AgentUrl", m.AgentUrl},
+					//					{ "EntityStateId", m.EntityStateId },
+					//					{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
+					//				}
+					//		} ).ToList()
+					//	},
+     //                    //Quality Assurance Performed
+     //                    new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "Quality Assurance Performed",
+					//		DisplayTemplate = "{#} Quality Assurance Performed",
+					//		Name = "qualityassuranceperformed",
+					//		TotalItems = item.QualityAssuranceCombinedTotal,
                             
-                            //Items
-                            SearchQueryType = "qaperformed",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetSearchResultPerformed",
-							AjaxQueryValues = new Dictionary<string, object>()
-							{
-								{ "SearchType", "organization" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "QAPERFORMED" }
-							}
-						},
+     //                       //Items
+     //                       SearchQueryType = "qaperformed",
+					//		IsAjaxQuery = true,
+					//		AjaxQueryName = "GetSearchResultPerformed",
+					//		AjaxQueryValues = new Dictionary<string, object>()
+					//		{
+					//			{ "SearchType", "organization" },
+					//			{ "RecordId", item.Id },
+					//			{ "TargetEntityType", "QAPERFORMED" }
+					//		}
+					//	},
                          
-						//Organization Type
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OrganizationType",
-							CategoryLabel = "Organization Type",
-							DisplayTemplate = "{#} Organization Type{s}",
-							Name = TagTypes.ORGANIZATIONTYPE.ToString().ToLower(),
-							TotalItems = item.AgentType.Items.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.AgentType.Items.Take(10).ToList(), "{Name}", item.AgentType.Id )
-						},
-						//Organization Sector Type
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OrganizationSector",
-							CategoryLabel = "Sector Type",
-							DisplayTemplate = "{#} Sector{s}",
-							Name = TagTypes.ORGANIZATIONSECTORTYPE.ToString().ToLower(),
-							TotalItems = item.OrganizationSectorType.Items.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.OrganizationSectorType.Items.Take(10).ToList(), "{Name}", item.OrganizationSectorType.Id )
-						},
-                        //Organization Service Type
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OrganizationService",
-							CategoryLabel = "Service Type",
-							DisplayTemplate = "{#} Service Type{s}",
-							Name = TagTypes.ORG_SERVICE_TYPE.ToString().ToLower(),
-							TotalItems = item.ServiceType.Items.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.ServiceType.Items, "{Name}", item.ServiceType.Id )
-						},
-						//owns
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OwnsCredentials",
-							CategoryLabel = "Owns Credentials",
-							DisplayTemplate = "Owns {#} Credential{s}",
-							Name = TagTypes.OWNED_BY.ToString().ToLower(),
-							TotalItems = item.OwnedByResults.Results.Count(),
-							SearchQueryType = "link",
-							Items = item.OwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.Title,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.Id }, //Credential ID
-									{ "TargetType", "credential" },
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-						},
-						//offers
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OffersCredentials",
-							CategoryLabel = "Offers Credentials",
-							DisplayTemplate = "Offers {#} Credential{s}",
-							Name = TagTypes.OFFERED_BY.ToString().ToLower(),
-							TotalItems = item.OfferedByResults.Results.Count(),
-							SearchQueryType = "link",
-							Items = item.OfferedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.Title,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.Id }, //Credential ID
-									{ "TargetType", "credential" },
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-						},
-						//asmts owned by
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OwnsAssessments",
-							CategoryLabel = "Owns Assessments",
-							DisplayTemplate = "Owns {#} Assessment{s}",
-							Name = TagTypes.ASMTS_OWNED_BY.ToString().ToLower(),
-							TotalItems = item.AsmtsOwnedByResults.Results.Count(),
-							SearchQueryType = "link",
-							Items = item.AsmtsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.Title,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.Id }, //asmt ID
-									{ "TargetType", "assessment" },
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-						},
-						//lopps owned by
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OwnsLearningOpportunity",
-							CategoryLabel = "Owns Learning Opportunities",
-							DisplayTemplate = "Owns {#} Learning Opportunit{ies}",
-							Name = TagTypes.LOPPS_OWNED_BY.ToString().ToLower(),
-							TotalItems = item.LoppsOwnedByResults.Results.Count(),
-							SearchQueryType = "link",
-							Items = item.LoppsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.Title,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.Id }, //lopp ID
-									{ "TargetType", "learningopportunity" }, //??
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-						},
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "OwnsFrameworks",
-							CategoryLabel = "Owns Competency Frameworks",
-							DisplayTemplate = "Owns {#} Competency Framework{s}",
-							Name = TagTypes.FRAMEWORKS_OWNED_BY.ToString().ToLower(),
-							TotalItems = item.FrameworksOwnedByResults.Results.Count(),
-							SearchQueryType = "link",
-							Items = item.FrameworksOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.Title,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.Id }, //f ID
-									{ "TargetType", "competencyframework" }, //??
-								}
-							} ).ToList()
-						},
+					//	//Organization Type
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OrganizationType",
+					//		CategoryLabel = "Organization Type",
+					//		DisplayTemplate = "{#} Organization Type(s)",
+					//		Name = TagTypes.ORGANIZATIONTYPE.ToString().ToLower(),
+					//		TotalItems = item.AgentType.Items.Count(),
+					//		SearchQueryType = "code",
+					//		Items = GetSearchTagItems_Filter( item.AgentType.Items.Take(10).ToList(), "{Name}", item.AgentType.Id )
+					//	},
+					//	//Organization Sector Type
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OrganizationSector",
+					//		CategoryLabel = "Sector Type",
+					//		DisplayTemplate = "{#} Sector{s}",
+					//		Name = TagTypes.ORGANIZATIONSECTORTYPE.ToString().ToLower(),
+					//		TotalItems = item.AgentSectorType.Items.Count(),
+					//		SearchQueryType = "code",
+					//		Items = GetSearchTagItems_Filter( item.AgentSectorType.Items.Take(10).ToList(), "{Name}", item.AgentSectorType.Id )
+					//	},
+     //                   //Organization Service Type
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OrganizationService",
+					//		CategoryLabel = "Service Type",
+					//		DisplayTemplate = "{#} Service Type(s)",
+					//		Name = TagTypes.ORG_SERVICE_TYPE.ToString().ToLower(),
+					//		TotalItems = item.ServiceType.Items.Count(),
+					//		SearchQueryType = "code",
+					//		Items = GetSearchTagItems_Filter( item.ServiceType.Items, "{Name}", item.ServiceType.Id )
+					//	},
+					//	//owns
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OwnsCredentials",
+					//		CategoryLabel = "Owns Credentials",
+					//		DisplayTemplate = "Owns {#} Credential(s)",
+					//		Name = TagTypes.OWNED_BY.ToString().ToLower(),
+					//		TotalItems = item.OwnedByResults.Results.Count(),
+					//		SearchQueryType = "link",
+					//		Items = item.OwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+					//		{
+					//			Display = m.Title,
+					//			QueryValues = new Dictionary<string, object>()
+					//			{
+					//				{ "TargetId", m.Id }, //Credential ID
+					//				{ "TargetType", "credential" },
+					//				{ "IsReference", "false" },
+					//			}
+					//		} ).ToList()
+					//	},
+					//	//offers
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OffersCredentials",
+					//		CategoryLabel = "Offers Credentials",
+					//		DisplayTemplate = "Offers {#} Credential(s)",
+					//		Name = TagTypes.OFFERED_BY.ToString().ToLower(),
+					//		TotalItems = item.OfferedByResults.Results.Count(),
+					//		SearchQueryType = "link",
+					//		Items = item.OfferedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+					//		{
+					//			Display = m.Title,
+					//			QueryValues = new Dictionary<string, object>()
+					//			{
+					//				{ "TargetId", m.Id }, //Credential ID
+					//				{ "TargetType", "credential" },
+					//				{ "IsReference", "false" },
+					//			}
+					//		} ).ToList()
+					//	},
+					//	//asmts owned by
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OwnsAssessments",
+					//		CategoryLabel = "Owns Assessments",
+					//		DisplayTemplate = "Owns {#} Assessment{s}",
+					//		Name = TagTypes.ASMTS_OWNED_BY.ToString().ToLower(),
+					//		TotalItems = item.AsmtsOwnedByResults.Results.Count(),
+					//		SearchQueryType = "link",
+					//		Items = item.AsmtsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+					//		{
+					//			Display = m.Title,
+					//			QueryValues = new Dictionary<string, object>()
+					//			{
+					//				{ "TargetId", m.Id }, //asmt ID
+					//				{ "TargetType", "assessment" },
+					//				{ "IsReference", "false" },
+					//			}
+					//		} ).ToList()
+					//	},
+					//	//lopps owned by
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OwnsLearningOpportunity",
+					//		CategoryLabel = "Owns Learning Opportunities",
+					//		DisplayTemplate = "Owns {#} Learning Opportunit{ies}",
+					//		Name = TagTypes.LOPPS_OWNED_BY.ToString().ToLower(),
+					//		TotalItems = item.LoppsOwnedByResults.Results.Count(),
+					//		SearchQueryType = "link",
+					//		Items = item.LoppsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+					//		{
+					//			Display = m.Title,
+					//			QueryValues = new Dictionary<string, object>()
+					//			{
+					//				{ "TargetId", m.Id }, //lopp ID
+					//				{ "TargetType", "learningopportunity" }, //??
+					//				{ "IsReference", "false" },
+					//			}
+					//		} ).ToList()
+					//	},
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "OwnsFrameworks",
+					//		CategoryLabel = "Owns Competency Frameworks",
+					//		DisplayTemplate = "Owns {#} Competency Framework{s}",
+					//		Name = TagTypes.FRAMEWORKS_OWNED_BY.ToString().ToLower(),
+					//		TotalItems = item.FrameworksOwnedByResults.Results.Count(),
+					//		SearchQueryType = "link",
+					//		Items = item.FrameworksOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+					//		{
+					//			Display = m.Title,
+					//			QueryValues = new Dictionary<string, object>()
+					//			{
+					//				{ "TargetId", m.Id }, //f ID
+					//				{ "TargetType", "competencyframework" }, //??
+					//			}
+					//		} ).ToList()
+					//	},
 
        //                 new Models.Helpers.SearchTag()
        //                 {
@@ -1543,18 +1653,18 @@ namespace workIT.Services
        //                 },
                        
 			            //Industries
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Industries",
-							DisplayTemplate = "{#} Industr{ies}",
-							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-							TotalItems = item.IndustryResults.Results.Count(),
-                            //SearchQueryType = "framework",
-                            SearchQueryType = "text",
-                            //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-						},
-					},
+					//	new Models.Helpers.SearchTag()
+					//	{
+					//		CategoryName = "Industries",
+					//		DisplayTemplate = "{#} Industr{ies}",
+					//		Name = TagTypes.INDUSTRIES.ToString().ToLower(),
+					//		TotalItems = item.IndustryResults.Results.Count(),
+     //                       //SearchQueryType = "framework",
+     //                       SearchQueryType = "text",
+     //                       //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
+     //                       Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+					//	},
+					//},
 					new List<SearchResultButton>()
 					{
 						//Quality Assurance Received
@@ -1629,11 +1739,11 @@ namespace workIT.Services
 						//Organization Sector Type
 						new SearchResultButton()
 						{
-							CategoryLabel = item.OrganizationSectorType.Items.Count() == 1 ? "Organization Sector Type" : "Organization Sector Types",
+							CategoryLabel = item.AgentSectorType.Items.Count() == 1 ? "Organization Sector Type" : "Organization Sector Types",
 							CategoryType = ButtonCategoryTypes.SectorType.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
-							TotalItems = item.OrganizationSectorType.Items.Count(),
-							Items = item.OrganizationSectorType.Items.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.OrganizationSectorType.Id ) ) )
+							TotalItems = item.AgentSectorType.Items.Count(),
+							Items = item.AgentSectorType.Items.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AgentSectorType.Id ) ) )
 						},
 						//Organization Service Type
 						new SearchResultButton()
@@ -1746,9 +1856,9 @@ namespace workIT.Services
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "UrlTitle", item.FriendlyName },
-						{ "Logo", item.ImageUrl },
-						{ "ResultImageUrl", item.ImageUrl ?? "" },
-						{ "Location", item.Address.Country + ( string.IsNullOrWhiteSpace( item.Address.Country ) ? "" : " - " ) + item.Address.City + ( string.IsNullOrWhiteSpace( item.Address.City ) ? "" : ", " ) + item.Address.AddressRegion },
+						{ "Logo", item.Image },
+						{ "ResultImageUrl", item.Image ?? "" },
+						{ "Location", item.Address.AddressCountry + ( string.IsNullOrWhiteSpace( item.Address.AddressCountry ) ? "" : " - " ) + item.Address.AddressLocality + ( string.IsNullOrWhiteSpace( item.Address.AddressLocality ) ? "" : ", " ) + item.Address.AddressRegion },
 
 						{ "Coordinates", new { Type = "coordinates", Data = new { Latitude = item.Address.Latitude, Longitude = item.Address.Longitude } } },
 						{ "IsQA", item.ISQAOrganization ? "true" : "false" },
@@ -1763,7 +1873,7 @@ namespace workIT.Services
 						{
 							CategoryName = "OrganizationType",
 							CategoryLabel = "Organization Type",
-							DisplayTemplate = "{#} Organization Type{s}",
+							DisplayTemplate = "{#} Organization Type(s)",
 							Name = TagTypes.ORGANIZATIONTYPE.ToString().ToLower(),
 							TotalItems = item.AgentType.Items.Count(),
 							SearchQueryType = "code",
@@ -1776,9 +1886,9 @@ namespace workIT.Services
 							CategoryLabel = "Sector Type",
 							DisplayTemplate = "{#} Economic Sector{s}",
 							Name = TagTypes.ORGANIZATIONSECTORTYPE.ToString().ToLower(),
-							TotalItems = item.OrganizationSectorType.Items.Count(),
+							TotalItems = item.AgentSectorType.Items.Count(),
 							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.OrganizationSectorType.Items, "{Name}", item.OrganizationSectorType.Id )
+							Items = GetSearchTagItems_Filter( item.AgentSectorType.Items, "{Name}", item.AgentSectorType.Id )
 						},
 					}
 				) );
@@ -1811,7 +1921,13 @@ namespace workIT.Services
 						{ "ResultNumber", item.ResultNumber },
 						{ "UrlTitle", item.FriendlyName },
 						 { "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "Assessment" },
+						{ "T_CTDLType", "ceterms:AssessmentProfile" },
+						{ "T_CTDLTypeLabel", "Assessment Profile" },
+						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
 					new List<Models.Helpers.SearchTag>()
@@ -1895,7 +2011,7 @@ namespace workIT.Services
 						{
 							CategoryName = "AssessmentUseTypes",
 							CategoryLabel = "Use Type",
-							DisplayTemplate = "{#} Assessment Use Type{s}",
+							DisplayTemplate = "{#} Assessment Use Type(s)",
 							Name = TagTypes.ASSESSMENT_USE_TYPES.ToString().ToLower(),
 							TotalItems = item.AssessmentUseTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -1906,7 +2022,7 @@ namespace workIT.Services
 						{
 							CategoryName = "AssessmentMethodTypes",
 							CategoryLabel = "Assessment Method",
-							DisplayTemplate = "{#} Assessment Method Type{s}",
+							DisplayTemplate = "{#} Assessment Method Type(s)",
 							Name = TagTypes.ASSESSMENT_METHOD_TYPES.ToString().ToLower(),
 							TotalItems = item.AssessmentMethodTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -1917,7 +2033,7 @@ namespace workIT.Services
 						{
 							CategoryName = "ScoringMethodTypes",
 							CategoryLabel = "Scoring Method",
-							DisplayTemplate = "{#} Scoring Method Type{s}",
+							DisplayTemplate = "{#} Scoring Method Type(s)",
 							Name = TagTypes.SCORING_METHODS.ToString().ToLower(),
 							TotalItems = item.ScoringMethodTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -1928,7 +2044,7 @@ namespace workIT.Services
 						{
 							CategoryName = "DeliveryMethodTypes",
 							CategoryLabel = "Delivery Method",
-							DisplayTemplate = "{#} Delivery Method Type{s}",
+							DisplayTemplate = "{#} Delivery Method Type(s)",
 							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
 							TotalItems = item.DeliveryMethodTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -1939,7 +2055,7 @@ namespace workIT.Services
 						new Models.Helpers.SearchTag()
 						{
 							CategoryName = "Types",
-							DisplayTemplate = "{#} Audience Type{s}",
+							DisplayTemplate = "{#} Audience Type(s)",
 							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
 							TotalItems = item.AudienceTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -2257,7 +2373,13 @@ namespace workIT.Services
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
 						 { "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "LearningOpportunity" },
+						{ "T_CTDLType", "ceterms:LearningOpportunityProfile" },
+						{ "T_CTDLTypeLabel", "Learning Opportunity Profile" },
+						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
 					new List<Models.Helpers.SearchTag>()
@@ -2359,7 +2481,7 @@ namespace workIT.Services
 						{
 							CategoryName = "DeliveryMethodTypes",
 							CategoryLabel = "Delivery Method",
-							DisplayTemplate = "{#} Delivery Method Type{s}",
+							DisplayTemplate = "{#} Delivery Method Type(s)",
 							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
 							TotalItems = item.DeliveryMethodTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -2370,7 +2492,7 @@ namespace workIT.Services
 						{
 							CategoryName = "LearningMethodTypes",
 							CategoryLabel = "Learning Method",
-							DisplayTemplate = "{#} Learning Method Type{s}",
+							DisplayTemplate = "{#} Learning Method Type(s)",
 							Name = TagTypes.LEARNING_METHODS.ToString().ToLower(),
 							TotalItems = item.LearningMethodTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -2381,7 +2503,7 @@ namespace workIT.Services
 						new Models.Helpers.SearchTag()
 						{
 							CategoryName = "Types",
-							DisplayTemplate = "{#} Audience Type{s}",
+							DisplayTemplate = "{#} Audience Type(s)",
 							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
 							TotalItems = item.AudienceTypes.Results.Count(),
 							SearchQueryType = "code",
@@ -2722,6 +2844,243 @@ namespace workIT.Services
 			}
 		}
 		
+		//Use the new ComposedSearchResultSet structure
+		public MainSearchResults ConvertCompetencyFrameworkResultsV2( ComposedSearchResultSet results )
+		{
+			//Hold the results
+			var output = new MainSearchResults()
+			{
+				TotalResults = results.TotalResults,
+				SearchType = "competencyframework",
+				RelatedItems = JArray.FromObject( results.RelatedItems ?? new List<JObject>() ),
+				Debug = new JObject()
+			};
+
+			try
+			{
+				//Convert the results to the old format
+				foreach ( var result in results.Results )
+				{
+					output.Debug[ "Farthest Step" ] = "Getting Result URI";
+					var resultURI = result.Data[ "@id" ].ToString();
+
+					//Owner
+					output.Debug[ "Farthest Step" ] = "Processing Creator/Owner/Publisher";
+					var creators = results.GetRelatedItems( result.GetURIsForPathRegex( "^> ceasn:creator > ceterms:Agent$" ) );
+					var publishers = results.GetRelatedItems( result.GetURIsForPathRegex( "^> ceasn:publisher > ceterms:Agent$" ) );
+					var owner = creators.Concat( publishers ).FirstOrDefault( m => m != null ) ?? new JObject() { { "ceterms:name", new JObject() { { "en", "Unknown Organization" } } } };
+
+					//Process Dates
+					output.Debug[ "Farthest Step" ] = "Processing Other Fields";
+					var ctid = result.Data[ "ceterms:ctid" ].ToString();
+					var name = CompetencyFrameworkServicesV2.GetEnglishString( result.Data[ "ceasn:name" ], "Unknown Name" );
+					var description = CompetencyFrameworkServicesV2.GetEnglishString( result.Data[ "ceasn:description" ], "Unknown Description" );
+					var dateCreated = result.Data[ "ceasn:dateCreated" ] == null ? "Unknown" : result.Data[ "ceasn:dateCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					var dateModified = result.Data[ "ceasn:dateCreated" ] == null ? "Unknown" : result.Data[ "ceasn:dateCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+
+					//Process the result core
+					output.Debug[ "Farthest Step" ] = "Processing Core Result";
+					var coreProperties = new Dictionary<string, object>()
+					{
+						{ "CTID", ctid },
+						{ "ctid", ctid }, //Not sure why we have both
+						{ "Locations", new List<object>() { } },
+						{ "DateCreated", dateCreated },
+						{ "DateModified", dateModified },
+						{ "LastUpdated", dateModified }, //Not sure why we have both
+						{ "RawData", result.Data },
+						{ "Name", name },
+						{ "Description", description },
+						{ "Owner", owner },
+						{ "SearchType", "competencyframework" },
+						{ "RecordId", ctid },
+						{ "UrlTitle", "" },
+						{ "Errors", new JArray() },
+						{ "T_LastUpdated", dateModified },
+						{ "T_StateId", 3 },
+						{ "T_BroadType", "CompetencyFramework" },
+						{ "T_CTDLType", "ceasn:CompetencyFramework" },
+						{ "T_CTDLTypeLabel", "Competency Framework" }
+					};
+
+					//Process gray buttons
+					output.Debug[ "Farthest Step" ] = "Processing Gray Buttons";
+					var buttons = new List<Models.Helpers.SearchResultButton>();
+
+					//Competencies in this Framework
+					output.Debug[ "Farthest Step" ] = "Processing Competencies";
+					var competencyData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "^< ceasn:isPartOf < ceasn:Competency$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = competencyData.TotalURIs > 1 ? "Competencies" : "Competency",
+						CategoryType = ButtonCategoryTypes.Competency.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = competencyData.TotalURIs,
+						Items = competencyData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceasn:competencyText" ], "Unknown Competency" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = ctid //Framework CTID
+						} ) )
+					} );
+
+					//Credentials
+					output.Debug[ "Farthest Step" ] = "Processing Credentials";
+					var credentialData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "ceterms:Credential$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = credentialData.TotalURIs > 1 ? "Related Credentials" : "Related Credential",
+						CategoryType = ButtonCategoryTypes.Credential.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = credentialData.TotalURIs,
+						Items = credentialData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceterms:name" ], "Unknown Credential" ),
+							TargetType = ButtonSearchTypes.Credential.ToString(),
+							TargetCTID = m[ "ceterms:ctid" ]?.ToString() ?? ""
+						} ) )
+					} );
+
+					//Assessments
+					output.Debug[ "Farthest Step" ] = "Processing Assessments";
+					var assessmentData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "ceterms:AssessmentProfile$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = assessmentData.TotalURIs > 1 ? "Related Assessments" : "Related Assessment",
+						CategoryType = ButtonCategoryTypes.AssessmentProfile.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = assessmentData.TotalURIs,
+						Items = assessmentData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceterms:name" ], "Unknown Assessment" ),
+							TargetType = ButtonSearchTypes.AssessmentProfile.ToString(),
+							TargetCTID = m[ "ceterms:ctid" ]?.ToString() ?? ""
+						} ) )
+					} );
+
+					//Learning Opportunities
+					output.Debug[ "Farthest Step" ] = "Processing Learning Opportunities";
+					var learningOpportunityData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "ceterms:LearningOpportunityProfile$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = learningOpportunityData.TotalURIs > 1 ? "Related Learning Opportunities" : "Related Learning Opportunity",
+						CategoryType = ButtonCategoryTypes.LearningOpportunityProfile.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = learningOpportunityData.TotalURIs,
+						Items = learningOpportunityData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceterms:name" ], "Unknown Learning Opportunity" ),
+							TargetType = ButtonSearchTypes.LearningOpportunityProfile.ToString(),
+							TargetCTID = m[ "ceterms:ctid" ]?.ToString() ?? ""
+						} ) )
+					} );
+
+					//Aligned Frameworks
+					output.Debug[ "Farthest Step" ] = "Processing Aligned Frameworks";
+					var alignedFrameworkData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( @"^(?>>|<) ceasn:align\S* (?>>|<) ceasn:CompetencyFramework$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = alignedFrameworkData.TotalURIs > 1 ? "Framework Alignments" : "Framework Alignment",
+						CategoryType = ButtonCategoryTypes.Connection.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = alignedFrameworkData.TotalURIs,
+						Items = alignedFrameworkData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceasn:name" ], "Unknown Framework" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = m[ "ceterms:ctid" ]?.ToString() ?? ""
+						} ) )
+					} );
+
+					//Aligned Competencies
+					output.Debug[ "Farthest Step" ] = "Processing Aligned Competencies";
+					var alignedCompetencyData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( @"^< ceasn:isPartOf < ceasn:Competency (?>>|<) ceasn:\S*Alignment (?>>|<) ceasn:Competency$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = alignedCompetencyData.TotalURIs > 1 ? "Competency Alignments" : "Competency Alignment",
+						CategoryType = ButtonCategoryTypes.Connection.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = alignedCompetencyData.TotalURIs,
+						Items = alignedCompetencyData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceasn:competencyText" ], "Unknown Competency" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = m[ "ceasn:isPartOf" ]?.ToString()?.Split( new string[] { "/ce-" }, StringSplitOptions.RemoveEmptyEntries ).Select( n => "ce-" + n ).Last() ?? ""
+						} ) )
+					} );
+
+					//Education Level Alignments
+					//Note - Since these are combined from alignments at both the framework and competency level, TotalURIs reflects the total number of alignments, 
+					//NOT the total number of concepts (even though the data provides the first 10 concepts from those alignments that were returned by the data)
+					output.Debug[ "Farthest Step" ] = "Processing Education Level Alignments";
+					var educationLevelData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "ceasn:educationLevelType > skos:Concept$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = educationLevelData.TotalURIs > 1 ? "Education Levels" : "Education Level",
+						CategoryType = ButtonCategoryTypes.Connection.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = educationLevelData.TotalURIs,
+						Items = educationLevelData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "skos:prefLabel" ], "Unknown Level" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = ctid //Framework CTID
+						} ) )
+					} );
+
+					//Complexity Level Alignments
+					//See note above, this works the same way
+					output.Debug[ "Farthest Step" ] = "Processing Complexity Level Alignments";
+					var complexityLevelData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "ceasn:complexityLevel > skos:Concept$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = complexityLevelData.TotalURIs > 1 ? "Complexity Levels" : "Complexity Level",
+						CategoryType = ButtonCategoryTypes.Connection.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = complexityLevelData.TotalURIs,
+						Items = complexityLevelData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "skos:prefLabel" ], "Unknown Level" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = ctid //Framework CTID
+						} ) )
+					} );
+
+					//Related Concept Schemes (Combined)
+					//See note above, this works the same way
+					output.Debug[ "Farthest Step" ] = "Processing Concept Schemes";
+					var conceptSchemeData = results.GetComposedPathSetWithResources( result.GetPathsForPathRegex( "skos:ConceptScheme$" ) );
+					buttons.Add( new SearchResultButton()
+					{
+						CategoryLabel = conceptSchemeData.TotalURIs > 1 ? "Related Concept Schemes" : "Related Concept Scheme",
+						CategoryType = ButtonCategoryTypes.Connection.ToString(),
+						HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						TotalItems = conceptSchemeData.TotalURIs,
+						Items = conceptSchemeData.RelatedItems.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						{
+							TargetLabel = CompetencyFrameworkServicesV2.GetEnglishString( m[ "ceasn:name" ], "Unknown Concept Scheme" ),
+							TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
+							TargetCTID = ctid //Framework CTID
+						} ) )
+					} );
+
+					//Add the result
+					output.Results.Add( Result( name, description, -1, coreProperties, null, new List<SearchTag>(), buttons ) );
+				}
+			}
+			catch( Exception ex )
+			{
+				output.Debug.Add( "Error Converting Results", new JObject()
+				{
+					{ "Message", ex.Message },
+					{ "Inner Exception", ex.InnerException?.Message ?? "(None)" }
+				} );
+			}
+
+			return output;
+		}
+		//
+
 		public MainSearchResults ConvertCompetencyFrameworkResults( CTDLAPICompetencyFrameworkResultSet results, string searchType, bool useSPARQL = false )
 		{
 			//var output = new MainSearchResults() { TotalResults = results.TotalResults, SearchType = searchType, RelatedItems = results.RelatedItems };
@@ -2811,7 +3170,7 @@ namespace workIT.Services
 
 							//Aligned Competencies
 							resultDebug[ "Farthest Step" ] = "Processing Aligned Competencies";
-							var alignedCompetencyList = itemMap.GetRelatedItemsForPath_EndsWithMatch( "ceasn:Competency" ).Where( m => m.Path.ToLower().Contains( "alignment >" ) || m.Path.ToLower().Contains( "alignment <" ) );
+							var alignedCompetencyList = itemMap.GetRelatedItemsForPath_EndsWithMatch( "ceasn:Competency" ).Where( m => m.Path.ToLower().Contains( "alignment >" ) || m.Path.ToLower().Contains( "alignment <" ) ).ToList();
 							var alignedCompetencyURIs = alignedCompetencyList.SelectMany( m => m.URIs ).Distinct().ToList();
 							var alignedCompetencyData = GetTopRelatedItems( alignedCompetencyURIs, results.RelatedItems, errors );
 							var alignedCompetencyTotal = alignedCompetencyList.Sum( m => m.TotalURIs );
@@ -2831,6 +3190,7 @@ namespace workIT.Services
 							var conceptSchemeTotal = conceptSchemeList.Sum( m => m.TotalURIs );
 
 							resultDebug[ "Farthest Step" ] = "Processing Gray Buttons";
+
 							output.Results.Add( Result( result.Name.ToString(), result.Description.ToString(), -1,
 								new Dictionary<string, object>()
 								{
@@ -2878,7 +3238,7 @@ namespace workIT.Services
 									{
 										CategoryName = "Credentials",
 										CategoryLabel = "Credentials",
-										DisplayTemplate = "{#} Related Credential{s}",
+										DisplayTemplate = "{#} Related Credential(s)",
 										Name = "credentials",
 										TotalItems = credentialTotal,
 										SearchQueryType = "link",
@@ -3024,7 +3384,7 @@ namespace workIT.Services
 										{
 											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceterms:name" ] ),
 											TargetType = ButtonSearchTypes.Credential.ToString(),
-											TargetCTID = m[ "ceterms:ctid" ].ToString()
+											TargetCTID = (string) m[ "ceterms:ctid" ] ?? ""
 										} ) )
 									},
 									new SearchResultButton()
@@ -3037,7 +3397,7 @@ namespace workIT.Services
 										{
 											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceterms:name" ] ),
 											TargetType = ButtonSearchTypes.AssessmentProfile.ToString(),
-											TargetCTID = m[ "ceterms:ctid" ].ToString()
+											TargetCTID = (string) m[ "ceterms:ctid" ] ?? ""
 										} ) )
 									},
 									new SearchResultButton()
@@ -3050,12 +3410,12 @@ namespace workIT.Services
 										{
 											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceterms:name" ] ),
 											TargetType = ButtonSearchTypes.LearningOpportunityProfile.ToString(),
-											TargetCTID = m[ "ceterms:ctid" ].ToString()
+											TargetCTID = (string) m[ "ceterms:ctid" ] ?? ""
 										} ) )
 									},
 									new SearchResultButton()
 									{
-										CategoryLabel = alignedFrameworkTotal > 1 ? "Aligned Frameworks" : "Aligned Framework",
+										CategoryLabel = alignedFrameworkTotal > 1 ? "Framework Alignments" : "Framework Alignment",
 										CategoryType = ButtonCategoryTypes.Connection.ToString(),
 										HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 										TotalItems = alignedFrameworkTotal,
@@ -3063,22 +3423,24 @@ namespace workIT.Services
 										{
 											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceasn:name" ] ),
 											TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
-											TargetCTID = m[ "ceterms:ctid" ].ToString()
+											TargetCTID = (string) m[ "ceterms:ctid" ] ?? ""
 										} ) )
 									},
 									new SearchResultButton()
 									{
-										CategoryLabel = alignedCompetencyTotal > 1 ? "Aligned Competencies" : "Aligned Competency",
+										CategoryLabel = alignedCompetencyTotal > 1 ? "Competency Alignments" : "Competency Alignment",
 										CategoryType = ButtonCategoryTypes.Connection.ToString(),
 										HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 										TotalItems = alignedCompetencyTotal,
 										Items = alignedCompetencyData.Take(10).ToList().ConvertAll( m => JObject.FromObject(new SearchResultButton.Helpers.DetailPageLink()
 										{
-											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceasn:name" ] ),
+											TargetLabel = CompetencyFrameworkServices.GetEnglish( m[ "ceasn:competencyText" ] ),
 											TargetType = ButtonSearchTypes.CompetencyFramework.ToString(),
-											TargetCTID = m[ "ceasn:isPartOf" ].ToString()
+											TargetCTID = (string) m[ "ceasn:isPartOf" ] ?? ""
 										} ) )
 									},
+									/*
+									*/
 									new SearchResultButton()
 									{
 										CategoryLabel = conceptSchemeTotal > 1 ? "Related Concept Schemes" : "Related Concept Scheme",
@@ -3182,7 +3544,7 @@ namespace workIT.Services
 						{
 							CategoryName = "Credentials",
 							CategoryLabel = "Credentials",
-							DisplayTemplate = "{#} Related Credential{s}",
+							DisplayTemplate = "{#} Related Credential(s)",
 							Name = "credentials",
 							TotalItems = relatedItemsForResult.Credentials.TotalItems,
 							SearchQueryType = "link",
@@ -3363,7 +3725,7 @@ namespace workIT.Services
 							//new Models.Helpers.SearchTag()
 							//{
 							//	CategoryName = "Credentials",
-							//	DisplayTemplate = "{#} Credential{s}",
+							//	DisplayTemplate = "{#} Credential(s)",
 							//	Name = "credentials", //The CSS on the search page will look for an icon associated with this
 							//	TotalItems = item.ReferencedByCredentials, //Replace this with the count
 							//	SearchQueryType = "text",
@@ -3543,7 +3905,12 @@ namespace workIT.Services
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
 						 { "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "PathwaySet" },
+						{ "T_CTDLType", "ceterms:PathwaySet" },
+						{ "T_CTDLTypeLabel", "Pathway Set" }
 					},
 					null,
 					new List<Models.Helpers.SearchTag>()
@@ -3592,7 +3959,12 @@ namespace workIT.Services
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
 						 { "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", "TransferValueProfile" },
+						{ "T_CTDLType", "ceterms:TransferValueProfile" },
+						{ "T_CTDLTypeLabel", "Transfer Value Profile" }
 					},
 					null,
 					null
@@ -3608,7 +3980,7 @@ namespace workIT.Services
 			{
 				//TODO - need to improve use of entity_cache. HINT: just add/update as part of the import!
 				//TEMP, try credential
-				var cred = CredentialManager.GetByCtid( ctid );
+				var cred = CredentialManager.GetMinimumByCtid( ctid );
 				if ( cred != null && cred.Id > 0 )
 				{
 					entity = CF.EntityManager.GetEntity( cred.RowId, false );
@@ -3617,7 +3989,7 @@ namespace workIT.Services
 			}
 			if ( entity == null || entity.Id == 0 )
 			{
-				var org = OrganizationManager.GetByCtid( ctid );
+				var org = OrganizationManager.GetSummaryByCtid( ctid );
 				if ( org != null && org.Id > 0 )
 				{
 					entity = CF.EntityManager.GetEntity( org.RowId, false );
@@ -3626,7 +3998,7 @@ namespace workIT.Services
 			}
 			if ( entity == null || entity.Id == 0 )
 			{
-				var record = AssessmentManager.GetByCtid( ctid );
+				var record = AssessmentManager.GetSummaryByCtid( ctid );
 				if ( record != null && record.Id > 0 )
 				{
 					entity = CF.EntityManager.GetEntity( record.RowId, false );
@@ -3734,6 +4106,19 @@ namespace workIT.Services
 				catch { }
 			}
 			return result;
+		}
+		//
+
+		public JArray ConvertAddressesToJArray(List<Address> input )
+		{
+			try
+			{
+				return JArray.FromObject( input );
+			}
+			catch
+			{
+				return new JArray();
+			}
 		}
 		//
 
@@ -4121,7 +4506,877 @@ namespace workIT.Services
 
 		#endregion
 
-	
+		#region FILTERS FOR NEW FINDER
+		//public static FilterResponse GetCredentialFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 1;
+		//	string searchType = "credential";
+		//	string label = "credential";
+		//	string labelPlural= "credentials";
+		//	string key = searchType + "_filters";
+
+		//	FilterResponse filters = new FilterResponse( searchType );
+		//	if ( IsFilterAvailableFromCache( searchType, ref filters ) )
+		//	{
+		//		//return filters;
+		//	}
+		//	try
+		//	{
+		//		var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+		//		var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+		//		var credentialTypes = enumServices.GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
+		//		var credStatusTypes = enumServices.GetCredentialStatusType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
+		//		var credAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 18, entityTypeId, getAll );
+		//		var credLoppDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, entityTypeId, getAll );
+		//		var connections = enumServices.GetCredentialConnectionsFilters( EnumerationType.MULTI_SELECT, getAll );
+		//		var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+		//		var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+		//		var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+		//		//frameworks
+
+
+		//		/* TODO
+		//		 * handle history
+		//		 */
+		//		var filter = new MSR.Filter();
+		//		filters.Filters = new List<Filter>();
+
+		//		//
+		//		//competencies don't have an autocomplete
+		//		var history = new MSR.Filter( "History" )
+		//		{
+		//			Label = "History",
+		//			Description = string.Format( "Use Last Updated and Created dates to search for {0}.", labelPlural )
+		//		};
+		//		history.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Description = "Last Updated",
+		//			Label = "From",
+		//			URI = "lastUpdatedFrom",
+		//			InterfaceType = APIFilter.FilterItem_TextValue
+		//		} );
+		//		history.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = "To",
+		//			URI = "lastUpdatedTo",
+		//			InterfaceType = APIFilter.FilterItem_TextValue
+		//		} );
+		//		history.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Description = "Created",
+		//			Label = "From",
+		//			URI = "createdFrom",
+		//			InterfaceType = APIFilter.FilterItem_TextValue
+		//		} );
+		//		history.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = "To",
+		//			URI = "createdTo",
+		//			InterfaceType = APIFilter.FilterItem_TextValue
+		//		} );
+		//		filters.Filters.Add( history );
+
+
+		//		//
+		//		if ( credentialTypes != null && credentialTypes.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "CredentialType", credentialTypes );
+		//			filters.Filters.Add( filter );
+		//		}
+		//		//=====QA
+		//		if ( qaReceived != null && qaReceived.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "Quality Assurance", qaReceived, string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ) );
+		//			//just in case
+		//			filter.Label = "Quality Assurance";
+		//			filter.URI = "filter:Organization";
+		//			//filter = new MSR.Filter()
+		//			//{
+		//			//	Label = "Quality Assurance",
+		//			//	URI = "filter:Organization",
+		//			//	//CategoryId = qaReceived.Id,
+		//			//	Description = string.Format("Select the type(s) of quality assurance to filter relevant {0}.", labelPlural),
+		//			//	MicroSearchGuidance = string.Format("Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label),
+		//			//	SearchType = searchType,
+		//			//	SearchTypeContext = "organizations",
+		//			//};
+		//			filter.Items.Add( new MSR.FilterItem()
+		//			{
+		//				Label = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
+		//				URI = "interfaceType:TextValue",
+		//				InterfaceType = APIFilter.InterfaceType_Autocomplete
+		//			} );
+		//			//filters.Filters.Add( ConvertEnumeration( filter, qaReceived ) );
+		//			filters.Filters.Add( filter );
+
+		//		}
+
+		//		//
+		//		if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "AudienceLevelType", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
+		//			filters.Filters.Add( filter );
+		//		}
+
+		//		if ( audienceTypes != null && audienceTypes.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "AudienceType", audienceTypes, string.Format( "Select the applicable audience types that are the target of {0}. Note that many {0} will not have specific audience types.", labelPlural, labelPlural ) );
+		//			filters.Filters.Add( filter );
+		//		}
+		//		//
+		//		if ( connections != null && connections.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "CredentialConnection", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+		//			filters.Filters.Add( filter );
+		//		}
+		//		//competencies don't have an autocomplete
+		//		var competencies = new MSR.Filter( "Competencies" )
+		//		{
+		//			Label = "Competencies",
+		//			Description = string.Format( "Select 'Has Competencies' to search for {0} with any competencies.", labelPlural ),
+		//			//MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+		//			//HasAny = new FilterItem()
+		//			//{
+		//			//	Label = "Has Competencies (any type)",
+		//			//	Value = "credReport:HasCompetencies"
+		//			//}
+		//		};
+		//		competencies.Items.Add( new MSR.FilterItem()
+		//		{
+		//			//Description = string.Format( "Select 'Has Competencies' to search for {0} with any competencies.", labelPlural ),
+		//			Label = "Has Competencies (any type)",
+		//			URI = "credReport:HasCompetencies",
+		//			InterfaceType = APIFilter.InterfaceType_Checkbox
+		//		} );
+		//		competencies.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+		//			URI = "interfaceType:TextValue",
+		//			InterfaceType = APIFilter.InterfaceType_Text
+		//		} );
+		//		filters.Filters.Add( competencies );
+
+		//		//======================================
+		//		filter = new MSR.Filter( "Subjects" )
+		//		{
+		//			Label = "Subject Areas",
+		//			Description = "",
+		//		};
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Description = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+		//			URI = APIFilter.FilterItem_TextValue,
+		//			InterfaceType = APIFilter.InterfaceType_Autocomplete
+		//		} );
+		//		filters.Filters.Add( filter );
+
+		//		//======================================
+		//		filter = new MSR.Filter()
+		//		{
+		//			Label = "Occupations",
+		//			URI = "filter:OccupationType",
+		//			Description = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+		//		};
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = "Has Occupations",
+		//			URI = "credReport:HasOccupations",
+		//			InterfaceType = APIFilter.InterfaceType_Checkbox
+		//		} );
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = string.Format( "Find and select the occupations to filter relevant {0}.", labelPlural ),
+		//			URI = "interfaceType:TextValue",
+		//			InterfaceType = APIFilter.InterfaceType_Autocomplete
+		//		} );
+		//		filters.Filters.Add( filter );
+
+		//		//======================================
+		//		//
+		//		filter = new MSR.Filter()
+		//		{
+		//			Label = "Industries",
+		//			URI = "filter:IndustryType",
+		//			Description = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+		//		};
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = "Has Industries",
+		//			URI = "credReport:HasIndustries",
+		//			InterfaceType = APIFilter.InterfaceType_Checkbox
+		//		} );
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+		//			URI = "interfaceType:TextValue",
+		//			InterfaceType = APIFilter.InterfaceType_Autocomplete
+		//		} );
+		//		filters.Filters.Add( filter );
+
+		//		//======================================
+		//		filter = new MSR.Filter()
+		//		{
+		//			Label = "Instructional Programs",
+		//			URI = "filter:InstructionalProgramType",
+		//			Description = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+		//		};
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = "Has Instructional Programs",
+		//			URI = "credReport:HasCIP",
+		//			InterfaceType = APIFilter.InterfaceType_Checkbox
+		//		} );
+		//		filter.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Label = string.Format( "Find and select the instructional programs to filter relevant {0}.", labelPlural ),
+		//			URI = "interfaceType:TextValue",
+		//			InterfaceType = APIFilter.InterfaceType_Autocomplete
+		//		} );
+		//		filters.Filters.Add( filter );
+
+
+		//		//
+		//		if ( credAsmtDeliveryTypes != null && credAsmtDeliveryTypes.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "AssessmentDeliveryType", credAsmtDeliveryTypes, "Select the type of Assessment delivery method(s)." );
+		//			filters.Filters.Add( filter );
+		//		}
+		//		if ( credLoppDeliveryTypes != null && credLoppDeliveryTypes.Items.Any() ) 
+		//		{
+		//			filter = ConvertEnumeration( "LearningDeliveryType", credLoppDeliveryTypes, "Select the type of Learning Opportunity delivery method(s)." );
+		//			filters.Filters.Add( filter );
+		//		}
+
+		//		//
+		//		if ( credStatusTypes != null && credStatusTypes.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "CredentialStatusType", credStatusTypes, "Select one or more status to display credentials for those Credential Status" );
+		//			filters.Filters.Add( filter );
+		//		}
+
+		//		//
+		//		if ( languages != null && languages.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "InLanguage", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+		//			filters.Filters.Add( filter );
+		//		}
+
+
+		//		//
+		//		if ( otherFilters != null && otherFilters.Items.Any() )
+		//		{
+		//			filter = ConvertEnumeration( "OtherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+		//			filters.Filters.Add( filter );
+		//		}
+		//		//
+		//		AddFilterToCache( filters );
+		//	} catch(Exception ex)
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetCredentialFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+		//public static FilterQueryOld GetOrganizationFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 2;
+		//	string searchType = "organization";
+		//	string label = "organization";
+		//	string labelPlural = "organizations";
+		//	FilterQueryOld filters = new FilterQueryOld( searchType );
+		//	//FilterResponse filters = new FilterResponse( searchType );
+
+		//	try
+		//	{
+		//		var orgServiceTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+		//		var orgTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+		//		var orgSectorTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+		//		var claimTypes = enumServices.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, getAll );
+
+		//		var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+		//		var qaPerformed = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll, true );
+		//		var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+
+		//		if ( orgServiceTypes != null && orgServiceTypes.Items.Any() )
+		//			filters.OrganizationServiceTypes = ConvertEnumeration( "servicetypes", orgServiceTypes, "Select a service(s) offered by an organization." );
+		//		//
+		//		if ( orgTypes != null && orgTypes.Items.Any() )
+		//			filters.OrganizationTypes = ConvertEnumeration( "organizationtypes", orgTypes, "Select the organization type(s)" );
+		//		if ( orgSectorTypes != null && orgSectorTypes.Items.Any() )
+		//			filters.OrganizationSectorTypes = ConvertEnumeration( "sectortypes", orgSectorTypes, "Select the type of sector for an organization." );
+		//		if ( claimTypes != null && claimTypes.Items.Any() )
+		//			filters.VerificationClaimTypes = ConvertEnumeration( "claimTypes", claimTypes, "Select the type of claim for an organization." );
+		//		//
+		//		//
+		//		filters.Industries = new MSR.Filter()
+		//		{
+		//			Label = "Industries",
+		//			URI = "industries",
+		//			HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "industries",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Industries",
+		//				URI = "orgReport:HasIndustries"
+		//			}
+		//		};
+		//		//
+		//		if ( qaReceived != null && qaReceived.Items.Any() )
+		//		{
+		//			var f = new MSR.Filter()
+		//			{
+		//				Label = "Quality Assurance",
+		//				URI = "qualityAssurance",
+		//				//CategoryId = qaReceived.Id,
+		//				Description = "Select the type(s) of quality assurance to filter relevant organizations.",
+		//				MicroSearchGuidance = "Optionally, find and select one or more organizations that perform organization Quality Assurance."
+		//			};
+		//			filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+		//		}
+
+		//		if ( qaPerformed != null && qaPerformed.Items.Any() )
+		//		{
+		//			var f = new MSR.Filter()
+		//			{
+		//				Label = "Quality Assurance Performed",
+		//				URI = "qualityAssurancePerformed",
+		//				//CategoryId = qaPerformed.Id,
+		//				Description = "Select one or more types of quality assurance to display organizations that have performed the selected types of assurance.",
+		//			};
+		//			filters.QualityAssurancePerformed = ConvertEnumeration( f, qaPerformed );
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetOrganizationFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+		//public static FilterQueryOld GetAssessmentFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 3;
+		//	string searchType = "assessment";
+		//	string label = "assessment";
+		//	string labelPlural = "assessments";
+		//	FilterQueryOld filters = new FilterQueryOld( searchType );
+
+		//	try
+		//	{
+		//		var asmtMethodTypes = enumServices.GetEnumeration( "assessmentMethodType", EnumerationType.MULTI_SELECT, false, getAll );
+		//		var asmtUseTypes = enumServices.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, getAll );
+		//		var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+		//		var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+		//		var connections = enumServices.GetAssessmentsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
+
+		//		//
+		//		var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
+		//		var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+		//		var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+		//		var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+		//		//
+		//		var scoringMethodTypes = enumServices.GetEnumeration( "scoringMethod", EnumerationType.MULTI_SELECT, false, getAll );
+		//		/* TODO
+		//		 * 
+		//		 * QA received accredited, approved, recognized, regulated 
+		//		 * other filters
+		//		 * Has any?
+		//		 *	industry, occupation, 
+		//		 * Connections
+		//		 * - ispartof, is prep, etc
+		//		 */
+
+		//		if ( asmtMethodTypes != null && asmtMethodTypes.Items.Any() )
+		//			filters.AssessmentMethodTypes = ConvertEnumeration( "assessmentMethodType", asmtMethodTypes, "Select the assessment method(s) type." );
+		//		if ( asmtUseTypes != null && asmtUseTypes.Items.Any() )
+		//			filters.AssessmentUseTypes = ConvertEnumeration( "assessmentUse", asmtUseTypes, "Select the type(s) of assessment uses." );
+		//		if ( deliveryTypes != null && deliveryTypes.Items.Any() )
+		//			filters.AssessmentDeliveryTypes = ConvertEnumeration( "assessmentdeliverytypes", deliveryTypes, "Select the type of delivery method(s)." );
+
+		//		//
+		//		if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+		//			filters.AudienceLevels = ConvertEnumeration( "audienceleveltypes", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
+		//		if ( audienceTypes != null && audienceTypes.Items.Any() )
+		//			filters.AudienceTypes = ConvertEnumeration( "Audiencetypes", audienceTypes, "Select the applicable audience types that are the target of assessments. Note that many assessments will not have specific audience types." );
+		//		//
+		//		if ( connections != null && connections.Items.Any() )
+		//			filters.Connections = ConvertEnumeration( "connections", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+		//		//
+		//		if ( languages != null && languages.Items.Any() )
+		//			filters.Languages = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+		//		if ( scoringMethodTypes != null && scoringMethodTypes.Items.Any() )
+		//			filters.ScoringMethodTypes = ConvertEnumeration( "scoringMethod", scoringMethodTypes, "Select the type of scoring method(s)." );
+		//		//
+		//		if ( otherFilters != null && otherFilters.Items.Any() )
+		//			filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+		//		//
+		//		//competencies don't have an autocomplete
+		//		filters.Competencies = new MSR.Filter()
+		//		{
+		//			Label = "Competencies",
+		//			URI = "competencies",
+		//			HasAnyGuidance = string.Format( "Select 'Has Assesses Competencies' to search for {0} with any competencies.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Assesses Competencies",
+		//				URI = "asmtReport:HasCompetencies"
+		//			}
+		//		};
+		//		filters.SubjectAreas = new MSR.Filter()
+		//		{
+		//			Label = "Subject Areas",
+		//			URI = "subjectAreas",
+		//			Description = "",
+		//			MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "subjects"
+		//		};
+		//		//
+		//		filters.Occupations = new MSR.Filter()
+		//		{
+		//			Label = "Occupations",
+		//			URI = "occupations",
+		//			HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "occupations",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Occupations",
+		//				URI = "asmtReport:HasOccupations"
+		//			}
+		//		};
+		//		//
+		//		filters.Industries = new MSR.Filter()
+		//		{
+		//			Label = "Industries",
+		//			URI = "industries",
+		//			HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "industries",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Industries",
+		//				URI = "asmtReport:HasIndustries"
+		//			}
+		//		};
+		//		//
+		//		filters.InstructionalPrograms = new MSR.Filter()
+		//		{
+		//			Label = "Instructional Programs",
+		//			URI = "instructionalPrograms",
+		//			HasAnyGuidance = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select instructional programs to filter {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "instructionalprogramtypes",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has InstructionalPrograms",
+		//				URI = "asmtReport:HasCIP"
+		//			}
+		//		};
+		//		//
+		//		if ( qaReceived != null && qaReceived.Items.Any() )
+		//		{
+		//			var f = new MSR.Filter()
+		//			{
+		//				Label = "Quality Assurance",
+		//				URI = "qualityAssurance",
+		//				//CategoryId = qaReceived.Id,
+		//				Description = string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ),
+		//				MicroSearchGuidance = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
+		//				SearchType = searchType,
+		//				SearchTypeContext = "organizations",
+		//			};
+		//			filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetAssessmentFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+
+		//public static FilterQueryOld GetLearningOppFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 7;
+		//	string searchType = "learningopportunity";
+		//	string label = "learning opportunity";
+		//	string labelPlural = "learningopportunities";
+		//	FilterQueryOld filters = new FilterQueryOld( searchType );
+
+		//	try
+		//	{
+		//		var asmtMethodTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, entityTypeId, getAll );
+		//		var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+		//		var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
+		//		var connections = enumServices.GetLearningOppsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
+
+		//		//
+		//		var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
+		//		var loppAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, entityTypeId, getAll );
+		//		var learningMethodTypes = enumServices.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false , getAll );
+		//		var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+		//		var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+		//		var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+		//		/* TODO
+		//		 * QA received accredited, approved, recognized, regulated 
+		//		 * other filters
+		//		 * Has any?
+		//		 *	industry, occupation, 
+		//		 * Connections
+		//		 * - ispartof, is prep, etc
+		//		 */
+
+		//		if ( asmtMethodTypes != null && asmtMethodTypes.Items.Any() )
+		//			filters.AssessmentMethodTypes = ConvertEnumeration( "assessmentmethodtypes", asmtMethodTypes );
+		//		//
+		//		if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() )
+		//			filters.AudienceLevels = ConvertEnumeration( "audienceleveltypes", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context.." );
+		//		if ( audienceTypes != null && audienceTypes.Items.Any() )
+		//			filters.AudienceTypes = ConvertEnumeration( "Audiencetypes", audienceTypes, string.Format( "Select the applicable audience types that are the target of {0}. Note that many {0} will not have specific audience types.", labelPlural, labelPlural ) );
+		//		//
+		//		if ( connections != null && connections.Items.Any() )
+		//			filters.Connections = ConvertEnumeration( "loppConnections", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+		//		//
+		//		if ( deliveryTypes != null && deliveryTypes.Items.Any() )
+		//			filters.LearningDeliveryTypes = ConvertEnumeration( "learningdeliverytypes", deliveryTypes, "Select the type(s) of delivery method(s)." );
+
+		//		if ( loppAsmtDeliveryTypes != null && loppAsmtDeliveryTypes.Items.Any() )
+		//			filters.AssessmentDeliveryTypes = ConvertEnumeration( "assessmentdeliverytypes", loppAsmtDeliveryTypes, "Select the type(s) of assessment delivery method(s)." );
+		//		//
+		//		if ( languages != null && languages.Items.Any() )
+		//			filters.Languages = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+		//		//
+		//		if ( learningMethodTypes != null && learningMethodTypes.Items.Any() )
+		//			filters.LearningMethodTypes = ConvertEnumeration( "learningmethodtypes", learningMethodTypes, "Select the type(s) of learning method." );
+		//		//
+		//		if ( otherFilters != null && otherFilters.Items.Any() )
+		//			filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+		//		//
+		//		//competencies don't have an autocomplete
+		//		filters.Competencies = new MSR.Filter()
+		//		{
+		//			Label = "Competencies",
+		//			URI = "competencies",
+		//			HasAnyGuidance = string.Format( "Select 'Has Teaches Competencies' to search for {0} with any competencies.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant competencies and click Add.", labelPlural ),
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Teaches Competencies",
+		//				URI = "loppReport:HasCompetencies"
+		//			}
+		//		};
+		//		//
+		//		filters.SubjectAreas = new MSR.Filter()
+		//		{
+		//			Label = "Subject Areas",
+		//			URI = "subjectAreas",
+		//			Description = "",
+		//			MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "subjects"
+		//		};
+		//		//
+		//		filters.Occupations = new MSR.Filter()
+		//		{
+		//			Label = "Occupations",
+		//			URI = "occupations",
+		//			HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "occupations",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Occupations",
+		//				URI = "loppReport:HasOccupations"
+		//			}
+		//		};
+		//		//
+		//		filters.Industries = new MSR.Filter()
+		//		{
+		//			Label = "Industries",
+		//			URI = "industries",
+		//			HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "industries",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Industries",
+		//				URI = "loppReport:HasIndustries"
+		//			}
+		//		};
+		//		//
+		//		filters.InstructionalPrograms = new MSR.Filter()
+		//		{
+		//			Label = "Instructional Programs",
+		//			URI = "instructionalPrograms",
+		//			HasAnyGuidance = string.Format( "Select 'Has Instructional Programs' to search for {0} with any instructional program classifications.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select instructional programs to filter {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "instructionalprogramtypes",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has InstructionalPrograms",
+		//				URI = "loppReport:HasCIP"
+		//			}
+		//		};
+		//		//
+		//		if ( qaReceived != null && qaReceived.Items.Any() )
+		//		{
+		//			var f = new MSR.Filter()
+		//			{
+		//				Label = "Quality Assurance",
+		//				URI = "qualityAssurance",
+		//				//CategoryId = qaReceived.Id,
+		//				Description = string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ),
+		//				MicroSearchGuidance = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
+		//				SearchType = searchType,
+		//				SearchTypeContext = "organizations",
+		//			};
+		//			filters.QualityAssurance = ConvertEnumeration( f, qaReceived );
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetLearningOppFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+
+		//public static FilterQueryOld GetPathwayFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 8;
+		//	string searchType = "pathway";
+		//	string label = "Pathway";
+		//	string labelPlural = "pathways";
+		//	FilterQueryOld filters = new FilterQueryOld( searchType );
+
+		//	try
+		//	{
+
+		//		var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+		//		//
+		//		if ( otherFilters != null && otherFilters.Items.Any() )
+		//			filters.OtherFilters = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+		//		//
+		//		filters.SubjectAreas = new MSR.Filter()
+		//		{
+		//			Label = "Subject Areas",
+		//			URI = "subjectAreas",
+		//			Description = "",
+		//			MicroSearchGuidance = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "subjects"
+		//		};
+		//		//
+		//		filters.Occupations = new MSR.Filter()
+		//		{
+		//			Label = "Occupations",
+		//			URI = "occupations",
+		//			HasAnyGuidance = string.Format( "Select 'Has Occupations' to search for {0} with any occupations.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the occupation(s) to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "occupations",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Occupations",
+		//				URI = "pathwayReport:HasOccupations"
+		//			}
+		//		};
+		//		//
+		//		filters.Industries = new MSR.Filter()
+		//		{
+		//			Label = "Industries",
+		//			URI = "industries",
+		//			HasAnyGuidance = string.Format( "Select 'Has Industries' to search for {0} with any industries.", labelPlural ),
+		//			MicroSearchGuidance = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+		//			SearchType = searchType,
+		//			SearchTypeContext = "industries",
+		//			HasAny = new FilterItem()
+		//			{
+		//				Label = "Has Industries",
+		//				URI = "pathwayReport:HasIndustries"
+		//			}
+		//		};
+
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+		//public static FilterQueryOld GetNoFilters( string label )
+		//{
+		//	FilterQueryOld filters = new FilterQueryOld(label);
+
+		//	try
+		//	{
+		//		filters.Connections = new MSR.Filter()
+		//		{
+		//			Label = label,
+		//			URI = label.ToLower().Replace(" ",""),
+		//			Description = string.Format( "There are no filters currently available for {0}.", label ),
+		//		};
+
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+		//public static FilterQueryOld GetCompetencyFrameworkFilters( bool getAll = false )
+		//{
+		//	EnumerationServices enumServices = new EnumerationServices();
+		//	int entityTypeId = 10;
+		//	string searchType = "CompetencyFramework";
+		//	string label = "Competency Framework";
+		//	string labelPlural = "Competency Frameworks";
+		//	FilterQueryOld filters = new FilterQueryOld( searchType );
+
+		//	try
+		//	{
+		//		filters.Competencies = new MSR.Filter()
+		//		{
+		//			Label = "Competency Frameworks",
+		//			URI = "competencyFrameworks",
+		//			Description = string.Format( "There are no filters currently available for Competency Frameworks.", labelPlural ),
+
+		//		};
+
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+		//	}
+		//	return filters;
+		//}
+
+		//public static MSR.Filter ConvertEnumeration( MSR.Filter output, Enumeration e )
+		//{
+
+		//	foreach ( var item in e.Items )
+		//	{
+		//		output.Items.Add( new MSR.FilterItem()
+		//		{
+		//			Id = item.Id,
+		//			Label = item.Name,
+		//			//Schema = item.SchemaName,
+		//			URI = item.SchemaName,
+		//			Description = item.Description,
+		//			InterfaceType = "filterType:CheckBox"
+
+		//		} );
+		//	}
+
+		//	return output;
+		//}
+		public static MSR.Filter ConvertEnumeration( string filterName, Enumeration e, string guidance = "" )
+		{
+			var output = new MSR.Filter( filterName )
+			{
+				//URI = filterName,
+				//CategoryId = e.Id,
+				Label = filterName,
+				Description = guidance
+			};
+			//test
+			if (!string.IsNullOrWhiteSpace(e.SchemaName) && e.SchemaName.IndexOf("ceterms:")==0 )
+			{
+				
+			}
+			foreach ( var item in e.Items )
+			{
+				output.Items.Add( new MSR.FilterItem()
+				{
+					Id = item.Id,
+					Label = item.Name,
+					URI = item.SchemaName,
+					Description = item.Description,
+					InterfaceType = MSR.APIFilter.InterfaceType_Checkbox
+				} );
+			}
+
+			return output;
+		}
+
+		//public static bool IsFilterAvailableFromCache( string searchType, ref FilterResponse output )
+		//{
+		//	int cacheMinutes = 120;
+		//	DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+		//	string key = searchType + "_queryFilter";
+
+		//	if ( HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
+		//	{
+		//		var cache = new CachedFilter();
+		//		try
+		//		{
+		//			cache = ( CachedFilter )HttpRuntime.Cache[ key ];
+		//			if ( cache.lastUpdated > maxTime )
+		//			{
+		//				LoggingHelper.DoTrace( 6, string.Format( "===SearchServices.IsFilterAvailableFromCache === Using cached version of FilterQuery, SearchType: {0}.", cache.Item.SearchType ) );
+		//				output= cache.Item;
+		//				return true;
+		//			}
+		//		}
+		//		catch ( Exception ex )
+		//		{
+		//			LoggingHelper.DoTrace( 6, "SearchServices.IsFilterAvailableFromCache. === exception " + ex.Message );
+		//		}
+		//	}
+			
+		//	return false;
+		//}
+		//public static void AddFilterToCache( FilterResponse entity )
+		//{
+		//	int cacheMinutes = 120;
+
+		//	string key = entity.SearchType + "_queryFilter";
+
+		//	if ( cacheMinutes > 0 )
+		//	{
+		//		var newCache = new CachedFilter()
+		//		{
+		//			Item = entity,
+		//			lastUpdated = DateTime.Now
+		//		};
+		//		if ( HttpContext.Current != null )
+		//		{
+		//			if ( HttpContext.Current.Cache[ key ] != null )
+		//			{
+		//				HttpRuntime.Cache.Remove( key );
+		//				HttpRuntime.Cache.Insert( key, newCache );
+		//				LoggingHelper.DoTrace( 7, string.Format( "SearchServices.AddFilterToCache $$$ Updating cached version of FilterQuery, SearchType: {0}", entity.SearchType ) );
+
+		//			}
+		//			else
+		//			{
+		//				LoggingHelper.DoTrace( 7, string.Format( "SearchServices.AddFilterToCache ****** Inserting new cached version of SearchType, SearchType: {0}", entity.SearchType ) );
+
+		//				System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
+		//			}
+		//		}
+		//	}
+
+		//	//return entity;
+		//}
+
+		#endregion
 	}
 	public class CachedFilter
 	{
@@ -4130,7 +5385,7 @@ namespace workIT.Services
 			lastUpdated = DateTime.Now;
 		}
 		public DateTime lastUpdated { get; set; }
-		//public FilterQuery Item { get; set; }
+		public FilterResponse Item { get; set; }
 
 	}
 }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using MD = workIT.Models.Detail;
+using MD = workIT.Models.API;
 
 
 namespace workIT.Models.Elastic
@@ -13,7 +13,9 @@ namespace workIT.Models.Elastic
 	{
 		public CostProfile()
 		{
+			CTDLTypeLabel = "Cost Profile";
 		}
+		public string CTDLTypeLabel { get; set; }
 		public string Name { get; set; }
 		//required
 		//URL

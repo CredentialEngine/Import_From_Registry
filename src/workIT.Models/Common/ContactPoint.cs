@@ -46,6 +46,9 @@ namespace workIT.Models.Common
 
         #region Used by Import
         public List<string> PhoneNumbers { get; set; }
+		public List<string> FaxNumber { get; set; } = new List<string>();
+
+		//
 		public List<string> Emails { get; set; }
 		/// <summary>
 		/// A social media resource for the resource being described.

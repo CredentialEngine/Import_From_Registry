@@ -10,7 +10,7 @@ using System.Web;
 
 using workIT.Models;
 using workIT.Models.Common;
-using MCD=workIT.Models.Detail;
+using MCD=workIT.Models.API;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
 using ThisEntity = workIT.Models.Common.Credential;
@@ -63,7 +63,9 @@ namespace workIT.Services
 				}
 				else
 				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
+					//only update elatic if has apparent relevent changes
+					if (status.UpdateElasticIndex)
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					//check for embedded items
 					//has part
@@ -94,7 +96,7 @@ namespace workIT.Services
 				CTID = document.CTID,
 				Created = document.Created,
 				LastUpdated = document.LastUpdated,
-				ImageUrl = document.ImageUrl,
+				ImageUrl = document.Image,
 				Name = document.Name,
 				OwningAgentUID = document.OwningAgentUid,
 				OwningOrgId = document.OrganizationId
@@ -654,36 +656,40 @@ namespace workIT.Services
 
 		#endregion
 
-
-
 		#region Retrievals
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisEntity GetMinimumByCtid( string ctid )
         {
             ThisEntity entity = new ThisEntity();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
 
-            return EntityMgr.GetByCtid( ctid );
+            return EntityMgr.GetMinimumByCtid( ctid );
         }
         public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
         {
             ThisEntity entity = new ThisEntity();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
-            var credential = EntityMgr.GetByCtid( ctid );
+            var credential = EntityMgr.GetMinimumByCtid( ctid );
             
             return GetDetail( credential.Id, skippingCache );
             
         }
-        /// <summary>
-        /// Get a minimal credential - typically for a link, or need just basic properties
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        public static ThisEntity GetBasic( int credentialId )
-        {
-            return CredentialManager.GetBasic( credentialId );
-        }
+
+		/// <summary>
+		/// Get a credential for detailed display
+		/// </summary>
+		/// <param name="id"></param>
+		/// <param name="user"></param>
+		/// <param name="skippingCache">If true, do not use the cached version</param>
+		/// <returns></returns>
+		public static ThisEntity GetDetail( int id, bool skippingCache = false )
+		{
+			CredentialRequest cr = new CredentialRequest();
+			cr.IsDetailRequest();
+
+			return GetDetail( id, cr, skippingCache );
+		}
 
 
 
@@ -694,7 +700,7 @@ namespace workIT.Services
         /// <param name="user"></param>
         /// <param name="skippingCache">If true, do not use the cached version</param>
         /// <returns></returns>
-        public static ThisEntity GetDetail( int id, bool skippingCache = false )
+        public static ThisEntity GetDetail( int id, CredentialRequest cr, bool skippingCache = false )
         {
             //
             string statusMessage = "";
@@ -728,8 +734,8 @@ namespace workIT.Services
 
             DateTime start = DateTime.Now;
 
-            CredentialRequest cr = new CredentialRequest();
-            cr.IsDetailRequest();
+            //CredentialRequest cr = new CredentialRequest();
+            //cr.IsDetailRequest();
 
             ThisEntity entity = CredentialManager.GetForDetail( id, cr );
 

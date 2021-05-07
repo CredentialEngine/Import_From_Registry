@@ -41,8 +41,9 @@ namespace workIT.Models.Common
 		/// qdata:percentage
 		/// </summary>
 		public decimal Percentage { get; set; }
-
+		//for our purposes Subject would make more sense as a list of strings
 		public Enumeration Subject { get; set; } = new Enumeration();
+		//public List<string> SubjectList { get; set; } = new List<string>();
 
 		/// <summary>
 		/// A single value for this purpose. 

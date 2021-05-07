@@ -31,6 +31,22 @@ namespace workIT.Factories
 				return true;
 
 			bool isAllValid = true;
+
+			var current = GetAll( parentId );
+			
+			if ( list == null || list.Count == 0 )
+			{
+				if ( current != null && current.Any() )
+				{
+					DeleteAll( parentId, ref status );
+				}
+				return true;
+			}
+			//NOTE: as no longer arbitrarily deleting cost profiles, there can now be duplicates for costprofile items
+			if ( current != null && current.Any() )
+			{
+				DeleteAll( parentId, ref status );
+			}
 			foreach ( ThisEntity item in list )
 			{
 				Save( item, parentId, ref status );
@@ -112,20 +128,79 @@ namespace workIT.Factories
 				}
 				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 				{
-					string message = HandleDBValidationError( dbex, "CostProfileItemManager.Save()", string.Format( "CostProfileId: 0 , CostTypeId: {1}  ", parentId, entity.CostTypeId ));
+					string message = HandleDBValidationError( dbex, "CostProfileItemManager.Save()", string.Format( "parentCTID: {0}, CostProfileId: {1}, CostTypeId: {2}  ", status.Ctid, parentId, entity.CostTypeId ) );
 
 					status.AddError( message );
 					isValid = false;
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, string.Format( "CostProfileItemManager.Save(), CostProfileId: 0 , CostTypeId: {1}  ", parentId, entity.CostTypeId ) );
+					LoggingHelper.LogError( ex, string.Format( "CostProfileItemManager.Save(), parentCTID: {0}, CostProfileId: {1}, CostTypeId: {2}  ", status.Ctid, parentId, entity.CostTypeId ) );
 					isValid = false;
 				}
 			}
 
 			return isValid;
 		}
+		public bool DeleteAll( int costProfileId,  ref SaveStatus status)
+		{
+			bool isValid = false;
+			int expectedDeleteCount = 0;
+
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					var results = context.Entity_CostProfileItem.Where( s => s.CostProfileId == costProfileId )
+						.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+					expectedDeleteCount = results.Count;
+					foreach ( var item in results )
+					{
+						context.Entity_CostProfileItem.Remove( item );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							isValid = true;
+						}
+						else
+						{
+							//if doing a delete on spec, may not have been any properties
+						}
+					}
+
+				}
+				catch ( System.Data.Entity.Infrastructure.DbUpdateConcurrencyException dbcex )
+				{
+					if ( dbcex.Message.IndexOf( "an unexpected number of rows (0)" ) > 0 )
+					{
+						//don't know why this happens, quashing for now.
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. costProfileId: {0}, expectedDeletes: {1}. DbUpdateConcurrencyException: {2}", costProfileId, expectedDeleteCount, dbcex.Message ) );
+						isValid = true;
+					}
+					else
+					{
+						var msg = BaseFactory.FormatExceptions( dbcex );
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. costProfileId: {0}, DbUpdateConcurrencyException: {1}", costProfileId, msg ) );
+					}
+
+				}
+				catch ( Exception ex )
+				{
+					var msg = BaseFactory.FormatExceptions( ex );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. costProfileId: {0}, Exception: {1}", costProfileId, msg ) );
+
+					if ( msg.IndexOf( "was deadlocked on lock resources" ) > 0 )
+					{
+						//retry = true;
+					}
+				}
+			}
+
+			return isValid;
+		}
+
 		public bool Delete( int recordId, ref string statusMessage )
 		{
 			bool isOK = true;
@@ -168,25 +243,53 @@ namespace workIT.Factories
 		#endregion
 
 		#region  retrieval ==================
-
-		
-		public static ThisEntity Get( int profileId, bool includingProperties )
+		public static List<ThisEntity> GetAll( int costProfileId )
 		{
-			ThisEntity entity = new ThisEntity();
+
+			ThisEntity row = new ThisEntity();
+			DurationItem duration = new DurationItem();
+			List<ThisEntity> profiles = new List<ThisEntity>();
+			if ( costProfileId < 1)
+				return profiles;
 
 			using ( var context = new EntityContext() )
 			{
-				DBEntity item = context.Entity_CostProfileItem
-							.SingleOrDefault( s => s.Id == profileId );
+				List<DBEntity> results = context.Entity_CostProfileItem
+						.Where( s => s.CostProfileId == costProfileId )
+						.OrderBy( s => s.Id )
+						.ToList();
 
-				if ( item != null && item.Id > 0 )
+				if ( results != null && results.Count > 0 )
 				{
-					MapFromDB( item, entity, includingProperties );
+					foreach ( DBEntity item in results )
+					{
+						row = new ThisEntity();
+						MapFromDB( item, row, true );
+						profiles.Add( row );
+					}
 				}
-				return entity;
+				return profiles;
 			}
 
 		}//
+
+		//public static ThisEntity Get( int profileId, bool includingProperties )
+		//{
+		//	ThisEntity entity = new ThisEntity();
+
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		DBEntity item = context.Entity_CostProfileItem
+		//					.SingleOrDefault( s => s.Id == profileId );
+
+		//		if ( item != null && item.Id > 0 )
+		//		{
+		//			MapFromDB( item, entity, includingProperties );
+		//		}
+		//		return entity;
+		//	}
+
+		//}//
 		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
@@ -194,6 +297,7 @@ namespace workIT.Factories
 			//if ( profile.CostTypeId == 0 && profile.DirectCostType.HasItems() )
 			//	profile.CostTypeId = CodesManager.GetEnumerationSelection( profile.DirectCostType );
 
+			//get typeId for persistance?
 			profile.CostTypeId = GetCodeItemId( profile.DirectCostType, ref status );
 
 			//&& string.IsNullOrWhiteSpace( profile.CostTypeOther ) 
@@ -203,8 +307,8 @@ namespace workIT.Factories
 			}
 			//
 
-			if ( profile.Price < 1)
-				status.AddWarning( thisClassName + ". A cost must be entered with a cost item." );
+			//if ( profile.Price < 1)
+			//	status.AddWarning( thisClassName + ". A cost must be entered with a cost item." );
 
 		
 			return status.WasSectionValid;
@@ -295,8 +399,7 @@ namespace workIT.Factories
 
 			to.Price = from.Price;
 			to.PaymentPattern = from.PaymentPattern;
-			//TODO  remove description
-			to.Description = null;// 			from.Description;
+
 
 		}
 

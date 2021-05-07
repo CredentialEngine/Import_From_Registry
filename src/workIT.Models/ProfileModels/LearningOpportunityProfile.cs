@@ -9,7 +9,7 @@ using workIT.Models.Common;
 namespace workIT.Models.ProfileModels
 {
     [Serializable] 
-    public class LearningOpportunityProfile : TopLevelObject
+    public class LearningOpportunityProfile : TopLevelObject, IBaseObject
 	{
 		public LearningOpportunityProfile()
 		{
@@ -21,7 +21,6 @@ namespace workIT.Models.ProfileModels
 			DeliveryType = new Enumeration();
             InstructionalProgramType = new Enumeration();
 			HasPart = new List<LearningOpportunityProfile>();
-			IsPartOf = new List<LearningOpportunityProfile>();
 			//IsPartOfConditionProfile = new List<ConditionProfile>();
 			OrganizationRole = new List<OrganizationRoleProfile>();
 			//QualityAssuranceAction = new List<QualityAssuranceActionProfile>();
@@ -131,9 +130,12 @@ namespace workIT.Models.ProfileModels
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
 		//not sure if will use this?
-		public QuantitativeValue CreditValue { get; set; } = new QuantitativeValue();
+		//public QuantitativeValue QVCreditValue { get; set; } = new QuantitativeValue();
+		//public ValueProfile CreditValue { get; set; } = new ValueProfile();
+
 		//20-07-24 updating to handle a list
-		public List<QuantitativeValue> CreditValueList { get; set; } = new List<QuantitativeValue>();
+		//public List<QuantitativeValue> QVCreditValueList { get; set; } = new List<QuantitativeValue>();
+		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
 		public string CreditValueJson { get; set; }
 
 		//[Obsolete]
@@ -208,9 +210,11 @@ namespace workIT.Models.ProfileModels
 		public CodeItemResult OccupationResults { get; set; } = new CodeItemResult();
 		public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
         public List<LearningOpportunityProfile> HasPart { get; set; }
-		public List<LearningOpportunityProfile> IsPartOf { get; set; }
+		public List<LearningOpportunityProfile> IsPartOf { get; set; } = new List<LearningOpportunityProfile>();
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
+		public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
+
 		/// <summary>
 		/// List of ETPL Credentials where is a member
 		/// </summary>
@@ -245,8 +249,10 @@ namespace workIT.Models.ProfileModels
 
 		public Enumeration LearningMethodType { get; set; }
         public CodeItemResult LearningMethodTypes { get; set; } = new CodeItemResult();
-        public List<CostProfile> EstimatedCost { get; set; }
-		public string ExpirationDate { get; set; }
+		public List<string> TargetLearningResource { get; set; } = new List<string>();
+
+		public List<CostProfile> EstimatedCost { get; set; }
+		//public string ExpirationDate { get; set; }
 
 		//public List<FinancialAlignmentObject> FinancialAssistanceOLD { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
@@ -257,10 +263,11 @@ namespace workIT.Models.ProfileModels
         #region import 
         public List<int> HasPartIds { get; set; }
         public List<int> IsPartOfIds { get; set; }
-        
-        //CostManifestId
-        //hmm, need to create a placeholder CMs
-        public List<int> CostManifestIds { get; set; }
+		public List<int> TargetPathwayIds { get; set; } = new List<int>();
+
+		//CostManifestId
+		//hmm, need to create a placeholder CMs
+		public List<int> CostManifestIds { get; set; }
 		public List<int> ConditionManifestIds { get; set; }
 		public List<Guid> AccreditedBy { get; set; }
 		public List<Guid> OwnedBy { get; set; }
@@ -297,7 +304,7 @@ namespace workIT.Models.ProfileModels
 		public List<ConditionProfile> Recommends { get; set; }
 
         public List<ConditionProfile> AdvancedStandingFrom { get; set; }
-        public List<ConditionProfile> AdvancedStandingFor { get; set; }
+        public List<ConditionProfile> IsAdvancedStandingFor { get; set; }
         public List<ConditionProfile> PreparationFrom { get; set; }
         public List<ConditionProfile> IsPreparationFor { get; set; }
         public List<ConditionProfile> IsRequiredFor { get; set; }

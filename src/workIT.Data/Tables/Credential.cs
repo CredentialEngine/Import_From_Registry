@@ -52,6 +52,8 @@ namespace workIT.Data.Tables
         public string SupersededBy { get; set; }
         public string ISICV4 { get; set; }
         public string JsonProperties { get; set; }
+        public Nullable<System.DateTime> ExpirationDate { get; set; }
+        public Nullable<System.Guid> PrimaryOrganizationUid { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }

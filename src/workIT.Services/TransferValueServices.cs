@@ -1,28 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Runtime.Caching;
-using System.Text;
-using System.Threading;
-using System.Web;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System.Collections.Generic;
 
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
-
-using ElasticHelper = workIT.Services.ElasticServices;
-
 using workIT.Models.Search;
 using workIT.Utilities;
 
+using ElasticHelper = workIT.Services.ElasticServices;
 using EntityMgr = workIT.Factories.TransferValueProfileManager;
 using MP = workIT.Models.Common;
-using ME = workIT.Models.Elastic;
 using ThisEntity = workIT.Models.Common.TransferValueProfile;
 
 namespace workIT.Services

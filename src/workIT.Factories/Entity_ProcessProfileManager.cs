@@ -212,44 +212,70 @@ namespace workIT.Factories
 		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			{
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
 
 			EntityPropertyManager mgr = new EntityPropertyManager();
-			if ( mgr.AddProperties( entity.ExternalInput, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE, false, ref status ) == false )
+			//first clear all properties
+			mgr.DeleteAll( relatedEntity, ref status );
+			//
+			if ( mgr.AddProperties( entity.ExternalInputType, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE, false, ref status ) == false )
+				isAllValid = false;
+			if ( mgr.AddProperties( entity.DataCollectionMethodType, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE, false, ref status ) == false )
 				isAllValid = false;
 
-			if ( HandleTargets( entity, ref status ) == false )
+			if ( HandleTargets( entity, relatedEntity, ref status ) == false )
 				isAllValid = false;
 			//
 			return isAllValid;
 		}
-		private bool HandleTargets( ThisEntity entity, ref SaveStatus status )
+		private bool HandleTargets( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			int newId = 0;
-			if ( entity.TargetCredentialIds != null && entity.TargetCredentialIds.Count > 0 )
-			{
-				Entity_CredentialManager ecm = new Entity_CredentialManager();
+			Entity_CredentialManager ecm = new Entity_CredentialManager();
+			ecm.DeleteAll( relatedEntity, ref status );
+			if ( entity.TargetCredentialIds != null && entity.TargetCredentialIds.Count > 0 )			{
+				
 				foreach ( int id in entity.TargetCredentialIds )
 				{
 					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 				}
 			}
 
+			Entity_AssessmentManager eam = new Entity_AssessmentManager();
+			eam.DeleteAll( relatedEntity, ref status );
 			if ( entity.TargetAssessmentIds != null && entity.TargetAssessmentIds.Count > 0 )
 			{
-				Entity_AssessmentManager eam = new Entity_AssessmentManager();
 				foreach ( int id in entity.TargetAssessmentIds )
 				{
 					newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 				}
 			}
-
+			//
+			Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
+			elm.DeleteAll( relatedEntity, ref status );
 			if ( entity.TargetLearningOpportunityIds != null && entity.TargetLearningOpportunityIds.Count > 0 )
 			{
-				Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
 				foreach ( int id in entity.TargetLearningOpportunityIds )
 				{
 					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+				}
+			}
+			//
+			if ( entity.TargetCompetencyFrameworkIds != null && entity.TargetCompetencyFrameworkIds.Count > 0 )
+			{
+				//need a new table: Entity.CompetencyFramework!!
+				var ecfm = new Entity_CompetencyFrameworkManager();
+				//Need to do deleteall using this approach
+				ecfm.DeleteAll( relatedEntity, ref status );
+				foreach ( int id in entity.TargetCompetencyFrameworkIds )
+				{
+					ecfm.Add( entity.RowId, id, ref status );
 				}
 			}
 
@@ -293,16 +319,29 @@ namespace workIT.Factories
 					if ( results == null || results.Count == 0 )
 						return true;
 
-					context.Entity_ProcessProfile.RemoveRange( context.Entity_ProcessProfile.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
+					foreach ( var item in results )
 					{
-						isValid = true;
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( item.RowId, string.Format( "ProcessProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
+
+						context.Entity_ProcessProfile.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
 					}
-					else
-					{
-						//if doing a delete on spec, may not have been any properties
-					}
+					//context.Entity_ProcessProfile.RemoveRange( context.Entity_ProcessProfile.Where( s => s.EntityId == parent.Id ) );
+					//int count = context.SaveChanges();
+					//if ( count > 0 )
+					//{
+					//	isValid = true;
+					//}
+					//else
+					//{
+					//	//if doing a delete on spec, may not have been any properties
+					//}
 				}
 			}
 			catch ( Exception ex )
@@ -384,6 +423,86 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+			}
+			return list;
+		}//
+
+		/// <summary>
+		/// Only retrieve summary information with counts, no details
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <param name="getForList"></param>
+		/// <returns></returns>
+		public static List<CodeItem> GetAllSummary( Guid parentUid )
+		{
+			ThisEntity entity = new ThisEntity();
+			List<CodeItem> list = new List<CodeItem>();
+			Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					context.Configuration.LazyLoadingEnabled = false;
+
+					var query = from p in context.Entity_ProcessProfile
+								from code in context.Codes_ProcessProfileType
+									.Where( m => m.Id == p.ProcessTypeId )
+								where p.EntityId == parent.Id
+								group p by new { code.Name, code.Id } into g
+								select new CodeItem
+								{
+									Name = g.Key.Name,
+									Id = g.Key.Id,
+									Totals = g.Count()
+								};
+					list = query.OrderBy( m => m.Name ).ToList();
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+			}
+			return list;
+		}//
+
+		public static List<ThisEntity> GetAll( Guid parentUid, int processProfileTypeId )
+		{
+			ThisEntity entity = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+			Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_ProcessProfile
+							.Where( s => s.EntityId == parent.Id && s.ProcessTypeId == processProfileTypeId )
+							.OrderBy( s => s.Id )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							entity = new ThisEntity();
+							MapFromDB( item, entity, true, false );
+							list.Add( entity );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + string.Format(".GetAll( parentEntityType:{0}, parentBaseId: {1}, processProfileTypeId: {2} )", parent.EntityType, parent.EntityBaseId, processProfileTypeId) );
 			}
 			return list;
 		}//
@@ -483,6 +602,8 @@ namespace workIT.Factories
 			if ( from.Entity != null )
 				to.ParentId = from.Entity.Id;
 
+			to.ProfileSummary = SetEntitySummary( to );
+
 			//- provide minimum option, for lists
 			if ( getForList )
 				return;
@@ -495,7 +616,7 @@ namespace workIT.Factories
 			}
 
 			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToShortDateString();
+				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				to.DateEffective = "";
 			to.SubjectWebpage = from.SubjectWebpage;
@@ -516,16 +637,14 @@ namespace workIT.Factories
 			to.VerificationMethodDescription = from.VerificationMethodDescription;
 
 			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToShortDateString();
+				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				to.DateEffective = "";
 
 			//enumerations
-			to.ExternalInput = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE );
-			//to.StaffEvaluationMethod = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_STAFF_EVALUATION_METHOD );
-			//to.ProcessMethod = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_PROCESS_METHOD );
+			to.DataCollectionMethodType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE );
+			to.ExternalInputType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE );
 
-			to.ProfileSummary = SetEntitySummary( to );
 
 
 			if ( includingItems )
@@ -537,6 +656,7 @@ namespace workIT.Factories
 				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 
 				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, true );
+				to.TargetCompetencyFramework = Entity_CompetencyFrameworkManager.GetAll( to.RowId );
 			}
 
 
@@ -564,27 +684,36 @@ namespace workIT.Factories
 			return summary;
 
 		}
-        static string GetProfileType( int processTypeId, bool returningLabeFormat = false )
+		/// <summary>
+		/// Get ProcessProfile type
+		/// NOTE: the ????? Process (#6) profile was removed
+		/// </summary>
+		/// <param name="processTypeId"></param>
+		/// <param name="returningCTDLFormat">true: return property name, else a label format</param>
+		/// <returns></returns>
+        public static string GetProfileType( int processTypeId, bool returningCTDLFormat = true )
         {
             switch (processTypeId)
             {
                 case 1:
-                    return returningLabeFormat ? "AdministrationProcess" : "Administration Process";
+                    return returningCTDLFormat ? "AdministrationProcess" : "Administration Process";
                 case 2:
-                    return returningLabeFormat ? "DevelopmentProcess" : "Development Process";
+                    return returningCTDLFormat ? "DevelopmentProcess" : "Development Process";
                 case 3:
-                    return returningLabeFormat ? "MaintenanceProcess" : "Maintenance Process";
+                    return returningCTDLFormat ? "MaintenanceProcess" : "Maintenance Process";
                 case 4:
-                    return returningLabeFormat ? "AppealProcess" : "Appeal Process";
+                    return returningCTDLFormat ? "AppealProcess" : "Appeal Process";
                 case 5:
-                    return returningLabeFormat ? "ComplaintProcess" : "Complaint Process";
+                    return returningCTDLFormat ? "ComplaintProcess" : "Complaint Process";
+				case 6:
+					return "Obsolete Process Profile";
                 case 7:
-                    return returningLabeFormat ? "ReviewProcess" : "Review Process";
+                    return returningCTDLFormat ? "ReviewProcess" : "Review Process";
                 case 8:
-                    return returningLabeFormat ? "RevocationProcess" : "Revocation Process";
+                    return returningCTDLFormat ? "RevocationProcess" : "Revocation Process";
 
                 default:
-                    return returningLabeFormat ? "ProcessProfile" : "Process Process";
+                    return returningCTDLFormat ? "ProcessProfile" : "Process Profile";
             }
         }
         #endregion

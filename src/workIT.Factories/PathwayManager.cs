@@ -327,6 +327,8 @@ namespace workIT.Factories
 				statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
 				return false;
 			}
+			if ( string.IsNullOrWhiteSpace( envelopeId ) )
+				envelopeId = "SKIP ME";
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				ctid = "SKIP ME";
 			int orgId = 0;
@@ -432,7 +434,7 @@ namespace workIT.Factories
 
 			//
 			Entity_ReferenceManager erm = new Entity_ReferenceManager();
-
+			erm.DeleteAll( relatedEntity, ref status );
 			if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_PATHWAY, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
 				isAllValid = false;
 
@@ -903,37 +905,36 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity from, ThisEntity to,
-				bool includingComponents)
+		public static void MapFromDB( DBEntity from, ThisEntity to, bool includingComponents, bool includingExtra = true)
 		{
 			MapFromDB_Basic( from, to, includingComponents );
 
 			to.CredentialRegistryId = from.CredentialRegistryId;
 
 			//=============================
-
-			to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-
-			to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
-			//properties
-
-
-			try
+			if ( includingExtra )
 			{
+				to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
-				to.OccupationType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-				to.AlternativeOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+				to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+				//properties
 
-				to.IndustryType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-				to.AlternativeIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+				try
+				{
 
+					to.OccupationType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+					to.AlternativeOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+
+					to.IndustryType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					to.AlternativeIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB_B(), Name: {0} ({1})", to.Name, to.Id ) );
+					to.StatusMessage = FormatExceptions( ex );
+				}
 			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB_B(), Name: {0} ({1})", to.Name, to.Id ) );
-				to.StatusMessage = FormatExceptions( ex );
-			}
-
 
 		}
 

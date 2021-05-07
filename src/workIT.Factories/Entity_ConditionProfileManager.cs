@@ -14,6 +14,7 @@ using CM = workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -113,61 +114,79 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		private bool Save( ThisEntity item, Entity parent, DateTime updateDate, ref SaveStatus status  )
+		private bool Save( ThisEntity entity, Entity parent, DateTime updateDate, ref SaveStatus status  )
 		{
 			bool isValid = true;
 			
-			item.ParentId = parent.Id;
+			entity.ParentId = parent.Id;
 
 			int profileTypeId = 0;
 			
-			if ( item.ConnectionProfileTypeId > 0 )
-				profileTypeId = item.ConnectionProfileTypeId;
+			if ( entity.ConnectionProfileTypeId > 0 )
+				profileTypeId = entity.ConnectionProfileTypeId;
 			else
 			{
-				profileTypeId = GetConditionTypeId( item.ConnectionProfileType );
+				profileTypeId = GetConditionTypeId( entity.ConnectionProfileType );
 			}
-
-			using (var context = new EntityContext())
+			bool doingUpdateParts = true;
+			try
 			{
-				if (!ValidateProfile(item, ref status))
+
+				if ( !ValidateProfile( entity, ref status ) )
 				{
-					return false;
+					//return false;
 				}
 
-				item.ConnectionProfileTypeId = profileTypeId;
+				entity.ConnectionProfileTypeId = profileTypeId;
 				//should always be add if always resetting the entity
-				if (item.Id > 0)
+				if ( entity.Id > 0 )
 				{
-					DBEntity p = context.Entity_ConditionProfile
-							.FirstOrDefault(s => s.Id == item.Id);
-					if (p != null && p.Id > 0)
+					using ( var context = new EntityContext() )
 					{
-						item.RowId = p.RowId;
-						item.ParentId = p.EntityId;
-						MapToDB(item, p);
 
-						if (HasStateChanged(context))
+						DBEntity p = context.Entity_ConditionProfile
+							.FirstOrDefault( s => s.Id == entity.Id );
+						if ( p != null && p.Id > 0 )
 						{
-							p.LastUpdated = System.DateTime.Now;
-							context.SaveChanges();
+							entity.RowId = p.RowId;
+							entity.ParentId = p.EntityId;
+							MapToDB( entity, p );
+
+							if ( HasStateChanged( context ) )
+							{
+								p.LastUpdated = System.DateTime.Now;
+								context.SaveChanges();
+							}
 						}
-						//regardless, check parts
-						isValid = UpdateParts( item, updateDate, ref status );
+						else
+						{
+							doingUpdateParts = false;
+							//error should have been found
+							isValid = false;
+							status.AddWarning( string.Format( "Error: the requested record was not found: recordId: {0}", entity.Id ) );
+						}
 					}
-					else
-					{
-						//error should have been found
-						isValid = false;
-						status.AddWarning(string.Format("Error: the requested record was not found: recordId: {0}", item.Id));
-					}
+					//regardless, check parts
+					if ( doingUpdateParts )
+						isValid = UpdateParts( entity, updateDate, ref status );
 				}
 				else
 				{
-					int newId = Add( item, updateDate, ref status );
+					int newId = Add( entity, updateDate, ref status );
 					if ( newId == 0 || status.HasErrors )
 						isValid = false;
 				}
+
+			}
+			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			{
+				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Save()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
+				status.AddWarning( message );
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), EntityId: {0}", entity.ParentId ) );
 			}
 			return isValid;
 		}
@@ -182,53 +201,60 @@ namespace workIT.Factories
 		private int Add(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
 		{
 			DBEntity efEntity = new DBEntity();
-			using (var context = new EntityContext())
+			bool doingUpdateParts = true;
+			int newId = 0;
+			try
 			{
-				try
+				using ( var context = new EntityContext() )
 				{
-					MapToDB(entity, efEntity);
+					MapToDB( entity, efEntity );
 
 					efEntity.EntityId = entity.ParentId;
-                    if ( IsValidGuid( entity.RowId ) )
-                        efEntity.RowId = entity.RowId;
-                    else
-                        efEntity.RowId = Guid.NewGuid();
-                    efEntity.Created = efEntity.LastUpdated = updateDate;
-					
-					context.Entity_ConditionProfile.Add(efEntity);
+					if ( IsValidGuid( entity.RowId ) )
+						efEntity.RowId = entity.RowId;
+					else
+						efEntity.RowId = Guid.NewGuid();
+					efEntity.Created = efEntity.LastUpdated = updateDate;
+
+					context.Entity_ConditionProfile.Add( efEntity );
 
 					// submit the change to database
 					int count = context.SaveChanges();
-					if (count > 0)
+					if ( count > 0 )
 					{
-						entity.Id = efEntity.Id;
-						entity.RowId = efEntity.RowId;
+						newId = entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;					
 
-						UpdateParts(entity, updateDate, ref status );
-
-						return efEntity.Id;
+						//return efEntity.Id;
 					}
 					else
 					{
+						doingUpdateParts = false;
 						//?no info on error
-						status.AddWarning("Error - the profile was not saved. ");
-						string message = string.Format("{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, createdById: {2}", thisClassName, entity.ParentId, entity.CreatedById);
-						EmailManager.NotifyAdmin(thisClassName + ".Add() Failed", message);
+						status.AddWarning( "Error - the profile was not saved. " );
+						string message = string.Format( "{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, createdById: {2}", thisClassName, entity.ParentId, entity.CreatedById );
+						EmailManager.NotifyAdmin( thisClassName + ".Add() Failed", message );
 					}
 				}
-				catch (System.Data.Entity.Validation.DbEntityValidationException dbex)
+				//21-04-21 mparsons - end the current context before doing parts
+				if ( doingUpdateParts )
 				{
-					string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
-					status.AddWarning( message );
-					
-				}
-				catch (Exception ex)
-				{
-					LoggingHelper.LogError(ex, thisClassName + string.Format(".Add(), EntityId: {0}", entity.ParentId));
+					UpdateParts( entity, updateDate, ref status );
 				}
 			}
+			catch (System.Data.Entity.Validation.DbEntityValidationException dbex)
+			{
+				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
+				status.AddWarning( message );
+					
+			}
+			catch (Exception ex)
+			{
+				LoggingHelper.LogError(ex, thisClassName + string.Format(".Add(), EntityId: {0}", entity.ParentId));
+			}
+			
 
-			return efEntity.Id;
+			return newId;
 		}
         public bool DeleteAll( Entity parent, ref SaveStatus status, DateTime? lastUpdated = null )
         {
@@ -261,6 +287,12 @@ namespace workIT.Factories
 
 					foreach ( var item in results )
 					{
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						//NO - handled by trigger - i.e. trgConnectionProfileAfterDelete - or is explicit better?
+						//string statusMessage = "";
+						//we have a trigger for this
+						//new EntityManager().Delete( item.RowId, string.Format( "ConditionProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
+
 						context.Entity_ConditionProfile.Remove( item );
 						var count = context.SaveChanges();
 						if ( count > 0 )
@@ -319,96 +351,214 @@ namespace workIT.Factories
 		public bool UpdateParts(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
 		{
 			bool isAllValid = true;
-
-			//Alternative conditions
-			if (entity.AlternativeCondition != null && entity.AlternativeCondition.Count > 0)
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
-				Entity parent = EntityManager.GetEntity( entity.RowId );
-				foreach ( ThisEntity item in entity.AlternativeCondition )
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
+			//Alternative conditions
+			//TODO - what is necessary for deleting existing????
+			try
+			{
+				if ( entity.AlternativeCondition != null && entity.AlternativeCondition.Count > 0 )
 				{
-					item.ConnectionProfileTypeId = ConnectionProfileType_Requirement;
-					item.ConditionSubTypeId = ConditionSubType_Alternative;
-					Save( item, parent, updateDate, ref status );
+					Entity parent = EntityManager.GetEntity( entity.RowId );
+					foreach ( ThisEntity item in entity.AlternativeCondition )
+					{
+						item.ConnectionProfileTypeId = ConnectionProfileType_Requirement;
+						item.ConditionSubTypeId = ConditionSubType_Alternative;
+						Save( item, parent, updateDate, ref status );
+					}
 				}
+			} catch( Exception ex)
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing AlternativeCondition. " + ex.Message );
+				status.AddError( ex.Message );
 			}
 
-			//CostProfile
-			CostProfileManager cpm = new Factories.CostProfileManager();
-			cpm.SaveList( entity.EstimatedCosts, entity.RowId, ref status );
+			try
+			{
+				//CostProfile
+				//no deletes necessary
+				CostProfileManager cpm = new Factories.CostProfileManager();
+				cpm.SaveList( entity.EstimatedCosts, entity.RowId, ref status );
+				//
+				new Entity_CommonCostManager().SaveList( entity.CostManifestIds, entity.RowId, ref status );
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing estimated and common costs. " + ex.Message );
+			}
 			//
-			new Entity_CommonCostManager().SaveList( entity.CostManifestIds, entity.RowId, ref status );
+			try
+			{
+				Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+				//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
+				jpm.DeleteAll( relatedEntity, ref status );
+				jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+				jpm.SaveList( entity.ResidentOf, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT, ref status );
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing jurisdictions. " + ex.Message );
+				status.AddError( ex.Message );
+
+			}
+			//
+			try
+			{
+				EntityPropertyManager mgr = new EntityPropertyManager();
+				//first clear all propertiesd
+				mgr.DeleteAll( relatedEntity, ref status );
+				if ( mgr.AddProperties( entity.AudienceLevel, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, ref status ) == false )
+					isAllValid = false;
+
+				if ( mgr.AddProperties( entity.ApplicableAudienceType, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
+					isAllValid = false;
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing properties. " + ex.Message );
+				status.AddError( ex.Message );
+
+			}
+
+
+			try
+			{
+				Entity_ReferenceManager erm = new Entity_ReferenceManager();
+				//21-03-24 deletes were not being done!!!!
+				//		-what about other properties????
+				erm.DeleteAll( relatedEntity, ref status );
+
+				if ( erm.Add( entity.Condition, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM, false ) == false )
+					isAllValid = false;
+
+				if ( erm.Add( entity.SubmissionOf, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM, false ) == false )
+					isAllValid = false;
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing references, etc. " + ex.Message );
+				status.AddError( ex.Message );
+
+			}
 
 			//
-			EntityPropertyManager mgr = new EntityPropertyManager();
-			if ( mgr.AddProperties( entity.AudienceLevel, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, ref status ) == false )
-				isAllValid = false;
-
-			if ( mgr.AddProperties( entity.ApplicableAudienceType, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
-				isAllValid = false;
-
-
-			Entity_ReferenceManager erm = new Entity_ReferenceManager();
-
-
-			if (erm.Add(entity.Condition, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE,  ref status, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM, false) == false)
-				isAllValid = false;
-
-			if ( erm.Add( entity.SubmissionOf, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE,  ref status, CodesManager.PROPERTY_CATEGORY_SUBMISSION_ITEM, false ) == false )
-				isAllValid = false;
-			//
-			if ( HandleTargets( entity, ref status ) == false )
+			if ( HandleTargets( entity, relatedEntity, ref status ) == false )
 				isAllValid = false;
 
 			//JurisdictionProfile 
-			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
-			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			try
+			{
+				Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+				//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
+				jpm.DeleteAll( relatedEntity, ref status );
+				jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+				jpm.SaveList( entity.ResidentOf, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT, ref status );
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing jurisdictions. " + ex.Message );
+				status.AddError( ex.Message );
+
+			}
 
 			//
 			return isAllValid;
 		}
-		private bool HandleTargets( ThisEntity entity, ref SaveStatus status )
+		private bool HandleTargets( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			int newId = 0;
-			
-			if ( entity.TargetCredentialIds != null && entity.TargetCredentialIds.Count > 0 )
+			try
 			{
 				Entity_CredentialManager ecm = new Entity_CredentialManager();
-				foreach ( int id in entity.TargetCredentialIds )
+				ecm.DeleteAll( relatedEntity, ref status );
+				if ( entity.TargetCredentialIds != null && entity.TargetCredentialIds.Count > 0 )
 				{
-					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
+
+					foreach ( int id in entity.TargetCredentialIds )
+					{
+						ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
+					}
 				}
 			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetCredentials. " + ex.Message );
+				status.AddError( ex.Message );
 
-			if ( entity.TargetAssessmentIds != null && entity.TargetAssessmentIds.Count > 0)
+			}
+
+			try
 			{
 				Entity_AssessmentManager eam = new Entity_AssessmentManager();
-				foreach ( int id in entity.TargetAssessmentIds )
+				eam.DeleteAll( relatedEntity, ref status );
+				if ( entity.TargetAssessmentIds != null && entity.TargetAssessmentIds.Count > 0 )
 				{
-					newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+
+					foreach ( int id in entity.TargetAssessmentIds )
+					{
+						newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+					}
 				}
 			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetAssessmentIds. " + ex.Message );
+				status.AddError( ex.Message );
 
-			if ( entity.TargetLearningOpportunityIds != null && entity.TargetLearningOpportunityIds.Count > 0 )
+			}
+
+			try
 			{
 				Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
-				foreach ( int id in entity.TargetLearningOpportunityIds )
+				elm.DeleteAll( relatedEntity, ref status );
+				if ( entity.TargetLearningOpportunityIds != null && entity.TargetLearningOpportunityIds.Count > 0 )
 				{
-					LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId,  id, entity.RowId.ToString()) );
-					//20-12-28 assuming adds here. OK - method checks for existing
-					newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
+
+					foreach ( int id in entity.TargetLearningOpportunityIds )
+					{
+						LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId, id, entity.RowId.ToString() ) );
+						//20-12-28 assuming adds here. OK - method checks for existing
+						newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
+					}
 				}
 			}
-
-			if ( entity.TargetCompetencies != null && entity.TargetCompetencies.Count > 0 )
+			catch ( Exception ex )
 			{
-				Entity_CompetencyManager ecm = new Entity_CompetencyManager();
-				ecm.SaveList( entity.TargetCompetencies, entity.RowId, ref status );
-				//foreach ( int id in entity.TargetCompetencies )
-				//{
-				//	newId = ecm.Add( entity.RowId, id, true, ref status );
-				//}
+				LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetLearningOpportunityIds. " + ex.Message );
+				status.AddError( ex.Message );
+
 			}
+
+
+			try
+			{
+				if ( entity.TargetCompetencies != null && entity.TargetCompetencies.Count > 0 )
+				{
+					Entity_CompetencyManager em = new Entity_CompetencyManager();
+					//deleteall is done in SaveList
+					em.SaveList( entity.TargetCompetencies, entity.RowId, ref status );
+					//foreach ( int id in entity.TargetCompetencies )
+					//{
+					//	newId = ecm.Add( entity.RowId, id, true, ref status );
+					//}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetCompetencies. " + ex.Message );
+				status.AddError( ex.Message );
+
+			}
+
 			return status.WasSectionValid;
 		}
 
@@ -758,7 +908,7 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		private static void MapToDB(ThisEntity input, DBEntity output)
+		private static void MapToDB( ThisEntity input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -772,7 +922,7 @@ namespace workIT.Factories
 				}
 				else
 				{
-					if ( (output.ConditionSubTypeId ?? 0) == 0 )
+					if ( ( output.ConditionSubTypeId ?? 0 ) == 0 )
 					{
 						//not sure we need specific conditionSub types for cred, asmt, and lopp as we know the parent
 						if ( input.ConnectionProfileType == "CredentialConnections" )
@@ -802,12 +952,12 @@ namespace workIT.Factories
 			}
 
 			output.Id = input.Id;
-			
-			
+
+
 			//170316 mparsons - ProfileSummary is used in the edit interface for Name
 			if ( string.IsNullOrWhiteSpace( input.ProfileName ) )
 				input.ProfileName = input.ProfileSummary ?? "";
-			
+
 			//check for wierd jquery addition
 			int pos2 = input.ProfileName.ToLower().IndexOf( "jquery" );
 			if ( pos2 > 1 )
@@ -826,7 +976,7 @@ namespace workIT.Factories
 			output.Description = GetData( input.Description );
 			output.SubmissionOfDescription = GetData( input.SubmissionOfDescription );
 
-			if (input.AssertedByAgentUid == null || input.AssertedByAgentUid.ToString() == DEFAULT_GUID)
+			if ( input.AssertedByAgentUid == null || input.AssertedByAgentUid.ToString() == DEFAULT_GUID )
 			{
 				output.AgentUid = null;//			
 			}
@@ -835,7 +985,7 @@ namespace workIT.Factories
 				output.AgentUid = input.AssertedByAgentUid;
 			}
 
-			output.Experience = GetData(input.Experience);
+			output.Experience = GetData( input.Experience );
 			output.SubjectWebpage = input.SubjectWebpage;
 
 			if ( input.MinimumAge > 0 )
@@ -856,44 +1006,54 @@ namespace workIT.Factories
 			output.CreditUnitTypeDescription = null;
 			if ( !string.IsNullOrWhiteSpace( input.CreditUnitTypeDescription ) )
 				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-			//progressive move to use list and json
+
+			//21-03-23 - now using ValueProfile
+			//			- interim use both until all converted
+			var condProfileUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "condProfileUsingValueProfileForCreditValue", false );
+			output.CreditValue = string.IsNullOrWhiteSpace( input.CreditValueJson ) ? null : input.CreditValueJson;
+
+			if ( !condProfileUsingValueProfileForCreditValue )
+			{
+				//if ( input.CreditValueList != null && input.CreditValueList.Any() )
+				//{
+				//	//output.CreditValueJson = input.CreditValueJson;
+				//	input.CreditValue = input.CreditValueList[ 0 ];
+				//}
+
+				//if ( input.CreditValue.HasData() )
+				//{
+				//	if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
+				//	{
+				//		//get Id if available
+				//		EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
+				//		if ( item != null && item.Id > 0 )
+				//			output.CreditUnitTypeId = item.Id;
+				//		else
+				//		{
+				//			//if not get by schema
+				//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+				//			if ( code.Id > 0 )
+				//				output.CreditUnitTypeId = code.Id;
+				//			else
+				//			{
+				//				output.CreditHourType = item.SchemaName;
+				//				//message
+				//				LoggingHelper.LogError( string.Format( "ConditionProfile: EntityId: '{0}'. CreditUnit schema of {1} was not found.", input.ParentId, item.SchemaName ) );
+				//			}
+				//		}
+				//	}
+				//	output.CreditUnitValue = input.CreditValue.Value;
+				//	output.CreditUnitMaxValue = input.CreditValue.MaxValue;
+				//	if ( input.CreditValue.MaxValue > 0 )
+				//		output.CreditUnitValue = input.CreditValue.MinValue;
+				//	if ( !string.IsNullOrWhiteSpace( input.CreditValue.Description ) )
+				//		output.CreditUnitTypeDescription = input.CreditValue.Description;
+
+				//}
+			}
+
 			//output.CreditValueJson = null;
-			if ( input.CreditValueList != null && input.CreditValueList.Any() )
-			{
-				//output.CreditValueJson = input.CreditValueJson;
-				input.CreditValue = input.CreditValueList[ 0 ];
-			}
-			
-			if ( input.CreditValue.HasData() )
-			{
-				if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
-				{
-					//get Id if available
-					EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
-					if ( item != null && item.Id > 0 )
-						output.CreditUnitTypeId = item.Id;
-					else
-					{
-						//if not get by schema
-						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-						if ( code.Id > 0 )
-							output.CreditUnitTypeId = code.Id;
-						else
-						{
-							output.CreditHourType = item.SchemaName;
-							//message
-							LoggingHelper.LogError( string.Format( "ConditionProfile: EntityId: '{0}'. CreditUnit schema of {1} was not found.", input.ParentId, item.SchemaName ) );
-						}
-					}
-				}
-				output.CreditUnitValue = input.CreditValue.Value;
-				output.CreditUnitMaxValue = input.CreditValue.MaxValue;
-				if ( input.CreditValue.MaxValue > 0 )
-					output.CreditUnitValue = input.CreditValue.MinValue;
-				if (!string.IsNullOrWhiteSpace( input.CreditValue.Description ) )
-					output.CreditUnitTypeDescription = input.CreditValue.Description;
-				
-			}
+
 			//else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
 			//{
 
@@ -950,25 +1110,42 @@ namespace workIT.Factories
 			//=========================================================
 			//populate CreditValue
 			//TODO - chg to use JSON
-			output.CreditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
-			if ( output.CreditValue.HasData() )
-			{
-				//pending
-				output.CreditValueList.Add( output.CreditValue );
-				//
-				output.CreditUnitType = output.CreditValue.CreditUnitType;
-				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-				output.CreditUnitTypeDescription = output.CreditValue.Description;
+			var condProfileUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "condProfileUsingValueProfileForCreditValue", false );
 
-				output.CreditUnitValue = output.CreditValue.Value;
-				output.CreditUnitMaxValue = output.CreditValue.MaxValue;
-				if ( output.CreditUnitMaxValue > 0 )
+			if ( !string.IsNullOrWhiteSpace( input.CreditValue ) )
+			{
+				output.CreditValueList = JsonConvert.DeserializeObject<List<ValueProfile>>( input.CreditValue );
+
+				if ( output.CreditValueList != null && output.CreditValueList.Any() )
 				{
-					output.CreditUnitValue = output.CreditValue.MinValue;
-					output.CreditUnitMinValue = output.CreditValue.MinValue;
-					output.CreditValueIsRange = true;
+					/* AVOID THIS HACK MOVING FORWARD, USE THE LIST*/
+
+				}
+			} else
+			{
+				var creditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
+
+				if ( creditValue.HasData() )
+				{
+					//pending
+					output.CreditValueList.Add( creditValue );
+					//need to remove references to these!!!!!!!!!!!!!!!!
+					//output.CreditUnitType = creditValue.CreditUnitType;
+					//output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+					//output.CreditUnitTypeDescription = output.CreditValue.Description;
+
+					//output.CreditUnitValue = creditValue.Value;
+					//output.CreditUnitMaxValue = creditValue.MaxValue;
+					//if ( output.CreditUnitMaxValue > 0 )
+					//{
+					//	output.CreditUnitValue = creditValue.MinValue;
+					//	output.CreditUnitMinValue = creditValue.MinValue;
+					//	output.CreditValueIsRange = true;
+					//}
 				}
 			}
+
+			
 			//else
 			//{
 			//	//check for old
@@ -989,7 +1166,7 @@ namespace workIT.Factories
 			//======================================================================
 
 			if ( IsValidDate(input.DateEffective))
-				output.DateEffective = ((DateTime)input.DateEffective).ToShortDateString();
+				output.DateEffective = ((DateTime)input.DateEffective).ToString("yyyy-MM-dd");
 			else
 				output.DateEffective = "";
 			
@@ -1005,16 +1182,14 @@ namespace workIT.Factories
             {
                 output.HasCompetencies = true;
                 output.FrameworkPayloads = frameworksList;
-            }
-
-            
+            }            
 
 			if (includingProperties)
 			{
 				output.AudienceLevel = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 				output.ApplicableAudienceType = EntityPropertyManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE);
-
-				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId);
+				//
+				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE );
 
 				output.ResidentOf = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT);
 

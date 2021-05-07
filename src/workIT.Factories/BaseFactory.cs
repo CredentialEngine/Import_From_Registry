@@ -22,6 +22,7 @@ namespace workIT.Factories
 	{
 		public static string REGISTRY_ACTION_DELETE = "Registry Delete";
 		public static string REGISTRY_ACTION_PURGE = "Registry Purge";
+		public static string REGISTRY_ACTION_PURGE_ALL = "Registry Purge ALL";
 		public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
 		public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
 		protected static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
@@ -30,6 +31,7 @@ namespace workIT.Factories
 		public static int RELATIONSHIP_TYPE_HAS_PART		= 1;
 		public static int RELATIONSHIP_TYPE_IS_PART_OF		= 2;
 		public static int RELATIONSHIP_TYPE_IsETPLResource	= 3;
+		public static int RELATIONSHIP_TYPE_TARGET_RESOURCE = 4;
 
 		public static bool IsDevEnv()
 		{
@@ -287,7 +289,7 @@ namespace workIT.Factories
 				{
 					CategoryId = categoryId,
 					Id = codeItem.Id,
-					Title = codeItem.Name,
+					Title = codeItem.Name != "Blended Learning" ? codeItem.Name : "Blended Delivery",
 					SchemaName = codeItem.SchemaName
 				} );
 			}
@@ -419,6 +421,7 @@ namespace workIT.Factories
 			}
 			return qv;
 		}
+
 
 
 		#endregion
@@ -563,6 +566,8 @@ namespace workIT.Factories
 						item.Results.Add( code );
 					}
 				}
+				//else
+				//	return null;
 			}
 			catch ( Exception ex )
 			{
@@ -577,6 +582,8 @@ namespace workIT.Factories
 			AgentRelationship code = new AgentRelationship();
 			List<int> qaRoles = new List<int>() { 1, 2, 10, 12 };
 			List<int> nonQAaRoles = new List<int>() { 6,7,11,13 };
+			if ( list == null )
+				return item;
 			/*
 			 * AgentRelationshipForEntity will have multiple relationships for an org in each record.
 			 * 
@@ -621,7 +628,8 @@ namespace workIT.Factories
 		public static TargetAssertionResult Fill_TargetQaAssertion( List<QualityAssurancePerformed> list, int categoryId, string entityType = "" )
 		{
 			TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
-			
+			if ( list == null )
+				return item;
 			TargetAssertion code = new TargetAssertion();
 
 			foreach ( var i in list )

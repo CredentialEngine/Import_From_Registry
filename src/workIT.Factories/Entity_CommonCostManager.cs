@@ -104,7 +104,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a CostManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, costManifestId: {2}", parent.EntityUid, parent.EntityType, costManifestId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -220,6 +220,8 @@ namespace workIT.Factories
         public static List<CostManifest> GetAll( Guid parentUid )
 		{
 			List<CostManifest> list = new List<CostManifest>();
+			if ( parentUid == null )
+				return list;
 			CostManifest entity = new CostManifest();
 
 			Entity parent = EntityManager.GetEntity( parentUid );

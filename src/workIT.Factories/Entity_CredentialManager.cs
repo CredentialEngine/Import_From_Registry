@@ -83,10 +83,11 @@ namespace workIT.Factories
 		/// <summary>
 		/// Persist Entity Credential
 		/// </summary>
-		/// <param name="credentialId"></param>
 		/// <param name="parentUid"></param>
+		/// <param name="credentialId"></param>
+		/// <param name="relationshipTypeId">1-HasPart; 2-IsPartOf; 3-IsETPLResource</param>
 		/// <param name="newId">Return record id of the new record</param>
-		/// <param name="messages"></param>
+		/// <param name="status"></param>
 		/// <returns></returns>
 		public bool Add( Guid parentUid, int credentialId, int relationshipTypeId,
 			ref int newId,
@@ -114,6 +115,15 @@ namespace workIT.Factories
 			return Add( parent, credentialId, relationshipTypeId, ref newId, ref status );
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="credentialId"></param>
+		/// <param name="relationshipTypeId">Values:</param>
+		/// <param name="newId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
         private bool Add( Entity parent, int credentialId, int relationshipTypeId,
 				ref int newId, ref SaveStatus status )
         {
@@ -143,7 +153,7 @@ namespace workIT.Factories
                 {
                     //first check for duplicates
                     efEntity = context.Entity_Credential
-                            .FirstOrDefault( s => s.EntityId == parent.Id && s.CredentialId == credentialId );
+                            .FirstOrDefault( s => s.EntityId == parent.Id && s.CredentialId == credentialId && s.RelationshipTypeId == relationshipTypeId );
                     if ( efEntity != null && efEntity.Id > 0 )
                     {
                         newId = efEntity.Id;
@@ -222,8 +232,10 @@ namespace workIT.Factories
 							var statusMsg = "";
 							//this method will also add pending reques to remove from elastic.
 							//actually this delete will probably also delete the Entity_Credential
-							new CredentialManager().Delete( item.CredentialId, ref statusMsg );
-							continue;
+							//21-03-31 mp - problem has occurred here. This credential could have been found during import and will be shortly trying to add an entity.credential using this id!!!
+							//				- may have to pass the list of new ids and then use to determine what to delete
+							//new CredentialManager().Delete( item.CredentialId, ref statusMsg );
+							//continue;
 						}
 					}
 					context.Entity_Credential.Remove( item );
@@ -233,16 +245,16 @@ namespace workIT.Factories
 
 					}
 				}
-				context.Entity_Credential.RemoveRange( context.Entity_Credential.Where( s => s.EntityId == parent.Id ) );
-                 count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
+				//context.Entity_Credential.RemoveRange( context.Entity_Credential.Where( s => s.EntityId == parent.Id ) );
+                //count = context.SaveChanges();
+                //if ( count > 0 )
+                //{
+                //    isValid = true;
+                //}
+                //else
+                //{
+                //    //if doing a delete on spec, may not have been any properties
+                //}
             }
 
             return isValid;
@@ -301,7 +313,8 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".GetAll. Guid: {0}, parentType: {1} ({2}), ", parentUid, parent.EntityType, parent.EntityBaseId ) );
+
 			}
 			return list;
 		}//
@@ -385,9 +398,9 @@ namespace workIT.Factories
             }
 
 			if ( from.ImageUrl != null && from.ImageUrl.Trim().Length > 0 )
-				to.ImageUrl = from.ImageUrl;
+				to.Image = from.ImageUrl;
 			else
-				to.ImageUrl = null;
+				to.Image = null;
 
 			if ( IsValidDate( from.Created ) )
 				to.Created = ( DateTime ) from.Created;

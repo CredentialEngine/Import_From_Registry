@@ -311,6 +311,8 @@ namespace workIT.Factories
 		public static Enumeration FillEnumeration( Guid parentUid, int categoryId )
 		{
 			Enumeration entity = new Enumeration();
+			if ( parentUid == null )
+				return entity;
 			entity = CodesManager.GetEnumeration( categoryId );
 
 			entity.Items = new List<EnumeratedItem>();

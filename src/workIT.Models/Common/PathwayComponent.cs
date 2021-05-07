@@ -182,13 +182,13 @@ namespace workIT.Models.Common
 		/// Used by: 
 		/// ceterms:CourseComponent only 
 		/// </summary>
-		public List<QuantitativeValue> CreditValue { get; set; } = new List<QuantitativeValue>();
+		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
 		/// <summary>
 		/// Points associated with this resource, or points possible.
 		/// Added Entity_QuantitativeValueManager for use
 		/// </summary>
 		public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
-		public bool PointValueIsRange { get; set; }
+		//public bool PointValueIsRange { get; set; }
 		//public string PointValueJson { get; set; }
 
 		/// <summary>
@@ -289,7 +289,7 @@ namespace workIT.Models.Common
 		/// Used by: 
 		/// ceterms:CourseComponent only 
 		/// </summary>
-		public List<QuantitativeValue> CreditValue { get; set; } = new List<QuantitativeValue>();
+		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
 
 		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
 

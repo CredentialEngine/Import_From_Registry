@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using workIT.Utilities;
 using workIT.Factories;
 using Import.Services;
+using RegistryServices = Import.Services.RegistryServices;
 using workIT.Models;
 using workIT.Services;
 using ElasticHelper = workIT.Services.ElasticServices;
@@ -18,26 +19,14 @@ namespace CTI.Import
         public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
 		public static string envType = UtilityManager.GetAppKeyValue( "envType");
 		//
-
+		//ImportCredential credImportMgr = new ImportCredential();
+  //      ImportOrganization orgImportMgr = new ImportOrganization();
+  //      ImportAssessment asmtImportMgr = new ImportAssessment();
+  //      ImportLearningOpportunties loppImportMgr = new ImportLearningOpportunties();
+  //      ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
+  //      ImportCostManifests cstManImportMgr = new ImportCostManifests();
 
         static void Main( string[] args )
-		{
-						
-			LoggingHelper.DoTrace( 1, "======================= STARTING IMPORT =======================" );
-			//bool usingImportPendingProcess = UtilityManager.GetAppKeyValue( "usingImportPendingProcess", false );
-			//if ( usingImportPendingProcess )
-			//{
-			//	new ImportPendingRequests().Main();
-			//} else
-			{
-				DoImport( args );
-				LoggingHelper.DoTrace( 1, "======================= all done ==============================" );
-			}
-
-		
-		}
-
-		public static void DoImport(string[] args)
 		{
 			TimeZone zone = TimeZone.CurrentTimeZone;
 			// Demonstrate ToLocalTime and ToUniversalTime.
@@ -306,7 +295,9 @@ namespace CTI.Import
 						}
 						if ( !UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) )
 						{
-							//ImportPendingRequests.HandleAddressGeoCoding( Guid.NewGuid() );
+							//have check in case want to skip geocoding sometimes
+							if ( !UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) )
+								ProfileServices.HandleAddressGeoCoding();
 						}
 
 
@@ -317,9 +308,10 @@ namespace CTI.Import
 							new ImportManager().SetAllResolvedEntities();
 						}
 
-						//update code table counts
+						//update code table counts - maybe
 						LoggingHelper.DoTrace( 1, string.Format( "===  *****************  UpdateCodeTableCounts  ***************** " ) );
-						new CacheManager().UpdateCodeTableCounts();
+						if ( UtilityManager.GetAppKeyValue( "doingPropertyCounts", true ) )
+							new CacheManager().UpdateCodeTableCounts();
 
 						//send summary email 
 						string message = string.Format( "<h2>Import Results</h2><p>{0}</p>", importResults );
@@ -425,7 +417,7 @@ namespace CTI.Import
 								Program.HandleDeleteRequest( cntr, item.EnvelopeIdentifier, ctid, ctdlType, ref statusMessage );
 								continue;
 							}
-
+							//21-02-22 the old and new delete process seem to be the same, at lease the same xxxManager().Delete methods are being called. 
 						
 							//
 							//importError = "";
@@ -436,19 +428,19 @@ namespace CTI.Import
 								case "credentialorganization":
 								case "qacredentialorganization":
 								case "organization":
-									DisplayMessages( string.Format( "{0}. Deleting {3} by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid, ctdlType ) );
-									if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+									if ( !new OrganizationManager().Delete( ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 
 								case "assessmentprofile":
-									DisplayMessages( string.Format( "{0}. Deleting Assessment by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-									if ( !new AssessmentManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+									if ( !new AssessmentManager().Delete(  ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								case "learningopportunityprofile":
-									DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: '{1}'/'{2}' ", cntr, item.EnvelopeIdentifier, ctid ) );
-									if ( !new LearningOpportunityManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+									if ( !new LearningOpportunityManager().Delete( ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								case "conditionmanifest":
@@ -465,7 +457,7 @@ namespace CTI.Import
 									break;
 								case "competencyframework": //CompetencyFramework
 									DisplayMessages( string.Format( "{0}. Deleting CompetencyFramework by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-									if ( !new CompetencyFrameworkManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								case "conceptscheme": //
@@ -485,8 +477,8 @@ namespace CTI.Import
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								case "transfervalueprofile":
-									DisplayMessages( string.Format( "{0}. Deleting transfervalue by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, item.EnvelopeIdentifier, ctid ) );
-									if ( !new TransferValueProfileManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+									DisplayMessages( string.Format( "{0}. Deleting transfervalue by Ctid: {1} ", cntr, ctid ) );
+									if ( !new TransferValueProfileManager().Delete( ctid, ref statusMessage ) )
 										DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 									break;
 								default:
@@ -510,13 +502,12 @@ namespace CTI.Import
 						}
 					} //foreach ( ReadEnvelope item in list )
 
-					pageNbr++;
 					if ( ( maxRecords > 0 && cntr > maxRecords ) || cntr > pTotalRows )
 					{
 						isComplete = true;
 						DisplayMessages( string.Format( "Delete EARLY EXIT. Completed {0} records out of a total of {1} ", cntr, pTotalRows ) );
-
 					}
+					pageNbr++;
 				} //while
 				  //delete from elastic
 				if ( cntr > 0 )
@@ -547,21 +538,21 @@ namespace CTI.Import
 				case "credentialorganization":
 				case "qacredentialorganization":
 				case "organization":
-					DisplayMessages( string.Format( "{0}. Deleting {3} by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, envelopeIdentifier, ctid, ctdlType ) );
-					if ( !new OrganizationManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+					DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+					if ( !new OrganizationManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 
 				case "assessmentprofile":
 				case "assessment":
-					DisplayMessages( string.Format( "{0}. Deleting Assessment by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, envelopeIdentifier, ctid ) );
-					if ( !new AssessmentManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+					DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+					if ( !new AssessmentManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "learningopportunityprofile":
 				case "learningopportunity":
-					DisplayMessages( string.Format( "{0}. Deleting LearningOpportunity by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, envelopeIdentifier, ctid ) );
-					if ( !new LearningOpportunityManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+					DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+					if ( !new LearningOpportunityManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "conditionmanifest":
@@ -577,8 +568,8 @@ namespace CTI.Import
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "competencyframework": //CompetencyFramework
-					DisplayMessages( string.Format( "{0}. Deleting CompetencyFramework by EnvelopeIdentifier/ctid: '{1}'/'{2}' ", cntr, envelopeIdentifier, ctid ) );
-					if ( !new CompetencyFrameworkManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+					DisplayMessages( string.Format( "{0}. Deleting CompetencyFramework by ctid: '{1}' ", cntr, ctid ) );
+					if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "conceptscheme":
@@ -598,13 +589,18 @@ namespace CTI.Import
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "transfervalueprofile":
-					DisplayMessages( string.Format( "{0}. Deleting TransferValueProfile by EnvelopeIdentifier/ctid: {1}/{2} ", cntr, envelopeIdentifier, ctid ) );
-					if ( !new TransferValueProfileManager().Delete( envelopeIdentifier, ctid, ref statusMessage ) )
+					DisplayMessages( string.Format( "{0}. Deleting TransferValueProfile by ctid: {1} ", cntr, ctid ) );
+					if ( !new TransferValueProfileManager().Delete( ctid, ref statusMessage ) )
+						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+					break;
+				case "occupation":
+					DisplayMessages( string.Format( "{0}. Deleting Occupation by ctid: {1} ", cntr, ctid ) );
+					if ( !new OccupationManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				default:
 					//default to credential
-					DisplayMessages( string.Format( "{0}. Deleting Credential ({2}) by EnvelopeIdentifier/ctid: {1}/{3} ", cntr, envelopeIdentifier, ctdlType, ctid ) );
+					DisplayMessages( string.Format( "{0}. Deleting Credential ({1}) by ctid: {2} ", cntr, ctdlType, ctid ) );
 					if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;

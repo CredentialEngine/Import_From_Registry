@@ -65,6 +65,17 @@ namespace workIT.Models.Common
 		public string ProfileSummary { get; set; }
 		public BoundingBox Bounds { get; set; } = new BoundingBox();
 
+
+		public bool HasData()
+		{
+			if ( string.IsNullOrWhiteSpace( Name )
+				&& string.IsNullOrWhiteSpace( Country )
+				&& string.IsNullOrWhiteSpace( Region )
+				)
+				return false;
+			else
+				return true;
+		}
 	}
     //
 

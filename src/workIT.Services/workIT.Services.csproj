@@ -61,23 +61,39 @@
   <ItemGroup>
     <Compile Include="AccountServices.cs" />
     <Compile Include="ActivityServices.cs" />
+    <Compile Include="API\AssessmentServices.cs" />
+    <Compile Include="API\CredentialServices.cs" />
+    <Compile Include="API\LearningOpportunityServices.cs" />
+    <Compile Include="API\PathwayServices.cs" />
+    <Compile Include="API\PathwaySetServices.cs" />
+    <Compile Include="API\ProfileServices.cs" />
+    <Compile Include="API\ServiceHelper.cs" />
+    <Compile Include="API\OrganizationServices.cs" />
+    <Compile Include="API\SearchServices_Results.cs" />
+    <Compile Include="API\SearchServices_Filters.cs" />
+    <Compile Include="API\SearchServices.cs" />
+    <Compile Include="API\SearchServices_Queries.cs" />
+    <Compile Include="API\TransferValueServices.cs" />
     <Compile Include="AssessmentServices.cs" />
     <Compile Include="CompetencyFrameworkServices.cs" />
+    <Compile Include="CompetencyFrameworkServicesV2.cs" />
     <Compile Include="ConceptSchemeServices.cs" />
     <Compile Include="ConditionManifestServices.cs" />
     <Compile Include="CostManifestServices.cs" />
     <Compile Include="CredentialServices.cs" />
+    <Compile Include="DataSetProfileServices.cs" />
     <Compile Include="DescriptionSetServices.cs" />
     <Compile Include="ElasticServices.cs" />
-    <Compile Include="ElasticServices7.cs" />
     <Compile Include="EnumerationServices.cs" />
     <Compile Include="FileReferenceServices.cs" />
     <Compile Include="LearningOpportunityServices.cs" />
     <Compile Include="MicroSearchServicesV2.cs" />
+    <Compile Include="OccupationServices.cs" />
     <Compile Include="OrganizationServices.cs" />
     <Compile Include="PathwayServices.cs" />
     <Compile Include="ProfileServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RegistryServices.cs" />
     <Compile Include="ReportServices.cs" />
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
@@ -105,7 +121,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NEST">
-      <Version>6.8.2</Version>
+      <Version>7.11.1</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
       <Version>12.0.3</Version>

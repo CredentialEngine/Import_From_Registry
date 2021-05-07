@@ -14,6 +14,12 @@ namespace workIT.Data.Tables
     
     public partial class TransferValueProfile
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public TransferValueProfile()
+        {
+            this.Entity_TransferValueProfile = new HashSet<Entity_TransferValueProfile>();
+        }
+    
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -33,5 +39,8 @@ namespace workIT.Data.Tables
         public string TransferValueForJson { get; set; }
         public string StartDate { get; set; }
         public string EndDate { get; set; }
+    
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }
     }
 }

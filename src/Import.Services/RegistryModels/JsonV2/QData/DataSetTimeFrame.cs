@@ -44,8 +44,11 @@ namespace RA.Models.JsonV2.QData
 		/// URI to blank node
 		/// qdata:DataProfile
 		/// </summary>
+		[JsonProperty( PropertyName = "qdata:dataAttributesBNList" )]
+		public List<string> DataAttributesBNList { get; set; }
+
 		[JsonProperty( PropertyName = "qdata:dataAttributes" )]
-		public List<string> DataAttributes { get; set; }
+		public List<DataProfile> DataAttributes { get; set; }
 
 		/// <summary>
 		/// Data Source Coverage Type

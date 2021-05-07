@@ -46,35 +46,38 @@ namespace workIT.Utilities
             {
                 if ( UtilityManager.GetAppKeyValue( "notifyOnException", "no" ).ToLower() == "yes" )
                     notifyAdmin = true;
+				if ( HttpContext.Current != null )
+				{
+					if( HttpContext.Current.Session != null)
+						sessionId = HttpContext.Current.Session.SessionID.ToString();
+					remoteIP = HttpContext.Current.Request.ServerVariables[ "REMOTE_HOST" ];
 
-                sessionId = HttpContext.Current.Session.SessionID.ToString();
-                remoteIP = HttpContext.Current.Request.ServerVariables[ "REMOTE_HOST" ];
+					if ( HttpContext.Current.Request.UrlReferrer != null )
+					{
+						lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
+					}
+					string serverName = UtilityManager.GetAppKeyValue( "serverName", HttpContext.Current.Request.ServerVariables[ "LOCAL_ADDR" ] );
+					path = serverName + HttpContext.Current.Request.Path;
 
-                if ( HttpContext.Current.Request.UrlReferrer != null )
-                {
-                    lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
-                }
-                string serverName = UtilityManager.GetAppKeyValue( "serverName", HttpContext.Current.Request.ServerVariables[ "LOCAL_ADDR" ] );
-                path = serverName + HttpContext.Current.Request.Path;
+					if ( FormHelper.IsValidRequestString() == true )
+					{
+						queryString = HttpContext.Current.Request.Url.AbsoluteUri.ToString();
+						//url = GetPublicUrl( queryString );
 
-                if ( FormHelper.IsValidRequestString() == true )
-                {
-                    queryString = HttpContext.Current.Request.Url.AbsoluteUri.ToString();
-                    //url = GetPublicUrl( queryString );
-
-                    url = HttpContext.Current.Server.UrlDecode( queryString );
-                    //if ( url.IndexOf( "?" ) > -1 )
-                    //{
-                    //    parmsString = url.Substring( url.IndexOf( "?" ) + 1 );
-                    //    url = url.Substring( 0, url.IndexOf( "?" ) );
-                    //}
-                }
-                else
-                {
-                    url = "suspicious url encountered!!";
-                }
-                //????
-                //userId = WUM.GetCurrentUserid();
+						url = HttpContext.Current.Server.UrlDecode( queryString );
+						//if ( url.IndexOf( "?" ) > -1 )
+						//{
+						//    parmsString = url.Substring( url.IndexOf( "?" ) + 1 );
+						//    url = url.Substring( 0, url.IndexOf( "?" ) );
+						//}
+					}
+					else
+					{
+						url = "suspicious url encountered!!";
+					}
+					//????
+					//userId = WUM.GetCurrentUserid();
+				}
             }
             catch
             {

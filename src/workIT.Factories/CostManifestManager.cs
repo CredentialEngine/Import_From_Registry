@@ -195,8 +195,10 @@ namespace workIT.Factories
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
                                 //new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
                             }
+							//just in case
+							EntityCostManifest_Add( conditionManifestParentUid, efEntity.Id, ref status );
 
-                            if ( !UpdateParts( entity, ref status ) )
+							if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 
 							SiteActivity sa = new SiteActivity()
@@ -424,7 +426,9 @@ namespace workIT.Factories
                 statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
                 return false;
             }
-            if ( string.IsNullOrWhiteSpace( ctid ) )
+			if ( string.IsNullOrWhiteSpace( envelopeId ) )
+				envelopeId = "SKIP ME";
+			if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
             using ( var context = new EntityContext() )
 			{
@@ -629,6 +633,55 @@ namespace workIT.Factories
 			ThisEntity to = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
 
+			//Entity parent = EntityManager.GetEntity( 2, orgId );
+			//if ( parent == null || parent.Id == 0 )
+			//{
+			//	return list;
+			//}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.CostManifest
+							.Where( s => s.OrganizationId == orgId )
+							.OrderBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( var from in results )
+						{
+							to = new ThisEntity();
+							if ( isForLinks )
+							{
+								to.Id = from.Id;
+								to.RowId = from.RowId;
+								to.OrganizationId = ( int ) from.OrganizationId;
+								//to.OwningAgentUid = from.Entity.EntityUid;
+								//
+								to.Name = from.Name;
+							}
+							else
+							{
+								MapFromDB( from, to);
+							}
+							list.Add( to );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll(int orgId)" );
+			}
+			return list;
+		}//
+
+		public static List<ThisEntity> GetAllOLD( int orgId, bool isForLinks )
+		{
+			ThisEntity to = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+
 			Entity parent = EntityManager.GetEntity( 2, orgId );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -653,64 +706,9 @@ namespace workIT.Factories
 								to.Id = from.CostManifestId;
 								to.RowId = from.CostManifest.RowId;
 
-								to.OrganizationId = ( int ) from.Entity.EntityBaseId;
+								to.OrganizationId = ( int )from.Entity.EntityBaseId;
 								to.OwningAgentUid = from.Entity.EntityUid;
 								//
-								to.Name = from.CostManifest.Name;
-							}
-							else
-							{
-								MapFromDB( from.CostManifest, to);
-							}
-							list.Add( to );
-						}
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll(int orgId)" );
-			}
-			return list;
-		}//
-		 /// <summary>
-		 /// Get all the Cost manifests for the parent entity (ex a credential)
-		 /// </summary>
-		 /// <param name="parentUid"></param>
-		 /// <returns></returns>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool isForLinks )
-		{
-			ThisEntity to = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				return list;
-			}
-
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					//context.Configuration.LazyLoadingEnabled = false;
-
-					List<EM.Entity_CostManifest> results = context.Entity_CostManifest
-							.Where( s => s.EntityId == parent.Id )
-							.OrderBy( s => s.Created )
-							.ToList();
-
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( EM.Entity_CostManifest from in results )
-						{
-							to = new ThisEntity();
-							if ( isForLinks )
-							{
-								to.Id = from.Id;
-								to.RowId = from.CostManifest.RowId;
-
-								to.OrganizationId = ( int ) from.Entity.EntityBaseId;
-								to.OwningAgentUid = from.Entity.EntityUid;
 								to.Name = from.CostManifest.Name;
 							}
 							else
@@ -724,10 +722,66 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll (Guid parentUid)" );
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll(int orgId)" );
 			}
 			return list;
 		}//
+
+		/// <summary>
+		/// Get all the Cost manifests for the parent entity (ex a credential)
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		//public static List<ThisEntity> GetAll( Guid parentUid, bool isForLinks )
+		//{
+		//	ThisEntity to = new ThisEntity();
+		//	List<ThisEntity> list = new List<ThisEntity>();
+		//	Entity parent = EntityManager.GetEntity( parentUid );
+		//	if ( parent == null || parent.Id == 0 )
+		//	{
+		//		return list;
+		//	}
+
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			//context.Configuration.LazyLoadingEnabled = false;
+
+		//			List<EM.Entity_CostManifest> results = context.Entity_CostManifest
+		//					.Where( s => s.EntityId == parent.Id )
+		//					.OrderBy( s => s.Created )
+		//					.ToList();
+
+		//			if ( results != null && results.Count > 0 )
+		//			{
+		//				foreach ( EM.Entity_CostManifest from in results )
+		//				{
+		//					to = new ThisEntity();
+		//					if ( isForLinks )
+		//					{
+		//						to.Id = from.Id;
+		//						to.RowId = from.CostManifest.RowId;
+
+		//						to.OrganizationId = ( int ) from.Entity.EntityBaseId;
+		//						to.OwningAgentUid = from.Entity.EntityUid;
+		//						to.Name = from.CostManifest.Name;
+		//					}
+		//					else
+		//					{
+		//						MapFromDB( from.CostManifest, to );
+		//					}
+		//					list.Add( to );
+		//				}
+		//			}
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.LogError( ex, thisClassName + ".GetAll (Guid parentUid)" );
+		//	}
+		//	return list;
+		//}//
 
 		public static List<ThisEntity> Search( int orgId, int pageNumber, int pageSize, ref int pTotalRows )
 		{
@@ -913,12 +967,12 @@ namespace workIT.Factories
 				to.LastUpdated = ( DateTime ) from.LastUpdated;	
 
 			if ( IsValidDate( from.StartDate ) )
-				to.StartDate = ( ( DateTime ) from.StartDate ).ToShortDateString();
+				to.StartDate = ( ( DateTime ) from.StartDate ).ToString("yyyy-MM-dd");
 			else
 				to.StartDate = "";
 
 			if ( IsValidDate( from.EndDate ) )
-				to.EndDate = ( ( DateTime ) from.EndDate ).ToShortDateString();
+				to.EndDate = ( ( DateTime ) from.EndDate ).ToString("yyyy-MM-dd");
 			else
 				to.EndDate = "";
 			//get common Costs
@@ -1034,7 +1088,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a CostManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parent.EntityUid, parent.EntityType, profileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -1158,41 +1212,41 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static List<ThisEntity> GetAllManifests( Guid parentUid, bool forEditView )
-		{
-			List<ThisEntity> list = new List<ThisEntity>();
-			ThisEntity entity = new ThisEntity();
-			Entity parent = EntityManager.GetEntity( parentUid );
+		//public static List<ThisEntity> GetAllManifests( Guid parentUid, bool forEditView )
+		//{
+		//	List<ThisEntity> list = new List<ThisEntity>();
+		//	ThisEntity entity = new ThisEntity();
+		//	Entity parent = EntityManager.GetEntity( parentUid );
 
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					List<EM.Entity_CostManifest> results = context.Entity_CostManifest
-							.Where( s => s.EntityId == parent.Id )
-							.OrderBy( s => s.CostManifestId )
-							.ToList();
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			List<EM.Entity_CostManifest> results = context.Entity_CostManifest
+		//					.Where( s => s.EntityId == parent.Id )
+		//					.OrderBy( s => s.CostManifestId )
+		//					.ToList();
 
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( EM.Entity_CostManifest item in results )
-						{
-							//TODO - optimize the appropriate MapFromDB methods
-							entity = new ThisEntity();
-							CostManifestManager.MapFromDB( item.CostManifest, entity );
+		//			if ( results != null && results.Count > 0 )
+		//			{
+		//				foreach ( EM.Entity_CostManifest item in results )
+		//				{
+		//					//TODO - optimize the appropriate MapFromDB methods
+		//					entity = new ThisEntity();
+		//					CostManifestManager.MapFromDB( item.CostManifest, entity );
 
-							list.Add( entity );
-						}
-					}
-					return list;
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAllManifests" );
-			}
-			return list;
-		}
+		//					list.Add( entity );
+		//				}
+		//			}
+		//			return list;
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.LogError( ex, thisClassName + ".GetAllManifests" );
+		//	}
+		//	return list;
+		//}
 		#endregion
 
 

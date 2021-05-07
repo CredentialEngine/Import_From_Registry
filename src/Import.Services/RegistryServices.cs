@@ -28,7 +28,7 @@ namespace Import.Services
 		public string Community { get; set; }
 
 		#region Registry search
-		public static List<ReadEnvelope> Search( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder="asc" )
+		public static List<ReadEnvelope> Search( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder="asc" )
 		{
 
 			string document = "";
@@ -37,8 +37,8 @@ namespace Import.Services
 			string serviceUri = GetRegistrySearchUrl( community );
 			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
 			//resource_type=credential
-			if ( !string.IsNullOrWhiteSpace( type ) )
-				filter = string.Format( "resource_type={0}", type.ToLower() );
+			if ( !string.IsNullOrWhiteSpace( resourceType ) )
+				filter = string.Format( "resource_type={0}", resourceType.ToLower() );
 
 			SetPaging( pageNbr, pageSize, ref filter );
 			SetDateFilters( startingDate, endingDate, ref filter );
@@ -428,15 +428,19 @@ namespace Import.Services
         /// <returns></returns>
         public static ReadEnvelope GetEnvelope( string envelopeId, ref string statusMessage, ref string ctdlType, string community = "" )
         {
-            string document = "";
 			//need to pass in an override community - eventually
 			if (string.IsNullOrWhiteSpace( community ) )
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			string serviceUri = GetEnvelopeUrl( envelopeId, community );
             //
 			serviceUri = string.Format( serviceUri, envelopeId );
-            LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeId: {0}, serviceUri: {1} ", envelopeId, serviceUri ) );
+            //LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeId: {0}, serviceUri: {1} ", envelopeId, serviceUri ) );
+			
+			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
+
+			/*
             ReadEnvelope envelope = new ReadEnvelope();
+			string document = "";
 
             try
             {
@@ -488,10 +492,11 @@ namespace Import.Services
                 statusMessage = exc.Message;
             }
             return envelope;
-        }
+			*/
+		}
 		public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType, string community = "" )
 		{
-			string document = "";
+			
 			//need to pass in an override community - eventually
 			if ( string.IsNullOrWhiteSpace( community ) )
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
@@ -499,8 +504,11 @@ namespace Import.Services
 			//
 			serviceUri = string.Format( serviceUri, ctid );
 			LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope ctid: {0}, serviceUri: {1} ", ctid, serviceUri ) );
-			ReadEnvelope envelope = new ReadEnvelope();
 
+			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
+			/*
+			ReadEnvelope envelope = new ReadEnvelope();
+			string document = "";
 			try
 			{
 				// Create a request for the URL.         
@@ -547,6 +555,64 @@ namespace Import.Services
 					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelopeByCtid. Not found for CTID: {0}", ctid ) );
 				else
 					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelopeByCtid: " + ctid );
+				statusMessage = exc.Message;
+			}
+			return envelope;
+			*/
+		}
+
+		public static ReadEnvelope GetEnvelopeByURL( string envelopeUrl, ref string statusMessage, ref string ctdlType )
+		{
+			string document = "";
+			LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeUrl: {0} ", envelopeUrl ) );
+			ReadEnvelope envelope = new ReadEnvelope();
+
+			try
+			{
+				// Create a request for the URL.         
+				WebRequest request = WebRequest.Create( envelopeUrl );
+				// If required by the server, set the credentials.
+				request.Credentials = CredentialCache.DefaultCredentials;
+				var hdr = new WebHeaderCollection
+				{
+					{ "Authorization", "Token  " + credentialEngineAPIKey }
+				};
+				request.Headers.Add( hdr );
+
+				//Get the response.
+				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+
+				// Get the stream containing content returned by the server.
+				Stream dataStream = response.GetResponseStream();
+
+				// Open the stream using a StreamReader for easy access.
+				StreamReader reader = new StreamReader( dataStream );
+				// Read the content.
+				document = reader.ReadToEnd();
+
+				// Cleanup the streams and the response.
+
+				reader.Close();
+				dataStream.Close();
+				response.Close();
+
+				//map to the default envelope
+				envelope = JsonConvert.DeserializeObject<ReadEnvelope>( document );
+
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					string payload = envelope.DecodedResource.ToString();
+					ctdlType = RegistryServices.GetResourceType( payload );
+
+					//return ProcessProxy( mgr, item, status );
+				}
+			}
+			catch ( Exception exc )
+			{
+				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelope. Not found for {0}", envelopeUrl ) );
+				else
+					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelope: " + envelopeUrl );
 				statusMessage = exc.Message;
 			}
 			return envelope;

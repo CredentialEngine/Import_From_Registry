@@ -61,6 +61,8 @@ namespace workIT.Data.Tables
         public string AssessmentMethodDescription { get; set; }
         public string LearningMethodDescription { get; set; }
         public Nullable<System.DateTime> ExpirationDate { get; set; }
+        public string CreditValue { get; set; }
+        public string TargetLearningResource { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Assessment> Entity_Assessment { get; set; }

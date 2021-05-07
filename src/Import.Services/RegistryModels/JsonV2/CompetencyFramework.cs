@@ -155,8 +155,24 @@ namespace RA.Models.JsonV2
 		public List<CredentialAlignmentObject> OccupationType { get; set; } 
 
 		[JsonProperty( "ceterms:industryType" )]
-		public List<CredentialAlignmentObject> IndustryType { get; set; } 
+		public List<CredentialAlignmentObject> IndustryType { get; set; }
+		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
+		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
 
+		/// <summary>
+		/// CIP List is a helper when publishing from a graph. It will not be published
+		/// </summary>
+		[JsonProperty( "cipList" )]
+		public List<string> CIPList { get; set; }
+		/// <summary>
+		/// SOC List is a helper when publishing from a graph. It will not be published
+		/// </summary>
+		[JsonProperty( "socList" )]
+		public List<string> SOCList { get; set; }
+
+		/// NAICS List is a helper when publishing from a graph. It will not be published
+		[JsonProperty( "naicsList" )]
+		public List<string> NaicsList { get; set; }
 	}
 
 	public class CompetencyFrameworkPlain

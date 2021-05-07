@@ -8,6 +8,11 @@ namespace workIT.Models.Common
 {
 	public class HoldersProfile : OutcomesBaseObject
 	{
+		/// <summary>
+		/// DemographicInformation
+		/// Aggregate data or summaries of statistical data relating to the population of credential holders including data about gender, geopolitical regions, age, education levels, and other categories of interest.
+		/// </summary>
+		public string DemographicInformation { get; set; }
 
 		/// <summary>
 		///  Number of credentials awarded.

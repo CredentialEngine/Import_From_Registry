@@ -58,7 +58,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						messages.Add( "Error - the add was not successful. " );
+						messages.Add( thisClassName + "Error - the add was not successful. " );
 						string message = string.Format( thisClassName + ".Add() Failed", "Attempted to add a Import document. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}; EnvelopeId: {1}", entity.EntityTypedId, entity.EnvelopeId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add() Failed", message );
 					}
@@ -233,6 +233,72 @@ namespace workIT.Factories
 			}
 
 			return msgCount;
+		}
+
+		/// <summary>
+		/// Get import summary for the requested time period
+		/// </summary>
+		/// <param name="startDateTime">yyyy-MM-dd hh:mm</param>
+		/// <param name="endDateTime">yyyy-MM-dd hh:mm</param>
+		public static bool ImportPeriodSummary( string startDateTime, string endDateTime, ref List<CodeItem> output, ref string message)
+		{
+			string connectionString = MainConnection();
+			var result = new DataTable();
+			
+			CodeItem item = new CodeItem();
+			try
+			{
+				using ( SqlConnection c = new SqlConnection( connectionString ) )
+				{
+					c.Open();
+
+					using ( SqlCommand command = new SqlCommand( "[ImportSummaryReport]", c ) )
+					{
+						command.CommandType = CommandType.StoredProcedure;
+						command.Parameters.Add( new SqlParameter( "@StartDate", startDateTime ) );
+						command.Parameters.Add( new SqlParameter( "@EndDate", endDateTime ) );
+
+						try
+						{
+							using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+							{
+								adapter.SelectCommand = command;
+								adapter.Fill( result );
+							}
+						}
+						catch ( Exception ex )
+						{
+							LoggingHelper.DoTrace( 2, "ImportPeriodSummary - Exception:\r\n " + ex.Message );
+							//LoggingHelper.LogError( ex, "ImportPeriodSummary", true, "Credential Search For Elastic Error" );
+							message = "Error encountered" + ex.Message;
+							return false;
+						}
+					}
+				}
+				try
+				{
+
+					foreach ( DataRow dr in result.Rows )
+					{
+						item = new CodeItem();
+						item.EntityType = GetRowColumn( dr, "ActivityType", "" );
+						item.Description = GetRowColumn( dr, "Event", "" );
+						item.Totals = GetRowColumn( dr, "total", 0 );
+						output.Add( item );
+					}
+				}
+				catch ( Exception ex )
+				{
+
+				}
+				return true;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "ImportPeriodSummary", false );
+				return false;
+			}
+
 		}
 		#endregion
 
@@ -443,6 +509,8 @@ namespace workIT.Factories
 						var e = EntityManager.GetEntity( (Guid)entity.EntityUid, false );
 						if (e == null || e.Id == 0)
 						{
+							//21-04-30 - not sure we should be deleting these????
+							//			- this thought occurred after importing Ivy Tech from prod - resulting in all of the owns (credentials etc) being added to pending
 							string statusMessage = "";
 							Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
@@ -516,9 +584,10 @@ namespace workIT.Factories
 		/// Only return records not already processed, and have wasChanged = true 
 		/// TODO- should deletes also be returned and have caller process as found?
 		/// </summary>
-		/// <param name="entityType">If blankd, will select all</param>
+		/// <param name="entityType">If blank, will select all</param>
+		/// <param name="maxRecords">Number of records to process</param>
 		/// <returns></returns>
-		public static List<WM.Import_PendingRequest> SelectPendingList(string entityType )
+		public static List<WM.Import_PendingRequest> SelectPendingList(string entityType, int maxRecords = 100 )
 		{
 			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
 			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
@@ -547,6 +616,7 @@ namespace workIT.Factories
 								&& s.PublishMethodURI != "DELETE" && s.PublishMethodURI != "Transfer of Owner"
 								&& ( s.PublishingEntityType == entityType ) 
 								)
+							.Take(maxRecords)
 							.OrderBy( s => s.PublishingEntityType )
 							.ThenBy( s => s.EntityCtid )
 							.ThenBy( x => x.Created )
@@ -583,7 +653,13 @@ namespace workIT.Factories
 			return list;
 		}//
 
-		public static List<WM.Import_PendingRequest> SelectAllPendingExceptList(string excludeEntityType)
+		/// <summary>
+		/// Select pending records except excludeEntityType
+		/// </summary>
+		/// <param name="excludeEntityType"></param>
+		/// <param name="maxRecords"></param>
+		/// <returns></returns>
+		public static List<WM.Import_PendingRequest> SelectAllPendingExceptList(string excludeEntityType, int maxRecords = 100)
 		{
 			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
 			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
@@ -609,6 +685,7 @@ namespace workIT.Factories
 								&& s.PublishMethodURI != "Registry Delete" && s.PublishMethodURI != "Transfer of Owner"
 								&& ( s.PublishingEntityType != excludeEntityType ) 
 								)
+							.Take(maxRecords)
 							.OrderBy( s => s.PublishingEntityType )
 							.ThenBy( s => s.EntityCtid )
 							.ThenBy( x => x.Created )
@@ -642,7 +719,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".SelectPendingList" );
+				LoggingHelper.LogError( ex, thisClassName + ".SelectAllPendingExceptList" );
 			}
 			return list;
 		}//
@@ -657,10 +734,14 @@ namespace workIT.Factories
 				string prevCTID = "";
 				using ( var context = new EntityContext() )
 				{
+					//actually REGISTRY_ACTION_PURGE_ALL should be handled separately
 					var search = context.Import_PendingRequest
 							.Where( s => s.WasChanged == true
 								&& s.WasProcessed == false
-								&& (s.PublishMethodURI == REGISTRY_ACTION_DELETE || s.PublishMethodURI == REGISTRY_ACTION_PURGE)
+								&& (s.PublishMethodURI == REGISTRY_ACTION_DELETE 
+								|| s.PublishMethodURI == REGISTRY_ACTION_PURGE
+								|| s.PublishMethodURI == REGISTRY_ACTION_PURGE_ALL
+								)
 								)
 							.OrderBy( s => s.PublishingEntityType )
 							.ThenBy( s => s.EntityCtid)
@@ -678,6 +759,7 @@ namespace workIT.Factories
 								Environment = item.Environment,
 								EntityName = item.EntityName,
 								EntityCtid = item.EntityCtid,
+								PublisherCTID = item.PublisherCTID,
 								PublishMethodURI = item.PublishMethodURI,
 								PublishingEntityType = item.PublishingEntityType
 								//EnvelopeLastUpdated = item.EnvelopeLastUpdated
@@ -694,6 +776,57 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, thisClassName + ".SelectPendingList" );
+			}
+			return list;
+		}//
+
+		public static List<WM.Import_PendingRequest> SelectAllPendingPurgeAll()
+		{
+			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
+			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
+
+			try
+			{
+				string prevPublishingEntityType = "";
+				using ( var context = new EntityContext() )
+				{
+					//actually REGISTRY_ACTION_PURGE_ALL should be handled separately
+					var search = context.Import_PendingRequest
+							.Where( s => s.WasChanged == true
+								&& s.WasProcessed == false
+								&& ( s.PublishMethodURI == REGISTRY_ACTION_PURGE_ALL )
+								)
+							.OrderBy( s => s.PublishingEntityType )
+							.ThenBy( x => x.Created )
+							.ToList();
+
+					if ( search != null && search.Count > 0 )
+					{
+						foreach ( var item in search )
+						{
+							entity = new WM.Import_PendingRequest
+							{
+								Id = item.Id,
+								//EnvelopeId = item.EnvelopeId,
+								Environment = item.Environment,
+								PublisherCTID = item.PublisherCTID,
+								DataOwnerCTID = item.DataOwnerCTID,
+								//EntityName = item.EntityName,
+								//EntityCtid = item.EntityCtid,
+								PublishMethodURI = item.PublishMethodURI,
+								PublishingEntityType = item.PublishingEntityType
+							};
+							if ( prevPublishingEntityType != entity.PublishingEntityType.ToLower() )
+								list.Add( entity );
+
+							prevPublishingEntityType = entity.PublishingEntityType.ToLower();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".SelectAllPendingPurgeAll" );
 			}
 			return list;
 		}//

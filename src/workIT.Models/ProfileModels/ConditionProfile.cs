@@ -119,17 +119,17 @@ namespace workIT.Models.ProfileModels
 
 		public decimal Weight { get; set; }
 		public decimal YearsOfExperience { get; set; }
-		
+
 
 		//public List<TextValueProfile> Auto_SubjectWebpage { get { return string.IsNullOrWhiteSpace( SubjectWebpage ) ? null : new List<TextValueProfile>() { new TextValueProfile() { TextValue = SubjectWebpage } }; } }
 
 		//
+		//21-02-15 mparsons - changing to a ValueProfile
+		//public List<QuantitativeValue> CreditValueList2 { get; set; } = new List<QuantitativeValue>();
 		public ValueProfile CreditValue { get; set; } = new ValueProfile();
-		public QuantitativeValue CreditValueQV { get; set; } = new QuantitativeValue();
+	
 		//20-07-24 updating to handle a list
 		public List<ValueProfile> CreditValueList { get; set; } = new List<ValueProfile>();
-		//21-02-15 mparsons - changing to a ValueProfile
-		public List<QuantitativeValue> CreditValueList2 { get; set; } = new List<QuantitativeValue>();
 		public string CreditValueJson { get; set; }
 
 
@@ -273,7 +273,7 @@ namespace workIT.Models.ProfileModels
 			}
 		}
 	}
-	//
+	//TBD - use or not
 	public class ConditionProfileJson
 	{
 

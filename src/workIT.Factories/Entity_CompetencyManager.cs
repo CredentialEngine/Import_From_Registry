@@ -529,10 +529,10 @@ namespace workIT.Factories
 
                                     if ( !string.IsNullOrWhiteSpace(item.CompetencyFramework.CTID) )
                                     {
-                                        entity.FrameworkPayload = ImportManager.GetByCtid(item.CompetencyFramework.CTID);
-                                        if ( !string.IsNullOrWhiteSpace(entity.FrameworkPayload.Payload) 
+                                        entity.RegistryImport = ImportManager.GetByCtid(item.CompetencyFramework.CTID);
+                                        if ( !string.IsNullOrWhiteSpace(entity.RegistryImport.Payload) 
                                             && frameworksList.ContainsKey(entity.FrameworkName) == false)
-                                            frameworksList.Add(entity.FrameworkName, entity.FrameworkPayload);
+                                            frameworksList.Add(entity.FrameworkName, entity.RegistryImport);
                                     }
                                 }
                                 else

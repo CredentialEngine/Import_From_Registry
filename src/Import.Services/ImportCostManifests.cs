@@ -14,6 +14,7 @@ using InputEntity = RA.Models.Json.CostManifest;
 using InputEntityV3 = RA.Models.JsonV2.CostManifest;
 using BNodeV3 = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.Common.CostManifest;
+
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.ProfileModels;
@@ -25,6 +26,8 @@ namespace Import.Services
 		int entityTypeId = CodesManager.ENTITY_TYPE_COST_MANIFEST;
 		string thisClassName = "ImportCostManifests";
 		ImportManager importManager = new ImportManager();
+		ImportServiceHelpers importHelper = new ImportServiceHelpers();
+
 		InputEntity input = new InputEntity();
 		ThisEntity output = new ThisEntity();
 
@@ -86,7 +89,22 @@ namespace Import.Services
 			}
         }
 		#endregion
-
+		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
+		{
+			EntityServices mgr = new EntityServices();
+			bool importSuccessfull = ProcessEnvelope( item, status );
+			List<string> messages = new List<string>();
+			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
+			//store envelope
+			int newImportId = importHelper.Add( item, CodesManager.ENTITY_TYPE_COST_MANIFEST, status.Ctid, importSuccessfull, importError, ref messages );
+			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+			{
+				//add indicator of current recored
+				string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, thisClassName );
+				importHelper.AddMessages( newImportId, status, ref messages );
+			}
+			return importSuccessfull;
+		}
 		public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
 			if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
@@ -255,11 +273,19 @@ namespace Import.Services
 
             if ( status.DoingDownloadOnly )
                 return true;
+			try
+			{
 
+		
             if ( !DoesEntityExist( input.CTID, ref output ) )
             {
                 output.RowId = Guid.NewGuid();
-            }
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+				}
+			else
+			{
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
+			}
 
             helper.currentBaseObject = output;
 
@@ -299,8 +325,17 @@ namespace Import.Services
                         false,
                         ref messages,
                         output.Id > 0 );
- 
-            return importSuccessfull;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "CostManifest ImportV3. Exception encountered for CTID: {0}", ctid ), false, "CostManifest Import exception" );
+			}
+			finally
+			{
+
+			}
+
+			return importSuccessfull;
         }
         public bool DoesEntityExist( string ctid, ref ThisEntity entity )
         {

@@ -98,7 +98,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add an Entity_DataSetProfileManager. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, HoldersId: {2}", parentUid, parent.EntityType, dataSetProfileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}

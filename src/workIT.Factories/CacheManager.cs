@@ -71,6 +71,7 @@ namespace workIT.Factories
 
 		/// <summary>
 		/// Populate Entity Related Caches
+		/// TODO - REMOVE THIS, CACHE SHOULD BE UPDATED AS DATA IS IMPORTED
 		/// </summary>
 		/// <param name="entityUid"></param>
 		public void PopulateEntityRelatedCaches( Guid entityUid )

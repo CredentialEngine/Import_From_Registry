@@ -34,12 +34,16 @@ namespace workIT.Factories
 
 			try { 
 			//need to handle deletes for parent?
+			//will be an issue for shared datasets
 			//DeleteAll( parentEntity, ref status );
 			using ( var context = new EntityContext() )
 			{
+				//get all datasetProfiles for this parent
 				var existing = context.Entity_DataSetProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
-				//
-				var result = existing.Where( ex => input.All( p2 => p2.CTID != ex.DataSetProfile.CTID ) );
+				//huh - only deleting 
+				//object get all e_dsp for current parent where the ctid is not found in the input list.
+				//	- we will want to delete the e_dsp for the latter (and maybe dsp if no other connections)
+				var result = existing.Where( ex => input.All( p2 => p2.CTID != ex.DataSetProfile.CTID ) ).ToList();
 				var messages = new List<string>();
 				foreach ( var item in result )
 				{
@@ -53,6 +57,7 @@ namespace workIT.Factories
 
 			foreach ( var item in input )
 			{
+				//current the datasetProfile is not being deleted - may be OK - TBD
 				var e = GetByCtid( item.CTID );
 				item.Id = e.Id;
 				if ( !Save( item, parentEntity, ref status ) )
@@ -153,7 +158,14 @@ namespace workIT.Factories
 							{
 								if ( !UpdateParts( entity, ref status ) )
 									isValid = false;
-
+								//should not be necessary, but seems the e_DSP is missing somehow
+								//N/A for a directly imported dataSetProfile
+								if ( parentEntity != null )
+								{
+									new Entity_DataSetProfileManager().Add( parentEntity.EntityUid, entity.Id, ref status );
+								}
+								//
+								//21-04-22 only add activity if was a standalone dataset
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "DataSetProfile",
@@ -249,7 +261,10 @@ namespace workIT.Factories
 						};
 						new ActivityManager().SiteActivityAdd( sa );
 						//
-						new Entity_DataSetProfileManager().Add( parentEntity.EntityUid, entity.Id, ref status );
+						if ( parentEntity != null )
+						{
+							new Entity_DataSetProfileManager().Add( parentEntity.EntityUid, entity.Id, ref status );
+						}
 						//
 						if ( UpdateParts( entity, ref status ) == false )
 						{
@@ -378,16 +393,34 @@ namespace workIT.Factories
 
 					foreach ( var item in results )
 					{
-						if ( item.DataSetProfile != null && item.DataSetProfile.Id > 0 )
+						//need to check if reference by other entities
+						var exists = context.Entity_DataSetProfile
+							.Where( s => s.EntityId != parent.Id && s.DataSetProfileId == item.DataSetProfileId )
+							.ToList();
+						if (exists != null && exists.Any())
+						{
+							//only removeEntity_DataSetProfile
+							context.Entity_DataSetProfile.Remove( item );
+							count = context.SaveChanges();
+							if ( count > 0 )
+							{
+
+							}
+						} 
+						else if ( item.DataSetProfile != null && item.DataSetProfile.Id > 0 )
 						{
 							//this will delete the Entity_DataSetProfile as well.
+
 							Delete( item.DataSetProfile.Id, ref messages );
 						}
-						context.Entity_DataSetProfile.Remove( item );
-						count = context.SaveChanges();
-						if ( count > 0 )
+						else //unlikely, but remove orphan Entity_DataSetProfile
 						{
+							context.Entity_DataSetProfile.Remove( item );
+							count = context.SaveChanges();
+							if ( count > 0 )
+							{
 
+							}
 						}
 					}
 				}
@@ -432,6 +465,10 @@ namespace workIT.Factories
 
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " DataSetProfile. Id: {0}, Ctid: {1}.", efEntity.Id, efEntity.CTID );
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( rowId, string.Format( "DataSetProfile: {0}", id), ref statusMessage );
+
 						//
 						context.DataSetProfile.Remove( efEntity );
 						//efEntity.EntityStateId = 0;

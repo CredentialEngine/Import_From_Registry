@@ -72,7 +72,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add an Entity_HoldersProfile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, HoldersId: {2}", parentUid, parent.EntityType, holdersProfileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -112,11 +112,7 @@ namespace workIT.Factories
 				status.AddError( thisClassName + ".DeleteAll Error - the provided target parent entity was not provided." );
 				return false;
 			}
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
-				return false;
-			}
+		
 			using ( var context = new EntityContext() )
 			{
 				//check if target is a reference object and is only in use here
@@ -158,13 +154,13 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returnsThisEntity
-		public static List<HoldersProfile> GetAll( Guid parentUid, bool includingParts = true )
+		public static List<HoldersProfile> GetAll( Entity parent, bool includingParts = true )
 		{
 			var list = new List<HoldersProfile>();
 			var entity = new HoldersProfile();
 
-			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parent.EntityUid, parent.Id, parent.EntityTypeId ) );
 
 			try
 			{

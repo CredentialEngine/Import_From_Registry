@@ -163,16 +163,29 @@ namespace workIT.Factories
 					.ToList();
 					if ( results == null || results.Count == 0 )
 						return true;
-					context.Entity_Assertion.RemoveRange( context.Entity_Assertion.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
+					foreach ( var item in results )
 					{
-						isValid = true;
+						context.Entity_Assertion.Remove( item );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							isValid = true;
+						}
+						else
+						{
+							//if doing a delete on spec, may not have been any properties
+						}
 					}
-					else
-					{
-						//if doing a delete on spec, may not have been any properties
-					}
+					//context.Entity_Assertion.RemoveRange( context.Entity_Assertion.Where( s => s.EntityId == parent.Id ) );
+					//int count = context.SaveChanges();
+					//if ( count > 0 )
+					//{
+					//	isValid = true;
+					//}
+					//else
+					//{
+					//	//if doing a delete on spec, may not have been any properties
+					//}
 				}
 			}
 			catch ( Exception ex )
@@ -547,7 +560,7 @@ namespace workIT.Factories
 							};
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
-				LoggingHelper.DoTrace( 6, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
+				LoggingHelper.DoTrace( 7, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
 
 				var results = query.Distinct().ToList();
 				if ( results != null && results.Count() > 0 )
@@ -663,7 +676,7 @@ namespace workIT.Factories
                             orp.TargetOrganization.Description = entity.TargetEntityDescription;
                             orp.TargetOrganization.EntityStateId = entity.TargetEntityStateId ?? 2;
                             orp.TargetOrganization.SubjectWebpage = entity.TargetEntitySubjectWebpage;
-                            orp.TargetOrganization.ImageUrl = entity.TargetEntityImageUrl;
+                            orp.TargetOrganization.Image = entity.TargetEntityImageUrl;
                         }
                         else if ( entity.TargetEntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
                         {
@@ -746,6 +759,11 @@ namespace workIT.Factories
 		{
 			OrganizationRoleProfile orp = new OrganizationRoleProfile();
 			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+			//21-03-22 remove requirement for owningOrgId
+			//|| owningOrgId == 0
+			if ( targetEntityTypeId == 0 || recordId == 0  )
+				return list;
+
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
@@ -763,127 +781,136 @@ namespace workIT.Factories
 							.ThenBy( s => s.RelationshipTypeId )
 							.ThenBy( s => s.roleSource )
 						.ToList();
-
-				//for this view, we want to retrieve the QA organization info, we already have the target (ie. that is the current context).
-				foreach ( var entity in agentRoles )
+				if ( agentRoles != null && agentRoles.Any() )
 				{
-					//loop until change in entity type?
-					if ( prevOrgUid != entity.OrgUid )
+					//for this view, we want to retrieve the QA organization info, we already have the target (ie. that is the current context).
+					foreach ( var entity in agentRoles )
 					{
-						//handle previous fill
-						if ( IsGuidValid( prevOrgUid ) && prevRoleTypeId > 0 )
+						//loop until change in entity type?
+						if ( prevOrgUid != entity.OrgUid )
 						{
-							orp.AgentRole.Items.Add( eitem );
-							list.Add( orp );
-						}
-
-						prevOrgUid = entity.OrgUid;
-						prevRoleSource = entity.roleSource;
-						prevRoleTypeId = entity.RelationshipTypeId;
-
-						//not sure if pertinent
-						orp = new OrganizationRoleProfile
-						{
-							Id = 0,
-							ParentId = entity.OrgId,
-							ParentTypeId = 2,
-							ProfileSummary = entity.Organization,
-
-							AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE )
-						};
-						orp.AgentRole.ParentId = entity.OrgId;
-
-						orp.ActingAgent = new Organization();
-
-						//or should it be TargetOrganization - check how currently used
-						//compare: Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration
-						orp.ActingAgentUid = entity.OrgUid;
-						orp.ActingAgentId = entity.OrgId;
-						orp.ActingAgent = new Organization()
-						{
-							Id = entity.OrgId,
-							RowId = entity.OrgUid,
-							Name = entity.Organization,
-							SubjectWebpage = entity.AgentSubjectWebpage,
-							Description = entity.AgentDescription,
-							ImageUrl = entity.AgentImageUrl,
-							EntityStateId = entity.AgentEntityStateId ?? 1,
-							CTID = entity.AgentCTID
-						};
-						orp.AgentRole.Items = new List<EnumeratedItem>();
-					}
-
-					/* either first one for new target
-					 * or change in relationship
-					 * or change in role source
-					 * NOTE: skip the Direct checks if not QA, or at least if only owns/offers
-					 */
-
-					if ( prevRoleTypeId == entity.RelationshipTypeId )
-					{
-						if ( prevRoleSource != entity.roleSource  )
-						{
-							//TBD
-							if ( entity.IsQARole ?? false )
+							//handle previous fill
+							if ( IsGuidValid( prevOrgUid ) && prevRoleTypeId > 0 )
 							{
-								if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
-									eitem.IsDirectAssertion = true;
-								else
-									eitem.IsIndirectAssertion = true;
+								orp.AgentRole.Items.Add( eitem );
+								list.Add( orp );
 							}
-							//add previous
-							//could get a dup if there is an immediate chg in target, 
-							//orp.AgentRole.Items.Add( eitem );
+
+							prevOrgUid = entity.OrgUid;
 							prevRoleSource = entity.roleSource;
-							continue;
+							prevRoleTypeId = entity.RelationshipTypeId;
+
+							//not sure if pertinent
+							orp = new OrganizationRoleProfile
+							{
+								Id = 0,
+								ParentId = entity.OrgId,
+								ParentTypeId = 2,
+								ProfileSummary = entity.Organization,
+
+								AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE )
+							};
+							orp.AgentRole.ParentId = entity.OrgId;
+
+							orp.ActingAgent = new Organization();
+
+							//or should it be TargetOrganization - check how currently used
+							//compare: Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration
+							orp.ActingAgentUid = entity.OrgUid;
+							orp.ActingAgentId = entity.OrgId;
+							orp.ActingAgent = new Organization()
+							{
+								Id = entity.OrgId,
+								RowId = entity.OrgUid,
+								Name = entity.Organization,
+								SubjectWebpage = entity.AgentSubjectWebpage,
+								Description = entity.AgentDescription,
+								Image = entity.AgentImageUrl,
+								EntityStateId = entity.AgentEntityStateId ?? 1,
+								CTID = entity.AgentCTID
+							};
+							orp.AgentRole.Items = new List<EnumeratedItem>();
 						}
-					}
-					else
-					{
-						//if not equal, add previous, and initialize next one (fall thru)
-						orp.AgentRole.Items.Add( eitem );
-					}
 
-					//add relationship
-					eitem = new EnumeratedItem
-					{
-						Id = entity.RelationshipTypeId,
-						Name = entity.SourceToAgentRelationship,
-						SchemaName = entity.ReverseSchemaTag,
-						IsQAValue = ( entity.IsQARole ?? false )
-					};
-					if ( (entity.IsQARole ?? false) && entity.OrgId != owningOrgId )
-					{
-						eitem.Name = entity.AgentToSourceRelationship;
-						eitem.SchemaName = entity.ReverseSchemaTag;
-					}
-					else
-					{
-						eitem.Name = entity.SourceToAgentRelationship;
-						eitem.SchemaName = entity.SchemaTag;
-					}
-					//eitem.CodeId = entity.RelationshipTypeId;
+						/* either first one for new target
+						 * or change in relationship
+						 * or change in role source
+						 * NOTE: skip the Direct checks if not QA, or at least if only owns/offers
+						 */
 
-					prevRoleTypeId = entity.RelationshipTypeId;
-					prevRoleSource = entity.roleSource;
-					//**need additional check if from the owning org!
-					if ( entity.IsQARole ?? false )
-					{
-						if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
-							eitem.IsDirectAssertion = true;
+						if ( prevRoleTypeId == entity.RelationshipTypeId )
+						{
+							if ( prevRoleSource != entity.roleSource )
+							{
+								//TBD
+								if ( entity.IsQARole ?? false )
+								{
+									if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
+										eitem.IsDirectAssertion = true;
+									else
+										eitem.IsIndirectAssertion = true;
+								}
+								//add previous
+								//could get a dup if there is an immediate chg in target, 
+								//orp.AgentRole.Items.Add( eitem );
+								prevRoleSource = entity.roleSource;
+								continue;
+							}
+						}
 						else
-							eitem.IsIndirectAssertion = true;
+						{
+							//if not equal, add previous, and initialize next one (fall thru)
+							orp.AgentRole.Items.Add( eitem );
+						}
+
+						//add relationship
+						eitem = new EnumeratedItem
+						{
+							Id = entity.RelationshipTypeId,
+							Name = entity.SourceToAgentRelationship,
+							SchemaName = entity.SchemaTag,
+							IsQAValue = ( entity.IsQARole ?? false )
+						};
+						if ( ( entity.IsQARole ?? false ) && entity.OrgId != owningOrgId )
+						{
+							//not sure this is correct. For QA received, it should be BYs
+							//eitem.Name = entity.AgentToSourceRelationship;
+							eitem.Name = entity.SourceToAgentRelationship;
+							eitem.SchemaName = entity.SchemaTag;
+							//eitem.SchemaName = entity.ReverseSchemaTag;
+						}
+						else
+						{
+							if ( entity.RelationshipTypeId != 6 && entity.RelationshipTypeId != 7)
+							{
+								eitem.Name = entity.SourceToAgentRelationship;
+								eitem.SchemaName = entity.SchemaTag;
+							}
+							//eitem.Name = entity.SourceToAgentRelationship;
+							//eitem.SchemaName = entity.SchemaTag;
+						}
+						//eitem.CodeId = entity.RelationshipTypeId;
+
+						prevRoleTypeId = entity.RelationshipTypeId;
+						prevRoleSource = entity.roleSource;
+						//**need additional check if from the owning org!
+						if ( entity.IsQARole ?? false )
+						{
+							if ( entity.roleSource == "QAOrganization" || entity.OrgId == owningOrgId )
+								eitem.IsDirectAssertion = true;
+							else
+								eitem.IsIndirectAssertion = true;
+						}
+
+					} //
+
+					//check for remaining
+					if ( IsGuidValid( prevOrgUid ) && prevRoleTypeId > 0 )
+					{
+						orp.AgentRole.Items.Add( eitem );
+						list.Add( orp );
 					}
-
-				} //
-
-				//check for remaining
-				if ( IsGuidValid( prevOrgUid ) && prevRoleTypeId > 0 )
-				{
-					orp.AgentRole.Items.Add( eitem );
-					list.Add( orp );
 				}
-
 			}
 			return list;
 

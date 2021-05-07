@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using Newtonsoft.Json;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Utilities;
@@ -86,7 +86,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add an Entity_EmploymentOutcomeProfile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, EarningsId: {2}", parentUid, parent.EntityType, employmentOutcomeProfileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -219,13 +219,13 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returnsThisEntity
-		public static List<EmploymentOutcomeProfile> GetAll( Guid parentUid, bool includingParts = true )
+		public static List<EmploymentOutcomeProfile> GetAll( Entity parent, bool includingParts = true )
 		{
 			var list = new List<EmploymentOutcomeProfile>();
 			var entity = new EmploymentOutcomeProfile();
 
-			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			//LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 
 			try
 			{
@@ -301,8 +301,20 @@ namespace workIT.Factories
 								{
 
 								}
-								if ( item.EmploymentOutcomeProfile.JobsObtained > 0 )
-									summary += string.Format( " Jobs Obtained: {0}", item.EmploymentOutcomeProfile.JobsObtained );
+								if ( item.EmploymentOutcomeProfile.JobsObtainedJson != null )
+								{
+									var jp = JsonConvert.DeserializeObject<EmploymentOutcomeProfileProperties>( item.EmploymentOutcomeProfile.JobsObtainedJson );
+									if ( jp != null )
+									{
+										//unpack JobsObtainedList
+										var jobsObtained = jp.JobsObtainedList;
+										var joSummary = jobsObtained[ 0 ].Summary();
+										//need a helper for display
+										if(!string.IsNullOrWhiteSpace( joSummary ) )
+											summary += string.Format( " Jobs Obtained: {0}", joSummary );
+									}
+									
+								}
 							}
 							lineBreak = "<\br>";
 						}

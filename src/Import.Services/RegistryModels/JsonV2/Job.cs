@@ -142,6 +142,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:offeredBy" )]
 		public List<string> OfferedBy { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:requires" )]
+		public List<ConditionProfile> Requires { get; set; }
+
 		/// <summary>
 		/// Another source of information about the entity being described.
 		/// List of URIs

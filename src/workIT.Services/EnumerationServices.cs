@@ -11,31 +11,6 @@ namespace workIT.Services
 {
     public class EnumerationServices
     {
-		#region Search filters for API 
-		//public MSR.Filter GetFilterList( string dataSource, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = false )
-		//{
-			
-		//	MC.Enumeration e = CodesManager.GetEnumeration( dataSource, getAll );
-		//	var output = new MSR.Filter()
-		//	{
-		//		CategoryId = e.Id,
-		//		Label = e.Name,
-		//		Description = e.Description
-		//	};
-		//	foreach (var item in e.Items)
-		//	{
-		//		output.Items.Add( new MSR.FilterItem()
-		//		{
-		//			Id = item.Id,
-		//			Label = item.Name,
-		//			Schema = item.SchemaName,
-		//			Description = item.Description
-		//		} );
-		//	}
-
-		//	return output;
-		//}
-		#endregion
 
 		#region enumerations 
 		/// <summary>
@@ -240,51 +215,51 @@ namespace workIT.Services
             return e;
         }
 
-        #endregion
+		#endregion
 
-        #region agent role enums
-        /// <summary>
-        /// this may get more than actually needed
-        /// </summary>
-        /// <param name="interfaceType"></param>
-        /// <returns></returns>
-        public MC.Enumeration GetCredentialAllAgentRoles( MC.EnumerationType interfaceType )
-        {
-            MC.Enumeration e = OrganizationRoleManager.GetCredentialOrg_AllRoles( false );
-            e.InterfaceType = interfaceType;
-            e.ShowOtherValue = true;
-            return e;
-        }
+		#region agent role enums
+		/// <summary>
+		/// this may get more than actually needed
+		/// </summary>
+		/// <param name="interfaceType"></param>
+		/// <returns></returns>
+		public MC.Enumeration GetCredentialAllAgentRoles( MC.EnumerationType interfaceType )
+		{
+			MC.Enumeration e = OrganizationRoleManager.GetCredentialOrg_AllRoles( false );
+			e.InterfaceType = interfaceType;
+			e.ShowOtherValue = true;
+			return e;
+		}
 
 
 
-        /// <summary>
-        /// Get agent roles for assessments
-        /// Ex: Created By (not any more)
-        /// </summary>
-        /// <param name="interfaceType"></param>
-        /// <returns></returns>
-        public MC.Enumeration GetAssessmentAgentRoles( MC.EnumerationType interfaceType )
-        {
-            //MC.Enumeration e = Entity_AgentRelationshipManager.GetAssessmentAgentRoles( false );
-            MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
-            e.InterfaceType = interfaceType;
-            e.ShowOtherValue = true;
-            return e;
-        }
-        /// <summary>
-        /// Get agent roles for learning opportunities
-        /// </summary>
-        /// <param name="interfaceType"></param>
-        /// <returns></returns>
-        public MC.Enumeration GetLearningOppAgentRoles( MC.EnumerationType interfaceType )
-        {
-            MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
-            e.InterfaceType = interfaceType;
-            e.ShowOtherValue = true;
-            return e;
-        }
-        public MC.Enumeration GetCommonPlusQAAgentRoles( MC.EnumerationType interfaceType )
+		/// <summary>
+		/// Get agent roles for assessments
+		/// Ex: Created By (not any more)
+		/// </summary>
+		/// <param name="interfaceType"></param>
+		/// <returns></returns>
+		public MC.Enumeration GetAssessmentAgentRoles( MC.EnumerationType interfaceType )
+		{
+			//MC.Enumeration e = Entity_AgentRelationshipManager.GetAssessmentAgentRoles( false );
+			MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
+			e.InterfaceType = interfaceType;
+			e.ShowOtherValue = true;
+			return e;
+		}
+		/// <summary>
+		/// Get agent roles for learning opportunities
+		/// </summary>
+		/// <param name="interfaceType"></param>
+		/// <returns></returns>
+		//public MC.Enumeration GetLearningOppAgentRoles( MC.EnumerationType interfaceType )
+		//{
+		//    MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
+		//    e.InterfaceType = interfaceType;
+		//    e.ShowOtherValue = true;
+		//    return e;
+		//}
+		public MC.Enumeration GetCommonPlusQAAgentRoles( MC.EnumerationType interfaceType )
         {
             MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
             e.InterfaceType = interfaceType;
@@ -309,12 +284,19 @@ namespace workIT.Services
             e.ShowOtherValue = true;
             return e;
         }
+		public MC.Enumeration GetEntityAgentNONQAActions( MC.EnumerationType interfaceType, int parentEntityTypeId, bool getAll = true, bool isInverseRole = false )
+		{
+			//get roles as entity to org
+			MC.Enumeration e = OrganizationRoleManager.GetOrgEntityToNONQARoleCodes( isInverseRole, parentEntityTypeId, getAll );
+			e.InterfaceType = interfaceType;
+			e.ShowOtherValue = true;
+			return e;
+		}
+		#endregion
 
-        #endregion
 
-
-        #region org related codes and enumurations
-        public MC.Enumeration GetOrganizationType( MC.EnumerationType interfaceType,
+		#region org related codes and enumurations
+		public MC.Enumeration GetOrganizationType( MC.EnumerationType interfaceType,
                 bool getAll = true )
         {
 

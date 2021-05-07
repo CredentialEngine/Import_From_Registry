@@ -7,7 +7,7 @@ using workIT.Models.ProfileModels;
 namespace workIT.Models.Common
 {
     [Serializable]
-    public class Credential : TopLevelObject
+    public class Credential : TopLevelObject, IBaseObject
 	{
 		public Credential()
 		{
@@ -66,7 +66,6 @@ namespace workIT.Models.Common
 
 			OwningOrganization = new Organization();
 			OwnerRoles = new Enumeration();
-			OwnerOrganizationRoles = new List<OrganizationRoleProfile>();
 			VerificationServiceProfiles = new List<VerificationServiceProfile>();
 
 			//TargetCredential = new List<Credential>();
@@ -118,12 +117,13 @@ namespace workIT.Models.Common
 		public CredentialExternalProperties CredentialExternalProperties { get; set; } = new CredentialExternalProperties();
 		public string JsonProperties { get; set; }
 		public Enumeration OwnerRoles { get; set; }
-		public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
+		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; } = new List<OrganizationRoleProfile>();
 
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
-		public Guid CopyrightHolder { get; set; }
-		public Organization CopyrightHolderOrganization { get; set; }
+		//public Guid CopyrightHolder { get; set; }
+		public List<Guid> CopyrightHolders { get; set; } = new List<Guid>();
+		public List<Organization> CopyrightHolderOrganization { get; set; }
 
         /// <summary>
         /// Use alternate name for display
@@ -142,29 +142,34 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
 
-//		public int EntityStateId { get; set; }
+		//		public int EntityStateId { get; set; }
 		//public string CTID { get; set; }
 		/// <summary>
 		/// Envelope Idenfier from the Credential Registry
 		/// </summary>
 		//public string CredentialRegistryId { get; set; }
-		
+		//URLs
 		public string LatestVersion { get; set; }
-
 		public string PreviousVersion { get; set; }
 		public string NextVersion { get; set; } //URL
 		public string SupersededBy { get; set; } //URL
 		public string Supersedes { get; set; } //URL
-										
+		//NEW
+		//public int LatestVersionId { get; set; }
+		//public int PreviousVersionId { get; set; }
+		//public int NextVersionId { get; set; } 
+		//public int SupersededById { get; set; } 
+		//public int SupersedesId { get; set; } 
+
 		//public string SubjectWebpage { get; set; }
-		
+
 
 
 		public string AvailableOnlineAt { get; set; }
 		
 		public string AvailabilityListing { get; set; }
 		
-		public string ImageUrl { get; set; } //image URL
+		//public string Image { get; set; } //image URL
 		/// <summary>
 		/// ISIC Revision 4 Code
 		/// </summary>
@@ -223,14 +228,16 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// placeholder for all Processes
 		/// </summary>
+		public List<CodeItem> ProcessProfilesSummary { get; set; } = new List<CodeItem>();
 		public List<ProcessProfile> CredentialProcess { get; set; }
 		public List<ProcessProfile> AdministrationProcess { get; set; }
+		public List<ProcessProfile> AppealProcess { get; set; }
+		public List<ProcessProfile> ComplaintProcess { get; set; }
 		public List<ProcessProfile> DevelopmentProcess { get; set; }
 		public List<ProcessProfile> MaintenanceProcess { get; set; }
-        public List<ProcessProfile> AppealProcess { get; set; }
-        public List<ProcessProfile> ComplaintProcess { get; set; }
-        public List<ProcessProfile> RevocationProcess { get; set; }
-        public List<ProcessProfile> ReviewProcess { get; set; }
+		public List<ProcessProfile> ReviewProcess { get; set; }
+		public List<ProcessProfile> RevocationProcess { get; set; }
+        
 
         //public List<EarningsProfile> Earnings { get; set; }
         //public List<EmploymentOutcomeProfile> EmploymentOutcome { get; set; }
@@ -345,9 +352,11 @@ namespace workIT.Models.Common
 		public List<ConditionProfile> Recommends { get; set; }
 		public List<ConditionProfile> Renewal { get; set; }
 		public List<ConditionProfile> Corequisite { get; set; }
-		
+
+		//Use the DisambiguateConditionProfiles for the API?
 		//public List<ConditionProfile> PreparationFrom
-		//{ get { return ConditionManifestExpanded.DisambiguateConditionProfiles( CredentialConnections ).PreparationFrom; }
+		//{
+		//	get { return ConditionManifestExpanded.DisambiguateConditionProfiles( CredentialConnections ).PreparationFrom; }
 		//}
 		//public List<ConditionProfile> AdvancedStandingFrom { get { return ConditionManifestExpanded.DisambiguateConditionProfiles( CredentialConnections ).AdvancedStandingFrom; } }
 		//public List<ConditionProfile> IsRequiredFor { get { return ConditionManifestExpanded.DisambiguateConditionProfiles( CredentialConnections ).IsRequiredFor; } }
@@ -361,13 +370,13 @@ namespace workIT.Models.Common
 		/// </summary>
 
 		public List<ConditionProfile> AdvancedStandingFrom { get; set; }
-		public List<ConditionProfile> AdvancedStandingFor { get; set; }
+		public List<ConditionProfile> IsAdvancedStandingFor { get; set; }
 		public List<ConditionProfile> PreparationFrom { get; set; }
 		public List<ConditionProfile> IsPreparationFor { get; set; }
 		public List<ConditionProfile> IsRequiredFor { get; set; }
 		public List<ConditionProfile> IsRecommendedFor { get; set; }
-		
-		
+
+
 		#endregion
 
 		public List<RevocationProfile> Revocation { get; set; }
@@ -441,10 +450,11 @@ namespace workIT.Models.Common
 		public string FinancialAssistanceJson { get; set; }
 		//public List<CredentialAlignmentObjectProfile> RequiresCompetencies { get; set; }
 
-		public List<EarningsProfile> EarningsProfile { get; set; } = new List<EarningsProfile>();
+		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
+		public List<EarningsProfile> Earnings { get; set; } = new List<EarningsProfile>();
 
-		public List<HoldersProfile> HoldersProfile { get; set; } = new List<HoldersProfile>();
-		public List<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; } = new List<EmploymentOutcomeProfile>();
+		public List<HoldersProfile> Holders { get; set; } = new List<HoldersProfile>();
+		public List<EmploymentOutcomeProfile> EmploymentOutcome { get; set; } = new List<EmploymentOutcomeProfile>();
 
 		/// <summary>
 		/// Credentials related by a condition profile
@@ -460,7 +470,10 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; }
 
-        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
+
+
+		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
         /// <summary>
         /// processStandards (Nov2016)
         /// URL

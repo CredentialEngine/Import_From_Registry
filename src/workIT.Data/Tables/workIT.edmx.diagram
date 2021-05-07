@@ -4,7 +4,7 @@
   <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
-      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="93">
+      <Diagram DiagramId="c4e38a211d654c0db7332bdc29391688" Name="Diagram1" ZoomLevel="60">
         <EntityTypeShape EntityType="workITModel.ActivityLog" Width="1.5" PointX="38.375" PointY="4.5" />
         <EntityTypeShape EntityType="workITModel.Assessment" Width="2.5" PointX="0.5" PointY="21.875" FillColor="Yellow" />
         <EntityTypeShape EntityType="workITModel.Codes_AssertionType" Width="3" PointX="25.875" PointY="5.5" />
@@ -33,7 +33,7 @@
         <EntityTypeShape EntityType="workITModel.Entity_ContactPoint" Width="1.5" PointX="29.125" PointY="46.375" />
         <EntityTypeShape EntityType="workITModel.Entity_CostManifest" Width="1.5" PointX="17.125" PointY="21.625" />
         <EntityTypeShape EntityType="workITModel.Entity_CostProfile" Width="1.5" PointX="11.5" PointY="6.5" />
-        <EntityTypeShape EntityType="workITModel.Entity_CostProfileItem" Width="1.5" PointX="13.75" PointY="6.75" />
+        <EntityTypeShape EntityType="workITModel.Entity_CostProfileItem" Width="2.125" PointX="13.75" PointY="6.375" />
         <EntityTypeShape EntityType="workITModel.Entity_Credential" Width="2.125" PointX="11.5" PointY="36.375" />
         <EntityTypeShape EntityType="workITModel.Entity_DurationProfile" Width="1.5" PointX="38.125" PointY="48.125" />
         <EntityTypeShape EntityType="workITModel.Entity_FrameworkItem" Width="1.5" PointX="30.625" PointY="39.625" />
@@ -119,7 +119,7 @@
         <EntityTypeShape EntityType="workITModel.Import_PendingRequest" Width="2.125" PointX="8.625" PointY="0.625" FillColor="Lime" />
         <EntityTypeShape EntityType="workITModel.CompetencyFramework" Width="3.375" PointX="31.625" PointY="5.5" />
         <AssociationConnector Association="workITModel.FK_Entity_Competency_CompetencyFramework" />
-        <EntityTypeShape EntityType="workITModel.TransferValueProfile" Width="2.5" PointX="0.75" PointY="0.5" />
+        <EntityTypeShape EntityType="workITModel.TransferValueProfile" Width="2.5" PointX="16.875" PointY="0.75" />
         <EntityTypeShape EntityType="workITModel.Pathway" Width="2.5" PointX="0.625" PointY="8.25" FillColor="Fuchsia" />
         <EntityTypeShape EntityType="workITModel.Pathway_ComponentCondition" Width="2.875" PointX="3.5" PointY="13.75" FillColor="Fuchsia" />
         <EntityTypeShape EntityType="workITModel.PathwayComponent" Width="2" PointX="0.75" PointY="13" FillColor="Fuchsia" />
@@ -161,6 +161,22 @@
         <AssociationConnector Association="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_HoldersProfile" />
+        <EntityTypeShape EntityType="workITModel.Codes_ProcessProfileType" Width="1.5" PointX="30.5" PointY="50.625" />
+        <EntityTypeShape EntityType="workITModel.CompetencyFramework_Competency" Width="1.5" PointX="35.75" PointY="21" />
+        <EntityTypeShape EntityType="workITModel.Entity_AggregateDataProfile" Width="1.5" PointX="27.5" PointY="50.5" />
+        <EntityTypeShape EntityType="workITModel.Entity_CompetencyFramework" Width="1.5" PointX="35.75" PointY="17.875" />
+        <EntityTypeShape EntityType="workITModel.Entity_Language" Width="1.5" PointX="27.5" PointY="16.625" />
+        <EntityTypeShape EntityType="workITModel.Entity_TransferValueProfile" Width="1.5" PointX="27.5" PointY="13.375" />
+        <EntityTypeShape EntityType="workITModel.JobProfile" Width="1.5" PointX="13.375" PointY="0.75" FillColor="255, 224, 192" />
+        <EntityTypeShape EntityType="workITModel.OccupationProfile" Width="1.5" PointX="11.375" PointY="0.75" FillColor="255, 224, 192" />
+        <AssociationConnector Association="workITModel.FK_Entity_ProcessProfile_Codes_ProcessProfileType" />
+        <AssociationConnector Association="workITModel.FK_CompetencyFramework_Competency_CompetencyFramework" />
+        <AssociationConnector Association="workITModel.FK_EntityCF_CompetencyFramework" />
+        <AssociationConnector Association="workITModel.FK_Entity_AggregateDataProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_Language_Entity" />
+        <AssociationConnector Association="workITModel.FK_EntityCF_Entity" />
+        <AssociationConnector Association="workITModel.FK_EntityTVP_Entity" />
+        <AssociationConnector Association="workITModel.FK_EntityTVP_TransferValueProfile" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

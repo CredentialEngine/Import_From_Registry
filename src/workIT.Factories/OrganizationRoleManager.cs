@@ -122,13 +122,80 @@ namespace workIT.Factories
             return entity;
         }
 
-        /// <summary>
-        /// Get roles as enumeration for edit view
-        /// </summary>
-        /// <param name="isOrgToCredentialRole"></param>
-        /// <param name="entityType"></param>
-        /// <returns></returns>
-        public static Enumeration GetCredentialOrg_AllRoles( bool isInverseRole = true, string entityType = "Credential" )
+		public static Enumeration GetOrgEntityToNONQARoleCodes( bool isInverseRole, int parentEntityTypeId, bool getAll )
+		{
+			Enumeration entity = new Enumeration();
+
+			using ( var context = new EntityContext() )
+			{
+				EM.Tables.Codes_PropertyCategory category = context.Codes_PropertyCategory
+							.SingleOrDefault( s => s.Id == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE );
+
+				if ( category != null && category.Id > 0 )
+				{
+					entity.Id = category.Id;
+					entity.Name = category.Title;
+					entity.SchemaName = category.SchemaName;
+					entity.Url = category.SchemaUrl;
+					entity.Items = new List<EnumeratedItem>();
+
+					EnumeratedItem val = new EnumeratedItem();
+					var results = context.Codes_CredentialAgentRelationship
+							.Where( s => s.IsActive == true && ( bool )s.IsQARole == false && (bool)s.IsEntityToAgentRole == true )
+							.OrderBy( p => p.Title )
+							.ToList();
+
+					foreach ( EM.Tables.Codes_CredentialAgentRelationship item in results )
+					{
+						val = new EnumeratedItem();
+						val.Id = item.Id;
+						val.CodeId = item.Id;
+						val.Value = item.Id.ToString();//????
+						val.Description = item.Description;
+
+						if ( isInverseRole )
+						{
+							val.Name = item.ReverseRelation;
+						}
+						else
+						{
+							val.Name = item.Title;
+							//val.Description = string.Format( "{0} is {1} by this Organization ", entityType, item.Title );
+						}
+
+						if ( ( bool )item.IsQARole )
+						{
+							val.IsQAValue = true;
+
+						}
+						if ( parentEntityTypeId == 3 )
+							val.Totals = item.AssessmentTotals ?? 0;
+						else if ( parentEntityTypeId == 2 )
+							val.Totals = item.OrganizationTotals ?? 0;
+						else if ( parentEntityTypeId == 7 )
+							val.Totals = item.LoppTotals ?? 0;
+						else if ( parentEntityTypeId == 1 )
+							val.Totals = item.CredentialTotals ?? 0;
+						if ( IsDevEnv() )
+							val.Name += string.Format( " ({0})", val.Totals );
+
+						if ( getAll || val.Totals > 0 )
+							entity.Items.Add( val );
+					}
+
+				}
+			}
+
+			return entity;
+		}
+
+		/// <summary>
+		/// Get roles as enumeration for edit view
+		/// </summary>
+		/// <param name="isOrgToCredentialRole"></param>
+		/// <param name="entityType"></param>
+		/// <returns></returns>
+		public static Enumeration GetCredentialOrg_AllRoles( bool isInverseRole = true, string entityType = "Credential" )
 		{
 			return GetEntityToOrgRolesCodes( isInverseRole, 0, true, entityType );
 		}
@@ -336,7 +403,7 @@ namespace workIT.Factories
 
 		//	p.ProfileSummary = string.Format( "{0} {1} this credential", entity.Organization.Name, relation );
 		//	if ( IsValidDate( entity.EffectiveDate ) )
-		//		p.DateEffective = ( ( DateTime ) entity.EffectiveDate ).ToShortDateString();
+		//		p.DateEffective = ( ( DateTime ) entity.EffectiveDate ).ToString("yyyy-MM-dd");
 		//	else
 		//		p.DateEffective = "";
 

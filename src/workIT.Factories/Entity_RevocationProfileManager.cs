@@ -156,17 +156,30 @@ namespace workIT.Factories
 					.ToList();
 					if ( results == null || results.Count == 0 )
 						return true;
+					//
+					foreach ( var item in results )
+					{
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter,s children!
+						string statusMessage = "";
+						new EntityManager().Delete( item.RowId, string.Format( "RevocationProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
-					context.Entity_RevocationProfile.RemoveRange( context.Entity_RevocationProfile.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						isValid = true;
+						context.Entity_RevocationProfile.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
 					}
-					else
-					{
-						//if doing a delete on spec, may not have been any properties
-					}
+					//context.Entity_RevocationProfile.RemoveRange( context.Entity_RevocationProfile.Where( s => s.EntityId == parent.Id ) );
+					//int count = context.SaveChanges();
+					//if ( count > 0 )
+					//{
+					//	isValid = true;
+					//}
+					//else
+					//{
+					//	//if doing a delete on spec, may not have been any properties
+					//}
 				}
 			}
 			catch ( Exception ex )
@@ -307,7 +320,7 @@ namespace workIT.Factories
 			to.RevocationCriteriaUrl = from.RevocationCriteriaUrl;
 
 			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToShortDateString();
+				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				to.DateEffective = "";
 

@@ -1,25 +1,25 @@
-﻿using Nest;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Web.Script.Serialization;
+
+using Nest;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
-using MC = workIT.Models.Common;
 using workIT.Models.Elastic;
-using ME = workIT.Models.Elastic;
 using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
+
 using PM = workIT.Models.ProfileModels;
 
 namespace workIT.Services
@@ -66,7 +66,7 @@ namespace workIT.Services
 		public static string PathwayIndex
 		{
 			//get { return UtilityManager.GetAppKeyValue( "pathwayCollection", "pathway" ); }
-			get { return UtilityManager.GetAppKeyValue( "commonCollection", "common" ); }
+			get { return UtilityManager.GetAppKeyValue( "pathwayCollection", "pathway_index" ); }
 		}
 		private static ElasticClient EC
 		{
@@ -112,11 +112,11 @@ namespace workIT.Services
 			var list = new List<GenericIndex>();
 			bool indexInitialized = false;
 			//would have to have more control if sharing an index
-			if ( deleteIndexFirst && EC.IndexExists( CommonIndex ).Exists )
+			if ( deleteIndexFirst && EC.Indices.Exists( CommonIndex ).Exists )
 			{
-				EC.DeleteIndex( CommonIndex );
+				EC.Indices.Delete( CommonIndex );
 			}
-			if ( !EC.IndexExists( CommonIndex ).Exists )
+			if ( !EC.Indices.Exists( CommonIndex ).Exists )
 			{
 				GeneralInitializeIndex();
 				indexInitialized = true;
@@ -137,7 +137,7 @@ namespace workIT.Services
 					General_UpdateIndexForTVP( filter, ref processed );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( CommonIndex );
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "TransferValue",
@@ -168,7 +168,7 @@ namespace workIT.Services
 					//		LoggingHelper.DoTrace( 1, " Issue building General index: " + results.DebugInformation.Substring( 0, 2000 ) );
 					//	}
 
-					//	EC.Refresh( CommonIndex );
+					//	EC.Indices.Refresh( CommonIndex );
 					//} else
 					//{
 					//	LoggingHelper.DoTrace( 1, " General_BuildIndexForTVP - no data was found" );
@@ -177,15 +177,96 @@ namespace workIT.Services
 			}
 
 		}
-		#endregion
+
+		public static void General_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
+		{
+			var list = new List<PathwayIndex>();
+
+			bool indexInitialized = false;
+			if ( deleteIndexFirst && EC.Indices.Exists( PathwayIndex ).Exists )
+			{
+				EC.Indices.Delete( PathwayIndex );
+			}
+			if ( !EC.Indices.Exists( PathwayIndex ).Exists )
+			{
+				GeneralInitializeIndex();
+				indexInitialized = true;
+			}
+
+			if ( indexInitialized || updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "Pathway- Building Index" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					//*************pathways ****************************************
+
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "Pathway", Activity = "Elastic", Event = "Build Index" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					Pathway_UpdateIndex( filter, ref processed );
+					{
+						var refreshResults = EC.Indices.Refresh( PathwayIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "Pathway",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of PathwayIndex for {0} records.", processed )
+						} );
+					}
+
+					//*************transfer value ****************************************
+					processed = 0;
+					filter = "( base.EntityStateId >= 2 )";
+					//20-12-28 - update to be like credentials
+					General_UpdateIndexForTVP( filter, ref processed );
+					if ( processed > 0 )
+					{
+						//??is this done in Assessment_UpdateIndex
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "TransferValue",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex for TVP: {0} records.", processed )
+						} );
+					}
+
+					//
+
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndex-Pathway" );
+				}
+				finally
+				{
+					//if ( list != null && list.Count > 0 )
+					//{
+					//	var results = EC.Bulk( b => b.IndexMany( list, ( d, document ) => d.Index( CommonIndex ).Document( document ).Id( document.Id.ToString() ) ) );
+					//	if ( results.ToString().IndexOf( "Valid NEST response built from a successful low level cal" ) == -1 )
+					//	{
+					//		Console.WriteLine( results.ToString() );
+					//		LoggingHelper.DoTrace( 1, " Issue building Pathway/General index: " + results.DebugInformation.Substring( 0, 2000 ) );
+					//	}
+
+					//	EC.Indices.Refresh( CommonIndex );
+					//}
+				}
+			}
+		}
 
 		public static void GeneralInitializeIndex( bool deleteIndexFirst = true )
 		{
-			if ( !EC.IndexExists( CommonIndex ).Exists )
+			if ( !EC.Indices.Exists( CommonIndex ).Exists )
 			{
 				var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
 
-				var results = EC.CreateIndex( CommonIndex, c => new CreateIndexDescriptor( CommonIndex )
+				var results = EC.Indices.Create( CommonIndex, c => new CreateIndexDescriptor( CommonIndex )
 				 //.Settings( s => s.Analysis( a => a.TokenFilters( t => t.Stop( "my_stop", st => st.RemoveTrailing() ).Snowball( "my_snowball", st => st.Language( SnowballLanguage.English ) ) ).Analyzers( aa => aa.Custom( "my_analyzer", sa => sa.Tokenizer( "standard" ).Filters( "lowercase", "my_stop", "my_snowball" ) ) ) ) )
 				 //.Settings( s => s.Analysis( a => a.Analyzers( aa => aa.Standard( "snowball", sa => sa.StopWords( "_english_" ) ) ) ) )
 				 // .Settings( s => s.Analysis( a => a.Tokenizers (aa => aa.EdgeNGram( "my_ngram_tokenizer" ,   )
@@ -223,7 +304,7 @@ namespace workIT.Services
 				);
 			}
 		}
-
+		#endregion
 		public static void General_UpdateIndexForTVP( int recordId )
 		{
 			if ( recordId < 1 )
@@ -268,7 +349,7 @@ namespace workIT.Services
 					var list = ElasticManager.TransferValue_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
 					if ( list != null && list.Count > 0 )
 					{
-						processed = list.Count;
+						processed = totalRows;
 						if ( action == 1 )
 						{
 							foreach ( var item in list )
@@ -308,12 +389,13 @@ namespace workIT.Services
 						isComplete = true;
 						break;
 					}
-					pageNbr++;
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+
+					pageNbr++;
 				} //loop
 			}
 			catch ( Exception ex )
@@ -458,8 +540,8 @@ namespace workIT.Services
 						   .Query( keyword )
 						   .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<GenericIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<GenericIndex> ) search.Documents;
 			return list.Select( x => x.Name ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -538,7 +620,6 @@ namespace workIT.Services
 						reportIds.Add( item.Id );
 				}
 
-
 				if ( reportIds.Any() )
 				{
 					reportsQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( reportIds.ToArray() ) );
@@ -546,8 +627,6 @@ namespace workIT.Services
 			}
 
 			#endregion
-
-
 
 			#region General Ids list
 			QueryContainer recordIdListQuery = null;
@@ -604,6 +683,7 @@ namespace workIT.Services
 					  && industriesQuery
 					  && qualityAssuranceSearchQuery
 					  && qaFilterQuery
+					  && createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
 					  && reportsQuery
 					  && ( q.MultiMatch( m => m
 						   .Fields( f => f
@@ -647,10 +727,10 @@ namespace workIT.Services
 			var debug = search.DebugInformation;
 			if ( query.StartPage == 1 && ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) ) )
 				LoggingHelper.DoTrace( 6, "ElasticServices.GeneralSearch. ElasticLog: \r\n" + debug, "generalElasticDebug" );
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.CommonIndex_MapFromElastic( ( List<GenericIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.CommonIndex_MapFromElastic( ( List<GenericIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.GeneralSearch. found: {0} records", pTotalRows ) );
 			}
@@ -679,11 +759,11 @@ namespace workIT.Services
 			{
 
 				bool indexInitialized = false;
-				if ( deleteIndexFirst && EC.IndexExists( CredentialIndex ).Exists )
+				if ( deleteIndexFirst && EC.Indices.Exists( CredentialIndex ).Exists )
 				{
-					EC.DeleteIndex( CredentialIndex );
+					EC.Indices.Delete( CredentialIndex );
 				}
-				if ( !EC.IndexExists( CredentialIndex ).Exists )
+				if ( !EC.Indices.Exists( CredentialIndex ).Exists )
 				{
 					CredentialInitializeIndex();
 					indexInitialized = true;
@@ -702,7 +782,7 @@ namespace workIT.Services
 					Credential_UpdateIndex( filter, ref processed );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( CredentialIndex );
+						var refreshResults = EC.Indices.Refresh( CredentialIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "Credential",
@@ -791,7 +871,13 @@ namespace workIT.Services
 							if ( result.ToString().IndexOf( "Valid NEST response built from a successful low level cal" ) == -1 )
 							{
 								//Console.WriteLine( result.ToString() );
-								LoggingHelper.DoTrace( 1, "***** Issue building credential index with filter: '" + filter + "' == " + result );
+								var msg = "";
+								foreach ( var item in result.Items )
+								{
+									msg += item.Error.ToString() + "\r\n";
+								}
+								LoggingHelper.DoTrace( 1, "***** Issue building credential index with filter: '" + filter + "' == " + msg );
+								LoggingHelper.LogError( string.Format( "UpdateCredentialIndex: Error in IndexBuild. {0}", msg ), true, "UpdateCredentialIndex EXCEPTION" );
 							}
 						}
 					}
@@ -814,12 +900,13 @@ namespace workIT.Services
 						break;
 					}
 
+					LoggingHelper.DoTrace( 4, string.Format( "Credential_UpdateIndex. Page: {0}, Records Indexed: {1}", pageNbr, processed ) );
 					pageNbr++;
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, "Credential_UpdateIndex. Credentials Indexed: " + processed.ToString() );
+
 				} //loop
 			}
 			catch ( Exception ex )
@@ -832,7 +919,7 @@ namespace workIT.Services
 		public static object CredentialDeleteDocument( int documentId )
 		{
 			//ex: var response = EsClient.Delete<Employee>(2, d => d.Index("employee").Type("myEmployee"));
-			var response = EC.Delete<CredentialIndex>( documentId, d => d.Index( CredentialIndex ).Type( "credentialindex" ) );
+			var response = EC.Delete<CredentialIndex>( documentId, d => d.Index( CredentialIndex ) );
 
 			//bulk deletes. Will want a bulk delete when using SearchPendingReindex!
 			//https://stackoverflow.com/questions/31028839/how-to-delete-several-documents-by-id-in-one-operation-using-elasticsearch-nest/31029136
@@ -860,10 +947,10 @@ namespace workIT.Services
 
 		public static void CredentialInitializeIndex()
 		{
-			if ( !EC.IndexExists( CredentialIndex ).Exists )
+			if ( !EC.Indices.Exists( CredentialIndex ).Exists )
 			{
 				// .String(s => s.Index(FieldIndexOption.NotAnalyzed).Name(n => n.Name))
-				EC.CreateIndex( CredentialIndex, c => new CreateIndexDescriptor( CredentialIndex )
+				EC.Indices.Create( CredentialIndex, c => new CreateIndexDescriptor( CredentialIndex )
 					  .Settings( st => st
 						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) )
 							.Analyzers( anz => anz
@@ -1037,12 +1124,12 @@ namespace workIT.Services
 					 .Size( query.PageSize ) );
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
 			if ( pTotalRows > 0 )
 			{
 				//map results
-				list = ElasticManager.Credential_MapFromElastic( ( List<CredentialIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.Credential_MapFromElastic( ( List<CredentialIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.CredentialSearch. found: {0} records", pTotalRows ) );
 			}
@@ -1069,9 +1156,9 @@ namespace workIT.Services
 				.Size( maxTerms ) );
 
 
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
-			var list = ( List<CredentialIndex> )search.Documents;
+			var list = ( List<CredentialIndex> ) search.Documents;
 			return list.Select( x => x.ListTitle ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -1085,7 +1172,7 @@ namespace workIT.Services
 			//customAnalyzer.Filter.Add( "lowercase" );
 			//indexSettings.Analysis.Analyzers.Add( "custom_lowercase_analyzer", customAnalyzer );
 
-			//var analyzerRes = EC.CreateIndex( CredentialIndex, ci => ci
+			//var analyzerRes = EC.Indices.Create( CredentialIndex, ci => ci
 			//	.Index( "my_third_index" )
 			//	.InitializeUsing( indexSettings )
 			//	.AddMapping( m => m.MapFromAttributes() )
@@ -1112,11 +1199,11 @@ namespace workIT.Services
 
 			if ( searchResponse.Aggregations.Values.FirstOrDefault().GetType() == typeof( BucketAggregate ) )
 			{
-				foreach ( IBucket bucket in ( ( BucketAggregate )aggregation.FirstOrDefault() ).Items )
+				foreach ( IBucket bucket in ( ( BucketAggregate ) aggregation.FirstOrDefault() ).Items )
 				{
 					if ( bucket.GetType() == typeof( KeyedBucket<object> ) )
 					{
-						var valueKey = ( ( KeyedBucket<object> )bucket ).Key;
+						var valueKey = ( ( KeyedBucket<object> ) bucket ).Key;
 						listOfNames.Add( valueKey.ToString() );
 					}
 				}
@@ -1229,49 +1316,6 @@ namespace workIT.Services
 						if ( filter.Name == "history" )
 						{
 							continue;
-
-							//var dateFilter = filter.AsDateItem();
-							//if ( dateFilter != null && !string.IsNullOrWhiteSpace( dateFilter.Name ) && !string.IsNullOrWhiteSpace( dateFilter.Code ) )
-							//{
-							//	if ( dateFilter.Name == "lastUpdatedFrom" && BaseFactory.IsValidDate( dateFilter.Code ) )
-							//	{
-							//		historyFromQuery = Query<CredentialIndex>.DateRange( c => c
-							//			  .Boost( 1.1 )
-							//			  .Field( p => p.LastUpdated )
-							//			  .GreaterThanOrEquals( dateFilter.Code )
-							//			  .Format( "MM/dd/yyyy||yyyy" )
-							//		);
-							//	}
-							//	if ( dateFilter.Name == "lastUpdatedTo" && BaseFactory.IsValidDate( dateFilter.Code ) )
-							//	{
-							//		historyToQuery = Query<CredentialIndex>.DateRange( c => c
-							//			  .Boost( 1.1 )
-							//			  .Field( p => p.LastUpdated )
-							//			  .LessThanOrEquals( dateFilter.Code )
-							//			  .Format( "MM/dd/yyyy||yyyy" )
-							//		);
-							//	}
-							//	//
-							//	if ( dateFilter.Name == "createdFrom" && BaseFactory.IsValidDate( dateFilter.Code ) )
-							//	{
-							//		createdFromQuery = Query<CredentialIndex>.DateRange( c => c
-							//			  .Boost( 1.1 )
-							//			  .Field( p => p.Created )
-							//			  .GreaterThanOrEquals( dateFilter.Code )
-							//			  .Format( "MM/dd/yyyy||yyyy" )
-							//		);
-							//	}
-							//	if ( dateFilter.Name == "createdTo" && BaseFactory.IsValidDate( dateFilter.Code ) )
-							//	{
-							//		createdToQuery = Query<CredentialIndex>.DateRange( c => c
-							//			  .Boost( 1.1 )
-							//			  .Field( p => p.Created )
-							//			  .LessThanOrEquals( dateFilter.Code )
-							//			  .Format( "MM/dd/yyyy||yyyy" )
-							//		);
-							//	}
-							//}
-
 						}
 						//if ( filter.Name == "widget" )
 						//{
@@ -1593,7 +1637,7 @@ namespace workIT.Services
 				{
 					boundariesQuery = Query<CredentialIndex>
 						  .Nested( n => n.Path( p => p.Addresses )
-						  .Query( q => Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double )boundaries.East ).GreaterThan( ( double )boundaries.West ) ) && Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double )boundaries.North ).GreaterThan( ( double )boundaries.South ) ) ).IgnoreUnmapped() );
+						  .Query( q => Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 				}
 
 				#endregion
@@ -1834,8 +1878,7 @@ namespace workIT.Services
 							&& locationQueryFilters.LocationQuery
 							&& locationQueryFilters.CountryQuery
 							&& locationQueryFilters.CityQuery
-							&& createdFromQuery && createdToQuery
-							&& historyFromQuery && historyToQuery
+							&& createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
 							&& reportsQuery
 							&& (
 									//
@@ -1921,13 +1964,13 @@ namespace workIT.Services
 				//OR try a file
 				//LoggingHelper.WriteLogFile( 6, "CredentialElasticSearch_debugLog", debug, "", true);
 				//
-				pTotalRows = ( int )search.Total;
+				pTotalRows = ( int ) search.Total;
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.CredentialSearch. After search, before mapping: {0} records", pTotalRows ) );
 				//	
 				if ( pTotalRows > 0 )
 				{
 					//map results
-					list = ElasticManager.Credential_MapFromElastic( ( List<CredentialIndex> )search.Documents, query.StartPage, query.PageSize );
+					list = ElasticManager.Credential_MapFromElastic( ( List<CredentialIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 					LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.CredentialSearch. found: {0} records", pTotalRows ) );
 				}
@@ -2059,7 +2102,7 @@ namespace workIT.Services
 
 			//var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q => q.Term( t => t.Field( f => f.Subjects.First() ).Value( new[] { "Anatomy" } ) ) ) );
 
-			var pTotalRows = ( int )search.Total;
+			var pTotalRows = ( int ) search.Total;
 
 			//list = JsonConvert.DeserializeObject<List<CredentialSummary>>( results );
 			//var results = CredentialServices.Search( data, ref totalResults );
@@ -2078,10 +2121,10 @@ namespace workIT.Services
 			bool indexInitialized = false;
 			try
 			{
-				if ( deleteIndexFirst && EC.IndexExists( OrganizationIndex ).Exists )
-					EC.DeleteIndex( OrganizationIndex );
+				if ( deleteIndexFirst && EC.Indices.Exists( OrganizationIndex ).Exists )
+					EC.Indices.Delete( OrganizationIndex );
 
-				if ( !EC.IndexExists( OrganizationIndex ).Exists )
+				if ( !EC.Indices.Exists( OrganizationIndex ).Exists )
 				{
 					OrganizationInitializeIndex();
 					indexInitialized = true;
@@ -2100,7 +2143,7 @@ namespace workIT.Services
 					Organization_UpdateIndex( filter, ref processed );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( OrganizationIndex );
+						var refreshResults = EC.Indices.Refresh( OrganizationIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "Organization",
@@ -2124,7 +2167,7 @@ namespace workIT.Services
 					//	LoggingHelper.DoTrace( 1, " Issue building organization index: " + results );
 					//}
 					////??????
-					//EC.Refresh( OrganizationIndex );
+					//EC.Indices.Refresh( OrganizationIndex );
 				}
 			}
 			catch ( Exception ex )
@@ -2137,9 +2180,9 @@ namespace workIT.Services
 
 		public static void OrganizationInitializeIndex()
 		{
-			if ( !EC.IndexExists( OrganizationIndex ).Exists )
+			if ( !EC.Indices.Exists( OrganizationIndex ).Exists )
 			{
-				EC.CreateIndex( OrganizationIndex, c => new CreateIndexDescriptor( OrganizationIndex )
+				EC.Indices.Create( OrganizationIndex, c => new CreateIndexDescriptor( OrganizationIndex )
 				.Settings( st => st
 						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
 					.Mappings( ms => ms
@@ -2181,7 +2224,7 @@ namespace workIT.Services
 				);
 			}
 
-			//EC.CreateIndex( OrganizationIndex, c => c.Mappings( m => m.Map<OrganizationIndex>( d => d.AutoMap() ) ) );
+			//EC.Indices.Create( OrganizationIndex, c => c.Mappings( m => m.Map<OrganizationIndex>( d => d.AutoMap() ) ) );
 		}
 		public static void Organization_UpdateIndex( int recordId )
 		{
@@ -2213,7 +2256,7 @@ namespace workIT.Services
 				return;
 			string methodName = "Organization_UpdateIndex";
 			string IndexName = OrganizationIndex;
-			int pageSize = 500; ;
+			int pageSize = UtilityManager.GetAppKeyValue( "nonCredentialPageSize", 300 );
 			int pageNbr = 1;
 			int totalRows = 0;
 			bool isComplete = false;
@@ -2226,7 +2269,7 @@ namespace workIT.Services
 					var list = ElasticManager.Organization_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
 					if ( list != null && list.Count > 0 )
 					{
-						processed = list.Count;
+						processed += list.Count;
 						if ( action == 1 )
 						{
 							foreach ( var item in list )
@@ -2266,12 +2309,15 @@ namespace workIT.Services
 						isComplete = true;
 						break;
 					}
-					pageNbr++;
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+
+					if ( !isComplete )
+						pageNbr++;
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+
 				} //loop
 			}
 			catch ( Exception ex )
@@ -2361,12 +2407,12 @@ namespace workIT.Services
 					 .Skip( ( query.StartPage - 1 ) * query.PageSize )
 					 .Size( query.PageSize ) );
 
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
 			if ( pTotalRows > 0 )
 			{
 				//map results
-				list = ElasticManager.Organization_MapFromElastic( ( List<OrganizationIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.Organization_MapFromElastic( ( List<OrganizationIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.OrganizationSearch. found: {0} records", pTotalRows ) );
 			}
@@ -2400,8 +2446,8 @@ namespace workIT.Services
 
 			//Need to be look for other approaches            
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<OrganizationIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<OrganizationIndex> ) search.Documents;
 			return list.Select( x => x.Name ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -2437,7 +2483,7 @@ namespace workIT.Services
 						   );
 			var debug = search.DebugInformation;
 			//Need to be look for other approaches            
-			var list = ( List<OrganizationIndex> )search.Documents;
+			var list = ( List<OrganizationIndex> ) search.Documents;
 			return list.Select( x => new { label = x.Name, value = x.Id } ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -2693,7 +2739,7 @@ namespace workIT.Services
 			{
 				boundariesQuery = Query<OrganizationIndex>
 					.Nested( n => n.Path( p => p.Addresses )
-					.Query( q => Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double )boundaries.East ).GreaterThan( ( double )boundaries.West ) ) && Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double )boundaries.North ).GreaterThan( ( double )boundaries.South ) ) ).IgnoreUnmapped() );
+					.Query( q => Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
 			#endregion
 
@@ -2739,6 +2785,7 @@ namespace workIT.Services
 					  && locationQueryFilters.CountryQuery
 					  && locationQueryFilters.CityQuery
 					  && widgetQuery.KeywordQuery
+					  && createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
 					  && claimTypeQuery
 					  && ( q.MultiMatch( m => m
 						   .Fields( f => f
@@ -2778,10 +2825,10 @@ namespace workIT.Services
 			#endregion
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.Organization_MapFromElastic( ( List<OrganizationIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.Organization_MapFromElastic( ( List<OrganizationIndex> ) search.Documents, query.StartPage, query.PageSize );
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.OrganizationSearch. found: {0} records", pTotalRows ) );
 				if ( list.Count == 0 )
 					pTotalRows = 0;
@@ -2816,11 +2863,11 @@ namespace workIT.Services
 		{
 			var list = new List<AssessmentIndex>();
 			bool indexInitialized = false;
-			if ( deleteIndexFirst && EC.IndexExists( AssessmentIndex ).Exists )
+			if ( deleteIndexFirst && EC.Indices.Exists( AssessmentIndex ).Exists )
 			{
-				EC.DeleteIndex( AssessmentIndex );
+				EC.Indices.Delete( AssessmentIndex );
 			}
-			if ( !EC.IndexExists( AssessmentIndex ).Exists )
+			if ( !EC.Indices.Exists( AssessmentIndex ).Exists )
 			{
 				AssessmentInitializeIndex();
 				indexInitialized = true;
@@ -2843,7 +2890,7 @@ namespace workIT.Services
 					//list = ElasticManager.Assessment_SearchForElastic( string.Format( "( base.EntityStateId >= {0} )", minEntityStateId ) );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( AssessmentIndex );
+						var refreshResults = EC.Indices.Refresh( AssessmentIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "Assessment",
@@ -2873,7 +2920,7 @@ namespace workIT.Services
 					//		LoggingHelper.DoTrace( 1, " Issue building assessment index: " + results );
 					//	}
 
-					//	EC.Refresh( AssessmentIndex );
+					//	EC.Indices.Refresh( AssessmentIndex );
 					//}
 				}
 			}
@@ -2883,11 +2930,11 @@ namespace workIT.Services
 
 		public static void AssessmentInitializeIndex( bool deleteIndexFirst = true )
 		{
-			if ( !EC.IndexExists( AssessmentIndex ).Exists )
+			if ( !EC.Indices.Exists( AssessmentIndex ).Exists )
 			{
 				var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
 
-				EC.CreateIndex( AssessmentIndex, c => new CreateIndexDescriptor( AssessmentIndex )
+				EC.Indices.Create( AssessmentIndex, c => new CreateIndexDescriptor( AssessmentIndex )
 				 //.Settings( s => s.Analysis( a => a.TokenFilters( t => t.Stop( "my_stop", st => st.RemoveTrailing() ).Snowball( "my_snowball", st => st.Language( SnowballLanguage.English ) ) ).Analyzers( aa => aa.Custom( "my_analyzer", sa => sa.Tokenizer( "standard" ).Filters( "lowercase", "my_stop", "my_snowball" ) ) ) ) )
 				 //.Settings( s => s.Analysis( a => a.Analyzers( aa => aa.Standard( "snowball", sa => sa.StopWords( "_english_" ) ) ) ) )
 				 // .Settings( s => s.Analysis( a => a.Tokenizers (aa => aa.EdgeNGram( "my_ngram_tokenizer" ,   )
@@ -2961,7 +3008,7 @@ namespace workIT.Services
 				return;
 			string methodName = "Assessment_UpdateIndex";
 			string IndexName = AssessmentIndex;
-			int pageSize = 500; ;
+			int pageSize = UtilityManager.GetAppKeyValue( "nonCredentialPageSize", 300 );
 			int pageNbr = 1;
 			int totalRows = 0;
 			bool isComplete = false;
@@ -3012,12 +3059,13 @@ namespace workIT.Services
 						isComplete = true;
 						break;
 					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 					pageNbr++;
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+
 				} //loop
 			}
 			catch ( Exception ex )
@@ -3097,12 +3145,12 @@ namespace workIT.Services
 					 .Size( query.PageSize ) );
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
 			if ( pTotalRows > 0 )
 			{
 				//map results
-				list = ElasticManager.Assessment_MapFromElastic( ( List<AssessmentIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.Assessment_MapFromElastic( ( List<AssessmentIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.AssessmentSearch. found: {0} records", pTotalRows ) );
 			}
@@ -3123,8 +3171,8 @@ namespace workIT.Services
 						   .Query( keyword )
 						   .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<AssessmentIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<AssessmentIndex> ) search.Documents;
 			return list.Select( x => x.ListTitle ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -3286,7 +3334,13 @@ namespace workIT.Services
 				{
 					var item = filter.AsCodeItem();
 					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
-						reportIds.Add( item.Id );
+					{
+						reportIds.Add( item.Id ); //can probably continue after here?
+						continue;
+					}
+
+					if ( filter.Name == "history" )
+						continue;
 
 					//if ( categoryIds.Contains( item.CategoryId ) ) propertyValueIds.Add( item.Id );
 					if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
@@ -3309,6 +3363,8 @@ namespace workIT.Services
 							connectionFilters.Add( item.SchemaName.Replace( "ceterms:", "" ) );
 					}
 				}
+				//
+				CommonHistoryFilter<AssessmentIndex>( query );
 
 				if ( asmtMethodsIds.Any() )
 					asmtMethodTypesQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.AssessmentMethodTypeIds ).Terms<int>( asmtMethodsIds.ToArray() ) );
@@ -3434,7 +3490,7 @@ namespace workIT.Services
 
 				boundariesQuery = Query<AssessmentIndex>
 					.Nested( n => n.Path( p => p.Addresses )
-					.Query( q => Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double )boundaries.East ).GreaterThan( ( double )boundaries.West ) ) && Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double )boundaries.North ).GreaterThan( ( double )boundaries.South ) ) ).IgnoreUnmapped() );
+					.Query( q => Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
 			#endregion
 
@@ -3483,6 +3539,7 @@ namespace workIT.Services
 					  && locationQueryFilters.LocationQuery
 					  && locationQueryFilters.CountryQuery
 					  && locationQueryFilters.CityQuery
+					  && createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
 					  //&& widgetQuery.KeywordQuery
 					  && reportsQuery
 					  && ( q.MultiMatch( m => m
@@ -3529,10 +3586,10 @@ namespace workIT.Services
 			#endregion
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.Assessment_MapFromElastic( ( List<AssessmentIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.Assessment_MapFromElastic( ( List<AssessmentIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.AssessmentSearch. found: {0} records", pTotalRows ) );
 			}
@@ -3559,10 +3616,10 @@ namespace workIT.Services
 			try
 			{
 				bool indexInitialized = false;
-				if ( deleteIndexFirst && EC.IndexExists( LearningOppIndex ).Exists )
-					EC.DeleteIndex( LearningOppIndex );
+				if ( deleteIndexFirst && EC.Indices.Exists( LearningOppIndex ).Exists )
+					EC.Indices.Delete( LearningOppIndex );
 
-				if ( !EC.IndexExists( LearningOppIndex ).Exists )
+				if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
 				{
 					LearningOppInitializeIndex();
 					indexInitialized = true;
@@ -3582,7 +3639,7 @@ namespace workIT.Services
 					LearningOpp_UpdateIndex( filter, ref processed );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( LearningOppIndex );
+						var refreshResults = EC.Indices.Refresh( LearningOppIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "LearningOpportunity",
@@ -3606,7 +3663,7 @@ namespace workIT.Services
 					//		LoggingHelper.DoTrace( 1, " Issue building learning opportunity index: " + results );
 					//	}
 					//}
-					//EC.Refresh( LearningOppIndex );
+					//EC.Indices.Refresh( LearningOppIndex );
 				}
 			}
 			catch ( Exception ex )
@@ -3617,9 +3674,9 @@ namespace workIT.Services
 
 		public static void LearningOppInitializeIndex( bool deleteIndexFirst = true )
 		{
-			if ( !EC.IndexExists( LearningOppIndex ).Exists )
+			if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
 			{
-				EC.CreateIndex( LearningOppIndex, c => new CreateIndexDescriptor( LearningOppIndex )
+				EC.Indices.Create( LearningOppIndex, c => new CreateIndexDescriptor( LearningOppIndex )
 				 .Settings( st => st
 						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
 					.Mappings( ms => ms
@@ -3683,7 +3740,7 @@ namespace workIT.Services
 				return;
 			string methodName = "LearningOpp_UpdateIndex";
 			string IndexName = LearningOppIndex;
-			int pageSize = 500; ;
+			int pageSize = UtilityManager.GetAppKeyValue( "nonCredentialPageSize", 300 );
 			int pageNbr = 1;
 			int totalRows = 0;
 			bool isComplete = false;
@@ -3736,12 +3793,12 @@ namespace workIT.Services
 						isComplete = true;
 						break;
 					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 					pageNbr++;
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 				} //loop
 			}
 			catch ( Exception ex )
@@ -3820,12 +3877,12 @@ namespace workIT.Services
 					 .Skip( ( query.StartPage - 1 ) * query.PageSize )
 					 .Size( query.PageSize ) );
 
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
 			if ( pTotalRows > 0 )
 			{
 				//map results
-				list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> ) search.Documents, query.StartPage, query.PageSize );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.OrganizationSearch. found: {0} records", pTotalRows ) );
 			}
@@ -3846,8 +3903,8 @@ namespace workIT.Services
 			   .Query( keyword )
 			   .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<LearningOppIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<LearningOppIndex> ) search.Documents;
 			return list.Select( x => x.ListTitle ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -4002,7 +4059,13 @@ namespace workIT.Services
 				{
 					var item = filter.AsCodeItem();
 					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
-						reportIds.Add( item.Id );
+					{
+						reportIds.Add( item.Id ); //can probably continue after here?
+						continue;
+					}
+
+					if ( filter.Name == "history" )
+						continue;
 
 					if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_Learning_Method_Type )
 						learningMethodTypesIds.Add( item.Id );
@@ -4020,6 +4083,8 @@ namespace workIT.Services
 							connectionFilters.Add( item.SchemaName.Replace( "ceterms:", "" ) );
 					}
 				}
+				//
+				CommonHistoryFilter<LearningOppIndex>( query );
 
 				if ( learningMethodTypesIds.Any() )
 				{
@@ -4155,7 +4220,7 @@ namespace workIT.Services
 
 				boundariesQuery = Query<LearningOppIndex>
 					.Nested( n => n.Path( p => p.Addresses )
-					.Query( q => Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double )boundaries.East ).GreaterThan( ( double )boundaries.West ) ) && Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double )boundaries.North ).GreaterThan( ( double )boundaries.South ) ) ).IgnoreUnmapped() );
+					.Query( q => Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
 			#endregion
 
@@ -4202,6 +4267,7 @@ namespace workIT.Services
 					  && locationQueryFilters.LocationQuery
 					  && locationQueryFilters.CountryQuery
 					  && locationQueryFilters.CityQuery
+					  && createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
 					  //&& widgetQuery.KeywordQuery
 					  && reportsQuery
 					  && ( q.MultiMatch( m => m
@@ -4245,10 +4311,10 @@ namespace workIT.Services
 			#endregion
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> ) search.Documents, query.StartPage, query.PageSize );
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.LearningOppSearch. found: {0} records", pTotalRows ) );
 				if ( list.Count == 0 )
 					pTotalRows = 0;
@@ -4278,11 +4344,11 @@ namespace workIT.Services
 		{
 			var list = new List<CompetencyFrameworkIndex>();
 			bool indexInitialized = false;
-			if ( deleteIndexFirst && EC.IndexExists( CompetencyFrameworkIndex ).Exists )
+			if ( deleteIndexFirst && EC.Indices.Exists( CompetencyFrameworkIndex ).Exists )
 			{
-				EC.DeleteIndex( CompetencyFrameworkIndex );
+				EC.Indices.Delete( CompetencyFrameworkIndex );
 			}
-			if ( !EC.IndexExists( CompetencyFrameworkIndex ).Exists )
+			if ( !EC.Indices.Exists( CompetencyFrameworkIndex ).Exists )
 			{
 				CompetencyFrameworkInitializeIndex();
 				indexInitialized = true;
@@ -4316,7 +4382,7 @@ namespace workIT.Services
 							LoggingHelper.DoTrace( 1, " Issue building CompetencyFramework index: " + results );
 						}
 
-						EC.Refresh( CompetencyFrameworkIndex );
+						EC.Indices.Refresh( CompetencyFrameworkIndex );
 					}
 				}
 			}
@@ -4325,11 +4391,11 @@ namespace workIT.Services
 
 		public static void CompetencyFrameworkInitializeIndex( bool deleteIndexFirst = true )
 		{
-			if ( !EC.IndexExists( CompetencyFrameworkIndex ).Exists )
+			if ( !EC.Indices.Exists( CompetencyFrameworkIndex ).Exists )
 			{
 				var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
 
-				EC.CreateIndex( CompetencyFrameworkIndex, c => new CreateIndexDescriptor( CompetencyFrameworkIndex )
+				EC.Indices.Create( CompetencyFrameworkIndex, c => new CreateIndexDescriptor( CompetencyFrameworkIndex )
 
 				 .Settings( st => st
 						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
@@ -4420,8 +4486,8 @@ namespace workIT.Services
 			   .Query( keyword )
 			   .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<CompetencyFrameworkIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<CompetencyFrameworkIndex> ) search.Documents;
 			return list.Select( x => x.Name ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -4658,10 +4724,10 @@ namespace workIT.Services
 			#endregion
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.CompetencyFramework_MapFromElastic( ( List<CompetencyFrameworkIndex> )search.Documents, query.StartPage, query.PageSize );
+				list = ElasticManager.CompetencyFramework_MapFromElastic( ( List<CompetencyFrameworkIndex> ) search.Documents, query.StartPage, query.PageSize );
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.CompetencyFrameworkSearch. found: {0} records", pTotalRows ) );
 				if ( list.Count == 0 )
 					pTotalRows = 0;
@@ -4703,10 +4769,7 @@ namespace workIT.Services
 				//not sure if we need this approach
 				tags.ForEach( x =>
 				{
-					//keywordsQuery = Query<CredentialIndex>.MatchPhrase( ts => ts.Field( f => f.Keyword ).Terms( tags ) );
 					qc |= Query<T>.MatchPhrase( mp => mp.Field( f => f.Keyword ).Query( x ) );
-					//keywordsQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.Keyword ).Terms( tags ) );
-					//qc |= Query<CredentialIndex>.MatchPhrase( mp => mp.Field( f => f.Keyword ).Query( x ) );
 				} );
 				if ( qc != null )
 				{
@@ -4749,6 +4812,12 @@ namespace workIT.Services
 			}
 			return results;
 		}
+		/// <summary>
+		/// Subject search using SubjectIndex (nested)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="query"></param>
+		/// <returns></returns>
 		public static QueryContainer HandleSubjects<T>( MainSearchInput query ) where T : class, IIndex
 		{
 			QueryContainer results = null;
@@ -4795,6 +4864,40 @@ namespace workIT.Services
 				}
 
 			}
+			return results;
+		}
+		/// <summary>
+		/// Subject search using list of strings
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="query"></param>
+		/// <returns></returns>
+		public static QueryContainer HandleSubjectAreas<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer results = null;
+			if ( query.FiltersV2.Any( x => x.Name == "subjects" ) )
+			{
+				QueryContainer qc = null;
+				var tags = new List<string>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "subjects" ) )
+				{
+					var text = filter.AsText();
+					if ( string.IsNullOrWhiteSpace( text ) )
+						continue;
+					tags.Add( text.ToLower() );
+				}
+				tags.ForEach( x =>
+				{
+					qc |= Query<T>.MatchPhrase( mp => mp.Field( f => f.SubjectAreas ).Query( x ) );
+				} );
+				if ( qc != null )
+				{
+					return qc;
+					//results = Query<T>.Nested( n => n.Path( p => p.Subjects ).Query( q => qc ).IgnoreUnmapped() );
+				}
+
+			}
+
 			return results;
 		}
 		public static QueryContainer CommonOccupations<T>( MainSearchInput query ) where T : class, IIndex
@@ -5245,7 +5348,7 @@ namespace workIT.Services
 								locationQueryFilters.CityQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
 								.Query( q => q.Bool( mm => mm.Must( mu => mu
 									.MultiMatch( m => m.Fields( mf => mf
-									.Field( f => f.Addresses.First().City, 70 ) )
+									.Field( f => f.Addresses.First().AddressLocality, 70 ) )
 									.Type( TextQueryType.PhrasePrefix )
 									.Query( x ) ) ) ) ).IgnoreUnmapped() );
 							}
@@ -5298,7 +5401,7 @@ namespace workIT.Services
 						if ( !string.IsNullOrEmpty( x ) )
 						{
 							locationQueryFilters.CountryQuery |= Query<T>.Nested( n => n.Path( p => p.Addresses )
-								.Query( q => q.Bool( mm => mm.Must( mu => mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Addresses.First().Country, 10 ) )
+								.Query( q => q.Bool( mm => mm.Must( mu => mu.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Addresses.First().AddressCountry, 10 ) )
 								.Type( TextQueryType.PhrasePrefix )
 								.Query( x ) ) ) ) )
 								.IgnoreUnmapped() );
@@ -5314,100 +5417,19 @@ namespace workIT.Services
 
 		#region Pathway
 
-		#region Build/update index -- using CommonIndex
-		public static void General_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
-		{
-			var list = new List<GenericIndex>();
-
-			bool indexInitialized = false;
-			if ( deleteIndexFirst && EC.IndexExists( CommonIndex ).Exists )
-			{
-				EC.DeleteIndex( CommonIndex );
-			}
-			if ( !EC.IndexExists( CommonIndex ).Exists )
-			{
-				GeneralInitializeIndex();
-				indexInitialized = true;
-			}
-
-			if ( indexInitialized || updatingIndexRegardless )
-			{
-				LoggingHelper.DoTrace( 1, "Pathway- Building Index" );
-				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
-				try
-				{
-					//*************pathways ****************************************
-
-					new ActivityServices().AddActivity( new SiteActivity()
-					{ ActivityType = "Pathway", Activity = "Elastic", Event = "Build Index" }
-					);
-					int processed = 0;
-					string filter = "( base.EntityStateId >= 2 )";
-					Pathway_UpdateIndex( filter, ref processed );
-					{
-						var refreshResults = EC.Refresh( PathwayIndex );
-						new ActivityServices().AddActivity( new SiteActivity()
-						{
-							ActivityType = "Pathway",
-							Activity = "Elastic",
-							Event = "Build Index Completed",
-							Comment = string.Format( "Completed rebuild of PathwayIndex for {0} records.", processed )
-						} );
-					}
-
-					//*************transfer value ****************************************
-					processed = 0;
-					filter = "( base.EntityStateId >= 2 )";
-					//20-12-28 - update to be like credentials
-					General_UpdateIndexForTVP( filter, ref processed );
-					if ( processed > 0 )
-					{
-						//??is this done in Assessment_UpdateIndex
-						var refreshResults = EC.Refresh( CommonIndex );
-						new ActivityServices().AddActivity( new SiteActivity()
-						{
-							ActivityType = "TransferValue",
-							Activity = "Elastic",
-							Event = "Build Index Completed",
-							Comment = string.Format( "Completed rebuild of CommonIndex for TVP: {0} records.", processed )
-						} );
-					}
-
-					//
-
-				}
-				catch ( Exception ex )
-				{
-					LoggingHelper.LogError( ex, "General_BuildIndex-Pathway" );
-				}
-				finally
-				{
-					//if ( list != null && list.Count > 0 )
-					//{
-					//	var results = EC.Bulk( b => b.IndexMany( list, ( d, document ) => d.Index( CommonIndex ).Document( document ).Id( document.Id.ToString() ) ) );
-					//	if ( results.ToString().IndexOf( "Valid NEST response built from a successful low level cal" ) == -1 )
-					//	{
-					//		Console.WriteLine( results.ToString() );
-					//		LoggingHelper.DoTrace( 1, " Issue building Pathway/General index: " + results.DebugInformation.Substring( 0, 2000 ) );
-					//	}
-
-					//	EC.Refresh( CommonIndex );
-					//}
-				}
-			}
-		}
+		#region Build/update index --21-02-11 - using PathwayIndex now
 		public static void Pathway_BuildIndex( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
 		{
-			List<GenericIndex> list = new List<Models.Elastic.GenericIndex>();
+			List<PathwayIndex> list = new List<Models.Elastic.PathwayIndex>();
 			bool indexInitialized = false;
-			if ( deleteIndexFirst && EC.IndexExists( PathwayIndex ).Exists )
+			if ( deleteIndexFirst && EC.Indices.Exists( PathwayIndex ).Exists )
 			{
-				EC.DeleteIndex( PathwayIndex );
+				EC.Indices.Delete( PathwayIndex );
 			}
-			if ( !EC.IndexExists( PathwayIndex ).Exists )
+			if ( !EC.Indices.Exists( PathwayIndex ).Exists )
 			{
-				GeneralInitializeIndex();
-				//PathwayInitializeIndex();
+				//GeneralInitializeIndex();
+				PathwayInitializeIndex();
 				indexInitialized = true;
 			}
 
@@ -5427,7 +5449,7 @@ namespace workIT.Services
 					Pathway_UpdateIndex( filter, ref processed );
 					if ( processed > 0 )
 					{
-						var refreshResults = EC.Refresh( PathwayIndex );
+						var refreshResults = EC.Indices.Refresh( PathwayIndex );
 						new ActivityServices().AddActivity( new SiteActivity()
 						{
 							ActivityType = "Pathway",
@@ -5457,7 +5479,7 @@ namespace workIT.Services
 							LoggingHelper.DoTrace( 1, " Issue building Pathway/General index: " + results.DebugInformation.Substring( 0, 2000 ) );
 						}
 
-						EC.Refresh( PathwayIndex );
+						EC.Indices.Refresh( PathwayIndex );
 					}
 				}
 			}
@@ -5465,36 +5487,41 @@ namespace workIT.Services
 		}
 		#endregion
 
-		//public static void PathwayInitializeIndex( bool deleteIndexFirst = true )
-		//{
-		//	if ( !EC.IndexExists( PathwayIndex ).Exists )
-		//	{
-		//		var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
+		public static void PathwayInitializeIndex( bool deleteIndexFirst = true )
+		{
+			if ( !EC.Indices.Exists( PathwayIndex ).Exists )
+			{
+				var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
 
-		//		EC.CreateIndex( PathwayIndex, c => new CreateIndexDescriptor( PathwayIndex )
+				EC.Indices.Create( PathwayIndex, c => new CreateIndexDescriptor( PathwayIndex )
 
-		//		 .Settings( st => st
-		//				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
-		//			.Mappings( ms => ms
-		//				.Map<GenericIndex>( m => m
-		//					.AutoMap()
-		//					.Properties( p => p
-		//						.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Industries )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Occupations )
-		//							.AutoMap()
-		//						)
+				 .Settings( st => st
+						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
+					.Mappings( ms => ms
+						.Map<PathwayIndex>( m => m
+							.AutoMap()
+							.Properties( p => p
+								.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Industries )
+									.AutoMap()
+								)
+								.Nested<IndexReferenceFramework>( n => n
+									.Name( nn => nn.Occupations )
+									.AutoMap()
+								)
+								 //AgentRelationshipForEntity will replace IndexQualityAssurance
+								 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+									.Name( nn => nn.AgentRelationshipsForEntity )
+									.AutoMap()
+								)
 
-		//					)
-		//				)
-		//			)
-		//		);
-		//	}
-		//}
+							)
+						)
+					)
+				);
+			}
+		}
 
 		public static void Pathway_UpdateIndex( int recordId )
 		{
@@ -5580,12 +5607,12 @@ namespace workIT.Services
 						isComplete = true;
 						break;
 					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 					pageNbr++;
 					if ( cntr >= totalRows )
 					{
 						isComplete = true;
 					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
 				} //loop
 			}
 			catch ( Exception ex )
@@ -5612,7 +5639,7 @@ namespace workIT.Services
 				}
 
 			}
-			var sort = new SortDescriptor<GenericIndex>();
+			var sort = new SortDescriptor<PathwayIndex>();
 
 			var sortOrder = query.SortOrder;
 			if ( sortOrder == "alpha" )
@@ -5627,7 +5654,7 @@ namespace workIT.Services
 				sort.Ascending( s => s.Name );
 			if ( query.StartPage < 1 )
 				query.StartPage = 1;
-			var search = EC.Search<GenericIndex>( i => i.Index( PathwayIndex ).Query( q =>
+			var search = EC.Search<PathwayIndex>( i => i.Index( PathwayIndex ).Query( q =>
 				 q.MultiMatch( m => m
 								 .Fields( f => f
 								  .Field( ff => ff.Name, 90 )
@@ -5647,7 +5674,7 @@ namespace workIT.Services
 					 .Size( query.PageSize ) );
 
 			var debug = search.DebugInformation;
-			pTotalRows = ( int )search.Total;
+			pTotalRows = ( int ) search.Total;
 
 			if ( pTotalRows > 0 )
 			{
@@ -5663,7 +5690,7 @@ namespace workIT.Services
 		public static List<object> PathwayAutoComplete( string keyword, int maxTerms, ref int pTotalRows )
 		{
 
-			var search = EC.Search<GenericIndex>( i => i.Index( PathwayIndex ).Query( q => q.MultiMatch( m => m
+			var search = EC.Search<PathwayIndex>( i => i.Index( PathwayIndex ).Query( q => q.MultiMatch( m => m
 						   .Fields( f => f
 							   .Field( ff => ff.Name )
 							   .Field( ff => ff.Description )
@@ -5673,8 +5700,8 @@ namespace workIT.Services
 						   .Query( keyword )
 						   .MaxExpansions( 10 ) ) ).Size( maxTerms ) );
 
-			pTotalRows = ( int )search.Total;
-			var list = ( List<GenericIndex> )search.Documents;
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<PathwayIndex> ) search.Documents;
 			return list.Select( x => x.Name ).Distinct().ToList().Cast<object>().ToList();
 		}
 
@@ -5730,171 +5757,201 @@ namespace workIT.Services
 		public static List<CommonSearchSummary> PathwaySearch( MainSearchInput query, ref int pTotalRows )
 		{
 			//any index rebuild will occur from GeneralSearch
-			//Pathway_BuildIndex();
+			Pathway_BuildIndex();
 
-			return GeneralSearch( CodesManager.ENTITY_TYPE_PATHWAY, "Pathway", query, ref pTotalRows );
-
-
-
-			//var list = new List<PathwaySummary>();
-
-			//QueryContainer keywordsQuery = null;
-			//QueryContainer industriesQuery = null;
-			//QueryContainer occupationsQuery = null;
-			//QueryContainer subjectsQuery = null;			
-			//QueryContainer reportsQuery = null;
-
-			//#region Subject Areas.keywords
-			////from widget and from search filters
-			//if ( query.FiltersV2.Any( x => x.Name == "subjects" ) )
-			//{
-			//	subjectsQuery = HandleSubjects<GenericIndex>( query );
-			//}
-			////keywords from widget
-			//if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
-			//{
-			//	keywordsQuery = HandleKeywords<GenericIndex>( query );
-			//}
-			//#endregion
-
-			//#region Properties
-
-			//if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
-			//{
-			//	var asmtUseIds = new List<int>();
-			//	var reportIds = new List<int>();
-
-			//	foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
-			//	{
-			//		var item = filter.AsCodeItem();
-			//		if ( filter.Name == "reports" || filter.Name == "otherfilters" )
-			//			reportIds.Add( item.Id );
-			//	}
-
-
-			//	if ( reportIds.Any() )
-			//	{
-			//		reportsQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( reportIds.ToArray() ) );
-			//	}
-			//}
-
-			//#endregion
+			//return GeneralSearch( CodesManager.ENTITY_TYPE_PATHWAY, "Pathway", query, ref pTotalRows );
 
 
 
-			//#region Pathway Ids list
-			//QueryContainer recordIdListQuery = null;
-			//if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-			//{
-			//	var idsList = new List<int>();
-			//	foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
-			//	{
-			//		idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
-			//	}
+			var list = new List<CommonSearchSummary>();
+			QueryContainer entityTypeQuery = null;
 
-			//	if ( idsList.Any() )
-			//	{
-			//		idsList.ForEach( x =>
-			//		{
-			//			recordIdListQuery |= Query<GenericIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
-			//		} );
-			//	}
-			//}
-			//#endregion
-			//#region Occupations, industries
-			//occupationsQuery = CommonOccupations<GenericIndex>( query );
+			QueryContainer keywordsQuery = null;
+			QueryContainer industriesQuery = null;
+			QueryContainer occupationsQuery = null;
+			QueryContainer qaFilterQuery = null;
+			QueryContainer subjectsQuery = null;
+			QueryContainer reportsQuery = null;
+			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer ownedByQuery = null;
 
-			//industriesQuery = CommonIndustries<GenericIndex>( query );
-			//#endregion
-
-			//#region Query
-
-			//var sort = new SortDescriptor<GenericIndex>();
-
-			//var sortOrder = query.SortOrder;
-			//if ( sortOrder == "alpha" )
-			//	sort.Ascending( s => s.Name.Suffix( "keyword" ) );
-			//else if ( sortOrder == "newest" )
-			//	sort.Field( f => f.LastUpdated, SortOrder.Descending );
-			//else if ( sortOrder == "oldest" )
-			//	sort.Field( f => f.LastUpdated, SortOrder.Ascending );
-			//else if ( sortOrder == "relevance" )
-			//	sort.Descending( SortSpecialField.Score );
-
-			//if ( query.StartPage < 1 )
-			//	query.StartPage = 1;
-
-			//var search = EC.Search<GenericIndex>( body => body
-			//	   .Index( PathwayIndex )
-			//	   .Query( q =>
-			//		  recordIdListQuery
-			//		  && subjectsQuery
-			//		  && wsubjectsQuery         //widget specific!!!
-			//		  && keywordsQuery
-			//		  && occupationsQuery
-			//		  && industriesQuery
-			//		  && reportsQuery
-			//		  && ( q.MultiMatch( m => m
-			//			   .Fields( f => f
-			//				   .Field( ff => ff.Name, 90 )
-			//				   .Field( ff => ff.Description, 75 )
-			//				   .Field( ff => ff.SubjectWebpage, 25 )
-			//				   .Field( ff => ff.PrimaryOrganizationName, 80 )
-			//				   .Field( ff => ff.TextValues, 45 )
-			//				   .Field( ff => ff.Subjects, 50 ) //??
-
-			//			   )
-			//			   //.Operator( Operator.Or )
-			//			   .Type( TextQueryType.PhrasePrefix )
-			//			   .Query( query.Keywords )
-			//		  //.MaxExpansions( 10 )
-			//		  )
-			//		  || q.MultiMatch( m => m
-			//			  .Fields( f => f
-			//				   .Field( ff => ff.Name, 90 )
-			//				   .Field( ff => ff.Description, 75 )
-			//				   .Field( ff => ff.SubjectWebpage, 25 )
-			//				   .Field( ff => ff.PrimaryOrganizationName, 80 )
-			//				   .Field( ff => ff.TextValues, 45 )
-			//				   .Field( ff => ff.Subjects, 50 ) //??
-			//			  )
-			//			  //.Operator( Operator.Or )
-			//			  .Type( TextQueryType.BestFields )
-			//			  .Query( query.Keywords )
-			//			  .MaxExpansions( 10 )
-			//			)
-			//		  )
-			//	   )
-			//	   .Sort( s => sort )
-			//	   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
-			//	   .Skip( ( query.StartPage - 1 ) * query.PageSize )
-			//	   .Size( query.PageSize ) );
+			var relationshipTypeIds = new List<int>();
+			int entityTypeId = 8;
+			if ( entityTypeId > 0 )
+				entityTypeQuery = Query<PathwayIndex>.Match( ts => ts.Field( f => f.EntityTypeId ).Query( entityTypeId.ToString() ) );
 
 
-			//#endregion
+			if ( query.FiltersV2.Count > 0 )
+			{
+				var assurances = new List<CodeItem>();
+				//will only be one owner
+				var orgId = 0;
+				if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+				{
+					foreach ( var filter in query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
+					{
+						var cc = filter.AsOrgRolesItem();
+						orgId = cc.Id;
 
-			//var debug = search.DebugInformation;
-			//pTotalRows = ( int )search.Total;
-			//if ( pTotalRows > 0 )
-			//{
-			//	list = ElasticManager.Pathway_MapFromElastic( ( List<GenericIndex> )search.Documents );
+						assurances.Add( filter.AsOrgRolesItem() );
+						break;
+					}
+				}
+				if ( orgId > 0 )
+					ownedByQuery = Query<PathwayIndex>.Match( ts => ts.Field( f => f.OwnerOrganizationId ).Query( orgId.ToString() ) );
+			}
 
-			//	LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.PathwaySearch. found: {0} records", pTotalRows ) );
-			//}
+			#region Subject Areas.keywords
+			//from widget and from search filters
+			if ( query.FiltersV2.Any( x => x.Name == "subjects" ) )
+			{
+				subjectsQuery = HandleSubjectAreas<PathwayIndex>( query );
+			}
+			//keywords from widget
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				keywordsQuery = HandleKeywords<PathwayIndex>( query );
+			}
+			#endregion
+
+			#region Properties
+
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
+			{
+				var asmtUseIds = new List<int>();
+				var reportIds = new List<int>();
+
+				foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+				{
+					var item = filter.AsCodeItem();
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" )
+						reportIds.Add( item.Id );
+				}
+
+				if ( reportIds.Any() )
+				{
+					reportsQuery = Query<PathwayIndex>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( reportIds.ToArray() ) );
+				}
+			}
+
+			#endregion
+
+			#region Pathway Ids list
+			QueryContainer recordIdListQuery = null;
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var idsList = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
+				{
+					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+				}
+
+				if ( idsList.Any() )
+				{
+					idsList.ForEach( x =>
+					{
+						recordIdListQuery |= Query<PathwayIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
+					} );
+				}
+			}
+			#endregion
+			#region Occupations, industries
+			occupationsQuery = CommonOccupations<PathwayIndex>( query );
+
+			industriesQuery = CommonIndustries<PathwayIndex>( query );
+			#endregion
+
+			#region Query
+
+			var sort = new SortDescriptor<PathwayIndex>();
+
+			var sortOrder = query.SortOrder;
+			if ( sortOrder == "alpha" )
+				sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+			else if ( sortOrder == "newest" )
+				sort.Field( f => f.LastUpdated, SortOrder.Descending );
+			else if ( sortOrder == "oldest" )
+				sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+			else if ( sortOrder == "relevance" )
+				sort.Descending( SortSpecialField.Score );
+
+			if ( query.StartPage < 1 )
+				query.StartPage = 1;
+
+			var search = EC.Search<PathwayIndex>( body => body
+				   .Index( PathwayIndex )
+				   .Query( q =>
+					  recordIdListQuery
+					  && ownedByQuery
+					  && subjectsQuery
+					  && wsubjectsQuery         //widget specific!!!
+					  && keywordsQuery
+					  && occupationsQuery
+					  && industriesQuery
+					  && qaFilterQuery
+					  && createdFromQuery && createdToQuery && historyFromQuery && historyToQuery
+					  && reportsQuery
+					  && ( q.MultiMatch( m => m
+						   .Fields( f => f
+							   .Field( ff => ff.Name, 90 )
+							   .Field( ff => ff.Description, 75 )
+							   .Field( ff => ff.SubjectWebpage, 25 )
+							   .Field( ff => ff.PrimaryOrganizationName, 80 )
+							   .Field( ff => ff.TextValues, 45 )
+							   .Field( ff => ff.Subjects, 50 ) //??
+
+						   )
+						   //.Operator( Operator.Or )
+						   .Type( TextQueryType.PhrasePrefix )
+						   .Query( query.Keywords )
+					  //.MaxExpansions( 10 )
+					  )
+					  || q.MultiMatch( m => m
+						  .Fields( f => f
+							   .Field( ff => ff.Name, 90 )
+							   .Field( ff => ff.Description, 75 )
+							   .Field( ff => ff.SubjectWebpage, 25 )
+							   .Field( ff => ff.PrimaryOrganizationName, 80 )
+							   .Field( ff => ff.TextValues, 45 )
+							   .Field( ff => ff.Subjects, 50 ) //??
+						  )
+						  //.Operator( Operator.Or )
+						  .Type( TextQueryType.BestFields )
+						  .Query( query.Keywords )
+						  .MaxExpansions( 10 )
+						)
+					  )
+				   )
+				   .Sort( s => sort )
+				   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+				   .Skip( ( query.StartPage - 1 ) * query.PageSize )
+				   .Size( query.PageSize ) );
+
+
+			#endregion
+
+			var debug = search.DebugInformation;
+			pTotalRows = ( int ) search.Total;
+			if ( pTotalRows > 0 )
+			{
+				list = ElasticManager.Pathway_MapFromElastic( ( List<PathwayIndex> ) search.Documents );
+
+				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.PathwaySearch. found: {0} records", pTotalRows ) );
+			}
 			//stats
-			//query.Results = pTotalRows;
-			//string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
-			//string searchType = "blind";
-			//if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
-			//{
-			//	searchType = "filters selected";
-			//}
-			//if ( query.StartPage > 1 )
-			//	searchType += " - paging";
-			//new ActivityServices().AddActivity( new SiteActivity()
-			//{ ActivityType = "Pathway", Activity = "Search", Event = searchType, Comment = jsoninput }
-			//);
-			//return list;
+			query.Results = pTotalRows;
+			string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
+			string searchType = "blind";
+			if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
+			{
+				searchType = "filters selected";
+			}
+			if ( query.StartPage > 1 )
+				searchType += " - paging";
+			new ActivityServices().AddActivity( new SiteActivity()
+			{ ActivityType = "Pathway", Activity = "Search", Event = searchType, Comment = jsoninput }
+			);
+			return list;
 		}
 		#endregion
 		#region updates and deletes
@@ -6012,6 +6069,22 @@ namespace workIT.Services
 					new SearchPendingReindexManager().UpdateAll( 1, ref messages, 10 );
 				}
 			}
+			//concept schemes
+			processedCnt = 0;
+			expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, 11 );
+			if ( expected != null && expected.Count > 0 )
+			{
+				filter = "(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= 11 And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+				//concept schemes are no in elastic yet, so skip and reset
+				//ConceptScheme_UpdateIndex( filter, ref processedCnt );
+				if ( expected.Count > 0 )
+				//if ( processedCnt > 0 )
+				{
+					messages.Add( string.Format( "Reindexed {0} ConceptSchemes.", processedCnt ) );
+					LoggingHelper.DoTrace( 1, string.Format( "Reindexed {0} ConceptSchemes.", processedCnt ) );
+					new SearchPendingReindexManager().UpdateAll( 1, ref messages, 11 );
+				}
+			}
 			//TVP
 			processedCnt = 0;
 			expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE );
@@ -6084,25 +6157,25 @@ namespace workIT.Services
 				{
 					case 1:
 					{
-						var response = EC.Delete<CredentialIndex>( item.RecordId, d => d.Index( CredentialIndex ).Type( "credentialindex" ) );
+						var response = EC.Delete<CredentialIndex>( item.RecordId, d => d.Index( CredentialIndex ) );
 						messages.Add( string.Format( "Removed credential #{0} from elastic index", item.RecordId ) );
 					}
 					break;
 					case 2:
 					{
-						var response = EC.Delete<OrganizationIndex>( item.RecordId, d => d.Index( OrganizationIndex ).Type( "organizationindex" ) );
+						var response = EC.Delete<OrganizationIndex>( item.RecordId, d => d.Index( OrganizationIndex ) );
 						messages.Add( string.Format( "Removed organization #{0} from elastic index", item.RecordId ) );
 					}
 					break;
 					case 3:
 					{
-						var response = EC.Delete<AssessmentIndex>( item.RecordId, d => d.Index( AssessmentIndex ).Type( "assessmentindex" ) );
+						var response = EC.Delete<AssessmentIndex>( item.RecordId, d => d.Index( AssessmentIndex ) );
 						messages.Add( string.Format( "Removed assessment #{0} from elastic index", item.RecordId ) );
 					}
 					break;
 					case 7:
 					{
-						var response = EC.Delete<LearningOppIndex>( item.RecordId, d => d.Index( LearningOppIndex ).Type( "learningoppindex" ) );
+						var response = EC.Delete<LearningOppIndex>( item.RecordId, d => d.Index( LearningOppIndex ) );
 						messages.Add( string.Format( "Removed lopp #{0} from elastic index", item.RecordId ) );
 					}
 					break;
@@ -6123,7 +6196,7 @@ namespace workIT.Services
 												)
 										)//Must
 									) //Bool
-							 ).Index( PathwayIndex ).Type( "genericindex" )
+							 ).Index( PathwayIndex )
 						);
 
 						messages.Add( string.Format( "Removed pathway #{0} from elastic index", item.RecordId ) );
@@ -6131,7 +6204,7 @@ namespace workIT.Services
 					break;
 					case 10:
 					{
-						var response = EC.Delete<CompetencyFrameworkIndex>( item.RecordId, d => d.Index( CompetencyFrameworkIndex ).Type( "competencyframeworkindex" ) ); ;
+						var response = EC.Delete<CompetencyFrameworkIndex>( item.RecordId, d => d.Index( CompetencyFrameworkIndex ) ); ;
 						messages.Add( string.Format( "Removed Competency framework #{0} from elastic index", item.RecordId ) );
 					}
 					break;
@@ -6146,7 +6219,7 @@ namespace workIT.Services
 												)
 										)//Must
 									) //Bool
-							 ).Index( PathwayIndex ).Type( "genericindex" )
+							 ).Index( PathwayIndex )
 						);
 						messages.Add( string.Format( "Removed TVP #{0} from elastic index", item.RecordId ) );
 					}
@@ -6165,7 +6238,7 @@ namespace workIT.Services
 												)
 										)//Must
 									) //Bool
-							 ).Index( PathwayIndex ).Type( "genericindex" )
+							 ).Index( CommonIndex )
 						);
 						messages.Add( string.Format( "Removed TVP #{0} from elastic index", item.RecordId ) );
 					}
@@ -6410,7 +6483,7 @@ namespace workIT.Services
 				try
 				{
 					//string wsUrl = "http://localhost:9200/" + collection + urlAddendum;
-					HttpWebRequest request = ( HttpWebRequest )WebRequest.Create( wsUrl );
+					HttpWebRequest request = ( HttpWebRequest ) WebRequest.Create( wsUrl );
 					request.Method = method;
 
 					if ( method == "POST" || method == "PUT" || json.Length > 0 )
@@ -6422,7 +6495,7 @@ namespace workIT.Services
 						requestStream.Write( byteData, 0, byteData.Length );
 						request.Timeout = 15000;
 					}
-					HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
+					HttpWebResponse response = ( HttpWebResponse ) request.GetResponse();
 					success = true;
 					//Console.WriteLine("Server contact successful");
 
@@ -6461,5 +6534,69 @@ namespace workIT.Services
 		}
 		#endregion
 	}
-	
+	/*
+	public class ElasticConfiguration
+	{
+		public BestFields BestFields { get; set; } = new BestFields();
+		public CrossFields CrossFields { get; set; } = new CrossFields();
+		public PhrasePrefix PhrasePrefix { get; set; } = new PhrasePrefix();
+		public MatchPhrasePrefix MatchPhrasePrefix { get; set; } = new MatchPhrasePrefix();
+	}
+	/// <summary>
+	/// Best Fields ignores the order of the phrase and results are based on anything with the words in the phrase.
+	/// </summary>
+	public class BestFields
+	{
+		public bool ExcludeQuery { get; set; }
+		public int Name { get; set; } = 10;
+		public int OwnerOrganizationName { get; set; } = 0;
+		public int Description { get; set; } = 5;
+		public int AlternateNames { get; set; } = 0;
+		public int Keyword { get; set; } = 0;
+		public int Occupation { get; set; } = 0;
+		public int Industry { get; set; } = 0;
+		public int InstructionalPrograms { get; set; } = 25;
+		public int QualityAssurancePhrase { get; set; } = 25;
+		
+	}
+
+	/// <summary>
+	/// Cross Fields looks for each term in any of the fields, which is useful for queries like "nursing ohio"
+	/// </summary>
+	public class CrossFields
+	{
+		public bool ExcludeQuery { get; set; }
+		public int Name { get; set; } = 5;
+		public int CredentialType { get; set; } = 30;
+		public int City { get; set; } = 5;
+		public int Region { get; set; } = 5;
+		public int Country { get; set; } = 0;
+	}
+
+	/// <summary>
+	/// Phrase Prefix is looking for matches to what a user types in (i.e., the phrase)"
+	/// </summary>
+	public class PhrasePrefix
+	{
+		public bool ExcludeQuery { get; set; }
+		public int Name { get; set; } = 100;
+		public int NameAlphanumericOnly { get; set; } = 10;
+		//
+		public int OwnerOrganizationName { get; set; } = 90;
+		public int Description { get; set; } = 50;
+		public int AlternateNames { get; set; } = 75;
+		public int Keyword { get; set; } = 20;
+		public int Occupation { get; set; } = 0;
+		public int Industry { get; set; } = 0;
+		public int InstructionalPrograms { get; set; } = 25;
+	}
+
+	public class MatchPhrasePrefix
+	{
+		public bool ExcludeQuery { get; set; }
+		public int Name { get; set; } = 0;
+		public int Keywords { get; set; } = 0;
+
+	}
+	*/
 }

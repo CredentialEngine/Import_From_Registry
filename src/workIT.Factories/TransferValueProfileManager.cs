@@ -170,6 +170,12 @@ namespace workIT.Factories
 			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
 			//consider storing the class properties as Json!
 
+			//derived from
+			//where to store this? It commonly require Entity.TransferValueProfile
+			var etvlMgr = new Entity_TransferValueProfileManager();
+			etvlMgr.SaveList( entity.DerivedFromForImport, entity.RowId, ref status );
+			
+
 			//delete all Entity.Lopp, .Cred, and .Assessment relationships, and then add?
 			//would be convenient if a delete wasn't necessary
 			//NOTE: this will leave orphan reference objects. Will need to clean up. 
@@ -184,13 +190,16 @@ namespace workIT.Factories
 			var elom = new Entity_LearningOpportunityManager();
 			elom.DeleteAll( relatedEntity, ref status );
 			//
+			var etvp = new Entity_TransferValueProfileManager();
+			etvp.DeleteAll( relatedEntity, ref status );
+			//
 			foreach ( var item in entity.TransferValueFromImport )
 			{
 				int newId = 0;
 				var from = EntityManager.GetEntity( item, false );
 				if ( from == null || from.Id == 0 )
 				{
-					//??
+					status.AddError( string.Format( "{0}.UpdateParts - TransferValueFromImport. TVP: {1}. An entity was not found for GUID: {2}", thisClassName, entity.Id, item ) );
 					continue;
 				}
 				if ( from.EntityTypeId == 1 )
@@ -214,6 +223,7 @@ namespace workIT.Factories
 				if ( from == null || from.Id == 0 )
 				{
 					//??
+					status.AddError( string.Format( "{0}.UpdateParts - TransferValueForImport. TVP: {1}. An entity was not found for GUID: {2}", thisClassName, entity.Id, item ) );
 					continue;
 				}
 				if ( from.EntityTypeId == 1 )
@@ -228,6 +238,24 @@ namespace workIT.Factories
 				{
 					elom.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, false, ref status );
 				}
+			}
+
+			foreach ( var item in entity.DerivedFromForImport )
+			{
+				var from = Get(item );
+				if ( from == null || from.Id == 0 )
+				{
+					//??
+					status.AddError( string.Format( "{0}.UpdateParts - DerivedFromForImport. TVP: {1}. A TVP was not found for ID: {2}", thisClassName, entity.Id, item ) );
+					continue;
+				}
+				//check that not the same as current TVP
+				if (from.Id == entity.Id)
+				{
+					status.AddError( string.Format( "{0}.UpdateParts - DerivedFromForImport. TVP: {1}. The DerivedFrom TVP Id ({2}) is the same as the current TVP ID", thisClassName, entity.Id, item ) );
+					continue;
+				}
+				etvp.Add( entity.RowId, item, ref status );
 			}
 
 			//ProcessProfile
@@ -330,7 +358,7 @@ namespace workIT.Factories
 		/// <param name="ctid"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Delete( string credentialRegistryId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
 			if ( string.IsNullOrWhiteSpace( ctid ) )
@@ -591,7 +619,7 @@ namespace workIT.Factories
 			return json;
 		} //
 
-		public static void MapFromDB( DBEntity input, ThisEntity output )
+		public static void MapFromDB( DBEntity input, ThisEntity output, bool gettingAll = true )
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
@@ -599,6 +627,11 @@ namespace workIT.Factories
 			output.Name = input.Name;
 			output.Description = input.Description;
 			output.CTID = input.CTID;
+
+			if ( input.Created != null )
+				output.Created = ( DateTime )input.Created;
+			if ( input.LastUpdated != null )
+				output.LastUpdated = ( DateTime )input.LastUpdated;
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
 				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
@@ -634,6 +667,7 @@ namespace workIT.Factories
 			else
 				output.EndDate = "";
 	
+			//derived from ....
 
 			//get json and expand
 			output.IdentifierJson = input.IdentifierJson;
@@ -645,6 +679,10 @@ namespace workIT.Factories
 				output.Identifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( output.IdentifierJson );
 			if ( !string.IsNullOrWhiteSpace( output.TransferValueJson ) )
 				output.TransferValue = JsonConvert.DeserializeObject<List<ValueProfile>>( output.TransferValueJson );
+
+
+			if ( !gettingAll )
+				return;
 
 			//the top level object may not be enough. First need to confirm if reference lopps and asmts can have detail pages.
 			if ( !string.IsNullOrWhiteSpace( output.TransferValueFromJson ) )
@@ -690,6 +728,11 @@ namespace workIT.Factories
 
 			}
 
+
+			//this should be a summary level, not the full TVP
+			output.DerivedFrom = Entity_TransferValueProfileManager.GetAll( output.RowId );
+
+			//
 			List<ProcessProfile> processes = Entity_ProcessProfileManager.GetAll( output.RowId );
 			foreach ( ProcessProfile item in processes )
 			{
@@ -702,10 +745,6 @@ namespace workIT.Factories
 				}
 			}
 
-			if ( input.Created != null )
-				output.Created = ( DateTime )input.Created;
-			if ( input.LastUpdated != null )
-				output.LastUpdated = ( DateTime )input.LastUpdated;
 
 		}
 

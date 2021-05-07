@@ -43,57 +43,17 @@ namespace Import.Services
 			foreach ( OrganizationSummary item in list )
 			{
 				status = new SaveStatus();
-                //SWP contains the resource url
-
-                if (!ImportByResourceUrl( item.SubjectWebpage, status ))
-                {
+				//SWP contains the resource url
+				//pending records will have a  CTID, it should be used to get the envelope!
+				//if ( !ImportByResourceUrl( item.SubjectWebpage, status ) )
+				if ( !ImportByCtid( item.CTID, status ) )
+				{
                     //check for 404
                     LoggingHelper.DoTrace(1, string.Format("     - (). Failed to import pending credential: {0}, message(s): {1}", item.Id, status.GetErrorsAsString()));
                 }
                 else
                     LoggingHelper.DoTrace(1, string.Format("     - (). Successfully imported pending credential: {0}", item.Id));
             }
-		}
-		/// <summary>
-		/// Retrieve an envelop from the registry and do import
-		/// </summary>
-		/// <param name="envelopeId"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool RequestImportByEnvelopeId( string envelopeId, SaveStatus status )
-		{
-			//this is currently specific, assumes envelop contains an organization
-			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
-
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-			{
-				status.AddError( thisClassName + ".ImportByEnvelope - a valid envelope id must be provided" );
-				return false;
-			}
-
-			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
-				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-				{
-					return CustomProcessEnvelope( envelope, status );
-				}
-				else
-					return false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportByEnvelopeId()" );
-				status.AddError( ex.Message );
-				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-				{
-					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-				}
-				return false;
-			}
 		}
 
 		/// <summary>
@@ -102,7 +62,7 @@ namespace Import.Services
 		/// <param name="ctid"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool RequestImportByCtid( string ctid, SaveStatus status )
+		public bool ImportByCtid( string ctid, SaveStatus status )
 		{
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
@@ -136,75 +96,7 @@ namespace Import.Services
 				return false;
 			}
 		}
-		public bool ImportByResourceUrl( string resourceUrl, SaveStatus status )
-		{
-			if ( string.IsNullOrWhiteSpace(resourceUrl) )
-			{
-				status.AddError( thisClassName + ".ImportByResourceUrl - a valid resourceUrl must be provided");
-				return false;
-			}
-			//this is currently specific, assumes envelop contains an organization
-			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
-			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				//for consistency, we should extract the ctid, and then get the envelope
-				var ctid = ResolutionServices.ExtractCtid( resourceUrl );
-				//may need to check for a community?
-				if ( !string.IsNullOrWhiteSpace( ctid ) && ctid.Length == 39 )
-				{
-					var envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
-					if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-					{
-						return CustomProcessRequest( envelope, status );
-					}
-					else
-					{
-						status.AddError( "Error - ImportByResourceUrl Unable to find an envelope using CTID: " + ctid );
-						return false;
-					}
-				}
-				else
-				{
-					status.AddError( "Error - ImportByResourceUrl Unable to extract a CTID from the provided URL: " + resourceUrl );
-					return false;
-				}
-
-				//string payload = RegistryServices.GetResourceByUrl(resourceUrl, ref ctdlType, ref statusMessage );
-
-				//if ( !string.IsNullOrWhiteSpace( payload ) )
-				//{
-    //                if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-    //                {
-    //                    //if ( payload.IndexOf( "\"en\":" ) > 0 )
-    //                        return ImportV3( payload, "", status );
-    //                    //else
-    //                    //    return ImportV2( payload, "", status );
-    //                }
-    //                else
-    //                {
-				//		status.AddError( "Importing of an organization resource payload is no longer supported. Please provide a /graph/ input." );
-				//		return false;
-				//		//input = JsonConvert.DeserializeObject<InputEntity>( payload.ToString() );
-    //  //                  return Import( input, "", status );
-    //                }
-				//}
-				//else
-				//	return false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportByResourceUrl()" );
-				status.AddError( ex.Message );
-				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-				{
-					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-				}
-				return false;
-			}
-		}
+	
 		/// <summary>
 		/// Custom version, typically called outside a scheduled import
 		/// </summary>
@@ -268,6 +160,7 @@ namespace Import.Services
             {
                 status.SetEnvelopeUpdated( envelopeUpdateDate );
             }
+			status.DocumentOwnedBy = item.documentOwnedBy;
 			if ( item.documentOwnedBy != null && item.documentPublishedBy != null && item.documentPublishedBy != item.documentOwnedBy )
 				status.DocumentPublishedBy = item.documentPublishedBy;
 			//
@@ -275,7 +168,8 @@ namespace Import.Services
             status.EnvelopeId = item.EnvelopeIdentifier;
             string ctdlType = RegistryServices.GetResourceType( payload );
 			//string envelopeUrl = RegistryServices.GetEnvelopeUrl( status.EnvelopeId );
-			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_organization", payload, "", false );
+			//Already done in  RegistryImport
+			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_organization", payload, "", false );
 
 
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
@@ -297,197 +191,7 @@ namespace Import.Services
             }
 		}
 	
-		//public bool Import( InputEntity input, string envelopeIdentifier, SaveStatus status )
-		//{
-  //          List<string> messages = new List<string>();
-  //          bool importSuccessfull = false;
-  //          EntityServices mgr = new EntityServices();
-
-  //          string ctid = input.Ctid;
-  //          string referencedAtId = input.CtdlId;
-
-  //          LoggingHelper.DoTrace( 5, "		name: " + input.Name );
-  //          LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage);
-		//	LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
-  //          LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
-  //          status.Ctid = ctid;
-
-  //          if ( status.DoingDownloadOnly )
-  //              return true;
-
-  //          if ( !DoesEntityExist( input.Ctid, ref output ) )
-  //          {
-  //              //set the rowid now, so that can be referenced as needed
-  //              output.RowId = Guid.NewGuid();
-  //          }
-
-
-  //          //re:messages - currently passed to mapping but no errors are trapped??
-  //          //				- should use SaveStatus and skip import if errors encountered (vs warnings)
-
-  //          output.AgentDomainType = input.Type;
-  //          output.Name = input.Name;
-  //          output.Description = input.Description;
-  //          //map from idProperty to url
-  //          output.SubjectWebpage = input.SubjectWebpage;
-  //          output.CTID = input.Ctid;
-  //          output.CredentialRegistryId = envelopeIdentifier;
-		//	//output.AlternateNames = input.AlternateName;
-		//	output.AlternateNames = MappingHelper.MapToTextValueProfile( input.AlternateName );
-		//	output.ImageUrl = input.Image;
-
-  //          output.AgentPurpose = input.AgentPurpose;
-  //          output.AgentPurposeDescription = input.AgentPurposeDescription;
-
-  //          output.FoundingDate = input.FoundingDate;
-		//	if ((output.FoundingDate ?? "").Length > 20 )
-		//	{
-		//		status.AddError( "Organization Founding Date error - exceeds 20 characters: " + output.FoundingDate );
-		//		output.FoundingDate = output.FoundingDate.Substring( 0, 10 );
-		//	}
-  //          output.AvailabilityListing = MappingHelper.MapListToString( input.AvailabilityListing );
-  //          //future prep
-  //          output.AvailabilityListings = input.AvailabilityListing;
-
-  //          output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
-  //          output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
-
-  //          output.Addresses = MappingHelper.FormatAddresses( input.Address, ref status );
-
-  //          //agent type, map to enumeration
-  //          output.AgentType = MappingHelper.MapCAOListToEnumermation( input.AgentType );
-          
-
-  //          //Manifests
-  //          output.ConditionManifestIds = MappingHelper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_ORGANIZATION,  ref status );
-  //          output.CostManifestIds = MappingHelper.MapEntityReferences( input.HasCostManifest,  CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_ORGANIZATION, ref status );
-
-  //          //hasVerificationService
-  //          output.VerificationServiceProfiles = MappingHelper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status);
-
-  //          // output.targetc
-  //          //other enumerations
-  //          //	serviceType, AgentSectorType
-  //          output.ServiceType = MappingHelper.MapCAOListToEnumermation( input.ServiceType );
-  //          output.AgentSectorType = MappingHelper.MapCAOListToEnumermation( input.AgentSectorType );
-
-  //          //Industries
-  //          output.Industry = MappingHelper.MapCAOListToEnumermation( input.IndustryType );
-		//	output.Industries = MappingHelper.MapCAOListToFramework( input.IndustryType );
-		//	//naics
-		//	output.Naics = input.Naics;
-
-		//	//keywords
-		//	output.Keyword = MappingHelper.MapToTextValueProfile( input.Keyword );
-
-  //          //duns, Fein.  IpedsID, opeID
-  //          if ( !string.IsNullOrWhiteSpace( input.DUNS ) )
-  //              output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:duns", TextValue = input.DUNS } );
-  //          if ( !string.IsNullOrWhiteSpace( input.FEIN ) )
-  //              output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:fein", TextValue = input.FEIN } );
-
-  //          if ( !string.IsNullOrWhiteSpace( input.IpedsID ) )
-  //              output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ipedsID", TextValue = input.IpedsID } );
-
-  //          if ( !string.IsNullOrWhiteSpace( input.OPEID ) )
-  //              output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
-  //          if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
-  //              output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
-  //          //alternativeidentifier - should just be added to IdentificationCodes
-  //          output.AlternativeIdentifier = MappingHelper.MapIdentifierValueListToString( input.AlternativeIdentifier );
-		//	output.AlternativeIdentifierList = MappingHelper.MapIdentifierValueList( input.AlternativeIdentifier );
-
-		//	//email
-
-		//	output.Emails = MappingHelper.MapToTextValueProfile( input.Email );
-  //          //contact point - now in address
-  //          //output.ContactPoint = MappingHelper.FormatContactPoints( input.ContactPoint, ref status );
-  //          //Jurisdiction
-  //          output.Jurisdiction = MappingHelper.MapToJurisdiction( input.Jurisdiction, ref status );
-
-		//	//SameAs
-		//	output.SameAs = MappingHelper.MapToTextValueProfile( input.SameAs );
-  //          //Social media
-  //          output.SocialMediaPages = MappingHelper.MapToTextValueProfile( input.SocialMedia );
-
-		//	//departments
-		//	//not sure - MP - want to change how depts, and subs are handled
-		//	//output.ParentOrganization = MappingHelper.MapOrganizationReferenceGuids( input.ParentOrganization, ref status );
-		//	output.Departments = MappingHelper.MapOrganizationReferenceGuids( input.Department, ref status );
-		//	output.SubOrganizations = MappingHelper.MapOrganizationReferenceGuids( input.SubOrganization, ref status );
-
-		//	//output.OrganizationRole_Subsidiary = MappingHelper.FormatOrganizationReferences( input.SubOrganization );
-
-		//	//Process profiles
-		//	output.AdministrationProcess = MappingHelper.FormatProcessProfile( input.AdministrationProcess, ref status );
-  //          output.MaintenanceProcess = MappingHelper.FormatProcessProfile( input.MaintenanceProcess, ref status );
-  //          output.ComplaintProcess = MappingHelper.FormatProcessProfile( input.ComplaintProcess, ref status );
-  //          output.DevelopmentProcess = MappingHelper.FormatProcessProfile( input.DevelopmentProcess, ref status );
-  //          output.RevocationProcess = MappingHelper.FormatProcessProfile( input.RevocationProcess, ref status );
-  //          output.ReviewProcess = MappingHelper.FormatProcessProfile( input.ReviewProcess, ref status );
-  //          output.AppealProcess = MappingHelper.FormatProcessProfile( input.AppealProcess, ref status );
-
-		//	//BYs
-		//	output.AccreditedBy = MappingHelper.MapOrganizationReferenceGuids( input.AccreditedBy, ref status );
-		//	output.ApprovedBy = MappingHelper.MapOrganizationReferenceGuids( input.ApprovedBy, ref status );
-		//	output.RecognizedBy = MappingHelper.MapOrganizationReferenceGuids( input.RecognizedBy, ref status );
-		//	output.RegulatedBy = MappingHelper.MapOrganizationReferenceGuids( input.RegulatedBy, ref status );
-		//	//INs
-		//	output.AccreditedIn = MappingHelper.MapToJurisdiction( input.AccreditedIn, ref status );
-		//	output.ApprovedIn = MappingHelper.MapToJurisdiction( input.ApprovedIn, ref status );
-		//	output.RecognizedIn = MappingHelper.MapToJurisdiction( input.RecognizedIn, ref status );
-		//	output.RegulatedIn = MappingHelper.MapToJurisdiction( input.RegulatedIn, ref status );
-
-  //          //Asserts
-  //          //the entity type is not known
-  //          output.Accredits = MappingHelper.MapEntityReferenceGuids( input.Accredits, 0, ref status );
-  //          output.Approves = MappingHelper.MapEntityReferenceGuids( input.Approves, 0, ref status );
-		//	output.Offers = MappingHelper.MapEntityReferenceGuids( input.Offers, 0, ref status );
-		//	output.Owns = MappingHelper.MapEntityReferenceGuids( input.Owns, 0, ref status );
-		//	output.Renews = MappingHelper.MapEntityReferenceGuids( input.Renews, 0, ref status );
-		//	output.Revokes = MappingHelper.MapEntityReferenceGuids( input.Revokes, 0, ref status );
-		//	output.Recognizes = MappingHelper.MapEntityReferenceGuids( input.Recognizes, 0, ref status );
-  //          output.Regulates = MappingHelper.MapEntityReferenceGuids( input.Regulates, 0, ref status );
-
-  //          //Ins - defer to later    
-
-
-
-  //          //=== if any messages were encountered treat as warnings for now
-  //          if ( messages.Count > 0 )
-  //              status.SetMessages( messages, true );
-		//	//just in case check if entity added since start
-		//	if ( output.Id == 0 )
-		//	{
-		//		ThisEntity entity = EntityServices.GetByCtid( ctid );
-		//		if ( entity != null && entity.Id > 0 )
-		//		{
-		//			output.Id = entity.Id;
-		//			output.RowId = entity.RowId;
-		//		}
-		//	}
-		//	importSuccessfull = mgr.Import( output, ref status );
-
-		//	status.DocumentId = output.Id;
-		//	status.DetailPageUrl = string.Format( "~/organization/{0}", output.Id );
-		//	status.DocumentRowId = output.RowId;
-
-		//	//just in case
-		//	if ( status.HasErrors )
-  //              importSuccessfull = false;
-
-  //          //if record was added to db, add to/or set EntityResolution as resolved
-  //          int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
-  //                      ctid, CodesManager.ENTITY_TYPE_ORGANIZATION,
-  //                      output.RowId,
-  //                      output.Id,
-		//				( output.Id > 0 ),
-		//				ref messages,
-  //                      output.Id > 0 );
-
-  //          return importSuccessfull;
-  //      }
-
+	
         public bool ImportV3( string payload, SaveStatus status )
         {
 			DateTime started = DateTime.Now;
@@ -551,7 +255,8 @@ namespace Import.Services
                 //set the rowid now, so that can be referenced as needed
                 output.RowId = Guid.NewGuid();
 					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
-				} else
+			} 
+			else
 			{
 				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ));
 			}
@@ -569,7 +274,7 @@ namespace Import.Services
 			if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
 			{
 				//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-				var porg = OrganizationManager.GetByCtid( status.DocumentPublishedBy );
+				var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
 				if ( porg != null && porg.Id > 0 )
 				{
 					//TODO - store this in a json blob??????????
@@ -577,18 +282,43 @@ namespace Import.Services
 					//output.PublishedByOrganizationName = porg.Name;
 					//this will result in being added to Entity.AgentRelationship
 					output.PublishedBy = new List<Guid>() { porg.RowId };
-				}				
+				}
+				else
+				{
+					//if publisher not imported yet, all publishee stuff will be orphaned
+					var entityUid = Guid.NewGuid();
+					var statusMsg = "";
+					var resPos = referencedAtId.IndexOf( "/resources/" );
+					var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+					int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+				}
+			}
+			else
+			{
+				//may need a check for existing published by to ensure not lost
+				if ( output.Id > 0 )
+				{
+					if ( output.OrganizationRole_Recipient != null && output.OrganizationRole_Recipient.Any() )
+					{
+						var publishedByList = output.OrganizationRole_Recipient.Where( s => s.RoleTypeId == 30 ).ToList();
+						if ( publishedByList != null && publishedByList.Any() )
+						{
+							var pby = publishedByList[ 0 ].ActingAgentUid;
+							output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+						}
+					}
+				}
 			}
 
-				output.CredentialRegistryId = status.EnvelopeId; ;
+			output.CredentialRegistryId = status.EnvelopeId; ;
             output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
-            output.ImageUrl = input.Image;
+            output.Image = input.Image;
 
             output.AgentPurpose = input.AgentPurpose;
             output.AgentPurposeDescription = helper.HandleLanguageMap( input.AgentPurposeDescription, output, "AgentPurposeDescription" );
 
             output.FoundingDate = input.FoundingDate;
-            output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
+            //output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
             //future prep
             output.AvailabilityListings = input.AvailabilityListing;
 
@@ -741,7 +471,7 @@ namespace Import.Services
             //just in case check if entity added since start
             if ( output.Id == 0 )
             {
-                ThisEntity entity = EntityServices.GetByCtid( ctid );
+                ThisEntity entity = EntityServices.GetSummaryByCtid( ctid );
                 if ( entity != null && entity.Id > 0 )
                 {
                     output.Id = entity.Id;
@@ -787,7 +517,7 @@ namespace Import.Services
         public bool DoesEntityExist( string ctid, ref ThisEntity entity )
         {
             bool exists = false;
-            entity = EntityServices.GetByCtid( ctid );
+            entity = EntityServices.GetSummaryByCtid( ctid );
             if ( entity != null && entity.Id > 0 )
                 return true;
 

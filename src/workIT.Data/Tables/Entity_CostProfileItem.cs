@@ -18,7 +18,6 @@ namespace workIT.Data.Tables
         public int CostProfileId { get; set; }
         public int CostTypeId { get; set; }
         public Nullable<decimal> Price { get; set; }
-        public string Description { get; set; }
         public string PaymentPattern { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }

@@ -35,7 +35,7 @@ namespace RA.Models.JsonV2.QData
 
 		/// <summary>
 		/// Entity describing the process by which a credential, assessment, organization, or aspects of it, are administered.
-		/// <see cref="https://credreg.net/ctdl/terms/administrationProcess#administrationProcess"/>
+		/// <see cref="https://credreg.net/ctdl/terms/administrationProcess"/>
 		/// </summary>
 		[ JsonProperty( PropertyName = "ceterms:administrationProcess" )]
 		public List<ProcessProfile> AdministrationProcess { get; set; } 
@@ -76,9 +76,14 @@ namespace RA.Models.JsonV2.QData
 		/// Data Set Time Period
 		/// Short- and long-term post-award reporting intervals including start and end dates.
 		/// URI of a blank node
+		/// TODO - will need to define this as an object during conversion
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:dataSetTimePeriod" )]
-		public List<string> DataSetTimePeriod { get; set; }
+		public List<DataSetTimeFrame> DataSetTimePeriod { get; set; }
+
+
+		[JsonProperty( PropertyName = "qdata:dataSetTimePeriodBNList" )]
+		public List<string> DataSetTimePeriodBNList { get; set; }
 
 		/// <summary>
 		/// Data Suppression Policy
@@ -102,7 +107,11 @@ namespace RA.Models.JsonV2.QData
 		/// URI
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:relevantDataSetFor" )]
-		public string RelevantDataSetFor { get; set; } 
+		//public object RelevantDataSetFor { get; set; }
+		public List<string> RelevantDataSetFor { get; set; } 
+
+		[JsonProperty( PropertyName = "schema:about" )]
+		public List<string> About { get; set; } 
 
 		/// <summary>
 		/// Identification of data point(s) in the data set that describe personal subject attribute(s) used to uniquely identify a subject for the purpose of matching records and an indication of level of confidence in the accuracy of the match.

@@ -20,6 +20,7 @@ namespace workIT.Models.Elastic
 	{
 		public bool ExcludeQuery { get; set; }
 		public int Name { get; set; } = 10;
+		public int NameOrganization { get; set; } = 100;
 		public int OwnerOrganizationName { get; set; } = 0;
 		public int Description { get; set; } = 5;
 		public int AlternateNames { get; set; } = 0;
@@ -51,6 +52,7 @@ namespace workIT.Models.Elastic
 	{
 		public bool ExcludeQuery { get; set; }
 		public int Name { get; set; } = 100;
+		public int NameOrganization { get; set; } = 100;
 		public int NameAlphanumericOnly { get; set; } = 10;
 		//
 		public int OwnerOrganizationName { get; set; } = 90;

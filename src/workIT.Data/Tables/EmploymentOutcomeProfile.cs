@@ -27,10 +27,10 @@ namespace workIT.Data.Tables
         public string Name { get; set; }
         public string Description { get; set; }
         public string Source { get; set; }
-        public Nullable<int> JobsObtained { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<System.DateTime> DateEffective { get; set; }
+        public string JobsObtainedJson { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }

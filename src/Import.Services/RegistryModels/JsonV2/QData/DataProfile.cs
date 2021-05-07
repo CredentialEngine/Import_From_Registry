@@ -20,13 +20,6 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( "@type" )]
 		public string Type { get; set; } = "qdata:DataProfile";
 
-		/// <summary>
-		/// Id for this blank node
-		/// </summary>
-		[JsonProperty( "@id" )]
-		public string CtdlId { get; set; }
-
-
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
@@ -169,6 +162,12 @@ namespace RA.Models.JsonV2.QData
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:occupationRate" )]
 		public List<QuantitativeValue> OccupationRate { get; set; }
+
+		/// <summary>
+		/// Rate computed by dividing the number of subjects passing an assessment by the total number taking the assessment.
+		/// </summary>
+		[JsonProperty( PropertyName = "qdata:passRate" )]
+		public List<QuantitativeValue> PassRate { get; set; }
 
 		/// <summary>
 		///  Reference to an entity describing median earnings as well as earnings at various percentiles for holders or subjects in the region.

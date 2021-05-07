@@ -33,6 +33,7 @@ namespace workIT.Data.Tables
         public Nullable<int> CountryId { get; set; }
         public string SubRegion { get; set; }
         public string Description { get; set; }
+        public string IdentifierJson { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

@@ -94,7 +94,7 @@ namespace workIT.Factories
 						else
 						{
 							//?no info on error
-							messages.Add( "Error - the add was not successful. " );
+							messages.Add( thisClassName + "Error - the add was not successful. " );
 							string message = string.Format( "WidgetManager. Add Failed", "Attempted to add an Widget. The process appeared to not work, but was not an exception, so we have no message, or no clue. name:(0) ", entity.Name );
 							EmailManager.NotifyAdmin( "WidgetManager. Add Failed", message );
 							return false;

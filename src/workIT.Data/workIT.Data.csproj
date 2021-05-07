@@ -127,6 +127,9 @@
     <Compile Include="Tables\Codes_PathwayComponentType.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Codes_ProcessProfileType.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Codes_PropertyCategory.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -137,6 +140,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\CompetencyFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\CompetencyFramework_Competency.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\ConceptScheme.cs">
@@ -196,6 +202,9 @@
     <Compile Include="Tables\Entity_AgentRelationship.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_AggregateDataProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_Assertion.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -212,6 +221,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_Competency.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_CompetencyFramework.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_ConditionManifest.cs">
@@ -298,6 +310,9 @@
     <Compile Include="Tables\Entity_RevocationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_TransferValueProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_VerificationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -322,7 +337,13 @@
     <Compile Include="Tables\Import_Staging.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\JobProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\LearningOpportunity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\OccupationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Organization.cs">

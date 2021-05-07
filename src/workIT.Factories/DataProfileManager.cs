@@ -47,7 +47,10 @@ namespace workIT.Factories
 				{
 					//a possibility would to skip delete if input and output count are equal
 					if ( existing.Count() == 1 && icnt == 1 )
-						dataSetTimeFrameId = existing[ 0 ].Id;
+					{
+						dataSetTimeFrameId = existing[ 0 ].DataSetTimeFrameId;
+						dataProfileId = existing[ 0 ].Id;
+					}
 					else
 					{   //may always  be a delete regardless of this if?
 						if ( icnt < existing.Count() || icnt > 1 )
@@ -71,11 +74,13 @@ namespace workIT.Factories
 			//status.Messages = new List<StatusMessage>();
 			foreach ( var item in input )
 			{
+				//this would only be valid for the first record, should reset it just in case
 				if ( dataProfileId > 0 )
 				{
 					var e = GetBasic( dataProfileId );
 					if ( e != null )
 						item.Id = e.Id;
+					dataProfileId = 0;
 				}
 				item.DataSetTimeFrameId = dataSetTimeFrameId;
 				//status.HasErrors = false;
@@ -274,7 +279,7 @@ namespace workIT.Factories
 			status.HasSectionErrors = false;
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
 			{
-				status.AddWarning( "An DataProfile Description must be entered" );
+				//status.AddWarning( "An DataProfile Description must be entered" );
 			}
 
 

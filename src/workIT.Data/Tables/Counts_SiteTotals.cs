@@ -20,5 +20,6 @@ namespace workIT.Data.Tables
         public Nullable<int> CodeId { get; set; }
         public string Title { get; set; }
         public Nullable<int> Totals { get; set; }
+        public string SchemaName { get; set; }
     }
 }

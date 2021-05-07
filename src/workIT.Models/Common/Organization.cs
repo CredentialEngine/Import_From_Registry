@@ -15,13 +15,13 @@ namespace workIT.Models.Common
 		{
 			EntityTypeId = 2;
 			//AgentDomainType = "CredentialOrganization";
-			AgentTypeId = 1;
+			AgentDomainTypeId = 1;
 
 			//Address = new Address(); //see Agent
 			AgentType = new Enumeration();
 			ServiceType = new Enumeration();
 	
-			OrganizationSectorType = new Enumeration();
+			AgentSectorType = new Enumeration();
 
 			OrganizationRole_Dept = new List<OrganizationRoleProfile>();
 			OrganizationRole_Subsidiary = new List<OrganizationRoleProfile>();
@@ -71,13 +71,13 @@ namespace workIT.Models.Common
 		public string JsonProperties { get; set; }
 
 		/// <summary>
-		/// Organization or QAOrganization
+		/// Organization, CredentialOrganization or QAOrganization
 		/// </summary>
 		public string AgentDomainType { get; set; }
 		/// <summary>
-		/// 1-Organization; 2-QAOrganization
+		/// 1-CredentialOrganization; 2-QAOrganization; 3-Organization
 		/// </summary>
-		public int AgentTypeId { get; set; }
+		public int AgentDomainTypeId { get; set; }
 
 		//public int EntityStateId { get; set; }
 
@@ -88,14 +88,15 @@ namespace workIT.Models.Common
 			get { return this.ParentId; }
 			set { this.ParentId = value; }
 		}
-		public string ImageUrl { get; set; }
+		//public string Image { get; set; }
 
 		/// <summary>
 		/// AgentType - (OrganizationType)
 		/// </summary>
 		public Enumeration AgentType { get; set; } = new Enumeration();
-		public Enumeration OrganizationSectorType { get; set; } = new Enumeration();
-		public Enumeration AgentSectorType { get { return OrganizationSectorType; } set { OrganizationSectorType = value; } } //use for import only
+
+		public Enumeration AgentSectorType { get; set; } = new Enumeration();
+		//public Enumeration AgentSectorType { get { return OrganizationSectorType; } set { OrganizationSectorType = value; } } //use for import only
 		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 		public List<string> AlternateName { get; set; } = new List<string>();
 
@@ -263,8 +264,8 @@ namespace workIT.Models.Common
 		//	get { return OrganizationRole_Recipient; }
 		//	set { OrganizationRole_Recipient = value; } 
 		//}
-		//public List<QualityAssuranceActionProfile> QualityAssuranceAction { get; set; }
-		//public List<QualityAssuranceActionProfile> QualityAssuranceActor { get; set; }
+		//public List<OrganizationRoleProfile> Department { get; set; } = new List<OrganizationRoleProfile>();
+		//public List<OrganizationRoleProfile> Suborganization { get; set; } = new List<OrganizationRoleProfile>();
 
 		//Identifiers is saved as an OrganizationProperty
 		public Enumeration Identifiers { get; set; }
@@ -373,16 +374,21 @@ namespace workIT.Models.Common
 		public string TransferValueStatementDescription { get; set; }
 
 		#region Process Profiles
+
+		public List<CodeItem> ProcessProfilesSummary { get; set; } = new List<CodeItem>();
+		public List<ProcessProfile> AdministrationProcess { get; set; }
 		public List<ProcessProfile> AppealProcess { get; set; }
 		public List<ProcessProfile> ComplaintProcess { get; set; }
+		public List<ProcessProfile> DevelopmentProcess { get; set; }
+		public List<ProcessProfile> MaintenanceProcess { get; set; }
 		public List<ProcessProfile> ReviewProcess { get; set; }
 		public List<ProcessProfile> RevocationProcess { get; set; }
 
-		public List<ProcessProfile> AdministrationProcess { get; set; }
-		public List<ProcessProfile> DevelopmentProcess { get; set; }
-		public List<ProcessProfile> MaintenanceProcess { get; set; }
+		
+		
 		#endregion
 		//public List<VerificationStatus> VerificationStatus { get; set; }
+		public int VerificationServiceProfileCount { get; set; }
 		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
 
 	}

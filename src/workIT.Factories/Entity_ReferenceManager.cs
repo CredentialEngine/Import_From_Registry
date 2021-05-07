@@ -28,46 +28,63 @@ namespace workIT.Factories
         
 
         #region Entity Persistance ===================
+		/// <summary>
+		/// Add Entity.Reference for language
+		/// 21-03-15 mp - change to store the language name as the title and code as textValue
+		/// </summary>
+		/// <param name="profiles"></param>
+		/// <param name="parentUid"></param>
+		/// <param name="parentTypeId"></param>
+		/// <param name="status"></param>
+		/// <param name="categoryId"></param>
         public void AddLanguages( List<ThisEntity> profiles,
                 Guid parentUid,
                 int parentTypeId,
                 ref SaveStatus status,
                 int categoryId )
         {
-            if ( profiles == null || profiles.Count == 0 )
-                return;
-            Entity parent = EntityManager.GetEntity( parentUid );
-            if ( parent == null || parent.Id == 0 )
-            {
-                status.AddError( thisClassName + string.Format( ". Error - the parent entity was not found. parentUid: {0}", parentUid ) );
-                return;
-            }
-            EnumeratedItem code = new EnumeratedItem();
-            string textValue = "";
-            foreach ( var item in profiles )
-            {
-                if ( string.IsNullOrWhiteSpace( item.TextValue ) )
-                    continue;
-                code = CodesManager.GetLanguage( item.TextValue );
-                if ( code.Id > 0 )
-                {
-                    textValue = string.Format( "{0} ", code.Name );
-                    AddTextValue( textValue, parent.Id, ref status, categoryId );
-                }
-            }
+
+			Add( profiles, parentUid, parentTypeId, ref status, categoryId, true );
+
         } //
 
-        /// <summary>
-        /// Persist Entity Reference
-        /// </summary>
-        /// <param name="profiles"></param>
-        /// <param name="parentUid"></param>
-        /// <param name="parentTypeId"></param>
-        /// <param name="status"></param>
-        /// <param name="categoryId"></param>
-        /// <param name="isTitleRequired">If true, a title must exist</param>
-        /// <returns></returns>
-        public bool Add( List<ThisEntity> profiles,
+		//public bool AddLanguage( string textValue,
+		//	   int entityId,
+		//	   ref SaveStatus status,
+		//	   int categoryId )
+		//{
+		//	if ( string.IsNullOrWhiteSpace( textValue ) )
+		//	{
+		//		return true;
+		//	}
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		EnumeratedItem code = new EnumeratedItem();
+		//		code = CodesManager.GetLanguage( textValue );
+		//		if ( code.Id > 0 )
+		//		{
+		//			textValue = string.Format( "{0} ({1})", code.Name, code.Value );
+		//			AddTextValue( textValue, entityId, ref status, categoryId );
+		//		}
+
+		//		else
+		//		{
+		//			status.AddWarning( thisClassName + string.Format( ". Warning - the langugage code was not found. parentUid: {0}, languagecode: {1}", entityId, textValue ) );
+		//		}
+		//	}
+		//	return true;
+		//}
+		/// <summary>
+		/// Persist Entity Reference
+		/// </summary>
+		/// <param name="profiles"></param>
+		/// <param name="parentUid"></param>
+		/// <param name="parentTypeId"></param>
+		/// <param name="status"></param>
+		/// <param name="categoryId"></param>
+		/// <param name="isTitleRequired">If true, a title must exist</param>
+		/// <returns></returns>
+		public bool Add( List<ThisEntity> profiles,
                 Guid parentUid,
                 int parentTypeId,
                 ref SaveStatus status,
@@ -124,10 +141,18 @@ namespace workIT.Factories
                             continue;
                         entity.EntityBaseId = parent.EntityBaseId;
 
-                        //if ( entity.Id == 0 )
-                        //{
-                        //add
-                        efEntity = new DBEntity();
+						//21-03-31 existance check
+						//var exists = context.Entity_Reference
+						//	.Where( s => s.EntityId == parent.Id && s.CategoryId == categoryId && s.TextValue == entity.TextValue )
+						//	.ToList();
+						//if (exists != null && exists.Any())
+						//{
+						//	return true;
+						//}
+						//if ( entity.Id == 0 )
+						//{
+						//add
+						efEntity = new DBEntity();
                         MapToDB( entity, efEntity );
                         efEntity.EntityId = parent.Id;
                         efEntity.Created = efEntity.LastUpdated = DateTime.Now;
@@ -258,32 +283,7 @@ namespace workIT.Factories
             }
             return true;
         }
-        public bool AddLanguage( string textValue,
-                int entityId,
-                ref SaveStatus status,
-                int categoryId )
-        {
-            if ( string.IsNullOrWhiteSpace( textValue ) )
-            {
-                return true;
-            }
-            using ( var context = new EntityContext() )
-            {
-                EnumeratedItem code = new EnumeratedItem();
-                code = CodesManager.GetLanguage( textValue );
-                if ( code.Id > 0 )
-                {
-                    textValue = string.Format( "{0} ({1})", code.Name, code.Value );
-                    AddTextValue( textValue, entityId, ref status, categoryId );
-                }
-
-                else
-                {
-                    status.AddWarning( thisClassName + string.Format( ". Warning - the langugage code was not found. parentUid: {0}, languagecode: {1}", entityId, textValue ) );
-                }
-            }
-            return true;
-        }
+       
         //??? Is this needed - It has no references
         public void AddRelatedConnections( int entityRefId )
         {
@@ -350,6 +350,7 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ".DeleteAll Error - the provided target parent entity was not provided." );
                 return false;
             }
+			int expectedDeleteCount = 0;
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -358,6 +359,7 @@ namespace workIT.Factories
 					.ToList();
 					if ( results == null || !results.Any() )
 						return true;
+					expectedDeleteCount = results.Count;
 
 					context.Entity_Reference.RemoveRange( results );
 					int count = context.SaveChanges();
@@ -371,10 +373,27 @@ namespace workIT.Factories
 					}
 				}
 			}
+			catch ( System.Data.Entity.Infrastructure.DbUpdateConcurrencyException dbcex )
+			{
+				if (dbcex.Message.IndexOf( "an unexpected number of rows (0)" ) > 0)
+				{
+					//don't know why this happens, quashing for now.
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. Parent type: {0}, ParentId: {1}, expectedDeletes: {2}. Message: {3}", parent.EntityTypeId, parent.EntityBaseId, expectedDeleteCount, dbcex.Message ) );
+				} else
+				{
+					var msg = BaseFactory.FormatExceptions( dbcex );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, DbUpdateConcurrencyException: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+				}
+
+			}
 			catch ( Exception ex )
 			{
 				var msg = BaseFactory.FormatExceptions( ex );
 				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+				if ( msg.IndexOf( "was deadlocked on lock resources" ) > 0 )
+				{
+					//retry = true;
+				}
 			}
 
             return isValid;
@@ -431,7 +450,7 @@ namespace workIT.Factories
                 }
                 else if ( !IsUrlValid( profile.TextValue, ref commonStatusMessage ) )
                 {
-                    status.AddWarning( string.Format( "The Url is invalid: {0}. {1}", profile.TextValue, commonStatusMessage ) );
+                    //status.AddWarning( string.Format( "The Url is invalid: {0}. {1}", profile.TextValue, commonStatusMessage ) );
                 }
 
                 profile.TextValue = ( profile.TextValue ?? "" ).TrimEnd( '/' );
@@ -891,7 +910,7 @@ namespace workIT.Factories
             to.CategoryId = from.CategoryId;
 
             //in some cases may not require text, so fill with empty string
-            to.Title = from.TextTitle != null ? from.TextTitle : "";
+            to.Title = !string.IsNullOrWhiteSpace(from.TextTitle) ? from.TextTitle : "";
             if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_PHONE_TYPE )
             {
                 to.TextValue = PhoneNumber.StripPhone( GetData( from.TextValue ) );

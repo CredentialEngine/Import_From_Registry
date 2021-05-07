@@ -143,9 +143,16 @@ namespace workIT.Factories
 		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
-
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			{
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
 			EntityPropertyManager mgr = new EntityPropertyManager();
-
+			//first clear all properties
+			mgr.DeleteAll( relatedEntity, ref status );
+			//
 			if ( mgr.AddProperties( entity.ClaimType, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE, false, ref status ) == false )
 				isAllValid = false;
 
@@ -154,9 +161,10 @@ namespace workIT.Factories
 			cpm.SaveList( entity.EstimatedCost, entity.RowId, ref status );
 
 			int newId = 0;
+			Entity_CredentialManager ecm = new Entity_CredentialManager();
+			ecm.DeleteAll( relatedEntity, ref status );
 			if ( entity.TargetCredentialIds != null && entity.TargetCredentialIds.Count > 0 )
 			{
-				Entity_CredentialManager ecm = new Entity_CredentialManager();
 				foreach ( int id in entity.TargetCredentialIds )
 				{
 					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
@@ -203,17 +211,30 @@ namespace workIT.Factories
 					.ToList();
 					if ( results == null || results.Count == 0 )
 						return true;
+					//
+					foreach ( var item in results )
+					{
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( item.RowId, string.Format( "VerificationProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
-					context.Entity_VerificationProfile.RemoveRange( context.Entity_VerificationProfile.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						isValid = true;
+						context.Entity_VerificationProfile.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
 					}
-					else
-					{
-						//if doing a delete on spec, may not have been any properties
-					}
+					//context.Entity_VerificationProfile.RemoveRange( context.Entity_VerificationProfile.Where( s => s.EntityId == parent.Id ) );
+					//int count = context.SaveChanges();
+					//if ( count > 0 )
+					//{
+					//	isValid = true;
+					//}
+					//else
+					//{
+					//	//if doing a delete on spec, may not have been any properties
+					//}
 				}
 			}
 			catch ( Exception ex )
@@ -299,6 +320,37 @@ namespace workIT.Factories
 			return list;
 		}//
 
+		public static int GetAllTotal( Guid parentUid )
+		{
+
+			Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return 0;
+			}
+			//bool includingItems = true;
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					context.Configuration.LazyLoadingEnabled = false;
+
+					List<DBEntity> results = context.Entity_VerificationProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.Id )
+							.ToList();
+					if ( results != null && results.Any() )
+						return results.Count;
+					
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+			}
+			return 0;
+		}//
+
 		public static ThisEntity Get( int profileId )
 		{
 			ThisEntity entity = new ThisEntity();
@@ -373,7 +425,7 @@ namespace workIT.Factories
 				to.HolderMustAuthorize = ( bool ) from.HolderMustAuthorize;
 			
 			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToShortDateString();
+				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				to.DateEffective = "";
 

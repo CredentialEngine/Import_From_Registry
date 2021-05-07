@@ -18,6 +18,7 @@ namespace workIT.Models.Elastic
 		public string CredentialRegistryId { get; set; }
 		public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
 
+		public string NameOrganizationKey { get; set; }
 		public string Name { get; set; }
 		//TBD
 		public string NameAlphanumericOnly { get; set; }

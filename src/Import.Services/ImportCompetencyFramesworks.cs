@@ -12,12 +12,18 @@ using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
 using EntityServices = workIT.Services.CompetencyFrameworkServices;
+//WHY DO WE HAVE 2 classes for CompetencyFramework?
+//this is meant for the graph search
 using Framework = workIT.Models.ProfileModels.CompetencyFramework;
+using ThisEntity = workIT.Models.Common.CompetencyFramework;
 using InputCompetency = RA.Models.JsonV2.Competency;
 using InputEntity = RA.Models.JsonV2.CompetencyFramework;
 using InputGraph = RA.Models.JsonV2.CompetencyFrameworksGraph;
+
+using ApiEntity = workIT.Models.API.CompetencyFramework;
+using ApiCompetency = workIT.Models.API.Competency;
 using MC = workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.CompetencyFramework;
+
 
 namespace Import.Services
 {
@@ -146,9 +152,20 @@ namespace Import.Services
 			}
 			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
 			{
-				status.SetEnvelopeUpdated( envelopeUpdateDate );	
+				status.SetEnvelopeUpdated( envelopeUpdateDate );
 			}
+			status.DocumentOwnedBy = item.documentOwnedBy;
 
+			if ( item.documentPublishedBy != null )
+			{
+				if ( item.documentOwnedBy == null || ( item.documentPublishedBy != item.documentOwnedBy ) )
+					status.DocumentPublishedBy = item.documentPublishedBy;
+			}
+			else
+			{
+				//will need to check elsewhere
+				//OR as part of import check if existing one had 3rd party publisher
+			}
 			string payload = item.DecodedResource.ToString();
             string envelopeIdentifier = item.EnvelopeIdentifier;
             string ctdlType = RegistryServices.GetResourceType( payload );
@@ -246,7 +263,7 @@ namespace Import.Services
 			{
 				orgCTID = ResolutionServices.ExtractCtid( publisher[ 0 ] );
 				//look up org name
-				org = OrganizationManager.GetByCtid( orgCTID );
+				org = OrganizationManager.GetSummaryByCtid( orgCTID );
 			}
 			else
 			{
@@ -256,7 +273,7 @@ namespace Import.Services
 				{
 					orgCTID = ResolutionServices.ExtractCtid( creator[ 0 ] );
 					//look up org name
-					org = OrganizationManager.GetByCtid( orgCTID );
+					org = OrganizationManager.GetSummaryByCtid( orgCTID );
 				}
 			}
 
@@ -265,11 +282,14 @@ namespace Import.Services
             	return true;
 
 			//add/updating CompetencyFramework
+			//21-02-22 HUH - WHY ARE WE USING ef here instead of output
+			
 			Framework ef = new Framework();
+			
 			if ( !DoesEntityExist( input.CTID, ref ef ) )
 			{
 				//set the rowid now, so that can be referenced as needed
-				output.RowId = Guid.NewGuid();
+				//output.RowId = Guid.NewGuid();
 				ef.RowId = Guid.NewGuid();
 				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".Import(). Record was NOT found using CTID: '{0}'", input.CTID ) );
 			}
@@ -280,25 +300,8 @@ namespace Import.Services
 
 			helper.currentBaseObject = ef;
 			ef.ExistsInRegistry = true;
-			//?store competencies in string?
-			if (competencies != null && competencies.Count > 0)
-			{
-				ef.TotalCompetencies = competencies.Count();
-				foreach(var c in competencies )
-				{
-					ef.Competencies.Add( new workIT.Models.Elastic.IndexCompetency()
-					{
-						Name = c.competencyText.ToString()
-						//Description = c.comment != null && c.comment.Count() > 0 ? c.comment[0].ToString()	
-					} );
-				}
-			}
-			//20-07-02 just storing the index ready competencies
-			//ef.CompentenciesJson = JsonConvert.SerializeObject( competencies, MappingHelperV3.GetJsonSettings() );
-			ef.CompentenciesStore = JsonConvert.SerializeObject( ef.Competencies, MappingHelperV3.GetJsonSettings() );
-
-			//test 
-			//ElasticManager.LoadCompetencies( ef.Name, ef.CompentenciesStore );
+			
+			//store graph
 			ef.CompetencyFrameworkGraph = glist;
 			ef.TotalCompetencies = competencies.Count();
 
@@ -312,7 +315,59 @@ namespace Import.Services
 				ef.OrganizationId = org.Id;
 				helper.CurrentOwningAgentUid = org.RowId;
 			}
-			
+
+			helper.MapInLanguageToTextValueProfile( input.inLanguage, "CompetencyFramework.InLanguage.CTID: " + ctid );
+			//foreach ( var l in input.InLanguage )
+			//{
+			//	if ( !string.IsNullOrWhiteSpace( l ) )
+			//	{
+			//		var language = CodesManager.GetLanguage( l );
+			//		output.InLanguageCodeList.Add( new TextValueProfile()
+			//		{
+			//			CodeId = language.CodeId,
+			//			TextTitle = language.Name,
+			//			TextValue = language.Value
+			//		} );
+			//	}
+			//}
+
+			//TBD handling of referencing third party publisher
+			if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+			{
+				//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+				var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
+				if ( porg != null && porg.Id > 0 )
+				{
+					//TODO - store this in a json blob??????????
+					//this will result in being added to Entity.AgentRelationship
+					ef.PublishedBy = new List<Guid>() { porg.RowId };
+				}
+				else
+				{
+					//if publisher not imported yet, all publishee stuff will be orphaned
+					var entityUid = Guid.NewGuid();
+					var statusMsg = "";
+					var resPos = referencedAtId.IndexOf( "/resources/" );
+					var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+					int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+				}
+			}
+			else
+			{
+				//may need a check for existing published by to ensure not lost
+				if ( ef.Id > 0 )
+				{
+					//if ( ef.OrganizationRole != null && ef.OrganizationRole.Any() )
+					//{
+					//	var publishedByList = ef.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+					//	if ( publishedByList != null && publishedByList.Any() )
+					//	{
+					//		var pby = publishedByList[ 0 ].ActingAgentUid;
+					//		ef.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+					//	}
+					//}
+				}
+			}
 			ef.CredentialRegistryId = envelopeIdentifier;
 			//additions
 			//ef.ind
@@ -328,12 +383,84 @@ namespace Import.Services
 				}
 			}
 			ef.FrameworkUri = input.CtdlId;
-			//adding common import pattern
+			ef.hasTopChild = input.hasTopChild;
+			//
+			ApiEntity apiFramework = new ApiEntity()
+			{
+				Name = ef.Name,
+				CTID = ef.CTID,
+				Source = ef.SourceUrl, 
+				HasTopChild = ef.hasTopChild,
+				Meta_LastUpdated = status.LocalUpdatedDate
+			};
 
-			new CompetencyFrameworkServices().Import( ef, ref status );
+			//?store competencies in string?
+			if ( competencies != null && competencies.Count > 0 )
+			{
+				ef.TotalCompetencies = competencies.Count();
+				//TODO - should we limit this if 1000+
+				//do we use competencies in elastic? if not pause this usage
+				cntr = 0;
+				foreach ( var c in competencies )
+				{
+					cntr++;
+					var comments = helper.HandleLanguageMapList( c.comment, ef );
+					ef.Competencies.Add(
+						new workIT.Models.Elastic.IndexCompetency()
+						{
+							Name = c.competencyText.ToString(),
+							//CTID = c.CTID, 
+							//Description = comments != null && comments.Count() > 0 ? comments[0].ToString()	 : ""
+						}
+					);
+					if ( cntr >= 1000 )
+						break;
+				}
+			}
+			//20-07-02 just storing the index ready competencies
+			//ef.CompentenciesJson = JsonConvert.SerializeObject( competencies, MappingHelperV3.GetJsonSettings() );
+			ef.CompentenciesStore = JsonConvert.SerializeObject( ef.Competencies, MappingHelperV3.GetJsonSettings() );
+
+			//test 
+			//ElasticManager.LoadCompetencies( ef.Name, ef.CompentenciesStore );
+			FormatCompetenciesHierarchy( apiFramework, competencies, helper );
+			//TODO store whole framework or just the competencies?
+			apiFramework.HasTopChild = null;
+			ef.APIFramework = JsonConvert.SerializeObject( apiFramework, MappingHelperV3.GetJsonSettings() );
 
 			//
+			if ( ef.TotalCompetencies == input.hasTopChild.Count() )
+			{
+				//flat list - use for simple display
+			} else
+			{
+				foreach (var item in input.hasTopChild)
+				{
 
+				}
+			}
+
+			//adding using common import pattern
+			new CompetencyFrameworkServices().Import( ef, ref status );
+
+			status.DocumentId = ef.Id;
+			status.DetailPageUrl = string.Format( "~/competencyframework/{0}", ef.Id );
+			status.DocumentRowId = ef.RowId;
+
+			//
+			//just in case
+			if ( status.HasErrors )
+				importSuccessfull = false;
+
+			//if record was added to db, add to/or set EntityResolution as resolved
+			int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+						ctid,
+						CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
+						output.RowId,
+						output.Id,
+						( output.Id > 0 ),
+						ref messages,
+						output.Id > 0 );
 			//
 			//framework checks
 			if ( input.inLanguage == null || input.inLanguage.Count() == 0)
@@ -343,12 +470,86 @@ namespace Import.Services
 			}
 			//output.Name = helper.HandleLanguageMap( input.name, output, "Name" );
 			//output.description = helper.HandleLanguageMap( input.description, output, "Description" );
-			output.CTID = input.CTID;
+			//output.CTID = input.CTID;
 
 			return importSuccessfull;
-        }
+		}
 
-		//currently use education framework
+		//
+		public void FormatCompetenciesHierarchy( ApiEntity entity, List<InputCompetency> input, MappingHelperV3 helper )
+		{
+			/*
+			 * start with hasTopChild
+			 * loop through and fill out the hierarchy with embedded comps
+			 * 
+			 * 
+			 */
+
+			var output = new List<ApiCompetency>();
+			var ac = new ApiCompetency();
+			foreach (var item in entity.HasTopChild)
+			{
+				//get the competency
+				var c = input.Where( s => s.CtdlId == item ).FirstOrDefault();
+				if (c != null && !string.IsNullOrWhiteSpace(c.CTID))
+				{
+					ac = new ApiCompetency()
+					{
+						CompetencyText = helper.HandleLanguageMap( c.competencyText, "CompetencyText" ),
+						CTID = c.CTID,
+						CompetencyLabel = helper.HandleLanguageMap( c.competencyLabel, "competencyLabel" ),
+						HasChild = null,
+						HasChildId=null
+					};
+					if ( c.hasChild != null && c.hasChild.Any() ) 
+					{
+						ac.HasChild = new List<ApiCompetency>();
+						FormatCompetencyChildren( ac, c, input, helper );
+					}
+
+					output.Add( ac );
+				} else 
+				{
+					//log error
+					LoggingHelper.DoTrace( 1, string.Format( "ImportCompetencyFramework. Framewwork: {0}, TopChild: {1} was not found in the list of competencies", entity.Name, item ) );
+				}
+			}
+
+			entity.Meta_HasPart = output;
+		}
+		public void FormatCompetencyChildren( ApiCompetency competency, InputCompetency input, List<InputCompetency> allCompetencies, MappingHelperV3 helper )
+		{
+
+			foreach ( var item in input.hasChild )
+			{
+				//get the competency
+				var c = allCompetencies.Where( s => s.CtdlId == item ).FirstOrDefault();
+				if ( c != null && !string.IsNullOrWhiteSpace( c.CTID ) )
+				{
+					var ac = new ApiCompetency()
+					{
+						CompetencyText = helper.HandleLanguageMap( c.competencyText, "CompetencyText" ),
+						CTID = c.CTID,
+						CompetencyLabel = helper.HandleLanguageMap( c.competencyLabel, "competencyLabel" ),
+						HasChild = null,
+						HasChildId = null
+					};
+					if ( c.hasChild != null && c.hasChild.Any() )
+					{
+						ac.HasChild = new List<ApiCompetency>();
+						FormatCompetencyChildren( ac, c, allCompetencies, helper );
+					}
+
+					competency.HasChild.Add( ac );
+				}
+				else
+				{
+					//log error
+					LoggingHelper.DoTrace( 1, string.Format( "ImportCompetencyFramework.FormatCompetencyChildren() CompetencyCTID: {0}, child: {1} was not found in the list of competencies", competency.CTID, item ) );
+				}
+			}
+		}
+		//
 		public bool DoesEntityExist( string ctid, ref Framework entity )
 		{
 			bool exists = false;

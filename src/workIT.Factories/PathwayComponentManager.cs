@@ -152,9 +152,40 @@ namespace workIT.Factories
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isValid = true;
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			{
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
+
 			//21-01-07 mparsons - Identifier will now be saved in the Json properties, not in Entity_IdentifierValue
 			//new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier, ref status, false );
+			Entity_CredentialManager ecm = new Entity_CredentialManager();
+			ecm.DeleteAll( relatedEntity, ref status );
+			//
+			var eam = new Entity_AssessmentManager();
+			eam.DeleteAll( relatedEntity, ref status );
+			//
+			var elom = new Entity_LearningOpportunityManager();
+			elom.DeleteAll( relatedEntity, ref status );
+			int newId = 0;
 
+			if ( entity.JsonProperties != null )
+			{
+				if ( entity.JsonProperties.SourceCredential != null && entity.JsonProperties.SourceCredential.Id > 0 )
+				{
+					ecm.Add( entity.RowId, entity.JsonProperties.SourceCredential.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, ref newId, ref status );
+				}
+				if ( entity.JsonProperties.SourceAssessment != null && entity.JsonProperties.SourceAssessment.Id > 0 )
+				{
+					eam.Add( entity.RowId, entity.JsonProperties.SourceAssessment.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
+				}
+				if ( entity.JsonProperties.SourceLearningOpportunity != null && entity.JsonProperties.SourceLearningOpportunity.Id > 0 )
+				{
+					elom.Add( entity.RowId, entity.JsonProperties.SourceLearningOpportunity.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
+				}
+			}
 			return isValid;
 		}
 		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
@@ -209,6 +240,48 @@ namespace workIT.Factories
 
 			}
 			return 0;
+		}
+
+		public bool DeleteAll( string pathwayCTID, ref SaveStatus status, DateTime? lastUpdated = null )
+		{
+			bool isValid = true;
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if (string.IsNullOrWhiteSpace( pathwayCTID ))
+			{
+				status.AddError( thisClassName + ". Error - a pathwayCTID was not provided." );
+				return false;
+			}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+
+					var results = context.PathwayComponent.Where( s => s.PathwayCTID == pathwayCTID ).ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					foreach ( var item in results )
+					{
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( item.RowId, string.Format( "PathwayComponent: {0} ({1})", item.Name, item.Id ), ref statusMessage );
+
+						context.PathwayComponent.Remove( item );
+						var count = context.SaveChanges();
+						if ( count > 0 )
+						{
+
+						}
+					}
+				}
+
+			}
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. pathwayCTID: {0}, exception: {1}", pathwayCTID, msg ) );
+			}
+			return isValid;
 		}
 		public bool Delete( int Id, ref string statusMessage )
 		{
@@ -357,83 +430,83 @@ namespace workIT.Factories
 		/// <param name="from"></param>
 		/// <param name="to"></param>
 		/// <param name="childComponentsAction">0-none; 1-summary; 2-deep </param>
-		public static void MapFromDB( DBEntity from, ThisEntity to, int childComponentsAction = 1 )
+		public static void MapFromDB( DBEntity input, ThisEntity output, int childComponentsAction = 1 )
 		{
 
-			to.Id = from.Id;
-			to.RowId = from.RowId;
-			to.EntityStateId = from.EntityStateId < 1 ? 1 : from.EntityStateId;
-			to.CTID = from.CTID;
-			to.Name = from.Name;
-			to.Description = from.Description;
-			to.PathwayCTID = from.PathwayCTID;
-			//if ( from.Entity_HasPathwayComponent != null && from.Entity_HasPathwayComponent.Count > 0 )
+			output.Id = input.Id;
+			output.RowId = input.RowId;
+			output.EntityStateId = input.EntityStateId < 1 ? 1 : input.EntityStateId;
+			output.CTID = input.CTID;
+			output.Name = input.Name;
+			output.Description = input.Description;
+			output.PathwayCTID = input.PathwayCTID;
+			//if ( input.Entity_HasPathwayComponent != null && input.Entity_HasPathwayComponent.Count > 0 )
 			//{
 			//	//
 			//}
 
-			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				to.EntityLastUpdated = relatedEntity.LastUpdated;
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 
-			//need to get parent pathway?
-			//to.IsDestinationComponentOf = Entity_PathwayComponentManager.GetPathwayForComponent( to.Id, PathwayComponent.PathwayComponentRelationship_HasDestinationComponent );
+			//need output get parent pathway?
+			//output.IsDestinationComponentOf = Entity_PathwayComponentManager.GetPathwayForComponent( output.Id, PathwayComponent.PathwayComponentRelationship_HasDestinationComponent );
 
 			//ispartof. Should be single, but using list for flexibility?
 			//actually force one, as we are using pathway identifier an external id for a unique lookup
-			//may not want to do this every time?
-			//to.IsPartOf = Entity_PathwayComponentManager.GetPathwayForComponent( to.Id, PathwayComponent.PathwayComponentRelationship_HasPart );
+			//may not want output do this every time?
+			//output.IsPartOf = Entity_PathwayComponentManager.GetPathwayForComponent( output.Id, PathwayComponent.PathwayComponentRelationship_HasPart );
 
-			//may want to get all and split out
+			//may want output get all and split out
 			if ( childComponentsAction == 2 )
 			{
-				to.AllComponents = Entity_PathwayComponentManager.GetAll( to.RowId, componentActionOfSummary );
-				foreach ( var item in to.AllComponents )
+				output.AllComponents = Entity_PathwayComponentManager.GetAll( output.RowId, componentActionOfSummary );
+				foreach ( var item in output.AllComponents )
 				{
 					if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_HasChild )
-						to.HasChild.Add( item );
+						output.HasChild.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_IsChildOf )
-						to.IsChildOf.Add( item );
+						output.IsChildOf.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Preceeds )
-						to.Preceeds.Add( item );
+						output.Preceeds.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Prerequiste )
-						to.Prerequisite.Add( item );
+						output.Prerequisite.Add( item );
 				}
 				//child components - details of condition, but summary of components
-				to.HasCondition = PathwayComponentConditionManager.GetAll( to.Id, true );
+				output.HasCondition = PathwayComponentConditionManager.GetAll( output.Id, true );
 			}
 
-			//to.CodedNotation = from.CodedNotation;
-			to.ComponentCategory = from.ComponentCategory;
-			to.ComponentTypeId = from.ComponentTypeId;
-			if ( from.Codes_PathwayComponentType != null && from.Codes_PathwayComponentType.Id > 0 )
+			//output.CodedNotation = input.CodedNotation;
+			output.ComponentCategory = input.ComponentCategory;
+			output.ComponentTypeId = input.ComponentTypeId;
+			if ( input.Codes_PathwayComponentType != null && input.Codes_PathwayComponentType.Id > 0 )
 			{
-				to.PathwayComponentType = from.Codes_PathwayComponentType.Title;
+				output.PathwayComponentType = input.Codes_PathwayComponentType.Title;
 			}
 			else
 			{
-				to.PathwayComponentType = GetComponentType( to.ComponentTypeId );
+				output.PathwayComponentType = GetComponentType( output.ComponentTypeId );
 			}
 			//will be validated before getting here!
-			to.CredentialType = from.CredentialType;
-			if ( !string.IsNullOrWhiteSpace( to.CredentialType) && to.CredentialType.IndexOf("ctdl/terms") > 0)
+			output.CredentialType = input.CredentialType;
+			if ( !string.IsNullOrWhiteSpace( output.CredentialType) && output.CredentialType.IndexOf("ctdl/terms") > 0)
 			{
-				int pos = to.CredentialType.IndexOf( "ctdl/terms" );
-				to.CredentialType = to.CredentialType.Substring( pos + 11 );
+				int pos = output.CredentialType.IndexOf( "ctdl/terms" );
+				output.CredentialType = output.CredentialType.Substring( pos + 11 );
 			}
 
-			//not sure if this will just be a URI, or point to a concept
+			//not sure if this will just be a URI, or point output a concept
 			//if a concept, would probably need entity.hasConcept
-			//to.HasProgressionLevel = from.HasProgressionLevel;
-			//if ( !string.IsNullOrWhiteSpace( from.HasProgressionLevel ) )
+			//output.HasProgressionLevel = input.HasProgressionLevel;
+			//if ( !string.IsNullOrWhiteSpace( input.HasProgressionLevel ) )
 			//{
-			//	to.ProgressionLevel = ConceptSchemeManager.GetByConceptCtid( to.HasProgressionLevel );
-			//	to.HasProgressionLevelDisplay = to.ProgressionLevel.PrefLabel;
+			//	output.ProgressionLevel = ConceptSchemeManager.GetByConceptCtid( output.HasProgressionLevel );
+			//	output.HasProgressionLevelDisplay = output.ProgressionLevel.PrefLabel;
 			//}
 			//20-10-28 now storing separated list
-			if ( !string.IsNullOrWhiteSpace( from.HasProgressionLevel ) )
+			if ( !string.IsNullOrWhiteSpace( input.HasProgressionLevel ) )
 			{
-				string[] array = from.HasProgressionLevel.Split( '|' );
+				string[] array = input.HasProgressionLevel.Split( '|' );
 				if ( array.Count() > 0 )
 				{
 					foreach ( var i in array )
@@ -441,109 +514,109 @@ namespace workIT.Factories
 						if ( !string.IsNullOrWhiteSpace( i ) )
 						{
 							var pl = ConceptSchemeManager.GetByConceptCtid( i );
-							to.ProgressionLevels.Add( pl );
+							output.ProgressionLevels.Add( pl );
 
-							to.HasProgressionLevelDisplay += pl.PrefLabel + ", ";
+							output.HasProgressionLevelDisplay += pl.PrefLabel + ", ";
 						}
 					}
-					to.HasProgressionLevelDisplay.Trim().TrimEnd( ',' );
+					output.HasProgressionLevelDisplay.Trim().TrimEnd( ',' );
 				}
 			}
 
-			to.ProgramTerm = from.ProgramTerm;
-			to.SubjectWebpage = from.SubjectWebpage;
-			to.SourceData = from.SourceData;
+			output.ProgramTerm = input.ProgramTerm;
+			output.SubjectWebpage = input.SubjectWebpage;
+			output.SourceData = input.SourceData;
 
-			//where to store ComponentDesignation - textvalue
+			//where output store ComponentDesignation - textvalue
 			//Json
-			if ( !string.IsNullOrEmpty( from.Properties ) )
+			if ( !string.IsNullOrEmpty( input.Properties ) )
 			{
-				PathwayComponentProperties pcp = JsonConvert.DeserializeObject<PathwayComponentProperties>( from.Properties );
+				PathwayComponentProperties pcp = JsonConvert.DeserializeObject<PathwayComponentProperties>( input.Properties );
 				if ( pcp != null )
 				{
 					//unpack ComponentDesignation
-					to.ComponentDesignationList = pcp.ComponentDesignationList;
+					output.ComponentDesignationList = pcp.ComponentDesignationList;
 					//credit value
-					to.CreditValue = pcp.CreditValue;
+					output.CreditValue = pcp.CreditValue;
 					//this is now QuantitativeValue
-					to.PointValue = pcp.PointValue;
+					output.PointValue = pcp.PointValue;
 
-					to.Identifier = new List<IdentifierValue>();
+					output.Identifier = new List<IdentifierValue>();
 					if ( pcp.Identifier != null )
-						to.Identifier = pcp.Identifier;
+						output.Identifier = pcp.Identifier;
 					if ( pcp.SourceCredential != null && pcp.SourceCredential.Id > 0 )
 					{
-						to.SourceCredential = pcp.SourceCredential;
-						to.SourceData = "";
+						output.SourceCredential = pcp.SourceCredential;
+						output.SourceData = "";
 					}
 					if ( pcp.SourceAssessment != null && pcp.SourceAssessment.Id > 0 )
 					{
-						to.SourceAssessment = pcp.SourceAssessment;
-						to.SourceData = "";
+						output.SourceAssessment = pcp.SourceAssessment;
+						output.SourceData = "";
 					}
 					if ( pcp.SourceLearningOpportunity != null && pcp.SourceLearningOpportunity.Id > 0 )
 					{
-						to.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
-						to.SourceData = "";
+						output.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
+						output.SourceData = "";
 					}
 				}
 			}
 
 			//
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime )from.Created;
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime )from.LastUpdated;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime )input.Created;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime )input.LastUpdated;
 
 		}
-		public static void MapToDB( ThisEntity from, DBEntity to )
+		public static void MapToDB( ThisEntity input, DBEntity output )
 		{
 
-			to.Id = from.Id;
-			if ( to.Id < 1 )
+			output.Id = input.Id;
+			if ( output.Id < 1 )
 			{
 
-				//will need to be carefull here, will this exist in the input??
-				//there could be a case where an external Id was added to bulk upload for an existing record
-				to.PathwayCTID = from.PathwayCTID;
+				//will need output be carefull here, will this exist in the input??
+				//there could be a case where an external Id was added output bulk upload for an existing record
+				output.PathwayCTID = input.PathwayCTID;
 			}
 			else
 			{
 
 				//don't map rowId, CTID, or dates as not on form
-				//to.RowId = from.RowId;
-				to.Name = from.Name;
-				to.Description = from.Description;
-				//to.CodedNotation = from.CodedNotation;
-				to.EntityStateId = 3;
-				to.ComponentCategory = from.ComponentCategory;
-				to.ComponentTypeId = GetComponentTypeId( from.PathwayComponentType );
-				if (string.IsNullOrWhiteSpace( to.PathwayCTID ) )
-					to.PathwayCTID = from.PathwayCTID;
-				//to.ComponentTypeId = from.ComponentTypeId;
+				//output.RowId = input.RowId;
+				output.Name = input.Name;
+				output.Description = input.Description;
+				//output.CodedNotation = input.CodedNotation;
+				output.EntityStateId = 3;
+				output.ComponentCategory = input.ComponentCategory;
+				output.ComponentTypeId = GetComponentTypeId( input.PathwayComponentType );
+				if (string.IsNullOrWhiteSpace( output.PathwayCTID ) )
+					output.PathwayCTID = input.PathwayCTID;
+				//output.ComponentTypeId = input.ComponentTypeId;
 				//will be validated before getting here!
-				to.CredentialType = from.CredentialType;
+				output.CredentialType = input.CredentialType;
 
-				//to.ExternalIdentifier = from.ExternalIdentifier;
-				//not sure if this will just be a URI, or point to a concept
+				//output.ExternalIdentifier = input.ExternalIdentifier;
+				//not sure if this will just be a URI, or point output a concept
 				//if a concept, would probably need entity.hasConcept
-				//to.HasProgressionLevel = from.HasProgressionLevels;
-				if ( from.HasProgressionLevels.Any() )
+				//output.HasProgressionLevel = input.HasProgressionLevels;
+				if ( input.HasProgressionLevels.Any() )
 				{
-					to.HasProgressionLevel = string.Join( "|", from.HasProgressionLevels.ToArray() );
+					output.HasProgressionLevel = string.Join( "|", input.HasProgressionLevels.ToArray() );
 				}
 				else
-					to.HasProgressionLevel = null;
+					output.HasProgressionLevel = null;
 
-				//need to change ??
-				//to.IsDestinationComponentOf = from.IsDestinationComponentOf;
+				//need output change ??
+				//output.IsDestinationComponentOf = input.IsDestinationComponentOf;
 				//this is now in JsonProperties
-				//to.PointValue = from.PointValueOld;
-				to.ProgramTerm = from.ProgramTerm;
-				to.SubjectWebpage = from.SubjectWebpage;
-				to.SourceData = from.SourceData;
+				//output.PointValue = input.PointValueOld;
+				output.ProgramTerm = input.ProgramTerm;
+				output.SubjectWebpage = input.SubjectWebpage;
+				output.SourceData = input.SourceData;
 
-				to.Properties = JsonConvert.SerializeObject( from.JsonProperties );
+				output.Properties = JsonConvert.SerializeObject( input.JsonProperties );
 			}
 
 

@@ -4,31 +4,34 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using ApiEntity = workIT.Models.API.CompetencyFramework;
 using workIT.Models.Elastic;
+using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-	public class CompetencyFramework : BaseProfile
+	public class CompetencyFramework : TopLevelObject
 	{
 		public CompetencyFramework()
 		{
 		}
 
-		public int EntityStateId { get; set; }
-		public string Name { get; set; }
+		//public int EntityStateId { get; set; }
+		//public string Name { get; set; }
   //      [Obsolete]
 		//public string FrameworkUrl { get; set; }
 		//public string RepositoryUri { get; set; }
 		public bool ExistsInRegistry { get; set; }
-		public string CredentialRegistryId { get; set; }
-		public string CTID { get; set; }
+		//public string CredentialRegistryId { get; set; }
+		//public string CTID { get; set; }
         public string FrameworkUri { get; set; }
         public string SourceUrl { get; set; }
 
         //public System.Guid RowId { get; set; }
 		//CTID for owning organization, where origin is registry
 		public string OrganizationCTID { get; set; }
-		public int OrganizationId { get; set; }
+		//public int OrganizationId { get; set; }
+		//public List<Guid> PublishedBy { get; set; } = new List<Guid>();
 		//can we use just one list and include a property type (owner, creator, publisher, etc)
 		//public List<OrganizationReference> Creators = new List<OrganizationReference>()
 		//public List<OrganizationReference> Publisher = new List<OrganizationReference>()
@@ -38,7 +41,9 @@ namespace workIT.Models.ProfileModels
 		/// </summary>
 		public int TotalCompetencies { get; set; }
 		public string CompentenciesStore { get; set; }
-
+		//TBD
+		public string APIFramework { get; set; }
+		public ApiEntity ApiFramework { get; set; }
 
 		//[JsonProperty( "ceasn:alignFrom" )]
 		public List<string> alignFrom { get; set; }
@@ -150,9 +155,8 @@ namespace workIT.Models.ProfileModels
 		{
 
 		}
-		public string FriendlyName { get; set; }
-		//public int OrganizationId { get; set; }
-		public string OrganizationName { get; set; }
+		//public string FriendlyName { get; set; }
+		//public string OrganizationName { get; set; }
 
 		public int ReferencedByAssessments { get; set; }
 		public int ReferencedByCredentials { get; set; }

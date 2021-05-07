@@ -402,14 +402,14 @@ namespace workIT.Services
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
 
-            return EntityMgr.GetByCtid( ctid );
+            return EntityMgr.GetSummaryByCtid( ctid );
         }
         public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
         {
             ThisEntity entity = new ThisEntity();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
-            var assessment = EntityMgr.GetByCtid( ctid );
+            var assessment = EntityMgr.GetSummaryByCtid( ctid );
 
             return GetDetail( assessment.Id, skippingCache );
         }
@@ -418,7 +418,8 @@ namespace workIT.Services
             ThisEntity entity = EntityMgr.GetBasic( id );
             return entity;
         }
-        public static ThisEntity GetDetail( int id , bool skippingCache = false )
+
+		public static ThisEntity GetDetail( int id , bool skippingCache = false )
         {
 			int cacheMinutes = UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 );
 			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );

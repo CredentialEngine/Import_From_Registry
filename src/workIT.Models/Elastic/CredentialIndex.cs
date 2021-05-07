@@ -145,6 +145,11 @@ namespace workIT.Models.Elastic
 		public int RecommendedLoppCount { get; set; }
 		public int BadgeClaimsCount { get; set; }
 		public int ProcessProfilesCount { get; set; }
+
+		public int AggregateDataProfileCount { get; set; }
+		public string AggregateDataProfileSummary { get; set; }
+		public int DataSetProfileCount { get; set; }
+		//
 		public int HoldersProfileCount { get; set; }
 		public string HoldersProfileSummary { get; set; }
 		public int EarningsProfileCount { get; set; }

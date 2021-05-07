@@ -6,19 +6,22 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Elastic
 {
+	[Serializable]
+
 	public class Address
 	{
 		//public int Id { get; set; }
 		public string Name { get; set; }
-		public string Address1 { get; set; }
+		public string Description { get; set; }
+		public string StreetAddress { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
-		public string City { get; set; }
+		public string AddressLocality { get; set; }
 
 		public string SubRegion { get; set; }
 
 		public string AddressRegion { get; set; }
 		public string PostalCode { get; set; }
-		public string Country { get; set; }
+		public string AddressCountry { get; set; }
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
 		//contactPoints

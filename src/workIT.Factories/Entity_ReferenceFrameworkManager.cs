@@ -184,7 +184,7 @@ namespace workIT.Factories
 
 						string message = string.Format( thisClassName + ".Add Failed", "Attempted to add a Entity_ReferenceFramework item. The process appeared to not work, but was not an exception, so we have no message, or no clue. parentId: {0}, CategoryId: {1}, Name: {2}, ReferenceId: {3}, CodedNotation: {4}", parentEntityId, categoryId, entity.TargetNodeName, rf.Id, rf.CodedNotation );
 						//?no info on error
-						status.AddWarning( "Error - the add was not successful. \r\n" + message );
+						status.AddWarning( thisClassName + "Error - the add was not successful. \r\n" + message );
 						//EmailManager.NotifyAdmin( thisClassName + ".ItemAdd Failed", message );
 					}
 				}
@@ -286,11 +286,12 @@ namespace workIT.Factories
 							.ToList();
 				if ( results == null || !results.Any() )
 					return true;
-				context.Entity_ReferenceFramework.RemoveRange( results );
-				//context.Entity_ReferenceFramework.RemoveRange( context.Entity_ReferenceFramework.Where( s => s.EntityId == parent.Id ) );
-				//attempt to address DbUpdateConcurrencyException
+
 				try
 				{
+					context.Entity_ReferenceFramework.RemoveRange( results );
+					//context.Entity_ReferenceFramework.RemoveRange( context.Entity_ReferenceFramework.Where( s => s.EntityId == parent.Id ) );
+					//attempt to address DbUpdateConcurrencyException
 					context.SaveChanges();
 				}
 				catch ( Exception cex )

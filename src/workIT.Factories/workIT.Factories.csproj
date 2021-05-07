@@ -82,10 +82,12 @@
     <Compile Include="EntityPropertyManager.cs" />
     <Compile Include="Entity_AddressManager.cs" />
     <Compile Include="Entity_AgentRelationshipManager.cs" />
+    <Compile Include="Entity_AggregateDataProfileManager.cs" />
     <Compile Include="Entity_AssertionManager.cs" />
     <Compile Include="Entity_AssessmentManager.cs" />
     <Compile Include="Entity_CommonConditionManager.cs" />
     <Compile Include="Entity_CommonCostManager.cs" />
+    <Compile Include="Entity_CompetencyFrameworkManager.cs" />
     <Compile Include="Entity_CompetencyManager.cs" />
     <Compile Include="Entity_ConditionProfileManager.cs" />
     <Compile Include="Entity_ContactPointManager.cs" />
@@ -105,10 +107,13 @@
     <Compile Include="Entity_ReferenceFrameworkManager.cs" />
     <Compile Include="Entity_ReferenceManager.cs" />
     <Compile Include="Entity_RevocationProfileManager.cs" />
+    <Compile Include="Entity_TransferValueProfileManager.cs" />
     <Compile Include="Entity_VerificationProfileManager.cs" />
     <Compile Include="HoldersProfileManager.cs" />
     <Compile Include="ImportManager.cs" />
+    <Compile Include="JobManager.cs" />
     <Compile Include="LearningOpportunityManager.cs" />
+    <Compile Include="OccupationManager.cs" />
     <Compile Include="OrganizationManager.cs" />
     <Compile Include="OrganizationRoleManager.cs" />
     <Compile Include="PathwayComponentConditionManager.cs" />

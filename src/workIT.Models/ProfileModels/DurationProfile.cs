@@ -35,12 +35,20 @@ namespace workIT.Models.ProfileModels
 		public DurationItem MaximumDuration { get; set; }
 		public DurationItem ExactDuration { get; set; }
 		public string DurationSummary { get; set; } 
-		public int MinimumMinutes { get; set; }
+		//public int MinimumMinutes { get; set; }
 		public string MinimumDurationISO8601 { get; set; }
-		public int MaximumMinutes { get; set; }
+		//public int MaximumMinutes { get; set; }
 		public string MaximumDurationISO8601 { get; set; }
 		public string ExactDurationISO8601 { get; set; }
-
+		public bool HasData
+		{
+			get
+			{
+				return ( this.MinimumDuration != null && this.MaximumDuration != null
+		  && ( this.MinimumDuration.HasValue || this.MaximumDuration.HasValue ) )
+		  || ( ExactDuration.HasValue || !string.IsNullOrWhiteSpace( Description ) );
+			}
+		}
 		public bool IsRange { 
 			get { return this.MinimumDuration != null 
 				&& this.MaximumDuration != null 

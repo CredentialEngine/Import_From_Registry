@@ -28,8 +28,6 @@ namespace Import.Services
 		ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-		int thisEntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY;
-
 
 		/// <summary>
 		/// Retrieve an envelop from the registry and do import
@@ -151,13 +149,25 @@ namespace Import.Services
 			{
 				status.SetEnvelopeUpdated( envelopeUpdateDate );
 			}
+			status.DocumentOwnedBy = item.documentOwnedBy;
 
+			if ( item.documentPublishedBy != null )
+			{
+				if ( item.documentOwnedBy == null || ( item.documentPublishedBy != item.documentOwnedBy ) )
+					status.DocumentPublishedBy = item.documentPublishedBy;
+			}
+			else
+			{
+				//will need to check elsewhere
+				//OR as part of import check if existing one had 3rd party publisher
+			}
 			string payload = item.DecodedResource.ToString();
 			string envelopeIdentifier = item.EnvelopeIdentifier;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 			LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_Pathway", payload, "", false );
+			//Already done in  RegistryImport
+			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_Pathway", payload, "", false );
 
 			//just store input for now
 			return Import( payload, envelopeIdentifier, status );
@@ -259,7 +269,43 @@ namespace Import.Services
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.CTID = input.CTID;
-
+				//TBD handling of referencing third party publisher
+				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+				{
+					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+					var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
+					if ( porg != null && porg.Id > 0 )
+					{
+						//TODO - store this in a json blob??????????
+						//this will result in being added to Entity.AgentRelationship
+						output.PublishedBy = new List<Guid>() { porg.RowId };
+					}
+					else
+					{
+						//if publisher not imported yet, all publishee stuff will be orphaned
+						var entityUid = Guid.NewGuid();
+						var statusMsg = "";
+						var resPos = referencedAtId.IndexOf( "/resources/" );
+						var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+					}
+				}
+				else
+				{
+					//may need a check for existing published by to ensure not lost
+					if ( output.Id > 0 )
+					{
+						if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+						{
+							var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+							if ( publishedByList != null && publishedByList.Any() )
+							{
+								var pby = publishedByList[ 0 ].ActingAgentUid;
+								output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+							}
+						}
+					}
+				}
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
@@ -411,7 +457,7 @@ namespace Import.Services
 					{
 						if ( output.PathwayComponentType.ToLower().IndexOf( "credential" ) > -1 )
 						{
-							var target = CredentialManager.GetByCtid( ctid );
+							var target = CredentialManager.GetMinimumByCtid( ctid );
 							if ( target != null && target.Id > 0 )
 							{
 								//this approach 'buries' the cred from external references like credential in pathway
@@ -429,7 +475,7 @@ namespace Import.Services
 						}
 						else if ( output.PathwayComponentType.ToLower().IndexOf( "assessmentcomp" ) > -1 )
 						{
-							var target = AssessmentManager.GetByCtid( ctid );
+							var target = AssessmentManager.GetSummaryByCtid( ctid );
 							if ( target != null && target.Id > 0 )
 							{
 								//may not really need this, just the json
@@ -483,7 +529,7 @@ namespace Import.Services
 
 				//
 				output.CredentialType = input.CredentialType;
-				output.CreditValue = helper.HandleValueProfileListToQVList( input.CreditValue, output.PathwayComponentType + ".CreditValue" );
+				output.CreditValue = helper.HandleValueProfileList( input.CreditValue, output.PathwayComponentType + ".CreditValue" );
 
 				//TBD - how to handle. Will need to have imported the concept scheme/concept
 				if ( input.HasProgressionLevel != null && input.HasProgressionLevel.Any())

@@ -151,8 +151,9 @@ namespace workIT.Factories
 			if ( erm.AddTextValue( entity.Emails, entity.RowId, ref status, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE ) == false )
 				isAllValid = false;
 
-			if ( erm.AddTextValue( entity.PhoneNumbers, entity.RowId, 
-				ref status, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE ) == false )
+			if ( erm.AddTextValue( entity.PhoneNumbers, entity.RowId, ref status, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE ) == false )
+				isAllValid = false;
+			if ( erm.AddTextValue( entity.FaxNumber, entity.RowId, ref status, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE_FAX ) == false )//
 				isAllValid = false;
 
 			return isAllValid;
@@ -189,16 +190,33 @@ namespace workIT.Factories
             }
             using ( var context = new EntityContext() )
             {
-                context.Entity_ContactPoint.RemoveRange( context.Entity_ContactPoint.Where( s => s.ParentEntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
+				var results = context.Entity_ContactPoint.Where( s => s.ParentEntityId == parent.Id )
+					.ToList();
+				if ( results == null || results.Count == 0 )
+					return true;
+				foreach ( var item in results )
+				{
+					//21-03-31 mp - just removing the profile will not remove its entity and the latter,s children!
+					string statusMessage = "";
+					new EntityManager().Delete( item.RowId, string.Format( "EntityContactPointProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
+
+					context.Entity_ContactPoint.Remove( item );
+					var count = context.SaveChanges();
+					if ( count > 0 )
+					{
+
+					}
+				}
+				//context.Entity_ContactPoint.RemoveRange( context.Entity_ContactPoint.Where( s => s.ParentEntityId == parent.Id ) );
+    //            int count = context.SaveChanges();
+    //            if ( count > 0 )
+    //            {
+    //                isValid = true;
+    //            }
+    //            else
+    //            {
+    //                //if doing a delete on spec, may not have been any properties
+    //            }
             }
 
             return isValid;
@@ -393,6 +411,7 @@ namespace workIT.Factories
 				to.SocialMedia = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA );
 				to.PhoneNumber = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE );
 				to.Email = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_EMAIL_TYPE );
+				to.FaxNumber = Entity_ReferenceManager.GetAllToList( to.RowId, CodesManager.PROPERTY_CATEGORY_PHONE_TYPE_FAX );
 			}
 
 

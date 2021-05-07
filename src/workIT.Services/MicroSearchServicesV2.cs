@@ -212,11 +212,11 @@ namespace workIT.Services
 				Name = item.Name,
 				Properties = new Dictionary<string, object>()
 				{
-					{ "Address1", item.Address1 },
-					{ "City", item.City },
+					{ "Address1", item.StreetAddress },
+					{ "City", item.AddressLocality },
 					{ "Region", item.AddressRegion },
 					{ "PostalCode", item.PostalCode },
-					{ "Country", item.Country }
+					{ "Country", item.AddressCountry }
 					//{ "CountryId", item.CountryId }
 				}
 			};

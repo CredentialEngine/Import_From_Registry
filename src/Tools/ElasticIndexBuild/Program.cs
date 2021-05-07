@@ -8,6 +8,7 @@ using workIT.Utilities;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Services;
+using ElasticHelper = workIT.Services.ElasticServices;
 using System.ComponentModel.Design;
 
 namespace ElasticIndexBuild
@@ -72,6 +73,8 @@ namespace ElasticIndexBuild
 			{
 				if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "commonCollection", "" ) ) )
 					LoadCommonIndex( deletingIndexBeforeRebuild );
+				if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "pathwayCollection", "" ) ) )
+					LoadPathwayIndex( deletingIndexBeforeRebuild );
 
 				if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "organizationCollection", "" ) ) )
 					LoadOrganizationIndex( deletingIndexBeforeRebuild );
@@ -100,7 +103,7 @@ namespace ElasticIndexBuild
 			try
             {
 				DateTime start = DateTime.Now;
-				ElasticServices.Credential_BuildIndex( deletingIndexBeforeRebuild, true );
+				ElasticHelper.Credential_BuildIndex( deletingIndexBeforeRebuild, true );
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
 
@@ -118,7 +121,7 @@ namespace ElasticIndexBuild
 			try
             {
 				DateTime start = DateTime.Now;
-				ElasticServices.Organization_BuildIndex( deletingIndexBeforeRebuild, true );
+				ElasticHelper.Organization_BuildIndex( deletingIndexBeforeRebuild, true );
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
 
@@ -137,7 +140,7 @@ namespace ElasticIndexBuild
 			try
             {
 				DateTime start = DateTime.Now;
-				ElasticServices.Assessment_BuildIndex( deletingIndexBeforeRebuild, true );
+				ElasticHelper.Assessment_BuildIndex( deletingIndexBeforeRebuild, true );
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
 
@@ -158,7 +161,7 @@ namespace ElasticIndexBuild
 			try
             {
 				DateTime start = DateTime.Now;
-				ElasticServices.LearningOpp_BuildIndex( deletingIndexBeforeRebuild, true );
+				ElasticHelper.LearningOpp_BuildIndex( deletingIndexBeforeRebuild, true );
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
 
@@ -179,7 +182,7 @@ namespace ElasticIndexBuild
 			try
 			{
 				DateTime start = DateTime.Now;
-				ElasticServices.CompetencyFramework_BuildIndex( deletingIndexBeforeRebuild, true );
+				ElasticHelper.CompetencyFramework_BuildIndex( deletingIndexBeforeRebuild, true );
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
 
@@ -200,18 +203,18 @@ namespace ElasticIndexBuild
 				//int processed = 0;
 				DateTime start = DateTime.Now;
 				//do delete  for first one, but not second
-				DisplayMessages( "Starting Pathway" );
-				ElasticServices.Pathway_BuildIndex( deletingIndexBeforeRebuild, true );
-				DateTime end = DateTime.Now;
-				var elasped = end.Subtract( start ).TotalSeconds;
-				DisplayMessages( string.Format( "___Completed LoadCommonIndex for pathway. Elapsed Seconds: {0}", elasped ) ); 
-				deletingIndexBeforeRebuild = false;
+				//DisplayMessages( "Starting Pathway" );
+				//ElasticHelper.Pathway_BuildIndex( deletingIndexBeforeRebuild, true );
+				//DateTime end = DateTime.Now;
+				//var elasped = end.Subtract( start ).TotalSeconds;
+				//DisplayMessages( string.Format( "___Completed LoadCommonIndex for pathway. Elapsed Seconds: {0}", elasped ) ); 
+				//deletingIndexBeforeRebuild = false;
 				 //next
 				 //processed = 0;
 				DisplayMessages( "Starting Transfer Value Profile" );
 				start = DateTime.Now;
-				ElasticServices.General_BuildIndexForTVP( deletingIndexBeforeRebuild, true );
-				//ElasticServices.General_UpdateIndexForTVP( "", ref processed ); 
+				ElasticHelper.General_BuildIndexForTVP( deletingIndexBeforeRebuild, true );
+				//ElasticHelper.General_UpdateIndexForTVP( "", ref processed ); 
 				DateTime end2 = DateTime.Now;
 				var tvpElasped = end2.Subtract( start ).TotalSeconds;
 
@@ -221,6 +224,29 @@ namespace ElasticIndexBuild
 			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, "LoadCommonIndex Failed", "ElasticIndex Build Exception" );
+			}
+		}
+		public static void LoadPathwayIndex( bool deletingIndexBeforeRebuild )
+		{
+			DisplayMessages( "Starting LoadPathwayIndex: " + UtilityManager.GetAppKeyValue( "pathwayCollection", "missing PathwayCollection" ) );
+
+			try
+			{
+				//int processed = 0;
+				DateTime start = DateTime.Now;
+				//do delete  for first one, but not second
+				DisplayMessages( "Starting Pathway" );
+				ElasticHelper.Pathway_BuildIndex( deletingIndexBeforeRebuild, true );
+				DateTime end = DateTime.Now;
+				var elasped = end.Subtract( start ).TotalSeconds;
+				DisplayMessages( string.Format( "___Completed LoadPathwayIndex for pathway. Elapsed Seconds: {0}", elasped ) );
+				deletingIndexBeforeRebuild = false;
+
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "LoadPathwayIndex Failed", "ElasticIndex Build Exception" );
 			}
 		}
 		public static string DisplayMessages( string message )

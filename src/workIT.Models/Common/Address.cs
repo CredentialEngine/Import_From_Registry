@@ -18,21 +18,22 @@ namespace workIT.Models.Common
 		}
 		public string Name { get; set; }
         public string Name_Map { get; set; }
-        public string Address1 { get; set; }
+		public string Description { get; set; }
+		public string StreetAddress { get; set; }
         public string Address1_Map { get; set; }
-        //public string Address2 { get; set; }
+        public string Address2 { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
 
-		public string City { get; set; }
+		public string AddressLocality { get; set; }
         public string City_Map { get; set; }
-        public string AddressLocality { get { return City; } set { City = value; } } //Alias used for publishing
+       
 		public string AddressRegion { get; set; }
 		public bool HasShortRegion { get; set; }
         public string AddressRegion_Map { get; set; }
 		//
 		//public string AddressRegionFull { get; set; }
 		public string SubRegion { get; set; }
-		public string Country { get; set; }
+		public string AddressCountry { get; set; }
         public string Country_Map { get; set; }
 
         public string PostalCode { get; set; }
@@ -50,37 +51,39 @@ namespace workIT.Models.Common
 		public string DisplayAddress(string separator = ", ")
 		{
 			string address = "";
-			if ( !string.IsNullOrWhiteSpace( Address1 ) )
-				address = Address1;
+			if ( !string.IsNullOrWhiteSpace( StreetAddress ) )
+				address = StreetAddress;
 			//if ( !string.IsNullOrWhiteSpace( Address2 ) )
 			//	address += separator + Address2;
-			if ( !string.IsNullOrWhiteSpace( City ) )
-				address += separator + City;
+			if ( !string.IsNullOrWhiteSpace( PostOfficeBoxNumber ) )
+				address += separator + "P.O. " + PostOfficeBoxNumber;
+			if ( !string.IsNullOrWhiteSpace( AddressLocality ) )
+				address += separator + AddressLocality;
 			if ( !string.IsNullOrWhiteSpace( SubRegion ) )
 				address += separator + SubRegion;
 			if ( !string.IsNullOrWhiteSpace( AddressRegion ) )
 				address += separator + AddressRegion;
 			if ( !string.IsNullOrWhiteSpace( PostalCode ) )
 				address += " " + PostalCode;
-			if ( !string.IsNullOrWhiteSpace( Country ) )
-				address += separator + Country;
+			if ( !string.IsNullOrWhiteSpace( AddressCountry ) )
+				address += separator + AddressCountry;
 			return address;
 		}
         public string LooseDisplayAddress( string separator = ", " ) //For easier geocoding
         {
             return
-                ( string.IsNullOrWhiteSpace( City ) ? "" : City + separator ) +
+                ( string.IsNullOrWhiteSpace( AddressLocality ) ? "" : AddressLocality + separator ) +
                 ( string.IsNullOrWhiteSpace( AddressRegion ) ? "" : AddressRegion + separator ) +
                 ( string.IsNullOrWhiteSpace( PostalCode ) ? "" : PostalCode + " " ) +
-                ( string.IsNullOrWhiteSpace( Country ) ? "" : Country );
+                ( string.IsNullOrWhiteSpace( AddressCountry ) ? "" : AddressCountry );
         }
         public bool HasAddress()
 		{
 			bool hasAddress = true;
 
-			if ( string.IsNullOrWhiteSpace( Address1 )
+			if ( string.IsNullOrWhiteSpace( StreetAddress )
 			//&& string.IsNullOrWhiteSpace( Address2 )
-			&& string.IsNullOrWhiteSpace( City )
+			&& string.IsNullOrWhiteSpace( AddressLocality )
 			&& string.IsNullOrWhiteSpace( AddressRegion )
 			&& string.IsNullOrWhiteSpace( PostalCode )
 				)

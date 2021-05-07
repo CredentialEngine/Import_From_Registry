@@ -46,7 +46,7 @@ namespace workIT.Factories
         public bool ResetEntity(Entity entity, ref string statusMessage)
 		{
 			bool isValid = true; 
-			if (Delete(entity.EntityUid, ref statusMessage, 2) == false)
+			if (Delete(entity.EntityUid, string.Format("type: {0}, Id: {1}",entity.EntityTypeId, entity.EntityBaseId), ref statusMessage, 2) == false)
 			{
 				//major issue
 				return false;
@@ -160,12 +160,16 @@ namespace workIT.Factories
                 if ( efEntity != null && efEntity.Id > 0 )
                 {
                     efEntity.LastUpdated = modifiedDate;
-                    int count = context.SaveChanges();
-                    if ( count >= 0 )
-                    {
-                        isValid = true;
-                        LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".UpdateModifiedDate - update last updated for TypeId: {0}, BaseId: {1}", efEntity.EntityTypeId, efEntity.EntityBaseId ) );
-                    }
+					//don't allowing setting to before created
+					if ( efEntity.LastUpdated >= efEntity.Created )
+					{
+						int count = context.SaveChanges();
+						if ( count >= 0 )
+						{
+							isValid = true;
+							LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".UpdateModifiedDate - update last updated for TypeId: {0}, BaseId: {1}", efEntity.EntityTypeId, efEntity.EntityBaseId ) );
+						}
+					}
                 }
                 else
                 {
@@ -175,15 +179,17 @@ namespace workIT.Factories
             }
 
             return isValid;
-        }///
-         /// <summary>
-         /// Delete an Entity
-         /// This should be handled by triggers as well, or at least with the child entity
-         /// </summary>
-         /// <param name="entityUid"></param>
-         /// <param name="statusMessage"></param>
-         /// <returns></returns>
-        public bool Delete( Guid entityUid, ref string statusMessage, int attemptsRemaining = 0 )
+		}///
+
+		 /// <summary>
+		 /// Delete an Entity
+		 /// This should be handled by triggers as well, or at least with the child entity
+		 /// </summary>
+		 /// <param name="entityUid"></param>
+		 /// <param name="forTableIdentifer">Table identifer for tracing</param>
+		 /// <param name="statusMessage"></param>
+		 /// <returns></returns>
+		public bool Delete( Guid entityUid, string forTableIdentifer, ref string statusMessage, int attemptsRemaining = 0 )
         {
             bool isValid = false;
             statusMessage = "";
@@ -218,7 +224,7 @@ namespace workIT.Factories
                     else
                     {
                         statusMessage = "Error - Entity delete unnecessary, as record was not found.";
-                        LoggingHelper.LogError(thisClassName + string.Format(".Delete - WIERD - delete failed, as record was not found. entityUid: {0}", entityUid), true);
+                        LoggingHelper.DoTrace( 1, thisClassName + string.Format(".Delete - WIERD - delete failed, as record was not found. entityUid: {0} for {1}.", entityUid, forTableIdentifer ) );
                     }
                 }
             }
@@ -231,7 +237,7 @@ namespace workIT.Factories
                     if ( attemptsRemaining > 0 )
                     {
                         attemptsRemaining--;
-                        return Delete(entityUid, ref statusMessage, attemptsRemaining);
+                        return Delete(entityUid, forTableIdentifer, ref statusMessage, attemptsRemaining);
                     }
                     else
                     {

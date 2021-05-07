@@ -15,8 +15,6 @@ namespace workIT.Models.ProfileModels
 		{
 			//RevocationCriteriaType = new Enumeration();
 			Region = new List<JurisdictionProfile>();
-			CredentialProfiled = new List<Credential>();
-			RemovalDateEffective = "";
 			//RenewalDateEffective = "";
 		}
 		
@@ -30,7 +28,9 @@ namespace workIT.Models.ProfileModels
 		public string RevocationCriteriaUrl { get; set; }
 		public string RevocationCriteriaDescription { get; set; }
 
-		public List<Credential> CredentialProfiled { get; set; } //holds values of RequiredCredential
+		//holds values of RequiredCredential-OBSOLETE
+		public List<Credential> CredentialProfiled { get; set; } = new List<Credential>();
+		
 
 		public List<JurisdictionProfile> Region { get; set; }
 	}

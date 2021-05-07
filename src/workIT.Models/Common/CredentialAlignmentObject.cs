@@ -84,7 +84,7 @@ namespace workIT.Models.Common
 		}
 		public bool ExistsInRegistry { get; set; }
 		public bool IsDeleted { get; set; }
-		public RegistryImport FrameworkPayload { get; set; } = new RegistryImport();
+		public RegistryImport RegistryImport { get; set; } = new RegistryImport();
 
         public List<CredentialAlignmentObjectItem> Items { get; set; }
         //used by detail page to combine all CAOs frameworks

@@ -20,13 +20,19 @@ namespace workIT.Models
 		public string ValidationGroup { get; set; }
 		public string Community { get; set; }
 		public List<string> Communities { get; set; } = new List<string>();
+		public string Ctid { get; set; }
+		public bool UpdateElasticIndex { get; set; }
+		 
 		public string EnvelopeId { get; set; }
+		public string ResourceURL { get; set; }
 		public Guid DocumentRowId { get; set; }
 		public int DocumentId { get; set; }
 		public string DocumentPublishedBy { get; set; }
+		public string DocumentOwnedBy { get; set; }
 		//
 		public string DetailPageUrl { get; set; }
-		public string Ctid { get; set; }
+		
+		//statistics for actions such as pathway components added/updated, etc.
 		public int RecordsAdded { get; set; }
 		public int RecordsFailed { get; set; }
 		public int RecordsUpdated { get; set; }

@@ -141,7 +141,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					string message = FormatExceptions( ex );
-					status.AddError( "Error - the Add was not successful. " + message );
+					status.AddError( thisClassName + "Error - the Add was not successful. " + message );
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 				}
 
@@ -194,8 +194,8 @@ namespace workIT.Factories
 							//this method will also add pending request to remove from elastic.
 							//20-12-18 mp - Only done for a reference lopp but what about a full lopp that may now be an orphan? We are not allowing lopps without parent, but will still exist in registry!!!
 							//actually this delete will probably also delete the Entity_LearningOpportunity
-							new LearningOpportunityManager().Delete( item.LearningOpportunityId, ref statusMsg );
-							continue;
+							//new LearningOpportunityManager().Delete( item.LearningOpportunityId, ref statusMsg );
+							//continue;
 						}
 					}
 					context.Entity_LearningOpportunity.Remove( item );
@@ -307,7 +307,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".LearningOpps_GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format(".LearningOpps_GetAll. Guid: {0}, parentType: {1} ({2}), ", parentUid, parent.EntityType, parent.EntityBaseId) );
 			}
 			return list;
 		}
@@ -350,7 +350,8 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".LearningOpps_GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".LearningOpps_GetAll_IsPart. learningOpportunityId: {0}, parentTypeId: {1}. ", learningOpportunityId, parentTypeId ) );
+
 			}
 			return list;
 		}

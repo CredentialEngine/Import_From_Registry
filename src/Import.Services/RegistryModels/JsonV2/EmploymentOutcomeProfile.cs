@@ -40,7 +40,8 @@ namespace RA.Models.JsonV2
 		///  ceterms:jobsObtained
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:jobsObtained" )]
-		public int JobsObtained { get; set; }
+		public List<QuantitativeValue> JobsObtained { get; set; }
+		//public int JobsObtained { get; set; }
 
 		/// <summary>
 		/// Jurisdiction Profile
@@ -64,8 +65,10 @@ namespace RA.Models.JsonV2
 		/// qdata:DataSetProfile
 		/// TODO - this may change to URIs
 		/// </summary>
+		//[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
+		//public List<DataSetProfile> RelevantDataSet { get; set; }
+
 		[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
 		public List<string> RelevantDataSet { get; set; }
-		//public List<DataSetProfile> RelevantDataSet { get; set; }
 	}
 }

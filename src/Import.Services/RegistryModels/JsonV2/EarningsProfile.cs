@@ -85,7 +85,9 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
 		public List<string> RelevantDataSet { get; set; }
-		//public List<DataSetProfile> RelevantDataSet { get; set; }
+
+		//[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
+		//public List<DataSetProfile> RelevantDataSets { get; set; }
 
 	}
 }

@@ -31,6 +31,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<System.DateTime> DateEffective { get; set; }
         public string Name { get; set; }
+        public string DemographicInformation { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }

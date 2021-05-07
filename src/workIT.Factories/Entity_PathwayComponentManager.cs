@@ -412,7 +412,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_HasPathwayComponent for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parentUid, parent.EntityType, pathwayComponentId);
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -562,14 +562,35 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					context.Entity_HasPathwayComponent.RemoveRange( context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						isValid = true;
-						status.AddError( string.Format( "removed {0} related relationships.", count ) );
-					}
+					//var results = context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id ).ToList();
+					//if ( results == null || results.Count == 0 )
+					//	return true;
+					//foreach ( var item in results )
+					//{
+					//	string statusMessage = "";
+					//	//we have a trigger for this
+					//	new EntityManager().Delete( item.RowId, ref statusMessage );
+
+					//	context.Entity_HasPathwayComponent.Remove( item );
+					//	int count = context.SaveChanges();
+					//	if ( count > 0 )
+					//	{
+					//		isValid = true;
+					//	}
+					//	else
+					//	{
+					//		//if doing a delete on spec, may not have been any properties
+					//	}
+					//}
+
+				context.Entity_HasPathwayComponent.RemoveRange( context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id ) );
+				int count = context.SaveChanges();
+				if ( count > 0 )
+				{
+					isValid = true;
+					//status.AddError( string.Format( "removed {0} related relationships.", count ) );
 				}
+			}
 			}
 			catch ( Exception ex )
 			{

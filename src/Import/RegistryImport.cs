@@ -192,6 +192,7 @@ namespace CTI.Import
 			string payload = item.DecodedResource.ToString();
 			status.EnvelopeId = item.EnvelopeIdentifier;
 			var ctid = item.EnvelopeCetermsCtid;
+			var envelopeCtdlType = item.EnvelopeCtdlType;
 			string ctdlType = RegistryServices.GetResourceType( payload );
 			//string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_" + ctdlType, payload, "", false );
@@ -203,28 +204,90 @@ namespace CTI.Import
 
                     case 1:
 						//importSuccessfull = credImportMgr.ProcessEnvelope( item, status );
-						importSuccessfull = credImportMgr.ImportV3( payload, status );
+						if ( ctdlType.IndexOf( "Organization" ) > -1 || ctdlType.IndexOf( "LearningOpportunity" ) > -1  || ctdlType.IndexOf( "Assessment" ) > -1 )
+						{
+							//how can this happen????
+							//- expected as the FTS search will also search blank nodes
+							importError = string.Format( "*****WHILE DOING A CREDENTIAL IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid );
+							//status.AddError( importError );
+							//LoggingHelper.DoTrace( 1, importError );
+						}
+						//else if ( ctdlType != envelopeCtdlType )
+						//{
+						//	LoggingHelper.DoTrace( 1, "___skipping blank node" );
+						//}
+						else
+						{
+							importSuccessfull = credImportMgr.ImportV3( payload, status );
+						}
+						
 						break;
                     case 2:
 						//importSuccessfull = orgImportMgr.ProcessEnvelope( item, status );
-						importSuccessfull = orgImportMgr.ImportV3( payload, status );
+						if ( ctdlType.IndexOf( "Organization" ) > -1 )
+						{
+							importSuccessfull = orgImportMgr.ImportV3( payload, status );
+						} else
+						{
+							//how can this happen????
+							importError = string.Format("*****WHILE DOING AN ORGANIZATION IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid);
+							status.AddError( importError );
+							LoggingHelper.DoTrace( 1, importError );
+						}
 						break;
                     case 3:
-                        importSuccessfull = asmtImportMgr.ProcessEnvelope( item, status );
+						if ( ctdlType.IndexOf( "Assessment" ) > -1 )
+						{
+							importSuccessfull = asmtImportMgr.ProcessEnvelope( item, status );
+						}
+						else
+						{
+							//how can this happen????
+							importError = string.Format( "*****WHILE DOING AN Assessment IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid );
+							status.AddError( importError );
+							LoggingHelper.DoTrace( 1, importError );
+						}
+						
                         break;
                     case 7:
-                        importSuccessfull = loppImportMgr.ProcessEnvelope( item, status );
-                        break;
+						if ( ctdlType.IndexOf( "LearningOpportunity" ) > -1 )
+						{
+							importSuccessfull = loppImportMgr.ProcessEnvelope( item, status );
+						}
+						else
+						{
+							//how can this happen????
+							//importError = string.Format( "*****WHILE DOING A LearningOpportunity IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid );
+							//status.AddError( importError );
+							//LoggingHelper.DoTrace( 1, importError );
+						}
+						break;
                     case 8:    //
-                        //DisplayMessages( string.Format( "{0}. Pathways ({1}) are not handled at this time. ", cntr, entityTypeId ) );
-						importSuccessfull = pathwayImportMgr.ProcessEnvelope( item, status );
+						if ( ctdlType.IndexOf( "Pathway" ) > -1 )
+							importSuccessfull = pathwayImportMgr.ProcessEnvelope( item, status );
+						else
+						{
+							//how can this happen????
+							//importError = string.Format( "*****WHILE DOING A Pathway IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid );
+							//status.AddError( importError );
+							//LoggingHelper.DoTrace( 1, importError );
+						}
 						break;
                     case 9:    //
                         DisplayMessages( string.Format( "{0}. Rubrics ({1}) are not handled at this time. ", cntr, entityTypeId ) );
                         return true;
                     case 10:
                     case 17:
-                        importSuccessfull = cfImportMgr.ProcessEnvelope( item, status );
+						if ( ctdlType.IndexOf( "CompetencyFramework" ) > -1 )
+							importSuccessfull = cfImportMgr.ProcessEnvelope( item, status );
+						else
+						{
+							//how can this happen????
+							//importError = string.Format( "*****WHILE DOING A CompetencyFramework IMPORT (#{0}), A RECORD OF TYPE: '{1}', CTID: '{2}' WAS ENCOUNTERED! *********************", cntr, ctdlType, ctid );
+							//status.AddError( importError );
+							//LoggingHelper.DoTrace( 1, importError );
+						}
+						
                         break;
                     case 11:    //concept scheme
                         //DisplayMessages( string.Format( "{0}. Concept Schemes ({1}) are not handled at this time. ", cntr, entityTypeId ) );

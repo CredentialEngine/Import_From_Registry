@@ -31,8 +31,8 @@ namespace workIT.Models.ProfileModels
 		public int ActedUponEntityId { get; set; }
 
 		public int ParentTypeId { get; set; }
-		public string ParentType { get; set; }
-		public string ParentName { get; set; }
+		//public string ParentType { get; set; }
+		//public string ParentName { get; set; }
 
 		/// <summary>
 		/// see if we can eliminate this property?
@@ -40,12 +40,19 @@ namespace workIT.Models.ProfileModels
 		public int ActingAgentId { get; set; }
 		public Guid ActingAgentUid { get; set; }
 		/// <summary>
-		/// Inflate ActingAgentUid for display 
+		/// Acting agent is actually for the current context, i.e. the org being displayed
 		/// </summary>
 		public Organization ActingAgent { get; set; } = new Organization();
 
 
 		//????how is participant different from acting
+		/*
+		 * Context should be from perspective of this org (ActingAgent)
+		 * Role can be asserted from either side. We want to format the relationships from the POV of thisOrg
+		 *	This org has dept
+		 *	This org is dept of 
+		 * 
+		 */
 		public Guid ParticipantAgentUid { get; set; }
 		public Organization ParticipantAgent { get; set; }
 

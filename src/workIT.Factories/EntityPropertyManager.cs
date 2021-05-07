@@ -67,9 +67,14 @@ namespace workIT.Factories
 					else if ( !string.IsNullOrWhiteSpace( item.Name ) )
 						schemaName = item.Name;
 
-					if (!string.IsNullOrWhiteSpace(schemaName))
+					if ( !string.IsNullOrWhiteSpace( schemaName ) )
 					{
 						CodeItem code = CodesManager.Codes_PropertyValue_GetBySchema( categoryId, schemaName );
+						if ( code == null || code.Id == 0 && categoryId ==CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE && schemaName == "deliveryType:BlendedDelivery" )
+						{
+							schemaName = schemaName.Replace( "deliveryType","assessmentDeliveryType" );
+							code = CodesManager.Codes_PropertyValue_GetBySchema( categoryId, schemaName );
+						}
 						if ( code != null && code.Id > 0)
 						{
 							op = new DBEntity();
@@ -113,7 +118,7 @@ namespace workIT.Factories
 			if (updatedCount == 0 && isRequired )
 			{
 				//document invalid schema
-				status.AddError( string.Format( thisClassName + ".AddProperties(). Error an property is required for categoryId: {0}  ", categoryId ) );
+				status.AddError( string.Format( thisClassName + ".AddProperties(). Error a property is required for categoryId: {0}  ", categoryId ) );
 				isAllValid = false;
 			}
 
@@ -143,17 +148,20 @@ namespace workIT.Factories
 					.ToList();
 					if ( results == null || results.Count == 0 )
 						return true;
+					foreach ( var item in results )
+					{
+						context.Entity_Property.Remove( item );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							isValid = true;
+						}
+						else
+						{
+							//if doing a delete on spec, may not have been any properties
+						}
+					}
 
-					context.Entity_Property.RemoveRange( context.Entity_Property.Where( s => s.EntityId == parent.Id ) );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						isValid = true;
-					}
-					else
-					{
-						//if doing a delete on spec, may not have been any properties
-					}
 				}
 			}
 			catch ( Exception ex )

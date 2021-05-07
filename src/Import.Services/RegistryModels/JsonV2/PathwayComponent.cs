@@ -146,6 +146,27 @@ namespace RA.Models.JsonV2
 		public string SubjectWebpage { get; set; }
 
 
+		#region For JobComponent only
+		/// <summary>
+		/// IndustryType
+		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
+		/// Best practice in identifying industries for U.S. credentials is to provide the NAICS code using the ceterms:naics property. 
+		/// Other credentials may use the ceterms:industrytype property and any framework of the class ceterms:IndustryClassification.
+		/// ceterms:industryType
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:industryType" )]
+		public List<CredentialAlignmentObject> IndustryType { get; set; }
+
+		/// <summary>
+		/// OccupationType
+		/// Type of occupation; select from an existing enumeration of such types.
+		///  For U.S. credentials, best practice is to identify an occupation using a framework such as the O*Net. 
+		///  Other credentials may use any framework of the class ceterms:OccupationClassification, such as the EU's ESCO, ISCO-08, and SOC 2010.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:occupationType" )]
+		public List<CredentialAlignmentObject> OccupationType { get; set; }
+		#endregion
+
 	}
 
 	public class ComponentCondition

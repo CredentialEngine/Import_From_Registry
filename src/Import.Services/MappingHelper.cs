@@ -577,10 +577,10 @@ namespace Import.Services
             MC.Address output = new MC.Address()
             {
                 Name = input.Name,
-                Address1 = input.StreetAddress,
+                StreetAddress = input.StreetAddress,
                 //Address2 = input.Address2,
-                City = input.City,
-                Country = input.Country,
+                AddressLocality = input.City,
+                AddressCountry = input.Country,
                 AddressRegion = input.AddressRegion,
                 PostalCode = input.PostalCode,
 				Latitude = input.Latitude,
@@ -602,7 +602,7 @@ namespace Import.Services
             var output = new List<WPM.ProcessProfile>();
             foreach ( var input in profiles )
             {
-                var cp = new WPM.ProcessProfile
+                var pp = new WPM.ProcessProfile
                 {
                     DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
                     Description = input.Description,
@@ -614,28 +614,30 @@ namespace Import.Services
                     VerificationMethodDescription = input.VerificationMethodDescription
                 };
 
-                cp.SubjectWebpage = input.SubjectWebpage;
-                cp.ExternalInputType = MapCAOListToEnumermation( input.ExternalInputType );
-                cp.ProcessMethod = input.ProcessMethod ?? "";
-                cp.ProcessStandards = input.ProcessStandards ?? "";
-                cp.ScoringMethodExample = input.ScoringMethodExample ?? "";
-                cp.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
+                pp.SubjectWebpage = input.SubjectWebpage;
+                pp.ExternalInputType = MapCAOListToEnumermation( input.ExternalInputType );
+                pp.ProcessMethod = input.ProcessMethod ?? "";
+                pp.ProcessStandards = input.ProcessStandards ?? "";
+                pp.ScoringMethodExample = input.ScoringMethodExample ?? "";
+                pp.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
 
                 //while the profiles is a list, we are only handling single
-                cp.ProcessingAgentUid = MapOrganizationReferencesGuid( input.ProcessingAgent, ref status );
+                pp.ProcessingAgentUid = MapOrganizationReferencesGuid( input.ProcessingAgent, ref status );
 
                 //targets
                 if ( input.TargetCredential != null && input.TargetCredential.Count > 0 )
-                    cp.TargetCredentialIds = MapEntityReferences( input.TargetCredential, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
+                    pp.TargetCredentialIds = MapEntityReferences( input.TargetCredential, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status );
                 if ( input.TargetAssessment != null && input.TargetAssessment.Count > 0 )
-                    cp.TargetAssessmentIds = MapEntityReferences( input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
+                    pp.TargetAssessmentIds = MapEntityReferences( input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
                 if ( input.TargetLearningOpportunity != null && input.TargetLearningOpportunity.Count > 0 )
-                    cp.TargetLearningOpportunityIds = MapEntityReferences( input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
+                    pp.TargetLearningOpportunityIds = MapEntityReferences( input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
-                //if ( input.TargetCompetencyFramework != null && input.TargetCompetencyFramework.Count > 0 )
-                //
+				if ( input.TargetCompetencyFramework != null && input.TargetCompetencyFramework.Count > 0 )
+				{
+					pp.TargetCompetencyFrameworkIds = MapEntityReferences( input.TargetCompetencyFramework, CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, ref status );
+				}
 
-                output.Add( cp );
+				output.Add( pp );
             }
 
             return output;

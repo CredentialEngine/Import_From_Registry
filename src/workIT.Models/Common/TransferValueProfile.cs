@@ -20,10 +20,9 @@ namespace workIT.Models.Common
 			ceterms:subjectWebpage
 			ceterms:startDate
 			ceterms:endDate
-			ceterms:statusType
 			ceterms:identifier
 			ceterms:ownedBy
-			ceterms:derivedFrom
+			ceasn:derivedFrom
 			ceterms:transferValue
 			ceterms:transferValueFrom
 			ceterms:transferValueFor
@@ -119,12 +118,23 @@ namespace workIT.Models.Common
 		//public string ProfileGraph { get; set; }
 
 		#region Import
-		public List<Guid> DerivedFromForImport { get; set; } = new List<Guid>();
+		public List<int> DerivedFromForImport { get; set; } 
 
 		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueForImport { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueFromImport { get; set; } = new List<Guid>();
 
 		#endregion
+	}
+
+	public class Entity_TransferValueProfile
+	{
+		public int Id { get; set; }
+		public int EntityId { get; set; }
+		public int TransferValueProfileId { get; set; }
+		public System.DateTime Created { get; set; }
+
+		public TransferValueProfile TransferValueProfile { get; set; } = new TransferValueProfile();
+
 	}
 }

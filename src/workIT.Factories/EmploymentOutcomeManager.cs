@@ -18,7 +18,7 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
-
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -36,19 +36,22 @@ namespace workIT.Factories
 				//TODO - if one existing, and one input, do an update. We do have the CTID
 				//DeleteAll( parentEntity, ref status );
 				//
-				using ( var context = new EntityContext() )
-				{
-					var existing = context.Entity_EmploymentOutcomeProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
-					//
-					var result = existing.Where( ex => input.All( p2 => p2.CTID != ex.EmploymentOutcomeProfile.CTID ) );
-					var messages = new List<string>();
-					foreach ( var item in result )
-					{
-						Delete( item.Id, ref messages );
-					}
-					if ( messages.Any() )
-						status.AddErrorRange( messages );
-				}
+				//using ( var context = new EntityContext() )
+				//{
+
+				//var existing = context.Entity_EmploymentOutcomeProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
+				////
+				//var result = existing.Where( ex => input.All( p2 => p2.CTID != ex.EmploymentOutcomeProfile.CTID ) ).ToList();
+				//var messages = new List<string>();
+				//foreach ( var item in result )
+				//{
+				//	Delete( item.Id, ref messages );
+				//}
+				//if ( messages.Any() )
+				//	status.AddErrorRange( messages );
+				//}
+
+				DeleteAll( parentEntity, ref status );
 				if ( input == null || !input.Any() )
 					return true;
 
@@ -442,6 +445,9 @@ namespace workIT.Factories
 
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " EmploymentOutcomeProfile. Id: {0}, Ctid: {1}.", efEntity.Id, efEntity.CTID );
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( rowId, string.Format( "EmploymentOutcomeProfile: {0} ({1})", string.IsNullOrWhiteSpace(efEntity.Name) ? "none" : efEntity.Name, efEntity.Id), ref statusMessage );
 						//
 						context.EmploymentOutcomeProfile.Remove( efEntity );
 						int count = context.SaveChanges();
@@ -602,7 +608,11 @@ namespace workIT.Factories
 			//output.EntityStateId = input.EntityStateId;
 			output.Name = GetData( input.Name );
 			output.Description = GetData( input.Description );
-			output.JobsObtained = input.JobsObtained;
+			//output.JobsObtainedJson = input.JobsObtained;
+			input.JsonProperties.JobsObtainedList = input.JobsObtainedList;
+			//NOT proper. Decided to use a generic JsonProperties here. Will rename if any additional properties need to be added. 
+			output.JobsObtainedJson = JsonConvert.SerializeObject( input.JsonProperties );
+
 
 			output.Source = GetUrlData( input.Source );
 			if ( IsValidDate( input.DateEffective ) )
@@ -624,11 +634,21 @@ namespace workIT.Factories
 			output.Description = input.Description == null ? "" : input.Description;
 			output.CTID = input.CTID;
 			if ( IsValidDate( input.DateEffective ) )
-				output.DateEffective = ( ( DateTime )input.DateEffective ).ToShortDateString();
+				output.DateEffective = ( ( DateTime )input.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				output.DateEffective = "";
 			//
-			output.JobsObtained = input.JobsObtained ?? 0;
+			//output.JobsObtained = input.JobsObtained ?? 0;
+			if ( !string.IsNullOrEmpty( input.JobsObtainedJson ) )
+			{
+				var jp = JsonConvert.DeserializeObject<EmploymentOutcomeProfileProperties>( input.JobsObtainedJson );
+				if ( jp != null )
+				{
+					//unpack JobsObtainedList
+					output.JobsObtainedList = jp.JobsObtainedList;
+				}
+			}
+
 			output.Source = GetUrlData( input.Source );
 
 			if ( IsValidDate( input.Created ) )

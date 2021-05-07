@@ -88,7 +88,7 @@ namespace workIT.Factories
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
-						status.AddError( string.Format( "Error - this ConditionManifest has already been added to this profile.", thisClassName ) );
+						//status.AddError( string.Format( "Error - this ConditionManifest has already been added to this profile.", thisClassName ) );
 						return 0;
 					}
 
@@ -109,7 +109,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a ConditionManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, conditionManifestId: {2}", parent.EntityUid, parent.EntityType, conditionManifestId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
@@ -229,6 +229,8 @@ namespace workIT.Factories
         public static List<ConditionManifest> GetAll( Guid parentUid )
 		{
 			List<ConditionManifest> list = new List<ConditionManifest>();
+			if ( parentUid == null )
+				return list;
 			ConditionManifest entity = new ConditionManifest();
 
 			Entity parent = EntityManager.GetEntity( parentUid );

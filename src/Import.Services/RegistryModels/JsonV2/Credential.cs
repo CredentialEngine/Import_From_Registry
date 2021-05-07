@@ -96,12 +96,16 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:description" )]
         public LanguageMap Description { get; set; } = new LanguageMap();
 
+		[JsonProperty( PropertyName = "ceterms:aggregateData" )]
+		public List<AggregateDataProfile> AggregateData { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:dateEffective" )]
+		[JsonProperty( PropertyName = "ceterms:dateEffective" )]
         public string DateEffective { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:expirationDate" )]
+		public string ExpirationDate { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:alternateName" )]
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
         public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
 
         [JsonProperty( PropertyName = "ceterms:image" )]
@@ -121,13 +125,20 @@ namespace RA.Models.JsonV2
 
 		//TODO - this may change to URIs
 		//		- in this case, the earningProfile should have a credential reference like
+		[JsonProperty( PropertyName = "ceterms:earningsList" )]
+		public List<EarningsProfile> EarningsList { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:earnings" )]
 		public List<string> Earnings { get; set; }
-
+	
 		//TODO - this may change to URIs
 		//		- in this case, the employmentOutcomeProfile should have a credential reference like employmentOutcomeProfileFor
+		[JsonProperty( PropertyName = "ceterms:employmentOutcomeList" )]
+		public List<EmploymentOutcomeProfile> EmploymentOutcomeList { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:employmentOutcome" )]
 		public List<string> EmploymentOutcome { get; set; }
+
 
 		/// <summary>
 		/// HasETPLResource
@@ -140,10 +151,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasPart" )]
 		public List<string> HasPart { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:holdersList" )]
+		public List<HoldersProfile> HoldersList { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:holders" )]
 		public List<string> Holders { get; set; }
 
-		[ JsonProperty( PropertyName = "ceterms:isPartOf" )]
+		[JsonProperty( PropertyName = "ceterms:isPartOf" )]
 		public List<string> IsPartOf { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:availabilityListing" )]
@@ -369,6 +383,8 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:revocation" )]
         public List<RevocationProfile> Revocation { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:targetPathway" )]
+		public List<string> TargetPathway { get; set; }
 
 		#region BYs
 		/// <summary>
@@ -446,7 +462,7 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:dateEffective" )]
         public string DateEffective { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:jurisdiction" )]
+		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
         public List<JurisdictionProfile> Jurisdiction { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:revocationCriteria" )]

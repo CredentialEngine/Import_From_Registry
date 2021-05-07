@@ -243,10 +243,10 @@ namespace ImportHelpers
 							return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
 						//break;
 						case "conditionmanifest":
-							return new ImportAssessment().CustomProcessEnvelope( envelope, status );
+							return new ImportConditionManifests().CustomProcessEnvelope( envelope, status );
 						//break;
 						case "costmanifest":
-							return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
+							return new ImportCostManifests().CustomProcessEnvelope( envelope, status );
 						case "competencyframework":
 							return new ImportCompetencyFramesworks().CustomProcessEnvelope( envelope, status );
 						case "pathway":

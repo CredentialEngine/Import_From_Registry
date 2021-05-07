@@ -36,19 +36,22 @@ namespace workIT.Factories
 				//TODO - if one existing, and one input, do an update. We do have the CTID
 				//DeleteAll( parentEntity, ref status );
 				//
-				using ( var context = new EntityContext() )
-				{
-					var existing = context.Entity_HoldersProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
-					//
-					var result = existing.Where( ex => input.All( p2 => p2.CTID.ToLower() != ex.HoldersProfile.CTID.ToLower() ) );
-					var messages = new List<string>();
-					foreach (var item in result )
-					{
-						Delete( item.Id, ref messages );
-					}
-					if ( messages.Any() )
-						status.AddErrorRange( messages );
-				}
+				//using ( var context = new EntityContext() )
+				//{
+				//	var existing = context.Entity_HoldersProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
+				//	//
+
+
+				//	//var result = existing.Where( ex => input.All( p2 => p2.CTID.ToLower() != ex.HoldersProfile.CTID.ToLower() ) ).ToList();
+				//	//var messages = new List<string>();
+				//	//foreach (var item in result )
+				//	//{
+				//	//	Delete( item.Id, ref messages );
+				//	//}
+				//	//if ( messages.Any() )
+				//	//	status.AddErrorRange( messages );
+				//}
+				DeleteAll( parentEntity, ref status );
 				if ( input == null || !input.Any() )
 					return true;
 
@@ -430,11 +433,14 @@ namespace workIT.Factories
 						Guid rowId = efEntity.RowId;
 						//need to remove from Entity.
 
-						//need to trigger delete of relevant dataset, timeframe, and 
+						//need to trigger delete of relevant dataset, timeframe, and dataprofile
 						new DataSetProfileManager().DeleteAll( rowId, ref messages );						
 						
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " HoldersProfile. Id: {0}, Ctid: {1}.", efEntity.Id, efEntity.CTID );
+						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
+						string statusMessage = "";
+						new EntityManager().Delete( rowId, string.Format( "HoldersProfile: {0} ({1})", efEntity.Name ?? "none", efEntity.Id ), ref statusMessage );
 						//
 						context.HoldersProfile.Remove( efEntity );
 						int count = context.SaveChanges();
@@ -641,7 +647,7 @@ namespace workIT.Factories
 			output.Description = input.Description == null ? "" : input.Description;
 			output.CTID = input.CTID;
 			if ( IsValidDate( input.DateEffective ) )
-				output.DateEffective = ( ( DateTime )input.DateEffective ).ToShortDateString();
+				output.DateEffective = ( ( DateTime )input.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				output.DateEffective = "";
 			//

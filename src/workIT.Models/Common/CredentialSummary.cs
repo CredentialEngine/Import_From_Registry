@@ -83,6 +83,8 @@ namespace workIT.Models.Common
 		public int RequiredLoppCount { get; set; }
 		public int RecommendedLoppCount { get; set; }
 		//
+		public int AggregateDataProfileCount { get; set; }
+		public string AggregateDataProfileSummary { get; set; }
 		public int HoldersProfileCount { get; set; }
 		public string HoldersProfileSummary { get; set; }
 		public int EarningsProfileCount { get; set; }

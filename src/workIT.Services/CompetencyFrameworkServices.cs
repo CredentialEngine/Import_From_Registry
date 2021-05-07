@@ -114,8 +114,8 @@ namespace workIT.Services
 						Name = item.Name,
 						Description = item.Description,
 						SourceUrl = item.SourceUrl,
-						OrganizationName = item.PrimaryOrganizationName,
-						CTID = item.CTID
+						CTID = item.CTID,
+						OwningOrganization = item.OwnerOrganizationId == 0 ? null : new Organization() { Id = item.OwnerOrganizationId, Name=item.PrimaryOrganizationName} 
 						//EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
 						//EntityType = "CompetencyFramework"
 					} );
@@ -494,80 +494,80 @@ namespace workIT.Services
 
 		//Bypass SPARQL and get multiple raw description sets using the new-new methods
 		//Not sure if this needs to go through the accounts system somehow? Maybe logging at the end? We don't currently log the existing framework queries done via the finder.
-		//public static RegistryDescriptionSetResponse GetCompetencyFrameworkDescriptionSetsDirectlyFromRegistryAPI( List<string> ctids, bool includeResources = false, int relatedItemsLimit = 10, bool allowCache = true )
-		//{
-		//	var result = new RegistryDescriptionSetResponse();
-		//	result.Debug[ "CTIDs" ] = JArray.FromObject( ctids );
-		//	var cacheURI = string.Join( ",", ctids.OrderBy( m => m ).ToList() );
-		//	if ( allowCache )
-		//	{
-		//		//Try to get the data from the cache
-		//		//TODO: Once the CTID bug is fixed, do this by CTID: https://github.com/CredentialEngine/CredentialRegistry/issues/399#issuecomment-782138617
-		//		//For now just mash them all together
-		//		var cachedData = MemoryCache.Default.Get( cacheURI );
-		//		if ( cachedData != null )
-		//		{
-		//			result.Data = JObject.Parse( ( string ) cachedData ).ToObject<RegistryDescriptionSet>();
-		//			result.Valid = true;
-		//			return result;
-		//		}
-		//	}
+		public static RegistryDescriptionSetResponse GetCompetencyFrameworkDescriptionSetsDirectlyFromRegistryAPI( List<string> ctids, bool includeResources = false, int relatedItemsLimit = 10, bool allowCache = true )
+		{
+			var result = new RegistryDescriptionSetResponse();
+			result.Debug[ "CTIDs" ] = JArray.FromObject( ctids );
+			var cacheURI = string.Join( ",", ctids.OrderBy( m => m ).ToList() );
+			if ( allowCache )
+			{
+				//Try to get the data from the cache
+				//TODO: Once the CTID bug is fixed, do this by CTID: https://github.com/CredentialEngine/CredentialRegistry/issues/399#issuecomment-782138617
+				//For now just mash them all together
+				var cachedData = MemoryCache.Default.Get( cacheURI );
+				if ( cachedData != null )
+				{
+					result.Data = JObject.Parse( ( string ) cachedData ).ToObject<RegistryDescriptionSet>();
+					result.Valid = true;
+					return result;
+				}
+			}
 
-		//	//Setup the request
-		//	var requestData = new JObject()
-		//	{
-		//		{ "ctids", JArray.FromObject( ctids ) },
-		//		{ "include_resources", includeResources }
-		//	};
+			//Setup the request
+			var requestData = new JObject()
+			{
+				{ "ctids", JArray.FromObject( ctids ) },
+				{ "include_resources", includeResources }
+			};
 
-		//	//Indicate whether or not to include related resources for each branch of the description set
-		//	//Use 0 to return empty arrays; useful if you just want the totals
-		//	//Use -1 to return everything
-		//	if( relatedItemsLimit > -1 )
-		//	{
-		//		requestData[ "per_branch_limit" ] = relatedItemsLimit;
-		//	}
+			//Indicate whether or not to include related resources for each branch of the description set
+			//Use 0 to return empty arrays; useful if you just want the totals
+			//Use -1 to return everything
+			if( relatedItemsLimit > -1 )
+			{
+				requestData[ "per_branch_limit" ] = relatedItemsLimit;
+			}
 
-		//	//Setup the client
-		//	var apiKey = ConfigHelper.GetConfigValue( "CredentialRegistryAuthorizationToken", "" );
-		//	var directAPIendpoint = ConfigHelper.GetConfigValue( "GetRawDescriptionSetsByCTIDsDirectlyFromRegistryEndpoint", "" );
-		//	var client = new HttpClient();
-		//	client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
+			//Setup the client
+			var apiKey = ConfigHelper.GetConfigValue( "CredentialRegistryAuthorizationToken", "" );
+			var directAPIendpoint = ConfigHelper.GetConfigValue( "GetRawDescriptionSetsByCTIDsDirectlyFromRegistryEndpoint", "" );
+			var client = new HttpClient();
+			client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
 
-		//	//Do the request
-		//	var requestJSON = requestData.ToString( Formatting.None );
-		//	var httpResult = client.PostAsync( directAPIendpoint, new StringContent( requestJSON, Encoding.UTF8, "application/json" ) ).Result;
-		//	if ( httpResult.IsSuccessStatusCode )
-		//	{
-		//		//Read and store the raw result
-		//		var rawResult = httpResult.Content.ReadAsStringAsync().Result;
-		//		result.Debug[ "Raw Response" ] = rawResult;
+			//Do the request
+			var requestJSON = requestData.ToString( Formatting.None );
+			var httpResult = client.PostAsync( directAPIendpoint, new StringContent( requestJSON, Encoding.UTF8, "application/json" ) ).Result;
+			if ( httpResult.IsSuccessStatusCode )
+			{
+				//Read and store the raw result
+				var rawResult = httpResult.Content.ReadAsStringAsync().Result;
+				result.Debug[ "Raw Response" ] = rawResult;
 
-		//		try
-		//		{
-		//			//Parse the result
-		//			result.Data = JObject.Parse( rawResult ).ToObject<RegistryDescriptionSet>();
-		//			result.Valid = true;
+				try
+				{
+					//Parse the result
+					result.Data = JObject.Parse( rawResult ).ToObject<RegistryDescriptionSet>();
+					result.Valid = true;
 
-		//			//Cache the success
-		//			MemoryCache.Default.Remove( cacheURI );
-		//			MemoryCache.Default.Add( cacheURI, rawResult, DateTime.Now.AddMinutes( 15 ) );
-		//		}
-		//		catch( Exception e )
-		//		{
-		//			result.Valid = false;
-		//			result.Messages.Add( "Error parsing response: " + e.Message );
-		//		}
-		//	}
-		//	else
-		//	{
-		//		result.Valid = false;
-		//		result.Messages.Add( "Error loading data: " + httpResult.ReasonPhrase );
-		//		result.Messages.Add( "Error code: " + httpResult.StatusCode.ToString() );
-		//	}
+					//Cache the success
+					MemoryCache.Default.Remove( cacheURI );
+					MemoryCache.Default.Add( cacheURI, rawResult, DateTime.Now.AddMinutes( 15 ) );
+				}
+				catch( Exception e )
+				{
+					result.Valid = false;
+					result.Messages.Add( "Error parsing response: " + e.Message );
+				}
+			}
+			else
+			{
+				result.Valid = false;
+				result.Messages.Add( "Error loading data: " + httpResult.ReasonPhrase );
+				result.Messages.Add( "Error code: " + httpResult.StatusCode.ToString() );
+			}
 
-		//	return result;
-		//}
+			return result;
+		}
 
 		//Use the Credential Registry to search for competency frameworks
 		public static CTDLAPICompetencyFrameworkResultSet SearchViaRegistry( MainSearchInput data, bool asDescriptionSet = false )

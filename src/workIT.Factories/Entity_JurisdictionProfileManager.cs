@@ -332,6 +332,8 @@ namespace workIT.Factories
 			//efEntity.JProfilePurposeId
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
+			if ( parentUid == null )
+				return list;
 			int count = 0;
 
 			MC.Entity  parent = EntityManager.GetEntity( parentUid );
@@ -953,7 +955,7 @@ namespace workIT.Factories
 				to.Longitude = ( double ) from.Longitude;
 			to.GeoURI = from.Url;
 			to.ProfileSummary = to.Name;
-			if ( !string.IsNullOrWhiteSpace( to.Region ) )
+			if ( !string.IsNullOrWhiteSpace( to.Region ) && to.Name != to.Region )
 			{
 				to.ProfileSummary += ", " + to.Region;
 			}

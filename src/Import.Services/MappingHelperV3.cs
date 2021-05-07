@@ -291,6 +291,46 @@ namespace Import.Services
 			return output;
 		}
 
+		public List<WPM.TextValueProfile> MapInLanguageToTextValueProfile( List<string> list, string property )
+		{
+			List<WPM.TextValueProfile> output = new List<WPM.TextValueProfile>();
+			lastLanguageMapListString = "";
+			if ( list == null || !list.Any() )
+			{
+				return output;
+			}
+			foreach ( var lang in list )
+			{
+				if ( !string.IsNullOrWhiteSpace( lang ) )
+				{
+					//21-04-05 mp - new try to retain the original language code
+					var language = CodesManager.GetLanguage( lang );
+					if ( language != null && language.Id > 0 )
+					{
+						output.Add( new WPM.TextValueProfile()
+						{
+							CodeId = language.CodeId,
+							TextTitle = language.Name,
+							TextValue = language.Value
+						} );
+					} else
+					{
+						LoggingHelper.DoTrace( 1, string.Format( "Unknown language code encountered: {0} for {1}", lang, property ) );
+						//???
+						output.Add( new WPM.TextValueProfile()
+						{
+							CodeId = 0,
+							TextTitle = lang,
+							TextValue = lang
+						} );
+					}
+				}
+			}
+
+			return output;
+
+		}
+
 		public List<WPM.TextValueProfile> MapToTextValueProfile( MJ.LanguageMapList list, MC.BaseObject bo, string property, bool savingLastEntityMap = true, string languageCode = "en" )
 		{
 			List<WPM.TextValueProfile> output = new List<WPM.TextValueProfile>();
@@ -527,7 +567,7 @@ namespace Import.Services
 		/// <param name="property"></param>
 		/// <param name="isCreditValue"></param>
 		/// <returns></returns>
-		public List<MC.QuantitativeValue> HandleValueProfileListToQVList( List<MJ.ValueProfile> list, string property, bool isCreditValue = true )
+		public List<MC.QuantitativeValue> HandleValueProfileListToQVList( List<MJ.ValueProfile> list, string property)
 		{
 			var output = new List<MC.QuantitativeValue>();
 			MC.QuantitativeValue profile = new MC.QuantitativeValue();
@@ -605,7 +645,9 @@ namespace Import.Services
 			//
 			output.CreditUnitType = MapCAOListToEnumermation( input.CreditUnitType );
 			output.CreditLevelType = MapCAOListToEnumermation( input.CreditLevelType );
-			output.Subject = MapCAOListToEnumermation( input.Subject );
+			output.CreditLevelType.Name = "Credit Level Type";
+			output.Subject = MapCAOListToEnumermation( input.Subject, false );
+			//output.SubjectList = MapCAOListToList( input.Subject );
 			return output;
 		}
 
@@ -724,7 +766,8 @@ namespace Import.Services
 		#endregion
 
 		#region  CredentialAlignmentObject
-		public MC.Enumeration MapCAOListToEnumermation( List<MJ.CredentialAlignmentObject> input )
+		//
+		public MC.Enumeration MapCAOListToEnumermation( List<MJ.CredentialAlignmentObject> input, bool isForConceptScheme = true )
 		{
 			//TBD = do we need anything for emumeration, or just items?
 			MC.Enumeration output = new workIT.Models.Common.Enumeration();
@@ -741,12 +784,24 @@ namespace Import.Services
 
 				if ( item != null && ( item.TargetNode != null || !string.IsNullOrEmpty( nodeName ) ) )
 				{
-					output.Items.Add( new workIT.Models.Common.EnumeratedItem()
+					var ei = new workIT.Models.Common.EnumeratedItem()
 					{
 						SchemaName = item.TargetNode ?? "",
 						Name = nodeName ?? "",
 						LanguageMapString = lastLanguageMapString
-					} );
+					};
+					var codeItem = CodesManager.GetPropertyBySchema( item.TargetNode );
+					if (codeItem != null && codeItem.Id > 0)
+					{
+						ei.Id = codeItem.Id;
+						if ( isForConceptScheme )
+						{
+							output.Id = codeItem.CategoryId;
+							output.Name = codeItem.Category;
+						}
+					}
+					output.Items.Add( ei );
+					//do a direct look up of the PropertyValueId using TargetNode. ex: creditUnit:DegreeCredit
 				}
 
 			}
@@ -1052,6 +1107,7 @@ namespace Import.Services
 
 							//cp.ContactOption = MapListToString( cpi.ContactOption );
 							PhoneNumbers = cpi.PhoneNumbers,
+							FaxNumber = cpi.FaxNumber,
 							Emails = cpi.Emails,
 							SocialMediaPages = cpi.SocialMediaPages
 						};
@@ -1099,6 +1155,7 @@ namespace Import.Services
 						};
 						//cp.ContactOption = MapListToString( cpi.ContactOption );
 						cp.PhoneNumbers = cpi.PhoneNumbers;
+						cp.FaxNumber = cpi.FaxNumber;
 						cp.Emails = cpi.Emails;
 						cp.SocialMediaPages = cpi.SocialMediaPages;
 
@@ -1186,7 +1243,9 @@ namespace Import.Services
 					foreach ( var item in jp.JurisdictionException )
 					{
 						gc = new MC.GeoCoordinates();
+						
 						gc = ResolveGeoCoordinates( item );
+						gc.IsException = true;
 						if ( !string.IsNullOrWhiteSpace( item.PostalCode ) )
 						{
 							gc.Address = MapAddress( item );
@@ -1259,16 +1318,18 @@ namespace Import.Services
 			MC.Address output = new MC.Address()
 			{
 				PostalCode = input.PostalCode,
+				PostOfficeBoxNumber=input.PostOfficeBoxNumber,
 				Latitude = input.Latitude,
 				Longitude = input.Longitude
 			};
 			output.Name = HandleLanguageMap( input.Name, currentBaseObject, "PlaceName", false );
+			output.Description = HandleLanguageMap( input.Description, currentBaseObject, "Place.Description", false );
 			output.Name_Map = lastLanguageMapString;
 
-			output.Address1 = HandleLanguageMap( input.StreetAddress, currentBaseObject, "StreetAddress", false );
+			output.StreetAddress = HandleLanguageMap( input.StreetAddress, currentBaseObject, "StreetAddress", false );
 			output.Address1_Map = lastLanguageMapString;
 
-			output.City = HandleLanguageMap( input.City, currentBaseObject, "City", false );
+			output.AddressLocality = HandleLanguageMap( input.City, currentBaseObject, "City", false );
 			output.City_Map = lastLanguageMapString;
 
 			output.AddressRegion = HandleLanguageMap( input.AddressRegion, currentBaseObject, "AddressRegion", false );
@@ -1278,8 +1339,14 @@ namespace Import.Services
 			output.AddressRegion_Map = lastLanguageMapString;
 			output.SubRegion = HandleLanguageMap( input.SubRegion, currentBaseObject, "SubRegion", false );
 
-			output.Country = HandleLanguageMap( input.Country, currentBaseObject, "Country", false );
+			output.AddressCountry = HandleLanguageMap( input.Country, currentBaseObject, "Country", false );
 			output.Country_Map = lastLanguageMapString;
+
+			output.Identifier = MapIdentifierValueList( input.Identifier );
+			if ( output.Identifier != null && output.Identifier.Count() > 0 )
+			{
+				output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+			}
 			return output;
 		}
 
@@ -1309,7 +1376,9 @@ namespace Import.Services
 				profile.VerificationMethodDescription = HandleLanguageMap( input.VerificationMethodDescription, profile, "VerificationMethodDescription", true );
 
 				profile.SubjectWebpage = input.SubjectWebpage;
+				profile.DataCollectionMethodType = MapCAOListToEnumermation( input.DataCollectionMethodType );
 				profile.ExternalInputType = MapCAOListToEnumermation( input.ExternalInputType );
+
 				profile.ProcessMethod = input.ProcessMethod ?? "";
 				profile.ProcessStandards = input.ProcessStandards ?? "";
 				profile.ScoringMethodExample = input.ScoringMethodExample ?? "";
@@ -1326,7 +1395,10 @@ namespace Import.Services
 				if ( input.TargetLearningOpportunity != null && input.TargetLearningOpportunity.Count > 0 )
 					profile.TargetLearningOpportunityIds = MapEntityReferences( "ProcessProfile.TargetLearningOpportunity", input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
-				//if ( input.TargetCompetencyFramework != null && input.TargetCompetencyFramework.Count > 0 )
+				if ( input.TargetCompetencyFramework != null && input.TargetCompetencyFramework.Count > 0 )
+				{
+					profile.TargetCompetencyFrameworkIds = MapEntityReferences( "ProcessProfile.TargetCompetencyFramework", input.TargetCompetencyFramework, CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, ref status );
+				}
 				//
 
 				output.Add( profile );
@@ -1336,6 +1408,73 @@ namespace Import.Services
 		}
 		#endregion
 		#region  Earnings, Holders profile
+		public List<MC.AggregateDataProfile> FormatAggregateDataProfile( string parentCTID, List<MJ.AggregateDataProfile> profiles, OutcomesDTO outcomesDTO, List<BNode> bnodes, ref SaveStatus status )
+		{
+			if ( profiles == null || profiles.Count == 0 )
+				return null;
+
+			var output = new List<MC.AggregateDataProfile>();
+			foreach ( var input in profiles )
+			{
+				if ( input == null )
+					continue;
+				Guid rowId = Guid.NewGuid();
+				var profile = new MC.AggregateDataProfile
+				{
+					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
+					Currency = input.Currency,
+					CurrencySymbol = input.Currency,//???
+					HighEarnings = input.HighEarnings,
+					LowEarnings = input.LowEarnings,
+					MedianEarnings = input.MedianEarnings,
+					PostReceiptMonths = input.PostReceiptMonths
+				};
+				profile.Name = HandleLanguageMap( input.Name, "Name", true );
+				profile.Source = input.Source;
+				profile.Description = HandleLanguageMap( input.Description, "Description", true );
+				profile.DemographicInformation = HandleLanguageMap( input.DemographicInformation, "DemographicInformation", true );
+				//
+				if ( input.JobsObtained != null && input.JobsObtained.Any() )
+				{
+					profile.JobsObtained = HandleQuantitiveValueList( input.JobsObtained, "AggregateDataProfile.JobsObtained", false );
+				}
+				//handle: RelevantDataSet
+				if ( input.RelevantDataSet != null && input.RelevantDataSet.Any() )
+				{
+					//this will be a list of URIs
+					foreach ( var item in input.RelevantDataSet )
+					{
+						//could use URI, but will use ctid
+						var ctid = ResolutionServices.ExtractCtid( item );
+						if ( string.IsNullOrWhiteSpace( ctid ) )
+						{
+							status.AddError( string.Format( "Error: Unable to derive a ctid from the AggregateDataProfile.RelevantDataSet for AggregateDataProfile (parentCTID: '{0}') using RelevantDataSet URI: '{1}'", parentCTID, item ) );
+							continue;
+						}
+						//get dataset profile
+						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.CTID == ctid );
+						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID ) )
+						{
+							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for AggregateDataProfile (parentCTID: '{0}') using dataSetProfile CTID: '{1}'", parentCTID, ctid ) );
+							continue;
+						}
+						//TBD - now passing parentCTID, rather than profile CTID (as we don't have one). OK??? - should be, just for display
+						var dspo = FormatDataSetProfile( parentCTID, dspi, outcomesDTO, ref status );
+						//may want to store the ctid, although will likely use relationships, or store the json
+						if ( dspo != null )
+						{
+							//this is not current used
+							profile.RelevantDataSetList.Add( dspo.CTID );
+							profile.RelevantDataSet.Add( dspo );
+						}
+					}
+				}
+				output.Add( profile );
+			}
+
+			return output;
+		}
+
 		public List<MC.EarningsProfile> FormatEarningsProfile( List<MJ.EarningsProfile> profiles, OutcomesDTO outcomesDTO, List<BNode> bnodes, ref SaveStatus status )
 		{
 			if ( profiles == null || profiles.Count == 0 )
@@ -1463,6 +1602,14 @@ namespace Import.Services
 			return output;
 		}
 		//
+		/// <summary>
+		/// Format a DataSetProfile
+		/// </summary>
+		/// <param name="parentCTID">21-02-25 - this will be the credential CTID for an AggDataProfile</param>
+		/// <param name="input"></param>
+		/// <param name="outcomesDTO"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
 		public MCQ.DataSetProfile FormatDataSetProfile( string parentCTID, MJ.QData.DataSetProfile input, OutcomesDTO outcomesDTO, ref SaveStatus status )
 		{
 			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetProfile. parentCTID: {0}, CTID: {1}, ", parentCTID, input.CTID ) );
@@ -1489,36 +1636,75 @@ namespace Import.Services
 			output.Jurisdiction = MapToJurisdiction( input.Jurisdiction, ref status );
 			output.InstructionalProgramTypes = MapCAOListToCAOProfileList( input.InstructionalProgramType );
 
-			if ( input.DataSetTimePeriod != null && input.DataSetTimePeriod.Any() )
+			try
 			{
-				//this will be a list of Bnode URIs
-				foreach ( var item in input.DataSetTimePeriod )
+
+				if ( input.DataSetTimePeriod != null && input.DataSetTimePeriod.Any() )
 				{
-					var dspi = outcomesDTO.DataSetTimeFrames.FirstOrDefault( s => s.CtdlId.ToLower() == item.ToLower() );
-					if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CtdlId ) )
+					//
+					//this will now be a list of DataSetTimeFrame
+					//and will not have ctdlId
+					foreach ( var item in input.DataSetTimePeriod )
 					{
-						status.AddError( string.Format( "Error: Unable to find the DataSetTimeFrame for DataSetProfile (CTID: '{0}') using DataSetTimePeriod BNodeID: '{1}', parent CTID: '{2}'", input.CTID, item, parentCTID ) );
-						continue;
-					}
-					var dspo = FormatDataSetTimeFrame( input.CTID, dspi, outcomesDTO, ref status );
-					//maybe
-					if ( dspo != null )
-					{
-						output.DataSetTimePeriodList.Add( dspo.bnID );
-						output.DataSetTimePeriod.Add( dspo );
+						var dspo = FormatDataSetTimeFrame( input.CTID, item, outcomesDTO, ref status );
+						if ( dspo != null )
+						{
+							output.DataSetTimePeriod.Add( dspo );
+						}
 					}
 				}
+				//else if ( input.DataSetTimePeriodList2 != null && input.DataSetTimePeriodList2.Any() )
+				//{
+				//	//
+				//	//this will now be a list of DataSetTimeFrame
+				//	//and will not have ctdlId
+				//	foreach ( var item in input.DataSetTimePeriodList2 )
+				//	{
+				//		var dspo = FormatDataSetTimeFrame( input.CTID, item, outcomesDTO, ref status );
+				//		//maybe
+				//		if ( dspo != null )
+				//		{
+				//			//will not have a blank node id
+				//			//output.DataSetTimePeriodList.Add( dspo.bnID );
+				//			output.DataSetTimePeriod.Add( dspo );
+				//		}
+				//	}
+				//}
+				//else if ( input.DataSetTimePeriodBNList != null && input.DataSetTimePeriodBNList.Any() )
+				//{
+				//	//this will be a list of Bnode URIs
+				//	foreach ( var item in input.DataSetTimePeriodBNList )
+				//	{
+				//		var dspi = outcomesDTO.DataSetTimeFrames.FirstOrDefault( s => s.CtdlId.ToLower() == item.ToLower() );
+				//		if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CtdlId ) )
+				//		{
+				//			status.AddError( string.Format( "Error: Unable to find the DataSetTimeFrame for DataSetProfile (CTID: '{0}') using DataSetTimePeriod BNodeID: '{1}', parent CTID: '{2}'", input.CTID, item, parentCTID ) );
+				//			continue;
+				//		}
+				//		var dspo = FormatDataSetTimeFrame( input.CTID, dspi, outcomesDTO, ref status );
+				//		//maybe
+				//		if ( dspo != null )
+				//		{
+				//			output.DataSetTimePeriodList.Add( dspo.bnID );
+				//			output.DataSetTimePeriod.Add( dspo );
+				//		}
+				//	}
+				//}
 			}
-
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "FormatDataSetProfile for parentCTID: " + parentCTID );
+			}
 			return output;
 		}
 		//
 		public MCQ.DataSetTimeFrame FormatDataSetTimeFrame( string parentCTID, MJ.QData.DataSetTimeFrame input, OutcomesDTO outcomesDTO, ref SaveStatus status )
 		{
-			if ( input == null || string.IsNullOrWhiteSpace( input.CtdlId ) )
+			//|| string.IsNullOrWhiteSpace( input.CtdlId )
+			if ( input == null  )
 				return null;
 
-			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetTimeFrame. parentCTID: {0}, bnID: {1}, ", parentCTID, input.CtdlId ) );
+			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetTimeFrame. parentCTID: {0}, Name: {1}, ", parentCTID, input.Name ) );
 
 			var output = new MCQ.DataSetTimeFrame()
 			{
@@ -1533,39 +1719,61 @@ namespace Import.Services
 			//output.DataSourceCoverageType = MapCAOListToEnumermation( input.DataSourceCoverageType );
 			output.DataSourceCoverageTypeList = MapCAOListToList( input.DataSourceCoverageType );
 
-			if ( input.DataAttributes != null && input.DataAttributes.Any() )
+			try
 			{
-				//this will be a list bnode ids
-				foreach ( var item in input.DataAttributes )
+				if ( input.DataAttributes != null && input.DataAttributes.Any() )
 				{
-					//
-					var dspi = outcomesDTO.DataProfiles.FirstOrDefault( s => s.CtdlId.ToLower() == item.ToLower() );
-					if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CtdlId ) )
+					foreach ( var item in input.DataAttributes )
 					{
-						status.AddError( string.Format( "Error: Unable to find the DataProfile for DataSetTimeFrame (BNID: '{0}') using DataProfile BNodeID: '{1}', parent CTID: '{2}'", input.CtdlId, item, parentCTID ) );
-						continue;
+						var dspo = FormatDataProfiles( parentCTID, item, outcomesDTO, ref status );
+						//may want to store the ctid, although will likely use relationships, or store the json
+						if ( dspo != null )
+						{
+							//output.DataAttributesList.Add( dspo.bnID );
+							output.DataAttributes.Add( dspo );
+						}
 					}
-					var dspo = FormatDataProfiles( dspi, outcomesDTO, ref status );
-					//may want to store the ctid, although will likely use relationships, or store the json
-					if (dspo != null)
-					{
-						output.DataAttributesList.Add( dspo.bnID );
-						output.DataAttributes.Add( dspo );
-					}					
 				}
+				//else if ( input.DataAttributesBNList != null && input.DataAttributesBNList.Any() )
+				//{
+				//	//this will be a list bnode ids
+				//	foreach ( var item in input.DataAttributesBNList )
+				//	{
+				//		//
+				//		var dspi = outcomesDTO.DataProfiles.FirstOrDefault( s => s.CtdlId.ToLower() == item.ToLower() );
+				//		if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CtdlId ) )
+				//		{
+				//			status.AddError( string.Format( "Error: Unable to find the DataProfile for DataSetTimeFrame (BNID: '{0}') using DataProfile BNodeID: '{1}', parent CTID: '{2}'", input.CtdlId, item, parentCTID ) );
+				//			continue;
+				//		}
+				//		var dspo = FormatDataProfiles( parentCTID, dspi, outcomesDTO, ref status );
+				//		//may want to store the ctid, although will likely use relationships, or store the json
+				//		if ( dspo != null )
+				//		{
+				//			output.DataAttributesList.Add( dspo.bnID );
+				//			output.DataAttributes.Add( dspo );
+				//		}
+				//	}
+				//}
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "FormatDataSetTimeFrame for parentCTID: " + parentCTID );
 			}
 			return output;
 		}
 		//
-		public MCQ.DataProfile FormatDataProfiles( MJ.QData.DataProfile input, OutcomesDTO outcomesDTO, ref SaveStatus status )
+		public MCQ.DataProfile FormatDataProfiles( string parentCTID, MJ.QData.DataProfile input, OutcomesDTO outcomesDTO, ref SaveStatus status )
 		{
-			if ( input == null || string.IsNullOrWhiteSpace( input.CtdlId ) )
+			//|| string.IsNullOrWhiteSpace( input.CtdlId )
+			if ( input == null  )
 				return null;
 			MCQ.DataProfileJson qdSummary = new MCQ.DataProfileJson();
-			LoggingHelper.DoTrace( 7, "FormatDataProfiles. bnID: " + input.CtdlId );
+			LoggingHelper.DoTrace( 7, "FormatDataProfiles. parentCTID: " + parentCTID );
 			var output = new MCQ.DataProfile()
 			{
-				bnID = input.CtdlId,
+				//bnID = input.CtdlId,
 				//Adjustment = HandleLanguageMap( input.Adjustment, "Adjustment" ),
 				AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType ),
 				Description = HandleLanguageMap( input.Description, "Description" ),
@@ -1578,54 +1786,63 @@ namespace Import.Services
 			//output.AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType );
 			output.AdministrativeRecordTypeList = MapCAOToList( input.AdministrativeRecordType );
 			//
-			output.DataProfileAttributes = new MCQ.DataProfileAttributes()
+			try
 			{
-				Adjustment = HandleLanguageMap( input.Adjustment, "Adjustment" ),
-				//AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType ),
-				EarningsDefinition = HandleLanguageMap( input.EarningsDefinition, "EarningsDefinition" ),
-				EarningsThreshold = HandleLanguageMap( input.EarningsThreshold, "EarningsThreshold" ),
-				EmploymentDefinition = HandleLanguageMap( input.EmploymentDefinition, "EmploymentDefinition" ),
-				//IncomeDeterminationType = MapCAOToEnumermation( input.IncomeDeterminationType ),
-				WorkTimeThreshold = HandleLanguageMap( input.WorkTimeThreshold, "WorkTimeThreshold" ),
-			};
-			//EarningsAmount
-			output.DataProfileAttributes.EarningsAmount = FormatMonetaryAmount( input.EarningsAmount, ref status );
-			//EarningsDistribution
-			output.DataProfileAttributes.EarningsDistribution = FormatMonetaryAmountDistribution( input.EarningsDistribution, ref status );
+				output.DataProfileAttributes = new MCQ.DataProfileAttributes()
+				{
+					Adjustment = HandleLanguageMap( input.Adjustment, "Adjustment" ),
+					//AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType ),
+					EarningsDefinition = HandleLanguageMap( input.EarningsDefinition, "EarningsDefinition" ),
+					EarningsThreshold = HandleLanguageMap( input.EarningsThreshold, "EarningsThreshold" ),
+					EmploymentDefinition = HandleLanguageMap( input.EmploymentDefinition, "EmploymentDefinition" ),
+					//IncomeDeterminationType = MapCAOToEnumermation( input.IncomeDeterminationType ),
+					WorkTimeThreshold = HandleLanguageMap( input.WorkTimeThreshold, "WorkTimeThreshold" ),
+				};
+				//EarningsAmount
+				output.DataProfileAttributes.EarningsAmount = FormatMonetaryAmount( input.EarningsAmount, ref status );
+				//EarningsDistribution
+				output.DataProfileAttributes.EarningsDistribution = FormatMonetaryAmountDistribution( input.EarningsDistribution, ref status );
 
-			//SubjectExcluded, SubjectIncluded
-			//output.DataProfileAttributes.SubjectIncluded = FormatSubjectProfile( input.SubjectIncluded, ref status );
-			//output.DataProfileAttributes.SubjectExcluded = FormatSubjectProfile( input.SubjectExcluded, ref status );
+				//SubjectExcluded, SubjectIncluded
+				//output.DataProfileAttributes.SubjectIncluded = FormatSubjectProfile( input.SubjectIncluded, ref status );
+				//output.DataProfileAttributes.SubjectExcluded = FormatSubjectProfile( input.SubjectExcluded, ref status );
 
-			//for now map to separate properties.
-			output.DataProfileAttributes.DataAvailable=HandleQuantitiveValueList( input.DataAvailable, "DataProfile.DataAvailable", "Data Available", ref qdSummary, false );
-			output.DataProfileAttributes.DataNotAvailable = HandleQuantitiveValueList( input.DataNotAvailable, "DataProfile.DataNotAvailable", "Data Not Available", ref qdSummary, false );
+				//for now map to separate properties.
+				output.DataProfileAttributes.DataAvailable = HandleQuantitiveValueList( input.DataAvailable, "DataProfile.DataAvailable", "Data Available", ref qdSummary, false );
+				output.DataProfileAttributes.DataNotAvailable = HandleQuantitiveValueList( input.DataNotAvailable, "DataProfile.DataNotAvailable", "Data Not Available", ref qdSummary, false );
 
-			output.DataProfileAttributes.DemographicEarningsRate = HandleQuantitiveValueList( input.DemographicEarningsRate, "DataProfile.DemographicEarningsRate", "Demographic Earnings Rate", ref qdSummary, false );
-			output.DataProfileAttributes.DemographicEmploymentRate = HandleQuantitiveValueList( input.DemographicEmploymentRate, "DataProfile.DemographicEmploymentRate", "Demographic Employment Rate", ref qdSummary, false );
-			output.DataProfileAttributes.EmploymentRate = HandleQuantitiveValueList( input.EmploymentRate, "DataProfile.EmploymentRate", "Employment Rate", ref qdSummary, false );
-			output.DataProfileAttributes.HoldersInSet = HandleQuantitiveValueList( input.HoldersInSet, "DataProfile.HoldersInSet", "Holders In Set", ref qdSummary, false );
-			//
-			output.DataProfileAttributes.IndustryRate = HandleQuantitiveValueList( input.IndustryRate, "DataProfile.IndustryRate", "Industry Rate", ref qdSummary, false );
-			output.DataProfileAttributes.InsufficientEmploymentCriteria = HandleQuantitiveValueList( input.InsufficientEmploymentCriteria, "DataProfile.InsufficientEmploymentCriteria", "Insufficient Employment Criteria", ref qdSummary, false );
-			output.DataProfileAttributes.MeetEmploymentCriteria = HandleQuantitiveValueList( input.MeetEmploymentCriteria, "DataProfile.MeetEmploymentCriteria", "Meet Employment Criteria", ref qdSummary, false );
-			//
-			output.DataProfileAttributes.NonCompleters = HandleQuantitiveValueList( input.NonCompleters, "DataProfile.NonCompleters", "Non Completers", ref qdSummary, false );
-			output.DataProfileAttributes.NonHoldersInSet = HandleQuantitiveValueList( input.NonHoldersInSet, "DataProfile.NonHoldersInSet", "Non Holders In Set", ref qdSummary, false );
-			output.DataProfileAttributes.OccupationRate = HandleQuantitiveValueList( input.OccupationRate, "DataProfile.OccupationRate", "Occupation Rate", ref qdSummary, false );
-			//
-			output.DataProfileAttributes.RegionalEarningsDistribution = HandleQuantitiveValueList( input.RegionalEarningsDistribution, "DataProfile.RegionalEarningsDistribution", "Regional Earnings Distribution", ref qdSummary, false );
-			output.DataProfileAttributes.RegionalEmploymentRate = HandleQuantitiveValueList( input.RegionalEmploymentRate, "DataProfile.RegionalEmploymentRate", "Regional Employment Rate", ref qdSummary, false );
-			output.DataProfileAttributes.RelatedEmployment = HandleQuantitiveValueList( input.RelatedEmployment, "DataProfile.RelatedEmployment", "Related Employment", ref qdSummary, false );
-			output.DataProfileAttributes.SubjectsInSet = HandleQuantitiveValueList( input.SubjectsInSet, "DataProfile.SubjectsInSet", "Subjects In Set", ref qdSummary, false );
-			output.DataProfileAttributes.SufficientEmploymentCriteria = HandleQuantitiveValueList( input.SufficientEmploymentCriteria, "DataProfile.SufficientEmploymentCriteria", "Sufficient Employment Criteria", ref qdSummary, false );
-			output.DataProfileAttributes.UnrelatedEmployment = HandleQuantitiveValueList( input.UnrelatedEmployment, "DataProfile.UnrelatedEmployment", "Unrelated Employment", ref qdSummary, false );
-			//
-			output.DataProfileAttributes.TotalWIOACompleters = HandleQuantitiveValueList( input.TotalWIOACompleters, "DataProfile.TotalWIOACompleters", "Total WIOA Completers", ref qdSummary, false );
-			output.DataProfileAttributes.TotalWIOAParticipants = HandleQuantitiveValueList( input.TotalWIOAParticipants, "DataProfile.TotalWIOAParticipants", "Total WIOA Participants", ref qdSummary, false );
-			output.DataProfileAttributes.TotalWIOAExiters = HandleQuantitiveValueList( input.TotalWIOAExiters, "DataProfile.TotalWIOAExiters", "Total WIOA Exiters", ref qdSummary, false );
-			//
-			output.DataProfileAttributeSummary = qdSummary;
+				output.DataProfileAttributes.DemographicEarningsRate = HandleQuantitiveValueList( input.DemographicEarningsRate, "DataProfile.DemographicEarningsRate", "Demographic Earnings Rate", ref qdSummary, false );
+				output.DataProfileAttributes.DemographicEmploymentRate = HandleQuantitiveValueList( input.DemographicEmploymentRate, "DataProfile.DemographicEmploymentRate", "Demographic Employment Rate", ref qdSummary, false );
+				output.DataProfileAttributes.EmploymentRate = HandleQuantitiveValueList( input.EmploymentRate, "DataProfile.EmploymentRate", "Employment Rate", ref qdSummary, false );
+				output.DataProfileAttributes.HoldersInSet = HandleQuantitiveValueList( input.HoldersInSet, "DataProfile.HoldersInSet", "Holders In Set", ref qdSummary, false );
+				//
+				output.DataProfileAttributes.IndustryRate = HandleQuantitiveValueList( input.IndustryRate, "DataProfile.IndustryRate", "Industry Rate", ref qdSummary, false );
+				output.DataProfileAttributes.InsufficientEmploymentCriteria = HandleQuantitiveValueList( input.InsufficientEmploymentCriteria, "DataProfile.InsufficientEmploymentCriteria", "Insufficient Employment Criteria", ref qdSummary, false );
+				output.DataProfileAttributes.MeetEmploymentCriteria = HandleQuantitiveValueList( input.MeetEmploymentCriteria, "DataProfile.MeetEmploymentCriteria", "Meet Employment Criteria", ref qdSummary, false );
+				//
+				output.DataProfileAttributes.NonCompleters = HandleQuantitiveValueList( input.NonCompleters, "DataProfile.NonCompleters", "Non Completers", ref qdSummary, false );
+				output.DataProfileAttributes.NonHoldersInSet = HandleQuantitiveValueList( input.NonHoldersInSet, "DataProfile.NonHoldersInSet", "Non Holders In Set", ref qdSummary, false );
+				output.DataProfileAttributes.OccupationRate = HandleQuantitiveValueList( input.OccupationRate, "DataProfile.OccupationRate", "Occupation Rate", ref qdSummary, false );
+				output.DataProfileAttributes.PassRate = HandleQuantitiveValueList( input.PassRate, "DataProfile.PassRate", "Pass Rate", ref qdSummary, false );
+				//
+				output.DataProfileAttributes.RegionalEarningsDistribution = HandleQuantitiveValueList( input.RegionalEarningsDistribution, "DataProfile.RegionalEarningsDistribution", "Regional Earnings Distribution", ref qdSummary, false );
+				output.DataProfileAttributes.RegionalEmploymentRate = HandleQuantitiveValueList( input.RegionalEmploymentRate, "DataProfile.RegionalEmploymentRate", "Regional Employment Rate", ref qdSummary, false );
+				output.DataProfileAttributes.RelatedEmployment = HandleQuantitiveValueList( input.RelatedEmployment, "DataProfile.RelatedEmployment", "Related Employment", ref qdSummary, false );
+				output.DataProfileAttributes.SubjectsInSet = HandleQuantitiveValueList( input.SubjectsInSet, "DataProfile.SubjectsInSet", "Subjects In Set", ref qdSummary, false );
+				output.DataProfileAttributes.SufficientEmploymentCriteria = HandleQuantitiveValueList( input.SufficientEmploymentCriteria, "DataProfile.SufficientEmploymentCriteria", "Sufficient Employment Criteria", ref qdSummary, false );
+				output.DataProfileAttributes.UnrelatedEmployment = HandleQuantitiveValueList( input.UnrelatedEmployment, "DataProfile.UnrelatedEmployment", "Unrelated Employment", ref qdSummary, false );
+				//
+				output.DataProfileAttributes.TotalWIOACompleters = HandleQuantitiveValueList( input.TotalWIOACompleters, "DataProfile.TotalWIOACompleters", "Total WIOA Completers", ref qdSummary, false );
+				output.DataProfileAttributes.TotalWIOAParticipants = HandleQuantitiveValueList( input.TotalWIOAParticipants, "DataProfile.TotalWIOAParticipants", "Total WIOA Participants", ref qdSummary, false );
+				output.DataProfileAttributes.TotalWIOAExiters = HandleQuantitiveValueList( input.TotalWIOAExiters, "DataProfile.TotalWIOAExiters", "Total WIOA Exiters", ref qdSummary, false );
+				//
+				output.DataProfileAttributeSummary = qdSummary;
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "FormatDataProfiles for parentCTID: " + parentCTID );
+			}
 			return output;
 		}
 
@@ -1705,7 +1922,7 @@ namespace Import.Services
 					Description = HandleLanguageMap( input.Description, "Description" ),
 					SubjectValue= HandleQuantitiveValueList( input.SubjectValue, "SubjectProfile.SubjectValue", false )
 				};
-				sp.SubjectType = MapCAOListToEnumermation( input.SubjectType );
+				sp.SubjectType = MapCAOListToEnumermation( input.SubjectType, false );
 
 				output.Add( sp );
 			}
@@ -1731,8 +1948,20 @@ namespace Import.Services
 					Name = HandleLanguageMap( input.Name, "Name" ),
 					Description = HandleLanguageMap( input.Description, "Description" ),
 					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
-					JobsObtained = input.JobsObtained
+					//JobsObtained = input.JobsObtained
 				};
+				if ( input.JobsObtained != null && input.JobsObtained.Any())
+				{
+					profile.JobsObtainedList = HandleQuantitiveValueList( input.JobsObtained, "EmploymentOutcomeProfile.JobsObtained", false );
+					if ( profile.JobsObtainedList != null && profile.JobsObtainedList.Any() )
+					{
+						//if ( profile.JobsObtainedList[ 0 ].Value > 0 )
+						//{
+						//	profile.JobsObtained = Decimal.ToInt32( profile.JobsObtainedList[ 0 ].Value );
+						//}
+					}
+
+				}
 				profile.Source = input.Source;
 				//handle: RelevantDataSet
 				if ( input.RelevantDataSet != null && input.RelevantDataSet.Any() )
@@ -1962,6 +2191,29 @@ namespace Import.Services
 			switch ( entityType.ToLower() )
 			{
 				case "credential":
+				case "apprenticeshipcertificate":
+				case "associatedegree":
+				case "bachelordegree":
+				case "badge":
+				case "certificate":
+				case "certificateofcompletion":
+				case "participationcertificate":
+				case "certification":
+				case "degree":
+				case "diploma":
+				case "digitalbadge":
+				case "doctoraldegree":
+				case "generaleducationdevelopment":
+				case "journeymancertificate":
+				case "license":
+				case "mastercertificate":
+				case "masterdegree":
+				case "microcredential":
+				case "openbadge":
+				case "professionaldoctorate":
+				case "qualityassurancecredential":
+				case "researchdoctorate":
+				case "secondaryschooldiploma":
 					entityTypeId = 1;
 					break;
 				case "ceterms:credentialorganization":
@@ -2025,6 +2277,44 @@ namespace Import.Services
 				case "transfervalueprofile":
 				case "transfervalue":
 					entityTypeId = 26;
+					break;
+				case "ceterms:aggregatedataprofile":
+				case "aggregatedataprofile":
+					entityTypeId = 27;
+					break;
+				//gap
+				case "qdata:datasetprofile":
+				case "datasetprofile":
+					entityTypeId = 31;
+					break;
+				case "ceterms:job":
+				case "job":
+					entityTypeId = 32;
+					break;
+				case "ceterms:task":
+				case "task":
+					entityTypeId = 33;
+					break;
+				case "ceterms:workrole":
+				case "workrole":
+					entityTypeId = 34;
+					break;
+				case "ceterms:occupation":
+				case "occupation":
+					entityTypeId = 35;
+					break;
+				//renumber these for future removal???
+				case "ceterms:earningsprofile":
+				case "earningsprofile":
+					entityTypeId = 28;
+					break;
+				case "ceterms:holdersprofile":
+				case "holdersprofile":
+					entityTypeId = 29;
+					break;
+				case "ceterms:employmentoutcomeprofile":
+				case "employmentoutcomeprofile":
+					entityTypeId = 30;
 					break;
 				default:
 					//default to credential???
@@ -2249,7 +2539,43 @@ namespace Import.Services
 
 			return entityRefs;
 		}
+		public int MapEntityReference ( string property, string target, int entityTypeId, ref SaveStatus status, bool allowingBlankNodes = true )
+		{
+			int entityRef = 0;
+			string registryAtId = "";
+			if ( string.IsNullOrWhiteSpace ( target ) )
+				return 0;
 
+			entityRef = 0;
+			//determine if just Id, or base
+			if ( target.StartsWith( "http" ) )
+			{
+				LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityTypeId: {0}, CtdlId: {1} ", entityTypeId, target ) );
+				registryAtId = target;
+				entityRef = ResolveEntityRegistryAtId( registryAtId, entityTypeId, ref status );
+				if ( entityRef == 0 )
+				{
+					LoggingHelper.DoTrace( 6, string.Format( "MappingHelper.MapEntityReferences: FAILED TO RESOLVE EntityTypeId: {0}, target.CtdlId: {1} ", entityTypeId, target ) );
+				}
+				//break;
+			}
+			else if ( target.StartsWith( "_:" ) )
+			{
+				if ( !allowingBlankNodes )
+				{
+					//what to do? log and what - don't necessarily want to send an email
+				}
+				else
+				{
+					LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityReference EntityTypeId: {0}, target bnode: {1} ", entityTypeId, target ) );
+					var node = GetBlankNode( target );
+					//if type present,can use
+					entityRef = ResolveEntityBaseToInt( property, node, entityTypeId, ref status );
+				}
+			}			
+
+			return entityRef;
+		}
 
 		/// <summary>
 		/// Entities will be string, where cannot be a third party reference
@@ -2350,6 +2676,8 @@ namespace Import.Services
 			int entityRefId = 0;
 			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
 			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+			//get full record for updates
+			//really should limit this so whole record isn't retrieved
 			MC.Credential output = CredentialManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
 			if ( output != null && output.Id > 0 )
 			{
@@ -2446,7 +2774,7 @@ namespace Import.Services
 					if ( output.Addresses != null && output.Addresses.Any() )
 						output.AddressesJson = JsonConvert.SerializeObject( output.Addresses, MappingHelperV3.GetJsonSettings() );
 					//
-					output.AvailabilityListing = MapListToString( input.AvailabilityListing );
+					//output.AvailabilityListing = MapListToString( input.AvailabilityListing );
 					//future prep
 					output.AvailabilityListings = input.AvailabilityListing;
 					//
@@ -2473,7 +2801,7 @@ namespace Import.Services
 				if ( output.Addresses != null && output.Addresses.Any() )
 					output.AddressesJson = JsonConvert.SerializeObject( output.Addresses, MappingHelperV3.GetJsonSettings() );
 				//
-				output.AvailabilityListing = MapListToString( input.AvailabilityListing );
+				//output.AvailabilityListing = MapListToString( input.AvailabilityListing );
 				//future prep
 				output.AvailabilityListings = input.AvailabilityListing;
 				//
@@ -2581,9 +2909,13 @@ namespace Import.Services
 			output.Addresses = FormatAvailableAtAddresses( input.AvailableAt, ref status );
 			//
 			output.CodedNotation = input.CodedNotation;
-			output.CreditValueList = HandleValueProfileListToQVList( input.CreditValue, "Assessment.CreditValue", true );
-			if ( output.CreditValueList != null && output.CreditValueList.Any() )
-				output.CreditValue = output.CreditValueList[ 0 ];
+			//output.QVCreditValueList = HandleValueProfileListToQVList( input.CreditValue, "Assessment.CreditValue" );
+			output.CreditValue = HandleValueProfileList( input.CreditValue, "Assessment.CreditValue" );
+			output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
+
+			//get rid of this:
+			//if ( output.CreditValueList != null && output.CreditValueList.Any() )
+			//	output.CreditValue = output.CreditValueList[ 0 ];
 			output.DeliveryType = MapCAOListToEnumermation( input.DeliveryType );
 
 			//
@@ -2695,9 +3027,19 @@ namespace Import.Services
 			output.Addresses = FormatAvailableAtAddresses( input.AvailableAt, ref status );
 			//
 			output.CodedNotation = input.CodedNotation;
-			output.CreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue", true );
-			if ( output.CreditValueList != null && output.CreditValueList.Any() )
-				output.CreditValue = output.CreditValueList[ 0 ];
+			//new
+			//output.QVCreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue" );
+			output.CreditValue = HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
+			output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
+			//output.CreditValueList = HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
+			//get rid of this:
+			//if ( output.CreditValueList != null && output.CreditValueList.Any() )
+			//	output.CreditValue = output.CreditValueList[ 0 ];
+			//old
+
+			//output.CreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue", true );
+			//if ( output.CreditValueList != null && output.CreditValueList.Any() )
+			//	output.CreditValue = output.CreditValueList[ 0 ];
 			//
 			output.EstimatedDuration = FormatDuration( input.EstimatedDuration, ref status );
 			output.DateEffective = input.DateEffective;
@@ -2866,10 +3208,10 @@ namespace Import.Services
 				output.Weight = input.Weight;
 
 				//output.CreditValue = HandleQuantitiveValue( input.CreditValue, "ConditionProfile.CreditHourType" );
-				output.CreditValueList2 = HandleValueProfileListToQVList( input.CreditValue, "ConditionProfile.CreditValue", true );
+				//output.CreditValueList2 = HandleValueProfileListToQVList( input.CreditValue, "ConditionProfile.CreditValue" );
 				//TODO - chg to output to ValueProfile
 				output.CreditValueList = HandleValueProfileList( input.CreditValue, "ConditionProfile.CreditValue" );
-				//
+				//21-03-23 starting to use CreditValueJson 
 				output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValueList, MappingHelperV3.GetJsonSettings() );
 
 				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
@@ -3010,9 +3352,85 @@ namespace Import.Services
 
 				list.Add( profile );
 			}
-			return WPM.CostProfileMerged.ExpandCosts( list );
+			//21-03-27 mp - moved expandCosts out of CostProfile to separate and prepare for storing as JSON
+			//return WPM.CostProfileMerged.ExpandCosts( list );
+			//
+			return ExpandCosts( list );
 		}
+		public static List<WPM.CostProfile> ExpandCosts( List<WPM.CostProfileMerged> input )
+		{
+			var result = new List<WPM.CostProfile>();
 
+			//First expand each into its own CostProfile with one CostItem
+			var holder = new List<WPM.CostProfile>();
+			foreach ( var merged in input )
+			{
+				//Create cost profile
+				var cost = new WPM.CostProfile()
+				{
+					ProfileName = merged.Name,
+					Description = merged.Description,
+					Jurisdiction = merged.Jurisdiction,
+					//StartTime = merged.StartTime,	//why did we have start and end time?
+					//EndTime = merged.EndTime,
+					StartDate = merged.StartDate,
+					EndDate = merged.EndDate,
+					CostDetails = merged.CostDetails,
+					Currency = merged.Currency,
+					CurrencySymbol = merged.CurrencySymbol,
+					Condition = merged.Condition,
+					Items = new List<WPM.CostProfileItem>()
+				};
+				//If there's any data for a cost item, create one
+				if ( merged.Price > 0 ||
+					!string.IsNullOrWhiteSpace( merged.PaymentPattern ) ||
+					merged.AudienceType.Items.Count() > 0 ||
+					merged.CostType.Items.Count() > 0 ||
+					merged.ResidencyType.Items.Count() > 0
+					)
+				{
+					cost.Items.Add( new WPM.CostProfileItem()
+					{
+						AudienceType = merged.AudienceType,
+						DirectCostType = merged.CostType,
+						PaymentPattern = merged.PaymentPattern,
+						Price = merged.Price,
+						ResidencyType = merged.ResidencyType
+					} );
+				}
+				holder.Add( cost );
+			}
+
+			//Remove duplicates and hope that pass-by-reference issues don't cause trouble
+			while ( holder.Count() > 0 )
+			{
+				//Take the first item in holder and set it aside
+				var currentItem = holder.FirstOrDefault();
+				//Remove it from the holder list so it doesn't get included in the LINQ query results on the next line
+				holder.Remove( currentItem );
+				//Find any other items in the holder list that match the item we just took out
+				var matches = holder.Where( m =>
+					m.ProfileName == currentItem.ProfileName &&
+					m.Description == currentItem.Description &&
+					m.CostDetails == currentItem.CostDetails &&
+					m.Currency == currentItem.Currency &&
+					m.CurrencySymbol == currentItem.CurrencySymbol
+				).ToList();
+				//For each matching item...
+				foreach ( var item in matches )
+				{
+					//Take its cost profile items (if it has any) and add them to the cost profile we set aside
+					currentItem.Items = currentItem.Items.Concat( item.Items ).ToList();
+					//Remove the item from the holder so it doesn't get detected again, and so that we eventually get out of this "while" loop
+					holder.Remove( item );
+				}
+				//Now that currentItem has all of the cost profile items from all of its matches, add it to the result
+				result.Add( currentItem );
+			}
+
+			return result;
+		}
+		//
 		#endregion
 
 		#region  FinancialAlignmentObject

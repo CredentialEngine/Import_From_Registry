@@ -3,26 +3,23 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
+using Newtonsoft.Json;
 
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
-using DBEntity = workIT.Data.Tables.Assessment;
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
 using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
+using DBEntity = workIT.Data.Tables.Assessment;
+using EM = workIT.Data.Tables;
+using EntityContext = workIT.Data.Tables.workITEntities;
+using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
 
 namespace workIT.Factories
 {
-    public class AssessmentManager : BaseFactory
+	public class AssessmentManager : BaseFactory
     {
         static readonly string thisClassName = "AssessmentManager";
         EntityManager entityMgr = new EntityManager();
@@ -254,8 +251,8 @@ namespace workIT.Factories
                 catch ( Exception ex )
                 {
                     string message = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ), true );
-                    status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}, CTID: {1}, OwningAgentUid: {2}", efEntity.Name, efEntity.CTID, efEntity.OwningAgentUid ) );
+					status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
                 }
             }
 
@@ -304,6 +301,16 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
+						SiteActivity sa = new SiteActivity()
+						{
+							ActivityType = "Assessment",
+							Activity = "Import",
+							Event = "Add Base Reference",
+							Comment = string.Format( "Pending Assessment was added by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+							ActivityObjectId = efEntity.Id
+						};
+						new ActivityManager().SiteActivityAdd( sa );
+						//
 						entity.Id = efEntity.Id;
 						/* handle new parts
 						 * AvailableAt
@@ -352,7 +359,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					ThisEntity entity = GetSummaryByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -416,35 +423,35 @@ namespace workIT.Factories
             }
             if ( !string.IsNullOrWhiteSpace( profile.DateEffective ) && !IsValidDate( profile.DateEffective ) )
             {
-                status.AddWarning( "Invalid Assessment effective date" );
+                //status.AddWarning( "Invalid Assessment effective date" );
             }
 
-            if ( string.IsNullOrWhiteSpace( profile.SubjectWebpage ) )
-                status.AddWarning( "Error - A Subject Webpage name must be entered" );
+            //if ( string.IsNullOrWhiteSpace( profile.SubjectWebpage ) )
+            //    status.AddWarning( "Error - A Subject Webpage name must be entered" );
 
-            else if ( !IsUrlValid( profile.SubjectWebpage, ref commonStatusMessage ) )
-            {
-                status.AddWarning( "The Assessment Subject Webpage is invalid. " + commonStatusMessage );
-            }
+            //else if ( !IsUrlValid( profile.SubjectWebpage, ref commonStatusMessage ) )
+            //{
+            //    //status.AddWarning( "The Assessment Subject Webpage is invalid. " + commonStatusMessage );
+            //}
 
-            if ( !IsUrlValid( profile.AvailableOnlineAt, ref commonStatusMessage ) )
-            {
-                status.AddError( "The Available Online At Url is invalid. " + commonStatusMessage );
-            }
+            //if ( !IsUrlValid( profile.AvailableOnlineAt, ref commonStatusMessage ) )
+            //{
+            //    //status.AddError( "The Available Online At Url is invalid. " + commonStatusMessage );
+            //}
 
-            if ( !IsUrlValid( profile.AvailabilityListing, ref commonStatusMessage ) )
-            {
-                status.AddWarning( "The Availability Listing Url is invalid. " + commonStatusMessage );
-            }
+            //if ( !IsUrlValid( profile.AvailabilityListing, ref commonStatusMessage ) )
+            //{
+            //    //status.AddWarning( "The Availability Listing Url is invalid. " + commonStatusMessage );
+            //}
 
-            if ( !IsUrlValid( profile.ExternalResearch, ref commonStatusMessage ) )
-                status.AddWarning( "The External Research Url is invalid. " + commonStatusMessage );
-            if ( !IsUrlValid( profile.ProcessStandards, ref commonStatusMessage ) )
-                status.AddWarning( "The Process Standards Url is invalid. " + commonStatusMessage );
-            if ( !IsUrlValid( profile.ScoringMethodExample, ref commonStatusMessage ) )
-                status.AddWarning( "The Scoring Method Example Url is invalid. " + commonStatusMessage );
-            if ( !IsUrlValid( profile.AssessmentExample, ref commonStatusMessage ) )
-                status.AddWarning( "The Assessment Example Url is invalid. " + commonStatusMessage );
+            //if ( !IsUrlValid( profile.ExternalResearch, ref commonStatusMessage ) )
+            //    status.AddWarning( "The External Research Url is invalid. " + commonStatusMessage );
+            //if ( !IsUrlValid( profile.ProcessStandards, ref commonStatusMessage ) )
+            //    status.AddWarning( "The Process Standards Url is invalid. " + commonStatusMessage );
+            //if ( !IsUrlValid( profile.ScoringMethodExample, ref commonStatusMessage ) )
+            //    status.AddWarning( "The Scoring Method Example Url is invalid. " + commonStatusMessage );
+            //if ( !IsUrlValid( profile.AssessmentExample, ref commonStatusMessage ) )
+            //    status.AddWarning( "The Assessment Example Url is invalid. " + commonStatusMessage );
 
 
             //if ( profile.CreditHourValue < 0 || profile.CreditHourValue > 10000 )
@@ -455,10 +462,9 @@ namespace workIT.Factories
 
 
             //can only have credit hours properties, or credit unit properties, not both
-            bool hasCreditHourData = false;
-            bool hasCreditUnitData = false;
-            //if ( profile.CreditHourValue > 0 || ( profile.CreditHourType ?? "" ).Length > 0 )
-            //    hasCreditHourData = true;
+            //bool hasCreditHourData = false;
+            //bool hasCreditUnitData = false;
+            /*
             if ( profile.CreditUnitTypeId > 0
                 || ( profile.CreditUnitTypeDescription ?? "" ).Length > 0
                 || profile.CreditUnitValue > 0 )
@@ -466,7 +472,7 @@ namespace workIT.Factories
 
             if ( hasCreditHourData && hasCreditUnitData )
                 status.AddWarning( "Error: Data can be entered for Credit Hour related properties or Credit Unit related properties, but not for both." );
-
+			*/
 
             return status.WasSectionValid;
         }
@@ -533,7 +539,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + ".Assessment_Delete()" );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Delete(id: {0})", id ) );
 
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
 					{
@@ -544,13 +550,12 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-            if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-                && string.IsNullOrWhiteSpace( ctid ) )
+            if ( string.IsNullOrWhiteSpace( ctid ) )
             {
-                statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
+                statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
                 return false;
             }
             if ( string.IsNullOrWhiteSpace( ctid ) )
@@ -563,9 +568,7 @@ namespace workIT.Factories
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.Assessment
-                                .FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-                                || ( s.CTID == ctid )
-                                );
+                                .FirstOrDefault( s =>  s.CTID == ctid );
 
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -619,7 +622,7 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					LoggingHelper.LogError( ex, thisClassName + string.Format(".Delete(ctid:{0})", ctid) );
 					isValid = false;
 					statusMessage = FormatExceptions( ex );
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
@@ -671,8 +674,10 @@ namespace workIT.Factories
                 isAllValid = false;
 
             erm.AddLanguages( entity.InLanguageCodeList, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, ref status, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
+			//
+			erm.Add( entity.SameAs, entity.RowId, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SAME_AS, true );
 
-            AddProfiles( entity, relatedEntity, ref status );
+			AddProfiles( entity, relatedEntity, ref status );
 
 
 			UpdateAssertedBys( entity, ref status );
@@ -737,7 +742,7 @@ namespace workIT.Factories
 				emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
 
 				//Connections
-				emanager.SaveList( entity.AdvancedStandingFor, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor, entity.RowId, ref status, 3 );
+				emanager.SaveList( entity.IsAdvancedStandingFor, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor, entity.RowId, ref status, 3 );
 				emanager.SaveList( entity.AdvancedStandingFrom, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFrom, entity.RowId, ref status, 3 );
 				emanager.SaveList( entity.IsPreparationFor, Entity_ConditionProfileManager.ConnectionProfileType_PreparationFor, entity.RowId, ref status, 3 );
 				emanager.SaveList( entity.PreparationFrom, Entity_ConditionProfileManager.ConnectionProfileType_PreparationFrom, entity.RowId, ref status, 3 );
@@ -764,14 +769,24 @@ namespace workIT.Factories
 			//fapm.SaveList( entity.FinancialAssistanceOLD, entity.RowId, ref status );
 
 			new Entity_FinancialAssistanceProfileManager().SaveList( entity.FinancialAssistance, entity.RowId, ref status );
+			//
+			Entity_AssessmentManager eam = new Entity_AssessmentManager();
+			eam.DeleteAll( relatedEntity, ref status );
+			var newId = 0;
+			if ( entity.TargetAssessmentIds != null && entity.TargetAssessmentIds.Count > 0 )
+			{
+				foreach ( int id in entity.TargetAssessmentIds )
+				{
+					newId = eam.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, true, ref status );
+				}
+			}
 
 			//competencies
 			//no need to always do the delete
 			new Entity_CompetencyManager().SaveList( entity.AssessesCompetencies, entity.RowId, ref status );
 
 			//addresses
-			new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref 
-status );
+			new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref status );
 			//JurisdictionProfile 
 			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
             //do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
@@ -832,7 +847,7 @@ status );
 		#endregion
 
 		#region == Retrieval =======================
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisEntity GetSummaryByCtid( string ctid )
         {
             ThisEntity entity = new ThisEntity();
             using ( var context = new EntityContext() )
@@ -1179,7 +1194,7 @@ status );
 					//
 					temp = GetRowColumn( dr, "DateEffective", "" );
                     if ( IsValidDate( temp ) )
-                        item.DateEffective = DateTime.Parse( temp ).ToShortDateString();
+                        item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
                     else
                         item.DateEffective = "";
 
@@ -1265,46 +1280,57 @@ status );
 
 			//======================================================================
 			//can have just CreditUnitTypeDescription. Will need a policy if both are found?
-			//	-possibly create a second CreditValue?
-			output.CreditUnitTypeDescription = null;
+			//	-possibly create a second CreditValue?			
 			if ( !string.IsNullOrWhiteSpace( input.CreditUnitTypeDescription ) )
 				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-			//output.CreditValueJson = null;
-			if ( input.CreditValueList != null && input.CreditValueList.Any() )
+			else
+				output.CreditUnitTypeDescription = null;
+
+			//=========================================================
+			//21-03-23 - now using ValueProfile
+			//			- interim use both until all converted
+			var asmtUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "asmtUsingValueProfileForCreditValue", false );
+			//***actually may have to fill out credit units etc?
+			output.CreditValue = string.IsNullOrWhiteSpace(input.CreditValueJson) ? null : input.CreditValueJson;
+			if(!asmtUsingValueProfileForCreditValue )
 			{
-				//output.CreditValueJson = input.CreditValueJson;
-				input.CreditValue = input.CreditValueList[ 0 ];
+				//if ( input.QVCreditValueList != null && input.QVCreditValueList.Any() )
+				//{
+				//	//output.CreditValueJson = input.CreditValueJson;
+				//	input.QVCreditValue = input.QVCreditValueList[ 0 ];
+				//}
+				//if ( input.QVCreditValue.HasData() )
+				//{
+				//	if ( input.QVCreditValue.CreditUnitType != null && input.QVCreditValue.CreditUnitType.HasItems() )
+				//	{
+				//		//get Id if available
+				//		EnumeratedItem item = input.QVCreditValue.CreditUnitType.GetFirstItem();
+				//		if ( item != null && item.Id > 0 )
+				//			output.CreditUnitTypeId = item.Id;
+				//		else
+				//		{
+				//			//if not get by schema
+				//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
+				//			if ( code.Id > 0 )
+				//				output.CreditUnitTypeId = code.Id;
+				//			else
+				//			{
+				//				//output.CreditHourType = item.SchemaName;
+				//				//message
+				//				LoggingHelper.LogError( string.Format( "Assessment: '{0}'. CreditUnit schema of {1} was not found.", input.CTID, item.SchemaName ) );
+				//			}
+				//		}
+				//	}
+				//	output.CreditUnitValue = input.QVCreditValue.Value;
+				//	output.CreditUnitMaxValue = input.QVCreditValue.MaxValue;
+				//	if ( input.QVCreditValue.MaxValue > 0 )
+				//		output.CreditUnitValue = input.QVCreditValue.MinValue;
+				//	//*** may be an exception, it could be that this can published separately
+				//	if ( !string.IsNullOrWhiteSpace( input.QVCreditValue.Description ) )
+				//		output.CreditUnitTypeDescription = input.QVCreditValue.Description;
+				//}
 			}
-			if ( input.CreditValue.HasData() )
-			{
-				if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
-				{
-					//get Id if available
-					EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
-					if ( item != null && item.Id > 0 )
-						output.CreditUnitTypeId = item.Id;
-					else
-					{
-						//if not get by schema
-						CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-						if ( code.Id > 0)
-							output.CreditUnitTypeId = code.Id;
-						else
-						{
-							output.CreditHourType = item.SchemaName;
-							//message
-							LoggingHelper.LogError( string.Format( "Assessment: '{0}'. CreditUnit schema of {1} was not found.", input.CTID, item.SchemaName ) );
-						}
-					}
-				}
-				output.CreditUnitValue = input.CreditValue.Value;
-				output.CreditUnitMaxValue = input.CreditValue.MaxValue;
-				if ( input.CreditValue.MaxValue > 0)
-					output.CreditUnitValue = input.CreditValue.MinValue;
-				//*** may be an exception, it could be that this can published separately
-				if ( !string.IsNullOrWhiteSpace( input.CreditValue.Description ) )
-					output.CreditUnitTypeDescription = input.CreditValue.Description;
-			}
+			
 			//
 			
 
@@ -1339,6 +1365,12 @@ status );
 			//
 			output.AssessmentMethodDescription = input.AssessmentMethodDescription;
 			output.LearningMethodDescription = input.LearningMethodDescription;
+			if ( input.TargetLearningResource != null && input.TargetLearningResource.Any() )
+			{
+				output.TargetLearningResource = JsonConvert.SerializeObject( output.TargetLearningResource, JsonHelper.GetJsonSettings() );
+			}
+			else
+				output.TargetLearningResource = null;
 			//
 			output.HasGroupEvaluation = input.HasGroupEvaluation;
             output.HasGroupParticipation = input.HasGroupParticipation;
@@ -1367,12 +1399,12 @@ status );
                 output.LastUpdated = input.LastUpdated;
         }
 
-        public static void MapFromDB( DBEntity input, ThisEntity output,
-                bool includingProperties,
-                bool includingRoles,
-                bool includeWhereUsed )
-        {
-            MapFromDB_Basic( input, output, true );
+		public static void MapFromDB( DBEntity input, ThisEntity output,
+				bool includingProperties,
+				bool includingRoles,
+				bool includeWhereUsed )
+		{
+			MapFromDB_Basic( input, output, true );
 			output.CodedNotation = input.IdentificationCode;
 
 			output.EstimatedDuration = DurationProfileManager.GetAll( output.RowId );
@@ -1432,45 +1464,77 @@ status );
 					}
 				}
 			}
-
+			output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
 			//=========================================================
-			//populate QV
-			//TODO - change to store the QA as json
-			output.CreditValue = FormatQuantitiveValue( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription, input.CreditHourType );
-			if ( output.CreditValue.HasData() )
-			{
-				//pending
-				output.CreditValueList.Add( output.CreditValue );
-				//
-				output.CreditUnitType = output.CreditValue.CreditUnitType;
-				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-				output.CreditUnitTypeDescription = output.CreditValue.Description;
+			//21-03-23 - now using ValueProfile
+			//			- interim use both until all converted
+			var asmtUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "asmtUsingValueProfileForCreditValue", false );
 
-				output.CreditUnitValue = output.CreditValue.Value;
-				output.CreditUnitMaxValue = output.CreditValue.MaxValue;
-				if ( output.CreditUnitMaxValue > 0 )
+			if ( !string.IsNullOrWhiteSpace( input.CreditValue ) )
+			{
+				output.CreditValue = JsonConvert.DeserializeObject<List<ValueProfile>>( input.CreditValue );
+
+				if ( output.CreditValue != null && output.CreditValue.Any() )
 				{
-					output.CreditUnitValue = output.CreditValue.MinValue;
-					output.CreditUnitMinValue = output.CreditValue.MinValue;
-					output.CreditValueIsRange = true;
+					/* AVOID THIS HACK MOVING FORWARD, USE THE LIST
+					output.CreditValue = output.CreditValueList[ 0 ];
+					if ( output.CreditValue.HasData() )
+					{
+						
+						//need to remove references to these!!!!!!!!!!!!!!!!
+						output.CreditUnitType = output.QVCreditValue.CreditUnitType;
+						output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+						output.CreditUnitTypeDescription = output.QVCreditValue.Description;
+
+						output.CreditUnitValue = output.QVCreditValue.Value;
+						output.CreditUnitMaxValue = output.QVCreditValue.MaxValue;
+						
+						if ( output.CreditUnitMaxValue > 0 )
+						{
+							output.CreditUnitValue = output.QVCreditValue.MinValue;
+							output.CreditUnitMinValue = output.QVCreditValue.MinValue;
+							output.CreditValueIsRange = true;
+						}
+					}
+					*/
 				}
-			}
+			} 
 			else
 			{
-				//check for old
-				output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-				output.CreditUnitValue = input.CreditUnitValue ?? 0M;
-				output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
-				//temp handling of clock hpurs
-				//output.CreditHourType = from.CreditHourType ?? "";
-				//output.CreditHourValue = ( from.CreditHourValue ?? 0M );
-				//if ( output.CreditHourValue > 0 )
-				//{
-				//	output.CreditUnitValue = output.CreditHourValue;
-				//	output.CreditUnitTypeDescription = output.CreditHourType;
-				//}
+				//populate QV
+				//TODO - change to store the QA as json
+				//output.QVCreditValue = FormatQuantitiveValue( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription, input.CreditHourType );
+				var creditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
+
+				if ( creditValue.HasData() )
+				{
+					//pending
+					output.CreditValue.Add( creditValue );
+					//need to remove references to these!!!!!!!!!!!!!!!!
+					//output.CreditUnitType = output.QVCreditValue.CreditUnitType;
+					//output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+					//output.CreditUnitTypeDescription = output.QVCreditValue.Description;
+
+					//output.CreditUnitValue = output.QVCreditValue.Value;
+					//output.CreditUnitMaxValue = output.QVCreditValue.MaxValue;
+					//if ( output.CreditUnitMaxValue > 0 )
+					//{
+					//	output.CreditUnitValue = output.QVCreditValue.MinValue;
+					//	output.CreditUnitMinValue = output.QVCreditValue.MinValue;
+					//	output.CreditValueIsRange = true;
+					//}
+				}
+				else
+				{
+					//check for old
+					//output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
+					//output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
+					//output.CreditUnitValue = input.CreditUnitValue ?? 0M;
+					//output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
+
+				}
 			}
+
 
 
 			// Begin edits - Need these output populate Credit Unit Type -  NA 3/24/2017
@@ -1495,16 +1559,16 @@ status );
 			output.CredentialRegistryId = input.CredentialRegistryId;
 
 			output.AssessmentExample = input.AssessmentExampleUrl;
-            output.AssessmentExampleDescription = input.AssessmentExampleDescription;
+			output.AssessmentExampleDescription = input.AssessmentExampleDescription;
 
 
-            if ( IsValidDate( input.DateEffective ) )
-                output.DateEffective = ( ( DateTime )input.DateEffective ).ToShortDateString();
-            else
-                output.DateEffective = "";
+			if ( IsValidDate( input.DateEffective ) )
+				output.DateEffective = ( ( DateTime )input.DateEffective ).ToString( "yyyy-MM-dd" );
+			else
+				output.DateEffective = "";
 			//
 			if ( IsValidDate( input.ExpirationDate ) )
-				output.ExpirationDate = ( ( DateTime )input.ExpirationDate ).ToShortDateString();
+				output.ExpirationDate = ( ( DateTime )input.ExpirationDate ).ToString( "yyyy-MM-dd" );
 			else
 				output.ExpirationDate = "";
 
@@ -1512,23 +1576,27 @@ status );
 
 			//multiple languages, now in entity.reference
 			output.InLanguageCodeList = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
-			
+
 			//=============================
 
 			output.DeliveryTypeDescription = input.DeliveryTypeDescription;
 			//output.VerificationMethodDescription = from.VerificationMethodDescription;
 			output.AssessmentOutput = input.AssessmentOutput;
-            output.ExternalResearch = input.ExternalResearch;
-            if ( input.HasGroupEvaluation != null )
-                output.HasGroupEvaluation = ( bool )input.HasGroupEvaluation;
-            if ( input.HasGroupParticipation != null )
-                output.HasGroupParticipation = ( bool )input.HasGroupParticipation;
-            if ( input.IsProctored != null )
-                output.IsProctored = ( bool )input.IsProctored;
+			output.ExternalResearch = input.ExternalResearch;
+			if ( input.HasGroupEvaluation != null )
+				output.HasGroupEvaluation = ( bool )input.HasGroupEvaluation;
+			if ( input.HasGroupParticipation != null )
+				output.HasGroupParticipation = ( bool )input.HasGroupParticipation;
+			if ( input.IsProctored != null )
+				output.IsProctored = ( bool )input.IsProctored;
 
-            output.ProcessStandards = input.ProcessStandards;
-            output.ProcessStandardsDescription = input.ProcessStandardsDescription;
+			output.ProcessStandards = input.ProcessStandards;
+			output.ProcessStandardsDescription = input.ProcessStandardsDescription;
 
+			if ( !string.IsNullOrWhiteSpace( input.TargetLearningResource ) )
+			{
+				output.TargetLearningResource = JsonConvert.DeserializeObject<List<string>>( input.TargetLearningResource );
+			}
             output.ScoringMethodDescription = input.ScoringMethodDescription;
             output.ScoringMethodExample = input.ScoringMethodExample;
             output.ScoringMethodExampleDescription = input.ScoringMethodExampleDescription;
@@ -1539,8 +1607,8 @@ status );
 
             output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
 			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.ASSESSMENT_Identifier );
-
-			//properties
+			output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //  = 76;
+																												   //properties
 			try
 			{
                 if ( includingProperties )
@@ -1568,7 +1636,6 @@ status );
 
             try
             {
-
 				output.Occupation = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
 				output.Industry = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
@@ -1592,10 +1659,8 @@ status );
 
                 }
 
-
                 //get condition profiles
                 List<ConditionProfile> list = new List<ConditionProfile>();
-
                 list = Entity_ConditionProfileManager.GetAll(output.RowId, false);
                 if ( list != null && list.Count > 0 )
                 {
@@ -1626,8 +1691,14 @@ status );
                         }
                     }
 
+					output.AdvancedStandingFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).AdvancedStandingFrom;
+					output.IsAdvancedStandingFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).IsAdvancedStandingFor;
+					output.IsRequiredFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).IsRequiredFor;
+					output.IsRecommendedFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).IsRecommendedFor;
+					output.IsPreparationFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).IsPreparationFor;
+					output.PreparationFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.AssessmentConnections ).PreparationFrom;
 
-                }
+				}
             }
             catch ( Exception ex )
             {
@@ -1785,7 +1856,7 @@ status );
 
         } //
 
-        public static void MapFromDB_Competencies( ThisEntity to )
+        public static void MapFromDB_Competencies( ThisEntity output )
         {
 
             var frameworksList = new Dictionary<string, RegistryImport>();
@@ -1795,12 +1866,25 @@ status );
             //if ( to.AssessesCompetencies.Count > 0 )
             //    to.HasCompetencies = true;
 
-            to.AssessesCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
-			to.AssessesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework(  to.RowId, ref frameworksList);
-            if ( to.AssessesCompetenciesFrameworks.Count > 0 )
+            output.AssessesCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
+			output.AssessesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework(  output.RowId, ref frameworksList);
+			//these would be retrieved via condition profiles!
+			//output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, ref frameworksList );
+			//if ( output.RequiresCompetenciesFrameworks.Count > 0 )
+			//{
+			//	output.HasCompetencies = true;
+			//	output.FrameworkPayloads = frameworksList;
+			//}
+			//
+			if ( output.AssessesCompetenciesFrameworks.Count > 0 )
             {
-                to.HasCompetencies = true;
-                to.FrameworkPayloads = frameworksList;
+                output.HasCompetencies = true;
+                output.FrameworkPayloads = frameworksList;
+
+				foreach(var item in output.AssessesCompetenciesFrameworks)
+				{
+
+				}
             }
 		}
 

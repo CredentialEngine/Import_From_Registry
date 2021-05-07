@@ -52,7 +52,7 @@ namespace workIT.Factories
 
 					if ( entity.Id == 0 )
 					{
-						entity.StatusId = 1;
+						//entity.StatusId = 1;
 						MapToDB( entity, efEntity );
 
 						if ( entity.RowId == null || entity.RowId == Guid.Empty )
@@ -225,6 +225,8 @@ namespace workIT.Factories
 				statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
 				return false;
 			}
+			if ( string.IsNullOrWhiteSpace( envelopeId ) )
+				envelopeId = "SKIP ME";
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				ctid = "SKIP ME";
 			int orgId = 0;

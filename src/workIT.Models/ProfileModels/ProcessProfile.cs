@@ -15,7 +15,7 @@ namespace workIT.Models.ProfileModels
 		public ProcessProfile()
 		{
 			ProcessingAgent = new Organization();
-			ExternalInput = new Enumeration();
+			//ExternalInput = new Enumeration();
 			ProcessTypeId = 1;
 
 			//TargetAssessment = new List<AssessmentProfile>();
@@ -33,12 +33,12 @@ namespace workIT.Models.ProfileModels
 		/// Inflate ProcessingAgentUid for display 
 		/// </summary>
 		public Organization ProcessingAgent { get; set; }
-		
-		public Enumeration ExternalInput { get; set; }
+
+		public Enumeration DataCollectionMethodType { get; set; } = new Enumeration();
 		/// <summary>
 		/// Alias used for publishing
 		/// </summary>
-		public Enumeration ExternalInputType { get { return ExternalInput; } set { ExternalInput = value; } } //
+		public Enumeration ExternalInputType { get; set; } = new Enumeration();
 
 		public string ProcessFrequency { get; set; }
 
@@ -57,22 +57,27 @@ namespace workIT.Models.ProfileModels
 		/// </summary>
 		public List<JurisdictionProfile> Region { get; set; }
 
-		//TODO - chg
-		public string TargetCompetencyFramework { get; set; }
-		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 
 		public List<AssessmentProfile> TargetAssessment { get; set; }
-		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; }
+		public List<CompetencyFramework> TargetCompetencyFramework { get; set; } = new List<CompetencyFramework>();
+
 		public List<Credential> TargetCredential { get; set; }
 
+		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; }
+
+
 		#region Prperties for Import
-		public List<Guid> TargetCredentialUids { get; set; }
-		public List<Guid> TargetAssessmentUids { get; set; }
-		public List<Guid> TargetLearningOpportunityUids { get; set; }
+		//public List<Guid> TargetCredentialUids { get; set; }
+		//public List<Guid> TargetAssessmentUids { get; set; }
+		//public List<Guid> TargetLearningOpportunityUids { get; set; }
+
+
+		public List<int> TargetAssessmentIds { get; set; }
+		public List<int> TargetCompetencyFrameworkIds { get; set; }
 
 		public List<int> TargetCredentialIds { get; set; }
-		public List<int> TargetAssessmentIds { get; set; }
 		public List<int> TargetLearningOpportunityIds { get; set; }
+
 		#endregion
 
 		public string ProcessType

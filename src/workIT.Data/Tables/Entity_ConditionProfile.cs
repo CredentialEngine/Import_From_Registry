@@ -37,6 +37,7 @@ namespace workIT.Data.Tables
         public Nullable<decimal> CreditUnitValue { get; set; }
         public Nullable<decimal> CreditUnitMaxValue { get; set; }
         public string SubmissionOfDescription { get; set; }
+        public string CreditValue { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

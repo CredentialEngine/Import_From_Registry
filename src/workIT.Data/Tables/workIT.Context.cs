@@ -108,5 +108,13 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
         public virtual DbSet<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
         public virtual DbSet<HoldersProfile> HoldersProfile { get; set; }
+        public virtual DbSet<Codes_ProcessProfileType> Codes_ProcessProfileType { get; set; }
+        public virtual DbSet<CompetencyFramework_Competency> CompetencyFramework_Competency { get; set; }
+        public virtual DbSet<Entity_AggregateDataProfile> Entity_AggregateDataProfile { get; set; }
+        public virtual DbSet<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
+        public virtual DbSet<Entity_Language> Entity_Language { get; set; }
+        public virtual DbSet<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }
+        public virtual DbSet<JobProfile> JobProfile { get; set; }
+        public virtual DbSet<OccupationProfile> OccupationProfile { get; set; }
     }
 }

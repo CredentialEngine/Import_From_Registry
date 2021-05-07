@@ -6,6 +6,7 @@ using System.Linq;
 
 using workIT.Models;
 //using workIT.Models.Helpers.Cass;
+using ApiFramework = workIT.Models.API.CompetencyFramework;
 
 using workIT.Utilities;
 
@@ -13,7 +14,7 @@ using DBEntity = workIT.Data.Tables.CompetencyFramework;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisEntity = workIT.Models.ProfileModels.CompetencyFramework;
 using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
-
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -148,6 +149,57 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		{
+			DBEntity efEntity = new DBEntity();
+			try
+			{
+				//var pathwayCTIDTemp = "ce-abcb5fe0-8fde-4f06-9d70-860cd5bdc763";
+				using ( var context = new EntityContext() )
+				{
+					if ( !IsValidGuid( entityUid ) )
+					{
+						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						return 0;
+					}
+					//quick check to ensure not existing
+					ThisEntity entity = GetByCtid( ctid );
+					if ( entity != null && entity.Id > 0 )
+						return entity.Id;
+
+					//only add DB required properties
+					//NOTE - an entity will be created via trigger
+					efEntity.Name = "Placeholder until full document is downloaded";
+					efEntity.Description = "Placeholder until full document is downloaded";
+					
+					//realitically the component should be added in the same workflow
+					efEntity.EntityStateId = 1;
+					efEntity.RowId = entityUid;
+					//watch that Ctid can be  updated if not provided now!!
+					efEntity.CTID = ctid;
+					efEntity.FrameworkUri = registryAtId;
+
+					efEntity.Created = System.DateTime.Now;
+					efEntity.LastUpdated = System.DateTime.Now;
+
+					context.CompetencyFramework.Add( efEntity );
+					int count = context.SaveChanges();
+					if ( count > 0 )
+						return efEntity.Id;
+
+					status = thisClassName + " Error - the save was not successful, but no message provided. ";
+				}
+			}
+
+			catch ( Exception ex )
+			{
+				string message = FormatExceptions( ex );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
+				status = thisClassName + " Error - the save was not successful. " + message;
+
+			}
+			return 0;
+		}
 
 		/// <summary>
 		/// Delete a framework - only if no remaining references!!
@@ -184,7 +236,7 @@ namespace workIT.Factories
 		/// <param name="ctid"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Delete(string credentialRegistryId, string ctid, ref string statusMessage)
+		public bool Delete( string ctid, ref string statusMessage)
 		{
 			bool isValid = true;
 			if ( string.IsNullOrWhiteSpace( ctid ) )
@@ -244,7 +296,7 @@ namespace workIT.Factories
 							List<String> messages = new List<string>();
 							//mark owning org for updates 
 							//	- nothing yet from frameworks
-							var org = OrganizationManager.GetByCtid( orgCtid );
+							var org = OrganizationManager.GetSummaryByCtid( orgCtid );
 							if ( org != null && org.Id > 0 )
 							{
 								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, org.Id, 1, ref messages );
@@ -459,6 +511,14 @@ namespace workIT.Factories
 			else
 			{
 				//ensure we don't reset the store
+				to.CompetenciesStore = null;
+			}
+			if ( !string.IsNullOrWhiteSpace( from.APIFramework ) )
+				to.CompetencyFrameworkHierarchy = from.APIFramework;
+			else
+			{
+				//ensure we don't reset the property
+				to.CompetencyFrameworkHierarchy = null;
 			}
 			//20-07-02 mp - just store the (index ready) competencies json, not the whole graph
 			//				- may stop saving this for now?
@@ -487,7 +547,12 @@ namespace workIT.Factories
 			to.TotalCompetencies = from.TotalCompetencies;
 			to.CompentenciesStore = from.CompetenciesStore;
 			to.CompetencyFrameworkGraph = from.CompetencyFrameworkGraph;
-
+			to.APIFramework = from.CompetencyFrameworkHierarchy;
+			if( !string.IsNullOrEmpty(to.APIFramework))
+			{
+				//ApiFramework
+				to.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( to.APIFramework );
+			}
 
 			//this should be replace by presence of CredentialRegistryId
 			if ( from.ExistsInRegistry != null )

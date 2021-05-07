@@ -55,12 +55,6 @@ namespace RA.Models.JsonV2
 		public int NumberAwarded { get; set; }
 
 		/// <summary>
-		/// Rate computed by dividing the number of subjects passing an assessment by the total number taking the assessment.
-		/// </summary>
-		[JsonProperty( PropertyName = "qdata:passRate" )]
-		public List<QuantitativeValue> PassRate { get; set; }
-
-		/// <summary>
 		/// Jurisdiction Profile
 		/// Geo-political information about applicable geographic areas and their exceptions.
 		/// <see cref="https://credreg.net/ctdl/terms/JurisdictionProfile"/>

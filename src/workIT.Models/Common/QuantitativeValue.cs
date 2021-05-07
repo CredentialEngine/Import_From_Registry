@@ -67,7 +67,7 @@ namespace workIT.Models.Common
 			else
 				return Description;
 
-			return summary;
+		
 		}
 		/// <summary>
 		/// To be valid:

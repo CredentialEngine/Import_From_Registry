@@ -38,7 +38,8 @@ namespace workIT.Models.Elastic
     public class IndexCompetency
     {
         public string Name { get; set; }
-        public string Description { get; set; }
+		public string CTID { get; set; }
+		public string Description { get; set; }
 		//public string CompetencyLabel { get; set; }
 		//public string CompetencyText { get; set; }
 		//public string Comment { get; set; }

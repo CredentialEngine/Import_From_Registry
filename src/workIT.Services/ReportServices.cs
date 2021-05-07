@@ -64,9 +64,9 @@ namespace workIT.Services
 		/// Get Entity Codes with totals for top level entities like: Credential, Organization, assessments, and learning opp
 		/// </summary>
 		/// <returns></returns>
-		public static List<CodeItem> MainEntityTotals()
+		public static List<CodeItem> MainEntityTotals( bool gettingAll = true )
 		{
-			List<CodeItem> list = CodesManager.CodeEntity_GetMainClassTotals();
+			List<CodeItem> list = CodesManager.CodeEntity_GetMainClassTotals( gettingAll );
 
 			return list;
 		}

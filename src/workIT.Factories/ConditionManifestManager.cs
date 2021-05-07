@@ -163,7 +163,8 @@ namespace workIT.Factories
 							//assume and validate, that if we get here we have a full record
 							if ( (efEntity.EntityStateId ?? 1) == 1 )
 								efEntity.EntityStateId = 3;
-
+							//if started as a placeholder, may not have the org
+							efEntity.OrganizationId = parentOrgId;
 							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
@@ -172,6 +173,7 @@ namespace workIT.Factories
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
 							}
+
 							//has changed?
 							if ( HasStateChanged( context ) )
 							{
@@ -187,8 +189,10 @@ namespace workIT.Factories
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
                                 //new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
                             }
-
-                            if ( !UpdateParts( entity, ref status ) )
+							//the Entity.ConditionManifest should exist, try to be sure
+							Entity_HasConditionManifest_Add( condtionManifestParentUid, efEntity.Id, ref status );
+							//
+							if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 
 							SiteActivity sa = new SiteActivity()
@@ -240,6 +244,7 @@ namespace workIT.Factories
 
             //ConditionProfile
             Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
+			//deleteall is handled in SaveList
             //emanager.DeleteAll( relatedEntity, ref status );
 
             emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
@@ -369,7 +374,9 @@ namespace workIT.Factories
                 statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
                 return false;
             }
-            if ( string.IsNullOrWhiteSpace( ctid ) )
+			if ( string.IsNullOrWhiteSpace( envelopeId ) )
+				envelopeId = "SKIP ME";
+			if ( string.IsNullOrWhiteSpace( ctid ) )
                 ctid = "SKIP ME";
             using ( var context = new EntityContext() )
 			{
@@ -550,6 +557,54 @@ namespace workIT.Factories
 			ThisEntity to = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
 
+			//Entity parent = EntityManager.GetEntity( 2, orgId );
+			//if ( parent == null || parent.Id == 0 )
+			//{
+			//	return list;
+			//}
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					var results = context.ConditionManifest
+							.Where( s => s.OrganizationId == orgId )
+							.OrderBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( var from in results )
+						{
+							to = new ThisEntity();
+							if ( isForLinks )
+							{
+								to.Id = from.Id;
+								to.RowId = from.RowId;
+
+								to.OrganizationId = (int)from.OrganizationId;
+								//to.OwningAgentUid = from.Entity.EntityUid;
+								//
+								to.ProfileName = from.Name;
+							} else
+							{
+								MapFromDB( from, to );
+							}
+							list.Add( to );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAll(int orgId)" );
+			}
+			return list;
+		}//
+		public static List<ThisEntity> GetAllOLD( int orgId, bool isForLinks )
+		{
+			ThisEntity to = new ThisEntity();
+			List<ThisEntity> list = new List<ThisEntity>();
+
 			Entity parent = EntityManager.GetEntity( 2, orgId );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -574,11 +629,12 @@ namespace workIT.Factories
 								to.Id = from.ConditionManifestId;
 								to.RowId = from.ConditionManifest.RowId;
 
-								to.OrganizationId = (int)from.Entity.EntityBaseId;
+								to.OrganizationId = ( int )from.Entity.EntityBaseId;
 								to.OwningAgentUid = from.Entity.EntityUid;
 								//
 								to.ProfileName = from.ConditionManifest.Name;
-							} else
+							}
+							else
 							{
 								MapFromDB( from.ConditionManifest, to );
 							}
@@ -593,61 +649,61 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
-		 /// <summary>
-		 /// Get all the condition manifests for the parent entity (ex a credential)
-		 /// </summary>
-		 /// <param name="parentUid"></param>
-		 /// <returns></returns>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool isForLinks )
-		{
-			ThisEntity to = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
-			Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				return list;
-			}
+		/// <summary>
+		/// Get all the condition manifests for the parent entity (ex a credential)
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <returns></returns>
+		//public static List<ThisEntity> GetAll( Guid parentUid, bool isForLinks )
+		//{
+		//	ThisEntity to = new ThisEntity();
+		//	List<ThisEntity> list = new List<ThisEntity>();
+		//	Entity parent = EntityManager.GetEntity( parentUid );
+		//	if ( parent == null || parent.Id == 0 )
+		//	{
+		//		return list;
+		//	}
 
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					//context.Configuration.LazyLoadingEnabled = false;
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			//context.Configuration.LazyLoadingEnabled = false;
 
-					List<EM.Entity_ConditionManifest> results = context.Entity_ConditionManifest
-							.Where( s => s.EntityId == parent.Id )
-							.OrderBy( s => s.Created )
-							.ToList();
+		//			List<EM.Entity_ConditionManifest> results = context.Entity_ConditionManifest
+		//					.Where( s => s.EntityId == parent.Id )
+		//					.OrderBy( s => s.Created )
+		//					.ToList();
 
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( EM.Entity_ConditionManifest from in results )
-						{
-							to = new ThisEntity();
-							if ( isForLinks )
-							{
-								to.Id = from.Id;
-								to.RowId = from.ConditionManifest.RowId;
+		//			if ( results != null && results.Count > 0 )
+		//			{
+		//				foreach ( EM.Entity_ConditionManifest from in results )
+		//				{
+		//					to = new ThisEntity();
+		//					if ( isForLinks )
+		//					{
+		//						to.Id = from.Id;
+		//						to.RowId = from.ConditionManifest.RowId;
 
-								to.OrganizationId = ( int ) from.Entity.EntityBaseId;
-								to.OwningAgentUid = from.Entity.EntityUid;
-								to.ProfileName = from.ConditionManifest.Name;
-							}
-							else
-							{
-								MapFromDB( from.ConditionManifest, to );
-							}
-							list.Add( to );
-						}
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll (Guid parentUid)" );
-			}
-			return list;
-		}//
+		//						to.OrganizationId = ( int ) from.Entity.EntityBaseId;
+		//						to.OwningAgentUid = from.Entity.EntityUid;
+		//						to.ProfileName = from.ConditionManifest.Name;
+		//					}
+		//					else
+		//					{
+		//						MapFromDB( from.ConditionManifest, to );
+		//					}
+		//					list.Add( to );
+		//				}
+		//			}
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.LogError( ex, thisClassName + ".GetAll (Guid parentUid)" );
+		//	}
+		//	return list;
+		//}//
 
 		public static List<ThisEntity> Search( int orgId, int pageNumber, int pageSize, ref int pTotalRows )
 		{
@@ -937,7 +993,7 @@ namespace workIT.Factories
 					else
 					{
 						//?no info on error
-						status.AddError( "Error - the add was not successful." );
+						status.AddError( thisClassName + "Error - the add was not successful." );
 						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a ConditionManifest for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}", parentUid, parent.EntityType, profileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}

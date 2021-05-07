@@ -37,17 +37,54 @@ namespace workIT.Factories
                 status.AddError( thisClassName + ". Error - the parent entity was not found." );
                 return false;
             }
-            DeleteAll( parent, ref status );
-
-            if ( list == null || list.Count == 0 )
-				return true;
-
-			bool isAllValid = true;
-			foreach ( ThisEntity item in list )
+			//21-03-31 mp	- back to deleteAll - problem with related tables like entity.reference (also maybe cost items?) not getting deleted, so adding dups 
+			//				- consider an existance check. Easier for entity.reference, but not for jurisdictions
+			DeleteAll( parent, ref status );
+			//now maybe still do a delete all until implementing a balance line
+			//could set date and delete all before this date!
+			DateTime updateDate = DateTime.Now;
+			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
 			{
-				Save( item, parentUid, ref status );
+				updateDate = status.LocalUpdatedDate;
 			}
 
+			//var current = GetAll( parent.EntityUid );
+			bool isAllValid = true;
+			if ( list == null || list.Count == 0 )
+			{
+				//if ( current != null && current.Any() )
+				//{
+				//	DeleteAll( parent, ref status );
+				//}
+				return true;
+			}
+			//else    //may not need this if the new list version works		
+			//if ( list.Count == 1 && current.Count == 1 )
+			//{
+			//	//just do update of one
+			//	var entity = list[ 0 ];
+			//	entity.Id = current[ 0 ].Id;
+
+			//	Save( entity, parent, ref status );
+			//}
+			else
+			{
+				//21-03-16 mp - go back to delete all for now
+				//DeleteAll( parent, ref status );
+				int cntr = 0;
+				foreach ( ThisEntity item in list )
+				{
+					//if ( current != null && current.Count > cntr )
+					//{
+					//	item.Id = current[ cntr ].Id;
+					//}
+					Save( item, parent, ref status );
+					cntr++;
+				}
+				//delete any records with last updated less than updateDate
+				//this will not work if doing many re-imports - with same date
+				//DeleteAll( parent, ref status, updateDate );
+			}
 			return isAllValid;
 		}
 
@@ -59,17 +96,17 @@ namespace workIT.Factories
 		/// <param name="userId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, Guid parentUid,  ref SaveStatus status )
+		public bool Save( ThisEntity entity, Entity parent,  ref SaveStatus status )
 		{
 			bool isValid = true;
-			if ( !IsValidGuid( parentUid ) )
-			{
-				status.AddError( thisClassName + " - Error: the parent identifier was not provided." );
-				return false;
-			}
+			//if ( !IsValidGuid( parentUid ) )
+			//{
+			//	status.AddError( thisClassName + " - Error: the parent identifier was not provided." );
+			//	return false;
+			//}
 
-			//get parent entity
-			Entity parent = EntityManager.GetEntity( parentUid );
+			////get parent entity
+			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( thisClassName + " - Error - the parent entity was not found." );
@@ -79,19 +116,32 @@ namespace workIT.Factories
 
 			DBEntity efEntity = new DBEntity();
 
-			using ( var context = new EntityContext() )
-			{
-				if ( ValidateProfile( entity, ref status ) == false )
-				{
-					//can't really scrub from here - too late?
-					//at least add some identifer
-					return false;
-				}
 
-				try
+			if ( ValidateProfile( entity, ref status ) == false )
+			{
+				//can't really scrub from here - too late?
+				//at least add some identifer
+				//return false;
+			}
+
+			try
+			{
+				bool doingUpdateParts = true;
+				using ( var context = new EntityContext() )
 				{
 					if ( entity.Id == 0 )
 					{
+						efEntity = new DBEntity();
+						//check for current match - only do if not deleting
+						//not unexpected that the same cost details url could be used for more than one profile
+						//var exists = context.Entity_CostProfile
+						//	.Where( s => s.EntityId == parent.Id
+						//		&& s.Description == entity.Description
+						//		&& s.DetailsUrl == entity.CostDetails 
+						//	)
+						//	.OrderBy( s => s.Created ).ThenBy( s => s.LastUpdated )
+						//	.ToList();
+
 						//just in case
 						entity.EntityId = parent.Id;
 
@@ -99,12 +149,12 @@ namespace workIT.Factories
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
 						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-                        if ( IsValidGuid( entity.RowId ) )
-                            efEntity.RowId = entity.RowId;
-                        else
-                            efEntity.RowId = Guid.NewGuid();
+						if ( IsValidGuid( entity.RowId ) )
+							efEntity.RowId = entity.RowId;
+						else
+							efEntity.RowId = Guid.NewGuid();
 
-                        context.Entity_CostProfile.Add( efEntity );
+						context.Entity_CostProfile.Add( efEntity );
 						count = context.SaveChanges();
 						//update profile record so doesn't get deleted
 						entity.Id = efEntity.Id;
@@ -112,16 +162,17 @@ namespace workIT.Factories
 						if ( count == 0 )
 						{
 							status.AddError( thisClassName + " - Unable to add Cost Profile" );
+							doingUpdateParts = false;
 						}
 						else
 						{
-							if ( !UpdateParts( entity, ref status) )
-								isValid = false;
+							//if ( !UpdateParts( entity, ref status ) )
+							//	isValid = false;
 						}
 					}
 					else
 					{
-						context.Configuration.LazyLoadingEnabled = false;
+						//context.Configuration.LazyLoadingEnabled = false;
 
 						efEntity = context.Entity_CostProfile.SingleOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
@@ -136,71 +187,195 @@ namespace workIT.Factories
 								count = context.SaveChanges();
 							}
 							//always check parts
-							if ( !UpdateParts( entity, ref status ) )
-								isValid = false;
+							//if ( !UpdateParts( entity, ref status ) )
+							//	isValid = false;
 						}
 					}
 				}
-				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+				//21-04-21 mparsons - end the current context before doing parts
+				if ( doingUpdateParts )
 				{
-					string message = HandleDBValidationError( dbex, thisClassName + ".Save()", entity.ProfileName );
-
-					status.AddWarning( thisClassName + " - Error - the save was not successful. " + message );
-					LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
-					isValid = false;
+					//always check parts
+					if ( !UpdateParts( entity, ref status ) )
+						isValid = false;
 				}
-				catch ( Exception ex )
-				{
-					string message = FormatExceptions( ex );
-					status.AddError( thisClassName + " - Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
-					isValid = false;
-				}
 			}
+			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			{
+				string message = HandleDBValidationError( dbex, thisClassName + ".Save()", entity.ProfileName );
+
+				status.AddWarning( thisClassName + " - Error - the save was not successful. " + message );
+				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save()-DbEntityValidationException, Parent: {0} (type: {1}, Id: {2})", parent.EntityBaseName, parent.EntityTypeId, parent.EntityBaseId ) );
+				isValid = false;
+			}
+			catch ( Exception ex )
+			{
+				string message = FormatExceptions( ex );
+				status.AddError( thisClassName + " - Error - the save was not successful. " + message );
+
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} (type: {1}, Id: {2})", parent.EntityBaseName, parent.EntityTypeId, parent.EntityBaseId ) );
+				isValid = false;
+			}
+
 
 			return isValid;
 		}
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
-        {
-            bool isValid = true;
-            //Entity parent = EntityManager.GetEntity( parentUid );
-            if ( parent == null || parent.Id == 0 )
-            {
-                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
-                return false;
-            }
-            using ( var context = new EntityContext() )
-            {
-				var results = context.Entity_CostProfile.Where( s => s.EntityId == parent.Id )
-					.ToList();
-				if ( results == null || results.Count == 0 )
-					return true;
+		public bool DeleteAll( Entity parent, ref SaveStatus status )
+		{
+			LoggingHelper.DoTrace( 7, thisClassName + ".DeleteAll - entered" );
 
-				context.Entity_CostProfile.RemoveRange( context.Entity_CostProfile.Where( s => s.EntityId == parent.Id ) );
-                int count = context.SaveChanges();
-                if ( count > 0 )
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    //if doing a delete on spec, may not have been any properties
-                }
-            }
+			bool isValid = true;
+			if ( parent == null || parent.Id == 0 )
+			{
+				status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+				return false;
+			}
+			bool retry = false;
+			isValid = DeleteAll( parent, 1, ref status, ref retry );
+			if ( !isValid && retry )
+			{
+				LoggingHelper.DoTrace( 5, thisClassName + ".DeleteAll - RETRYING *********" );
+
+				return DeleteAll( parent, 1, ref status, ref retry ); ;
+			}
+			return isValid;
+		}
+        public bool DeleteAll( Entity parent, int attemptNbr, ref SaveStatus status, ref bool retry )
+        {
+            bool isValid = false;
+			int expectedDeleteCount = 0;
+
+			using ( var context = new EntityContext() )
+            {
+				try
+				{
+					var results = context.Entity_CostProfile.Where( s => s.EntityId == parent.Id )
+						.ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+					expectedDeleteCount = results.Count;
+					foreach ( var item in results )
+					{
+						string statusMessage = "";
+						//we have a trigger for this
+						//new EntityManager().Delete( item.RowId, string.Format("CostProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId), ref statusMessage );
+
+						context.Entity_CostProfile.Remove( item );
+						int count = context.SaveChanges();
+						if ( count > 0 )
+						{
+							isValid = true;
+						}
+						else
+						{
+							//if doing a delete on spec, may not have been any properties
+						}
+					}
+					//context.Entity_CostProfile.RemoveRange( context.Entity_CostProfile.Where( s => s.EntityId == parent.Id ) );
+					
+				}
+				catch ( System.Data.Entity.Infrastructure.DbUpdateConcurrencyException dbcex )
+				{
+					if ( dbcex.Message.IndexOf( "an unexpected number of rows (0)" ) > 0 )
+					{
+						//don't know why this happens, quashing for now.
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. Parent type: {0}, ParentId: {1}, expectedDeletes: {2}. Message: {3}", parent.EntityTypeId, parent.EntityBaseId, expectedDeleteCount, dbcex.Message ) );
+						isValid = true;
+					}
+					else
+					{
+						var msg = BaseFactory.FormatExceptions( dbcex );
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, DbUpdateConcurrencyException: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+					}
+
+				}
+				catch ( Exception ex )
+				{
+					var msg = BaseFactory.FormatExceptions( ex );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+
+					if ( msg.IndexOf( "was deadlocked on lock resources" ) > 0 )
+					{
+						retry = true;
+					}
+				}
+			}
 
             return isValid;
         }
-        private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+
+		//public bool DeleteAll( Entity parent, ref SaveStatus status, DateTime? lastUpdated = null )
+		//{
+		//	bool isValid = true;
+		//	if ( parent == null || parent.Id == 0 )
+		//	{
+		//		status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+		//		return false;
+		//	}
+		//	int expectedDeleteCount = 0;
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			var results = context.Entity_CostProfile.Where( s => s.EntityId == parent.Id && ( lastUpdated == null || s.LastUpdated < lastUpdated ) )
+		//		.ToList();
+		//			if ( results == null || results.Count == 0 )
+		//				return true;
+		//			expectedDeleteCount = results.Count;
+
+		//			foreach ( var item in results )
+		//			{
+		//				context.Entity_CostProfile.Remove( item );
+		//				var count = context.SaveChanges();
+		//				if ( count > 0 )
+		//				{
+
+		//				}
+		//			}
+		//		}
+		//	}
+		//	catch ( System.Data.Entity.Infrastructure.DbUpdateConcurrencyException dbcex )
+		//	{
+		//		if ( dbcex.Message.IndexOf( "an unexpected number of rows (0)" ) > 0 )
+		//		{
+		//			//don't know why this happens, quashing for now.
+		//			LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. Parent type: {0}, ParentId: {1}, expectedDeletes: {2}. Message: {3}", parent.EntityTypeId, parent.EntityBaseId, expectedDeleteCount, dbcex.Message ) );
+		//		}
+		//		else
+		//		{
+		//			var msg = BaseFactory.FormatExceptions( dbcex );
+		//			LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, DbUpdateConcurrencyException: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+		//		}
+
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		var msg = BaseFactory.FormatExceptions( ex );
+		//		LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, exception: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
+		//	}
+		//	return isValid;
+		//}
+		//
+		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
+			//
+			try
+			{
+				if ( new Entity_ReferenceManager().Add( entity.Condition, entity.RowId, CodesManager.ENTITY_TYPE_COST_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM, false ) == false )
+					isAllValid = false;
 
-			if ( new Entity_ReferenceManager().Add( entity.Condition, entity.RowId, CodesManager.ENTITY_TYPE_CONDITION_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM, false ) == false )
-				isAllValid = false;
+				//JurisdictionProfile 
+				Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+				jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing condition/jurisdiction. " + ex.Message );
+				status.AddError( ex.Message );
+			}
 
-			//JurisdictionProfile 
-			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
-			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
 
             if ( entity.Items != null && entity.Items.Count > 0)
 			    new CostProfileItemManager().SaveList( entity.Items, entity.Id, ref status );
@@ -242,6 +417,8 @@ namespace workIT.Factories
 			ThisEntity row = new ThisEntity();
 			DurationItem duration = new DurationItem();
 			List<ThisEntity> profiles = new List<ThisEntity>();
+			if ( parentUid == null )
+				return profiles;
 			Entity parent = EntityManager.GetEntity( parentUid );
 
 			using ( var context = new EntityContext() )
@@ -345,27 +522,28 @@ namespace workIT.Factories
 			}
 			DateTime startDate = DateTime.Now;
 			DateTime endDate = DateTime.Now;
-			if ( !string.IsNullOrWhiteSpace( profile.DateEffective )  )
-			{
-				if ( !IsValidDate( profile.DateEffective ) )
-					status.AddWarning( "Please enter a valid start date" );
-				else
-				{
-					DateTime.TryParse( profile.DateEffective, out startDate );
-				}
-			}
-			if ( !string.IsNullOrWhiteSpace( profile.ExpirationDate )  )
-			{
-				if ( !IsValidDate( profile.ExpirationDate ) )
-					status.AddWarning( "Please enter a valid end date" );
-				else
-				{
-					DateTime.TryParse( profile.ExpirationDate, out endDate );
-					if ( IsValidDate( profile.DateEffective )
-						&& startDate > endDate)
-						status.AddWarning( "The end date must be greater than the start date." );
-				}
-			}
+			//skip edits, not likely 
+			//if ( !string.IsNullOrWhiteSpace( profile.StartDate )  )
+			//{
+			//	if ( !IsValidDate( profile.StartDate ) )
+			//		status.AddWarning( "Please enter a valid start date" );
+			//	else
+			//	{
+			//		DateTime.TryParse( profile.StartDate, out startDate );
+			//	}
+			//}
+			//if ( !string.IsNullOrWhiteSpace( profile.EndDate )  )
+			//{
+			//	if ( !IsValidDate( profile.EndDate ) )
+			//		status.AddWarning( "Please enter a valid end date" );
+			//	else
+			//	{
+			//		DateTime.TryParse( profile.EndDate, out endDate );
+			//		if ( IsValidDate( profile.StartDate )
+			//			&& startDate > endDate)
+			//			status.AddWarning( "The end date must be greater than the start date." );
+			//	}
+			//}
 			//currency?
 			//if ( string.IsNullOrWhiteSpace( profile.Currency ) == false )
 			//{
@@ -394,13 +572,13 @@ namespace workIT.Factories
 			to.ProfileName = from.ProfileName;
 			to.Description = from.Description;
 
-			if ( IsValidDate( from.ExpirationDate ) )
-				to.ExpirationDate = DateTime.Parse( from.ExpirationDate );
+			if ( IsValidDate( from.EndDate ) )
+				to.ExpirationDate = DateTime.Parse( from.EndDate );
 			else
 				to.ExpirationDate = null;
 
-			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = DateTime.Parse( from.DateEffective );
+			if ( IsValidDate( from.StartDate ) )
+				to.DateEffective = DateTime.Parse( from.StartDate );
 			else
 				to.DateEffective = null;
 
@@ -427,12 +605,12 @@ namespace workIT.Factories
 			to.Description = from.Description;
 
 			if ( IsValidDate( from.ExpirationDate ) )
-				to.EndDate = ( ( DateTime ) from.ExpirationDate ).ToShortDateString();
+				to.EndDate = ( ( DateTime ) from.ExpirationDate ).ToString("yyyy-MM-dd");
 			else
 				to.EndDate = "";
 
 			if ( IsValidDate( from.DateEffective ) )
-				to.StartDate = ( ( DateTime ) from.DateEffective ).ToShortDateString();
+				to.StartDate = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
 				to.StartDate = "";
 

@@ -41,5 +41,7 @@ namespace workIT.Models.Common
 
 		//import only-maybe
 		public List<string> RelevantDataSetList { get; set; } = new List<string>();
+		//
+		public List<Guid> PublishedBy { get; set; }
 	}
 }

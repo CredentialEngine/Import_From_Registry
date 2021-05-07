@@ -11,7 +11,7 @@ namespace workIT.Models.Common
 	/// <summary>
 	/// Profession, trade, or career field that may involve training and/or a formal qualification.
 	/// </summary>
-	public class Job
+	public class Job : TopLevelObject
 	{
 		/// <summary>
 		///  type
@@ -23,22 +23,6 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string CtdlId { get; set; }
 
-		/// <summary>
-		/// Globally unique Credential Transparency Identifier (CTID) by which the creator, owner or provider of a resource recognizes it in transactions with the external environment (e.g., in verifiable claims involving the resource).
-		/// required
-		/// <see cref="https://credreg.net/ctdl/terms/ctid"/>
-		/// </summary>
-		public string CTID { get; set; }
-
-		/// <summary>
-		/// Name
-		/// </summary>
-		public string Name { get; set; }
-
-		/// <summary>
-		/// Description
-		/// </summary>
-		public string Description { get; set; }
 
 
 		/// <summary>
@@ -137,12 +121,6 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<string> SkillEmbodied { get; set; }
 
-		/// <summary>
-		/// Subject Webpage
-		/// URL
-		/// Required
-		/// </summary>
-		public string SubjectWebpage { get; set; } //URL
 
 		/// <summary>
 		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.

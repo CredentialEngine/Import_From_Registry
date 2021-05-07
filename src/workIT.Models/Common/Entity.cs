@@ -128,6 +128,7 @@ namespace workIT.Models.Common
 			}
 		}
 		public string EntityType { get; set; }
+		public string Image { get; set; }
 	}
 
 	public class EntityCache

@@ -21,25 +21,26 @@ namespace workIT.Models.ProfileModels
 		}
 		public int EntityId { get; set; }
 
-		public Guid ParentUid { get; set; }
-		public int ParentTypeId { get; set; }
-		public string ParentType { get; set; }
+		//public Guid ParentUid { get; set; }
+		//public int ParentTypeId { get; set; }
+		//public string ParentType { get; set; }
 		public Enumeration CurrencyTypes { get; set; }
 		public int CurrencyTypeId { get; set; }
 		//not persisted, but used for display
 		public string Currency { get; set; }
 		public string CurrencySymbol { get; set; }
-		public string ExpirationDate { get; set; }
+		//21-03-27 mp - there is no expiration date for cost profile?
+		//public string ExpirationDate { get; set; }
 	
 		public string CostDetails { get; set; }
 		public List<JurisdictionProfile> Region { get; set; }
 
 		public List<CostProfileItem> Items { get; set; }
 
-		public string StartTime { get { return DateEffective; } set { DateEffective = value; } } //Alias used for publishing
-		public string EndTime { get { return ExpirationDate; } set { ExpirationDate = value; } } //Alias used for publishing
-		public string StartDate { get { return DateEffective; } set { DateEffective = value; } } //Alias used for publishing
-		public string EndDate { get { return ExpirationDate; } set { ExpirationDate = value; } } //Alias used for publishing
+		//public string StartTime { get { return DateEffective; } set { DateEffective = value; } } //Alias used for publishing
+		//public string EndTime { get { return ExpirationDate; } set { ExpirationDate = value; } } //Alias used for publishing
+		public string StartDate { get; set; }
+		public string EndDate { get; set; }
 		public List<TextValueProfile> Condition { get; set; }
 	}
 	//
@@ -81,7 +82,7 @@ namespace workIT.Models.ProfileModels
     }
 
     //
-    //Used for publishing
+    //Used for import
     public class CostProfileMerged : BaseProfile
     {
         public CostProfileMerged()
@@ -93,25 +94,30 @@ namespace workIT.Models.ProfileModels
             Condition = new List<TextValueProfile>();
 
         }
-        public Enumeration CostType { get; set; }
-        public Enumeration ResidencyType { get; set; }
-        //public Enumeration EnrollmentType { get; set; }
-        public Enumeration AudienceType { get; set; }
+		public string Name { get { return ProfileName; } set { ProfileName = value; } }
+		//also description and jurisdiction
+		public string CostDetails { get; set; }
+
         public List<TextValueProfile> Condition { get; set; }
 
-        public string PaymentPattern { get; set; }
         public string Currency { get; set; }
         public string CurrencySymbol { get; set; }
-        public string StartTime { get; set; }
-        public string EndTime { get; set; }
+        //public string StartTime { get; set; }
+        //public string EndTime { get; set; }
         public string StartDate { get; set; }
         public string EndDate { get; set; }
 
-        public decimal Price { get; set; }
-        public string Name { get { return ProfileName; } set { ProfileName = value; } }
-        public string CostDetails { get; set; }
+		//cost items 
+		public Enumeration CostType { get; set; }
+		public decimal Price { get; set; }
 
-        public static List<CostProfile> ExpandCosts( List<CostProfileMerged> input )
+		public Enumeration ResidencyType { get; set; }
+		public Enumeration AudienceType { get; set; }
+		public string PaymentPattern { get; set; }
+
+		//21-03-27 mp - moved function to ImportServices.MappingHelperV3
+		/*
+		public static List<CostProfile> ExpandCosts( List<CostProfileMerged> input )
         {
             var result = new List<CostProfile>();
 
@@ -125,8 +131,8 @@ namespace workIT.Models.ProfileModels
                     ProfileName = merged.Name,
                     Description = merged.Description,
                     Jurisdiction = merged.Jurisdiction,
-                    StartTime = merged.StartTime,
-                    EndTime = merged.EndTime,
+                   // StartTime = merged.StartTime,	//why did we have start and end time?
+                    //EndTime = merged.EndTime,
                     StartDate = merged.StartDate,
                     EndDate = merged.EndDate,
                     CostDetails = merged.CostDetails,
@@ -184,6 +190,7 @@ namespace workIT.Models.ProfileModels
 
             return result;
         }
+		*/
         //
     }
 

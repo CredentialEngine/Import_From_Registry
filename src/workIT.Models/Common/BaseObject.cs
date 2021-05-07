@@ -40,7 +40,7 @@ namespace workIT.Models.Common
 		public bool HasCompetencies { get; set; }
 		public bool ChildHasCompetencies { get; set; }
 		public string DateEffective { get; set; }
-
+		public string ExpirationDate { get; set; }
 		public string StatusMessage { get; set; }
 
 		public DateTime Created { get; set; }
@@ -79,6 +79,18 @@ namespace workIT.Models.Common
 		public int EntityStateId { get; set; }
 		public int EntityTypeId { get; set; }
 		public string CTID { get; set; }
+		public bool IsReferenceEntity
+		{
+			get
+			{
+				if ( string.IsNullOrWhiteSpace( CTID ) )
+					return true;
+				else
+					return false;
+			}
+		}
+
+
 		public string SubjectWebpage { get; set; }
 		#region Owner - these will not be applicable to an org?
 		/// <summary>
@@ -139,7 +151,7 @@ namespace workIT.Models.Common
 		//future when added for org, asmt, and lopp
 		public int StatusId { get; set; }
 		public string CredentialRegistryId { get; set; }
-
+		public string Image { get; set; }
 
 		/// <summary>
 		/// The geo-political region in which the described resource is applicable.

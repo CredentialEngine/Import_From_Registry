@@ -4,18 +4,54 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace workIT.Models.Search
 {
+
+	public class APIFilter
+	{
+		public static string InterfaceType_Autocomplete = "interfaceType:Autocomplete";
+		public static string InterfaceType_Checkbox = "interfaceType:CheckBox";
+		public static string InterfaceType_Text = "interfaceType:Text";
+
+		public static string FilterItem_HasAnyValue = "filterItem:HasAnyValue";
+		public static string FilterItem_TextValue = "filterItem:TextValue";
+		//"interfaceType:"
+
+	}
 	/// <summary>
 	/// Change to be generic. Setting unused to null will hide
 	/// </summary>
+
 	public class FilterQuery
 	{
-		public FilterQuery( string searchType )
+		public string SearchType { get; set; }
+	}
+	public class FilterResponse
+	{
+		public FilterResponse( string searchType )
 		{
 			SearchType = searchType;
 		}
+		[JsonProperty( "@type" )]
+		public string Type { get; set; } = "FilterResponse";
 		public string SearchType { get; set; }
+
+		public List<Filter> Filters { get; set; } = new List<Filter>();
+	}
+	/*
+	public class FilterQueryOld
+	{
+		public FilterQueryOld( string searchType )
+		{
+			SearchType = searchType;
+		}
+
+		public string SearchType { get; set; }
+
+		public List<Filter> Filters { get; set; }
 		//property searches
 		public Filter AssessmentDeliveryTypes { get; set; }
 		public Filter AssessmentMethodTypes { get; set; }
@@ -51,6 +87,7 @@ namespace workIT.Models.Search
 		public Filter SubjectAreas { get; set; } //= new Filter( "subjects", 0 );
 		//
 	}
+*/
 
 	public class Filter
 	{
@@ -58,46 +95,60 @@ namespace workIT.Models.Search
 		{
 
 		}
-		public Filter( string filterName, int categoryId )
+		public Filter( string filterName )
 		{
-			FilterName = filterName;
-			CategoryId = categoryId;
+			URI = filterName.Replace(" ","");
+			if ( URI.IndexOf( "filter:" ) == -1 )
+				URI = "filter:" + URI;
 		}
-		public string FilterName { get; set; }
-		public int CategoryId { get; set; }
+		public Filter( string filterName, string filterURI )
+		{
+			Label = filterName;
+			URI = filterURI.Replace( " ", "" );
+			if ( URI.IndexOf( "filter:" ) == -1 )
+				URI = "filter:" + URI;
+		}
+		//public Filter( string filterName, int categoryId )
+		//{
+		//	URI = filterName;
+		//	if ( URI.IndexOf( "filter:" ) == -1 )
+		//		URI = "filter:" + URI;
+		//	CategoryId = categoryId;
+		//}
+		[JsonProperty( "@type" )]
+		public string Type { get; set; } = "Filter";
+
+		public string URI { get; set; }
+		public int Id { get; set; }
 		public string Label { get; set; }
 		public string Description { get; set; }
+		public List<FilterItem> Items { get; set; } = new List<FilterItem>();
+
 		//use relative URL?
 		//or equivalent of the Custom or Code searches from current
 
-		public string HasAnyLabel { get; set; }
-		public string HasAnyGuidance { get; set; }
-		public FilterItem HasAny{ get; set; } 
-		public List<FilterItem> Items { get; set; } = new List<FilterItem>();
-
-		public string MicroSearchGuidance { get; set; }
+		//public string HasAnyLabel { get; set; }
+		//public string HasAnyGuidance { get; set; }
+		//public FilterItem HasAny{ get; set; } 
+		//public string MicroSearchGuidance { get; set; }
 		public string SearchType { get; set; }
 		public string SearchTypeContext { get; set; }
-		public string MicroSearchEndpoint { get; set; }
+		//public string MicroSearchEndpoint { get; set; }
+		public JObject Parameters { get; set; }
 	}
-	public class CheckboxListTextFilter
-	{
-		public string FilterName { get; set; }
-		public int CategoryId { get; set; }
-		public string Label { get; set; }
-		public string Guidance { get; set; }
-		//use relative URL?
-		public string MicroSearchEndpoint { get; set; }
-		public List<FilterItem> Options { get; set; } = new List<FilterItem>();
-	}
+
 
 	public class FilterItem
 	{
-		public int Id { get; set; }
+		[JsonProperty( "@type" )]
+		public string Type { get; set; } = "FilterItem";
+		public int? Id { get; set; }
 		public string Label { get; set; }
-		public string Value { get; set; }
-		public string Schema { get; set; }
-		//tooltip
 		public string Description { get; set; }
+		public string URI { get; set; }
+		public string InterfaceType { get; set; } 
+		public string Text { get; set; }
+
+		
 	}
 }

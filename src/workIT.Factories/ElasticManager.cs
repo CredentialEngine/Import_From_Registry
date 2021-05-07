@@ -60,7 +60,7 @@ namespace workIT.Factories
 					Created = item.Created,
 					LastUpdated = item.LastUpdated,
 				};
-
+				
 				if ( string.IsNullOrWhiteSpace( index.FriendlyName ) )
 					index.FriendlyName = FormatFriendlyTitle( index.Name );
 				//TBD for format
@@ -145,619 +145,643 @@ namespace workIT.Factories
 						return list;
 					}
 				}
+			}
+			//Used for costs. Only need to get these once. See below. - NA 5/12/2017
+			//var currencies = CodesManager.GetCurrencies();
+			//var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
+			//int costProfilesCount = 0;
 
-				//Used for costs. Only need to get these once. See below. - NA 5/12/2017
-				//var currencies = CodesManager.GetCurrencies();
-				//var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
-				//int costProfilesCount = 0;
+			LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - Page: {0} - loading {1} rows ", pageNumber, result.Rows.Count ) );
+			try
+			{
 
-				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - Page: {0} - loading {1} rows ", pageNumber, result.Rows.Count ) );
-				try
+				foreach ( DataRow dr in result.Rows )
 				{
-
-					foreach ( DataRow dr in result.Rows )
+					cntr++;
+					if ( cntr % 200 == 0 )
+						LoggingHelper.DoTrace( 2, string.Format( " Page: {0} - loading record: {1}", pageNumber, cntr ) );
+					//avgMinutes = 0;
+					index = new CredentialIndex
 					{
-						cntr++;
-						if ( cntr % 200 == 0 )
-							LoggingHelper.DoTrace( 2, string.Format( " Page: {0} - loading record: {1}", pageNumber, cntr ) );
-						//avgMinutes = 0;
-						index = new CredentialIndex
+						EntityTypeId = 1,
+						Id = GetRowColumn( dr, "Id", 0 ),
+						//fine for a full reindex, need algorithm for small updates - could add to sql table
+						NameIndex = cntr * 1000,
+
+						//only full entities (3) will be in the index
+						EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 ),
+						Name = dr[ "Name" ].ToString()
+					};
+					if ( index.Id == 342 )
+					{
+
+					}
+					Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
+					index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+
+					if ( !string.IsNullOrWhiteSpace( dr[ "AlternateName" ].ToString() ) )
+						index.AlternateNames.Add( dr[ "AlternateName" ].ToString() );
+
+					index.FriendlyName = FormatFriendlyTitle( index.Name );
+
+					index.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
+					index.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
+
+					string rowId = dr[ "EntityUid" ].ToString();
+					index.RowId = new Guid( rowId );
+
+					index.Description = dr[ "Description" ].ToString();
+					//21-03-22 mparsons - need to anticipate handling creds etc. with no owner, just an offeredBy
+					//index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OwningOrganizationId", 0 );
+					index.OwnerOrganizationId = Int32.Parse( dr[ "OwningOrganizationId" ].ToString() );
+
+					index.OwnerOrganizationName = dr[ "OwningOrganization" ].ToString();
+					index.NameOrganizationKey = index.Name;
+					index.ListTitle = index.Name;
+					if ( index.OwnerOrganizationName.Length > 0 && index.Name.IndexOf(index.OwnerOrganizationName) == -1)
+					{
+						index.NameOrganizationKey = index.Name + " " + index.OwnerOrganizationName ;
+						//ListTitle is not used anymore
+						index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
+					}
+					
+					//add helpers
+					index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
+					//index.PrimaryOrganizationId = index.OwnerOrganizationId;
+					//index.PrimaryOrganizationName = index.OwnerOrganizationName;
+
+					index.CTID = dr[ "CTID" ].ToString();
+					//
+					index.CredentialType = dr[ "CredentialType" ].ToString();
+
+					index.CredentialTypeSchema = dr[ "CredentialTypeSchema" ].ToString();
+					index.CredentialStatus = dr[ "CredentialStatus" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( index.CredentialStatus )
+						&& index.CredentialStatus != "Active" && index.Name.IndexOf( index.CredentialStatus ) == -1 )
+					{
+						//index.Name += string.Format( " ({0})", index.CredentialStatus );
+					}
+					index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
+
+					index.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
+					//index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
+
+					string date = GetRowColumn( dr, "EffectiveDate", "" );
+					if ( IsValidDate( date ) )
+						index.DateEffective = ( DateTime.Parse( date ).ToString("yyyy-MM-dd") );
+					else
+						index.DateEffective = "";
+					date = GetRowColumn( dr, "Created", "" );
+					if ( IsValidDate( date ) )
+						index.Created = DateTime.Parse( date );
+					date = GetRowColumn( dr, "LastUpdated", "" );
+					if ( IsValidDate( date ) )
+						index.LastUpdated = DateTime.Parse( date );
+					//define LastUpdated to be EntityLastUpdated
+					//TODO - add means to skip this for mass updates
+					//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+					//if ( IsValidDate( date ) )
+					//	index.LastUpdated = DateTime.Parse( date );
+
+					index.AvailableOnlineAt = dr[ "AvailableOnlineAt" ].ToString();
+					//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
+
+					index.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
+					//index.EstimatedTimeToEarn = Int32.Parse( dr[ "AverageMinutes" ].ToString() );
+					index.IsAQACredential = GetRowColumn( dr, "IsAQACredential", false );
+
+					index.RequiresCompetenciesCount = Int32.Parse( dr[ "RequiresCompetenciesCount" ].ToString() );
+					index.LearningOppsCompetenciesCount = Int32.Parse( dr[ "LearningOppsCompetenciesCount" ].ToString() );
+					index.AssessmentsCompetenciesCount = Int32.Parse( dr[ "AssessmentsCompetenciesCount" ].ToString() );
+					index.HasPartCount = Int32.Parse( dr[ "HasPartCount" ].ToString() );
+					index.IsPartOfCount = Int32.Parse( dr[ "IsPartOfCount" ].ToString() );
+					index.RequiresCount = Int32.Parse( dr[ "RequiresCount" ].ToString() );
+					index.RecommendsCount = Int32.Parse( dr[ "RecommendsCount" ].ToString() );
+					index.EntryConditionCount = Int32.Parse( dr[ "EntryConditionCount" ].ToString() );
+
+					index.RequiredForCount = Int32.Parse( dr[ "isRequiredForCount" ].ToString() );
+					index.IsRecommendedForCount = Int32.Parse( dr[ "IsRecommendedForCount" ].ToString() );
+					index.RenewalCount = GetRowPossibleColumn( dr, "RenewalCount", 0 );
+					index.IsAdvancedStandingForCount = Int32.Parse( dr[ "IsAdvancedStandingForCount" ].ToString() );
+					index.AdvancedStandingFromCount = Int32.Parse( dr[ "AdvancedStandingFromCount" ].ToString() );
+					index.PreparationForCount = Int32.Parse( dr[ "isPreparationForCount" ].ToString() );
+
+					index.PreparationFromCount = Int32.Parse( dr[ "isPreparationFromCount" ].ToString() );
+					//20-10-12 mp added back NumberOfCostProfileItems (had been commented)
+					index.NumberOfCostProfileItems = GetRowColumn( dr, "NumberOfCostProfileItems", 0 );
+					index.TotalCost = GetRowPossibleColumn( dr, "TotalCost", 0 );
+					index.CostProfileCount = Int32.Parse( dr[ "costProfilesCount" ].ToString() );
+
+					index.CommonConditionsCount = Int32.Parse( dr[ "CommonConditionsCount" ].ToString() );
+					index.CommonCostsCount = Int32.Parse( dr[ "CommonCostsCount" ].ToString() );
+					index.FinancialAidCount = Int32.Parse( dr[ "FinancialAidCount" ].ToString() );
+					index.EmbeddedCredentialsCount = Int32.Parse( dr[ "EmbeddedCredentialsCount" ].ToString() );
+
+					index.RequiredAssessmentsCount = Int32.Parse( dr[ "RequiredAssessmentsCount" ].ToString() );
+					index.RequiredCredentialsCount = Int32.Parse( dr[ "RequiredCredentialsCount" ].ToString() );
+					index.RequiredLoppCount = Int32.Parse( dr[ "RequiredLoppCount" ].ToString() );
+
+					index.RecommendedAssessmentsCount = Int32.Parse( dr[ "RecommendedAssessmentsCount" ].ToString() );
+					index.RecommendedCredentialsCount = Int32.Parse( dr[ "RecommendedCredentialsCount" ].ToString() );
+					index.RecommendedLoppCount = Int32.Parse( dr[ "RecommendedLoppCount" ].ToString() );
+
+					index.BadgeClaimsCount = Int32.Parse( dr[ "badgeClaimsCount" ].ToString() );
+					index.RevocationProfilesCount = Int32.Parse( dr[ "RevocationProfilesCount" ].ToString() );
+					index.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
+					//21-03-29 add aggregateDataProfile and dataSetProfile - what to do for summary?
+					//			- will this be too costly for large numbers? If so, the summary profile could be assigned at import and stored. 
+					index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 ); // Int32.Parse( dr[ "AggregateDataProfileCount" ].ToString() );
+					//or would this be better to do in search results (saves having to re-index)
+					//the benefit would be saving the hit now rather than when doing get search results - actually this would get lost with Nate's approach
+					if ( index.AggregateDataProfileCount > 0 )
+					{
+						//21-04-19 - decided to use a simple generic summary for all outcome data
+						//index.AggregateDataProfileSummary = Entity_AggregateDataProfileManager.GetSummary( index.RowId, index.Name );
+						index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+					}
+
+					index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
+					//
+					//21-03-29 - skipping holders, earnings and employment now
+					//index.HoldersProfileCount = Int32.Parse( dr[ "HoldersProfileCount" ].ToString() );
+					//if ( index.HoldersProfileCount > 0 )
+					//	index.HoldersProfileSummary = Entity_HoldersProfileManager.GetSummary( index.RowId );
+					////
+					//index.EarningsProfileCount = Int32.Parse( dr[ "EarningsProfileCount" ].ToString() );
+					//if ( index.EarningsProfileCount > 0 )
+					//	index.EarningsProfileSummary = Entity_EarningsProfileManager.GetSummary( index.RowId );
+					////
+					//index.EmploymentOutcomeProfileCount = Int32.Parse( dr[ "EmploymentOutcomeProfileCount" ].ToString() );
+					//if ( index.EmploymentOutcomeProfileCount > 0 )
+					//	index.EmploymentOutcomeProfileSummary = Entity_EmploymentOutcomeProfileManager.GetSummary( index.RowId );
+
+					//index.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
+					//index.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
+					//-actual connection type (no credential info), with the schema name, and number of connections
+					// 8~Is Preparation For~ceterms:isPreparationFor~2
+					index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
+
+					//connection type, plus Id, and name of credential
+					//8~Is Preparation For~136~MSSC Certified Production Technician (CPT©)~| 8~Is Preparation For~272~MSSC Certified Logistics Technician (CLT©)~
+					index.CredentialsList = dr[ "CredentialsList" ].ToString();
+					index.IsPartOfList = dr[ "IsPartOfList" ].ToString();
+					index.HasPartsList = dr[ "HasPartsList" ].ToString();
+					if ( includingHasPartIsPartWithConnections )
+					{
+						index.CredentialsList += index.IsPartOfList;
+						index.CredentialsList += index.HasPartsList;
+					}
+					string credentialConnections = dr[ "CredentialConnections" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
+					{
+						Connection conn = new Connection();
+						var xDoc = XDocument.Parse( credentialConnections );
+						foreach ( var child in xDoc.Root.Elements() )
 						{
-							EntityTypeId = 1,
-							Id = GetRowColumn( dr, "Id", 0 ),
-							//fine for a full reindex, need algorithm for small updates - could add to sql table
-							NameIndex = cntr * 1000,
+							conn = new Connection();
+							conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+							conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
-							//only full entities (3) will be in the index
-							EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 ),
-							Name = dr[ "Name" ].ToString()
-						};
-						if ( index.Id == 342 )
-						{
+							//do something with counts for this type
 
-						}
-						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
-
-						if ( !string.IsNullOrWhiteSpace( dr[ "AlternateName" ].ToString() ) )
-							index.AlternateNames.Add( dr[ "AlternateName" ].ToString() );
-
-						index.FriendlyName = FormatFriendlyTitle( index.Name );
-
-						index.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
-						index.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
-
-						string rowId = dr[ "EntityUid" ].ToString();
-						index.RowId = new Guid( rowId );
-
-						index.Description = dr[ "Description" ].ToString();
-
-						//index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OwningOrganizationId", 0 );
-						index.OwnerOrganizationId = Int32.Parse( dr[ "OwningOrganizationId" ].ToString() );
-
-						index.OwnerOrganizationName = dr[ "OwningOrganization" ].ToString();
-						if ( index.OwnerOrganizationName.Length > 0 )
-							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
-						else
-							index.ListTitle = index.Name;
-						//add helpers
-						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
-						//index.PrimaryOrganizationId = index.OwnerOrganizationId;
-						//index.PrimaryOrganizationName = index.OwnerOrganizationName;
-
-						index.CTID = dr[ "CTID" ].ToString();
-						//
-						index.CredentialType = dr[ "CredentialType" ].ToString();
-
-						index.CredentialTypeSchema = dr[ "CredentialTypeSchema" ].ToString();
-						index.CredentialStatus = dr[ "CredentialStatus" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( index.CredentialStatus )
-							&& index.CredentialStatus != "Active" && index.Name.IndexOf( index.CredentialStatus ) == -1 )
-						{
-							//index.Name += string.Format( " ({0})", index.CredentialStatus );
-						}
-						index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
-
-						index.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
-						//index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
-
-						string date = GetRowColumn( dr, "EffectiveDate", "" );
-						if ( IsValidDate( date ) )
-							index.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
-						else
-							index.DateEffective = "";
-						date = GetRowColumn( dr, "Created", "" );
-						if ( IsValidDate( date ) )
-							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
-						if ( IsValidDate( date ) )
-							index.LastUpdated = DateTime.Parse( date );
-						//define LastUpdated to be EntityLastUpdated
-						//TODO - add means to skip this for mass updates
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
-						//if ( IsValidDate( date ) )
-						//	index.LastUpdated = DateTime.Parse( date );
-
-						index.AvailableOnlineAt = dr[ "AvailableOnlineAt" ].ToString();
-						//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
-
-						index.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
-						//index.EstimatedTimeToEarn = Int32.Parse( dr[ "AverageMinutes" ].ToString() );
-						index.IsAQACredential = GetRowColumn( dr, "IsAQACredential", false );
-
-						index.RequiresCompetenciesCount = Int32.Parse( dr[ "RequiresCompetenciesCount" ].ToString() );
-						index.LearningOppsCompetenciesCount = Int32.Parse( dr[ "LearningOppsCompetenciesCount" ].ToString() );
-						index.AssessmentsCompetenciesCount = Int32.Parse( dr[ "AssessmentsCompetenciesCount" ].ToString() );
-						index.HasPartCount = Int32.Parse( dr[ "HasPartCount" ].ToString() );
-						index.IsPartOfCount = Int32.Parse( dr[ "IsPartOfCount" ].ToString() );
-						index.RequiresCount = Int32.Parse( dr[ "RequiresCount" ].ToString() );
-						index.RecommendsCount = Int32.Parse( dr[ "RecommendsCount" ].ToString() );
-						index.EntryConditionCount = Int32.Parse( dr[ "EntryConditionCount" ].ToString() );
-
-						index.RequiredForCount = Int32.Parse( dr[ "isRequiredForCount" ].ToString() );
-						index.IsRecommendedForCount = Int32.Parse( dr[ "IsRecommendedForCount" ].ToString() );
-						index.RenewalCount = GetRowPossibleColumn( dr, "RenewalCount", 0 );
-						index.IsAdvancedStandingForCount = Int32.Parse( dr[ "IsAdvancedStandingForCount" ].ToString() );
-						index.AdvancedStandingFromCount = Int32.Parse( dr[ "AdvancedStandingFromCount" ].ToString() );
-						index.PreparationForCount = Int32.Parse( dr[ "isPreparationForCount" ].ToString() );
-
-						index.PreparationFromCount = Int32.Parse( dr[ "isPreparationFromCount" ].ToString() );
-						//20-10-12 mp added back NumberOfCostProfileItems (had been commented)
-						index.NumberOfCostProfileItems = GetRowColumn( dr, "NumberOfCostProfileItems", 0 );
-						index.TotalCost = GetRowPossibleColumn( dr, "TotalCost", 0 );
-						index.CostProfileCount = Int32.Parse( dr[ "costProfilesCount" ].ToString() );
-
-						index.CommonConditionsCount = Int32.Parse( dr[ "CommonConditionsCount" ].ToString() );
-						index.CommonCostsCount = Int32.Parse( dr[ "CommonCostsCount" ].ToString() );
-						index.FinancialAidCount = Int32.Parse( dr[ "FinancialAidCount" ].ToString() );
-						index.EmbeddedCredentialsCount = Int32.Parse( dr[ "EmbeddedCredentialsCount" ].ToString() );
-
-						index.RequiredAssessmentsCount = Int32.Parse( dr[ "RequiredAssessmentsCount" ].ToString() );
-						index.RequiredCredentialsCount = Int32.Parse( dr[ "RequiredCredentialsCount" ].ToString() );
-						index.RequiredLoppCount = Int32.Parse( dr[ "RequiredLoppCount" ].ToString() );
-
-						index.RecommendedAssessmentsCount = Int32.Parse( dr[ "RecommendedAssessmentsCount" ].ToString() );
-						index.RecommendedCredentialsCount = Int32.Parse( dr[ "RecommendedCredentialsCount" ].ToString() );
-						index.RecommendedLoppCount = Int32.Parse( dr[ "RecommendedLoppCount" ].ToString() );
-
-						index.BadgeClaimsCount = Int32.Parse( dr[ "badgeClaimsCount" ].ToString() );
-						index.RevocationProfilesCount = Int32.Parse( dr[ "RevocationProfilesCount" ].ToString() );
-						index.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
-						//
-						index.HoldersProfileCount = Int32.Parse( dr[ "HoldersProfileCount" ].ToString() );
-						if ( index.HoldersProfileCount > 0 )
-							index.HoldersProfileSummary = Entity_HoldersProfileManager.GetSummary( index.RowId );
-						//
-						index.EarningsProfileCount = Int32.Parse( dr[ "EarningsProfileCount" ].ToString() );
-						if ( index.EarningsProfileCount > 0 )
-							index.EarningsProfileSummary = Entity_EarningsProfileManager.GetSummary( index.RowId );
-						//
-						index.EmploymentOutcomeProfileCount = Int32.Parse( dr[ "EmploymentOutcomeProfileCount" ].ToString() );
-						if ( index.EmploymentOutcomeProfileCount > 0 )
-							index.EmploymentOutcomeProfileSummary = Entity_EmploymentOutcomeProfileManager.GetSummary( index.RowId );
-						//index.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
-						//index.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
-						//-actual connection type (no credential info), with the schema name, and number of connections
-						// 8~Is Preparation For~ceterms:isPreparationFor~2
-						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
-
-						//connection type, plus Id, and name of credential
-						//8~Is Preparation For~136~MSSC Certified Production Technician (CPT©)~| 8~Is Preparation For~272~MSSC Certified Logistics Technician (CLT©)~
-						index.CredentialsList = dr[ "CredentialsList" ].ToString();
-						index.IsPartOfList = dr[ "IsPartOfList" ].ToString();
-						index.HasPartsList = dr[ "HasPartsList" ].ToString();
-						if ( includingHasPartIsPartWithConnections )
-						{
-							index.CredentialsList += index.IsPartOfList;
-							index.CredentialsList += index.HasPartsList;
-						}
-						string credentialConnections = dr[ "CredentialConnections" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
-						{
-							Connection conn = new Connection();
-							var xDoc = XDocument.Parse( credentialConnections );
-							foreach ( var child in xDoc.Root.Elements() )
+							conn.CredentialId = int.Parse( child.Attribute( "CredentialId" ).Value );
+							if ( conn.CredentialId > 0 )
 							{
-								conn = new Connection();
-								conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
-								conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
+								//add credential
+								conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+								//??????
+								conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
+								conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+							}
+							conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
+							if ( conn.AssessmentId > 0 )
+							{
+								conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+								conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
+								conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+							}
+							conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
+							if ( conn.LoppId > 0 )
+							{
+								conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+								conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
+								conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+							}
 
-								//do something with counts for this type
+							index.Connections.Add( conn );
+						}
+					}
 
-								conn.CredentialId = int.Parse( child.Attribute( "CredentialId" ).Value );
-								if ( conn.CredentialId > 0 )
-								{
-									//add credential
-									conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
-									//??????
-									conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-									conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
-								}
-								conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
-								if ( conn.AssessmentId > 0 )
-								{
-									conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
-									conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-									conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
-								}
-								conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
-								if ( conn.LoppId > 0 )
-								{
-									conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
-									conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-									conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
-								}
 
-								index.Connections.Add( conn );
+					#region QualityAssurance
+
+					HandleAgentRelationshipsForEntity( dr, index );
+					//handle QA asserted by a third party (versus by the owner)
+					HandleDirectAgentRelationshipsForEntity( dr, index );
+
+					//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
+					//QARolesList: includes roleId, roleName
+					//1~Accredited~1~Credential| 2~Approved~1~Credential
+					//index.QARolesResults = dr[ "QARolesList" ].ToString();
+
+					//AgentAndRoles: includes roleId, roleName, OrgId, and orgName
+					//1~Accredited~3~National Commission for Certifying Agencies (NCCA) [ reference ]~Credential
+					index.AgentAndRoles = dr[ "AgentAndRoles" ].ToString();
+
+					//QA on owning org
+					//This should be combined with the credential QA - see publisher
+					//this may not being used properly - no data other than blank and "not applicable" (remove this text). Should be:
+					//QAOrgRolesList: includes roleId, roleName, number of organizations in role
+					//10~Recognized~2~Organization| 12~Regulated~2~Organization
+					//replacing the source
+					//index.Org_QARolesList = GetRowPossibleColumn( dr, "QAOrgRolesList" );
+					index.Org_QARolesList = dr[ "Org_QARolesList" ].ToString();
+
+					//QAAgentAndRoles - List actual orgIds and names for roles
+					//10~Owning Org is Recognized~1105~Accrediting Commission for Community and Junior Colleges - updated~Organization| 10~Owning Org is Recognized~64~AdvancED~Organization| 12~Owning Org is Regulated~55~TESTING_American National Standards Institute (ANSI)~Organization| 12~Owning Org is Regulated~64~AdvancED~Organization
+					index.Org_QAAgentAndRoles = dr[ "Org_QAAgentAndRoles" ].ToString();
+
+					#endregion
+
+					#region Subjects
+					var subjects = dr[ "Subjects" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( subjects ) )
+					{
+						var xDoc = new XDocument();
+						xDoc = XDocument.Parse( subjects );
+						foreach ( var child in xDoc.Root.Elements() )
+						{
+							var cs = new IndexSubject();
+							var subject = child.Attribute( "Subject" );
+							if ( subject != null )
+							{
+								cs.Name = subject.Value;
+
+								//source is just direct/indirect, more want the sourceEntityType
+								var source = child.Attribute( "Source" );
+								if ( source != null )
+									cs.Source = source.Value;
+
+								int outputId = 0;
+								var entityTypeId = child.Attribute( "EntityTypeId" );
+								if ( entityTypeId != null )
+									if ( Int32.TryParse( entityTypeId.Value, out outputId ) )
+										cs.EntityTypeId = outputId;
+
+								var referenceBaseId = child.Attribute( "ReferenceBaseId" );
+								if ( referenceBaseId != null )
+									if ( Int32.TryParse( referenceBaseId.Value, out outputId ) )
+										cs.ReferenceBaseId = outputId;
+								//may dump Subjects, for consistency
+								index.Subjects.Add( cs );
+								index.SubjectAreas.Add( cs.Name );
 							}
 						}
+						if ( index.Subjects.Count() > 0 )
+							index.HasSubjects = true;
+					}
+					#endregion
+
+					#region Addresses 
+					//future using json
+					var jsonProperties = GetRowPossibleColumn( dr, "JsonProperties" );
+					if ( !string.IsNullOrWhiteSpace( jsonProperties ) )
+					{
+						//20-10-23 - not active and deferred, so skipping
+						//HandleAddressesFromJson( index, jsonProperties );
+
+					} else
+					{
+						//once latter is validated then will no longer look for the xml property
+					}
+					//- from XML
 
 
-						#region QualityAssurance
-
-						HandleAgentRelationshipsForEntity( dr, index );
-						//handle QA asserted by a third party (versus by the owner)
-						HandleDirectAgentRelationshipsForEntity( dr, index );
-
-						//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
-						//QARolesList: includes roleId, roleName
-						//1~Accredited~1~Credential| 2~Approved~1~Credential
-						//index.QARolesResults = dr[ "QARolesList" ].ToString();
-
-						//AgentAndRoles: includes roleId, roleName, OrgId, and orgName
-						//1~Accredited~3~National Commission for Certifying Agencies (NCCA) [ reference ]~Credential
-						index.AgentAndRoles = dr[ "AgentAndRoles" ].ToString();
-
-						//QA on owning org
-						//This should be combined with the credential QA - see publisher
-						//this may not being used properly - no data other than blank and "not applicable" (remove this text). Should be:
-						//QAOrgRolesList: includes roleId, roleName, number of organizations in role
-						//10~Recognized~2~Organization| 12~Regulated~2~Organization
-						//replacing the source
-						//index.Org_QARolesList = GetRowPossibleColumn( dr, "QAOrgRolesList" );
-						index.Org_QARolesList = dr[ "Org_QARolesList" ].ToString();
-
-						//QAAgentAndRoles - List actual orgIds and names for roles
-						//10~Owning Org is Recognized~1105~Accrediting Commission for Community and Junior Colleges - updated~Organization| 10~Owning Org is Recognized~64~AdvancED~Organization| 12~Owning Org is Regulated~55~TESTING_American National Standards Institute (ANSI)~Organization| 12~Owning Org is Regulated~64~AdvancED~Organization
-						index.Org_QAAgentAndRoles = dr[ "Org_QAAgentAndRoles" ].ToString();
-
-						#endregion
-
-						#region Subjects
-						var subjects = dr[ "Subjects" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( subjects ) )
+					var addresses = dr[ "Addresses" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( addresses ) )
+					{
+						HandleAddresses( index, addresses );
+						if ( index.Addresses != null && index.Addresses.Count > 0 && populatingCredentialJsonProperties )
 						{
-							var xDoc = new XDocument();
-							xDoc = XDocument.Parse( subjects );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var cs = new IndexSubject();
-								var subject = child.Attribute( "Subject" );
-								if ( subject != null )
-								{
-									cs.Name = subject.Value;
-
-									//source is just direct/indirect, more want the sourceEntityType
-									var source = child.Attribute( "Source" );
-									if ( source != null )
-										cs.Source = source.Value;
-
-									int outputId = 0;
-									var entityTypeId = child.Attribute( "EntityTypeId" );
-									if ( entityTypeId != null )
-										if ( Int32.TryParse( entityTypeId.Value, out outputId ) )
-											cs.EntityTypeId = outputId;
-
-									var referenceBaseId = child.Attribute( "ReferenceBaseId" );
-									if ( referenceBaseId != null )
-										if ( Int32.TryParse( referenceBaseId.Value, out outputId ) )
-											cs.ReferenceBaseId = outputId;
-									//may dump Subjects, for consistency
-									index.Subjects.Add( cs );
-									index.SubjectAreas.Add( cs.Name );
-								}
-							}
-							if ( index.Subjects.Count() > 0 )
-								index.HasSubjects = true;
+							AddCredentialJsonProperties( index );
 						}
-						#endregion
-
-						#region Addresses 
-						//future using json
-						var jsonProperties = GetRowPossibleColumn( dr, "JsonProperties" );
+					}
+					if ( index.Addresses.Count == 0 )
+					{
+						//future 
+						jsonProperties = GetRowPossibleColumn( dr, "OrganizationJsonProperties" );
 						if ( !string.IsNullOrWhiteSpace( jsonProperties ) )
 						{
+							//technically mapping to CredentialExternalProperties would be fine to extract addresses
 							//20-10-23 - not active and deferred, so skipping
 							//HandleAddressesFromJson( index, jsonProperties );
 
-						} else
-						{
-							//once latter is validated then will no longer look for the xml property
 						}
-						//- from XML
-
-
-						var addresses = dr[ "Addresses" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( addresses ) )
+						else
 						{
-							HandleAddresses( index, addresses );
-							if ( index.Addresses != null && index.Addresses.Count > 0 && populatingCredentialJsonProperties )
-							{
-								AddCredentialJsonProperties( index );
-							}
+							//remember could timing of cutover for use of this
 						}
-						if ( index.Addresses.Count == 0 )
-						{
-							//future 
-							jsonProperties = GetRowPossibleColumn( dr, "OrganizationJsonProperties" );
-							if ( !string.IsNullOrWhiteSpace( jsonProperties ) )
-							{
-								//technically mapping to CredentialExternalProperties would be fine to extract addresses
-								//20-10-23 - not active and deferred, so skipping
-								//HandleAddressesFromJson( index, jsonProperties );
-
-							}
-							else
-							{
-								//remember could timing of cutover for use of this
-							}
-							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
-						}
-						//just check for zero again
-						if ( index.Addresses.Count == 0 )
-						{
-							var orgAddresses = dr[ "OrgAddresses" ].ToString();
-							try
-							{
-								if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
-								{
-									HandleAddresses( index, orgAddresses );
-								}
-								//}
-							}
-							catch ( Exception ex )
-							{
-								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-							}
-						}
-						#endregion
-
-						if ( index.BadgeClaimsCount > 0 )
-							index.HasVerificationType_Badge = true;  //Update this with appropriate source data
-
-						#region CredentialProperties
-						try
-						{
-							var credentialProperties = dr[ "CredentialProperties" ].ToString();
-							if ( !string.IsNullOrEmpty( credentialProperties ) )
-							{
-								credentialProperties = credentialProperties.Replace( "&", " " );
-								var xDoc = XDocument.Parse( credentialProperties );
-								foreach ( var child in xDoc.Root.Elements() )
-								{
-									var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
-									var propertyValueId = int.Parse( child.Attribute( "PropertyValueId" ).Value );
-									var property = child.Attribute( "Property" ).Value;
-									var schemaName = ( string )child.Attribute( "PropertySchemaName" );
-
-									index.CredentialProperties.Add( new IndexProperty {
-										CategoryId = categoryId,
-										Id = propertyValueId,
-										Name = property,
-										SchemaName = schemaName
-									} );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
-										index.LearningDeliveryMethodTypeIds.Add( propertyValueId );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE )
-										index.AsmntDeliveryMethodTypeIds.Add( propertyValueId );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
-										index.AudienceTypeIds.Add( propertyValueId );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
-										index.AudienceLevelTypeIds.Add( propertyValueId );
-
-									//if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "PropertySchemaName" ) ) )
-									//	AddTextValue( index, ( string )child.Attribute( "PropertySchemaName" ) );
-									//	index.TextValues.Add( ( string )child.Attribute( "PropertySchemaName" ) );
-								}
-							}
-						}
-						catch ( Exception ex )
-						{
-							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on CrendentialProperties id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-						}
-						#endregion
-
-						#region TextValues, CodedNotation
-						try
-						{
-							var textValues = dr[ "TextValues" ].ToString();
-							if ( !string.IsNullOrWhiteSpace( textValues ) )
-							{
-								textValues = textValues.Replace( "&", " " );
-								var xDoc = new XDocument();
-								xDoc = XDocument.Parse( textValues );
-								foreach ( var child in xDoc.Root.Elements() )
-								{
-									var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
-									var textValue = child.Attribute( "TextValue" );
-									if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
-									{
-										//?? what is this?
-										//AddTextValue( index, textValue.Value );
-										//if ( textValue.Value.IndexOf( "-" ) > -1 )
-										//	AddTextValue( index, textValue.Value.Replace( "-", "" ) );
-
-										if ( categoryId == 35 ) //
-											index.Keyword.Add( textValue.Value );
-										//else
-										//	index.TextValues.Add( textValue.Value );
-									}
-									//source is just direct/indirect, more want the sourceEntityType
-									var codeNotation = child.Attribute( "CodedNotation" );
-									if ( codeNotation != null && !string.IsNullOrWhiteSpace( codeNotation.Value ) )
-									{
-										index.CodedNotation.Add( codeNotation.Value );
-										//AddTextValue( index, codeNotation.Value );
-										if ( codeNotation.Value.IndexOf( "-" ) > -1 ) {
-											//AddTextValue( index, codeNotation.Value.Replace( "-", "" ) );
-											index.CodedNotation.Add( codeNotation.Value.Replace( "-", "" ) );
-										}
-									}
-								}
-							}
-
-
-							//if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
-							//	AddTextValue( index, index.AvailableOnlineAt );
-
-							//AddTextValue( index, index.CredentialType );
-							//properties to add to textvalues
-
-							string url = dr[ "AvailabilityListing" ].ToString();
-							//if ( !string.IsNullOrWhiteSpace( url ) )
-							//	AddTextValue( index, url );
-
-							//if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
-							//	index.TextValues.Add( index.CredentialRegistryId );
-							string indexField = dr[ "CredentialId" ].ToString();
-							if ( !string.IsNullOrWhiteSpace( indexField ) )
-							{
-								//AddTextValue( index, indexField );
-								index.CodedNotation.Add( indexField );
-							}
-							//index.TextValues.Add( indexField );
-							//drop this. Can search by just id
-							//AddTextValue( index, "credential " + index.Id.ToString() );
-							//AddTextValue( index, index.CTID );
-
-						}
-						catch ( Exception ex )
-						{
-							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on TextValues, CodedNotation id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-						}
-						#endregion
-
-
-						#region Languages
-						index.InLanguage = GetLanguages( dr );
-						#endregion
-
-						#region Competencies
-						//these are competencies from condition profiles
-						//not sure we want these in the index
-						string requiresCompetencies = dr[ "Competencies" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( requiresCompetencies ) )
-						{
-							if ( ContainsUnicodeCharacter( requiresCompetencies ) )
-							{
-								requiresCompetencies = Regex.Replace( requiresCompetencies, @"[^\u0000-\u007F]+", string.Empty );
-							}
-							requiresCompetencies = requiresCompetencies.Replace( "&", " " );
-							var xDoc = new XDocument();
-							xDoc = XDocument.Parse( requiresCompetencies );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var competency = new IndexCompetency
-								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
-								};
-
-								index.Competencies.Add( competency );
-							}
-						}
-						#endregion
-
-						#region Reference Frameworks - industries, occupations and classifications
-						string frameworks = dr[ "Frameworks" ].ToString();
-						if ( !string.IsNullOrWhiteSpace( frameworks ) )
-						{
-							HandleFrameworks( index, frameworks );
-							//var xDoc = new XDocument();
-							//xDoc = XDocument.Parse( frameworks );
-							//foreach ( var child in xDoc.Root.Elements() )
-							//{
-							//	var framework = new IndexReferenceFramework
-							//	{
-							//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
-							//		Name = ( string )child.Attribute( "Name" ) ?? "",
-							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-							//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
-							//	};
-
-
-
-							//	if ( framework.CategoryId == 11 )
-							//	{
-							//		index.Occupations.Add( framework );
-							//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-							//			AddTextValue( index, "occupation " + framework.Name );
-							//	}
-							//	else if ( framework.CategoryId == 10 )
-							//	{
-							//		index.Industries.Add( framework );
-							//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-							//			AddTextValue( index, "industry " + framework.Name );
-							//	}
-							//	else if ( framework.CategoryId == 23 )
-							//	{
-							//		index.InstructionalPrograms.Add( framework );
-							//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-							//			AddTextValue( index, "program " + framework.Name );
-							//	}
-
-							//}//
-							if ( index.Occupations.Count > 0 )
-								index.HasOccupations = true;
-							if ( index.Industries.Count > 0 )
-								index.HasIndustries = true;
-							if ( index.InstructionalPrograms.Count > 0 )
-								index.HasInstructionalPrograms = true;
-
-						}
-
-						#endregion
-						#region Widgets
-						string resourceForWidget = GetRowPossibleColumn( dr, "ResourceForWidget" );
-						if ( !string.IsNullOrWhiteSpace( resourceForWidget ) )
-						{
-							var xDoc = new XDocument();
-							xDoc = XDocument.Parse( resourceForWidget );
-							foreach ( var child in xDoc.Root.Elements() )
-							{
-								var widgetId = int.Parse( child.Attribute( "WidgetId" ).Value );
-								//future 
-								var widgetSection = ( string )child.Attribute( "WidgetSection" ) ?? "";
-								if ( widgetId > 0 && widgetSection == "CredentialFilters" )
-									index.ResourceForWidget.Add( widgetId );
-							}//
-						}
-
-						#endregion
-						#region Custom Reports
-
-						AddReportProperty( index, index.AvailableOnlineAt, 58, "Available Online", "credReport:AvailableOnline" );
-
-						AddReportProperty( index, index.EmbeddedCredentialsCount, 58, "Has Embedded Credentials", "credReport:HasEmbeddedCredentials" );
-						//
-						AddReportProperty( index, index.CostProfileCount, 58, "Has cost profile", "credReport:HasCostProfile" );
-						AddReportProperty( index, index.CommonConditionsCount, 58, "References Common Conditions", "credReport:ReferencesCommonConditions" );
-						AddReportProperty( index, index.CommonCostsCount, 58, "References Common Costs", "credReport:ReferencesCommonCosts" );
-						AddReportProperty( index, index.FinancialAidCount, 58, "Has Financial Aid", "credReport:FinancialAid" );
-						AddReportProperty( index, index.RequiredAssessmentsCount, 58, "Requires Assessment", "credReport:RequiresAssessment" );
-						AddReportProperty( index, index.RequiredCredentialsCount, 58, "Requires Credential", "credReport:RequiresCredential" );
-						AddReportProperty( index, index.RequiredLoppCount, 58, "Requires Learning Opportunity", "credReport:RequiresLearningOpportunity" );
-						AddReportProperty( index, index.RecommendedAssessmentsCount, 58, "Recommends Assessment", "credReport:RecommendsAssessment" );
-						AddReportProperty( index, index.RecommendedCredentialsCount, 58, "Recommends Credential", "credReport:RecommendsCredential" );
-						AddReportProperty( index, index.RecommendedLoppCount, 58, "Recommends Learning Opportunity", "credReport:RecommendsLearningOpportunity" );
-						AddReportProperty( index, index.BadgeClaimsCount, 58, "Has Verification Badges", "credReport:HasVerificationBadges" );
-						AddReportProperty( index, index.RevocationProfilesCount, 58, "Has Revocation", "credReport:HasRevocation" );
-						AddReportProperty( index, index.RenewalCount, 58, "Has Renewal", "credReport:HasRenewal" );
-						AddReportProperty( index, index.ProcessProfilesCount, 58, "Has Process Profile", "credReport:HasProcessProfile" );
-						//
-						AddReportProperty( index, index.HoldersProfileCount, 58, "Has Holders Profile", "credReport:HasHoldersProfile" );
-						AddReportProperty( index, index.EarningsProfileCount, 58, "Has Earnings Profile", "credReport:HasEarningsProfile" );
-						AddReportProperty( index, index.EmploymentOutcomeProfileCount, 58, "Has Employment Outcome Profile", "credReport:HasEmploymentOutcomeProfile" );
-
-						//
-						AddReportProperty( index, index.HasSubjects, 58, "Has Subjects", "credReport:HasSubjects" );
-						AddReportProperty( index, index.HasOccupations, 58, "Has Occupations", "credReport:HasOccupations" );
-						AddReportProperty( index, index.HasIndustries, 58, "Has Industries", "credReport:HasIndustries" );
-						AddReportProperty( index, index.HasInstructionalPrograms, 58, "Has Programs/CIP", "credReport:HasCIP" );
-						AddReportProperty( index, index.IsPartOfCount, 58, "Has Is Part Of Credential", "credReport:IsPartOfCredential" );
-
-						AddReportProperty( index, index.Addresses.Count, 58, "Has Addresses", "credReport:HasAddresses" );
-
-						AddReportProperty( index, index.RequiresCompetenciesCount, 58, "Requires Competencies", "credReport:RequiresCompetencies" );
-						AddReportProperty( index, ( index.RequiresCompetenciesCount > 0 || index.AssessmentsCompetenciesCount > 0 || index.LearningOppsCompetenciesCount > 0 ), 58, "Has Competencies", "credReport:HasCompetencies" );
-						//
-						var HasConditionProfileCount = GetRowPossibleColumn( dr, "HasConditionProfileCount", 0 );
-						AddReportProperty( index, HasConditionProfileCount, 58, "Has Condition Profile", "credReport:HasConditionProfile" );
-						//						
-						var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
-						AddReportProperty( index, DurationProfileCount, 58, "Has Duration Profile", "credReport:HasDurationProfile" );
-						//if ( DurationProfileCount > 0 )
-						#endregion
-
-						list.Add( index );
+						//prototype: if no cred addresses, and one org address, then add to index (not detail page)
 					}
-				}
-				catch ( Exception ex )
-				{
-					LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last Row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
-				}
-				finally
-				{
-					DateTime completed = DateTime.Now;
-					var duration = completed.Subtract( started ).TotalSeconds;
+					//just check for zero again
+					if ( index.Addresses.Count == 0 )
+					{
+						var orgAddresses = dr[ "OrgAddresses" ].ToString();
+						try
+						{
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
+							//}
+						}
+						catch ( Exception ex )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+						}
+					}
+					#endregion
 
-					LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - Completed. loaded {0} records, in {1} seconds", cntr, duration ) );
-				}
+					if ( index.BadgeClaimsCount > 0 )
+						index.HasVerificationType_Badge = true;  //Update this with appropriate source data
 
-				return list;
+					#region CredentialProperties
+					try
+					{
+						var credentialProperties = dr[ "CredentialProperties" ].ToString();
+						if ( !string.IsNullOrEmpty( credentialProperties ) )
+						{
+							credentialProperties = credentialProperties.Replace( "&", " " );
+							var xDoc = XDocument.Parse( credentialProperties );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
+								var propertyValueId = int.Parse( child.Attribute( "PropertyValueId" ).Value );
+								var property = child.Attribute( "Property" ).Value;
+								var schemaName = ( string )child.Attribute( "PropertySchemaName" );
+
+								index.CredentialProperties.Add( new IndexProperty {
+									CategoryId = categoryId,
+									Id = propertyValueId,
+									Name = property,
+									SchemaName = schemaName
+								} );
+								if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+									index.LearningDeliveryMethodTypeIds.Add( propertyValueId );
+								if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE )
+									index.AsmntDeliveryMethodTypeIds.Add( propertyValueId );
+								if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
+									index.AudienceTypeIds.Add( propertyValueId );
+								if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
+									index.AudienceLevelTypeIds.Add( propertyValueId );
+
+								//if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "PropertySchemaName" ) ) )
+								//	AddTextValue( index, ( string )child.Attribute( "PropertySchemaName" ) );
+								//	index.TextValues.Add( ( string )child.Attribute( "PropertySchemaName" ) );
+							}
+						}
+					}
+					catch ( Exception ex )
+					{
+						LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on CrendentialProperties id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+					}
+					#endregion
+
+					#region TextValues, CodedNotation
+					try
+					{
+						var textValues = dr[ "TextValues" ].ToString();
+						if ( !string.IsNullOrWhiteSpace( textValues ) )
+						{
+							textValues = textValues.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( textValues );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
+								var textValue = child.Attribute( "TextValue" );
+								if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
+								{
+									//?? what is this?
+									//AddTextValue( index, textValue.Value );
+									//if ( textValue.Value.IndexOf( "-" ) > -1 )
+									//	AddTextValue( index, textValue.Value.Replace( "-", "" ) );
+
+									if ( categoryId == 35 ) //
+										index.Keyword.Add( textValue.Value );
+									//else
+									//	index.TextValues.Add( textValue.Value );
+								}
+								//source is just direct/indirect, more want the sourceEntityType
+								var codeNotation = child.Attribute( "CodedNotation" );
+								if ( codeNotation != null && !string.IsNullOrWhiteSpace( codeNotation.Value ) )
+								{
+									index.CodedNotation.Add( codeNotation.Value );
+									//AddTextValue( index, codeNotation.Value );
+									if ( codeNotation.Value.IndexOf( "-" ) > -1 ) {
+										//AddTextValue( index, codeNotation.Value.Replace( "-", "" ) );
+										index.CodedNotation.Add( codeNotation.Value.Replace( "-", "" ) );
+									}
+								}
+							}
+						}
+
+
+						//if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
+						//	AddTextValue( index, index.AvailableOnlineAt );
+
+						//AddTextValue( index, index.CredentialType );
+						//properties to add to textvalues
+
+						string url = dr[ "AvailabilityListing" ].ToString();
+						//if ( !string.IsNullOrWhiteSpace( url ) )
+						//	AddTextValue( index, url );
+
+						//if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
+						//	index.TextValues.Add( index.CredentialRegistryId );
+						string indexField = dr[ "CredentialId" ].ToString();
+						if ( !string.IsNullOrWhiteSpace( indexField ) )
+						{
+							//AddTextValue( index, indexField );
+							index.CodedNotation.Add( indexField );
+						}
+						//index.TextValues.Add( indexField );
+						//drop this. Can search by just id
+						//AddTextValue( index, "credential " + index.Id.ToString() );
+						//AddTextValue( index, index.CTID );
+
+					}
+					catch ( Exception ex )
+					{
+						LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on TextValues, CodedNotation id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+					}
+					#endregion
+
+
+					#region Languages
+					index.InLanguage = GetLanguages( dr );
+					#endregion
+
+					#region Competencies
+					//these are competencies from condition profiles
+					//See [ConditionProfile_Competencies_Summary]
+					//21-05-02 mp - the latter includes asmts and lopp related, not required???
+					string requiresCompetencies = dr[ "Competencies" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( requiresCompetencies ) )
+					{
+						if ( ContainsUnicodeCharacter( requiresCompetencies ) )
+						{
+							requiresCompetencies = Regex.Replace( requiresCompetencies, @"[^\u0000-\u007F]+", string.Empty );
+						}
+						requiresCompetencies = requiresCompetencies.Replace( "&", " " );
+						var xDoc = new XDocument();
+						xDoc = XDocument.Parse( requiresCompetencies );
+						foreach ( var child in xDoc.Root.Elements() )
+						{
+							var competency = new IndexCompetency
+							{
+								Name = ( string )child.Attribute( "Name" ) ?? "",
+								Description = ( string )child.Attribute( "Description" ) ?? ""
+							};
+
+							index.Competencies.Add( competency );
+						}
+					}
+					#endregion
+
+					#region Reference Frameworks - industries, occupations and classifications
+					string frameworks = dr[ "Frameworks" ].ToString();
+					if ( !string.IsNullOrWhiteSpace( frameworks ) )
+					{
+						HandleFrameworks( index, frameworks );
+						//var xDoc = new XDocument();
+						//xDoc = XDocument.Parse( frameworks );
+						//foreach ( var child in xDoc.Root.Elements() )
+						//{
+						//	var framework = new IndexReferenceFramework
+						//	{
+						//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
+						//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+						//		Name = ( string )child.Attribute( "Name" ) ?? "",
+						//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
+						//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
+						//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+						//	};
+
+
+
+						//	if ( framework.CategoryId == 11 )
+						//	{
+						//		index.Occupations.Add( framework );
+						//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//			AddTextValue( index, "occupation " + framework.Name );
+						//	}
+						//	else if ( framework.CategoryId == 10 )
+						//	{
+						//		index.Industries.Add( framework );
+						//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//			AddTextValue( index, "industry " + framework.Name );
+						//	}
+						//	else if ( framework.CategoryId == 23 )
+						//	{
+						//		index.InstructionalPrograms.Add( framework );
+						//		if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//			AddTextValue( index, "program " + framework.Name );
+						//	}
+
+						//}//
+						if ( index.Occupations.Count > 0 )
+							index.HasOccupations = true;
+						if ( index.Industries.Count > 0 )
+							index.HasIndustries = true;
+						if ( index.InstructionalPrograms.Count > 0 )
+							index.HasInstructionalPrograms = true;
+
+					}
+
+					#endregion
+					#region Widgets
+					string resourceForWidget = GetRowPossibleColumn( dr, "ResourceForWidget" );
+					if ( !string.IsNullOrWhiteSpace( resourceForWidget ) )
+					{
+						var xDoc = new XDocument();
+						xDoc = XDocument.Parse( resourceForWidget );
+						foreach ( var child in xDoc.Root.Elements() )
+						{
+							var widgetId = int.Parse( child.Attribute( "WidgetId" ).Value );
+							//future 
+							var widgetSection = ( string )child.Attribute( "WidgetSection" ) ?? "";
+							if ( widgetId > 0 && widgetSection == "CredentialFilters" )
+								index.ResourceForWidget.Add( widgetId );
+						}//
+					}
+
+					#endregion
+					#region Custom Reports
+
+					AddReportProperty( index, index.AvailableOnlineAt, 58, "Available Online", "credReport:AvailableOnline" );
+
+					AddReportProperty( index, index.EmbeddedCredentialsCount, 58, "Has Embedded Credentials", "credReport:HasEmbeddedCredentials" );
+					//
+					AddReportProperty( index, index.CostProfileCount, 58, "Has cost profile", "credReport:HasCostProfile" );
+					AddReportProperty( index, index.CommonConditionsCount, 58, "References Common Conditions", "credReport:ReferencesCommonConditions" );
+					AddReportProperty( index, index.CommonCostsCount, 58, "References Common Costs", "credReport:ReferencesCommonCosts" );
+					AddReportProperty( index, index.FinancialAidCount, 58, "Has Financial Aid", "credReport:FinancialAid" );
+					AddReportProperty( index, index.RequiredAssessmentsCount, 58, "Requires Assessment", "credReport:RequiresAssessment" );
+					AddReportProperty( index, index.RequiredCredentialsCount, 58, "Requires Credential", "credReport:RequiresCredential" );
+					AddReportProperty( index, index.RequiredLoppCount, 58, "Requires Learning Opportunity", "credReport:RequiresLearningOpportunity" );
+					AddReportProperty( index, index.RecommendedAssessmentsCount, 58, "Recommends Assessment", "credReport:RecommendsAssessment" );
+					AddReportProperty( index, index.RecommendedCredentialsCount, 58, "Recommends Credential", "credReport:RecommendsCredential" );
+					AddReportProperty( index, index.RecommendedLoppCount, 58, "Recommends Learning Opportunity", "credReport:RecommendsLearningOpportunity" );
+					AddReportProperty( index, index.BadgeClaimsCount, 58, "Has Verification Badges", "credReport:HasVerificationBadges" );
+					AddReportProperty( index, index.RevocationProfilesCount, 58, "Has Revocation", "credReport:HasRevocation" );
+					AddReportProperty( index, index.RenewalCount, 58, "Has Renewal", "credReport:HasRenewal" );
+					AddReportProperty( index, index.ProcessProfilesCount, 58, "Has Process Profile", "credReport:HasProcessProfile" );
+					//
+					AddReportProperty( index, index.AggregateDataProfileCount, 58, "Has Aggregate Data Profile", "credReport:HasAggregateDataProfile" );
+					//AddReportProperty( index, index.DataSetProfileCount, 58, "Has Dataset Profile", "credReport:HasDataSetProfile" );
+					AddReportProperty( index, index.AggregateDataProfileCount + index.DataSetProfileCount, 58, "Has Outcome Data", "credReport:HasOutcomeData" );
+					//AddReportProperty( index, index.HoldersProfileCount, 58, "Has Holders Profile", "credReport:HasHoldersProfile" );
+					//AddReportProperty( index, index.EarningsProfileCount, 58, "Has Earnings Profile", "credReport:HasEarningsProfile" );
+					//AddReportProperty( index, index.EmploymentOutcomeProfileCount, 58, "Has Employment Outcome Profile", "credReport:HasEmploymentOutcomeProfile" );
+
+					//
+					AddReportProperty( index, index.HasSubjects, 58, "Has Subjects", "credReport:HasSubjects" );
+					AddReportProperty( index, index.HasOccupations, 58, "Has Occupations", "credReport:HasOccupations" );
+					AddReportProperty( index, index.HasIndustries, 58, "Has Industries", "credReport:HasIndustries" );
+					AddReportProperty( index, index.HasInstructionalPrograms, 58, "Has Programs/CIP", "credReport:HasCIP" );
+					AddReportProperty( index, index.IsPartOfCount, 58, "Has Is Part Of Credential", "credReport:IsPartOfCredential" );
+
+					AddReportProperty( index, index.Addresses.Count, 58, "Has Addresses", "credReport:HasAddresses" );
+
+					AddReportProperty( index, index.RequiresCompetenciesCount, 58, "Requires Competencies", "credReport:RequiresCompetencies" );
+					AddReportProperty( index, ( index.RequiresCompetenciesCount > 0 || index.AssessmentsCompetenciesCount > 0 || index.LearningOppsCompetenciesCount > 0 ), 58, "Has Competencies", "credReport:HasCompetencies" );
+					//
+					var HasConditionProfileCount = GetRowPossibleColumn( dr, "HasConditionProfileCount", 0 );
+					AddReportProperty( index, HasConditionProfileCount, 58, "Has Condition Profile", "credReport:HasConditionProfile" );
+					//						
+					var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
+					AddReportProperty( index, DurationProfileCount, 58, "Has Duration Profile", "credReport:HasDurationProfile" );
+					//if ( DurationProfileCount > 0 )
+					#endregion
+
+					list.Add( index );
+				}
 			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last Row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+			}
+			finally
+			{
+				DateTime completed = DateTime.Now;
+				var duration = completed.Subtract( started ).TotalSeconds;
+
+				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic - Completed. loaded {0} records, in {1} seconds", cntr, duration ) );
+			}
+
+			return list;
+		
 		}
 		/// <summary>
 		/// populate Credential JsonProperties - starting with addresses
@@ -775,12 +799,12 @@ namespace workIT.Factories
 			{
 				CM.Address adr = new CM.Address()
 				{
-					Address1 = item.Address1,
+					StreetAddress = item.StreetAddress,
 					//Address2 = item.Address2,
-					City = item.City,
+					AddressLocality = item.AddressLocality,
 					AddressRegion = item.AddressRegion,
 					PostalCode = item.PostalCode,
-					Country = item.Country,
+					AddressCountry = item.AddressCountry,
 					Latitude = item.Latitude,
 					Longitude = item.Longitude,
 					GeoCoordinates = null
@@ -887,6 +911,7 @@ namespace workIT.Factories
 					//QARolesCount = ci.QARolesCount,
 					HasPartCount = ci.HasPartCount,
 					IsPartOfCount = ci.IsPartOfCount,
+					AggregateDataProfileCount = ci.AggregateDataProfileCount,
 					HoldersProfileCount = ci.HoldersProfileCount,
 					EarningsProfileCount = ci.EarningsProfileCount,
 					EmploymentOutcomeProfileCount = ci.EmploymentOutcomeProfileCount,
@@ -918,6 +943,11 @@ namespace workIT.Factories
 					index.ImageUrl = ci.ImageURL;
 				else
 					index.ImageUrl = null;
+
+				if ( index.EntityStateId == 2 )
+				{
+					index.Name += " [reference]";
+				}
 				//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
 				//if ( ci.EstimatedTimeToEarn > 0 )
 				index.EstimatedTimeToEarn = DurationProfileManager.GetAll( index.RowId );
@@ -934,8 +964,27 @@ namespace workIT.Factories
 				index.Org_QARolesResults = Fill_CodeItemResults( ci.Org_QARolesList, 130, false, true );
 				index.Org_QAAgentAndRoles = Fill_AgentRelationship( ci.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
 				index.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
-
+				//why was this missing - usually part of AgentAndRoles, but not for Sophia??
+				var qa=Fill_AgentRelationship( ci.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Credential" );
+				if (qa != null && qa.Results.Count() > 0)
+				{
+					foreach ( var qaitem in qa.Results )
+					{
+						var exists = index.AgentAndRoles.Results.Where( s => s.RelationshipId == qaitem.RelationshipId && s.AgentId == qaitem.AgentId ).ToList();
+						if ( exists == null || !exists.Any() )
+							index.AgentAndRoles.Results.Add( qaitem );
+						//if ( index.AgentAndRoles.Results.Where ( s => s.))
+					}
+					//index.Org_QAAgentAndRoles.Results.AddRange( qa.Results );
+				}
+				//
 				index.ConnectionsList = Fill_CodeItemResults( ci.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
+				if ( index.AggregateDataProfileCount > 0 )
+				{
+					//21-04-19 - decided to use a simple generic summary for all outcome data
+					index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+					//index.AggregateDataProfileSummary = ci.AggregateDataProfileSummary;
+				}
 				if (index.HoldersProfileCount > 0)
 					index.HoldersProfileSummary = ci.HoldersProfileSummary;
 				if ( index.EarningsProfileCount > 0 )
@@ -977,12 +1026,12 @@ namespace workIT.Factories
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
-					Address1 = x.Address1,
+					StreetAddress = x.StreetAddress,
 					//Address2 = x.Address2,
-					City = x.City,
+					AddressLocality = x.AddressLocality,
 					AddressRegion = x.AddressRegion,
 					PostalCode = x.PostalCode,
-					Country = x.Country
+					AddressCountry = x.AddressCountry
 				} ).ToList();
 
 				list.Add( index );
@@ -1143,7 +1192,7 @@ namespace workIT.Factories
 							//	{
 							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		Address1 = ( string )child.Attribute( "Address1" ) ?? "",
+							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
 							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
 							//		City = ( string )child.Attribute( "City" ) ?? "",
 							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
@@ -1517,12 +1566,12 @@ namespace workIT.Factories
 			{
 				CM.Address adr = new CM.Address()
 				{
-					Address1 = item.Address1,
+					StreetAddress = item.StreetAddress,
 					//Address2 = item.Address2,
-					City = item.City,
+					AddressLocality = item.AddressLocality,
 					AddressRegion = item.AddressRegion,
 					PostalCode = item.PostalCode,
-					Country = item.Country,
+					AddressCountry = item.AddressCountry,
 					Latitude = item.Latitude,
 					Longitude = item.Longitude,
 					GeoCoordinates = null
@@ -1568,9 +1617,9 @@ namespace workIT.Factories
 					index.Name += " [reference]";
 				}
 				if ( oi.ImageURL != null && oi.ImageURL.Trim().Length > 0 )
-					index.ImageUrl = oi.ImageURL;
+					index.Image = oi.ImageURL;
 				else
-					index.ImageUrl = null;
+					index.Image = null;
 
 				if ( IsValidDate( oi.Created ) )
 					index.Created = oi.Created;
@@ -1586,17 +1635,17 @@ namespace workIT.Factories
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
-					Address1 = x.Address1,
+					StreetAddress = x.StreetAddress,
 					//Address2 = x.Address2,
-					City = x.City,
+					AddressLocality = x.AddressLocality,
 					AddressRegion = x.AddressRegion,
 					PostalCode = x.PostalCode,
-					Country = x.Country
+					AddressCountry = x.AddressCountry
 				} ).ToList();
 
 				//these should be derived from the codes property
 				index.AgentType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
-				index.OrganizationSectorType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
+				index.AgentSectorType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
 				//index.OrganizationClaimType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
 				index.ServiceType = EntityPropertyManager.FillEnumeration( index.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
 				//
@@ -1738,16 +1787,20 @@ namespace workIT.Factories
 						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
 						index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
 
-						if ( index.OwnerOrganizationName.Length > 0 )
+						index.NameOrganizationKey = index.Name;
+						index.ListTitle = index.Name;
+						if ( index.OwnerOrganizationName.Length > 0 && index.Name.IndexOf( index.OwnerOrganizationName ) == -1 )
+						{
+							index.NameOrganizationKey = index.Name + " " + index.OwnerOrganizationName;
+							//ListTitle is not used anymore
 							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
-						else
-							index.ListTitle = index.Name;
+						}
 						//add helpers
 						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
 
 						var date = GetRowColumn( dr, "DateEffective", "" );
 						if ( IsValidDate( date ) )
-							index.DateEffective = ( DateTime.Parse( date ).ToShortDateString() );
+							index.DateEffective = ( DateTime.Parse( date ).ToString("yyyy-MM-dd") );
 						else
 							index.DateEffective = "";
 						date = GetRowColumn( dr, "Created", "" );
@@ -2091,7 +2144,7 @@ namespace workIT.Factories
 							//	{
 							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		Address1 = ( string )child.Attribute( "Address1" ) ?? "",
+							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
 							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
 							//		City = ( string )child.Attribute( "City" ) ?? "",
 							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
@@ -2131,7 +2184,7 @@ namespace workIT.Factories
 								//			{
 								//				Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 								//				Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-								//				Address1 = ( string )child.Attribute( "Address1" ) ?? "",
+								//				StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
 								//				Address2 = ( string )child.Attribute( "Address2" ) ?? "",
 								//				AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
 								//				Country = ( string )child.Attribute( "Country" ) ?? ""
@@ -2319,17 +2372,21 @@ namespace workIT.Factories
 
 				if ( item.OwnerOrganizationId > 0 )
 					index.OwningOrganization = new CM.Organization() { Id = item.OwnerOrganizationId, Name = item.OwnerOrganizationName };
+				if ( index.EntityStateId == 2 )
+				{
+					index.Name += " [reference]";
+				}
 				//addresses
 				index.Addresses = item.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
-					Address1 = x.Address1,
+					StreetAddress = x.StreetAddress,
 					//Address2 = x.Address2,
-					City = x.City,
+					AddressLocality = x.AddressLocality,
 					AddressRegion = x.AddressRegion,
 					PostalCode = x.PostalCode,
-					Country = x.Country
+					AddressCountry = x.AddressCountry
 				} ).ToList();
 
 				index.EstimatedDuration = DurationProfileManager.GetAll( index.RowId );
@@ -2421,6 +2478,10 @@ namespace workIT.Factories
 
 						index = new LearningOppIndex();
 						index.Id = GetRowColumn( dr, "Id", 0 );
+						if (index.Id == 2150)
+						{
+
+						}
 						index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
@@ -2428,10 +2489,7 @@ namespace workIT.Factories
 
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
 						index.Description = GetRowColumn( dr, "Description", "" );
-						if ( index.Id == 518 )
-						{
-
-						}
+						
 						string rowId = GetRowColumn( dr, "RowId" );
 						index.RowId = new Guid( rowId );
 						index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
@@ -2444,16 +2502,20 @@ namespace workIT.Factories
 
 						index.OwnerOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
 						index.OwnerOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
-						if ( index.OwnerOrganizationName.Length > 0 )
+						index.NameOrganizationKey = index.Name;
+						index.ListTitle = index.Name;
+						if ( index.OwnerOrganizationName.Length > 0 && index.Name.IndexOf( index.OwnerOrganizationName ) == -1 )
+						{
+							index.NameOrganizationKey = index.Name + " " + index.OwnerOrganizationName;
+							//ListTitle is not used anymore
 							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
-						else
-							index.ListTitle = index.Name;
+						}
 						//add helpers
 						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
 
 						var date = GetRowColumn( dr, "DateEffective", "" );
 						if ( IsValidDate( date ) )
-							index.DateEffective = DateTime.Parse( date ).ToShortDateString();
+							index.DateEffective = DateTime.Parse( date ).ToString("yyyy-MM-dd");
 						else
 							index.DateEffective = "";
 
@@ -2753,7 +2815,7 @@ namespace workIT.Factories
 							//	{
 							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		Address1 = ( string )child.Attribute( "Address1" ) ?? "",
+							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
 							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
 							//		City = ( string )child.Attribute( "City" ) ?? "",
 							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
@@ -2793,7 +2855,7 @@ namespace workIT.Factories
 								//			{
 								//				Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 								//				Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-								//				Address1 = ( string )child.Attribute( "Address1" ) ?? "",
+								//				StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
 								//				Address2 = ( string )child.Attribute( "Address2" ) ?? "",
 								//				//City = ( string )child.Attribute( "City" ) ?? "",
 								//				AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
@@ -2927,19 +2989,22 @@ namespace workIT.Factories
 
 				if ( li.OwnerOrganizationId > 0 )
 					index.OwningOrganization = new CM.Organization() { Id = li.OwnerOrganizationId, Name = li.OwnerOrganizationName };
-
+				if ( index.EntityStateId == 2 )
+				{
+					index.Name += " [reference]";
+				}
 				//addressess                
 
 				index.Addresses = li.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
-					Address1 = x.Address1,
+					StreetAddress = x.StreetAddress,
 					//Address2 = x.Address2,
-					City = x.City,
+					AddressLocality = x.AddressLocality,
 					AddressRegion = x.AddressRegion,
 					PostalCode = x.PostalCode,
-					Country = x.Country
+					AddressCountry = x.AddressCountry
 				} ).ToList();
 				index.EstimatedDuration = DurationProfileManager.GetAll( index.RowId );
 				index.Org_QAAgentAndRoles = Fill_AgentRelationship( li.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
@@ -3205,7 +3270,6 @@ namespace workIT.Factories
 					SourceUrl = oi.SourceUrl,
 					OrganizationCTID = oi.OwnerOrganizationCTID,
 					OrganizationId = oi.OwnerOrganizationId,
-					OrganizationName = oi.OwnerOrganizationName,
 					//FrameworkUri = oi.FrameworkUri,
 					CredentialRegistryId = oi.CredentialRegistryId,
 					EntityStateId = oi.EntityStateId,
@@ -3213,7 +3277,10 @@ namespace workIT.Factories
 					Created = oi.Created,
 					LastUpdated = oi.LastUpdated,
 				};
-
+				if ( oi.OwnerOrganizationId > 0)
+				{
+					index.OwningOrganization = OrganizationManager.GetForSummary( oi.OwnerOrganizationId );
+				}
 				index.ReferencedByAssessments = oi.ReferencedByAssessments;
 				index.ReferencedByCredentials = oi.ReferencedByCredentials;
 				index.ReferencedByLearningOpportunities = oi.ReferencedByLearningOpportunities;
@@ -3944,28 +4011,34 @@ namespace workIT.Factories
 		public static void HandleAddresses( IIndex index, string addresses )
 		{
 			var xDoc = new XDocument();
-			xDoc = XDocument.Parse( addresses );
-			foreach ( var child in xDoc.Root.Elements() )
+			try
 			{
-				string region = ( string )child.Attribute( "Region" ) ?? "";
-				string city = ( string )child.Attribute( "City" ) ?? "";
-				string country = ( string )child.Attribute( "Country" ) ?? "";
-				index.Addresses.Add( new Address
+				xDoc = XDocument.Parse( addresses );
+				foreach ( var child in xDoc.Root.Elements() )
 				{
-					Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-					Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-					Address1 = ( string )child.Attribute( "Address1" ) ?? "",
-					//Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-					City = ( string )child.Attribute( "City" ) ?? "",
-					AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-					PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-					Country = ( string )child.Attribute( "Country" ) ?? ""
-				} );
-				AddLocation( index, city, region, country );
+					string region = ( string )child.Attribute( "Region" ) ?? "";
+					string city = ( string )child.Attribute( "City" ) ?? "";
+					string country = ( string )child.Attribute( "Country" ) ?? "";
+					index.Addresses.Add( new Address
+					{
+						Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
+						Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
+						StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
+						//Address2 = ( string )child.Attribute( "Address2" ) ?? "",
+						AddressLocality = ( string )child.Attribute( "City" ) ?? "",
+						AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
+						PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
+						AddressCountry = ( string )child.Attribute( "Country" ) ?? ""
+					} );
+					AddLocation( index, city, region, country );
 
-				//AddLocation( index, city, "city" );
-				//AddLocation( index, region, "region" );
-				//AddLocation( index, country, "country" );
+					//AddLocation( index, city, "city" );
+					//AddLocation( index, region, "region" );
+					//AddLocation( index, country, "country" );
+				}
+			}catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, string.Format("HandleAddresses. Name: {0} ({1})", index.Name, index.Id) );
 			}
 		}
 		public static void HandleAddressesFromJson( IIndex index, string jsonProperties )
@@ -3977,19 +4050,19 @@ namespace workIT.Factories
 				foreach ( var item in a.Addresses )
 				{
 					string region = item.AddressRegion ?? "";
-					string city = item.City ?? "";
-					string country = item.Country ?? "";
+					string city = item.AddressLocality ?? "";
+					string country = item.AddressCountry ?? "";
 
 					index.Addresses.Add( new Address
 					{
 						Latitude = item.Latitude,
 						Longitude = item.Latitude,
-						Address1 = item.Address1,
+						StreetAddress = item.StreetAddress,
 						//Address2 = item.Address2 ?? "",
-						City = city,
+						AddressLocality = city,
 						AddressRegion = region,
 						PostalCode = item.PostalCode,
-						Country = item.Country ?? ""
+						AddressCountry = item.AddressCountry ?? ""
 					} );
 					AddLocation( index, city, region, country );
 

@@ -354,8 +354,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; } = new List<CredentialAlignmentObject>();
 
-		[JsonProperty( PropertyName = "ceterms:alternativeOccupationType" )]
-		public LanguageMapList AlternativeOccupationType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeOccupationType" )]
+		//public LanguageMapList AlternativeOccupationType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
@@ -363,18 +363,26 @@ namespace RA.Models.JsonV2
 		//[JsonProperty( PropertyName = "ceterms:naics" )]
 		//public List<string> Naics { get; set; } = new List<string>();
 
-		[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
-		public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
+		//public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
 		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
 		//
-		[JsonProperty( PropertyName = "ceterms:alternativeInstructionalProgramType" )]
-		public LanguageMapList AlternativeInstructionalProgramType { get; set; } = new LanguageMapList();
+		//[JsonProperty( PropertyName = "ceterms:alternativeInstructionalProgramType" )]
+		//public LanguageMapList AlternativeInstructionalProgramType { get; set; } = new LanguageMapList();
+
+		//
+		[JsonProperty( PropertyName = "ceterms:targetAssessment" )]
+		public List<string> TargetAssessment{ get; set; }
 
 		//
 		[JsonProperty( PropertyName = "ceterms:targetLearningResource" )]
 		public List<string> TargetLearningResource { get; set; }
+		//
+		[JsonProperty( PropertyName = "ceterms:targetPathway" )]
+		public List<string> TargetPathway { get; set; }
+
 
 		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
 		public List<IdentifierValue> VersionIdentifier { get; set; }

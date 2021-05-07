@@ -331,7 +331,30 @@ namespace Import.Services
 					entityUid = new Guid();
 				}
 			}
-
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK )
+			{
+				//actually should not happen - confirm the cf must exist or will be rejected by API
+				newEntityId = new CompetencyFrameworkManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( statusMsg );
+					//need to know what property would need to be fixed - really shouldn't happen
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
+			{
+				//actually should not happen - confirm the tvp must exist or will be rejected by API
+				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( statusMsg );
+					//need to know what property would need to be fixed - really shouldn't happen
+					entityUid = new Guid();
+				}
+			}
 			//
 			if ( newEntityId  > 0)
 			{
@@ -472,7 +495,7 @@ namespace Import.Services
 
 		public static Organization ResolveAgentByCtid( string ctid )
 		{
-			Organization entity = OrganizationServices.GetByCtid( ctid );
+			Organization entity = OrganizationServices.GetSummaryByCtid( ctid );
 			if ( entity != null && entity.Id > 0)
 			{
 
@@ -482,7 +505,7 @@ namespace Import.Services
 		}
 		public static Credential ResolveCredentialByCtid( string ctid )
 		{
-			Credential entity = CredentialServices.GetByCtid( ctid );
+			Credential entity = CredentialServices.GetMinimumByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 			{
 

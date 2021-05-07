@@ -1,0 +1,104 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using Newtonsoft.Json;
+
+
+namespace RA.Models.JsonV2
+{
+	public class AggregateDataProfile
+	{
+		[JsonProperty( "@type" )]
+		public string Type { get; set; } = "ceterms:AggregateDataProfile";
+
+		[JsonProperty( PropertyName = "ceterms:name" )]
+		public LanguageMap Name { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:description" )]
+		public LanguageMap Description { get; set; }
+
+
+		[JsonProperty( PropertyName = "ceterms:currency" )]
+		public string Currency { get; set; }
+
+		/// <summary>
+		/// Effective date of this profile
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:dateEffective" )]
+		public string DateEffective { get; set; }
+
+		/// <summary>
+		/// DemographicInformation
+		/// Aggregate data or summaries of statistical data relating to the population of credential holders including data about gender, geopolitical regions, age, education levels, and other categories of interest.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:demographicInformation" )]
+		public LanguageMap DemographicInformation { get; set; }
+
+		/// <summary>
+		///  Upper interquartile earnings.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:highEarnings" )]
+		public int HighEarnings { get; set; }
+
+		/// <summary>
+		///  Number of jobs obtained in the region during a given timeframe.
+		///  ceterms:jobsObtained
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:jobsObtained" )]
+		public List<QuantitativeValue> JobsObtained { get; set; }
+
+		/// <summary>
+		/// Jurisdiction Profile
+		/// Geo-political information about applicable geographic areas and their exceptions.
+		/// <see cref="https://credreg.net/ctdl/terms/JurisdictionProfile"/>
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
+		public List<JurisdictionProfile> Jurisdiction { get; set; }
+
+		/// <summary>
+		///  Lower interquartile earnings.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:lowEarnings" )]
+		public int LowEarnings { get; set; }
+
+		/// <summary>
+		///  Median earnings.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:medianEarnings" )]
+		public int MedianEarnings { get; set; }
+
+		/// <summary>
+		///  Upper interquartile earnings.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:numberAwarded" )]
+		public int NumberAwarded { get; set; }
+
+		/// <summary>
+		/// Number of months after earning a credential when employment and earnings data is collected.
+		/// Number of months usually range between 3 months (one quarter) to ten years.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:postReceiptMonths" )]
+		public int PostReceiptMonths { get; set; }
+		//public JurisdictionProfile Region { get; set; }
+
+		/// <summary>
+		/// Authoritative source of an entity's information.
+		/// URL
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:source" )]
+		public string Source { get; set; }
+
+		/// <summary>
+		/// Relevant Data Set
+		/// Data Set on which earnings or employment data is based.
+		/// qdata:DataSetProfile
+		/// TODO - this may change to URIs
+		/// </summary>
+		[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
+		public List<string> RelevantDataSet { get; set; }
+
+	}
+}
