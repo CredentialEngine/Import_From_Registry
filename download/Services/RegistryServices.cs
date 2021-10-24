@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Download.Models;
+
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Download.Services
@@ -18,6 +20,29 @@ namespace Download.Services
 			ctdlType = ro.CtdlType;
 			//ctdlType = ctdlType.Replace( "ceterms:", "" );
 			return ctdlType;
+		}
+		/// <summary>
+		/// Get the main resource object for a graph from a Decoded resource (from an envelope)
+		/// </summary>
+		/// <param name="json"></param>
+		/// <returns></returns>
+		public static GraphMainResource GetGraphMainResource( string json )
+		{
+			if ( string.IsNullOrWhiteSpace( json ) )
+				return null; //??
+			var graphMainResource = new GraphMainResource();
+			Dictionary<string, object> dictionary = JsonToDictionary( json );
+			object graph = dictionary[ "@graph" ];
+			var glist = JsonConvert.SerializeObject( graph );
+			//parse graph in to list of objects
+			JArray graphList = JArray.Parse( glist );
+
+			if ( graphList != null && graphList.Any() )
+			{
+				var main = graphList[ 0 ].ToString();
+				graphMainResource = JsonConvert.DeserializeObject<GraphMainResource>( main );
+			}
+			return graphMainResource;
 		}
 
 		/// <summary>

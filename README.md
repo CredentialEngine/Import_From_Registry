@@ -3,7 +3,30 @@ Sample project to import resources from the credential registry. While the code 
 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
+## Preparation
+### Sql Server
+Install MS Sql Server 2016+.
+https://www.microsoft.com/en-us/sql-server/sql-server-downloads 
+### Visual Studio
+Install Visual Studio Community 2019+
+https://visualstudio.microsoft.com/vs/community/ 
+
 ## Updates
+### October 24, 2021
+Updated Download project
+- provided how to filter by the owning organization or a third party publisher
+
+### October 15, 2021
+- Import
+	- added Job, and WorkRole
+	- general updates
+		- removed obsolete code
+	- Updated Credential import:
+		- DataSetProfile will be in a separate envelope, so credential.AggregateDataProfile will create a pending DSP record, until the full DSP is imported. 
+	- CompetencyFramework import
+		- added more detailed collection to the import even though not used by the Finder (detail page gets data directly from the Credential Registry)
+- Credential Finder WebApi
+
 ### May 7, 2021
 - Credential Finder WebApi
 	- Detail Endpoints

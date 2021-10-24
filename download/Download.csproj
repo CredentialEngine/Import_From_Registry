@@ -58,7 +58,7 @@
     <GenerateManifests>true</GenerateManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <SignManifests>true</SignManifests>
+    <SignManifests>false</SignManifests>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -75,12 +75,15 @@
   <ItemGroup>
     <Compile Include="Models\CodeItem.cs" />
     <Compile Include="Models\Envelope.cs" />
+    <Compile Include="Models\GraphContainer.cs" />
+    <Compile Include="Models\LanguageMap.cs" />
     <Compile Include="Models\RegistryObject.cs" />
     <Compile Include="Models\SaveStatus.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RegistryHelper.cs" />
     <Compile Include="Services\CodesManager.cs" />
+    <Compile Include="Services\DatabaseServices.cs" />
     <Compile Include="Services\LoggingHelper.cs" />
     <Compile Include="Services\RegistryServices.cs" />
     <Compile Include="Services\UtilityManager.cs" />

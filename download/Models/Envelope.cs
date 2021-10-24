@@ -10,6 +10,11 @@ namespace Download.Models
 {
 	public class Envelope
 	{
+		public Envelope()
+		{
+			NodeHeader = new NodeHeader();
+		}
+
 		[JsonProperty( PropertyName = "envelope_type" )]
 		public string EnvelopeType { get; set; }
 
@@ -17,7 +22,7 @@ namespace Download.Models
 		public string EnvelopeVersion { get; set; }
 
 		[JsonProperty( PropertyName = "envelope_ceterms_ctid" )]
-		public string EnvelopeCetermsCtid { get; set; }
+		public string EnvelopeCtid { get; set; }
 
 		[JsonProperty( PropertyName = "envelope_ctdl_type" )]
 		public string EnvelopeCtdlType { get; set; }
@@ -42,15 +47,35 @@ namespace Download.Models
 
 		[JsonProperty( PropertyName = "resource_public_key" )]
 		public string ResourcePublicKey { get; set; }
-	}
 
+
+		[JsonProperty( PropertyName = "owned_by" )]
+		public string documentOwnedBy { get; set; }
+
+		[JsonProperty( PropertyName = "published_by" )]
+		public string documentPublishedBy { get; set; }
+		[JsonProperty( PropertyName = "node_headers" )]
+		public NodeHeader NodeHeader { get; set; }
+
+		[JsonProperty( PropertyName = "changed" )]
+		public bool Changed { get; set; }
+
+	}
+	public class UpdateEnvelope : Envelope
+	{
+		/// <summary>
+		/// NOTE: at this time, the EnvelopeIdentifier is not provided when doing an initial publish (ie. an Add). It is only used for an update, and will contain the envelope identifier returned by the registry from the initial publish.
+		/// </summary>
+		[JsonProperty( PropertyName = "envelope_id" )]
+		public string EnvelopeIdentifier { get; set; }
+
+	}
 
 
 	public class ReadEnvelope : Envelope
 	{
 		[JsonProperty( PropertyName = "envelope_id" )]
 		public string EnvelopeIdentifier { get; set; }
-
 
 		[JsonProperty( PropertyName = "decoded_resource" )]
 		public object DecodedResource { get; set; }
@@ -64,6 +89,8 @@ namespace Download.Models
 
 		[JsonProperty( PropertyName = "secondary_publisher_id" )]
 		public string SecondaryPublisherId { get; set; }
+		//
+
 	}
 	public class NodeHeader
 	{
@@ -101,5 +128,46 @@ namespace Download.Models
 		public string Url { get; set; }
 
 	}
+	public class DeleteObject
+	{
+		public DeleteObject()
+		{
+			deleteLabel = "true";
+		}
+		[JsonProperty( PropertyName = "delete" )]
+		public string deleteLabel { get; set; }
 
+		[JsonProperty( PropertyName = "ctld:ctid" )]
+		public string Ctid { get; set; }
+
+		[JsonProperty( PropertyName = "deletedBy" )]
+		public string Actor { get; set; }
+
+	}
+
+	public class DeleteEnvelope
+	{
+		//[JsonProperty( PropertyName = "envelope_community" )]
+		//public string EnvelopeCommunity { get; set; }
+
+
+		//[JsonProperty( PropertyName = "envelope_id" )]
+		//public string EnvelopeIdentifier { get; set; }
+
+		/// <summary>
+		/// No particular value idenified at this time. 
+		/// </summary>
+		[JsonProperty( PropertyName = "delete_token" )]
+		public string DeleteToken { get; set; }
+
+		[JsonProperty( PropertyName = "delete_token_format" )]
+		public string ResourceFormat { get; set; }
+
+		[JsonProperty( PropertyName = "delete_token_encoding" )]
+		public string ResourceEncoding { get; set; }
+
+		[JsonProperty( PropertyName = "delete_token_public_key" )]
+		public string ResourcePublicKey { get; set; }
+
+	}
 }
