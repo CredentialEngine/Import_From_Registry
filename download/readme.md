@@ -1,16 +1,34 @@
 # Download from the Credential Registry
 Sample project to download resources from the credential registry and store the JSON-LD files to the local file system. 
 
+
+## Preparation
+### Sql Server
+Install MS Sql Server 2016+.
+https://www.microsoft.com/en-us/sql-server/sql-server-downloads 
+### Visual Studio
+Install Visual Studio Community 2019+
+https://visualstudio.microsoft.com/vs/community/ 
+
+
 ## Updates
+### October 24, 2021
+Updates
+- provided how to filter by the owning organization or a third party publisher
+
+New
+- added option to store the downloaded documents in a database. There is currently a sample for Sql Server 2016+. We hope to also add an example for MySql soon. 
+	Table: Resource
+	Columns: CTDL:Type, CTID, Name, Description, SubjectWebpage, Created and LastUpdated date from the registry document, the date downloaded, and the CredentialRegistryGraph
+- Usage
+	- install SqlServer
+	- download starting empty database from github
+
 ### September 30, 2020
 Initial release. 
 
 This project is designed to have minimum dependencies/configuration. The purpose is to enable downloading documents from the registry and storing on the local file system. A user can decide to store the documents in their own datastore or work with the documents from the file system. 
 
-## Future
-There has been interest in having an option to store the documents in a database, but without the deep mapping used by the full import used by the Credential Finder. 
-
-We hope to add this option by the end of this year.
 
 # Configuration
 ## App.Config
