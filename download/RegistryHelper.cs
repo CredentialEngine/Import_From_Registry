@@ -40,14 +40,14 @@ namespace Download
 		}
 		public string Community { get; set; }
 
-		public void Retrieve( string registryEntityType, int entityTypeId, int maxRecords,  ref int recordsImported, ref List<string> importSummary, string sortOrder = "asc" )
+		public void Retrieve( string registryEntityType, int entityTypeId, int maxRecords, ref int recordsImported, ref List<string> importSummary, string sortOrder = "asc" )
 		{
 
 			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_" + registryEntityType, true );
 			if ( !importingThisType )
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Skipping import of {0}  ***************** ", registryEntityType ) );
-				importSummary.Add( "Skipped import of " + registryEntityType);
+				importSummary.Add( "Skipped import of " + registryEntityType );
 				return;
 			}
 			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Importing {0}  ***************** ", registryEntityType ) );
@@ -63,6 +63,9 @@ namespace Download
 			string importNote = "";
 			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
+			//
+			var savingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
+			var savingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
 
 			int cntr = 0;
 			int pTotalRows = 0;
@@ -117,14 +120,16 @@ namespace Download
 					//var ctdlType = RegistryServices.GetResourceType( payload );
 					LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} ctid {2}, lastUpdated: {3} ", cntr, registryEntityType, ctid, envelopeUpdateDate ) );
 
+					//Save file to file system
 					//existing files will be overridden. , suppress the date prefix (" "), or use an alternate prefix
-					LoggingHelper.WriteLogFile( 1, registryEntityType + "_" + ctid, payload, "", false );
+					if ( savingDocumentToFileSystem )
+						LoggingHelper.WriteLogFile( 1, registryEntityType + "_" + ctid, payload, "", false );
 
 					#region future: define process to generic record to a database.
 					//TODO - add optional save to a database
 					//		- will need entity type, ctid, name, description (maybe), created and lastupdated from envelope,payload
 					//		- only doing adds, allows for history, user can choose to do updates
-					if ( UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false ) )
+					if ( savingDocumentToDatabase )
 					{
 						var graphMainResource = RegistryServices.GetGraphMainResource( payload );
 						var resource = new CredentialRegistryResource()

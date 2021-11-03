@@ -10,16 +10,16 @@ namespace Download.Services
 	{
 		#region constants - entity types. 
 		//An Entity is typically created only where it can have a child relationship, ex: Entity.Property
-		public static int ENTITY_TYPE_CREDENTIAL = 1;
-		public static int ENTITY_TYPE_ORGANIZATION = 2; //what about QACred
+		public static int ENTITY_TYPE_CREDENTIAL	= 1;
+		public static int ENTITY_TYPE_ORGANIZATION	= 2; //what about QACred
 		public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
 		public static int ENTITY_TYPE_CONNECTION_PROFILE = 4;
 		public static int ENTITY_TYPE_CONDITION_PROFILE = 4;
-		public static int ENTITY_TYPE_COST_PROFILE = 5;
+		public static int ENTITY_TYPE_COST_PROFILE	= 5;
 		public static int ENTITY_TYPE_COST_PROFILE_ITEM = 6;
 		public static int ENTITY_TYPE_LEARNING_OPP_PROFILE = 7;
-		public static int ENTITY_TYPE_PATHWAY = 8;
-		public static int ENTITY_TYPE_RUBRIC = 9;
+		public static int ENTITY_TYPE_PATHWAY		= 8;
+		public static int ENTITY_TYPE_RUBRIC		= 9;
 
 		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;
 		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;
@@ -40,13 +40,20 @@ namespace Download.Services
 		public static int ENTITY_TYPE_PATHWAY_COMPONENT = 24;
 		public static int ENTITY_TYPE_COMPONENT_CONDITION = 25;
 		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
+		//
+		public static int ENTITY_TYPE_AGGREGATE_DATA_PROFILE = 27;
+		public static int ENTITY_TYPE_TRANSFER_INTERMEDIARY = 28;
+
+		public static int ENTITY_TYPE_DATASET_PROFILE = 31;
+		//
+		public static int ENTITY_TYPE_JOB_PROFILE = 32;
+		public static int ENTITY_TYPE_TASK_PROFILE = 33;
+		public static int ENTITY_TYPE_WORKROLE_PROFILE = 34;
+		public static int ENTITY_TYPE_OCCUPATIONS_PROFILE = 35;
+		public static int ENTITY_TYPE_LEARNING_PROGRAM = 36;
+		public static int ENTITY_TYPE_COURSE = 37;
 
 
-		/// <summary>
-		/// Placeholder for stats, will not actually have an entity
-		/// </summary>
-
-		public static int ENTITY_TYPE_DURATION_PROFILE = 22;
 
 
 		#endregion

@@ -41,6 +41,16 @@ namespace Download
 				LoggingHelper.DoTrace( 1, "NOTE: an API key was not provided for the search. This is required for production." );
 				return;
 			}
+			//
+			var savingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
+			var savingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
+			if ( !savingDocumentToFileSystem && !savingDocumentToDatabase )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "*****************  ERROR ***************** " ) );
+				LoggingHelper.DoTrace( 1, string.Format( "You must have at least one of: 'savingDocumentToFileSystem' OR 'savingDocumentToDatabase'  set to true, or you will have no results for your download! " ) );
+				LoggingHelper.DoTrace( 1, string.Format( "****************************************** " ) );
+				return;
+			}
 			//Get the schedule type
 			string scheduleType = UtilityManager.GetAppKeyValue( "scheduleType", "daily" );
 			//get the delete action - typical is 2 to skip deletes
