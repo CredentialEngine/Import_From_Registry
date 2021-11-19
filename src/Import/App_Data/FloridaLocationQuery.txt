@@ -1,0 +1,52 @@
+{
+    "search:termGroup":
+    {
+        "ceterms:address": [
+            {
+                "ceterms:addressRegion":
+                {
+                    "en": "Florida",
+                    "en": "FL"
+                }
+
+            }
+        ],
+        "ceterms:availableAt": [
+            {
+                "ceterms:addressRegion":
+                {
+                    "en": "Florida",
+                    "en": "FL"
+                }
+
+            }
+        ],
+        "ceterms:ownedBy":
+        {
+            "ceterms:address": [
+                {
+                    "ceterms:addressRegion":
+                    {
+                        "en": "Florida",
+                        "en": "FL"
+                    }
+
+                }
+            ]
+        },
+        "ceterms:offeredBy":
+        {
+            "ceterms:address": [
+                {
+                    "ceterms:addressRegion":
+                    {
+                        "en": "Florida",
+                        "en": "FL"
+                    }
+
+                }
+            ]
+        },
+        "search:operator": "search:orTerms"
+    }
+}
