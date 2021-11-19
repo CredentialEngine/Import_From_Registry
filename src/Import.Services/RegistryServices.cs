@@ -1,40 +1,46 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using workIT.Models;
+using RA.Models.JsonV2;
+
+using workIT.Models.API.RegistrySearchAPI;
 using workIT.Utilities;
-using RA.Models.Json;
 
 namespace Import.Services
 {
-    public class RegistryServices
-    {
+	public class RegistryServices
+	{
 		public static string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
 
-        public static string REGISTRY_ACTION_DELETE = "Registry Delete";
-        public static string REGISTRY_ACTION_PURGE = "Registry Purge";
-        public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
-        public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
+		public static string REGISTRY_ACTION_DELETE = "Registry Delete";
+		public static string REGISTRY_ACTION_PURGE = "Registry Purge";
+		public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
+		public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
 
-        public RegistryServices()
+		public RegistryServices()
 		{
 			//Community
 		}
 		public string Community { get; set; }
 
 		#region Registry search
-		public static List<ReadEnvelope> Search( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder="asc" )
+
+		public static List<ReadEnvelope> Search( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder = "asc" )
 		{
 
 			string document = "";
 			string filter = "";
 			//includes the question mark
 			string serviceUri = GetRegistrySearchUrl( community );
+
 			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
 			//resource_type=credential
 			if ( !string.IsNullOrWhiteSpace( resourceType ) )
@@ -42,11 +48,85 @@ namespace Import.Services
 
 			SetPaging( pageNbr, pageSize, ref filter );
 			SetDateFilters( startingDate, endingDate, ref filter );
-            SetSortOrder( ref filter, sortOrder );
+			SetSortOrder( ref filter, sortOrder );
 
-            serviceUri += filter.Length > 0 ? filter : "";
+			serviceUri += filter.Length > 0 ? filter : "";
+			List<ReadEnvelope> list = new List<ReadEnvelope>();
+
+			try
+			{
+				using ( var client = new HttpClient() )
+				{
+					System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+
+					client.DefaultRequestHeaders.
+						Accept.Add( new MediaTypeWithQualityHeaderValue( "application/json" ) );
+					if ( !string.IsNullOrWhiteSpace( credentialEngineAPIKey ) )
+					{
+						client.DefaultRequestHeaders.Add( "Authorization", "Token " + credentialEngineAPIKey );
+					}
+					var task = client.GetAsync( serviceUri );
+					task.Wait();
+					var response = task.Result;
+					document = task.Result.Content.ReadAsStringAsync().Result;
+					if ( response.IsSuccessStatusCode == false )
+					{
+						statusMessage = response.StatusCode + ": " + document;
+						list = null;
+						return list;
+					}
+
+					//just in case check 
+					if ( !string.IsNullOrWhiteSpace( document ) )
+					{
+						if ( document.IndexOf( "Invalid" ) == 0
+							|| document.IndexOf( "Error: " ) > -1
+							|| document.IndexOf( "An API Key is required " ) > -1
+							)
+						{
+							statusMessage = document;
+							list = null;
+							return list;
+						}
+					}
+					//map to the list
+					list = JsonConvert.DeserializeObject<List<ReadEnvelope>>( document );
+					//
+					string total = response.Headers.GetValues( "X-Total" ).FirstOrDefault();
+					Int32.TryParse( total, out pTotalRows );
+					string totalPages = response.Headers.GetValues( "X-Total-Pages" ).FirstOrDefault();
+
+				}
+			}
+			catch ( Exception exc )
+			{
+				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri, false );
+				statusMessage = exc.Message;
+			}
+			return list;
+		}
+
+		[Obsolete]
+		public static List<ReadEnvelope> SearchOld( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder = "asc" )
+		{
+
+			string document = "";
+			string filter = "";
+			//includes the question mark
+			string serviceUri = GetRegistrySearchUrl( community );
+
+			//from=2016-08-22T00:00:00&until=2016-08-31T23:59:59
+			//resource_type=credential
+			if ( !string.IsNullOrWhiteSpace( resourceType ) )
+				filter = string.Format( "resource_type={0}", resourceType.ToLower() );
+
+			SetPaging( pageNbr, pageSize, ref filter );
+			SetDateFilters( startingDate, endingDate, ref filter );
+			SetSortOrder( ref filter, sortOrder );
+
+			serviceUri += filter.Length > 0 ? filter : "";
 			//future proof
-			
+
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
 			try
 			{
@@ -73,12 +153,26 @@ namespace Import.Services
 				reader.Close();
 				dataStream.Close();
 				response.Close();
+				//check document for an error message
+				//also check the http status - have to leave as OK, or would be an exception?
+				if ( !string.IsNullOrWhiteSpace( document ) )
+				{
+					if ( document.IndexOf( "Invalid" ) == 0
+						|| document.IndexOf( "Error: " ) > -1
+						|| document.IndexOf( "An API Key is required " ) > -1
+						)
+					{
+						statusMessage = document;
+						list = null;
+						return list;
+					}
+				}
 
 				//Link contains links for paging
 				var hdr2 = response.GetResponseHeader( "Link" );
 				Int32.TryParse( response.GetResponseHeader( "Total" ), out pTotalRows );
 				//20-07-02 mp - seems the header name is now X-Total
-				if ( pTotalRows == 0)
+				if ( pTotalRows == 0 )
 				{
 					Int32.TryParse( response.GetResponseHeader( "X-Total" ), out pTotalRows );
 				}
@@ -88,10 +182,12 @@ namespace Import.Services
 			}
 			catch ( Exception exc )
 			{
-				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri );
+				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri, false );
+				statusMessage = exc.Message;
 			}
 			return list;
 		}
+
 		public static string GetRegistrySearchUrl( string community = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( community ) )
@@ -118,7 +214,7 @@ namespace Import.Services
 			//serviceUri = string.Format( serviceUri, community );
 			//return serviceUri;
 		}
-		public static string GetEnvelopeUrl(string envelopeId, string community = "")
+		public static string GetEnvelopeUrl( string envelopeId, string community = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( community ) )
 			{
@@ -129,7 +225,7 @@ namespace Import.Services
 			string registryEnvelopeUrl = string.Format( serviceUri, community, envelopeId );
 			return registryEnvelopeUrl;
 		}
-		public static string GetResourceUrl(string ctid, string community = "")
+		public static string GetResourceUrl( string ctid, string community = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( community ) )
 			{
@@ -148,7 +244,7 @@ namespace Import.Services
 		//	serviceUri = string.Format( serviceUri, community );
 		//	return serviceUri;
 		//}
-		public static string GetRegistryUrl(string appKey, string community)
+		public static string GetRegistryUrl( string appKey, string community )
 		{
 			//requires all urls to have a parameter?
 			//or, check if the default community exists
@@ -182,7 +278,7 @@ namespace Import.Services
 				AND = "&";
 			if ( string.IsNullOrWhiteSpace( sortOrder ) )
 				sortOrder = "asc";
-            //this is the default anyway - maybe not, seems like dsc is the default
+			//this is the default anyway - maybe not, seems like dsc is the default
 			where = where + AND + "sort_by=updated_at&sort_order=" + sortOrder;
 		}
 
@@ -195,14 +291,14 @@ namespace Import.Services
 			string date = FormatDateFilter( startingDate );
 			if ( !string.IsNullOrWhiteSpace( date ) )
 			{
-				where = where + AND + string.Format( "from={0}", startingDate );
+				where = where + AND + string.Format( "from={0}", date );
 				AND = "&";
 			}
 
 			date = FormatDateFilter( endingDate );
 			if ( !string.IsNullOrWhiteSpace( date ) )
 			{
-				where = where + AND + string.Format( "until={0}", endingDate );
+				where = where + AND + string.Format( "until={0}", date );
 				AND = "&";
 			}
 			//if ( !string.IsNullOrWhiteSpace( endingDate ) && endingDate.Length == 10 )
@@ -219,7 +315,7 @@ namespace Import.Services
 			//start by checking for just properly formatted date
 			if ( !string.IsNullOrWhiteSpace( date ) && date.Length == 10 )
 			{
-                //apparently this is not necessary!!
+				//apparently this is not necessary!!
 				formatedDate = string.Format( "{0}T00:00:00", date );
 			}
 			else if ( !string.IsNullOrWhiteSpace( date ) )
@@ -239,6 +335,111 @@ namespace Import.Services
 			return formatedDate;
 		}
 		#endregion
+
+
+		#region Registry Graph Search
+
+		public static List<ReadEnvelope> GraphSearchByTemplate( string queryName, int skip, int take, ref int pTotalRows, ref string statusMessage, string community, string sortOrder = "asc" )
+		{
+
+			var jsonQuery = "";
+			return GraphSearch( jsonQuery, skip, take, ref pTotalRows, ref statusMessage, community, sortOrder);
+		}
+		public static List<ReadEnvelope> GraphSearch( string jsonQuery, int skip, int take, ref int pTotalRows, ref string statusMessage, string community, string sortOrder = "asc" )
+		{
+			//Hold the query
+			var apiQuery = new SearchQuery()
+			{
+				Skip = skip,
+				Take = take
+			};
+
+
+			//Hold the response
+			var results = new List<ReadEnvelope>();
+
+			//...
+			//Do the query
+			try
+			{
+				var jquery = JObject.Parse( jsonQuery );
+				apiQuery.Query = jquery;
+				var rawResults = DoRegistrySearchAPIQuery( apiQuery );
+
+				if ( !rawResults.valid )
+				{
+					LoggingHelper.DoTrace(1, string.Format( "RegistryServices.Error Performing Search: {0}", rawResults.status ));
+					return results;
+				}
+
+				//Compose the results
+				//TODO - what do we get, we want the full graph json
+				//WARNING - JUST THE RESOURCE, NO BLANK NODES, CHECK DESCRIPTION SET
+				//loop thru and call API to get the envelope
+				var ctid = "";
+				var ctdlType = "";
+				foreach ( var item in rawResults.data )
+				{
+					//item is a JObject. Serialize to ?? and get the ctid
+					//GraphMainResource
+					var resource = GetGraphMainResource( item.ToString() );
+					statusMessage = "";
+					var envelope = GetEnvelopeByCtid( resource.CTID, ref statusMessage, ref ctdlType, community );
+					//if OK
+					results.Add( envelope );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, "error: " + ex.Message );
+			}
+			
+
+			//Return the results
+			return results;
+		}
+		//TODO - this should probably be move to work.IT.Services.RegistryServices
+		private static SearchResponse DoRegistrySearchAPIQuery( SearchQuery query )
+		{
+			var response = new SearchResponse();
+
+			//Get API key and URL
+			var apiKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey", "" );
+			var apiURL = ConfigHelper.GetConfigValue( "AssistantCTDLJSONSearchAPIUrl", "" );
+
+			//Format the request
+			var queryJSON = JsonConvert.SerializeObject( query, new JsonSerializerSettings() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore } );
+
+			//Do the request
+			var client = new HttpClient();
+			client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
+			client.Timeout = new TimeSpan( 0, 10, 0 );
+			System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+			var rawResult = client.PostAsync( apiURL, new StringContent( queryJSON, Encoding.UTF8, "application/json" ) ).Result;
+
+			//Process the response
+			if ( !rawResult.IsSuccessStatusCode )
+			{
+				response.valid = false;
+				response.status = rawResult.ReasonPhrase;
+				return response;
+			}
+
+			try
+			{
+				response = JsonConvert.DeserializeObject<SearchResponse>( rawResult.Content.ReadAsStringAsync().Result, new JsonSerializerSettings() { DateParseHandling = DateParseHandling.None } );
+			}
+			catch ( Exception ex )
+			{
+				response.valid = false;
+				response.status = "Error parsing response: " + ex.Message + ( ex.InnerException != null ? " " + ex.InnerException.Message : "" );
+			}
+
+			return response;
+		}
+		
+		#endregion
+
 
 		#region Registry Gets
 
@@ -419,14 +620,14 @@ namespace Import.Services
         }
 		*/
 
-        /// <summary>
-        /// Retrieve an envelope from the registry - using either envelopeId or CTID (same format)
-        /// </summary>
-        /// <param name="envelopeId">20-12-07 - sometimes CTID will be passed as will work as expected.</param>
-        /// <param name="statusMessage"></param>
-        /// <param name="ctdlType"></param>
-        /// <returns></returns>
-        public static ReadEnvelope GetEnvelope( string envelopeId, ref string statusMessage, ref string ctdlType, string community = "" )
+		/// <summary>
+		/// Retrieve an envelope from the registry - using either envelopeId or CTID (same format)
+		/// </summary>
+		/// <param name="envelopeId">20-12-07 - sometimes CTID will be passed as will work as expected.</param>
+		/// <param name="statusMessage"></param>
+		/// <param name="ctdlType"></param>
+		/// <returns></returns>
+		public static ReadEnvelope GetEnvelope( string envelopeId, ref string statusMessage, ref string ctdlType, string community = "" )
         {
 			//need to pass in an override community - eventually
 			if (string.IsNullOrWhiteSpace( community ) )
@@ -438,61 +639,6 @@ namespace Import.Services
 			
 			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
 
-			/*
-            ReadEnvelope envelope = new ReadEnvelope();
-			string document = "";
-
-            try
-            {
-
-                // Create a request for the URL.         
-                WebRequest request = WebRequest.Create( serviceUri );
-                // If required by the server, set the credentials.
-                request.Credentials = CredentialCache.DefaultCredentials;
-				var hdr = new WebHeaderCollection
-				{
-					{ "Authorization", "Token  " + credentialEngineAPIKey }
-				};
-				request.Headers.Add( hdr );
-
-				//Get the response.
-				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
-
-                // Get the stream containing content returned by the server.
-                Stream dataStream = response.GetResponseStream();
-
-                // Open the stream using a StreamReader for easy access.
-                StreamReader reader = new StreamReader( dataStream );
-                // Read the content.
-                document = reader.ReadToEnd();
-
-                // Cleanup the streams and the response.
-
-                reader.Close();
-                dataStream.Close();
-                response.Close();
-
-                //map to the default envelope
-                envelope = JsonConvert.DeserializeObject<ReadEnvelope>( document );
-
-                if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-                {
-                    string payload = envelope.DecodedResource.ToString();
-                    ctdlType = RegistryServices.GetResourceType( payload );
-
-                    //return ProcessProxy( mgr, item, status );
-                }
-            }
-            catch ( Exception exc )
-            {
-				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
-					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelope. Not found for envelopeId: {0}", envelopeId ) );
-				else 
-					LoggingHelper.LogError( exc, string.Format( "RegistryServices.GetEnvelope. EnvelopeId: {0}", envelopeId ) );
-                statusMessage = exc.Message;
-            }
-            return envelope;
-			*/
 		}
 		public static ReadEnvelope GetEnvelopeByCtid( string ctid, ref string statusMessage, ref string ctdlType, string community = "" )
 		{
@@ -503,62 +649,10 @@ namespace Import.Services
 			string serviceUri = GetEnvelopeUrl( ctid, community );
 			//
 			serviceUri = string.Format( serviceUri, ctid );
-			LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope ctid: {0}, serviceUri: {1} ", ctid, serviceUri ) );
+			//LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope ctid: {0}, serviceUri: {1} ", ctid, serviceUri ) );
 
 			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
-			/*
-			ReadEnvelope envelope = new ReadEnvelope();
-			string document = "";
-			try
-			{
-				// Create a request for the URL.         
-				WebRequest request = WebRequest.Create( serviceUri );
-				// If required by the server, set the credentials.
-				request.Credentials = CredentialCache.DefaultCredentials;
-				var hdr = new WebHeaderCollection
-				{
-					{ "Authorization", "Token  " + credentialEngineAPIKey }
-				};
-				request.Headers.Add( hdr );
 
-				//Get the response.
-				HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
-
-				// Get the stream containing content returned by the server.
-				Stream dataStream = response.GetResponseStream();
-
-				// Open the stream using a StreamReader for easy access.
-				StreamReader reader = new StreamReader( dataStream );
-				// Read the content.
-				document = reader.ReadToEnd();
-
-				// Cleanup the streams and the response.
-
-				reader.Close();
-				dataStream.Close();
-				response.Close();
-
-				//map to the default envelope
-				envelope = JsonConvert.DeserializeObject<ReadEnvelope>( document );
-
-				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-				{
-					string payload = envelope.DecodedResource.ToString();
-					ctdlType = RegistryServices.GetResourceType( payload );
-
-					//return ProcessProxy( mgr, item, status );
-				}
-			}
-			catch ( Exception exc )
-			{
-				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
-					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelopeByCtid. Not found for CTID: {0}", ctid ) );
-				else
-					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelopeByCtid: " + ctid );
-				statusMessage = exc.Message;
-			}
-			return envelope;
-			*/
 		}
 
 		public static ReadEnvelope GetEnvelopeByURL( string envelopeUrl, ref string statusMessage, ref string ctdlType )
@@ -595,7 +689,19 @@ namespace Import.Services
 				reader.Close();
 				dataStream.Close();
 				response.Close();
-
+				//check document for an error message
+				//also check the http status - have to leave as OK, or would be an exception?
+				if ( !string.IsNullOrWhiteSpace( document ) )
+				{
+					if ( document.IndexOf( "Invalid" ) == 0
+						|| document.IndexOf( "Error: " ) > -1
+						|| document.IndexOf( "An API Key is required " ) > -1
+						)
+					{
+						statusMessage = document;
+						return null;
+					}
+				}
 				//map to the default envelope
 				envelope = JsonConvert.DeserializeObject<ReadEnvelope>( document );
 
@@ -610,10 +716,16 @@ namespace Import.Services
 			catch ( Exception exc )
 			{
 				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
-					LoggingHelper.DoTrace( 1, string.Format( "RegistryServices.GetEnvelope. Not found for {0}", envelopeUrl ) );
+				{
+					statusMessage = string.Format( "RegistryServices.GetEnvelope. Not found for {0}", envelopeUrl );
+					LoggingHelper.DoTrace( 1, statusMessage );
+				}
 				else
+				{
 					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelope: " + envelopeUrl );
-				statusMessage = exc.Message;
+					statusMessage = exc.Message;
+				}
+				return null;
 			}
 			return envelope;
 		}
@@ -827,12 +939,57 @@ namespace Import.Services
             //ctdlType = ctdlType.Replace( "ceterms:", "" );
             return ctdlType;
         }
+		/// <summary>
+		/// Get the primary type object for a graph from a Decoded resource (from an envelope)
+		/// </summary>
+		/// <param name="json"></param>
+		/// <returns></returns>
+		public static string GetGraphPrimaryType( string json )
+		{
+			if ( string.IsNullOrWhiteSpace( json ) )
+				return null; //??
+			var type = "";
+			var resourceOutline = GetGraphMainResource( json );
+			if ( resourceOutline != null )
+				return resourceOutline.Type;
+			else
+				return type;
+		}
+		/// <summary>
+		/// Get the main resource object for a graph from a Decoded resource (from an envelope)
+		/// Should to handle the decodedResource which contains th @graph, or just the contents of the a payload (i.e. stuff inside a graph)
+		/// </summary>
+		/// <param name="json"></param>
+		/// <returns></returns>
+		public static GraphMainResource GetGraphMainResource( string json )
+		{
+			if ( string.IsNullOrWhiteSpace( json ) )
+				return null; //??
+			var graphMainResource = new GraphMainResource();
+			Dictionary<string, object> dictionary = JsonToDictionary( json );
+			if ( json.IndexOf( "@graph" ) > -1 )
+			{
+				object graph = dictionary[ "@graph" ];
+				var glist = JsonConvert.SerializeObject( graph );
+				//parse graph in to list of objects
+				JArray graphList = JArray.Parse( glist );
 
+				if ( graphList != null && graphList.Any() )
+				{
+					var main = graphList[ 0 ].ToString();
+					graphMainResource = JsonConvert.DeserializeObject<GraphMainResource>( main );
+				}
+			} else if ( json.IndexOf( "@type" ) > -1 )
+			{
+				graphMainResource = JsonConvert.DeserializeObject<GraphMainResource>( json );
+			}
+			return graphMainResource;
+		}
 		/// <summary>
 		/// Handle import of records with a 'pending' state (entityStateId=1)
 		/// </summary>
 		/// <returns></returns>
-        public string ImportPending()
+		public string ImportPending()
         {
             string status = "";
             LoggingHelper.DoTrace( 1, "Import.Services.RegistryServices.ImportPending - start" );
@@ -848,12 +1005,33 @@ namespace Import.Services
             return status;
         }
 
-        /// <summary>
-        /// Generic handling of Json object - especially for unexpected types
-        /// </summary>
-        /// <param name="json"></param>
-        /// <returns></returns>
-        public static Dictionary<string, object> JsonToDictionary( string json )
+
+
+		/// <summary>
+		/// Get list of objects in a JSON-LD graph
+		/// </summary>
+		/// <param name="json"></param>
+		/// <returns>JArray</returns>
+		public static JArray GetGraphList( string json )
+		{
+			if ( string.IsNullOrWhiteSpace( json ) )
+				return null; //??
+
+			Dictionary<string, object> dictionary = JsonToDictionary( json );
+			object graph = dictionary[ "@graph" ];
+			var glist = JsonConvert.SerializeObject( graph );
+			//parse graph in to list of objects
+			JArray graphList = JArray.Parse( glist );
+
+			return graphList;
+		}
+
+		/// <summary>
+		/// Generic handling of Json object - especially for unexpected types
+		/// </summary>
+		/// <param name="json"></param>
+		/// <returns></returns>
+		public static Dictionary<string, object> JsonToDictionary( string json )
         {
             var result = new Dictionary<string, object>();
             var obj = JObject.Parse( json );
