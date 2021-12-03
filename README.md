@@ -12,6 +12,24 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### December 03 2021
+New: Compiled releases of the import will be added to a Release folder. 
+- This process will simplify getting started
+- Just
+	- download the latest release
+	- unzip into a folder such as C:\CredentialRegistryImport
+	- download and install the database backups
+	- refer to the documentation regarding the app.config file. In the compiled application, this will be CTI.Import.exe.config.
+		- after configuring the latter keep a copy outside the current downloaded release. 
+		- then when another release is downloaded, the saved config file can just be copied into the new application's folder. 
+
+		c:\CredentialRegistryImport
+			data
+				\backups
+				- could store the databases and restore sql here
+			Import
+				- store releases
+
 ### October 24, 2021
 Updated Download project
 - provided how to filter by the owning organization or a third party publisher

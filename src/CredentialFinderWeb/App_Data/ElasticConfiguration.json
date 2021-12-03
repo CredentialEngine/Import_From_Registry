@@ -1,0 +1,38 @@
+﻿{
+	"BestFields": {
+		"ExcludeQuery": false,
+		"Name": 10,
+		"OwnerOrganizationName": 10,
+		"Description": 5,
+		"AlternateNames": 0,
+		"Keyword": 0,
+		"Occupation": 0,
+		"Industry": 0,
+		"Classification": 25
+	},
+	"CrossFields": {
+		"ExcludeQuery": false,
+		"Name": 5,
+		"CredentialType": 10,
+		"Description": 5,
+		"Location": 10
+	},
+	"MultiMatch": {
+		"ExcludeQuery": false,
+		"Name": 5,
+		"CredentialType": 10,
+		"Description": 5,
+		"Location": 10
+	},
+	"PhrasePrefix": {
+		"ExcludeQuery": false,
+		"Name": 100,
+		"OwnerOrganizationName": 90,
+		"Description": 50,
+		"AlternateNames": 75,
+		"Keyword": 60,
+		"Occupation": 0,
+		"Industry": 10,
+		"Classification": 30
+	}
+}
