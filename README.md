@@ -12,6 +12,9 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### April 05 2022
+Uploaded a new release to the /release folder with a new database backup.
+
 ### December 03 2021
 New: Compiled releases of the import will be added to a Release folder. 
 - This process will simplify getting started
@@ -29,6 +32,7 @@ New: Compiled releases of the import will be added to a Release folder.
 				- could store the databases and restore sql here
 			Import
 				- store releases
+
 
 ### October 24, 2021
 Updated Download project
