@@ -24,9 +24,7 @@ namespace Download
 			DateTime local = zone.ToLocalTime( DateTime.Now );
 			LoggingHelper.DoTrace( 1, "Local time: " + local );
 			var importSummary = new List<string>();
-
 			//
-
 
 			//verify if api key was provided
 			string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
@@ -36,19 +34,9 @@ namespace Download
 				credentialEngineAPIKey = "";
 				LoggingHelper.DoTrace( 1, "NOTE: an API key was not provided for the search. This is allowed for the sandbox, but not for production." );
 			}
-			if ( environment == "production" && ( string.IsNullOrWhiteSpace( credentialEngineAPIKey) || credentialEngineAPIKey == "PROVIDE YOUR ACCOUNTS API KEY" ))
+			if ( environment == "production" && ( string.IsNullOrWhiteSpace( credentialEngineAPIKey ) || credentialEngineAPIKey == "PROVIDE YOUR ACCOUNTS API KEY" ) )
 			{
 				LoggingHelper.DoTrace( 1, "NOTE: an API key was not provided for the search. This is required for production." );
-				return;
-			}
-			//
-			var savingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
-			var savingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
-			if ( !savingDocumentToFileSystem && !savingDocumentToDatabase )
-			{
-				LoggingHelper.DoTrace( 1, string.Format( "*****************  ERROR ***************** " ) );
-				LoggingHelper.DoTrace( 1, string.Format( "You must have at least one of: 'savingDocumentToFileSystem' OR 'savingDocumentToDatabase'  set to true, or you will have no results for your download! " ) );
-				LoggingHelper.DoTrace( 1, string.Format( "****************************************** " ) );
 				return;
 			}
 			//Get the schedule type
@@ -58,6 +46,19 @@ namespace Download
 
 			string defaultCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			string additionalCommunity = UtilityManager.GetAppKeyValue( "additionalCommunity" );
+
+			var registryImport = new RegistryHelper( defaultCommunity );
+
+			//
+			registryImport.SavingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
+			registryImport.SavingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
+			if ( !registryImport.SavingDocumentToFileSystem && !registryImport.SavingDocumentToDatabase )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "*****************  ERROR ***************** " ) );
+				LoggingHelper.DoTrace( 1, string.Format( "You must have at least one of: 'savingDocumentToFileSystem' OR 'savingDocumentToDatabase'  set to true, or you will have no results for your download! " ) );
+				LoggingHelper.DoTrace( 1, string.Format( "****************************************** " ) );
+				return;
+			}
 
 			#region  Retrieve Type/Arguments
 			//consider parameters to override using importPending - especially for deletes
@@ -81,10 +82,10 @@ namespace Download
 			}
 
 
-			var registryImport = new RegistryHelper( defaultCommunity );
 
 			//establish common filters
 			//if you always only want to download documents for a particular organization, provide the CTID for 'owningOrganizationCTID' in the app.config.
+			//TODO - update to handle a list
 			registryImport.OwningOrganizationCTID = UtilityManager.GetAppKeyValue( "owningOrganizationCTID" );
 
 			//if you want to download documents published by a third party publisher, provide the CTID for 'publishingOrganizationCTID' in the app.config. 
@@ -97,7 +98,7 @@ namespace Download
 
 
 			//could ignore end date until a special scedule type of adhoc is used, then read the dates from config
-			importSummary.Add( DisplayMessages( string.Format( " - Schedule type: {0} ", scheduleType ) ));
+			importSummary.Add( DisplayMessages( string.Format( " - Schedule type: {0} ", scheduleType ) ) );
 			int minutes = 0;
 
 			if ( Int32.TryParse( scheduleType, out minutes ) )
@@ -130,7 +131,8 @@ namespace Download
 			{
 				registryImport.StartingDate = UtilityManager.GetAppKeyValue( "startingDate", "" );
 				registryImport.EndingDate = UtilityManager.GetAppKeyValue( "endingDate", "" );
-				DateTime dtcheck = System.DateTime.Now;             //LoggingHelper.DoTrace( 1, string.Format( " - Updates from: {0} to {1} ", registryImport.StartingDate, registryImport.EndingDate ) );
+				DateTime dtcheck = System.DateTime.Now;             
+				//LoggingHelper.DoTrace( 1, string.Format( " - Updates from: {0} to {1} ", registryImport.StartingDate, registryImport.EndingDate ) );
 
 				if ( usingUTC_ForTime )
 				{
@@ -189,51 +191,117 @@ namespace Download
 			if ( deleteAction < 2 )
 			{
 				//handle deleted records
-				registryImport.HandleDeletes( defaultCommunity,  maxImportRecords, ref recordsDeleted );
+				registryImport.HandleDeletes( defaultCommunity, maxImportRecords, ref recordsDeleted );
 			}
 			int recordsImported = 0;
 			string sortOrder = "asc";
+			//
+			var resourceTypeList = GetRequestedResourceTypes();
+			//
+			#region Option for a list of data owners
+			var ownedByList = new List<string>();
+			if ( registryImport.OwningOrganizationCTID?.Length > 0 )
+			{
+				if ( registryImport.OwningOrganizationCTID.IndexOf( "," ) > 0 )
+				{
+					//get list
+					var ownerslist = registryImport.OwningOrganizationCTID.Split( ',' );
+					foreach ( var item in ownerslist )
+					{
+						if ( !string.IsNullOrWhiteSpace( item ) )
+							ownedByList.Add( item.Trim() );
+					}
+					//
+				}
+				else
+				{
+					ownedByList.Add( registryImport.OwningOrganizationCTID );
+				}
+				//process
+				foreach ( var item in ownedByList )
+				{
+					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent recources for Org: {0}  ***************** ", item ) );
+					registryImport.OwningOrganizationCTID = item;
+					//WARNING - IF NO RESOURCE TYPE IS INCLUDED WILL GET ceasn:Competency as well. This is not terrible as these will result in competency framework file being overwritten (so only one), but slows the process
+					//may want to get the list of target resources. We would eventually have similar issues with pathway components;
+					foreach ( var resourceType in resourceTypeList )
+					{
+						registryImport.Retrieve( resourceType, maxImportRecords, ref recordsImported, ref importSummary );
+
+					}
+				}
+			
+				LoggingHelper.DoTrace( 1, string.Format("Completed download request. Resources:{0}",recordsImported) );
+				return;
+			}
+			
+			
+            #endregion
+
+            
 			if ( deleteAction != 1 )
 			{
+				//22-04-12 NEW - just use a list from app.config
+				foreach ( var resourceType in resourceTypeList )
+				{
+					registryImport.Retrieve( resourceType, maxImportRecords, ref recordsImported, ref importSummary );
 
+				}
+				/*
 				//do manifests 
-				registryImport.Retrieve( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "condition_manifest_schema", maxImportRecords, ref recordsImported, ref importSummary );
 				//
-				registryImport.Retrieve( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "cost_manifest_schema", maxImportRecords, ref recordsImported, ref importSummary );
 
 				//handle assessments
-				registryImport.Retrieve( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "assessment_profile", maxImportRecords, ref recordsImported, ref importSummary );
 
 				//handle learning opps
-				registryImport.Retrieve( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "learning_opportunity_profile", maxImportRecords, ref recordsImported, ref importSummary );
 
 				//handle credentials
-				registryImport.Retrieve( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "credential", maxImportRecords, ref recordsImported, ref importSummary );
 
 				//competency frameworks
-				registryImport.Retrieve( "competency_framework", CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "competency_framework", maxImportRecords, ref recordsImported, ref importSummary );
 
 				//TVP
-				registryImport.Retrieve( "transfer_value_profile", CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE,  maxImportRecords, ref recordsImported, ref importSummary, sortOrder );			
+				registryImport.Retrieve( "transfer_value_profile", maxImportRecords, ref recordsImported, ref importSummary, sortOrder );
 
 				//pathways 
 				if ( UtilityManager.GetAppKeyValue( "importing_pathway", true ) )
 				{
-					registryImport.Retrieve( "pathway", CodesManager.ENTITY_TYPE_PATHWAY,  maxImportRecords, ref recordsImported, ref importSummary );
+					registryImport.Retrieve( "pathway", maxImportRecords, ref recordsImported, ref importSummary );
 				}
 				//
 				if ( UtilityManager.GetAppKeyValue( "importing_pathwayset", true ) )
 				{
-					//can't do this until registry fixture is updated.
-					registryImport.Retrieve( "pathway_set", CodesManager.ENTITY_TYPE_PATHWAY_SET,  maxImportRecords, ref recordsImported, ref importSummary );
+					registryImport.Retrieve( "pathway_set", maxImportRecords, ref recordsImported, ref importSummary );
 				}
 
 				//handle organizations last
-				registryImport.Retrieve( "organization", 2,  maxImportRecords, ref recordsImported, ref importSummary );
+				registryImport.Retrieve( "organization",  maxImportRecords, ref recordsImported, ref importSummary );
+				*/
 				//
 				TimeSpan duration = DateTime.Now.Subtract( local );
-				LoggingHelper.DoTrace( 1, string.Format( "********* COMPLETED {0:c} minutes *********", duration.TotalMinutes ));
+				LoggingHelper.DoTrace( 1, string.Format( "********* COMPLETED {0:c} minutes *********", duration.TotalMinutes ) );
 			}
+		}
+
+		public static List<string> GetRequestedResourceTypes()
+		{
+			var resourceTypeList = new List<string>();
+			var resourceTypeSelections = UtilityManager.GetAppKeyValue( "resourceTypeList", "" );
+			if ( string.IsNullOrWhiteSpace( resourceTypeSelections ) )
+				return resourceTypeList;
+			//
+			var list = resourceTypeSelections.Split( ',' );
+			foreach ( var item in list )
+			{
+				if ( !string.IsNullOrWhiteSpace( item ) )
+					resourceTypeList.Add( item.Trim() );
+			}
+			return resourceTypeList;
 		}
 
 		public static string DisplayMessages( string message )

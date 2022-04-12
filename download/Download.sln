@@ -5,6 +5,11 @@ VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Download", "Download.csproj", "{8CFE5BA2-61E1-4266-AFF6-E5DF7EA68EA6}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "releases", "releases", "{7D5FC8A0-F681-4DE1-930B-730127675C62}"
+	ProjectSection(SolutionItems) = preProject
+		releases\CredentialRegistryDownload_22-04-12.zip = releases\CredentialRegistryDownload_22-04-12.zip
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

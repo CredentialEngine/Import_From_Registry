@@ -40,19 +40,34 @@ namespace Download
 		}
 		public string Community { get; set; }
 
-		public void Retrieve( string registryEntityType, int entityTypeId, int maxRecords, ref int recordsImported, ref List<string> importSummary, string sortOrder = "asc" )
+		public bool SavingDocumentToFileSystem { get; set; } = true;
+		public bool SavingDocumentToDatabase { get; set; } = true;
+
+		/// <summary>
+		/// Get resources
+		/// </summary>
+		/// <param name="registryEntityType"></param>
+		/// <param name="maxRecords"></param>
+		/// <param name="recordsImported"></param>
+		/// <param name="importSummary"></param>
+		/// <param name="sortOrder"></param>
+		public void Retrieve( string registryEntityType, int maxRecords, ref int recordsImported, ref List<string> importSummary, string sortOrder = "asc" )
 		{
-
-			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_" + registryEntityType, true );
-			if ( !importingThisType )
+			var resourceTypeDisplay = "Custom";
+			if ( !string.IsNullOrWhiteSpace( registryEntityType ) )
 			{
-				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Skipping import of {0}  ***************** ", registryEntityType ) );
-				importSummary.Add( "Skipped import of " + registryEntityType );
-				return;
+				resourceTypeDisplay = registryEntityType;
+				//now that we are using an explicit list, no reason to check here
+				//bool importingThisType = UtilityManager.GetAppKeyValue( "importing_" + registryEntityType, true );
+				//if ( !importingThisType )
+				//{
+				//	LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Skipping import of {0}  ***************** ", registryEntityType ) );
+				//	importSummary.Add( "Skipped import of " + registryEntityType );
+				//	return;
+				//}
+				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Importing {0}  ***************** ", registryEntityType ) );
 			}
-			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Importing {0}  ***************** ", registryEntityType ) );
 
-			//bool downloadOnly
 			//
 			ReadEnvelope envelope = new ReadEnvelope();
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
@@ -64,8 +79,6 @@ namespace Download
 			//ThisEntity output = new ThisEntity();
 			List<string> messages = new List<string>();
 			//
-			var savingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
-			var savingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
 
 			int cntr = 0;
 			int pTotalRows = 0;
@@ -73,14 +86,7 @@ namespace Download
 			int exceptionCtr = 0;
 			string statusMessage = "";
 			bool isComplete = false;
-			//var request = new SearchRequest()
-			//{
-			//	StartingDate = startingDate,
-			//	EndingDate = endingDate,
-			//	OwningOrganizationCTID = owningOrganizationCTID,
-			//	PublishingOrganizationCTID = publishingOrganizationCTID,
-			//	DownloadOnly = downloadOnly
-			//};
+			var previousCTID = "";
 			//will need to handle multiple calls - watch for time outs
 			while ( pageNbr > 0 && !isComplete )
 			{
@@ -97,7 +103,7 @@ namespace Download
 					break;
 				}
 				if ( pageNbr == 1 )
-					LoggingHelper.DoTrace( 2, string.Format( "Import {0} Found {1} records to process.", registryEntityType, pTotalRows ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Import {0} Found {1} records to process.", resourceTypeDisplay, pTotalRows ) );
 
 				foreach ( ReadEnvelope item in list )
 				{
@@ -105,7 +111,13 @@ namespace Download
 
 					string envelopeIdentifier = item.EnvelopeIdentifier;
 					string ctid = item.EnvelopeCtid;
+					if ( previousCTID == ctid )
+					{
+						continue;
+					}
+					previousCTID = ctid;
 					string payload = item.DecodedResource.ToString();
+					var resourceType = item.EnvelopeCtdlType.Replace( ":", "" );
 					DateTime createDate = new DateTime();
 					DateTime envelopeUpdateDate = new DateTime();
 					if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
@@ -118,18 +130,20 @@ namespace Download
 					}
 					//payload contains the graph from DecodedResource
 					//var ctdlType = RegistryServices.GetResourceType( payload );
-					LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} ctid {2}, lastUpdated: {3} ", cntr, registryEntityType, ctid, envelopeUpdateDate ) );
+					LoggingHelper.DoTrace( 2, string.Format( "{0}. {1} ctid {2}, lastUpdated: {3} ", cntr, resourceType, ctid, envelopeUpdateDate ) );
 
 					//Save file to file system
 					//existing files will be overridden. , suppress the date prefix (" "), or use an alternate prefix
-					if ( savingDocumentToFileSystem )
-						LoggingHelper.WriteLogFile( 1, registryEntityType + "_" + ctid, payload, "", false );
+					if ( SavingDocumentToFileSystem )
+					{
+						LoggingHelper.WriteLogFile( 1, resourceType + "_" + ctid, payload, "", false );
+					}
 
 					#region future: define process to generic record to a database.
 					//TODO - add optional save to a database
 					//		- will need entity type, ctid, name, description (maybe), created and lastupdated from envelope,payload
 					//		- only doing adds, allows for history, user can choose to do updates
-					if ( savingDocumentToDatabase )
+					if ( SavingDocumentToDatabase )
 					{
 						var graphMainResource = RegistryServices.GetGraphMainResource( payload );
 						var resource = new CredentialRegistryResource()
@@ -141,7 +155,7 @@ namespace Download
 							LastUpdated = envelopeUpdateDate,
 							CredentialRegistryGraph = payload
 						};
-						if ( entityTypeId == 10 )
+						if ( resourceType == "ceasnCompetencyFramework" )
 						{
 							resource.Name = graphMainResource.CeasnName.ToString();
 						}
@@ -149,7 +163,7 @@ namespace Download
 						{
 							resource.Name = graphMainResource.Name.ToString();
 							resource.Description = graphMainResource.Description.ToString();
-							resource.SubjectWebpage = graphMainResource.SubjectWebpage;
+							resource.SubjectWebpage = graphMainResource.SubjectWebpage ?? "";
 						}
 						statusMessage = "";
 						//optionally save record to a database
@@ -170,7 +184,7 @@ namespace Download
 				if ( ( maxRecords > 0 && cntr >= maxRecords ) )
 				{
 					isComplete = true;
-					LoggingHelper.DoTrace( 2, string.Format( "Import {2} EARLY EXIT. Completed {0} records out of a total of {1} for {2} ", cntr, pTotalRows, registryEntityType ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Import {2} EARLY EXIT. Completed {0} records out of a total of {1} for {2} ", cntr, pTotalRows, resourceTypeDisplay ) );
 
 				}
 				else if ( cntr >= pTotalRows )
@@ -586,7 +600,7 @@ namespace Download
 		}
 		public SearchRequest( int entityTypeId )
 		{
-			switch (entityTypeId)
+			switch ( entityTypeId )
 			{
 				case 1:
 					RegistryEntityType = "credential";
