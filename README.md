@@ -13,23 +13,25 @@ https://visualstudio.microsoft.com/vs/community/
 
 ## Updates
 ### April 05 2022
-Uploaded a new release to the /release folder with a new database backup.
+Uploaded a new release to the [**/release/2022-04-05 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-04-05) with a new database backup.
 
 ### December 03 2021
 New: Compiled releases of the import will be added to a Release folder. 
-- This process will simplify getting started
+- This process will simplify getting started.
 - Just
-	- download the latest release
+	- download the contents of the latest release folder
 	- unzip into a folder such as C:\CredentialRegistryImport
 	- download and install the database backups
+		- NOTE	each release folder will contain a file containing a zip of the compiled application and a zip of the related backup file
+						The base release will contain a zip of the CE_External database. This is independent of releases and will not change frequently.  
 	- refer to the documentation regarding the app.config file. In the compiled application, this will be CTI.Import.exe.config.
 		- after configuring the latter keep a copy outside the current downloaded release. 
 		- then when another release is downloaded, the saved config file can just be copied into the new application's folder. 
 
 		c:\CredentialRegistryImport
-			data
-				\backups
-				- could store the databases and restore sql here
+				\data
+					\backups
+						- could store the databases and restore sql here
 			Import
 				- store releases
 
