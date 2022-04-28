@@ -12,6 +12,9 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### April 27 2022
+Uploaded a new release to the [**/release/2022-04-07 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-04-07) with a new database backup.
+
 ### April 05 2022
 Uploaded a new release to the [**/release/2022-04-05 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-04-05) with a new database backup.
 
