@@ -12,6 +12,10 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### May 17, 2022 Release Update
+A connection string was missing from the April 27, 2022 release. 
+The previous release zip file was removed, and a new one (**CTI.Import_22-04-26_UpdatedConfig.zip**) was added with the missing connection string for **ceExternalData**.
+
 ### April 27 2022
 Uploaded a new release to the [**/release/2022-04-07 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-04-07) with a new database backup.
 

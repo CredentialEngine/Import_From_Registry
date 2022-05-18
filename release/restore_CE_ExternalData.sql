@@ -1,13 +1,25 @@
 /*
 Sample restore SQL to a SQL server 2016+ database
 
-The database has one user now that will have to be created in the target database (or new users could be added, and replace those referenced by the apps. 
-
-
+The database has one user now that will have to be created in the target database (or new users could be added, and replace those referenced by the apps). 
+======================================================================
+-- create user if not previouly done
 use master 
 go
 sp_addLogin 'ceGithub', 'ce$Rocks2020', master
+======================================================================
+Run the restore step, 
+First:
+- change @wnTestBackupLoc to point to folder that contains the backup file
+- change @wnTestDataLoc to the folder where the sql server data file will be stored.
+- change @wnTestLogsLoc to the folder where the sql server log file will be stored.
+- change set @BackupFile = 'CE_ExternalData_220517.bak'	 to be the actual name of the backup file in the folder referenced by @wnTestBackupLoc
 
+Restore. 
+using: set @RestoreAction = 'list' will essentially validate the folders and file name etc are valid. 
+When ready to do the restore, comment the latter statement (prefix with --), then execute the script.
+
+======================================================================
 After completing the restore, run the following sql to 'associate' the named accounts in the backup file with the ones created on this server
 
 Use CE_ExternalData
@@ -19,9 +31,10 @@ go
 sp_change_users_login 'report'
 go
 
---------------------------
+======================================================================
+NOTES
+- if db in use, the following script can be used to remove locks, then try again
 
---====================== if db in use, the follwoing can be used to remove locks =============
 use master 
 go
 declare @sql as varchar(20), @db as varchar(20), @spid as int
@@ -75,8 +88,9 @@ set @wnTestLogsLoc    = 'C:\data\sql2016\'
 -- ======================================================================
 -- Use List to list the contents of the selected backup file
 -- Use replace when restoring the backup from one db overtop another db (our typical scenario)
+	-- comment out the line with the 'list' statement when ready to do the restore. 
 
- set @RestoreAction = 'replace'
+set @RestoreAction = 'replace'
 set @RestoreAction = 'list'
 
 set @DestDatabase = 'CE_ExternalData'
@@ -86,7 +100,8 @@ set @DestLogfile  = @DestDatabase + '_Log'
 -- set to the current locations===
 set @BackupDir 	= @wnTestBackupLoc
 
-set @BackupFile = 'CE_EXTERNAL190309.bak'	
+-- ==> change this the actual name of the backup file
+set @BackupFile = 'CE_ExternalData_220517.bak'	
 
 if 1 = 2 begin
 -- If the source backup is the same as the dest. then use:
@@ -104,7 +119,7 @@ else begin
 set @BackupPath = @BackupDir + @BackupFile
 
 set @DestDataPath = @wnTestDataLoc + @DestDatafile + '.mdf'
-set @DestLogPath  = @LogLoc  + @DestLogfile + '.ldf'
+set @DestLogPath  = @wnTestLogsLoc  + @DestLogfile + '.ldf'
 print '====== Restore request parameters ===================='
 print '        Action: ' + @RestoreAction
 print 'SOURCE:'
