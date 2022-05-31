@@ -12,6 +12,14 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### May 27, 2022 Release Update
+Generally when doing an import, all of the organizations should be done first. An issue was reported that can occur when credentials are imported before the organizations. An update was made to identity a possible issue and prevent any errors.
+
+There were a number of database updates:
+- Added Reference.Framework, and Reference.FrameworkItem which are replacing Reference.Frameworks (the latter has not been removed yet). Entity.ReferenceFramework had the property: ReferenceFrameworkId renamed to ReferenceFrameworkItemId. The latter is a foreign key to [Reference.FrameworkItem].Id
+- CredentialStatusTypeId was added directly on the Credential table. Previously it was a generic property stored in Entity.Property.
+- Codes.EntityTypes - add IsTopLevelEntity for all entities such as Credential, Organization, etc. that are top level resources in the registry (that is have a CTID and do not have a parent entity).
+
 ### May 17, 2022 Release Update
 A connection string was missing from the April 27, 2022 release. 
 The previous release zip file was removed, and a new one (**CTI.Import_22-04-26_UpdatedConfig.zip**) was added with the missing connection string for **ceExternalData**.
