@@ -4,7 +4,6 @@ Sample restore SQL to a SQL server 2016+ database
 The database has one user that will have to be created in the target database.
 20-02-06 - updated the code to only use one user to simplify setup.
 
-
 use master 
 go
 sp_addLogin 'ceGithub', 'ce$Rocks2020', master
