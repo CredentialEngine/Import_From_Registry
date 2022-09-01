@@ -22,7 +22,14 @@ go
 sp_change_users_login 'report'
 go
 
+--If for some unforseen reason, the ceGithub user is not referenced in the back, use the following to add ceGithub as owner (after adding it to the master database above.
 
+USE [credfinder_Github]
+GO
+CREATE USER [ceGithub] FOR LOGIN [ceGithub]
+GO
+ALTER ROLE [db_owner] ADD MEMBER [ceGithub]
+GO
 
 --====================== if db in use, the following can be used to remove locks =============
 use master 
@@ -93,7 +100,7 @@ set @DestLogfile  = @DestDatabase + '_Log'
 set @BackupDir 	= @wnTestBackupLoc
 
 
-set @BackupFile = 'credFinderGithub210127.BAK'	--@DestDatabase + '.BAK'
+set @BackupFile = 'credFinderGithub220830.BAK'	--@DestDatabase + '.BAK'
 
 if 1 = 2 begin
 -- If the source backup is the same as the dest. then use:

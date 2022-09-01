@@ -12,6 +12,10 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### August 30, 2022 Release Update
+Uploaded a new release to the [**/release/2022-08-30 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-08-30) with a new database backup.
+This release includes the option to start fresh with an empty database using the provided backup file or to apply updates to an existing database created from the May 27, 2022 download. There is a Read.me file in the DatabaseUpdates folder with additional guidance. 
+
 ### May 27, 2022 Release Update
 Generally when doing an import, all of the organizations should be done first. An issue was reported that can occur when credentials are imported before the organizations. An update was made to identity a possible issue and prevent any errors.
 
