@@ -36,13 +36,14 @@ namespace Download.Services
 						command.Parameters.AddWithValue( "@CTDLType", entity.EntityType );
 						command.Parameters.AddWithValue( "@Name", entity.Name );
 						command.Parameters.AddWithValue( "@Description", entity.Description );
+						command.Parameters.AddWithValue( "@PrimaryOrganizationCTID", entity.OwningOrganizationCTID );
 						command.Parameters.AddWithValue( "@SubjectWebpage", entity.SubjectWebpage );
-						command.Parameters.AddWithValue( "@PrimaryOrganizationCTID", entity.OwingOrganizationCTID );
-						command.Parameters.AddWithValue( "@DownloadDate", entity.DownloadDate );
 						command.Parameters.AddWithValue( "@Created", entity.Created );
 						command.Parameters.AddWithValue( "@LastUpdated", entity.LastUpdated );
+						command.Parameters.AddWithValue( "@DownloadDate", entity.DownloadDate );
 						command.Parameters.AddWithValue( "@CredentialRegistryGraph", entity.CredentialRegistryGraph );
-
+						//TBD - what was expected here?
+						command.Parameters.AddWithValue( "@CredentialFinderObject", entity.CredentialFinderObject );
 						//SqlParameter outputId = new SqlParameter( "@NewId", newId );
 						//outputId.Direction = ParameterDirection.Output;
 						//command.Parameters.Add( outputId );
@@ -64,6 +65,8 @@ namespace Download.Services
 				}
 
 				statusMessage = "successful";
+				//for now just set to 1 to show successful
+				newId = 1;
 
 			}
 			catch ( Exception ex )
@@ -93,11 +96,11 @@ namespace Download.Services
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public string SubjectWebpage { get; set; }
-		public string OwingOrganizationCTID { get; set; }
+		public string OwningOrganizationCTID { get; set; }
 		public DateTime Created { get; set; }
 		public DateTime LastUpdated { get; set; }
 		public string CredentialRegistryGraph { get; set; }
-
+		public string CredentialFinderObject { get; set; }
 		public bool IsValid { get; set; }
 	}
 }

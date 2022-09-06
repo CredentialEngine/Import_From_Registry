@@ -1,5 +1,8 @@
 # Download from the Credential Registry
-Sample project to download resources from the credential registry and store the JSON-LD files to the local file system. 
+Sample project to download resources from the credential registry and save the JSON-LD files to the local file system and/or store in a Sql Server database. 
+There are two approaches to use this project:
+- use the source code (compile and run, or modify as needed)
+- use the compiled version in the releases folder
 
 
 ## Preparation
@@ -11,7 +14,21 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 
-## Updates
+## Versions
+### September 2, 2022
+Updates
+- Added a zip of the compiled application (CredentialRegistryDownload_22-09-02.zip) to the releases folder
+- Added option to specify a list of data publishers
+- Changed app key of envType to environment (for consistency with all other Credential Engine applications).
+- Changed app key of *savingDocumentToDatabase* to *writingToDownloadResourceDatabase* for clarity
+- There has been no change to the database structure, but a zip of a new backup (CredentialRegistryDownload_backup_empty.zip) was added to the releases folder
+
+
+### April 12, 2022
+Updates
+- Added option to handle list of organizations
+- Simplified the selecting of resources to include
+
 ### October 24, 2021
 Updates
 - provided how to filter by the owning organization or a third party publisher

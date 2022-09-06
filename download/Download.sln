@@ -8,6 +8,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "releases", "releases", "{7D5FC8A0-F681-4DE1-930B-730127675C62}"
 	ProjectSection(SolutionItems) = preProject
 		releases\CredentialRegistryDownload_22-04-12.zip = releases\CredentialRegistryDownload_22-04-12.zip
+		releases\CredentialRegistryDownload_22-09-02.zip = releases\CredentialRegistryDownload_22-09-02.zip
+		releases\CredentialRegistryDownload_backup_empty.zip = releases\CredentialRegistryDownload_backup_empty.zip
 	EndProjectSection
 EndProject
 Global

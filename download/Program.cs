@@ -28,7 +28,7 @@ namespace Download
 
 			//verify if api key was provided
 			string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
-			string environment = UtilityManager.GetAppKeyValue( "envType" );
+			string environment = UtilityManager.GetAppKeyValue( "environment" );
 			if ( environment == "sandbox" && credentialEngineAPIKey == "PROVIDE YOUR ACCOUNTS API KEY" )
 			{
 				credentialEngineAPIKey = "";
@@ -51,7 +51,7 @@ namespace Download
 
 			//
 			registryImport.SavingDocumentToFileSystem = UtilityManager.GetAppKeyValue( "savingDocumentToFileSystem", true );
-			registryImport.SavingDocumentToDatabase = UtilityManager.GetAppKeyValue( "savingDocumentToDatabase", false );
+			registryImport.SavingDocumentToDatabase = UtilityManager.GetAppKeyValue( "writingToDownloadResourceDatabase", false );
 			if ( !registryImport.SavingDocumentToFileSystem && !registryImport.SavingDocumentToDatabase )
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "*****************  ERROR ***************** " ) );
@@ -92,6 +92,7 @@ namespace Download
 			//NOTE: where the publisher and the owner are the same, there is no need to provide both the owning and publishing org filters, just pick one.
 			registryImport.PublishingOrganizationCTID = UtilityManager.GetAppKeyValue( "publishingOrganizationCTID" );
 
+			//Set a starting value for StartingDate - will be overridden by app.Config value
 			registryImport.StartingDate = DateTime.Now.AddDays( -1 ).ToString();
 			//typically will want this as registry server is UTC (+6 hours from central)
 			bool usingUTC_ForTime = UtilityManager.GetAppKeyValue( "usingUTC_ForTime", true );
@@ -198,7 +199,7 @@ namespace Download
 			//
 			var resourceTypeList = GetRequestedResourceTypes();
 			//
-			#region Option for a list of data owners
+			#region ==== Option for a list of data owners
 			var ownedByList = new List<string>();
 			if ( registryImport.OwningOrganizationCTID?.Length > 0 )
 			{
@@ -234,11 +235,50 @@ namespace Download
 				LoggingHelper.DoTrace( 1, string.Format("Completed download request. Resources:{0}",recordsImported) );
 				return;
 			}
-			
-			
-            #endregion
 
-            
+
+			#endregion
+
+			#region ==== Option for a list of data publishers
+			var publishedByList = new List<string>();
+			if ( registryImport.PublishingOrganizationCTID?.Length > 0 )
+			{
+				if ( registryImport.PublishingOrganizationCTID.IndexOf( "," ) > 0 )
+				{
+					//get list
+					var requestlist = registryImport.PublishingOrganizationCTID.Split( ',' );
+					foreach ( var item in requestlist )
+					{
+						if ( !string.IsNullOrWhiteSpace( item ) )
+							publishedByList.Add( item.Trim() );
+					}
+					//
+				}
+				else
+				{
+					publishedByList.Add( registryImport.PublishingOrganizationCTID );
+				}
+				//process
+				foreach ( var item in publishedByList )
+				{
+					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent recources for Publishing Org: {0}  ***************** ", item ) );
+					registryImport.PublishingOrganizationCTID = item;
+					//WARNING - IF NO RESOURCE TYPE IS INCLUDED WILL GET ceasn:Competency as well. This is not terrible as these will result in competency framework file being overwritten (so only one), but slows the process
+					//may want to get the list of target resources. We would eventually have similar issues with pathway components;
+					foreach ( var resourceType in resourceTypeList )
+					{
+						registryImport.Retrieve( resourceType, maxImportRecords, ref recordsImported, ref importSummary );
+
+					}
+				}
+
+				LoggingHelper.DoTrace( 1, string.Format( "Completed download request. Resources:{0}", recordsImported ) );
+				return;
+			}
+
+
+			#endregion
+
 			if ( deleteAction != 1 )
 			{
 				//22-04-12 NEW - just use a list from app.config

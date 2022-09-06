@@ -23,6 +23,8 @@ namespace Download.Services
 		}
 		/// <summary>
 		/// Get the main resource object for a graph from a Decoded resource (from an envelope)
+		/// Should to handle the decodedResource which contains th @graph, or just the contents of the a payload (i.e. stuff inside a graph)
+		/// ==> unlikely to need in this project
 		/// </summary>
 		/// <param name="json"></param>
 		/// <returns></returns>

@@ -46,16 +46,17 @@ namespace Download.Services
 			{
 				if ( UtilityManager.GetAppKeyValue( "notifyOnException", "no" ).ToLower() == "yes" )
 					notifyAdmin = true;
+
 				if ( HttpContext.Current != null )
 				{
 					sessionId = HttpContext.Current.Session.SessionID.ToString();
-					remoteIP = HttpContext.Current.Request.ServerVariables[ "REMOTE_HOST" ];
+					remoteIP = HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
 
 					if ( HttpContext.Current.Request.UrlReferrer != null )
 					{
 						lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
 					}
-					string serverName = UtilityManager.GetAppKeyValue( "serverName", HttpContext.Current.Request.ServerVariables[ "LOCAL_ADDR" ] );
+					string serverName = UtilityManager.GetAppKeyValue( "serverName", HttpContext.Current.Request.ServerVariables["LOCAL_ADDR"] );
 					path = serverName + HttpContext.Current.Request.Path;
 
 					if ( IsValidRequestString() == true )
@@ -74,9 +75,10 @@ namespace Download.Services
 					{
 						url = "suspicious url encountered!!";
 					}
+					//????
+					//userId = WUM.GetCurrentUserid();
 				}
-				//????
-				//userId = WUM.GetCurrentUserid();
+
 			}
 			catch
 			{
@@ -499,50 +501,7 @@ namespace Download.Services
 			}
 
 		} //
-		public static void DoBotTrace( int level, string message )
-		{
-			string msg = "";
-			int appTraceLevel = 0;
-
-			try
-			{
-				appTraceLevel = UtilityManager.GetAppKeyValue( "botTraceLevel", 5 );
-
-				//Allow if the requested level is <= the application thresh hold
-				if ( level <= appTraceLevel )
-				{
-					msg = "\n " + System.DateTime.Now.ToString() + " - " + message;
-
-					string datePrefix1 = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
-					string datePrefix = System.DateTime.Today.ToString( "yyyy-dd" );
-					string logFile = UtilityManager.GetAppKeyValue( "path.botTrace.log", "" );
-					if ( !string.IsNullOrWhiteSpace( logFile ) )
-					{
-						string outputFile = logFile.Replace( "[date]", datePrefix );
-						if ( File.Exists( outputFile ) )
-						{
-							if ( File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month )
-								File.Delete( outputFile );
-						}
-						else
-						{
-							System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
-							f.Directory.Create(); // If the directory already exists, this method does nothing.
-						}
-
-						StreamWriter file = File.AppendText( outputFile );
-
-						file.WriteLine( msg );
-						file.Close();
-					}
-				}
-			}
-			catch
-			{
-				//ignore errors
-			}
-		} //
-
+	
 
 		#endregion
 	}

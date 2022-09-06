@@ -150,6 +150,7 @@ namespace Download
 						{
 							EntityType = graphMainResource.Type,
 							CTID = ctid,
+							OwningOrganizationCTID = item.documentOwnedBy,
 							DownloadDate = DateTime.Now,
 							Created = createDate,
 							LastUpdated = envelopeUpdateDate,
@@ -165,11 +166,21 @@ namespace Download
 							resource.Description = graphMainResource.Description.ToString();
 							resource.SubjectWebpage = graphMainResource.SubjectWebpage ?? "";
 						}
+						//get owning org
+						//if ( graphMainResource.OwnedBy != null && graphMainResource.OwnedBy.Count > 0 )
+						//                  {
+						//	foreach ( var org in graphMainResource.OwnedBy )
+						//                      {
+						//		//only storing one
+						//		resource.OwningOrganizationCTID = org	//only get the CTID
+						//                      }
+						//                  }
 						statusMessage = "";
 						//optionally save record to a database
 						if ( new DatabaseServices().Add( resource, ref statusMessage ) == 0 )
 						{
 							//error handling
+							resource.OwningOrganizationCTID = ctid;
 						}
 					}
 					#endregion
@@ -386,7 +397,7 @@ namespace Download
 		public static List<ReadEnvelope> Search( string type, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string owningOrganizationCTID = "", string publishingOrganizationCTID = "", string sortOrder = "asc" )
 		{
 			string credentialEngineAPIKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
-			string environment = UtilityManager.GetAppKeyValue( "envType" );
+			string environment = UtilityManager.GetAppKeyValue( "environment" );
 			if ( environment == "sandbox" && credentialEngineAPIKey == "PROVIDE YOUR ACCOUNTS API KEY" )
 			{
 				credentialEngineAPIKey = "";

@@ -297,7 +297,7 @@ namespace Download.Services
 		{
 			uriScheme = uriScheme ?? HttpContext.Current.Request.Url.Scheme; //allow overriding http or https
 
-			var environment = System.Configuration.ConfigurationManager.AppSettings[ "envType" ]; //Use port number only on localhost because https redirecting to a port on production screws this up
+			var environment = System.Configuration.ConfigurationManager.AppSettings[ "environment" ]; //Use port number only on localhost because https redirecting to a port on production screws this up
 			var host = environment == "development" ? HttpContext.Current.Request.Url.Authority : HttpContext.Current.Request.Url.Host;
 
 			return uriScheme + "://" +
