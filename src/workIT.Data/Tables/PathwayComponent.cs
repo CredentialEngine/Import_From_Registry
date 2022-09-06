@@ -17,13 +17,14 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public PathwayComponent()
         {
-            this.Pathway_ComponentCondition = new HashSet<Pathway_ComponentCondition>();
             this.Entity_HasPathwayComponent = new HashSet<Entity_HasPathwayComponent>();
+            this.Pathway_ComponentCondition = new HashSet<Pathway_ComponentCondition>();
         }
     
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
         public int ComponentTypeId { get; set; }
+        public int EntityStateId { get; set; }
         public string CTID { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -38,12 +39,12 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string Properties { get; set; }
-        public int EntityStateId { get; set; }
+        public string ProxyFor { get; set; }
     
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
         public virtual Codes_PathwayComponentType Codes_PathwayComponentType { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasPathwayComponent> Entity_HasPathwayComponent { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
     }
 }

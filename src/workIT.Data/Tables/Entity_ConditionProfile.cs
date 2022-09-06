@@ -30,13 +30,13 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
         public Nullable<decimal> Weight { get; set; }
-        public string CreditHourType { get; set; }
-        public Nullable<decimal> CreditHourValue { get; set; }
         public Nullable<int> CreditUnitTypeId { get; set; }
         public string CreditUnitTypeDescription { get; set; }
         public Nullable<decimal> CreditUnitValue { get; set; }
         public Nullable<decimal> CreditUnitMaxValue { get; set; }
         public string SubmissionOfDescription { get; set; }
+        public string CreditHourType { get; set; }
+        public Nullable<decimal> CreditHourValue { get; set; }
         public string CreditValue { get; set; }
     
         public virtual Entity Entity { get; set; }

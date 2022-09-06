@@ -63,6 +63,8 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> ExpirationDate { get; set; }
         public string CreditValue { get; set; }
         public string TargetLearningResource { get; set; }
+        public Nullable<bool> IsNonCredit { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Assessment> Entity_Assessment { get; set; }

@@ -23,14 +23,15 @@ namespace workIT.Data.Tables
         public string SubjectWebpage { get; set; }
         public string AbilityEmbodied { get; set; }
         public string Classification { get; set; }
+        public string CodedNotation { get; set; }
         public string Comment { get; set; }
         public string Identifier { get; set; }
         public string KnowledgeEmbodied { get; set; }
         public string SkillEmbodied { get; set; }
-        public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<System.DateTime> LastUpdated { get; set; }
         public string SameAs { get; set; }
         public string VersionIdentifier { get; set; }
         public string JsonProperties { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
     }
 }

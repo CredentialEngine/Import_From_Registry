@@ -12,10 +12,10 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Reference_Frameworks
+    public partial class Reference_FrameworkItem
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public Reference_Frameworks()
+        public Reference_FrameworkItem()
         {
             this.Entity_ReferenceFramework = new HashSet<Entity_ReferenceFramework>();
         }
@@ -27,10 +27,13 @@ namespace workIT.Data.Tables
         public string Name { get; set; }
         public string Description { get; set; }
         public string TargetNode { get; set; }
+        public string RelatedTargetNode { get; set; }
+        public Nullable<int> ReferenceFrameworkId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<int> ExternalFrameworkId { get; set; }
     
+        public virtual Codes_PropertyCategory Codes_PropertyCategory { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ReferenceFramework> Entity_ReferenceFramework { get; set; }
+        public virtual Reference_Framework Reference_Framework { get; set; }
     }
 }

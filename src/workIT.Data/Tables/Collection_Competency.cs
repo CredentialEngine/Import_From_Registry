@@ -12,20 +12,20 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EducationFramework
+    public partial class Collection_Competency
     {
         public int Id { get; set; }
-        public string FrameworkName { get; set; }
+        public int CollectionId { get; set; }
+        public string CompetencyText { get; set; }
         public string CTID { get; set; }
-        public string FrameworkUri { get; set; }
-        public string SourceUrl { get; set; }
-        public string FrameworkUrl { get; set; }
-        public System.Guid RowId { get; set; }
+        public string CompetencyCategory { get; set; }
+        public string CompetencyLabel { get; set; }
+        public string CredentialRegistryURI { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<bool> ExistsInRegistry { get; set; }
-        public string OrganizationCTID { get; set; }
+        public System.Guid RowId { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public string CredentialRegistryId { get; set; }
-        public int EntityStateId { get; set; }
+        public string CompetencyDetailJson { get; set; }
+    
+        public virtual Collection Collection { get; set; }
     }
 }

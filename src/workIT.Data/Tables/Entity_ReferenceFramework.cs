@@ -16,11 +16,11 @@ namespace workIT.Data.Tables
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public int ReferenceFrameworkId { get; set; }
+        public int ReferenceFrameworkItemId { get; set; }
         public int CategoryId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
         public virtual Entity Entity { get; set; }
-        public virtual Reference_Frameworks Reference_Frameworks { get; set; }
+        public virtual Reference_FrameworkItem Reference_FrameworkItem { get; set; }
     }
 }

@@ -54,6 +54,8 @@ namespace workIT.Data.Tables
         public string JsonProperties { get; set; }
         public Nullable<System.DateTime> ExpirationDate { get; set; }
         public Nullable<System.Guid> PrimaryOrganizationUid { get; set; }
+        public int CredentialStatusTypeId { get; set; }
+        public Nullable<bool> IsNonCredit { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }

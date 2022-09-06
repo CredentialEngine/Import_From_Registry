@@ -18,20 +18,21 @@ namespace workIT.Data.Tables
         public TransferValueProfile()
         {
             this.Entity_TransferValueProfile = new HashSet<Entity_TransferValueProfile>();
+            this.TransferIntermediary_TransferValue = new HashSet<TransferIntermediary_TransferValue>();
         }
     
         public int Id { get; set; }
+        public System.Guid RowId { get; set; }
+        public int EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public int EntityStateId { get; set; }
         public string SubjectWebpage { get; set; }
         public string CTID { get; set; }
+        public Nullable<System.Guid> OwningAgentUid { get; set; }
+        public string LifecycleStatusType { get; set; }
         public string CredentialRegistryId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public System.Guid RowId { get; set; }
-        public Nullable<System.Guid> OwningAgentUid { get; set; }
-        public string LifecycleStatusType { get; set; }
         public string CodedNotation { get; set; }
         public string IdentifierJson { get; set; }
         public string TransferValueJson { get; set; }
@@ -39,8 +40,11 @@ namespace workIT.Data.Tables
         public string TransferValueForJson { get; set; }
         public string StartDate { get; set; }
         public string EndDate { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<TransferIntermediary_TransferValue> TransferIntermediary_TransferValue { get; set; }
     }
 }

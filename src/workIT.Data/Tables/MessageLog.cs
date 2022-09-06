@@ -12,19 +12,20 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Counts_EntityStatistic
+    public partial class MessageLog
     {
         public int Id { get; set; }
-        public int EntityTypeId { get; set; }
-        public string Title { get; set; }
+        public System.DateTime Created { get; set; }
+        public string Application { get; set; }
+        public string Activity { get; set; }
+        public string MessageType { get; set; }
+        public string Message { get; set; }
         public string Description { get; set; }
-        public Nullable<int> SortOrder { get; set; }
-        public Nullable<bool> IsActive { get; set; }
-        public string SchemaName { get; set; }
-        public Nullable<int> Totals { get; set; }
-        public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<int> CategoryId { get; set; }
-    
-        public virtual Codes_EntityTypes Codes_EntityTypes { get; set; }
+        public Nullable<int> ActionByUserId { get; set; }
+        public string ActivityObjectId { get; set; }
+        public string RelatedUrl { get; set; }
+        public string SessionId { get; set; }
+        public string IPAddress { get; set; }
+        public string Tags { get; set; }
     }
 }

@@ -30,5 +30,7 @@ namespace workIT.Data.Tables
         public string IPAddress { get; set; }
         public string Referrer { get; set; }
         public Nullable<bool> IsBot { get; set; }
+        public string ActivityObjectCTID { get; set; }
+        public string DataOwnerCTID { get; set; }
     }
 }

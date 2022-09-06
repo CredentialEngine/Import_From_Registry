@@ -3,6 +3,10 @@ using System.IO;
 using System.Threading;
 using System.Web;
 
+using DBEntity = workIT.Data.Tables.MessageLog;
+using EntityContext = workIT.Data.Tables.workITEntities;
+using ThisEntity = workIT.Models.MessageLog;
+
 namespace workIT.Utilities
 {
     public class LoggingHelper
@@ -18,19 +22,97 @@ namespace workIT.Utilities
         /// </summary>
         /// <param name="ex">Exception</param>
         /// <param name="message">Additional message regarding the exception</param>
-        public static void LogError( Exception ex, string message, string subject = "Credential Finder Exception encountered" )
+        public static void LogError( Exception ex, string message, string subject = "" )
         {
-            bool notifyAdmin = false;
+			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+			if (string.IsNullOrWhiteSpace( subject ) )
+            {
+				subject = application + " Exception encountered";
+			}
+			bool notifyAdmin = false;
             LogError( ex, message, notifyAdmin, subject );
-        }
+		}
 
-        /// <summary>
-        /// Format an exception and message, and then log it
-        /// </summary>
-        /// <param name="ex">Exception</param>
-        /// <param name="message">Additional message regarding the exception</param>
-        /// <param name="notifyAdmin">If true, an email will be sent to admin</param>
-        public static void LogError( Exception ex, string message, bool notifyAdmin, string subject = "Credential Finder Exception encountered" )
+		/// <summary>
+		/// Format an exception and message, and then log it
+		/// </summary>
+		/// <param name="ex">Exception</param>
+		/// <param name="message">Additional message regarding the exception</param>
+		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
+		public static void LogError( Exception ex, string activity, string summary, bool notifyAdmin, string subject = "" )
+		{
+			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+			if ( string.IsNullOrWhiteSpace( subject ) )
+			{
+				subject = application + " Exception encountered";
+			}
+			if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
+			{
+				var message = FormatExceptions( ex );
+				//check for duplicates
+				var mcheck = activity + "-" + summary + "-" + ex.Message;
+				if ( IsADuplicateRequest( mcheck ) )
+				{
+					//just write to file
+					LoggingHelper.LogError( mcheck, false );
+					return;
+				}
+					
+				var messageLog = new ThisEntity()
+				{
+					Application = application,
+					Activity = activity,
+					Message = summary,
+					Description = message + ex.StackTrace.ToString()
+				};
+				AddMessage( messageLog );
+				StoreLastError( mcheck );
+			}
+			else
+				LoggingHelper.LogError( ex, activity + "--"+ summary, notifyAdmin, subject );
+		}
+
+		public static void LogError( string activity, string summary, string message, string details, bool notifyAdmin = false )
+		{
+			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+
+			if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
+			{
+				//check for duplicates
+				var mcheck = activity + "-" + summary + "-" + message;
+				if ( IsADuplicateRequest( mcheck ) )
+				{
+					//just write to file
+					mcheck += "\r\n" + details ?? "";
+					LoggingHelper.LogError( mcheck, false );
+					return;
+				}
+
+				var messageLog = new ThisEntity()
+				{
+					Application = application,
+					Activity = activity,
+					Message = message,
+					Description = details ?? ""
+				};
+				AddMessage( messageLog );
+				StoreLastError( mcheck );
+			}
+			else
+			{
+				var mcheck = activity + "-" + summary + "-" + message;
+				mcheck += "\r\n" + details ?? "";
+				LoggingHelper.LogError( mcheck );
+			}
+		}
+
+		/// <summary>
+		/// Format an exception and message, and then log it
+		/// </summary>
+		/// <param name="ex">Exception</param>
+		/// <param name="message">Additional message regarding the exception</param>
+		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
+		public static void LogError( Exception ex, string message, bool notifyAdmin, string subject = "Credential Finder Exception encountered" )
         {
 
             //string userId = "";
@@ -46,9 +128,10 @@ namespace workIT.Utilities
             {
                 if ( UtilityManager.GetAppKeyValue( "notifyOnException", "no" ).ToLower() == "yes" )
                     notifyAdmin = true;
+
 				if ( HttpContext.Current != null )
 				{
-					if( HttpContext.Current.Session != null)
+					if ( HttpContext.Current.Session != null )
 						sessionId = HttpContext.Current.Session.SessionID.ToString();
 					remoteIP = HttpContext.Current.Request.ServerVariables[ "REMOTE_HOST" ];
 
@@ -78,7 +161,7 @@ namespace workIT.Utilities
 					//????
 					//userId = WUM.GetCurrentUserid();
 				}
-            }
+			}
             catch
             {
                 //eat any additional exception
@@ -106,7 +189,20 @@ namespace workIT.Utilities
                 if ( parmsString.Length > 0 )
                     errMsg += "\r\nParameters: " + parmsString;
 
-                LoggingHelper.LogError( errMsg, notifyAdmin, subject );
+				if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
+				{
+					var messageLog = new ThisEntity()
+					{
+						Activity = message,
+						Message = ex.Message,
+						Description = errMsg
+					};
+					AddMessage( messageLog );
+					//also log to file system without notify
+					LoggingHelper.LogError( errMsg, false, subject );
+				}
+				else 
+					LoggingHelper.LogError( errMsg, notifyAdmin, subject );
             }
             catch
             {
@@ -115,26 +211,7 @@ namespace workIT.Utilities
 
         } //
 
-		/// <summary>
-		/// Format an exception handling inner exceptions as well
-		/// </summary>
-		/// <param name="ex"></param>
-		/// <returns></returns>
-		public static string FormatExceptions( Exception ex )
-		{
-			string message = ex.Message;
 
-			if ( ex.InnerException != null )
-			{
-				message += "; \r\nInnerException: " + ex.InnerException.Message;
-				if ( ex.InnerException.InnerException != null )
-				{
-					message += "; \r\nInnerException2: " + ex.InnerException.InnerException.Message;
-				}
-			}
-
-			return message;
-		}
 
 		/// <summary>
 		/// Write the message to the log file.
@@ -213,6 +290,114 @@ namespace workIT.Utilities
                 }
             }
         } //
+
+
+		private static int AddMessage( ThisEntity entity )
+		{
+			int count = 0;
+			string truncateMsg = "";
+			DBEntity efEntity = new DBEntity();
+			MapToDB( entity, efEntity );
+
+			//================================
+			//if ( IsADuplicateRequest( efEntity.Description ) )
+			//	return 0;
+
+			//StoreLastRequest( efEntity.Description );
+
+			//----------------------------------------------
+
+			if ( efEntity.RelatedUrl != null && efEntity.RelatedUrl.Length > 600 )
+			{
+				truncateMsg += string.Format( "RelatedUrl overflow: {0}; ", efEntity.RelatedUrl.Length );
+				efEntity.RelatedUrl = efEntity.RelatedUrl.Substring( 0, 600 );
+			}
+
+
+			//the following should not be necessary but getting null related exceptions
+			if ( efEntity.ActionByUserId == null )
+				efEntity.ActionByUserId = 0;
+
+
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					efEntity.Created = System.DateTime.Now;
+					if ( string.IsNullOrEmpty(efEntity.MessageType) || efEntity.MessageType.Length < 5 )
+						efEntity.MessageType = "Error";
+
+					context.MessageLog.Add( efEntity );
+
+					// submit the change to database
+					count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						return efEntity.Id;
+					}
+					else
+					{
+						//?no info on error
+						return 0;
+					}
+				}
+				catch ( Exception ex )
+				{
+					var message = FormatExceptions( ex );
+					LoggingHelper.LogError( thisClassName + ".MessageLogAdd(MessageLog) Exception: \n\r" + message + "\n\r" + ex.StackTrace.ToString(), false );
+
+					return count;
+				}
+			}
+		} //
+		private static void MapToDB( ThisEntity input, DBEntity output )
+		{
+			output.Id = input.Id;
+
+			output.Application = input.Application;
+			output.Activity = input.Activity;
+			if ( output.Activity.Length > 200 )
+			{
+				output.Activity = output.Activity.Substring( 0, 194 ) + "  ...";
+			}
+			output.MessageType = input.MessageType;
+			output.Message = input.Message;
+			output.Description = input.Description;
+
+			output.ActionByUserId = input.ActionByUserId;
+			output.ActivityObjectId = input.ActivityObjectId;
+			output.Tags = input.Tags;
+
+			output.RelatedUrl = input.RelatedUrl;
+			output.SessionId = input.SessionId;
+			output.IPAddress = input.IPAddress;
+
+			if ( output.SessionId == null || output.SessionId.Length < 10 )
+				output.SessionId = GetCurrentSessionId();
+
+			if ( output.IPAddress != null && output.IPAddress.Length > 50 )
+				output.IPAddress = output.IPAddress.Substring( 0, 50 );
+		}
+		/// <summary>
+		/// Format an exception handling inner exceptions as well
+		/// </summary>
+		/// <param name="ex"></param>
+		/// <returns></returns>
+		public static string FormatExceptions( Exception ex )
+		{
+			string message = ex.Message;
+
+			if ( ex.InnerException != null )
+			{
+				message += "; \r\nInnerException: " + ex.InnerException.Message;
+				if ( ex.InnerException.InnerException != null )
+				{
+					message += "; \r\nInnerException2: " + ex.InnerException.InnerException.Message;
+				}
+			}
+
+			return message;
+		}
 		private static bool ShouldMessagesBeSkipped(string message)
 		{
 
@@ -243,14 +428,18 @@ namespace workIT.Utilities
 			bool isDup = false;
 			try
 			{
-				if ( HttpContext.Current.Session != null )
+				if ( HttpContext.Current != null && HttpContext.Current.Session != null )
 				{
-					string lastAction = HttpContext.Current.Session[ sessionKey ].ToString();
-					if ( lastAction.ToLower() == message.ToLower() )
+					string lastAction = HttpContext.Current.Session[ sessionKey ]?.ToString();
+					if ( lastAction?.ToLower() == message.ToLower() )
 					{
 						LoggingHelper.DoTrace( 7, "ActivityServices. Duplicate message: " + message );
 						return true;
 					}
+				}
+				else
+				{
+					
 				}
 			}
 			catch
@@ -270,6 +459,7 @@ namespace workIT.Utilities
 				{
 					sessionId = HttpContext.Current.Session.SessionID;
 				}
+			
 			}
 			catch
 			{
@@ -425,7 +615,7 @@ namespace workIT.Utilities
 						datePrefix = datePrefixOverride;
 					else if ( datePrefixOverride == " " )
 						datePrefix = "";
-
+					filename = filename.Replace( ":", "-" );
 					string logFile = UtilityManager.GetAppKeyValue( "path.log.file", "C:\\LOGS.txt" );
 					string outputFile = logFile.Replace( "[date]", datePrefix ).Replace( "[filename]", filename );
                     if ( outputFile.IndexOf( "csv.txt" ) > 1 )
@@ -509,13 +699,16 @@ namespace workIT.Utilities
 			bool isDup = false;
 			try
 			{
-				if ( HttpContext.Current.Session != null )
+				if ( HttpContext.Current != null )
 				{
-					string msgExists = HttpContext.Current.Session[ sessionKey ].ToString();
-					if ( msgExists.ToLower() == message.ToLower() )
+					if ( HttpContext.Current.Session != null )
 					{
-						LoggingHelper.DoTrace( 7, "LoggingHelper. Duplicate message: " + message );
-						return true;
+						string msgExists = HttpContext.Current.Session[ sessionKey ].ToString();
+						if ( msgExists.ToLower() == message.ToLower() )
+						{
+							LoggingHelper.DoTrace( 7, "LoggingHelper. Duplicate message: " + message );
+							return true;
+						}
 					}
 				}
 			}
@@ -531,9 +724,13 @@ namespace workIT.Utilities
 
 			try
 			{
-				if ( HttpContext.Current.Session != null )
+				if ( HttpContext.Current != null )
 				{
-					HttpContext.Current.Session[ sessionKey ] = message;
+
+					if ( HttpContext.Current.Session != null )
+					{
+						HttpContext.Current.Session[ sessionKey ] = message;
+					}
 				}
 			}
 			catch

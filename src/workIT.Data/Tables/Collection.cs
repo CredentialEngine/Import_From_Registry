@@ -12,27 +12,36 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EmploymentOutcomeProfile
+    public partial class Collection
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public EmploymentOutcomeProfile()
+        public Collection()
         {
-            this.Entity_EmploymentOutcomeProfile = new HashSet<Entity_EmploymentOutcomeProfile>();
+            this.Entity_Competency = new HashSet<Entity_Competency>();
+            this.Collection_Competency = new HashSet<Collection_Competency>();
         }
     
         public int Id { get; set; }
-        public System.Guid RowId { get; set; }
-        public int EntityStateId { get; set; }
-        public string CTID { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string Source { get; set; }
+        public int EntityStateId { get; set; }
+        public string CTID { get; set; }
+        public System.Guid OwningAgentUid { get; set; }
+        public string SubjectWebpage { get; set; }
+        public string CredentialRegistryId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
+        public System.Guid RowId { get; set; }
+        public string CollectionGraph { get; set; }
+        public string CodedNotation { get; set; }
+        public string License { get; set; }
         public Nullable<System.DateTime> DateEffective { get; set; }
-        public string JobsObtainedJson { get; set; }
+        public Nullable<System.DateTime> ExpirationDate { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
+        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Collection_Competency> Collection_Competency { get; set; }
     }
 }

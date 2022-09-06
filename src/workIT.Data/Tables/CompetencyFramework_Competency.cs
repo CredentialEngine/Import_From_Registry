@@ -18,16 +18,13 @@ namespace workIT.Data.Tables
         public int CompetencyFrameworkId { get; set; }
         public string CompetencyText { get; set; }
         public string CTID { get; set; }
-        public string Comment { get; set; }
         public string CompetencyCategory { get; set; }
         public string CompetencyLabel { get; set; }
-        public string CodedNotation { get; set; }
-        public string ListID { get; set; }
-        public Nullable<decimal> Weight { get; set; }
         public string CredentialRegistryURI { get; set; }
-        public Nullable<System.DateTime> DateModified { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public System.Guid RowId { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
+        public string CompetencyDetailJson { get; set; }
     
         public virtual CompetencyFramework CompetencyFramework { get; set; }
     }

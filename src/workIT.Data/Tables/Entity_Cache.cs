@@ -33,6 +33,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> CacheDate { get; set; }
         public Nullable<int> EntityStateId { get; set; }
         public Nullable<int> OwningOrgId { get; set; }
+        public Nullable<int> PublishedByOrgId { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

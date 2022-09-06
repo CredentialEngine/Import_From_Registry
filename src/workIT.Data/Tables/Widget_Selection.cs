@@ -19,8 +19,8 @@ namespace workIT.Data.Tables
         public string WidgetSection { get; set; }
         public int EntityTypeId { get; set; }
         public int RecordId { get; set; }
-        public Nullable<System.DateTime> Created { get; set; }
         public string ResourceName { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
     
         public virtual Widget Widget { get; set; }
     }

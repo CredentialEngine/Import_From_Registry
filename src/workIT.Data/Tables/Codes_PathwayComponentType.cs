@@ -24,9 +24,9 @@ namespace workIT.Data.Tables
         public string Title { get; set; }
         public string Description { get; set; }
         public Nullable<bool> IsActive { get; set; }
+        public string SchemaName { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<int> Totals { get; set; }
-        public string SchemaName { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<PathwayComponent> PathwayComponent { get; set; }

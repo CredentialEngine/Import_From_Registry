@@ -12,30 +12,22 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EarningsProfile
+    public partial class Reference_Framework
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public EarningsProfile()
+        public Reference_Framework()
         {
-            this.Entity_EarningsProfile = new HashSet<Entity_EarningsProfile>();
+            this.Reference_FrameworkItem = new HashSet<Reference_FrameworkItem>();
         }
     
         public int Id { get; set; }
-        public System.Guid RowId { get; set; }
-        public int EntityStateId { get; set; }
-        public string CTID { get; set; }
-        public string Name { get; set; }
+        public int CategoryId { get; set; }
+        public string FrameworkName { get; set; }
+        public string Framework { get; set; }
         public string Description { get; set; }
-        public string Source { get; set; }
-        public Nullable<int> LowEarnings { get; set; }
-        public Nullable<int> MedianEarnings { get; set; }
-        public Nullable<int> HighEarnings { get; set; }
-        public Nullable<int> PostReceiptMonths { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public Nullable<System.DateTime> LastUpdated { get; set; }
-        public Nullable<System.DateTime> DateEffective { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
+        public virtual ICollection<Reference_FrameworkItem> Reference_FrameworkItem { get; set; }
     }
 }

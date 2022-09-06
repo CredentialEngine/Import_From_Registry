@@ -17,8 +17,8 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Organization()
         {
-            this.Entity_Organization = new HashSet<Entity_Organization>();
             this.ConceptScheme = new HashSet<ConceptScheme>();
+            this.Entity_Organization = new HashSet<Entity_Organization>();
         }
     
         public int Id { get; set; }
@@ -43,10 +43,14 @@ namespace workIT.Data.Tables
         public string JsonProperties { get; set; }
         public string TransferValueStatement { get; set; }
         public string TransferValueStatementDescription { get; set; }
+        public int EntityTypeId { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Organization> Entity_Organization { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<ConceptScheme> ConceptScheme { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Organization> Entity_Organization { get; set; }
     }
 }

@@ -136,7 +136,19 @@
     <Compile Include="Tables\Codes_PropertyValue.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Codes_ReqionType.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_ReqionTypeRegion.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Codes_State.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Collection.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Collection_Competency.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\CompetencyFramework.cs">
@@ -157,18 +169,6 @@
     <Compile Include="Tables\CostManifest.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_EntityStatistic.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_RegionTotals.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_SiteTotals.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Credential.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -184,16 +184,10 @@
     <Compile Include="Tables\DataSetTimeFrame.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\EarningsProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EducationFramework.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EmploymentOutcomeProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Entity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\EntityLanguageMaps.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_Address.cs">
@@ -253,25 +247,13 @@
     <Compile Include="Tables\Entity_DurationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Entity_EarningsProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_EmploymentOutcomeProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Entity_FinancialAssistanceProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_FrameworkItem.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_HasPathway.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_HasPathwayComponent.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_HoldersProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_IdentifierValue.cs">
@@ -281,9 +263,6 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_Language.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_LanguageMaps.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_LearningOpportunity.cs">
@@ -322,9 +301,6 @@
     <Compile Include="Tables\GeoCoordinate.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\HoldersProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Import_EntityResolution.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -341,6 +317,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\LearningOpportunity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\MessageLog.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\OccupationProfile.cs">
@@ -361,10 +340,22 @@
     <Compile Include="Tables\Pathway_ComponentCondition.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Reference_Frameworks.cs">
+    <Compile Include="Tables\Reference_Framework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Reference_FrameworkItem.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\SearchPendingReindex.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\TaskProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\TransferIntermediary.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\TransferIntermediary_TransferValue.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\TransferValueProfile.cs">
@@ -390,6 +381,9 @@
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>workIT.edmx</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\WorkRole.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\Activity_Summary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>

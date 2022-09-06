@@ -34,7 +34,7 @@ namespace workIT.Data.Tables
         public string ProcessStandardsDescription { get; set; }
         public string VerificationMethodDescription { get; set; }
     
-        public virtual Entity Entity { get; set; }
         public virtual Codes_ProcessProfileType Codes_ProcessProfileType { get; set; }
+        public virtual Entity Entity { get; set; }
     }
 }

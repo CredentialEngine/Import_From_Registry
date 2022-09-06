@@ -18,6 +18,7 @@ namespace workIT.Data.Tables
         public Codes_PropertyCategory()
         {
             this.Codes_PropertyValue = new HashSet<Codes_PropertyValue>();
+            this.Reference_FrameworkItem = new HashSet<Reference_FrameworkItem>();
         }
     
         public int Id { get; set; }
@@ -31,8 +32,12 @@ namespace workIT.Data.Tables
         public string CodeName { get; set; }
         public Nullable<int> InterfaceType { get; set; }
         public string PropertyTableName { get; set; }
+        public Nullable<bool> IsConceptScheme { get; set; }
+        public string SchemeFor { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Codes_PropertyValue> Codes_PropertyValue { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Reference_FrameworkItem> Reference_FrameworkItem { get; set; }
     }
 }

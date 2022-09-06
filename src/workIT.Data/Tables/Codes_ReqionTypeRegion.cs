@@ -12,14 +12,15 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_EmploymentOutcomeProfile
+    public partial class Codes_ReqionTypeRegion
     {
         public int Id { get; set; }
-        public int EntityId { get; set; }
-        public int EmploymentOutcomeProfileId { get; set; }
+        public int RegionTypeId { get; set; }
+        public string Name { get; set; }
+        public string Value { get; set; }
+        public bool IsActive { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
-        public virtual EmploymentOutcomeProfile EmploymentOutcomeProfile { get; set; }
-        public virtual Entity Entity { get; set; }
+        public virtual Codes_ReqionType Codes_ReqionType { get; set; }
     }
 }

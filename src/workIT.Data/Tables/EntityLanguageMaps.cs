@@ -12,19 +12,15 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_FrameworkItem
+    public partial class EntityLanguageMaps
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public int CategoryId { get; set; }
+        public string Property { get; set; }
+        public bool HasMultipleLanguages { get; set; }
+        public string LanguageMap { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public string CodeGroup { get; set; }
-        public string CodedNotation { get; set; }
-        public string Name { get; set; }
-        public string TargetNode { get; set; }
-        public Nullable<bool> IsOtherFramework { get; set; }
-        public Nullable<int> ExternalFrameworkId { get; set; }
-    
-        public virtual Entity Entity { get; set; }
+        public System.Guid EntityUid { get; set; }
+        public int EntityTypeId { get; set; }
     }
 }

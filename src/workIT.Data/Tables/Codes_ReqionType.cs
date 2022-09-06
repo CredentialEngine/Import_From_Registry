@@ -12,32 +12,20 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class ConceptScheme
+    public partial class Codes_ReqionType
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public ConceptScheme()
+        public Codes_ReqionType()
         {
-            this.ConceptScheme_Concept = new HashSet<ConceptScheme_Concept>();
+            this.Codes_ReqionTypeRegion = new HashSet<Codes_ReqionTypeRegion>();
         }
     
         public int Id { get; set; }
-        public System.Guid RowId { get; set; }
-        public int OrgId { get; set; }
         public string Name { get; set; }
-        public string CTID { get; set; }
-        public string Source { get; set; }
-        public string CredentialRegistryId { get; set; }
-        public string PublicationStatusType { get; set; }
-        public Nullable<bool> IsProgressionModel { get; set; }
-        public string Concepts { get; set; }
-        public System.DateTime Created { get; set; }
-        public System.DateTime LastUpdated { get; set; }
         public string Description { get; set; }
-        public int EntityStateId { get; set; }
-        public int EntityTypeId { get; set; }
+        public bool IsActive { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<ConceptScheme_Concept> ConceptScheme_Concept { get; set; }
-        public virtual Organization Organization { get; set; }
+        public virtual ICollection<Codes_ReqionTypeRegion> Codes_ReqionTypeRegion { get; set; }
     }
 }

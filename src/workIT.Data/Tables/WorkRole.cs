@@ -12,28 +12,25 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class HoldersProfile
+    public partial class WorkRole
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public HoldersProfile()
-        {
-            this.Entity_HoldersProfile = new HashSet<Entity_HoldersProfile>();
-        }
-    
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
         public int EntityStateId { get; set; }
-        public string CTID { get; set; }
+        public string Name { get; set; }
         public string Description { get; set; }
-        public string Source { get; set; }
-        public Nullable<int> NumberAwarded { get; set; }
+        public string CTID { get; set; }
+        public string AbilityEmbodied { get; set; }
+        public string Classification { get; set; }
+        public string CodedNotation { get; set; }
+        public string Comment { get; set; }
+        public string Identifier { get; set; }
+        public string KnowledgeEmbodied { get; set; }
+        public string ListID { get; set; }
+        public string SkillEmbodied { get; set; }
+        public string VersionIdentifier { get; set; }
+        public string JsonProperties { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public Nullable<System.DateTime> DateEffective { get; set; }
-        public string Name { get; set; }
-        public string DemographicInformation { get; set; }
-    
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
     }
 }

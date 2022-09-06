@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Web;
 using System.Runtime.Caching;
 using System.Net.Http;
+using System.Web.Configuration;
 
 namespace workIT.Utilities
 {
@@ -119,7 +120,28 @@ namespace workIT.Utilities
 
             return appValue;
         } //
-		public static bool HasMessageBeenPreviouslySent( string keyName )
+
+        public static string GetConnectionStringValue( string connectionName = "workIT_RO" )
+        {
+            string connString = "";
+
+            try
+            {
+                connString = WebConfigurationManager.ConnectionStrings[connectionName].ConnectionString;
+                //error
+                if ( connString == null )
+                {
+                    throw new Exception(String.Format("There requested connection string is missing for: '{0}.'", connectionName) );
+                }
+            }
+            catch
+            {
+                throw new Exception( String.Format( "There requested connection string is missing for: '{0}.'", connectionName ) );
+            }
+
+            return connString;
+        } //
+        public static bool HasMessageBeenPreviouslySent( string keyName )
 		{
 
 			string key = "appkey_" + keyName;
@@ -284,27 +306,47 @@ namespace workIT.Utilities
 					return sb.ToString();
 			}
 		}
-		#endregion
+        #endregion
 
-		#region === Path related Methods ===
+        #region === Path related Methods ===
 
-		/// <summary>
-		/// FormatAbsoluteUrl an absolute URL - equivalent to Url.Content()
-		/// </summary>
-		/// <param name="path"></param>
-		/// <param name="uriScheme"></param>
-		/// <returns></returns>
-		public static string FormatAbsoluteUrl( string path, string uriScheme = null )
+        /// <summary>
+        /// FormatAbsoluteUrl an absolute URL - equivalent to Url.Content()
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="uriScheme">http/https VERY unlikely call will 'know' what to provide</param>
+        /// <returns></returns>
+        public static string FormatAbsoluteUrl( string path )
         {
-            uriScheme = uriScheme ?? HttpContext.Current.Request.Url.Scheme; //allow overriding http or https
+            var url = "";
+            var uriScheme = "";
+            bool isSecure = UtilityManager.GetAppKeyValue( "usingSSL", true );
+            try
+            {
+                //need to handle where called from batch!!!!. Maybe just default to https?
+                if ( HttpContext.Current != null )
+                {
+                    uriScheme = HttpContext.Current.Request.Url.Scheme;
+                    var environment = System.Configuration.ConfigurationManager.AppSettings["envType"]; //Use port number only on localhost because https redirecting to a port on production screws this up
+                    var host = environment == "development" ? HttpContext.Current.Request.Url.Authority : HttpContext.Current.Request.Url.Host;
+                    return uriScheme + "://" +
+                            ( host + "/" + HttpContext.Current.Request.ApplicationPath + path.Replace( "~/", "/" ) )
+                            .Replace( "///", "/" )
+                            .Replace( "//", "/" );
+                }
+                else
+                {
+                    var domainName = GetAppKeyValue( "oldCredentialFinderSite" );
+                    url = FormatAbsoluteUrl( path, domainName, isSecure );
+                }
+            } catch
+            {
+                var domainName = GetAppKeyValue( "oldCredentialFinderSite" );
+                url = FormatAbsoluteUrl( path, domainName, isSecure );
+            }
 
-            var environment = System.Configuration.ConfigurationManager.AppSettings[ "envType" ]; //Use port number only on localhost because https redirecting to a port on production screws this up
-            var host = environment == "development" ? HttpContext.Current.Request.Url.Authority : HttpContext.Current.Request.Url.Host;
+            return url;
 
-            return uriScheme + "://" +
-                ( host + "/" + HttpContext.Current.Request.ApplicationPath + path.Replace( "~/", "/" ) )
-                .Replace( "///", "/" )
-                .Replace( "//", "/" );
         }
         /// <summary>
         /// Format a relative, internal URL as a full URL, with http or https depending on the environment. 
@@ -319,7 +361,7 @@ namespace workIT.Utilities
             try
             {
                 //14-10-10 mp - change to explicit value from web.config
-                host = GetAppKeyValue( "siteHostName" );
+                host = GetAppKeyValue( "oldCredentialFinderSite" );
                 if ( host == "" )
                 {
                     // doing it this way so as to not break anything - HttpContext doesn't exist in a WCF web service
@@ -353,17 +395,36 @@ namespace workIT.Utilities
         /// <returns>Formatted URL</returns>
         public static string FormatAbsoluteUrl( string relativeUrl, string host, bool isSecure )
         {
+            LoggingHelper.DoTrace(7, string.Format( "FormatAbsoluteUrl start: relativeUrl:{0}, host:{1}", relativeUrl, host ) );
             string url = "";
-            if ( string.IsNullOrEmpty( relativeUrl ) )
-                return "";
-            if ( string.IsNullOrEmpty( host ) )
-                return "";
-            relativeUrl = relativeUrl.Replace( "~/", "/" );
+            if ( string.IsNullOrEmpty( relativeUrl ) || relativeUrl == "~/" || relativeUrl == "/" )
+                relativeUrl="";
             //ensure not already an absolute
             if ( relativeUrl.ToLower().StartsWith( "http" ) )
                 return relativeUrl;
-			//
-			if ( isSecure && GetAppKeyValue( "usingSSL", false ))
+
+            relativeUrl = relativeUrl.Replace( "~/", "/" );
+            if ( relativeUrl=="/" )
+                relativeUrl = "";
+
+
+            if ( string.IsNullOrEmpty( host ) )
+                return "";
+
+            if ( host.ToLower().StartsWith( "http" ) || host.ToLower().StartsWith( "//" ) )
+            {
+                //handle where host ends in '/' and relativeURL begins with '/'
+                if ( host.EndsWith( "/" ) && relativeUrl.StartsWith( "/" ) )
+                    relativeUrl = relativeUrl.TrimStart( '/' );
+                //
+                url = ( host + relativeUrl );
+
+                LoggingHelper.DoTrace( 5, string.Format( "FormatAbsoluteUrl formatted: Url:{0}", url ) );
+
+                return url;
+            }
+            //caller will not know if secure or not!
+            if ( isSecure )
             {
                 url = "https://" + host + relativeUrl;
             }
@@ -536,6 +597,7 @@ namespace workIT.Utilities
 				data = new URLResult();
 				try
 				{
+					System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
 					var rawResult = new HttpClient().GetAsync( url ).Result;
 
 					data.IsSuccessStatusCode = rawResult.IsSuccessStatusCode;

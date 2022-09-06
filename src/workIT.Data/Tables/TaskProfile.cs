@@ -12,28 +12,25 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class DataSetTimeFrame
+    public partial class TaskProfile
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public DataSetTimeFrame()
-        {
-            this.DataProfile = new HashSet<DataProfile>();
-        }
-    
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
-        public int DataSetProfileId { get; set; }
+        public int EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string StartDate { get; set; }
-        public string EndDate { get; set; }
-        public string DataSourceCoverageType { get; set; }
+        public string CTID { get; set; }
+        public string AbilityEmbodied { get; set; }
+        public string Classification { get; set; }
+        public string CodedNotation { get; set; }
+        public string Comment { get; set; }
+        public string Identifier { get; set; }
+        public string KnowledgeEmbodied { get; set; }
+        public string ListID { get; set; }
+        public string SkillEmbodied { get; set; }
+        public string VersionIdentifier { get; set; }
+        public string JsonProperties { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public string DataAttributesJson { get; set; }
-    
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<DataProfile> DataProfile { get; set; }
-        public virtual DataSetProfile DataSetProfile { get; set; }
     }
 }

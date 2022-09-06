@@ -12,32 +12,32 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class ConceptScheme
+    public partial class TransferIntermediary
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public ConceptScheme()
+        public TransferIntermediary()
         {
-            this.ConceptScheme_Concept = new HashSet<ConceptScheme_Concept>();
+            this.TransferIntermediary_TransferValue = new HashSet<TransferIntermediary_TransferValue>();
         }
     
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
-        public int OrgId { get; set; }
-        public string Name { get; set; }
-        public string CTID { get; set; }
-        public string Source { get; set; }
-        public string CredentialRegistryId { get; set; }
-        public string PublicationStatusType { get; set; }
-        public Nullable<bool> IsProgressionModel { get; set; }
-        public string Concepts { get; set; }
-        public System.DateTime Created { get; set; }
-        public System.DateTime LastUpdated { get; set; }
-        public string Description { get; set; }
         public int EntityStateId { get; set; }
-        public int EntityTypeId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string SubjectWebpage { get; set; }
+        public string CTID { get; set; }
+        public Nullable<System.Guid> OwningAgentUid { get; set; }
+        public string LifecycleStatusType { get; set; }
+        public string CredentialRegistryId { get; set; }
+        public string CodedNotation { get; set; }
+        public string CreditValueJson { get; set; }
+        public string IntermediaryForJson { get; set; }
+        public string Subject { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<ConceptScheme_Concept> ConceptScheme_Concept { get; set; }
-        public virtual Organization Organization { get; set; }
+        public virtual ICollection<TransferIntermediary_TransferValue> TransferIntermediary_TransferValue { get; set; }
     }
 }

@@ -19,7 +19,7 @@ namespace workIT.Data.Tables
         public System.Guid RowId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public Nullable<System.DateTime> DateEffective { get; set; }
+        public string DateEffective { get; set; }
         public string Source { get; set; }
         public Nullable<int> LowEarnings { get; set; }
         public Nullable<int> MedianEarnings { get; set; }
@@ -31,6 +31,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string Currency { get; set; }
+        public string ExpirationDate { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

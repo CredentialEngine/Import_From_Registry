@@ -17,8 +17,8 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public CompetencyFramework()
         {
-            this.Entity_Competency = new HashSet<Entity_Competency>();
             this.CompetencyFramework_Competency = new HashSet<CompetencyFramework_Competency>();
+            this.Entity_Competency = new HashSet<Entity_Competency>();
             this.Entity_CompetencyFramework = new HashSet<Entity_CompetencyFramework>();
         }
     
@@ -34,16 +34,16 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
-        public string CompetencyFrameworkGraph { get; set; }
         public string Description { get; set; }
+        public string CompetencyFrameworkGraph { get; set; }
         public string CompetenciesStore { get; set; }
         public int TotalCompetencies { get; set; }
         public string CompetencyFrameworkHierarchy { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<CompetencyFramework_Competency> CompetencyFramework_Competency { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
     }

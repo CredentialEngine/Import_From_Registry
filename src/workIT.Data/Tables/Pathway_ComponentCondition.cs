@@ -23,6 +23,7 @@ namespace workIT.Data.Tables
         public string PathwayCTID { get; set; }
         public System.DateTime Created { get; set; }
         public System.DateTime LastUpdated { get; set; }
+        public string HasConstraint { get; set; }
     
         public virtual PathwayComponent PathwayComponent { get; set; }
     }

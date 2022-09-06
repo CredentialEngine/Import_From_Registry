@@ -12,14 +12,14 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Counts_SiteTotals
+    public partial class TransferIntermediary_TransferValue
     {
         public int Id { get; set; }
-        public int CategoryId { get; set; }
-        public int EntityTypeId { get; set; }
-        public Nullable<int> CodeId { get; set; }
-        public string Title { get; set; }
-        public Nullable<int> Totals { get; set; }
-        public string SchemaName { get; set; }
+        public int TransferIntermediaryId { get; set; }
+        public int TransferValueProfileId { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
+    
+        public virtual TransferIntermediary TransferIntermediary { get; set; }
+        public virtual TransferValueProfile TransferValueProfile { get; set; }
     }
 }

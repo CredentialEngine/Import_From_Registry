@@ -22,7 +22,6 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string DataProfileAttributeSummaryJson { get; set; }
         public string DataProfileAttributesJson { get; set; }
-        public Nullable<System.DateTime> DateEffective { get; set; }
     
         public virtual DataSetTimeFrame DataSetTimeFrame { get; set; }
     }

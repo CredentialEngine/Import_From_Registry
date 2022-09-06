@@ -39,7 +39,9 @@ namespace workIT.Data.Tables
         public string RegionFilters { get; set; }
         public string CityFilters { get; set; }
         public Nullable<bool> IncludeIfAvailableOnline { get; set; }
+        public string LogoFileName { get; set; }
         public System.Guid RowId { get; set; }
+        public Nullable<bool> AllowsCSVExport { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Widget_Selection> Widget_Selection { get; set; }

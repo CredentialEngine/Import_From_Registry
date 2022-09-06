@@ -18,7 +18,6 @@ namespace workIT.Data.Tables
         public Codes_EntityTypes()
         {
             this.Entity = new HashSet<Entity>();
-            this.Counts_EntityStatistic = new HashSet<Counts_EntityStatistic>();
         }
     
         public int Id { get; set; }
@@ -28,10 +27,11 @@ namespace workIT.Data.Tables
         public string SchemaName { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<int> Totals { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsTopLevelEntity { get; set; }
+        public string Label { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity> Entity { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
     }
 }

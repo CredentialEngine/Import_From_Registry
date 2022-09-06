@@ -6,13 +6,16 @@ using System.Linq.Expressions;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using workIT.Models.Search;
 
 namespace workIT.Utilities
 {
 	public class PropertyMappingHelper
 	{
-		//Simple automatic mapping for properties of the same name and type for an existing/loaded object
-		public static void SimpleUpdate( object input, object output, bool allowOverwritingSkippableValues = false )
+        public static object CodesManager { get; private set; }
+
+        //Simple automatic mapping for properties of the same name and type for an existing/loaded object
+        public static void SimpleUpdate( object input, object output, bool allowOverwritingSkippableValues = false )
 		{
 			var inputProperties = input.GetType().GetProperties();
 			var outputProperties = output.GetType().GetProperties();
@@ -148,6 +151,40 @@ namespace workIT.Utilities
 				}
 			}
 			catch { }
+		}
+
+		/// <summary>
+		/// from main search autocomplete just need the relationships.
+		/// from occupations autocomplete, probably just need the orgId? Or only orgIds with a rel of 30
+		/// </summary>
+		/// <param name="query"></param>
+		/// <returns></returns>
+		public static List<int> GetAnyRelationships( MainSearchInput query, ref List<int> targetOrgIds )
+		{
+			List<int> relationshipTypeIds = new List<int>();
+			//targetOrgIds = new List<int>();
+			//NOTE the same method in elastic searches uses CODE!!!!
+			foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CUSTOM ).ToList() )
+			{
+				var item = filter.AsOrgRolesItem();
+				//no category. set to 
+				if ( item.CategoryId < 1 )
+					item.CategoryId = 13; // CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE;
+				if ( item == null || item.CategoryId < 1 )
+					continue;
+
+				if ( item.CategoryId == 13 )
+				{
+					if ( filter.Name == "organizationroles" )
+					{
+						//item.Id is the orgId
+						relationshipTypeIds.AddRange( item.IdsList );
+						targetOrgIds.Add( item.Id );
+					}
+				}
+			}
+
+			return relationshipTypeIds;
 		}
 
 	}
