@@ -16,6 +16,8 @@ https://visualstudio.microsoft.com/vs/community/
 Uploaded a new release to the [**/release/2022-08-30 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-08-30) with a new database backup.
 This release includes the option to start fresh with an empty database using the provided backup file or to apply updates to an existing database created from the May 27, 2022 download. There is a Read.me file in the DatabaseUpdates folder with additional guidance. 
 
+**NOTE: The app key of *envType* was changed to *environment*. This was done to be consistent with all of the other credential engine applications!**
+
 ### May 27, 2022 Release Update
 Generally when doing an import, all of the organizations should be done first. An issue was reported that can occur when credentials are imported before the organizations. An update was made to identity a possible issue and prevent any errors.
 
