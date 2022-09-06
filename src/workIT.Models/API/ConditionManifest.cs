@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.API
 {
-	public class ConditionManifest : BaseDisplay
+	public class ConditionManifest : BaseAPIType
 	{
 		public ConditionManifest()
 		{
 			CTDLTypeLabel = "Condition Manifest";
+			EntityTypeId = 19;
 		}
 		//public string CTDLTypeLabel { get; set; }
 		//public int Id { get; set; }
@@ -29,5 +30,7 @@ namespace workIT.Models.API
 		public List<ConditionProfile> Recommends { get; set; }
 		public List<ConditionProfile> Renewal { get; set; }
 		public List<ConditionProfile> Requires { get; set; }
+
+		public bool DisplayAdditionalInformation { get; set; }
 	}
 }

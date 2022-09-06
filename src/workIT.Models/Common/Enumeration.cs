@@ -80,58 +80,6 @@ namespace workIT.Models.Common
 			}
 			return id;
 		}
-		//public List<CredentialAlignmentObjectProfile> ItemsAsAlignmentObjects
-		//{
-		//	get
-		//	{
-		//		return ConvertItemsToAlignmentObjects( this );
-		//	}
-		//	set
-		//	{
-		//		ConvertAlignmentObjectsToEnumeration( this, value );
-		//	}
-		//}
-
-		//public static List<CredentialAlignmentObjectProfile> ConvertItemsToAlignmentObjects( Enumeration data )
-		//{
-		//	var result = new List<CredentialAlignmentObjectProfile>();
-		//	foreach ( var item in data.Items )
-		//	{
-		//		result.Add( new CredentialAlignmentObjectProfile()
-		//		{
-		//			FrameworkName = data.Name,
-		//			FrameworkUrl = data.Url,
-		//			EducationalFramework = data.Name,
-		//			Name = item.Name,
-		//			TargetName = item.Name,
-		//			Description = item.Description,
-		//			TargetDescription = item.Description,
-		//			TargetUrl = string.IsNullOrWhiteSpace( item.URL ) ? ( string.IsNullOrWhiteSpace( item.SchemaName ) ? "" : item.SchemaName.Contains( ":" ) ? item.SchemaName : "missingPrefix:" + item.SchemaName ) : item.URL,
-		//			CodedNotation = item.Value
-		//		} );
-		//	}//,CodedNotation = item.Value
-		//	return result;
-		//}
-		//
-
-		//public static void ConvertAlignmentObjectsToEnumeration( Enumeration target, List<CredentialAlignmentObjectProfile> data )
-		//{
-		//	//TODO: flesh this out
-		//	var result = new List<EnumeratedItem>();
-		//	foreach( var item in data )
-		//	{
-		//		result.Add( new EnumeratedItem()
-		//		{
-		//			Name = item.TargetNodeName,
-		//			Description = item.TargetNodeDescription,
-		//			SchemaName = item.TargetNode.IndexOf("http") == 0 ? "" : item.TargetNode,
-		//			SchemaUrl = item.TargetNode.IndexOf("http") == 0 ? item.TargetNode : "",
-		//			Value = item.CodedNotation
-		//		} );
-		//	}
-		//	target.Items = result;
-		//}
-		//
 	}
     //
     [Serializable]
@@ -156,21 +104,7 @@ namespace workIT.Models.Common
 		/// Displayed name
 		/// </summary>
 		public string Name { get; set; }
-		//public string DisplayName
-		//{
-		//	get
-		//	{
-		//		string start = Name;
-		//		if ( IsIndirectAssertion )
-		//			if ( IsDirectAssertion )
-		//				start += " <span aria-hidden='true' class='fa fa-check-double'></span>";
-		//			else
-		//				start += " <span aria-hidden='true' class='fa fa-check-circle'></span>";
-		//		else if ( IsDirectAssertion )
-		//			start += " <span aria-hidden='true' class='fa fa-check-circle'></span>";
-		//		return start;
-		//	}
-		//}
+
 		/// <summary>
 		/// Url - optional
 		/// </summary>
@@ -178,11 +112,11 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Description (if applicable)
 		/// </summary>
-		public string Description { get; set; } 
+		public string Description { get; set; }
 		/// <summary>
 		/// Schema-based name. Should not contain spaces. May not be necessary.
 		/// </summary>
-		public string SchemaName { get; set; }
+		public string SchemaName { get; set; } = "";
 		/// <summary>
 		/// Schema-based name of the parent code, where present.
 		/// </summary>

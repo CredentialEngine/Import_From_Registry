@@ -15,6 +15,7 @@ using workIT.Models.ProfileModels;
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 using Newtonsoft.Json;
+using System.Data.Entity.Validation;
 
 namespace workIT.Factories
 {
@@ -46,8 +47,7 @@ namespace workIT.Factories
 
 		public bool SaveList( List<ThisEntity> list, int conditionTypeId, Guid parentUid, ref SaveStatus status, int subConnectionTypeId = 0 )
 		{
-			if ( list == null || list.Count == 0 )
-				return true;
+			//a delete ALL is no longer being done before entering here so need to check for deletes in method
 			if ( !IsValidGuid( parentUid ) )
 			{
 				status.AddError( "Error: the parent identifier was not provided." );
@@ -60,7 +60,7 @@ namespace workIT.Factories
 			}
 			//20-12-28 - skip delete all from credential, etc. Rather checking  in save
 
-			//now be still do a delete all until implementing a balance line
+			//now be sure to still do a delete all until implementing a balance line
 			//could set date and delete all before this date!
 			DateTime updateDate = DateTime.Now;
 			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
@@ -83,10 +83,16 @@ namespace workIT.Factories
 			else if ( list.Count == 1 && currentConditions.Count == 1 )
 			{
 				//One of each, just do update of one
+				//NO - can miss changes to targets? OR can get duplicates for alternate conditions!
+				var existingConditionProfile = currentConditions[ 0 ];
 				var entity = list[ 0 ];
-				entity.Id = currentConditions[ 0 ].Id;
+				entity.Id = existingConditionProfile.Id;
 				entity.ConnectionProfileTypeId = conditionTypeId;
 				entity.ConditionSubTypeId = subConnectionTypeId;
+				if ( existingConditionProfile.AlternativeCondition != null && existingConditionProfile.AlternativeCondition.Any())
+				{
+					DeleteAllAlternativeConditions( existingConditionProfile.RowId, ref status );
+				}
 				Save( entity, parent, updateDate, ref status );
 			}
 			else
@@ -178,15 +184,17 @@ namespace workIT.Factories
 				}
 
 			}
-			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			catch ( DbEntityValidationException dbex )
 			{
 				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Save()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
 				status.AddWarning( message );
-
+				LoggingHelper.LogError( dbex, thisClassName, $".Save()-DbEntityValidationException, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})" );
+				return isValid;
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), EntityId: {0}", entity.ParentId ) );
+				LoggingHelper.LogError( ex, thisClassName, $"Save(), EntityId: {entity.ParentId}" );
+				return isValid;
 			}
 			return isValid;
 		}
@@ -232,7 +240,7 @@ namespace workIT.Factories
 						doingUpdateParts = false;
 						//?no info on error
 						status.AddWarning( "Error - the profile was not saved. " );
-						string message = string.Format( "{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, createdById: {2}", thisClassName, entity.ParentId, entity.CreatedById );
+						string message = string.Format( "{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, ConnectionProfileTypeId: {2}", thisClassName, entity.ParentId, entity.ConnectionProfileTypeId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add() Failed", message );
 					}
 				}
@@ -255,6 +263,56 @@ namespace workIT.Factories
 			
 
 			return newId;
+		}
+		public bool DeleteAllAlternativeConditions( Guid parentUID, ref SaveStatus status )
+		{
+			bool isValid = true;
+			try
+			{
+				//NOTE: could get the entityId and do an RemoveAll
+				using ( var context = new EntityContext() )
+				{
+					var results = ( from entity in context.Entity
+								  join alternateCP in context.Entity_ConditionProfile on entity.Id equals alternateCP.EntityId
+								  where entity.EntityUid == parentUID
+									   && alternateCP.ConditionSubTypeId == 5
+								  select new Entity()
+								  {
+									  Id=alternateCP.Id
+								  } ).ToList();
+					if ( results == null || results.Count == 0 )
+						return true;
+
+					foreach ( var item in results )
+					{
+						DBEntity efEntity = context.Entity_ConditionProfile
+							.SingleOrDefault( s => s.Id == item.Id );
+
+						if ( efEntity != null && efEntity.Id > 0 )
+						{
+							context.Entity_ConditionProfile.Remove( efEntity );
+							int count = context.SaveChanges();
+							if ( count > 0 )
+							{
+								isValid = true;
+								//16-10-19 mp - create 'After Delete' triggers to delete the Entity
+								//new EntityManager().Delete(rowId, ref statusMessage);
+							}
+						}
+						else
+						{
+							status.AddError( string.Format( "DeleteAllAlternativeConditions. Error - delete was not possible, as record was not found. parentUID: {0} item.Id: {1}", parentUID, item.Id) );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAllAlternativeConditions. parentUID: {0}, exception: {1}", parentUID, msg ) );
+			}
+
+			return isValid;
 		}
         public bool DeleteAll( Entity parent, ref SaveStatus status, DateTime? lastUpdated = null )
         {
@@ -331,6 +389,9 @@ namespace workIT.Factories
 
 					foreach ( var item in results )
 					{
+						//check for alternative conditions
+						DeleteAllAlternativeConditions( item.RowId, ref status );
+
 						context.Entity_ConditionProfile.Remove( item );
 						var count = context.SaveChanges();
 						if ( count > 0 )
@@ -786,7 +847,41 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
+		public static List<Credential> GetAllCredentails( int topParentTypeId, int topParentEntityBaseId )
+		{
+			var list = new List<Credential>();
+			Entity parent = EntityManager.GetEntity( topParentTypeId, topParentEntityBaseId );
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
 
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					List<DBEntity> results = context.Entity_ConditionProfile
+							.Where( s => s.EntityId == parent.Id )
+							.OrderBy( s => s.ConnectionTypeId )
+							.ThenBy( s => s.Created )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( DBEntity item in results )
+						{
+							list.AddRange( Entity_CredentialManager.GetAll( item.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART ) );
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetAllCredentails" );
+			}
+			return list;
+		}//
 		/// <summary>
 		/// get all assessments related to condition profiles for the parent entity
 		/// Current use is for onclick of a gray box in the search results
@@ -870,43 +965,143 @@ namespace workIT.Factories
 			return list;
 		}//
 
-
-		public static ThisEntity GetAs_IsPartOf(Guid rowId)
+		/// <summary>
+		/// Will only return the base condition. Targets are not retrieved as this method is typically called from a target, and don't want infinite loop.
+		/// Setting the ConditionType to be the reverse, and set default name/desc.
+		/// Will also check if the reverse entity is already in the connections
+		/// </summary>
+		/// <param name="rowId"></param>
+		/// <returns></returns>
+		public static ThisEntity GetAs_IsPartOf(Guid rowId, string currentParentName, List<ThisEntity> existingConnections )
 		{
 			ThisEntity entity = new ThisEntity();
             using (var context = new EntityContext())
             {
-
                 DBEntity efEntity = context.Entity_ConditionProfile
                         .FirstOrDefault( s => s.RowId == rowId );
 
                 if (efEntity != null && efEntity.Id > 0)
                 {
-                    MapFromDB_Basics( efEntity, entity, true );
-                    if (efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL)
-                    {
-                        entity.ParentCredential = CredentialManager.GetBasic( ( int ) efEntity.Entity.EntityBaseId );
-                    }
-                    else if (efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE)
-                    {
-                        entity.ParentAssessment = AssessmentManager.GetBasic( ( int ) efEntity.Entity.EntityBaseId );
+					bool addToConnections = true;
 
-                    }
-                    else if (efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE)
-                    {
-                        entity.ParentLearningOpportunity = LearningOpportunityManager.GetBasic( ( int ) efEntity.Entity.EntityBaseId );
-                    }
-                    else if (efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONDITION_MANIFEST)
-                    {
-                        entity.ParentConditionManifest = ConditionManifestManager.GetBasic( ( int ) efEntity.Entity.EntityBaseId );
-                    }
-                    //generally may not care about targert resources, as getting this because caller is a target resource - could do a duration check and get anyway.
-                    //IncludeTargetResources( efEntity, entity, false, true );
-                }
-            }
-         
+					MapFromDB_Basics( efEntity, entity, true );
+					var relatedName = "";
+					var relatedEntityType = "";
+					if ( efEntity.Entity != null )
+					{
+						if ( efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+						{
+							entity.ParentCredential = CredentialManager.GetBasic( ( int )efEntity.Entity.EntityBaseId );
+							relatedName = entity.ParentCredential.Name;
+							entity.TargetCredential.Add( entity.ParentCredential );
+							relatedEntityType = " credential ";
+							foreach ( var item in existingConnections )
+							{
+								var exists = item.TargetCredential.Where( s => s.Id == entity.ParentCredential.Id ).ToList();
+								if ( exists != null && exists.Any() )
+								{
+									addToConnections = false;
+									break;
+								}
+							}
+						}
+						else if ( efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
+						{
+							entity.ParentAssessment = AssessmentManager.GetBasic( ( int )efEntity.Entity.EntityBaseId );
+							relatedName = entity.ParentAssessment.Name;
+							entity.TargetAssessment.Add( entity.ParentAssessment );
+							relatedEntityType = " assessment ";
+							foreach ( var item in existingConnections )
+							{
+								var exists = item.TargetAssessment.Where( s => s.Id == entity.ParentAssessment.Id ).ToList();
+								if ( exists != null && exists.Any() )
+								{
+									addToConnections = false;
+									break;
+								}
+							}
+						}
+						else if ( efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+						{
+							entity.ParentLearningOpportunity = LearningOpportunityManager.GetBasic( ( int )efEntity.Entity.EntityBaseId );
+							relatedName = entity.ParentLearningOpportunity.Name;
+							entity.TargetLearningOpportunity.Add( entity.ParentLearningOpportunity );
+							relatedEntityType = " learning opportunity ";
+							foreach ( var item in existingConnections )
+							{
+								var exists = item.TargetLearningOpportunity.Where( s => s.Id == entity.ParentLearningOpportunity.Id ).ToList();
+								if ( exists != null && exists.Any() )
+								{
+									addToConnections = false;
+									break;
+								}
+							}
+						}
+						else if ( efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONDITION_MANIFEST )
+						{
+							entity.ParentConditionManifest = ConditionManifestManager.GetBasic( ( int )efEntity.Entity.EntityBaseId );
+							relatedName = entity.ParentConditionManifest.Name;
+							relatedEntityType = "ConditionManifest";
+						}
+						//generally may not care about target resources, as getting this because caller is a target resource - could do a duration check and get anyway.
+						//IncludeTargetResources( efEntity, entity, false, true );
+						//
+						
+						SetInversionConditionType( entity, currentParentName, relatedName, relatedEntityType );
+						if ( addToConnections )
+							existingConnections.Add( entity );
+					}
+				}
+			}         
 
 			return entity;
+		}
+		/// <summary>
+		/// Set inverse condition profile
+		/// Example From:
+		/// - Credential requires Lopp
+		/// To
+		/// - Lopp is required for Credential
+		/// </summary>
+		/// <param name="input">Condition Profile</param>
+		/// <param name="relatedName"></param>
+		/// <param name="relatedEntityType"></param>
+		private static void SetInversionConditionType( ThisEntity input, string currentParentName, string relatedName, string relatedEntityType )
+		{
+			switch ( input.ConnectionProfileTypeId)
+			{
+				case 0:
+					input.ConnectionProfileTypeId = 1;
+					break;
+				case 1:
+					input.ConnectionProfileTypeId = ConnectionProfileType_NextIsRequiredFor;//3
+					break;
+				case 3:
+					input.ConnectionProfileTypeId = ConnectionProfileType_Requirement;//1
+					break;
+				case 2:
+					input.ConnectionProfileTypeId = ConnectionProfileType_NextIsRecommendedFor;//4
+					break;
+				case 4:
+					input.ConnectionProfileTypeId = ConnectionProfileType_Recommendation;//2
+					break;
+				case 6:
+					input.ConnectionProfileTypeId = ConnectionProfileType_AdvancedStandingFrom;
+					break;
+				case 7:
+					input.ConnectionProfileTypeId = ConnectionProfileType_AdvancedStandingFor;
+					break;
+				case 8:
+					input.ConnectionProfileTypeId = ConnectionProfileType_PreparationFrom;//9
+					break;
+				case 9:
+					input.ConnectionProfileTypeId = ConnectionProfileType_PreparationFor;//8
+					break;
+			}
+			input.ConnectionProfileType=GetConditionType( input.ConnectionProfileTypeId );
+			//input.Name = !string.IsNullOrWhiteSpace( input.Name ) ? input.Name : string.Format("{0} '{1}'", input.ConnectionProfileType, relatedName);
+			input.Name = string.Format( "Other requirements for '{0}'.", currentParentName );
+			input.Description = string.Format( "'{0}' '{1}' {2} '{3}'", currentParentName, input.ConnectionProfileType, relatedEntityType, relatedName );
 		}
 		private static void MapToDB( ThisEntity input, DBEntity output )
 		{
@@ -1008,49 +1203,9 @@ namespace workIT.Factories
 				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
 
 			//21-03-23 - now using ValueProfile
-			//			- interim use both until all converted
-			var condProfileUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "condProfileUsingValueProfileForCreditValue", false );
 			output.CreditValue = string.IsNullOrWhiteSpace( input.CreditValueJson ) ? null : input.CreditValueJson;
 
-			if ( !condProfileUsingValueProfileForCreditValue )
-			{
-				//if ( input.CreditValueList != null && input.CreditValueList.Any() )
-				//{
-				//	//output.CreditValueJson = input.CreditValueJson;
-				//	input.CreditValue = input.CreditValueList[ 0 ];
-				//}
-
-				//if ( input.CreditValue.HasData() )
-				//{
-				//	if ( input.CreditValue.CreditUnitType != null && input.CreditValue.CreditUnitType.HasItems() )
-				//	{
-				//		//get Id if available
-				//		EnumeratedItem item = input.CreditValue.CreditUnitType.GetFirstItem();
-				//		if ( item != null && item.Id > 0 )
-				//			output.CreditUnitTypeId = item.Id;
-				//		else
-				//		{
-				//			//if not get by schema
-				//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-				//			if ( code.Id > 0 )
-				//				output.CreditUnitTypeId = code.Id;
-				//			else
-				//			{
-				//				output.CreditHourType = item.SchemaName;
-				//				//message
-				//				LoggingHelper.LogError( string.Format( "ConditionProfile: EntityId: '{0}'. CreditUnit schema of {1} was not found.", input.ParentId, item.SchemaName ) );
-				//			}
-				//		}
-				//	}
-				//	output.CreditUnitValue = input.CreditValue.Value;
-				//	output.CreditUnitMaxValue = input.CreditValue.MaxValue;
-				//	if ( input.CreditValue.MaxValue > 0 )
-				//		output.CreditUnitValue = input.CreditValue.MinValue;
-				//	if ( !string.IsNullOrWhiteSpace( input.CreditValue.Description ) )
-				//		output.CreditUnitTypeDescription = input.CreditValue.Description;
-
-				//}
-			}
+			
 
 			//output.CreditValueJson = null;
 
@@ -1110,9 +1265,9 @@ namespace workIT.Factories
 			//=========================================================
 			//populate CreditValue
 			//TODO - chg to use JSON
-			var condProfileUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "condProfileUsingValueProfileForCreditValue", false );
 
-			if ( !string.IsNullOrWhiteSpace( input.CreditValue ) )
+
+			if ( !string.IsNullOrWhiteSpace( input.CreditValue ) && input.CreditValue != "[]" )
 			{
 				output.CreditValueList = JsonConvert.DeserializeObject<List<ValueProfile>>( input.CreditValue );
 
@@ -1121,47 +1276,9 @@ namespace workIT.Factories
 					/* AVOID THIS HACK MOVING FORWARD, USE THE LIST*/
 
 				}
-			} else
-			{
-				var creditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
+			} 
 
-				if ( creditValue.HasData() )
-				{
-					//pending
-					output.CreditValueList.Add( creditValue );
-					//need to remove references to these!!!!!!!!!!!!!!!!
-					//output.CreditUnitType = creditValue.CreditUnitType;
-					//output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-					//output.CreditUnitTypeDescription = output.CreditValue.Description;
-
-					//output.CreditUnitValue = creditValue.Value;
-					//output.CreditUnitMaxValue = creditValue.MaxValue;
-					//if ( output.CreditUnitMaxValue > 0 )
-					//{
-					//	output.CreditUnitValue = creditValue.MinValue;
-					//	output.CreditUnitMinValue = creditValue.MinValue;
-					//	output.CreditValueIsRange = true;
-					//}
-				}
-			}
-
-			
-			//else
-			//{
-			//	//check for old
-			//	output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-			//	output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-			//	output.CreditUnitValue = input.CreditUnitValue ?? 0M;
-			//	output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
-			//	//temp handling of clock hpurs
-			//	//output.CreditHourType = input.CreditHourType ?? "";
-			//	//output.CreditHourValue = ( input.CreditHourValue ?? 0M );
-			//	//if ( output.CreditHourValue > 0 )
-			//	//{
-			//	//	output.CreditUnitValue = output.CreditHourValue;
-			//	//	output.CreditUnitTypeDescription = output.CreditHourType;
-			//	//}
-			//}
+			output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
 
 			//======================================================================
 
@@ -1203,7 +1320,7 @@ namespace workIT.Factories
 
 				//assessment
 				//for entity.condition(ec) - entity = ec.rowId
-				output.TargetAssessment = Entity_AssessmentManager.GetAll(output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
+				output.TargetAssessment = Entity_AssessmentManager.GetAll(output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, true );
 				foreach ( AssessmentProfile ap in output.TargetAssessment )
 					
 				{
@@ -1292,11 +1409,10 @@ namespace workIT.Factories
 			to.SubjectWebpage = from.SubjectWebpage;
 
 			string parentName = "";
-			string conditionType = "";
 			if ( from.Entity != null && from.Entity.EntityTypeId == 1 )
 				parentName = from.Entity.EntityBaseName;
 			if ( to.ConnectionProfileTypeId > 0)
-				conditionType = GetConditionType(to.ConnectionProfileTypeId);
+				to.ConnectionProfileType = GetConditionType(to.ConnectionProfileTypeId);
 
 			//TODO - need to have a default for a missing name
 			//17-03-16 mparsons - using ProfileName for the list view, and ProfileSummary for the edit view
@@ -1314,7 +1430,7 @@ namespace workIT.Factories
 
 			if ( to.ConditionSubTypeId == ConditionSubType_CredentialConnection )
 			{
-				List<Credential> list = Entity_CredentialManager.GetAll( to.RowId );
+				List<Credential> list = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 				if ( list.Count > 0 )
 				{
 					to.ProfileName = list[ 0 ].Name;
@@ -1341,13 +1457,7 @@ namespace workIT.Factories
 
 			PopulateSubconditions( to, isForCredentialDetails );
 		} //
-		public int GetSubConditionTypeId( string conditionType )
-		{
-			int conditionSubTypeId = 0;
-
-
-			return conditionSubTypeId;
-		} //
+	
 
 		public int GetConditionTypeId( string conditionType )
 		{
@@ -1447,7 +1557,7 @@ namespace workIT.Factories
 		}
 		private static void PopulateSubconditions( ThisEntity to, bool isForCredentialDetails )
 		{
-			//alternative/additional conditions
+			//alternative conditions
 			//all required at this time!
 			List<ConditionProfile> cpList = new List<ConditionProfile>();
 			//this is wrong need to differentiate edit of condition profile versus edit view of credential
@@ -1458,13 +1568,15 @@ namespace workIT.Factories
 				foreach ( ConditionProfile item in cpList )
 				{
 					if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_Alternative )
+					{
 						to.AlternativeCondition.Add( item );
+					}
 					//else if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_Additional )
 					//	to.AdditionalCondition.Add( item );
 					else
 					{
-						EmailManager.NotifyAdmin( "Unexpected Alternative/Additional Condition Profile for a condition profile", string.Format( "ConditionProfileId: {0}, ConditionProfileTypeId: {1}, ConditionSubTypeId: {2}", to.Id, item.ConnectionProfileTypeId, item.ConditionSubTypeId ) );
-						to.AlternativeCondition.Add( item );
+						EmailManager.NotifyAdmin( "Unexpected Alternative Condition Profile for a condition profile", string.Format( "ConditionProfileId: {0}, ConditionProfileTypeId: {1}, ConditionSubTypeId: {2}", to.Id, item.ConnectionProfileTypeId, item.ConditionSubTypeId ) );
+						//to.AlternativeCondition.Add( item );
 					}
 				}
 			}
@@ -1536,6 +1648,7 @@ namespace workIT.Factories
 								if ( entity.ConnectionProfileTypeId == ConnectionProfileType_Requirement )
 								{
 									//to.Requires.Add( entity );
+									//to.Requires = new List<ThisEntity>();
 									to.Requires= HandleSubConditions( to.Requires, entity, forEditView );
 								}
 								else if ( entity.ConnectionProfileTypeId == ConnectionProfileType_Recommendation )
@@ -1634,35 +1747,38 @@ namespace workIT.Factories
 //			}
 //}//
 
+		/// <summary>
+		/// 21-05-19 - not sure if this is working properly. Why are alternative conditions being added to the list.
+		/// Might have been useful in publisher!
+		/// </summary>
+		/// <param name="profiles"></param>
+		/// <param name="entity"></param>
+		/// <param name="forEditView"></param>
+		/// <returns></returns>
 		private static List<ConditionProfile> HandleSubConditions( List<ConditionProfile> profiles, ThisEntity entity, bool forEditView )
 		{
 			profiles.Add( entity );
-			List<ConditionProfile> list = profiles;
+			//21-05-19 mp - skip the rest for now and evaluate
+			return profiles;
+			//List<ConditionProfile> list = new List<ThisEntity>();
+			//list.AddRange( profiles );
 
-			foreach ( ConditionProfile item in entity.AlternativeCondition )
-			{
-				if ( IsGuidValid( entity.AssertedByAgentUid ) && !IsGuidValid( item.AssertedByAgentUid ) )
-					item.AssertedByAgentUid = entity.AssertedByAgentUid;
+			//foreach ( ConditionProfile item in entity.AlternativeCondition )
+			//{
+			//	if ( IsGuidValid( entity.AssertedByAgentUid ) && !IsGuidValid( item.AssertedByAgentUid ) )
+			//		item.AssertedByAgentUid = entity.AssertedByAgentUid;
 
-				if ( forEditView && entity.ProfileName.ToLower().IndexOf( "<span class=" ) == -1 )
-				{
-					item.ProfileName = string.Format( "<span class='alternativeCondition'>ALTERNATIVE&nbsp;</span>{0}", item.ProfileName );
+			//	//if ( forEditView && entity.ProfileName.ToLower().IndexOf( "<span class=" ) == -1 )
+			//	//{
+			//	//	item.ProfileName = string.Format( "<span class='alternativeCondition'>ALTERNATIVE&nbsp;</span>{0}", item.ProfileName );
 
-				}
+			//	//}
 
 				
-				list.Add( item );
-			}
-
-			//foreach ( ConditionProfile item in entity.AdditionalCondition )
-			//{
-			//	if ( forEditView && entity.ProfileName.ToLower().IndexOf( "<span class=" ) == -1 )
-			//	{
-			//		item.ProfileName = string.Format( "<span class='additionalCondition'>ADDITIONAL&nbsp;</span>{0}", item.ProfileName );
-			//	}
 			//	list.Add( item );
 			//}
-			return list;
+
+			//return list;
 
 		}//
 

@@ -18,16 +18,16 @@ namespace workIT.Models.API
 		public string CurrencySymbol { get; set; }
 		public string Description { get; set; }
 		//helper
-		public bool IsRange
-		{
-			get
-			{
-				if ( MinValue > 0 && MaxValue > 0 )
-					return true;
-				else
-					return false;
-			}
-		}
+		//public bool IsRange
+		//{
+		//	get
+		//	{
+		//		if ( MinValue > 0 && MaxValue > 0 )
+		//			return true;
+		//		else
+		//			return false;
+		//	}
+		//}
 
 		public bool HasData()
 		{

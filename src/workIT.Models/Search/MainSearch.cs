@@ -32,12 +32,18 @@ namespace workIT.Models.Search
 		public string Keywords { get; set; }
 		public string CompetenciesKeywords { get; set; }
 		public string SortOrder { get; set; }
+		/// <summary>
+		/// Typically envisioned for use in Widget configure to select resources
+		/// </summary>
 		public bool UseSimpleSearch { get; set; }
 		public bool UseSPARQL { get; set; }
 		public List<MainSearchFilter> Filters { get; set; }
 		public List<MainSearchFilterV2> FiltersV2 { get; set; }
 		//yes, need to make this more general
+		//TBD: check if this is used where specific resources are selected for a widget
 		public bool HasCredentialPotentialResults { get; set; }
+		//TBD - generic version
+		public bool HasPotentialResultsFilter { get; set; }
 		/// <summary>
 		/// Currently will only be used for the search related to the widget potential results.
 		/// The search method can only handle 'known' filter types. At least one must be present, otherwise ignored
@@ -92,6 +98,7 @@ namespace workIT.Models.Search
 
 		public bool Elastic { get; set; }
 		public bool LoggingActivity { get; set; } = true;
+		public string AutocompleteContext { get; set; }
 
 		public int Results { get; set; }
 	}
@@ -110,6 +117,13 @@ namespace workIT.Models.Search
 		public string Name { get; set; }
 		public Dictionary<string, object> Values { get; set; }
 		public string CustomJSON { get; set; }
+
+		//Helpers, to make translation between new and old easier
+		public JObject TranslationHelper { get; set; }
+		public string Map_Country { get; set; }
+		public string Map_Region { get; set; }
+		public string Map_Locality { get; set; }
+		public string Map_PositionType { get; set; }
 
 		//Convenience Methods
 		public string GetValueOrDefault( string key, string defaultValue = "" )
@@ -139,7 +153,7 @@ namespace workIT.Models.Search
 				{
 					return goodInt;
 				}
-				return ( int ) Values[ key ];
+				//return ( int ) Values[ key ];
 			}
 			catch { }
 			return defaultValue;
@@ -234,11 +248,37 @@ namespace workIT.Models.Search
 		{
 			try
 			{
-				return new CodeItem()
-				{					
+				var ci = new CodeItem()
+				{
 					Id = GetValueOrDefault( "Id", 0 ),
 					Name = GetValueOrDefault( "TextValue", "" )
 				};
+				if (ci.Id == 0)
+				{
+					ci.Id = GetValueOrDefault( "CodeId", 0 );
+				}
+				return ci;
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
+		public CodeItem AsLWIAText()
+		{
+			try
+			{
+				var ci = new CodeItem()
+				{
+					Id = GetValueOrDefault( "CodeId", 0 ),
+					Name = GetValueOrDefault( "CodeText", "" )
+				};
+				//??
+				//if ( ci.Id == 0 )
+				//{
+				//	ci.Id = GetValueOrDefault( "CodeId", 0 );
+				//}
+				return ci;
 			}
 			catch
 			{
@@ -264,6 +304,22 @@ namespace workIT.Models.Search
 				return new CodeItem();
 			}
 		}
+		public CodeItem AsDefaultCodeItem()
+		{
+			try
+			{
+				return new CodeItem()
+				{
+					CategoryId = GetValueOrDefault( "CategoryId", 0 ),
+					Id = GetValueOrDefault( "CodeId", 0 ),
+					CodeTitle = GetValueOrDefault( "CodeText", "" )
+				};
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
 		public CodeItem HasAnyValue()
 		{
 			try
@@ -279,16 +335,21 @@ namespace workIT.Models.Search
 				return new CodeItem();
 			}
 		}
+
 		public Common.WidgetV2.LocationSet AsLocationSet()
 		{
 			var locationSet = new Common.WidgetV2.LocationSet();
 			try
 			{
 				//
-				//19-11-01 mp current approach doesn't work - only returns first value from a list
+				//19-11-01 mp this step is just to check for any data, processing comes later.
 				string checkemptyCountries = GetValueOrDefault( "Countries[0]", "" );
 				string checkemptyRegions = GetValueOrDefault( "Regions[0]", "" );
 				string checkemptyCities = GetValueOrDefault( "Cities[0]", "" );
+				string checkemptySubregions = GetValueOrDefault( "Subregions[0]", "" );
+				//do we do something similar for lwia/edr?
+				//string checkemptyLwias = GetValueOrDefault( "Lwia[0]", "" );
+				//string checkemptyEDRs = GetValueOrDefault( "Edrs[0]", "" );
 
 				if ( checkemptyCountries != "" )
 				{
@@ -319,6 +380,22 @@ namespace workIT.Models.Search
 
 					} while ( next != "" );
 				}
+				//new like LWIA
+				if ( checkemptySubregions != "" )
+				{
+					locationSet.Subregions = GetValueOrDefault( "Subregions[0]", "" ).Split( ',' ).ToList();
+					var next = "1";
+					int cntr = 0;
+					do
+					{
+						cntr++;
+						next = GetValueOrDefault( string.Format( "Subregions[{0}]", cntr ), "" );
+						if ( !string.IsNullOrWhiteSpace( next ) )
+							locationSet.Subregions.Add( next );
+
+					} while ( next != "" );
+				}
+				//
 				if ( checkemptyCities != "" )
 				{
 					//this only gets one value from a list, not all!
@@ -335,7 +412,24 @@ namespace workIT.Models.Search
 					} while ( next != "" );
 
 				}
+				//new LWIA. believe this is only based on widget selections?
+				//would have to understand how a filter is selected. And would have to be able to select Lwias in widget - so N/A for now.
+				//if ( checkemptyLwias != "" )
+				//{
+				//	locationSet.LWIAs = GetValueOrDefault( "Lwias[0]", "" ).Split( ',' ).ToList();
+				//	var next = "1";
+				//	int cntr = 0;
+				//	do
+				//	{
+				//		cntr++;
+				//		next = GetValueOrDefault( string.Format( "Lwias[{0}]", cntr ), "" );
+				//		if ( !string.IsNullOrWhiteSpace( next ) )
+				//			locationSet.LWIAs.Add( next );
 
+				//	} while ( next != "" );
+				//}
+
+				//
 				locationSet.IsAvailableOnline = GetValueOrDefault( "IsAvailableOnline", false );
 
 				return locationSet;
@@ -541,6 +635,7 @@ namespace workIT.Models.Search
 		public int TargetEntityBaseId { get; set; }
 		public string TargetEntityType { get; set; }
 		public string TargetEntityName { get; set; }
+		public string TargetFriendlyName { get; set; }
 		public string TargetEntitySubjectWebpage { get; set; }
 		public bool IsReference { get; set; }
 		public int TargetEntityTypeId { get; set; }

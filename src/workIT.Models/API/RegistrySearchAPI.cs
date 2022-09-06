@@ -11,6 +11,22 @@ using Newtonsoft.Json.Converters;
 
 namespace workIT.Models.API.RegistrySearchAPI
 {
+	//Resource and DSP data for use with a single Resource, for a Detail Page
+	public class DetailPageDescriptionSet
+	{
+		public DetailPageDescriptionSet()
+		{
+			RelatedItemsMap = new List<RelatedItemsPath>();
+			DebugInfo = new JObject();
+		}
+		public JObject Resource { get; set; }
+		public JObject Metadata { get; set; }
+		public List<RelatedItemsPath> RelatedItemsMap { get; set; }
+		public List<JObject> RelatedItems { get; set; }
+		public JObject DebugInfo { get; set; }
+	}
+	//
+
 	//Used by other areas in the code
 	public class ComposedSearchResultSet
 	{
@@ -90,8 +106,10 @@ namespace workIT.Models.API.RegistrySearchAPI
 		public int DescriptionSetRelatedURIsLimit { get; set; }
 		public bool IncludeDebugInfo { get; set; }
 		public bool IncludeResultsMetadata { get; set; }
+		public string Community { get; set; }
 		public bool SkipLogging { get; set; }
 		public JObject ExtraLoggingInfo { get; set; }
+		public bool UseBetaAPI { get; set; }
 	}
 	//
 
@@ -133,4 +151,20 @@ namespace workIT.Models.API.RegistrySearchAPI
 		public List<string> URIs { get; set; }
 	}
 	//
+
+	//Classes for direct interaction with the Registry
+	public class RawRegistryResponse
+	{
+		public RawRegistryResponse()
+		{
+			DebugInfo = new JObject();
+		}
+
+		public bool Successful { get; set; }
+		public string RawContent { get; set; }
+		public JToken RawData {get; set;}
+		public JObject DebugInfo { get; set; }
+	}
+	//
+
 }

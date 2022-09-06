@@ -28,8 +28,11 @@ namespace workIT.Models
 		public string SortName { get; set; }
 		public string AspNetUserId { get; set; }
         public string CEAccountIdentifier { get; set; } = "";
-        //
-        public bool IsActive { get; set; }
+		public int CreatedById { get; set; }
+		public int LastUpdatedById { get; set; }
+
+		//
+		public bool IsActive { get; set; }
 		public bool IsValid { get; set; }
 
 		public List<string> UserRoles { get; set; }

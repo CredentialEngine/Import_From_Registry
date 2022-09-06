@@ -33,6 +33,8 @@ namespace workIT.Models.Common
 				return string.Format( "EntityTypeId: {0}, EntityBaseName: {1}, EntityBaseId: {2}, CTID: {3}", EntityTypeId, ( EntityBaseName ?? "none" ), EntityBaseId, CTID ?? "" );
 			}
 		}
+		//derived
+		public int EntityStateId { get; set; }
 	}
 
 	public class TopLevelEntityReference
@@ -70,7 +72,7 @@ namespace workIT.Models.Common
 						EntityType = "Pathway";
 						break;
 					case 9:
-						EntityType = "Rubric";
+						EntityType = "Collection";
 						break;
 					case 10:
 					case 17:
@@ -128,11 +130,15 @@ namespace workIT.Models.Common
 			}
 		}
 		public string EntityType { get; set; }
+		public int EntityStateId { get; set; } = 3;
 		public string Image { get; set; }
 	}
 
 	public class EntityCache
 	{
+		/// <summary>
+		/// From related Entity.Id
+		/// </summary>
 		public int Id { get; set; }
 		public int EntityTypeId { get; set; }
 		public string EntityType { get; set; }
@@ -142,11 +148,15 @@ namespace workIT.Models.Common
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public string CTID { get; set; }
+
 		public int OwningOrgId { get; set; }
+		//
+		public int PublishedByOrganizationId { get; set; }
 		/// <summary>
 		/// Use OwningAgentUID to get OwningOrgId if not available
 		/// </summary>
 		public System.Guid OwningAgentUID { get; set; }
+		public string OwningOrgCTID { get; set; }
 		public string SubjectWebpage { get; set; }
 		public string ImageUrl { get; set; }
 		public int parentEntityId { get; set; }

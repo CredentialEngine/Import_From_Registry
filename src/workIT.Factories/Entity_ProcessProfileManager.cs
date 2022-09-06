@@ -44,6 +44,7 @@ namespace workIT.Factories
 		#region Entity Persistance ===================
 		public bool SaveList( List<ThisEntity> list, int processProfileTypeId, Guid parentUid, ref SaveStatus status )
 		{
+			//a delete all is done before entering here, so can leave if input is empty
 			if ( list == null || list.Count == 0 )
 				return true;
 
@@ -230,6 +231,12 @@ namespace workIT.Factories
 
 			if ( HandleTargets( entity, relatedEntity, ref status ) == false )
 				isAllValid = false;
+			//
+			//JurisdictionProfile 
+			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+			//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
+			jpm.DeleteAll( relatedEntity, ref status );
+			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
 			//
 			return isAllValid;
 		}
@@ -453,10 +460,11 @@ namespace workIT.Factories
 								from code in context.Codes_ProcessProfileType
 									.Where( m => m.Id == p.ProcessTypeId )
 								where p.EntityId == parent.Id
-								group p by new { code.Name, code.Id } into g
+								group p by new { code.Name, code.Id, code.SchemaName } into g
 								select new CodeItem
 								{
 									Name = g.Key.Name,
+									SchemaName = g.Key.SchemaName,
 									Id = g.Key.Id,
 									Totals = g.Count()
 								};

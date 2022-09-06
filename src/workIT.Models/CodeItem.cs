@@ -37,6 +37,7 @@ namespace workIT.Models
 		public string Title { get; set; }
 		
 		public string Description { get; set; }
+		//Usually external URL, but sometimes a schema URL
 		public string URL { get; set; }
 		public string SchemaName { get; set; }
 		public string ParentSchemaName { get; set; }

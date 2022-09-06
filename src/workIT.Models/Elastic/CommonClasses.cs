@@ -19,7 +19,8 @@ namespace workIT.Models.Elastic
     public class IndexReferenceFramework
     {
         public int CategoryId { get; set; }
-        public int ReferenceFrameworkId { get; set; }
+        //
+        public int ReferenceFrameworkItemId { get; set; }
         public string Name { get; set; }
         public string SchemaName { get; set; }
         public string CodeGroup { get; set; }

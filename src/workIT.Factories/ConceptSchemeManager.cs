@@ -34,7 +34,7 @@ namespace workIT.Factories
 		{
 			bool isValid = true;
 			int count = 0;
-
+			DateTime lastUpdated = System.DateTime.Now;
 			DBEntity efEntity = new DBEntity();
 			try
 			{
@@ -77,6 +77,9 @@ namespace workIT.Factories
 						if ( count == 0 )
 						{
 							status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.Name ) ? "no description" : entity.Name ) );
+
+							entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
+							UpdateEntityCache( entity, ref status );
 						}
 						else
 						{
@@ -116,6 +119,7 @@ namespace workIT.Factories
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
+								lastUpdated = status.LocalUpdatedDate;
 							}
 							//has changed?
 							if ( HasStateChanged( context ) )
@@ -142,6 +146,8 @@ namespace workIT.Factories
 								}
 								
 							}
+							entity.LastUpdated = lastUpdated;
+							UpdateEntityCache( entity, ref status );
 							UpdateParts( entity, ref status );
 							//
 							HandleConceptsSimple( entity, ref status );
@@ -156,7 +162,32 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			var ec = new EntityCache()
+			{
+				EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME,
+				EntityType = "ConceptScheme",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				ImageUrl = document.Image,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId,
+				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
@@ -263,19 +294,16 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-			if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-				&& string.IsNullOrWhiteSpace( ctid ) )
+			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
-				statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
+				statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
 				return false;
 			}
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-				envelopeId = "SKIP ME";
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-				ctid = "SKIP ME";
+		
+
 			int orgId = 0;
 			Guid orgUid = new Guid();
 			using ( var context = new EntityContext() )
@@ -284,9 +312,7 @@ namespace workIT.Factories
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.ConceptScheme
-								.FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-								|| ( s.CTID == ctid )
-								);
+								.FirstOrDefault( s => s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -316,11 +342,13 @@ namespace workIT.Factories
 								ActivityObjectId = efEntity.Id
 							} );
 							isValid = true;
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, efEntity.Id, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, efEntity.Id, ref messages );
 							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 
 							//delete all relationships
 							workIT.Models.SaveStatus status = new SaveStatus();
@@ -340,7 +368,7 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
 					isValid = false;
 					statusMessage = FormatExceptions( ex );
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
@@ -449,6 +477,8 @@ namespace workIT.Factories
 			to.EntityStateId = from.EntityStateId;
 			to.OrganizationId = from.OrgId;
 			to.Name = from.Name;
+			to.FriendlyName = FormatFriendlyTitle( from.Name );
+
 			to.Description = from.Description;
 
 			to.IsProgressionModel = from.IsProgressionModel == null ? false : (bool)from.IsProgressionModel;
@@ -560,11 +590,13 @@ namespace workIT.Factories
 						return list;
 					}
 				}
-
+				int rowNbr = ( pageNumber - 1 ) * pageSize;
 				foreach ( DataRow dr in result.Rows )
 				{
+					rowNbr++;
 					item = new ConceptSchemeSummary();
 					item.Id = GetRowColumn( dr, "Id", 0 );
+					item.ResultNumber = rowNbr;
 					item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 					var organizationName = GetRowColumn( dr, "OrganizationName", "" );
 					item.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID" );
@@ -606,7 +638,7 @@ namespace workIT.Factories
 
 			using ( var context = new EntityContext() )
 			{
-				var results = context.ConceptScheme.Where( s => s.OrgId == orgId ).ToList();
+				var results = context.ConceptScheme.Where( s => s.OrgId == orgId && s.EntityStateId == 3 ).ToList();
 				if ( results != null && results.Count > 0 )
 				{
 					totalRecords = results.Count();
@@ -650,10 +682,10 @@ namespace workIT.Factories
 			//
 			if ( IsValidDate( from.Created ) )
 				to.Created = ( DateTime )from.Created;
-			to.CreatedById = from.CreatedById;
+			//to.CreatedById = from.CreatedById;
 			if ( IsValidDate( from.LastUpdated ) )
 				to.LastUpdated = ( DateTime )from.LastUpdated;
-			to.LastUpdatedById = from.LastUpdatedById;
+			//to.LastUpdatedById = from.LastUpdatedById;
 
 
 			//TODO

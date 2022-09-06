@@ -30,10 +30,11 @@ namespace workIT.Factories
 		#region JurisdictionProfile Core  =======================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, int jProfilePurposeId, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
-				return true;
+			//a delete all is done before entering here, so can leave if input is empty
+            if ( list == null || list.Count == 0 )
+                return true;
 
-			bool isAllValid = true;
+            bool isAllValid = true;
 			foreach ( ThisEntity item in list )
 			{
 				item.JProfilePurposeId = jProfilePurposeId;

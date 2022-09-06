@@ -10,6 +10,7 @@ using workIT.Models;
 using WM= workIT.Models;
 using ThisEntity = workIT.Models.RegistryImport;
 using DBEntity = workIT.Data.Tables.Import_Staging;
+using DBPendingRequest = workIT.Data.Tables.Import_PendingRequest;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ImportMessage = workIT.Data.Tables.Import_Message;
 
@@ -24,6 +25,12 @@ namespace workIT.Factories
 
 
 		#region Import_Staging
+		/// <summary>
+		/// Add entity to Import.Staging
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
 		public int Add( ThisEntity entity, ref List<string> messages )
 		{
 			DBEntity efEntity = new DBEntity();
@@ -318,6 +325,13 @@ namespace workIT.Factories
 			{
 				try
 				{
+					if (string.IsNullOrEmpty( referencedAtId ) )
+                    {
+						var registryURL = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
+						var defaultCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
+						//we have CTID, so make up a URL
+						referencedAtId = string.Format( registryURL, defaultCommunity, referencedCtid );
+					}
 					//first determine if referencedAtId exists
 					EM.Import_EntityResolution entity = Import_EntityResolution_GetById( referencedAtId );
                     if (entity == null || entity.Id == 0)
@@ -580,6 +594,65 @@ namespace workIT.Factories
 
 		#region Import.PendingRequest
 		/// <summary>
+		/// Add an adhoc request to the pending table
+		/// Prototype: plan mostly for helper to get resources that have not been downloaded to the current env.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
+		public int Import_PendingRequestAdd( WM.Import_PendingRequest entity, ref SaveStatus status )
+		{
+			var efEntity = new DBPendingRequest();
+			//
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					//typically have only a subset of info 
+					efEntity.Created = System.DateTime.Now;
+					efEntity.EntityCtid = entity.EntityCtid;
+					efEntity.PublishingEntityType = entity.PublishingEntityType;
+					efEntity.PublisherCTID = entity.PublisherCTID;
+					efEntity.DataOwnerCTID = entity.DataOwnerCTID;
+					efEntity.WasChanged = true;
+					efEntity.Environment = UtilityManager.GetAppKeyValue( "envType" );
+					efEntity.PublishMethodURI = "Unknown-Added to queue";//required field, setting arbitrarily. Max 50char
+
+					context.Import_PendingRequest.Add( efEntity );
+
+					// submit the change to database
+					int count = context.SaveChanges();
+					if ( count > 0 )
+					{
+						entity.Id = efEntity.Id;
+						return efEntity.Id;
+					}
+					else
+					{
+						//?no info on error
+						status.AddError( thisClassName + "Error - the add was not successful. " );
+						string message = string.Format( thisClassName + ".Import_PendingRequestAdd() Failed", "Attempted to add a Import_PendingRequest document. The process appeared to not work, but was not an exception, so we have no message, or no clue. PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid );
+						//EmailManager.NotifyAdmin( thisClassName + ".Import_PendingRequestAdd() Failed", message );
+						LoggingHelper.LogError( thisClassName, "Import_PendingRequestAdd", string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), message );
+					}
+				}
+				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+				{
+					string message = HandleDBValidationError( dbex, thisClassName + ".Import_PendingRequestAdd() ", "Import" );
+					status.AddError( "Error - the save was not successful. " + message );
+					LoggingHelper.LogError( dbex, thisClassName, string.Format( "Import_PendingRequestAdd(), DbEntityValidationException PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), true );
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, thisClassName, string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), true );
+					status.AddError( "Unexpected system error. The site administration has been notified." );
+				}
+			}
+
+			return entity.Id;
+		}//
+
+		/// <summary>
 		/// Select specific entity type. 
 		/// Only return records not already processed, and have wasChanged = true 
 		/// TODO- should deletes also be returned and have caller process as found?
@@ -705,9 +778,11 @@ namespace workIT.Factories
 								PublishMethodURI = item.PublishMethodURI,
 								PublishingEntityType = item.PublishingEntityType, 
 								PublisherCTID = item.PublisherCTID,
-								DataOwnerCTID= item.DataOwnerCTID
-								//EnvelopeLastUpdated = item.EnvelopeLastUpdated
+								DataOwnerCTID= item.DataOwnerCTID,								
 							};
+							if ( item.EnvelopeLastUpdated != null )
+								entity.EnvelopeLastUpdated = ( DateTime )item.EnvelopeLastUpdated;
+
 							//entity.EntityTypedId = item.EntityTypedId; //derive??
 							if ( prevCTID != entity.EntityCtid.ToLower() )
 								list.Add( entity );

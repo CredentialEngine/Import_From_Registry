@@ -19,7 +19,7 @@ namespace workIT.Models.ProfileModels
 		}
 
 		public string SubjectWebpage { get; set; }
-		public string VerificationServiceUrl { get; set; }
+		public string VerificationService { get; set; }
 
 		public bool? HolderMustAuthorize { get; set; }
 		public List<CostProfile> EstimatedCost { get; set; }
@@ -49,7 +49,7 @@ namespace workIT.Models.ProfileModels
 		public string VerificationMethodDescription { get; set; }
 
 		public List<JurisdictionProfile> Region { get; set; }
-		public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
+		public List<JurisdictionProfile> OfferedIn { get; set; }
 
 
 

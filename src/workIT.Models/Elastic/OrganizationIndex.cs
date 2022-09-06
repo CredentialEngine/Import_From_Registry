@@ -42,15 +42,16 @@ namespace workIT.Models.Elastic
         }
 
         public int NameIndex { get; set; }
-  //      public string Name { get; set; }
-  //      public string Description { get; set; }
-  //      public Guid RowId { get; set; }
-  //      public string SubjectWebpage { get; set; }
-  //      public string CTID { get; set; }
-		//public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
+        //      public string Name { get; set; }
+        //      public string Description { get; set; }
+        //      public Guid RowId { get; set; }
+        //      public string SubjectWebpage { get; set; }
+        //      public string CTID { get; set; }
+        //public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
 
-
-		public string ImageURL { get; set; }
+        public int? LifeCycleStatusTypeId { get; set; }
+        public string LifeCycleStatusType { get; set; }
+        public string ImageURL { get; set; }
         //public int EntityStateId { get; set; }
         //public string CredentialRegistryId { get; set; }
 
@@ -147,9 +148,13 @@ namespace workIT.Models.Elastic
         public int ConditionManifestsCount { get; set; }
 		public int PathwaysCount { get; set; }
 		public int PathwaySetsCount { get; set; }
+		public int ProcessProfilesCount { get; set; }
+
 		public int TransferValueProfilesCount { get; set; }
+		public int DataSetProfileCount { get; set; }
+		public int JurisdictionProfilesCount { get; set; }
 
-
+		//
 		public int SubsidiariesCount { get; set; }
         public int DepartmentsCount { get; set; }
         public int HasIndustriesCount { get; set; }
@@ -157,6 +162,9 @@ namespace workIT.Models.Elastic
 		//placeholder to satisfy IIndex
 		public bool IsAvailableOnline { get; }
 		public List<IndexSubject> Subjects { get; set; }
-	}
+        //here just because in IIndex
+        public string OwnerOrganizationName { get; set; }
+
+    }
 
 }

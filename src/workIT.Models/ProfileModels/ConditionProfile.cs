@@ -141,10 +141,10 @@ namespace workIT.Models.ProfileModels
 		public Enumeration CreditUnitType { get; set; } //Used for publishing
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
-		public decimal CreditUnitMinValue { get; set; }
+		//public decimal CreditUnitMinValue { get; set; }
 
-		public decimal CreditUnitMaxValue { get; set; }
-		public bool CreditValueIsRange { get; set; }
+		//public decimal CreditUnitMaxValue { get; set; }
+		//public bool CreditValueIsRange { get; set; }
 		//
 		public Enumeration AudienceLevel { get; set; }
 		public Enumeration AudienceLevelType { get { return AudienceLevel; } set { AudienceLevel = value; } } //Alias used for publishing
@@ -178,7 +178,7 @@ namespace workIT.Models.ProfileModels
 
 		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
-		//IMPORT ONLY
+		//IMPORT ?????
 		public List<CredentialAlignmentObjectProfile> TargetCompetencies { get; set; }
 		public List<TextValueProfile> Condition { get; set; }
 

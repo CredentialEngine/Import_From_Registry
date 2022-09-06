@@ -24,11 +24,12 @@ namespace workIT.Models.API
 		
 		public string Description { get; set; }
 		public List<ME.JurisdictionProfile> Jurisdiction { get; set; } 
-		public string RevocationCriteriaUrl { get; set; }
-		public string RevocationCriteriaDescription { get; set; }
+		public LabelLink RevocationCriteria { get; set; }
+		//AgentPurposeDescription is combined with AgentPurpose in a Link object
+		//public string RevocationCriteriaDescription { get; set; }
 
 		//public List<Credential> CredentialProfiled { get; set; } //holds values of RequiredCredential
 
-		public List<ME.JurisdictionProfile> Region { get; set; } 
+		//public List<ME.JurisdictionProfile> Region { get; set; } 
 	}
 }

@@ -92,21 +92,6 @@ namespace workIT.Factories
 						return id;
 					}
 
-					if ( allowMultiples == false )
-					{
-						//check if one exists, and replace if found
-						//		&& s.RelationshipTypeId == relationshipTypeId 
-						//efEntity = context.Entity_LearningOpportunity
-						//	.FirstOrDefault( s => s.EntityId == parent.Id );
-						//if ( efEntity != null && efEntity.Id > 0 )
-						//{
-						//	efEntity.LearningOpportunityId = learningOppId;
-
-						//	count = context.SaveChanges();
-
-						//	return efEntity.Id;
-						//}
-					}
 					efEntity = new DBEntity();
 					efEntity.EntityId = parent.Id;
 					efEntity.LearningOpportunityId = learningOppId;
@@ -225,7 +210,8 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static List<ThisEntity> LearningOpps_GetAll( Guid parentUid,
 					bool forProfilesList,
-					bool isForCredentialDetails = false, int relationshipTypeId = 1 )
+					bool isForCredentialDetails = false, 
+					int relationshipTypeId = 1 )
 		{
 			List<ThisEntity> list = new List<ThisEntity>();
 			ThisEntity entity = new ThisEntity();
@@ -240,6 +226,7 @@ namespace workIT.Factories
 			bool includingProfiles = false;
 			if ( isForCredentialDetails )
 			{
+				//don't want this when called from a condition profile!
 				includingProperties = true;
 				includingProfiles = true;
 			}
@@ -249,7 +236,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					List<DBEntity> results = context.Entity_LearningOpportunity
-							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
+							.Where( s => s.EntityId == parent.Id && ( relationshipTypeId == 0 || s.RelationshipTypeId == relationshipTypeId ) )
 							.OrderBy( s => s.LearningOpportunity.Name )
 							.ToList();
 
@@ -263,8 +250,7 @@ namespace workIT.Factories
                                 if ( forProfilesList || isForCredentialDetails )
                                 {
 
-									LearningOpportunityManager.MapFromDB_Basic( item.LearningOpportunity, entity,
-								true );
+									LearningOpportunityManager.MapFromDB_Basic( item.LearningOpportunity, entity );
 
                                     if ( isForCredentialDetails )
                                     {

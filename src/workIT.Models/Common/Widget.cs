@@ -28,8 +28,10 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string SearchFilters { get; set; }
 		public WidgetFilters WidgetFilters { get; set; } = new WidgetFilters();
-
-		public bool HasCredentialPotentialResults { get; set; }
+        public int CreatedById { get; set; }
+        public int LastUpdatedById { get; set; }
+        public bool HasCredentialPotentialResults { get; set; }
+		public bool AllowsCSVExport { get; set; }
 		#region Style related 
 		public string WidgetStylesUrl { get; set; }
 		//may not be used, as is part of json
@@ -83,7 +85,9 @@ namespace workIT.Models.Common
         public OrganizationFilters OrganizationFilters { get; set; } = new OrganizationFilters();
         public AssessmentFilters AssessmentFilters { get; set; } = new AssessmentFilters();
         public LearningOpportunityFilters LoppFilters { get; set; } = new LearningOpportunityFilters();
-
+        public PathwayFilters PathwayFilters { get; set; } = new PathwayFilters();
+        public TransferValueFilters TransferValueFilters { get; set; } = new TransferValueFilters();
+        public ConceptSchemeFilters ConceptSchemeFilters { get; set; } = new ConceptSchemeFilters();
         public SearchFilters SearchFilters { get; set; } = new SearchFilters();
 
         public GlobalSearchFilters HideGlobalSearchFilters { get; set; } = new GlobalSearchFilters();
@@ -204,6 +208,27 @@ namespace workIT.Models.Common
     {
 		public bool HasPotentialResults { get; set; }
 		public string Keywords { get; set; }
+
+    }
+    [Serializable]
+    public class PathwayFilters
+    {
+        public bool HasPotentialResults { get; set; }
+        public string Keywords { get; set; }
+
+    }
+    [Serializable]
+    public class TransferValueFilters
+    {
+        public bool HasPotentialResults { get; set; }
+        public string Keywords { get; set; }
+
+    }
+    [Serializable]
+    public class ConceptSchemeFilters
+    {
+        public bool HasPotentialResults { get; set; }
+        public string Keywords { get; set; }
 
     }
 }

@@ -70,7 +70,7 @@ namespace workIT.Factories
 						{
 							//?no info on error
 							messages.Add( "Error - the profile was not saved. " );
-							string message = string.Format( "Pathway_ComponentConditionManager.Add Failed", "Attempted to add a Pathway_ComponentCondition. The process appeared to not work, but was not an exception, so we have no message, or no clue.Pathway_ComponentCondition. Pathway_ComponentCondition: {0}, createdById: {1}", entity.Name, entity.CreatedById );
+							string message = string.Format( "Pathway_ComponentConditionManager.Add Failed", "Attempted to add a Pathway_ComponentCondition. The process appeared to not work, but was not an exception, so we have no message, or no clue.Pathway_ComponentCondition. Pathway_ComponentCondition: {0}", entity.Name);
 							EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 						}
 					}
@@ -96,7 +96,7 @@ namespace workIT.Factories
 								{
 									//?no info on error
 									messages.Add( "Error - the update was not successful. " );
-									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a Pathway_ComponentCondition. The process appeared to not work, but was not an exception, so we have no message, or no clue. Pathway_ComponentConditionId: {0}, Id: {1}, updatedById: {2}", entity.Id, entity.Id, entity.LastUpdatedById );
+									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a Pathway_ComponentCondition. The process appeared to not work, but was not an exception, so we have no message, or no clue. Pathway_ComponentConditionId: {0}, Id: {1}", entity.Id, entity.Id );
 									EmailManager.NotifyAdmin( thisClassName + ". Pathway_ComponentCondition_Update Failed", message );
 								}
 							}

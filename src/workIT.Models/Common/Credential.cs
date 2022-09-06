@@ -91,33 +91,13 @@ namespace workIT.Models.Common
 
 			VersionIdentifierList = new List<Entity_IdentifierValue>();
 		}
-		/// <summary>
-		/// Credential name
-		/// </summary>
-		//public string Name { get; set; }
-		// public string Description { get; set; }
-		public DateTime RegistryLastUpdated { get; set; }
-		/// <summary>
-		/// OwningAgentUid
-		///  (Nov2016)
-		/// </summary>
-		//public Guid OwningAgentUid { get; set; }
-		//public Organization OwningOrganization { get; set; }
 
-		//public int OwningOrganizationId
-		//{
-		//    get
-		//    {
-		//        if (OwningOrganization != null && OwningOrganization.Id > 0)
-		//            return OwningOrganization.Id;
-		//        else
-		//            return 0;
-		//    }
-		//}
+		public DateTime RegistryLastUpdated { get; set; }
+
 		public CredentialExternalProperties CredentialExternalProperties { get; set; } = new CredentialExternalProperties();
+		//propsal used JsonProperties to store serialized version of CredentialExternalProperties
 		public string JsonProperties { get; set; }
 		public Enumeration OwnerRoles { get; set; }
-		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; } = new List<OrganizationRoleProfile>();
 
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
@@ -132,23 +112,6 @@ namespace workIT.Models.Common
         //use for import and detail, so maybe don't need AlternateName
         public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
-       
-		/// <summary>
-		/// Single is the primary for now
-		/// </summary>
-		public string VersionIdentifier { get; set; }
-		/// <summary>
-		/// Also doing import of list
-		/// </summary>
-		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
-
-		//		public int EntityStateId { get; set; }
-		//public string CTID { get; set; }
-		/// <summary>
-		/// Envelope Idenfier from the Credential Registry
-		/// </summary>
-		//public string CredentialRegistryId { get; set; }
-		//URLs
 		public string LatestVersion { get; set; }
 		public string PreviousVersion { get; set; }
 		public string NextVersion { get; set; } //URL
@@ -198,11 +161,24 @@ namespace workIT.Models.Common
 		public Enumeration AssessmentDeliveryType { get; set; } = new Enumeration();
 		public Enumeration LearningDeliveryType { get; set; } = new Enumeration();
 
+		public int CredentialStatusTypeId { get; set; }
 		public Enumeration CredentialStatusType { get; set; }
+		public string CredentialStatus { get; set; }
+		public string CredentialStatusTypeSchema { get; set; }
 		public List<Credential> EmbeddedCredentials { get; set; } //bundled/sub-credentials
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
+
 		public List<Credential> IsPartOf { get; set; } //pseudo-"parent" credentials that this credential is a part of or included with (could be multiple)
 		public List<int> HasPartIds { get; set; }
 		public List<int> IsPartOfIds { get; set; }
+		public List<ConditionProfile> IsPartOfConditionProfile { get; set; } = new List<ConditionProfile>();
+		//21-09-08 mp - not clear if this is needed anymore - hold over from publisher?
+		public List<Credential> IsPartOfCredential { get; set; }
+
 		// ==================================================================
 		public List<Credential> ETPLCredentials { get; set; } = new List<Credential>();
 		public List<AssessmentProfile> ETPLAssessments { get; set; } = new List<AssessmentProfile>();
@@ -222,7 +198,7 @@ namespace workIT.Models.Common
 		//public List<TopLevelObject> HasETPLLopps { get; set; } = new List<TopLevelObject>();
 		public List<int> HasETPLLoppsIds { get; set; } = new List<int>();
 		public List<int> TargetPathwayIds { get; set; } = new List<int>();
-
+		public List<TransferValueProfile> HasTransferValueProfile { get; set; } = new List<TransferValueProfile>();
 		// ==================================================================
 
 		/// <summary>
@@ -286,14 +262,16 @@ namespace workIT.Models.Common
 		public Enumeration MilitaryOccupation { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
+		public List<OrganizationRoleProfile> OwningOrganizationQAReceived { get; set; }
+
 		public List<OrganizationRoleProfile> OfferedByOrganizationRole { get; set; }
 		public List<Organization> OfferedByOrganization { get; set; }
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
 		#region Import Profiles
-		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
-		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; }
+		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; }
 		public List<string> Naics { get; set; }
 		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
 		public List<Guid> AccreditedBy { get; set; }
@@ -391,8 +369,17 @@ namespace workIT.Models.Common
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
-		public string IdentifierJson { get; set; }
+		public string IdentifierJSON { get; set; }
+
+		/// <summary>
+		/// Also doing import of list
+		/// </summary>
+		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
+		public List<IdentifierValue> VersionIdentifierNew { get; set; }
+		public string VersionIdentifierJSON { get; set; }
+
 		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> Subject { get; set; }
 
@@ -451,6 +438,7 @@ namespace workIT.Models.Common
 		//public List<CredentialAlignmentObjectProfile> RequiresCompetencies { get; set; }
 
 		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
+		public List<QData.DataSetProfile> ExternalDataSetProfiles { get; set; } = new List<QData.DataSetProfile>();
 		public List<EarningsProfile> Earnings { get; set; } = new List<EarningsProfile>();
 
 		public List<HoldersProfile> Holders { get; set; } = new List<HoldersProfile>();

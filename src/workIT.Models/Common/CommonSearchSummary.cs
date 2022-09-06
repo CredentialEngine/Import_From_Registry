@@ -31,6 +31,7 @@ namespace workIT.Models.Common
 		public int PrimaryOrganizationId { get; set; }
 
 		public string PrimaryOrganizationName { get; set; }
+		public string PrimaryOrganizationFriendlyName { get; set; }
 
 		public string PrimaryOrganizationCTID { get; set; }
 		public List<int> AgentRelationships { get; set; } = new List<int>();
@@ -62,6 +63,17 @@ namespace workIT.Models.Common
 		public List<int> ResourceForWidget { get; set; } = new List<int>();
 		//OR
 		//public List<IndexWidgetTag> WidgetTags { get; set; } = new List<IndexWidgetTag>();
-		
+
+		public int TransferValueForCredentialsCount { get; set; }
+		#region TVP counts
+		public int PathwaysCount { get; set; }
+		public int TransferValueFromCredentialsCount { get; set; }
+		public int TransferValueForAssessmentsCount { get; set; }
+		public int TransferValueFromAssessmentsCount { get; set; }
+		public int TransferValueForLoppsCount { get; set; }
+		public int TransferValueFromLoppsCount { get; set; }
+
+
+		#endregion
 	}
 }

@@ -27,6 +27,9 @@ namespace workIT.Factories
 	public class PathwayComponentManager : BaseFactory
 	{
 		static string thisClassName = "PathwayComponentManager";
+		static string EntityType = "PathwayComponent";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT;
+
 		public static int componentActionOfNone = 0;
 		public static int componentActionOfSummary = 1;
 		public static int componentActionOfDeep = 2;
@@ -49,7 +52,8 @@ namespace workIT.Factories
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
 					{
-						return false;
+						//alway trudge on
+						//return false;
 					}
 
 					if ( entity.Id == 0 )
@@ -80,7 +84,7 @@ namespace workIT.Factories
 						{
 							//?no info on error
 							status.AddError( "Error - the profile was not saved. " );
-							string message = string.Format( "PathwayComponentManager.Add Failed", "Attempted to add a PathwayComponent. The process appeared to not work, but was not an exception, so we have no message, or no clue.PathwayComponent. PathwayComponent: {0}, createdById: {1}", entity.Name, entity.CreatedById );
+							string message = string.Format( "PathwayComponentManager.Add Failed", "Attempted to add a PathwayComponent. The process appeared to not work, but was not an exception, so we have no message, or no clue.PathwayComponent. PathwayComponent: {0}", entity.Name );
 							EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 						}
 					}
@@ -107,7 +111,7 @@ namespace workIT.Factories
 								{
 									//?no info on error
 									status.AddError( "Error - the update was not successful. " );
-									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a PathwayComponent. The process appeared to not work, but was not an exception, so we have no message, or no clue. PathwayComponentId: {0}, Id: {1}, updatedById: {2}", entity.Id, entity.Id, entity.LastUpdatedById );
+									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a PathwayComponent. The process appeared to not work, but was not an exception, so we have no message, or no clue. PathwayComponentId: {0}, Id: {1}.", entity.Id, entity.Id );
 									EmailManager.NotifyAdmin( thisClassName + ". PathwayComponent_Update Failed", message );
 								}
 							}
@@ -158,7 +162,6 @@ namespace workIT.Factories
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
 			}
-
 			//21-01-07 mparsons - Identifier will now be saved in the Json properties, not in Entity_IdentifierValue
 			//new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier, ref status, false );
 			Entity_CredentialManager ecm = new Entity_CredentialManager();
@@ -166,39 +169,49 @@ namespace workIT.Factories
 			//
 			var eam = new Entity_AssessmentManager();
 			eam.DeleteAll( relatedEntity, ref status );
-			//
+			//??? issue - previously added an e.lopp and now is getting deleted?
 			var elom = new Entity_LearningOpportunityManager();
 			elom.DeleteAll( relatedEntity, ref status );
+			//TBD
+			var ecompm = new Entity_CompetencyManager();
+			//ecompm.DeleteAll( relatedEntity, ref status );
+			//
 			int newId = 0;
 
 			if ( entity.JsonProperties != null )
 			{
 				if ( entity.JsonProperties.SourceCredential != null && entity.JsonProperties.SourceCredential.Id > 0 )
 				{
-					ecm.Add( entity.RowId, entity.JsonProperties.SourceCredential.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, ref newId, ref status );
+					//21-07-23 mp	- These relationships are now considered inverse relationships for TargetPathway.
+					//				- IsPartOf is not correct. TargetResource makes more sense!
+					ecm.Add( entity.RowId, entity.JsonProperties.SourceCredential.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, ref newId, ref status );
 				}
 				if ( entity.JsonProperties.SourceAssessment != null && entity.JsonProperties.SourceAssessment.Id > 0 )
 				{
-					eam.Add( entity.RowId, entity.JsonProperties.SourceAssessment.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
+					eam.Add( entity.RowId, entity.JsonProperties.SourceAssessment.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, false, ref status );
 				}
 				if ( entity.JsonProperties.SourceLearningOpportunity != null && entity.JsonProperties.SourceLearningOpportunity.Id > 0 )
 				{
-					elom.Add( entity.RowId, entity.JsonProperties.SourceLearningOpportunity.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
+					elom.Add( entity.RowId, entity.JsonProperties.SourceLearningOpportunity.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, false, ref status );
+				}
+				if ( entity.JsonProperties.SourceCompetency != null && entity.JsonProperties.SourceCompetency.Id > 0 )
+				{
+					//TBD for a competency? Will need to add a Entity for competency
+					//ecompm.Add( entity.RowId, entity.JsonProperties.SourceCompetency.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
 				}
 			}
 			return isValid;
 		}
-		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status, string parentCTID = "" )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
 			{
-				//var pathwayCTIDTemp = "ce-abcb5fe0-8fde-4f06-9d70-860cd5bdc763";
 				using ( var context = new EntityContext() )
 				{
 					if ( !IsValidGuid( entityUid ) )
 					{
-						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity" );
 						return 0;
 					}
 					//quick check to ensure not existing
@@ -207,17 +220,17 @@ namespace workIT.Factories
 						return entity.Id;
 
 					//only add DB required properties
+					//**** DONT HAVE A COMPONENT TYPE
+					efEntity.ComponentTypeId = 2;
 					//NOTE - an entity will be created via trigger
 					efEntity.Name = "Placeholder until full document is downloaded";
 					efEntity.Description = "Placeholder until full document is downloaded";
-					efEntity.PathwayCTID = "";
-					//temp
-					efEntity.ComponentTypeId = 1;
-					//realitically the component should be added in the same workflow
 					efEntity.EntityStateId = 1;
 					efEntity.RowId = entityUid;
 					//watch that Ctid can be  updated if not provided now!!
 					efEntity.CTID = ctid;
+					//need a pathway ctid - actually NOT
+					efEntity.PathwayCTID = !string.IsNullOrWhiteSpace(parentCTID) ? parentCTID : "ce-placeholder";//??
 					efEntity.SubjectWebpage = registryAtId;
 
 					efEntity.Created = System.DateTime.Now;
@@ -226,9 +239,31 @@ namespace workIT.Factories
 					context.PathwayComponent.Add( efEntity );
 					int count = context.SaveChanges();
 					if ( count > 0 )
+					{
+						//SiteActivity sa = new SiteActivity()
+						//{
+						//	ActivityType = EntityType,
+						//	Activity = "Import",
+						//	Event = string.Format( "Add Pending {0}", EntityType ),
+						//	Comment = string.Format( "Pending {0} was added by the import. ctid: {1}, registryAtId: {2}", EntityType, ctid, registryAtId ),
+						//	ActivityObjectId = efEntity.Id
+						//};
+						//new ActivityManager().SiteActivityAdd( sa );
+						//Question should this be in the EntityCache?
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.SubjectWebpage;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
+					}
 
-					status = thisClassName + " Error - the save was not successful, but no message provided. ";
+					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
 
@@ -236,12 +271,36 @@ namespace workIT.Factories
 			{
 				string message = FormatExceptions( ex );
 				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-				status = thisClassName + " Error - the save was not successful. " + message;
+				status.AddError( thisClassName + " Error - the save was not successful. " + message );
 
 			}
 			return 0;
 		}
-
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 		public bool DeleteAll( string pathwayCTID, ref SaveStatus status, DateTime? lastUpdated = null )
 		{
 			bool isValid = true;
@@ -265,11 +324,13 @@ namespace workIT.Factories
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
 						string statusMessage = "";
 						new EntityManager().Delete( item.RowId, string.Format( "PathwayComponent: {0} ({1})", item.Name, item.Id ), ref statusMessage );
-
+						var id = item.Id;
 						context.PathwayComponent.Remove( item );
 						var count = context.SaveChanges();
 						if ( count > 0 )
 						{
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, id, ref statusMessage );
 
 						}
 					}
@@ -467,8 +528,8 @@ namespace workIT.Factories
 						output.HasChild.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_IsChildOf )
 						output.IsChildOf.Add( item );
-					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Preceeds )
-						output.Preceeds.Add( item );
+					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Precedes )
+						output.Precedes.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Prerequiste )
 						output.Prerequisite.Add( item );
 				}
@@ -478,7 +539,7 @@ namespace workIT.Factories
 
 			//output.CodedNotation = input.CodedNotation;
 			output.ComponentCategory = input.ComponentCategory;
-			output.ComponentTypeId = input.ComponentTypeId;
+			output.ComponentTypeId = (int)input.ComponentTypeId;
 			if ( input.Codes_PathwayComponentType != null && input.Codes_PathwayComponentType.Id > 0 )
 			{
 				output.PathwayComponentType = input.Codes_PathwayComponentType.Title;
@@ -491,6 +552,7 @@ namespace workIT.Factories
 			output.CredentialType = input.CredentialType;
 			if ( !string.IsNullOrWhiteSpace( output.CredentialType) && output.CredentialType.IndexOf("ctdl/terms") > 0)
 			{
+				//21-08-12 - why was the purl url being stored?
 				int pos = output.CredentialType.IndexOf( "ctdl/terms" );
 				output.CredentialType = output.CredentialType.Substring( pos + 11 );
 			}
@@ -580,7 +642,7 @@ namespace workIT.Factories
 				//there could be a case where an external Id was added output bulk upload for an existing record
 				output.PathwayCTID = input.PathwayCTID;
 			}
-			else
+			
 			{
 
 				//don't map rowId, CTID, or dates as not on form
@@ -591,11 +653,19 @@ namespace workIT.Factories
 				output.EntityStateId = 3;
 				output.ComponentCategory = input.ComponentCategory;
 				output.ComponentTypeId = GetComponentTypeId( input.PathwayComponentType );
-				if (string.IsNullOrWhiteSpace( output.PathwayCTID ) )
+				//output.PathwayCTID can never be null as it is require.
+				if ( string.IsNullOrWhiteSpace( output.PathwayCTID ) || output.PathwayCTID == "ce-placeholder" )
 					output.PathwayCTID = input.PathwayCTID;
 				//output.ComponentTypeId = input.ComponentTypeId;
 				//will be validated before getting here!
 				output.CredentialType = input.CredentialType;
+				//21-08-12 mp - not sure why the full purl url was being stored. Now start just storing the 
+				if ( !string.IsNullOrWhiteSpace( output.CredentialType ) && output.CredentialType.IndexOf( "ctdl/terms" ) > 0 )
+				{
+					//21-08-12 - why was the purl url being stored?
+					int pos = output.CredentialType.IndexOf( "ctdl/terms" );
+					output.CredentialType = output.CredentialType.Substring( pos + 11 );
+				}
 
 				//output.ExternalIdentifier = input.ExternalIdentifier;
 				//not sure if this will just be a URI, or point output a concept

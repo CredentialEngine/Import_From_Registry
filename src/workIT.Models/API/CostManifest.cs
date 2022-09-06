@@ -9,13 +9,13 @@ using ME = workIT.Models.Elastic;
 namespace workIT.Models.API
 {
 	[Serializable]
-	public class CostManifest : BaseDisplay
+	public class CostManifest : BaseAPIType
 	{
 
 		public CostManifest()
 		{
 			EntityTypeId = 20;
-			CTDLTypeLabel = "Condition Manifest";
+			CTDLTypeLabel = "Cost Manifest";
 			EstimatedCost = new List<ME.CostProfile>();
 		}
 
@@ -25,5 +25,8 @@ namespace workIT.Models.API
 		public string EndDate { get; set; }
 
 		public List<ME.CostProfile> EstimatedCost { get; set; }
+
+		public bool DisplayAdditionalInformation { get; set; }
+
 	}
 }

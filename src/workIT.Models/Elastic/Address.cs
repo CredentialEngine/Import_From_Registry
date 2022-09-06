@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using workIT.Models.Common;
+
 namespace workIT.Models.Elastic
 {
 	[Serializable]
@@ -27,6 +29,8 @@ namespace workIT.Models.Elastic
 		//contactPoints
 		//public List<ContactPoint> ContactPoint { get; set; }
 
+		public List<IdentifierValue> Identifier { get; set; }
+		//
 	}
 
 	//public class ContactPoint

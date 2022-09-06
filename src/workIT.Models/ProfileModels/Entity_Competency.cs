@@ -15,11 +15,13 @@ namespace workIT.Models.ProfileModels
 		public int Id { get; set; }
 		public int EntityId { get; set; }
 		public int CompetencyFrameworkId { get; set; }
-
+		public int CollectionId { get; set; }
 		public string CodedNotation { get; set; }
 		public string TargetNodeName { get; set; }
 		public string TargetNodeDescription { get; set; }
 		public string TargetNode { get; set; }
+		public string TargetNodeCTID { get; set; }
+		
 
 		public decimal Weight { get; set; }
 
@@ -29,7 +31,7 @@ namespace workIT.Models.ProfileModels
 
 		public string FrameworkName { get; set; }
         //can be source url or framework Uri
-		public string FrameworkUrl { get; set; }
+		public string Framework { get; set; }
 		#endregion
 	}
 }

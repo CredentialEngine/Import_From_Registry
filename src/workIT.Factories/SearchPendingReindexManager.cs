@@ -339,6 +339,36 @@ namespace workIT.Factories
 
             return list;
         }
+        public static List<ThisEntity> GetAllPendingReindex( ref List<String> messages, List<int> entityTypeIds )
+        {
+            List<ThisEntity> list = new List<ThisEntity>();
+            if ( entityTypeIds?.Count == 0 )
+                return list;
+
+            ThisEntity entity = new ThisEntity();
+            using ( var context = new EntityContext() )
+            {
+
+                List<DBEntity> results = context.SearchPendingReindex
+                        .Where( s => s.IsUpdateOrDeleteTypeId == 1 && s.StatusId == 1
+                            && ( entityTypeIds.Contains( s.EntityTypeId ) )
+                            )
+                        .OrderBy( s => s.EntityTypeId ).ThenBy( s => s.Created )
+                        .ToList();
+
+                if ( results != null && results.Count > 0 )
+                {
+                    foreach ( var item in results )
+                    {
+                        entity = new ThisEntity();
+                        MapFromDB( item, entity, true );
+                        list.Add( entity );
+                    }
+                }
+            }
+
+            return list;
+        }
         public static ThisEntity Get( int id, bool includeProperties = false )
         {
             ThisEntity entity = new ThisEntity();

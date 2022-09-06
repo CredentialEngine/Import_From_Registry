@@ -53,6 +53,8 @@ namespace workIT.Factories
 
 			var currentAddresses = GetAll( parent.EntityUid );
 			bool isAllValid = true;
+			//use addressCount to track actual addresses. Used later for validation
+			var addressCount = 0;
 			if ( list == null || list.Count == 0 )
 			{
 				if ( currentAddresses != null && currentAddresses.Any() )
@@ -74,14 +76,21 @@ namespace workIT.Factories
 			{
 				foreach ( ThisEntity item in list )
 				{
+					if (item.HasAddress())
+					{
+						addressCount++;
+					}
 					Save( item, parent, updateDate, ref status );
 				}
 				//delete any addresses with last updated less than updateDate
 				DeleteAll( parent, ref status, updateDate );
 				//extra check where input count is less than output count
+				//the input could contain an entry with just contact points
 				var latestAddresses = GetAll( parent.EntityUid );
-				if (latestAddresses.Count() > list.Count() )
+				if (latestAddresses.Count() != addressCount )
 				{
+					//21-11-02 mp - noticed that this can happen when there are duplicate addresses in the input
+					status.AddWarning( string.Format( "The number of addresses in the import: {0} is different than the number of addresses after the import: {1}. Need to determine why? Parent: '{2}' ({3}).", list.Count(), latestAddresses.Count(), parent.EntityBaseName, parent.EntityBaseId ) );
 
 				}
 
@@ -128,9 +137,10 @@ namespace workIT.Factories
 							entity.ParentId = parent.Id;
 							entity.RowId = efEntity.RowId;
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
+							efEntity.LastUpdated = updateDate;
 							if ( HasStateChanged( context ) )
 							{
-								efEntity.LastUpdated = updateDate;
+								//efEntity.LastUpdated = updateDate;
 								count = context.SaveChanges();
 							}
 
@@ -213,22 +223,63 @@ namespace workIT.Factories
 							//update
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							//has changed?
+							//AHHH problem. If we don't update the record it could get deleted with the method that checks last updated - so always include the updateDate
+							efEntity.LastUpdated = updateDate;
 							if ( HasStateChanged( context ) )
 							{
 								//Hmm this should come from the envelope!!
-								efEntity.LastUpdated = updateDate;
+								//efEntity.LastUpdated = updateDate;
 
 								count = context.SaveChanges();
 							}
-							if ( resetIsPrimaryFlag )
-							{
-								Reset_Prior_ISPrimaryFlags( entity.ParentId, entity.Id );
-							}
+							//this not used in the finder
+							//if ( resetIsPrimaryFlag )
+							//{
+							//	Reset_Prior_ISPrimaryFlags( entity.ParentId, entity.Id );
+							//}
 
 							//handle contact points - very wierd approach, but shouldn't have updates
 							new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
 						}
+						else
+						{
+							//if not found weird could be during testing, so add?
+							//make these new methods
+							efEntity = new DBEntity();
+							efEntity.EntityId = parent.Id;
+							entity.ParentId = parent.Id;
+							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
+							//could just have contact points without address
+							if ( entity.HasAddress() )
+							{
+								efEntity.Created = efEntity.LastUpdated = updateDate;
+								if ( IsValidGuid( entity.RowId ) )
+									efEntity.RowId = entity.RowId;
+								else
+									efEntity.RowId = Guid.NewGuid();
 
+								context.Entity_Address.Add( efEntity );
+								count = context.SaveChanges();
+
+								//update profile record so doesn't get deleted
+								entity.Id = efEntity.Id;
+								entity.ParentId = parent.Id;
+								entity.RowId = efEntity.RowId;
+								if ( count == 0 )
+								{
+									status.AddError( string.Format( " Unable to add address. EntityParent: type: {0}, (id: {1}), City: {2}, Region: {3} <br\\> ", parent.EntityType, parent.EntityBaseId, efEntity.City, efEntity.Region ) );
+								}
+								else
+								{
+									//not used in finder!
+									if ( resetIsPrimaryFlag )
+									{
+										//Reset_Prior_ISPrimaryFlags( efEntity.EntityId, entity.Id );
+									}
+								}
+
+							}
+						}
 						
 					}
 				}
@@ -376,7 +427,7 @@ namespace workIT.Factories
 			if ( string.IsNullOrWhiteSpace( profile.Name ) )
 			{
 				//if for org, always default to org name
-				if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
+				if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
 					profile.Name = parent.EntityBaseName;
 				else
 				{
@@ -567,6 +618,7 @@ namespace workIT.Factories
 			output.Latitude = input.Latitude;
 			output.Longitude = input.Longitude;
 			//just store the json
+			//22-07
 			output.IdentifierJson = input.IdentifierJson;
 
 			if ( input.HasAddress() )
@@ -729,7 +781,13 @@ namespace workIT.Factories
             return list;
         }//
 
-        public static void UpdateGeo( CM.Address from, EM.Entity_Address to )
+		/// <summary>
+		/// Update Geo coding
+		/// NOTE the output address has already been assigned the basic data.
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="output"></param>
+        public static void UpdateGeo( CM.Address input, EM.Entity_Address output )
         {
 			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - entered" );
 
@@ -744,9 +802,9 @@ namespace workIT.Factories
 					//have to handle where region was expanded
 					var  exists = context.Entity_Address
 							.Where( s =>  
-									s.Address1 == from.StreetAddress
-								&& s.City == from.AddressLocality		//need to handle for different regions/countries
-								&& (s.PostalCode == from.PostalCode || ( s.PostalCode ?? "" ).IndexOf( from.PostalCode ?? "" ) == 0 )  //could have been normalized to full 9
+									s.Address1 == input.StreetAddress
+								&& s.City == input.AddressLocality		//need to handle for different regions/countries
+								&& (s.PostalCode == input.PostalCode || ( s.PostalCode ?? "" ).IndexOf( input.PostalCode ?? "" ) == 0 )  //could have been normalized to full 9
 																																	//&& s.Region == from.AddressRegion	//could have been expanded
 								&& ( s.Latitude != null && s.Latitude != 0.0 && s.Longitude != null && s.Longitude != 0.0 )
 							)
@@ -758,15 +816,19 @@ namespace workIT.Factories
 						foreach ( var item in exists )
 						{
 							bool existsIsUSA = false;
-							if ( item.Country.IndexOf( "United" ) == 0 )
-								existsIsUSA = true;
+							//risky?
+							if ( item.Country != null ) 
+							{
+								if ( "usa u.s.a. united states of america".IndexOf( item.Country.ToLower() ) == 0 )
+									existsIsUSA = true;
+							}
 
 							//may remove this check if use in search is OK.
-							if ( item.PostalCode == from.PostalCode || (item.PostalCode ?? "").IndexOf(from.PostalCode) == 0 )
+							if ( item.PostalCode == input.PostalCode || (item.PostalCode ?? "").IndexOf(input.PostalCode) == 0 )
 							{
 								bool isOK = false;
 								//no input country
-								if ( string.IsNullOrWhiteSpace( from.AddressCountry ) )
+								if ( string.IsNullOrWhiteSpace( input.AddressCountry ) )
 								{
 									//assume if street, city, and postal match to USA, then OK
 									if ( existsIsUSA )
@@ -776,22 +838,27 @@ namespace workIT.Factories
 										//how likely if street, city, and postal match, that the country is wrong? Google would have to have figured it out, so just go for it?
 										isOK = true;
 									}
-								} else 
-								if (  "usa u.s.a. united states united states of america".IndexOf((from.AddressCountry ??"").ToLower()) > -1
-									&& existsIsUSA ) 
+								}
+								else
 								{
-									isOK = true;
-								} else
-								{
-									//what
+									//risk?
+									if ( "usa u.s.a. united states united states of america".IndexOf( ( input.AddressCountry ?? "" ).ToLower() ) > -1
+										&& existsIsUSA )
+									{
+										isOK = true;
+									}
+									else
+									{
+										//what
+									}
 								}
 								if ( isOK )
 								{
-									to.Latitude = item.Latitude;
-									to.Longitude = item.Longitude;
-									to.Region = item.Region;
-									to.PostalCode = item.PostalCode;
-									to.Country = item.Country;
+									output.Latitude = item.Latitude;
+									output.Longitude = item.Longitude;
+									output.Region = item.Region;
+									output.PostalCode = item.PostalCode;
+									output.Country = item.Country;
 									return;
 								}
 							}
@@ -810,10 +877,10 @@ namespace workIT.Factories
             var results = new GoogleGeocoding.Results();
             var addressesToTry = new List<string>()
             {
-                from.DisplayAddress(),
-                from.LooseDisplayAddress(),
-                from.PostalCode ?? "",
-                from.AddressRegion ?? ""
+                input.DisplayAddress(),
+                input.LooseDisplayAddress(),
+                input.PostalCode ?? "",
+                input.AddressRegion ?? ""
                 //,from.Country ?? ""
             };
             foreach ( var test in addressesToTry )
@@ -840,8 +907,8 @@ namespace workIT.Factories
 				GoogleGeocoding.Location location = results.GetLocation();
                 if ( location != null )
                 {
-                    to.Latitude = location.lat;
-                    to.Longitude = location.lng;
+                    output.Latitude = location.lat;
+                    output.Longitude = location.lng;
                 }
                 try
                 {
@@ -876,26 +943,26 @@ namespace workIT.Factories
                             //
                         }
 
-                        if ( string.IsNullOrEmpty( to.PostalCode ) ||
-                            to.PostalCode != postalCode )
+                        if ( string.IsNullOrEmpty( output.PostalCode ) ||
+                            output.PostalCode != postalCode )
                         {
                             //?not sure if should assume the google result is accurate
-                            to.PostalCode = postalCode;
+                            output.PostalCode = postalCode;
                         }
                         if ( !string.IsNullOrEmpty( country ) && 
-                            to.CountryId == null )
+                            output.CountryId == null )
                         {
                             //set country string, and perhaps plan update process.
-                            to.Country = country;
+                            output.Country = country;
                             //do lookup, OR at least notify for now
                             //probably should make configurable - or spin off process to attempt update
                             //EmailManager.NotifyAdmin( "CTI Missing country to update", string.Format( "Address without country entered, but resolved via GoogleGeocoding.Location. entity.ParentId: {0}, country: {1}", from.ParentId, country ) );
                         }
                         //expand region
                         if ( doingExpandOfRegion
-                            && ( to.Region ?? "" ).Length < fullRegion.Length )
+                            && ( output.Region ?? "" ).Length < fullRegion.Length )
                         {
-                            to.Region = fullRegion;
+                            output.Region = fullRegion;
                         }
                     }
 
@@ -906,7 +973,7 @@ namespace workIT.Factories
                 }
             } else
 			{
-				LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - ***unable to resolve lat/lng. for : " + from.DisplayAddress() );
+				LoggingHelper.DoTrace( 7, thisClassName + ".UpdateGeo - ***unable to resolve lat/lng. for : " + input.DisplayAddress() );
 
 			}
 		}
@@ -943,7 +1010,7 @@ namespace workIT.Factories
             }
             catch (Exception ex)
             {
-				LoggingHelper.DoTrace( 6, "Google TryGetAddress failed: " + ex.Message );
+				LoggingHelper.DoTrace( 6, "Google TryGetAddress failed: " + ex.Message + " for address: " + address );
                 hasLatLng = false;
                 return null;
             }

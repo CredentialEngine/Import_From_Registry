@@ -51,7 +51,7 @@ namespace workIT.Models.Common
 			foreach( var item in input )
 			{
 				var manifest = DisambiguateConditionProfiles( item.ConditionProfiles );
-				manifest.Name = item.ProfileName;
+				manifest.Name = item.Name;
 				manifest.Description = item.Description;
 				manifest.SubjectWebpage = item.SubjectWebpage;
 				manifest.CTID = item.CTID;

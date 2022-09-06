@@ -37,7 +37,7 @@ namespace workIT.Models.ProfileModels
         }
 
         public string Name { get; set; }
-        public string FriendlyName { get; set; }
+        //public string FriendlyName { get; set; }
         public string SubjectWebpage { get; set; }
 
         public int EntityStateId { get; set; }

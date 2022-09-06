@@ -24,4 +24,21 @@ namespace workIT.Models.Helpers.Reports
 		public decimal PercentOfOverallTotal { get; set; }
 
 	}
+
+	public class BenchmarkQuery
+	{
+		public string SearchType { get; set; }
+		public string LabelFilter { get; set; }
+		public string PolicyFilter { get; set; }
+
+		public int PageNumber { get; set; }
+		public int PageSize { get; set; }
+		public string SortOrder { get; set; }
+		public bool IsDescending { get; set; }
+	}
+	public class BenchmarkQueryResult
+	{
+		public string BenchmarkType { get; set; }
+		public List<BenchmarkPropertyTotal> Benchmarks { get; set; } = new List<BenchmarkPropertyTotal>();
+	}
 }

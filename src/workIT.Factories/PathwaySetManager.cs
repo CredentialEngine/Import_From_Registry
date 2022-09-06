@@ -25,7 +25,8 @@ namespace workIT.Factories
 	public class PathwaySetManager : BaseFactory
 	{
 		static string thisClassName = "PathwaySetManager";
-
+		static string EntityType = "PathwaySet";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET;
 
 		#region persistance ==================
 
@@ -78,6 +79,10 @@ namespace workIT.Factories
 						if ( count > 0 )
 						{
 							entity.Id = efEntity.Id;
+							entity.RowId = efEntity.RowId;
+							entity.Created = efEntity.Created.Value;
+							entity.LastUpdated = efEntity.LastUpdated.Value;
+							UpdateEntityCache( entity, ref status );
 							//add log entry
 							SiteActivity sa = new SiteActivity()
 							{
@@ -96,7 +101,7 @@ namespace workIT.Factories
 						{
 							//?no info on error
 							status.AddError( "Error - the profile was not saved. " );
-							string message = string.Format( "PathwayManager.Add Failed. Attempted to add a PathwaySet. The process appeared to not work, but was not an exception, so we have no message, or no clue.PathwaySet. PathwaySet: {0}, createdById: {1}", entity.Name, entity.CreatedById );
+							string message = string.Format( "PathwayManager.Add Failed. Attempted to add a PathwaySet. The process appeared to not work, but was not an exception, so we have no message, or no clue.PathwaySet. PathwaySet: {0}, SubjectWebpage: {1}", entity.Name, entity.SubjectWebpage );
 							EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 						}
 					}
@@ -128,13 +133,15 @@ namespace workIT.Factories
 								//can be zero if no data changed
 								if ( count >= 0 )
 								{
+									entity.LastUpdated = efEntity.LastUpdated.Value;
+									UpdateEntityCache( entity, ref status );
 									isValid = true;
 								}
 								else
 								{
 									//?no info on error
 									status.AddError( "Error - the update was not successful. " );
-									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a PathwaySet. The process appeared to not work, but was not an exception, so we have no message, or no clue. PathwayId: {0}, Id: {1}, updatedById: {2}", entity.Id, entity.Id, entity.LastUpdatedById );
+									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a PathwaySet. The process appeared to not work, but was not an exception, so we have no message, or no clue. PathwayId: {0}, Id: {1}.", entity.Id, entity.Id );
 									EmailManager.NotifyAdmin( thisClassName + ". Pathway_Update Failed", message );
 								}
 							}
@@ -168,28 +175,53 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), PathwaySet: '{0}'", entity.Name ) );
-					status.AddError( string.Format( "PathwayManager.Save Failed. PathwaySet: {0}, createdById: {1}, Error: {2}", entity.Name, entity.CreatedById, ex.Message ) );
+					status.AddError( string.Format( "PathwayManager.Save Failed. PathwaySet: {0}, SubjectWebpage: {1}, Error: {2}", entity.Name, entity.SubjectWebpage, ex.Message ) );
 					isValid = false;
 				}
 			}
 
 			return isValid;
 		}
-
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
-			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
+			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
 			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
 			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
 				status.AddError( thisClassName + " - Error - the parent entity was not found." );
 				return false;
 			}
-			mgr.DeleteAll( relatedEntity, ref status );
+			eamgr.DeleteAll( relatedEntity, ref status );
 
-			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY, entity.OfferedBy, ref status );
-			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY, entity.OfferedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 
 			var epmgr = new Entity_PathwayManager();
 			//handle pathways - using replace
@@ -216,19 +248,14 @@ namespace workIT.Factories
 
 			return isAllValid;
 		}
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-			if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-				&& string.IsNullOrWhiteSpace( ctid ) )
+			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
-				statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
+				statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
 				return false;
 			}
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-				envelopeId = "SKIP ME";
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-				ctid = "SKIP ME";
 			int orgId = 0;
 			Guid orgUid = new Guid();
 			using ( var context = new EntityContext() )
@@ -237,9 +264,7 @@ namespace workIT.Factories
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.PathwaySet
-								.FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-								|| ( s.CTID == ctid )
-								);
+								.FirstOrDefault( s => s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -268,12 +293,14 @@ namespace workIT.Factories
 								Comment = msg,
 								ActivityObjectId = efEntity.Id
 							} );
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_PATHWAY_SET, efEntity.Id, ref statusMessage );
 							isValid = true;
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_PATHWAY_SET, efEntity.Id, ref messages );
 							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 
 							//delete all relationships
 							workIT.Models.SaveStatus status = new SaveStatus();
@@ -642,6 +669,8 @@ namespace workIT.Factories
 			output.RowId = input.RowId;
 			output.CTID = input.CTID;
 			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
+
 			output.Description = input.Description;
 			output.SubjectWebpage = input.SubjectWebpage;
 			output.EntityStateId = (int)(input.EntityStateId ?? 2);

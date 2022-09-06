@@ -149,6 +149,10 @@ namespace workIT.Models.Search
 		public string InterfaceType { get; set; } 
 		public string Text { get; set; }
 
-		
+		/// <summary>
+		/// Only used to pass the Location Set filter from the widget\n
+		/// Do not use this for anything else, as it is a terrible hack
+		/// </summary>
+		public Dictionary<string, object> Values { get; set; }
 	}
 }

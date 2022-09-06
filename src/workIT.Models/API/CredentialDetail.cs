@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using MC = workIT.Models.Common;
 using WMA = workIT.Models.API;
@@ -13,33 +15,34 @@ using MQD = workIT.Models.QData;
 
 namespace workIT.Models.API
 {
-	public class CredentialDetail : BaseDisplay
+	[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
+	public class CredentialDetail : BaseAPIType
 	{
 		public CredentialDetail()
 		{
 			EntityTypeId = 1;
 			BroadType = "Credential";
 		}
-		//public string CTDLType { get; set; }
-		//public string CTDLType { get; set; }
-		//public string RecordLanguage { get; set; } = "en-US";
 		public bool IsReferenceVersion { get; set; }
+		//helper where referenced by something else
+		public string URL { get; set; }
+
 		public List<LabelLink> OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnedBy { get; set; } = new List<OrganizationRoleProfile>();
 		//public List<OrganizationRoleProfile> OfferedBy { get; set; } = new List<OrganizationRoleProfile>();
 
 
 		public List<LabelLink> AudienceLevelType { get; set; }
-		public List<LabelLink> AudienceType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> AssessmentDeliveryType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> LearningDeliveryType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
+		public List<LabelLink> AudienceType { get; set; } 
+		public List<LabelLink> AssessmentDeliveryType { get; set; } 
+		public List<LabelLink> LearningDeliveryType { get; set; } 
+		public List<LabelLink> Connections { get; set; } 
 		public LabelLink CredentialStatusType { get; set; }
 		public LabelLink CredentialType { get; set; }
 
-		public List<Address> AvailableAt { get; set; } = new List<Address>();
-		public List<string> AlternateName { get; set; } = new List<string>();
-		public List<string> AvailableOnlineAt { get; set; } = new List<string>();
+		public List<Address> AvailableAt { get; set; } 
+		public List<string> AlternateName { get; set; } 
+		public List<string> AvailableOnlineAt { get; set; } 
 
 		public List<string> AvailabilityListing { get; set; }
 
@@ -56,10 +59,16 @@ namespace workIT.Models.API
 		//always single, 
 		public string RenewalFrequency { get; set; }
 		//
-		public List<WMA.Outline> HasPart2 { get; set; }
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
+		//
+		//public List<WMA.Outline> HasPart2 { get; set; }
 		public WMS.AJAXSettings HasPart { get; set; }
 		public WMS.AJAXSettings IsPartOf { get; set; }
-		public List<WMA.Outline> IsPartOf2 { get; set; }
+		//public List<WMA.Outline> IsPartOf2 { get; set; }
 
 		//
 		public List<WMA.ConditionManifest> CommonConditions { get; set; }
@@ -91,29 +100,31 @@ namespace workIT.Models.API
 		public List<Outline> EmbeddedCredentials { get; set; } //bundled/sub-credentials
 		public List<Outline> ETPLCredentials { get; set; }
 		public List<Outline> ETPLAssessments { get; set; } 
-		public List<Outline> ETPLLearningOpportunities { get; set; } 
-
+		public List<Outline> ETPLLearningOpportunities { get; set; }
+		//
+		public List<AggregateDataProfile> AggregateData { get; set; }
+		public List<DataSetProfile> ExternalDataSetProfiles { get; set; } 
 
 		public List<Outline> CopyrightHolder { get; set; }
-		public List<LabelLink> CopyrightHolder2 { get; set; }
 		public string ISICV4 { get; set; }
 		public string Image { get; set; } //image URL
 		public string Meta_Icon { get; set; } //image URL
+		public bool? Meta_HasVerificationBadge { get; set; }
 
 		public List<Outline> QAReceived { get; set; } = new List<Outline>();
 		public List<Outline> OwnerQAReceived { get; set; } = new List<Outline>();
-		public List<Outline> RenewedBy2 { get; set; } = new List<Outline>();
 		public WMS.AJAXSettings RenewedBy { get; set; }
 		public WMS.AJAXSettings RevokedBy { get; set; }
-		public List<Outline> RevokedBy2 { get; set; } = new List<Outline>();
-
+		public WMS.AJAXSettings HasTransferValue { get; set; }
 		public WMS.AJAXSettings Revocation { get; set; }
 
 		public List<string> SameAs { get; set; }
 
-		public List<LabelLink> IndustryType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> OccupationType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> InstructionalProgramType { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
+		public List<LabelLink> OccupationTypeOld { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
+
+		public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
 		public List<LabelLink> NavyRating { get; set; }
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
@@ -140,7 +151,7 @@ namespace workIT.Models.API
 		public List<ME.JurisdictionProfile> RevokedIn { get; set; } = new List<ME.JurisdictionProfile>();
 		#endregion
 		#region Process Profiles
-		//TBD
+		//why are these AjaxSettings and condition profiles are just the latter?
 		public List<WMS.AJAXSettings> ProcessProfiles { get; set; }
 
 		public WMS.AJAXSettings AdministrationProcess { get; set; }
@@ -160,5 +171,9 @@ namespace workIT.Models.API
 		public LabelLink Supersedes { get; set; } //URL
 
 		public WMS.AJAXSettings TargetPathway { get; set; }
+
+		public WMS.AJAXSettings RequiresCompetencies { get; set; }
+		public WMS.AJAXSettings TeachesCompetencies { get; set; }
+		public WMS.AJAXSettings AssessesCompetencies { get; set; }
 	}
 }

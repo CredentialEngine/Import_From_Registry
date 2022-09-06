@@ -6,7 +6,9 @@ namespace workIT.Models.Elastic
     {
         public AssessmentIndex()
         {
-            AssessesCompetencies = new List<IndexCompetency>();
+			EntityTypeId = 3;
+
+			AssessesCompetencies = new List<IndexCompetency>();
             RequiresCompetencies = new List<IndexCompetency>();
               
             RelationshipTypes = new List<int>();
@@ -16,7 +18,8 @@ namespace workIT.Models.Elastic
             //QualityAssurance = new List<IndexQualityAssurance>();
             Addresses = new List<Address>();
         }
-
+		public int? LifeCycleStatusTypeId { get; set; }
+		public string LifeCycleStatusType { get; set; }
 		public int NameIndex { get; set; }
 		public int OwnerOrganizationId
 		{
@@ -50,9 +53,11 @@ namespace workIT.Models.Elastic
         
         public List<IndexCompetency> AssessesCompetencies { get; set; }
         public List<IndexCompetency> RequiresCompetencies { get; set; }
+		//added to base
+		//TODO - add all of Assesses and Requires to Competencies
+		//public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
-
-        public string AssessmentUseType { get; set; }
+		public string AssessmentUseType { get; set; }
         // public string AssessmentMethodType { get; set; }
         public string ProcessStandards { get; set; }
         public string ProcessStandardsDescription { get; set; }
@@ -121,7 +126,7 @@ namespace workIT.Models.Elastic
         //public string CodedNotation { get; set; }
         
         //public int AddressesCount { get; set; }
-        public string ListTitle { get; set; }
+        //public string ListTitle { get; set; }
         
         //public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
 
@@ -147,8 +152,12 @@ namespace workIT.Models.Elastic
 		public bool HasIndustries { get; set; }
 		public bool HasInstructionalPrograms { get; set; }
 
-        //-actual connection type (no credential info)
-        public string ConnectionsList { get; set; }
+		public int HasTransferValueProfilesCount { get; set; }
+		public int AggregateDataProfileCount { get; set; }
+		public string AggregateDataProfileSummary { get; set; }
+		public int DataSetProfileCount { get; set; }
+		//-actual connection type (no credential info)
+		public string ConnectionsList { get; set; }
         //connection type, plus Id, and name of credential
         public string CredentialsList { get; set; }
         //replace CredentialsList with Connection class - handle all types

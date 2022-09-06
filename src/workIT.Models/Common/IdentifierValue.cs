@@ -11,9 +11,16 @@ namespace workIT.Models.Common
 	[Serializable]
     public class IdentifierValue 
 	{
-		public string IdentifierTypeName { get; set; }
-		//public string Description { get; set; }
+		/// <summary>
+		/// Framework, scheme, type, or other organizing principle of this identifier.
+		/// URI
+		/// </summary>
 		public string IdentifierType { get; set; }
+		/// <summary>
+		/// Formal name or acronym of the framework, scheme, type, or other organizing principle of this identifier, such as ISBN or ISSN.
+		/// </summary>
+		public string IdentifierTypeName { get; set; }
+		//public string Name { get; set; }
 		public string IdentifierValueCode { get; set; }
 	}
 }

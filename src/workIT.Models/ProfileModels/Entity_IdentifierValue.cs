@@ -17,8 +17,13 @@ namespace workIT.Models.ProfileModels
 		/// See constants in Entity.IdentifierValue
 		/// </summary>
 		public int IdentityValueTypeId { get; set; }
-		public string Name { get; set; }
-		//public string Description { get; set; }
+		public string IdentifierTypeName { get; set; }
+		//22-07-28 commented Name. Moving to use of Common.IdentifierValue (at least for Address, related data)
+		//public string Name
+		//      {
+		//	get { return IdentifierTypeName; }
+		//      }
+
 		/// <summary>
 		/// Not sure of edits
 		/// URL
@@ -30,7 +35,7 @@ namespace workIT.Models.ProfileModels
 		public bool HasData()
 		{
 			if ( IdentityValueTypeId > 0 
-				|| ( !string.IsNullOrWhiteSpace( Name ) )
+				|| ( !string.IsNullOrWhiteSpace( IdentifierTypeName ) )
 				|| ( !string.IsNullOrWhiteSpace( IdentifierValueCode ))
 				)
 			{

@@ -79,8 +79,9 @@ namespace workIT.Models.Common
 		/// Provide the string value. API will format correctly. The name space of lifecycle doesn't have to be included
 		/// lifecycle:Developing, lifecycle:Active", lifecycle:Suspended, lifecycle:Ceased
 		/// </summary>
-		public string LifecycleStatusType { get; set; }
-		//public Enumeration LifecycleStatusType { get; set; } = new Enumeration();
+		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public string LifeCycleStatus { get; set; }
+		public int LifeCycleStatusTypeId { get; set; }
 
 		/// <summary>
 		/// A suggested or articulated credit- or point-related transfer value.
@@ -123,7 +124,9 @@ namespace workIT.Models.Common
 		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueForImport { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueFromImport { get; set; } = new List<Guid>();
-
+		public List<int> AssessmentIds { get; set; } = new List<int>();
+		public List<int> CredentialIds { get; set; } = new List<int>();
+		public List<int> LearningOpportunityIds { get; set; } = new List<int>();
 		#endregion
 	}
 

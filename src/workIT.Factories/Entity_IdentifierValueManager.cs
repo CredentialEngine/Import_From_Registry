@@ -20,16 +20,20 @@ namespace workIT.Factories
 	public class Entity_IdentifierValueManager : BaseFactory
 	{
 		static string thisClassName = "Entity_IdentifierValueManager";
+		//21-10-21 mp - no need to have unique identifier values by entity, as will be under a specific entity type
+		public static int IdentifierValue_VersionIdentifier = 1;
+		public static int IdentifierValue_Identifier = 2;
+		//
 		public static int CREDENTIAL_VersionIdentifier = 1;
 		public static int ORGANIZATION_AlternativeIdentifier = 2; //OBSOLETE
-		public static int ASSESSMENT_VersionIdentifier = 3;
-		public static int LEARNING_OPP_VersionIdentifier = 4;
+		public static int ASSESSMENT_VersionIdentifier = 1;//3;
+		//public static int LEARNING_OPP_VersionIdentifier = 1;//4;
 
-		public static int CREDENTIAL_Identifier = 11;
-		public static int ORGANIZATION_Identifier = 12;
-		public static int ASSESSMENT_Identifier = 13;
-		public static int LEARNING_OPP_Identifier = 14;
-
+		public static int CREDENTIAL_Identifier = 2;//11;
+		public static int ORGANIZATION_Identifier = 2;//12;
+		public static int ASSESSMENT_Identifier = 2;//13;
+		//public static int LEARNING_OPP_Identifier = 2;//14;
+													  //NOTE: for pathwayComponent, Idenifier is store in the JsonProperties
 		#region === Persistance ===================
 		public bool SaveList( List<ThisEntity> list, Guid parentUid, int IdentityValueTypeId, ref SaveStatus status, bool doingDelete )
 		{
@@ -46,6 +50,7 @@ namespace workIT.Factories
                 status.AddError( "Error - the parent entity was not found." );
                 return false;
             }
+			//delete is dependent on caller context. Should only do a delete here if no other identifiers
 			if ( doingDelete )
 				DeleteAll( parent, ref status );
 
@@ -243,8 +248,7 @@ namespace workIT.Factories
 			to.Id = from.Id;
 			to.EntityId = from.EntityId;
 			to.IdentityValueTypeId = from.IdentityValueTypeId;
-			to.Name = from.Name;
-			//to.Description = from.Description;
+			to.IdentifierTypeName = from.Name;
 			to.IdentifierType = from.IdentifierType;
 			to.IdentifierValueCode = from.IdentifierValueCode;
 			to.Created = ( DateTime ) from.Created;
@@ -258,8 +262,7 @@ namespace workIT.Factories
 			}
 			
 			to.IdentityValueTypeId = from.IdentityValueTypeId;
-			to.Name = from.Name;
-			//to.Description = from.Description;
+			to.Name = from.IdentifierTypeName;
 			to.IdentifierType = from.IdentifierType;
 			to.IdentifierValueCode = from.IdentifierValueCode;
 			

@@ -9,7 +9,7 @@ using WMS = workIT.Models.Search;
 
 namespace workIT.Models.API
 {
-	public class PathwaySet : BaseDisplay
+	public class PathwaySet : BaseAPIType
 	{
 		public PathwaySet()
 		{

@@ -60,23 +60,32 @@
     <Compile Include="API\AggregateDataProfile.cs" />
     <Compile Include="API\AssessmentDetail.cs" />
     <Compile Include="API\BaseDisplay.cs" />
+    <Compile Include="API\Collection.cs" />
     <Compile Include="API\CompetencyFramework.cs" />
+    <Compile Include="API\ConceptScheme.cs" />
     <Compile Include="API\ConditionManifest.cs" />
     <Compile Include="API\ConditionProfile.cs" />
     <Compile Include="API\CostManifest.cs" />
     <Compile Include="API\CredentialDetail.cs" />
+    <Compile Include="API\DataProfile.cs" />
+    <Compile Include="API\DataSetProfile.cs" />
+    <Compile Include="API\DataSetTimeFrame.cs" />
     <Compile Include="API\DurationProfile.cs" />
     <Compile Include="API\FinancialAssistanceProfile.cs" />
     <Compile Include="API\IdentifierValue.cs" />
     <Compile Include="API\LearningOpportunityDetail.cs" />
+    <Compile Include="API\MonetaryAmount.cs" />
+    <Compile Include="API\MonetaryAmountDistribution.cs" />
     <Compile Include="API\OrganizationDetail.cs" />
     <Compile Include="API\Pathway.cs" />
     <Compile Include="API\PathwaySet.cs" />
     <Compile Include="API\ProcessProfile.cs" />
     <Compile Include="API\QuantitativeValue.cs" />
+    <Compile Include="API\QuerySummary.cs" />
     <Compile Include="API\RegistrySearchAPI.cs" />
     <Compile Include="API\RevocationProfile.cs" />
     <Compile Include="API\SearchResult.cs" />
+    <Compile Include="API\TransferIntermediary.cs" />
     <Compile Include="API\TransferValueProfile.cs" />
     <Compile Include="API\ValueProfile.cs" />
     <Compile Include="API\VerificationServiceProfile.cs" />
@@ -86,6 +95,7 @@
     <Compile Include="Common\Agent.cs" />
     <Compile Include="Common\AggregateDataProfile.cs" />
     <Compile Include="Common\BaseObject.cs" />
+    <Compile Include="Common\Collection.cs" />
     <Compile Include="Common\CommonSearchSummary.cs" />
     <Compile Include="Common\CompetencyFramework.cs" />
     <Compile Include="Common\ConceptScheme.cs" />
@@ -125,6 +135,7 @@
     <Compile Include="Common\ReferenceFramework.cs" />
     <Compile Include="Common\SiteMessage.cs" />
     <Compile Include="Common\Task.cs" />
+    <Compile Include="Common\TransferIntermediary.cs" />
     <Compile Include="Common\TransferValueProfile.cs" />
     <Compile Include="Common\ValueProfile.cs" />
     <Compile Include="Common\Widget.cs" />
@@ -155,6 +166,7 @@
     <Compile Include="Helpers\SearchTag.cs" />
     <Compile Include="Helpers\ToolTip.cs" />
     <Compile Include="Import\RegistryImport.cs" />
+    <Compile Include="MessageLog.cs" />
     <Compile Include="Node\BaseProfile.cs" />
     <Compile Include="Node\Interface.cs" />
     <Compile Include="Node\ProfileLink.cs" />
@@ -167,7 +179,6 @@
     <Compile Include="ProfileModels\ConditionProfile.cs" />
     <Compile Include="ProfileModels\CostProfile.cs" />
     <Compile Include="ProfileModels\DurationProfile.cs" />
-    <Compile Include="ProfileModels\EducationFramework.cs" />
     <Compile Include="ProfileModels\EntityAgentRelationship.cs" />
     <Compile Include="ProfileModels\Entity_Assessment.cs" />
     <Compile Include="ProfileModels\Entity_Competency.cs" />
@@ -198,7 +209,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>12.0.3</Version>
+      <Version>13.0.1</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

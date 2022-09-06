@@ -41,6 +41,7 @@ namespace workIT.Models
 		public Nullable<int> ActionByUserId { get; set; }
 		public string ActionByUser { get; set; }
 		public Nullable<int> ActivityObjectId { get; set; }
+		public string EntityName { get; set; }
 		public Nullable<int> ObjectRelatedId { get; set; }
 		public string RelatedImageUrl { get; set; }
 		public string RelatedTargetUrl { get; set; }
@@ -50,6 +51,7 @@ namespace workIT.Models
 		public string Referrer { get; set; }
 		public Nullable<bool> IsBot { get; set; }
 		public Nullable<int> EntityTypeId { get; set; }
+		public int EntityStateId { get; set; }
 		public Nullable<int> OwningOrgId { get; set; }
 		public string Organization { get; set; }
 	}

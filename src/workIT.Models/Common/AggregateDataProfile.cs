@@ -34,7 +34,7 @@ namespace workIT.Models.Common
 		/// Effective date of this profile
 		/// </summary>
 		public string DateEffective { get; set; }
-
+		public string ExpirationDate { get; set; }
 		/// <summary>
 		/// DemographicInformation
 		/// Aggregate data or summaries of statistical data relating to the population of credential holders including data about gender, geopolitical regions, age, education levels, and other categories of interest.
@@ -101,7 +101,7 @@ namespace workIT.Models.Common
 		public List<DataSetProfile> RelevantDataSet { get; set; } = new List<DataSetProfile>();
 
 		//import only-maybe
-		public List<string> RelevantDataSetList { get; set; } = new List<string>();
+		public List<int> RelevantDataSetList { get; set; } = new List<int>();
 
 	}
 }

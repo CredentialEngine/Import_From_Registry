@@ -11,6 +11,7 @@ namespace workIT.Models.Common
 	public class OutcomesBaseObject : BaseObject
 	{
 		public string CTID { get; set; }
+		public string CredentialRegistryId { get; set; }
 		public int EntityStateId { get; set; }
 		/// <summary>
 		/// Name of the outcomes document
@@ -31,6 +32,12 @@ namespace workIT.Models.Common
 		/// URL
 		/// </summary>
 		public string Source { get; set; }
+		//add alias for use in detail and others
+		public string SubjectWebpage 
+		{ 
+			get { return Source; }
+		}
+
 
 		/// <summary>
 		/// Relevant Data Set
@@ -43,5 +50,7 @@ namespace workIT.Models.Common
 		public List<string> RelevantDataSetList { get; set; } = new List<string>();
 		//
 		public List<Guid> PublishedBy { get; set; }
+		public int PublishedByOrganizationId { get; set; }
+
 	}
 }

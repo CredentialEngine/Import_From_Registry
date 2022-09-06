@@ -44,7 +44,7 @@ namespace workIT.Models.Elastic
 		public List<string> TopChildCompetencies { get; set; } = new List<string>();
 		//add all competencies
 		public int TotalCompetencies { get; set; }
-		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
+		//public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
 
 		// set count for references by other entities

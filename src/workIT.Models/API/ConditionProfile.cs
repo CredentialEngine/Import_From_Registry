@@ -20,6 +20,7 @@ namespace workIT.Models.API
 		public string Name { get; set; }
 		public string Description { get; set; }
 
+		public List<ConditionProfile> AlternativeCondition { get; set; }
 		public WMS.AJAXSettings AssertedBy { get; set; }
 		public List<LabelLink> AudienceLevelType { get; set; } 
 		public List<LabelLink> AudienceType { get; set; } 
@@ -45,9 +46,12 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings TargetCredential { get; set; }
 
 		public WMS.AJAXSettings TargetLearningOpportunity { get; set; }
+		public WMS.AJAXSettings TargetCompetency { get; set; }
 		//
 		public decimal? Weight { get; set; }
 		public decimal? YearsOfExperience { get; set; }
+		public int Meta_Id { get; set; }
+		public string Meta_ProfileType { get; set; }
 
 	}
 }

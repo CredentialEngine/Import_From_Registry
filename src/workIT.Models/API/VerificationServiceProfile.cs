@@ -8,7 +8,7 @@ using MC = workIT.Models.Common;
 
 using ME = workIT.Models.Elastic;
 using WMS = workIT.Models.Search;
-
+using WMA = workIT.Models.API;
 namespace workIT.Models.API
 {
 	[Serializable]
@@ -22,7 +22,7 @@ namespace workIT.Models.API
 		public string Description { get; set; }
 		public List<ME.CostProfile> EstimatedCost { get; set; }
 		public bool? HolderMustAuthorize { get; set; }
-
+		public string HolderMustAuthorizeLabel { get; set; }
 		public List<ME.JurisdictionProfile> Jurisdiction { get; set; } = new List<ME.JurisdictionProfile>();
 
 		public WMS.AJAXSettings OfferedBy { get; set; } 
@@ -33,10 +33,10 @@ namespace workIT.Models.API
 		//
 		public WMS.AJAXSettings TargetCredential { get; set; }
 		// URL
-		public string VerificationDirectory { get; set; }
+		public WMA.LabelLink VerificationDirectory { get; set; }
 		public string VerificationMethodDescription { get; set; }
 		//URL
-		public string VerificationService { get; set; }
+		public WMA.LabelLink VerificationService { get; set; }
 
 		public List<LabelLink> VerifiedClaimType { get; set; } = new List<LabelLink>();
 

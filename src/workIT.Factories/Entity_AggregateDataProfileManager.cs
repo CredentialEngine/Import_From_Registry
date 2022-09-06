@@ -19,7 +19,7 @@ namespace workIT.Factories
 {
 	public class Entity_AggregateDataProfileManager : BaseFactory
 	{
-		static string thisClassName = "AggregateDataProfileManager";
+		static string thisClassName = "Entity_AggregateDataProfileManager";
 
 
 		#region persistance ==================
@@ -31,7 +31,7 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-
+			var listCount = ( list != null && list.Count > 0 ) ? list.Count : 0;
 			//TODO - this check is wrong but currently does allow for the Indiana prototyping
 			//		- if data is updated in the publisher (i.e. no ADP) the ADP will not be deleted here.
 			//		- maybe need some hack in a property to help with this??
@@ -42,7 +42,7 @@ namespace workIT.Factories
 			//may need to delete all here, as cannot easily/dependably look up the profile
 			DeleteAll( parent.EntityUid, ref status );
 
-			if ( currentRecords.Count != list.Count )
+			if (  currentRecords.Count != listCount )
 				status.UpdateElasticIndex = true;
 			//
 			if ( list == null || list.Count == 0 )
@@ -58,7 +58,7 @@ namespace workIT.Factories
 				updateDate = status.LocalUpdatedDate;
 			}
 
-			
+
 			bool isAllValid = true;
 			//if ( list == null || list.Count == 0 )
 			//{
@@ -80,10 +80,10 @@ namespace workIT.Factories
 			//else
 			//{
 
-				foreach ( ThisEntity item in list )
-				{
-					Save( item, parent, updateDate, ref status );
-				}
+			foreach ( ThisEntity item in list )
+			{
+				Save( item, parent, updateDate, ref status );
+			}
 			//delete any entities with last updated less than updateDate
 			//DeleteAll( parent, ref status, updateDate );
 			//}
@@ -101,40 +101,47 @@ namespace workIT.Factories
 			{
 				if ( !ValidateProfile( item, ref status ) )
 				{
-					return false;
+					//return false;
 				}
 
-				//should always be add if always resetting the entity
-				if ( item.Id > 0 )
+				try
 				{
-					DBEntity p = context.Entity_AggregateDataProfile
-							.FirstOrDefault( s => s.Id == item.Id );
-					if ( p != null && p.Id > 0 )
+					//should always be add if always resetting the entity
+					if ( item.Id > 0 )
 					{
-						item.RowId = p.RowId;
-						item.EntityId = p.EntityId;
-						MapToDB( item, p );
-
-						if ( HasStateChanged( context ) )
+						DBEntity p = context.Entity_AggregateDataProfile
+								.FirstOrDefault( s => s.Id == item.Id );
+						if ( p != null && p.Id > 0 )
 						{
-							p.LastUpdated = System.DateTime.Now;
-							context.SaveChanges();
+							item.RowId = p.RowId;
+							item.EntityId = p.EntityId;
+							MapToDB( item, p );
+
+							if ( HasStateChanged( context ) )
+							{
+								p.LastUpdated = System.DateTime.Now;
+								context.SaveChanges();
+							}
+							//regardless, check parts
+							isValid = UpdateParts( item, updateDate, ref status );
 						}
-						//regardless, check parts
-						isValid = UpdateParts( item, updateDate, ref status );
+						else
+						{
+							//error should have been found
+							isValid = false;
+							status.AddWarning( string.Format( "Error: the requested record was not found: recordId: {0}", item.Id ) );
+						}
 					}
 					else
 					{
-						//error should have been found
-						isValid = false;
-						status.AddWarning( string.Format( "Error: the requested record was not found: recordId: {0}", item.Id ) );
+						int newId = Add( item, updateDate, ref status );
+						if ( newId == 0 || status.HasErrors )
+							isValid = false;
 					}
 				}
-				else
+				catch ( Exception ex )
 				{
-					int newId = Add( item, updateDate, ref status );
-					if ( newId == 0 || status.HasErrors )
-						isValid = false;
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), parent.EntityTypeId:{0}, parent.Id {1}", parent.EntityTypeId, parent.EntityBaseId) );
 				}
 			}
 			return isValid;
@@ -242,7 +249,7 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-	
+
 		public bool UpdateParts( ThisEntity entity, DateTime updateDate, ref SaveStatus status )
 		{
 			bool isAllValid = true;
@@ -260,14 +267,16 @@ namespace workIT.Factories
 			if ( !jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status ) )
 				isAllValid = false;
 			//datasetProfiles
-			if ( !new DataSetProfileManager().SaveList( entity.RelevantDataSet, relatedEntity, ref status ) )
+			//if ( !new DataSetProfileManager().SaveList( entity.RelevantDataSet, relatedEntity, ref status ) )
+			//	isAllValid = false;
+			//new
+			if ( !new DataSetProfileManager().SaveList( entity.RelevantDataSetList, relatedEntity, ref status ) )
 				isAllValid = false;
-
 
 			//
 			return isAllValid;
 		}
-	
+
 		/// <summary>
 		/// Delete a Condition Profile, and related Entity
 		/// </summary>
@@ -313,14 +322,19 @@ namespace workIT.Factories
 			status.HasSectionErrors = false;
 			bool isNameRequired = true;
 
-			
+
 			return status.WasSectionValid;
 		}
 		#endregion
 
 		#region == Retrieval =======================
-
-		public static List<ThisEntity> GetAll( Entity parent, bool includingParts = true )
+		public static List<ThisEntity> GetAll( Guid entityUID, bool includingParts = true, bool isAPIRequest = false )
+		{
+			var relatedEntity = EntityManager.GetEntity( entityUID, false );
+			return GetAll( relatedEntity, includingParts, isAPIRequest );
+		}
+		public static List<ThisEntity> GetAll( Entity parent, bool includingParts = true, bool isAPIRequest = false )
+			
 		{
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
@@ -347,7 +361,7 @@ namespace workIT.Factories
 						{
 							entity = new ThisEntity();
 							//??do we need all data? It will be replaced. The main issue will be references to lopps, asmts, etc. 
-							MapFromDB( item, entity );
+							MapFromDB( item, entity, isAPIRequest );
 							list.Add( entity );
 						}
 					}
@@ -355,7 +369,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".GetAll() for: EntityTypeId: {0}, EntityBaseId: {1}, EntityBaseName: {2}", parent.EntityTypeId, parent.EntityBaseId, parent.EntityBaseName) );
 			}
 			return list;
 		}//
@@ -388,10 +402,21 @@ namespace workIT.Factories
 			output.PostReceiptMonths = input.PostReceiptMonths;
 			output.Source = input.Source;
 
-			if ( IsValidDate( input.DateEffective ) )
-				output.DateEffective = DateTime.Parse( input.DateEffective );
+			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
+			{
+				if ( BaseFactory.IsValidDate( input.DateEffective ) )
+				{
+					output.DateEffective = DateTime.Parse( input.DateEffective ).ToString( "yyyy-MM-dd" );
+				}
+				else
+				{
+					output.DateEffective = input.DateEffective;
+				}
+			}
 			else
+			{
 				output.DateEffective = null;
+			}
 			if ( input.JobsObtained != null && input.JobsObtained.Any() )
 			{
 				output.JobsObtainedJson = JsonConvert.SerializeObject( input.JobsObtained );
@@ -405,17 +430,18 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity input, ThisEntity output	)
+		public static void MapFromDB( DBEntity input, ThisEntity output, bool isAPIRequest )
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
 			output.Name = input.Name == null ? "" : input.Name;
 			output.Description = input.Description == null ? "" : input.Description;
 			output.DemographicInformation = input.DemographicInformation == null ? "" : input.DemographicInformation;
-			if ( IsValidDate( input.DateEffective ) )
-				output.DateEffective = ( ( DateTime )input.DateEffective ).ToString("yyyy-MM-dd");
-			else
-				output.DateEffective = "";
+			//assuming properly formatted in db
+			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
+			{
+				output.DateEffective = input.DateEffective;
+			}
 			//
 			output.NumberAwarded = ( input.NumberAwarded ?? 0 );
 			output.LowEarnings = ( input.LowEarnings ?? 0 );
@@ -425,17 +451,20 @@ namespace workIT.Factories
 			output.Source = GetUrlData( input.Source );
 
 			output.Currency = input.Currency;
-			Views.Codes_Currency code = CodesManager.GetCurrencyItem( output.Currency );
-			if ( code != null && code.NumericCode > 0 )
+			if ( !string.IsNullOrWhiteSpace( output.Currency ) )
 			{
-				output.Currency = code.Currency;
-				output.CurrencySymbol = code.HtmlCodes;
+				if ( output.Currency.ToLower() == "usd" )
+					output.CurrencySymbol = "$";
+				else
+				{
+					var currency = CodesManager.GetCurrencyItem( output.Currency );
+					if ( currency != null && currency.NumericCode > 0 )
+					{
+						output.CurrencySymbol = currency.HtmlCodes;
+					}
+				}
 			}
-
-			if ( IsValidDate( input.Created ) )
-				output.Created = ( DateTime )input.Created;
-			if ( IsValidDate( input.LastUpdated ) )
-				output.LastUpdated = ( DateTime )input.LastUpdated;
+	
 
 			if ( !string.IsNullOrEmpty( input.JobsObtainedJson ) )
 			{
@@ -456,15 +485,24 @@ namespace workIT.Factories
 			//
 			output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
 			//get datasetprofiles
-			output.RelevantDataSet = DataSetProfileManager.GetAll( output.RowId, true );
-		
+			output.RelevantDataSet = DataSetProfileManager.GetAll( output.RowId, true, isAPIRequest );
+
 			//==========
+			if ( isAPIRequest )
+			{
+				output.RowId = Guid.Empty;
+			} else
+			{
+				if ( IsValidDate( input.Created ) )
+					output.Created = ( DateTime )input.Created;
+				if ( IsValidDate( input.LastUpdated ) )
+					output.LastUpdated = ( DateTime )input.LastUpdated;
+			}
 
 
-			
 		} //
 		/// <summary>
-		/// Format a summary of the HoldersProfile for use in search and gray boxes
+		/// Format a summary of the AggregateDataProfile for use in search and gray boxes
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returns>
@@ -490,7 +528,7 @@ namespace workIT.Factories
 					{
 						//21-04-19 - decided to use a simple generic summary for all outcome data
 						summary = string.Format( "Outcome data is available for '{0}'.", entityName );
-						/*
+						/*	*/
 						foreach ( var item in results )
 						{
 							entity = new ThisEntity();
@@ -534,7 +572,7 @@ namespace workIT.Factories
 							}
 							lineBreak = "<br>";
 						}
-						*/
+					
 					}
 					return summary;
 				}

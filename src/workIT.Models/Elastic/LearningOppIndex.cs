@@ -4,32 +4,42 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using workIT.Models.Common;
+
 namespace workIT.Models.Elastic
 {
     public class LearningOppIndex: BaseIndex, IIndex
 	{
         public LearningOppIndex()
         {
-            TeachesCompetencies = new List<IndexCompetency>();
+			EntityTypeId = 7;
+
+			TeachesCompetencies = new List<IndexCompetency>();
             RequiresCompetencies = new List<IndexCompetency>();
             RelationshipTypes = new List<int>();
             SubjectAreas = new List<string>();
         }
-        //public int Id { get; set; }
-        //public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
-        //public string Name { get; set; }
-        //public string FriendlyName { get; set; }
-        //public int EntityStateId { get; set; }
-        public string DateEffective { get; set; }
+		public int? LifeCycleStatusTypeId { get; set; }
+		public string LifeCycleStatusType { get; set; }
+		//public int Id { get; set; }
+		//public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
+		//public string Name { get; set; }
+		//public string FriendlyName { get; set; }
+		//public int EntityStateId { get; set; }
+		public string DateEffective { get; set; }
 
         //public Guid RowId { get; set; }
         //public string CTID { get; set; }
         public List<IndexCompetency> TeachesCompetencies { get; set; }
         public List<IndexCompetency> RequiresCompetencies { get; set; }
-        //public List<string> InLanguage { get; set; } = new List<string>();
+		//added to base
+		//TODO - add all of Teaches and Requires to Competencies
+		//public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
-        // public string AssessmentMethodType { get; set; }
-        public string ProcessStandards { get; set; }
+		//public List<string> InLanguage { get; set; } = new List<string>();
+
+		// public string AssessmentMethodType { get; set; }
+		public string ProcessStandards { get; set; }
         public string ProcessStandardsDescription { get; set; }
          public int QARolesCount { get; set; }
 
@@ -89,6 +99,10 @@ namespace workIT.Models.Elastic
 		public bool HasSubjects { get; set; }
 		//public new List<string> SubjectAreas { get; set; }
 		public List<IndexSubject> Subjects { get; set; }
+		/// <summary>
+		/// Identifier - primarily for region identifiers like LWIA, etc
+		/// </summary>
+		List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
 
 		public List<int> LearningMethodTypeIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
@@ -109,7 +123,7 @@ namespace workIT.Models.Elastic
 		//public string CodedNotation { get; set; }
      
         public int CompetenciesCount { get; set; }
-        public string ListTitle { get; set; }
+        //public string ListTitle { get; set; }
         public List<int> AudienceTypeIds { get; set; } = new List<int>();
 		public List<int> AudienceLevelTypeIds { get; set; } = new List<int>();
 		public List<int> AssessmentMethodTypeIds { get; set; } = new List<int>();
@@ -155,10 +169,15 @@ namespace workIT.Models.Elastic
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
-        public int ProcessProfilesCount { get; set; }
+        //public int ProcessProfilesCount { get; set; }
+
+		public int AggregateDataProfileCount { get; set; }
+		public string AggregateDataProfileSummary { get; set; }
+		public int DataSetProfileCount { get; set; }
+		public int HasTransferValueProfilesCount { get; set; }
 
 
-        #endregion
+		#endregion
 
-    }
+	}
 }

@@ -24,6 +24,7 @@ using workIT.Data.Views;
 using workIT.Data.Tables;
 using System.Web.UI;
 
+
 namespace workIT.Factories
 {
 	public class ElasticManager : BaseFactory
@@ -63,6 +64,7 @@ namespace workIT.Factories
 				
 				if ( string.IsNullOrWhiteSpace( index.FriendlyName ) )
 					index.FriendlyName = FormatFriendlyTitle( index.Name );
+				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
 				//TBD for format
 				//index. = oi.TransferValueGraph;
 
@@ -79,6 +81,15 @@ namespace workIT.Factories
 					index.OccupationResults = Fill_CodeItemResults( item.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 				//
 				index.Subjects = item.SubjectAreas;
+				//tvp specific - which is moving away from generic
+				index.TransferValueForCredentialsCount = item.TransferValueForCredentialsCount;
+				index.TransferValueFromCredentialsCount = item.TransferValueFromCredentialsCount;
+
+				index.TransferValueForAssessmentsCount = item.TransferValueForAssessmentsCount;
+				index.TransferValueFromAssessmentsCount = item.TransferValueFromAssessmentsCount;
+
+				index.TransferValueForLoppsCount = item.TransferValueForLoppsCount;
+				index.TransferValueFromLoppsCount = item.TransferValueFromLoppsCount;
 
 				list.Add( index );
 			}
@@ -86,7 +97,6 @@ namespace workIT.Factories
 			return list;
 		}
 		#endregion
-
 		#region Credential Elastic Index
 		public static List<CredentialIndex> Credential_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
@@ -215,22 +225,22 @@ namespace workIT.Factories
 					index.CredentialType = dr[ "CredentialType" ].ToString();
 
 					index.CredentialTypeSchema = dr[ "CredentialTypeSchema" ].ToString();
+					index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
 					index.CredentialStatus = dr[ "CredentialStatus" ].ToString();
 					if ( !string.IsNullOrWhiteSpace( index.CredentialStatus )
 						&& index.CredentialStatus != "Active" && index.Name.IndexOf( index.CredentialStatus ) == -1 )
 					{
 						//index.Name += string.Format( " ({0})", index.CredentialStatus );
 					}
-					index.CredentialStatusId = GetRowColumn( dr, "CredentialStatusId", 0 );
+					
 
 					index.CredentialTypeId = Int32.Parse( dr[ "CredentialTypeId" ].ToString() );
 					//index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
 
-					string date = GetRowColumn( dr, "EffectiveDate", "" );
+					string date = GetRowColumn( dr, "DateEffective", "" );
 					if ( IsValidDate( date ) )
-						index.DateEffective = ( DateTime.Parse( date ).ToString("yyyy-MM-dd") );
-					else
-						index.DateEffective = "";
+						index.DateEffective = ( DateTime.Parse( date ).ToString( "yyyy-MM-dd" ) );
+					
 					date = GetRowColumn( dr, "Created", "" );
 					if ( IsValidDate( date ) )
 						index.Created = DateTime.Parse( date );
@@ -290,17 +300,19 @@ namespace workIT.Factories
 					index.ProcessProfilesCount = Int32.Parse( dr[ "ProcessProfilesCount" ].ToString() );
 					//21-03-29 add aggregateDataProfile and dataSetProfile - what to do for summary?
 					//			- will this be too costly for large numbers? If so, the summary profile could be assigned at import and stored. 
-					index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 ); // Int32.Parse( dr[ "AggregateDataProfileCount" ].ToString() );
+					index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 ); 
 					//or would this be better to do in search results (saves having to re-index)
 					//the benefit would be saving the hit now rather than when doing get search results - actually this would get lost with Nate's approach
-					if ( index.AggregateDataProfileCount > 0 )
+					index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
+
+					if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
 					{
 						//21-04-19 - decided to use a simple generic summary for all outcome data
-						//index.AggregateDataProfileSummary = Entity_AggregateDataProfileManager.GetSummary( index.RowId, index.Name );
+						//index.AggregateDataProfileSummary = Entity_AggregateDataProfileManager.GetSummary( index.RowId, index.Name ) ;
 						index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
 					}
+					index.JurisdictionProfilesCount = GetRowPossibleColumn( dr, "JurisdictionProfilesCount", 0 );
 
-					index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
 					//
 					//21-03-29 - skipping holders, earnings and employment now
 					//index.HoldersProfileCount = Int32.Parse( dr[ "HoldersProfileCount" ].ToString() );
@@ -315,9 +327,9 @@ namespace workIT.Factories
 					//if ( index.EmploymentOutcomeProfileCount > 0 )
 					//	index.EmploymentOutcomeProfileSummary = Entity_EmploymentOutcomeProfileManager.GetSummary( index.RowId );
 
-					//index.HasOccupationsCount = Int32.Parse( dr[ "HasOccupationsCount" ].ToString() );
-					//index.HasIndustriesCount = Int32.Parse( dr[ "HasIndustriesCount" ].ToString() );
-					//-actual connection type (no credential info), with the schema name, and number of connections
+					//
+
+
 					// 8~Is Preparation For~ceterms:isPreparationFor~2
 					index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
 
@@ -373,7 +385,7 @@ namespace workIT.Factories
 					}
 
 
-					#region QualityAssurance
+					#region QualityAssurance and org relationships
 
 					HandleAgentRelationshipsForEntity( dr, index );
 					//handle QA asserted by a third party (versus by the owner)
@@ -400,6 +412,8 @@ namespace workIT.Factories
 					//QAAgentAndRoles - List actual orgIds and names for roles
 					//10~Owning Org is Recognized~1105~Accrediting Commission for Community and Junior Colleges - updated~Organization| 10~Owning Org is Recognized~64~AdvancED~Organization| 12~Owning Org is Regulated~55~TESTING_American National Standards Institute (ANSI)~Organization| 12~Owning Org is Regulated~64~AdvancED~Organization
 					index.Org_QAAgentAndRoles = dr[ "Org_QAAgentAndRoles" ].ToString();
+					//
+					HandleDataProvidersForEntity( dr, index );
 
 					#endregion
 
@@ -443,12 +457,20 @@ namespace workIT.Factories
 					#endregion
 
 					#region Addresses 
+					var addresses = dr["Addresses"].ToString();
 					//future using json
 					var jsonProperties = GetRowPossibleColumn( dr, "JsonProperties" );
 					if ( !string.IsNullOrWhiteSpace( jsonProperties ) )
 					{
 						//20-10-23 - not active and deferred, so skipping
-						//HandleAddressesFromJson( index, jsonProperties );
+						//21-07-30 mp - JsonProperties has addresses, and Addresses does not!
+						//22-04-01 mp - noticed that addresses in JsonProperties will have the short region, and may not have a country. So disable use of this, unless no addresses? The latter is not likely
+						//perhaps this temp workaround to skip use of jsonProperties
+						//will set populatingCredentialJsonProperties to true, so this step will be skipped and a later step will result in the jsonProperties to be properly set? But then can't really turn off until JP is set properly during import!!!!!
+						//this will at least be useful to rebuild the WA stuff. Well probably have to do all
+						//	skip for now and leave 'populatingCredentialJsonProperties' as false
+						//if ( !populatingCredentialJsonProperties )
+						//	HandleAddressesFromJson( index, jsonProperties );
 
 					} else
 					{
@@ -457,16 +479,21 @@ namespace workIT.Factories
 					//- from XML
 
 
-					var addresses = dr[ "Addresses" ].ToString();
+					
 					if ( !string.IsNullOrWhiteSpace( addresses ) )
 					{
-						HandleAddresses( index, addresses );
-						if ( index.Addresses != null && index.Addresses.Count > 0 && populatingCredentialJsonProperties )
+						//check if there are addresses from json. If not, then handle address
+						if ( index.Addresses?.Count == 0 )
 						{
+							HandleAddresses( index, addresses );
+						}
+						if ( index.Addresses?.Count > 0 && populatingCredentialJsonProperties )
+						{
+							//update credential.JsonProperties. This will be useful where the import populated the latter before normalizing the address.
 							AddCredentialJsonProperties( index );
 						}
 					}
-					if ( index.Addresses.Count == 0 )
+					if ( index.Addresses?.Count == 0 )
 					{
 						//future 
 						jsonProperties = GetRowPossibleColumn( dr, "OrganizationJsonProperties" );
@@ -486,19 +513,29 @@ namespace workIT.Factories
 					//just check for zero again
 					if ( index.Addresses.Count == 0 )
 					{
-						var orgAddresses = dr[ "OrgAddresses" ].ToString();
-						try
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
-							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							var orgAddresses = dr["OrgAddresses"].ToString();
+							try
 							{
-								HandleAddresses( index, orgAddresses );
+								if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+								{
+									//issue: a org could have a large number of addresses, that would be a problem for LWIA use. Abandon?
+									HandleAddresses( index, orgAddresses );
+								}
+								//}
 							}
-							//}
+							catch ( Exception ex )
+							{
+								LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
+							}
 						}
-						catch ( Exception ex )
-						{
-							LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-						}
+					}
+					//prototype: append region to name org key
+					//if this works out, can possibly skip the usingRegionHack 
+					if ( index.Regions != null && index.Regions.Any())
+					{
+						index.NameOrganizationKey += " " + index.Regions[ 0 ];
 					}
 					#endregion
 
@@ -661,7 +698,7 @@ namespace workIT.Factories
 						//	var framework = new IndexReferenceFramework
 						//	{
 						//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-						//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+						//		ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
 						//		Name = ( string )child.Attribute( "Name" ) ?? "",
 						//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
 						//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
@@ -718,6 +755,8 @@ namespace workIT.Factories
 
 					#endregion
 					#region Custom Reports
+					index.HasTransferValueProfilesCount = GetRowColumn( dr, "HasTransferValueProfileCount", 0 );
+					AddReportProperty( index, index.HasTransferValueProfilesCount, 58, "Has Transfer Values", "credReport:HasTransferValues" );
 
 					AddReportProperty( index, index.AvailableOnlineAt, 58, "Available Online", "credReport:AvailableOnline" );
 
@@ -726,7 +765,7 @@ namespace workIT.Factories
 					AddReportProperty( index, index.CostProfileCount, 58, "Has cost profile", "credReport:HasCostProfile" );
 					AddReportProperty( index, index.CommonConditionsCount, 58, "References Common Conditions", "credReport:ReferencesCommonConditions" );
 					AddReportProperty( index, index.CommonCostsCount, 58, "References Common Costs", "credReport:ReferencesCommonCosts" );
-					AddReportProperty( index, index.FinancialAidCount, 58, "Has Financial Aid", "credReport:FinancialAid" );
+					AddReportProperty( index, index.FinancialAidCount, 58, "Has Financial Assistance", "credReport:FinancialAid" );
 					AddReportProperty( index, index.RequiredAssessmentsCount, 58, "Requires Assessment", "credReport:RequiresAssessment" );
 					AddReportProperty( index, index.RequiredCredentialsCount, 58, "Requires Credential", "credReport:RequiresCredential" );
 					AddReportProperty( index, index.RequiredLoppCount, 58, "Requires Learning Opportunity", "credReport:RequiresLearningOpportunity" );
@@ -738,24 +777,25 @@ namespace workIT.Factories
 					AddReportProperty( index, index.RenewalCount, 58, "Has Renewal", "credReport:HasRenewal" );
 					AddReportProperty( index, index.ProcessProfilesCount, 58, "Has Process Profile", "credReport:HasProcessProfile" );
 					//
-					AddReportProperty( index, index.AggregateDataProfileCount, 58, "Has Aggregate Data Profile", "credReport:HasAggregateDataProfile" );
-					//AddReportProperty( index, index.DataSetProfileCount, 58, "Has Dataset Profile", "credReport:HasDataSetProfile" );
-					AddReportProperty( index, index.AggregateDataProfileCount + index.DataSetProfileCount, 58, "Has Outcome Data", "credReport:HasOutcomeData" );
+					AddReportProperty( index, index.AggregateDataProfileCount, 58, "credReport:HasAggregateDataProfile" );
+					AddReportProperty( index, index.DataSetProfileCount, 58, "credReport:HasDataSetProfile" );
+					AddReportProperty( index, index.AggregateDataProfileCount + index.DataSetProfileCount, 58, "credReport:HasOutcomeData" );
 					//AddReportProperty( index, index.HoldersProfileCount, 58, "Has Holders Profile", "credReport:HasHoldersProfile" );
 					//AddReportProperty( index, index.EarningsProfileCount, 58, "Has Earnings Profile", "credReport:HasEarningsProfile" );
 					//AddReportProperty( index, index.EmploymentOutcomeProfileCount, 58, "Has Employment Outcome Profile", "credReport:HasEmploymentOutcomeProfile" );
+					AddReportProperty( index, index.JurisdictionProfilesCount, 58, "credReport:HasJurisdictionProfile" );
 
 					//
-					AddReportProperty( index, index.HasSubjects, 58, "Has Subjects", "credReport:HasSubjects" );
-					AddReportProperty( index, index.HasOccupations, 58, "Has Occupations", "credReport:HasOccupations" );
-					AddReportProperty( index, index.HasIndustries, 58, "Has Industries", "credReport:HasIndustries" );
-					AddReportProperty( index, index.HasInstructionalPrograms, 58, "Has Programs/CIP", "credReport:HasCIP" );
-					AddReportProperty( index, index.IsPartOfCount, 58, "Has Is Part Of Credential", "credReport:IsPartOfCredential" );
+					AddReportProperty( index, index.HasSubjects, 58, "credReport:HasSubjects" );
+					AddReportProperty( index, index.HasOccupations, 58, "credReport:HasOccupations" );
+					AddReportProperty( index, index.HasIndustries, 58, "credReport:HasIndustries" );
+					AddReportProperty( index, index.HasInstructionalPrograms, 58, "credReport:HasCIP" );
+					AddReportProperty( index, index.IsPartOfCount, 58, "credReport:IsPartOfCredential" );
 
 					AddReportProperty( index, index.Addresses.Count, 58, "Has Addresses", "credReport:HasAddresses" );
 
 					AddReportProperty( index, index.RequiresCompetenciesCount, 58, "Requires Competencies", "credReport:RequiresCompetencies" );
-					AddReportProperty( index, ( index.RequiresCompetenciesCount > 0 || index.AssessmentsCompetenciesCount > 0 || index.LearningOppsCompetenciesCount > 0 ), 58, "Has Competencies", "credReport:HasCompetencies" );
+					AddReportProperty( index, index.RequiresCompetenciesCount + index.AssessmentsCompetenciesCount + index.LearningOppsCompetenciesCount, 58, "credReport:HasCompetencies" );
 					//
 					var HasConditionProfileCount = GetRowPossibleColumn( dr, "HasConditionProfileCount", 0 );
 					AddReportProperty( index, HasConditionProfileCount, 58, "Has Condition Profile", "credReport:HasConditionProfile" );
@@ -831,7 +871,20 @@ namespace workIT.Factories
 					index.TextValues.Add( input.Trim() );
 			}
 		}
-
+		public static void AddReportProperty( IIndex index, int count, int reportCategoryId, string reportSchemaname )
+		{
+			int propertyId = 0;
+			if ( count > 0 )
+				if ( GetPropertyId( reportCategoryId, reportSchemaname, ref propertyId ) )
+				{
+					index.ReportFilters.Add( propertyId );
+				}
+				else
+				{
+					//log as probably have a spelling error
+					LoggingHelper.DoTrace( 1, string.Format( "$$$$ElasticManager.AddReportProperty - did not find property for: reportCategoryId: {0}, reportSchemaname: {1}", reportCategoryId, reportSchemaname ) );
+				}
+		}
 		public static void AddReportProperty( IIndex index, int count, int reportCategoryId, string reportTextName, string reportSchemaname )
 		{
 			int propertyId = 0;
@@ -840,6 +893,24 @@ namespace workIT.Factories
 				{
 					index.ReportFilters.Add( propertyId );
 					//AddTextValue( index, reportTextName );
+				} else
+				{
+					//log as probably have a spelling error
+					LoggingHelper.DoTrace( 1, string.Format( "$$$$ElasticManager.AddReportProperty - did not find property for: reportCategoryId: {0}, reportSchemaname: {1}", reportCategoryId, reportSchemaname ) );
+				}
+		}
+		public static void AddReportProperty( IIndex index, bool hasData, int reportCategoryId, string reportSchemaname )
+		{
+			int propertyId = 0;
+			if ( hasData )
+				if ( GetPropertyId( reportCategoryId, reportSchemaname, ref propertyId ) )
+				{
+					index.ReportFilters.Add( propertyId );
+				}
+				else
+				{
+					//log as probably have a spelling error
+					LoggingHelper.DoTrace( 1, string.Format( "$$$$ElasticManager.AddReportProperty (usng hasData) - did not find property for: reportCategoryId: {0}, reportSchemaname: {1}", reportCategoryId, reportSchemaname ) );
 				}
 		}
 		public static void AddReportProperty( IIndex index, bool hasData, int reportCategoryId, string reportTextName, string reportSchemaname )
@@ -851,6 +922,11 @@ namespace workIT.Factories
 					index.ReportFilters.Add( propertyId );
 					//AddTextValue( index, reportTextName );
 				}
+				else
+				{
+					//log as probably have a spelling error
+					LoggingHelper.DoTrace( 1, string.Format( "$$$$ElasticManager.AddReportProperty (usng hasData) - did not find property for: reportCategoryId: {0}, reportSchemaname: {1}", reportCategoryId, reportSchemaname ) );
+				}
 		}
 		public static void AddReportProperty( IIndex index, string input, int reportCategoryId, string reportTextName, string reportSchemaname )
 		{
@@ -860,6 +936,11 @@ namespace workIT.Factories
 				{
 					index.ReportFilters.Add( propertyId );
 					//AddTextValue( index, reportTextName );
+				}
+				else
+				{
+					//log as probably have a spelling error
+					LoggingHelper.DoTrace( 1, string.Format( "$$$$ElasticManager.AddReportProperty(string input) - did not find property for: reportCategoryId: {0}, reportSchemaname: {1}", reportCategoryId, reportSchemaname ) );
 				}
 		}
 
@@ -877,70 +958,76 @@ namespace workIT.Factories
 			var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
 			bool includingHasPartIsPartWithConnections = UtilityManager.GetAppKeyValue( "includeHasPartIsPartWithConnections", false );
 			int rowNbr = (pageNbr - 1) * pageSize;
-			foreach ( var ci in credentials )
+			foreach ( var item in credentials )
 			{
 				var index = new CM.CredentialSummary();
 				rowNbr++;
 				//avgMinutes = 0;
 				index = new CM.CredentialSummary
 				{
-					Id = ci.Id,
+					Id = item.Id,
 					ResultNumber = rowNbr,
-					Name = ci.Name,
-					FriendlyName = ci.FriendlyName,
-					SubjectWebpage = ci.SubjectWebpage,
-					EntityStateId = ci.EntityStateId,
-					RowId = ci.RowId,
-					Description = ci.Description,
-					OwnerOrganizationId = ci.OwnerOrganizationId,
-					OwnerOrganizationName = ci.OwnerOrganizationName,
-					CTID = ci.CTID,
-					PrimaryOrganizationCTID = ci.PrimaryOrganizationCTID,
+					Name = item.Name,
+					FriendlyName = item.FriendlyName,
+					SubjectWebpage = item.SubjectWebpage,
+					EntityStateId = item.EntityStateId,
+					RowId = item.RowId,
+					Description = item.Description,
+					OwnerOrganizationId = item.OwnerOrganizationId,
+					OwnerOrganizationName = item.OwnerOrganizationName,
+					CTID = item.CTID,
+					PrimaryOrganizationCTID = item.PrimaryOrganizationCTID,
 					//CredentialRegistryId = ci.CredentialRegistryId,
-					DateEffective = ci.DateEffective,
-					Created = ci.Created,
+					DateEffective = item.DateEffective,
+					Created = item.Created,
 					//define LastUpdated to be EntityLastUpdated
-					LastUpdated = ci.LastUpdated,
-					CredentialType = ci.CredentialType,
-					CredentialTypeSchema = ci.CredentialTypeSchema,
-					TotalCost = ci.TotalCost,
-					CostProfileCount = ci.CostProfileCount,
-					IsAQACredential = ci.IsAQACredential,
-					LearningOppsCompetenciesCount = ci.LearningOppsCompetenciesCount,
-					AssessmentsCompetenciesCount = ci.AssessmentsCompetenciesCount,
+					LastUpdated = item.LastUpdated,
+					CredentialType = item.CredentialType,
+					CredentialTypeSchema = item.CredentialTypeSchema,
+					CredentialStatus = item.CredentialStatus,
+					TotalCost = item.TotalCost,
+					CostProfileCount = item.CostProfileCount,
+					IsAQACredential = item.IsAQACredential,
+					LearningOppsCompetenciesCount = item.LearningOppsCompetenciesCount,
+					AssessmentsCompetenciesCount = item.AssessmentsCompetenciesCount,
+					RequiresCompetenciesCount = item.RequiresCompetenciesCount,
 					//QARolesCount = ci.QARolesCount,
-					HasPartCount = ci.HasPartCount,
-					IsPartOfCount = ci.IsPartOfCount,
-					AggregateDataProfileCount = ci.AggregateDataProfileCount,
-					HoldersProfileCount = ci.HoldersProfileCount,
-					EarningsProfileCount = ci.EarningsProfileCount,
-					EmploymentOutcomeProfileCount = ci.EmploymentOutcomeProfileCount,
-
-					RequiresCount = ci.RequiresCount,
-					RecommendsCount = ci.RecommendsCount,
-					RequiredForCount = ci.RequiredForCount,
+					HasPartCount = item.HasPartCount,
+					IsPartOfCount = item.IsPartOfCount,
+					AggregateDataProfileCount = item.AggregateDataProfileCount,
+					DataSetProfileCount = item.DataSetProfileCount,
+					HoldersProfileCount = item.HoldersProfileCount,
+					EarningsProfileCount = item.EarningsProfileCount,
+					EmploymentOutcomeProfileCount = item.EmploymentOutcomeProfileCount,
+					
+					RequiresCount = item.RequiresCount,
+					RecommendsCount = item.RecommendsCount,
+					RequiredForCount = item.RequiredForCount,
 					//20-04-22 mparsons - supposedly there used to be gray boxes for asmts, and lopps. Not sure where set? Seems has to be done in search? Or ajax callbacks?
-					RequiredAssessmentsCount = ci.RequiredAssessmentsCount,
-					RecommendedAssessmentsCount = ci.RecommendedAssessmentsCount,
-					RequiredLoppCount = ci.RequiredLoppCount,
-					RecommendedLoppCount = ci.RecommendedLoppCount,
+					RequiredAssessmentsCount = item.RequiredAssessmentsCount,
+					RecommendedAssessmentsCount = item.RecommendedAssessmentsCount,
+					RequiredLoppCount = item.RequiredLoppCount,
+					RecommendedLoppCount = item.RecommendedLoppCount,
 
-					IsRecommendedForCount = ci.IsRecommendedForCount,
-					RenewalCount = ci.RenewalCount,
-					IsAdvancedStandingForCount = ci.IsAdvancedStandingForCount,
-					AdvancedStandingFromCount = ci.AdvancedStandingFromCount,
-					PreparationForCount = ci.PreparationForCount,
-					PreparationFromCount = ci.PreparationFromCount,
-					NumberOfCostProfileItems = ci.NumberOfCostProfileItems,
-					HasVerificationType_Badge = ci.HasVerificationType_Badge,
+					IsRecommendedForCount = item.IsRecommendedForCount,
+					RenewalCount = item.RenewalCount,
+					IsAdvancedStandingForCount = item.IsAdvancedStandingForCount,
+					AdvancedStandingFromCount = item.AdvancedStandingFromCount,
+					PreparationForCount = item.PreparationForCount,
+					PreparationFromCount = item.PreparationFromCount,
+					NumberOfCostProfileItems = item.NumberOfCostProfileItems,
+					HasVerificationType_Badge = item.HasVerificationType_Badge,
 					//TotalCostCount = ci.TotalCostCount,
-					CommonCostsCount = ci.CommonCostsCount,
-					CommonConditionsCount = ci.CommonConditionsCount,
-					FinancialAidCount = ci.FinancialAidCount
+					CommonCostsCount = item.CommonCostsCount,
+					CommonConditionsCount = item.CommonConditionsCount,
+					FinancialAidCount = item.FinancialAidCount,
+					TransferValueCount = item.HasTransferValueProfilesCount
 
 				};
-				if ( ci.ImageURL != null && ci.ImageURL.Trim().Length > 0 )
-					index.ImageUrl = ci.ImageURL;
+				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.OwnerOrganizationName );
+
+				if ( item.ImageURL != null && item.ImageURL.Trim().Length > 0 )
+					index.ImageUrl = item.ImageURL;
 				else
 					index.ImageUrl = null;
 
@@ -952,20 +1039,20 @@ namespace workIT.Factories
 				//if ( ci.EstimatedTimeToEarn > 0 )
 				index.EstimatedTimeToEarn = DurationProfileManager.GetAll( index.RowId );
 
-				if ( ci.Industries != null && ci.Industries.Count > 0 )
-					index.IndustryResults = Fill_CodeItemResults( ci.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+				if ( item.Industries != null && item.Industries.Count > 0 )
+					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 
-				if ( ci.Occupations != null && ci.Occupations.Count > 0 )
-					index.OccupationResults = Fill_CodeItemResults( ci.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
+				if ( item.Occupations != null && item.Occupations.Count > 0 )
+					index.OccupationResults = Fill_CodeItemResults( item.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 
-				if ( ci.InstructionalPrograms != null && ci.InstructionalPrograms.Count > 0 )
-					index.InstructionalProgramClassification = Fill_CodeItemResults( ci.InstructionalPrograms.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
+				if ( item.InstructionalPrograms != null && item.InstructionalPrograms.Count > 0 )
+					index.InstructionalProgramClassification = Fill_CodeItemResults( item.InstructionalPrograms.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
 
-				index.Org_QARolesResults = Fill_CodeItemResults( ci.Org_QARolesList, 130, false, true );
-				index.Org_QAAgentAndRoles = Fill_AgentRelationship( ci.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
-				index.AgentAndRoles = Fill_AgentRelationship( ci.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
+				index.Org_QARolesResults = Fill_CodeItemResults( item.Org_QARolesList, 130, false, true );
+				index.Org_QAAgentAndRoles = Fill_AgentRelationship( item.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
+				index.AgentAndRoles = Fill_AgentRelationship( item.AgentAndRoles, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true, "Credential" );
 				//why was this missing - usually part of AgentAndRoles, but not for Sophia??
-				var qa=Fill_AgentRelationship( ci.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Credential" );
+				var qa=Fill_AgentRelationship( item.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Credential" );
 				if (qa != null && qa.Results.Count() > 0)
 				{
 					foreach ( var qaitem in qa.Results )
@@ -978,51 +1065,54 @@ namespace workIT.Factories
 					//index.Org_QAAgentAndRoles.Results.AddRange( qa.Results );
 				}
 				//
-				index.ConnectionsList = Fill_CodeItemResults( ci.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
-				if ( index.AggregateDataProfileCount > 0 )
+				index.ConnectionsList = Fill_CodeItemResults( item.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
+				if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
 				{
 					//21-04-19 - decided to use a simple generic summary for all outcome data
 					index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
 					//index.AggregateDataProfileSummary = ci.AggregateDataProfileSummary;
+					//hack 
+					if( index.AggregateDataProfileCount ==0)
+						index.AggregateDataProfileCount += index.DataSetProfileCount;
 				}
 				if (index.HoldersProfileCount > 0)
-					index.HoldersProfileSummary = ci.HoldersProfileSummary;
+					index.HoldersProfileSummary = item.HoldersProfileSummary;
 				if ( index.EarningsProfileCount > 0 )
-					index.EarningsProfileSummary = ci.EarningsProfileSummary;
+					index.EarningsProfileSummary = item.EarningsProfileSummary;
 				if ( index.EmploymentOutcomeProfileCount > 0 )
-					index.EmploymentOutcomeProfileSummary = ci.EmploymentOutcomeProfileSummary;
+					index.EmploymentOutcomeProfileSummary = item.EmploymentOutcomeProfileSummary;
 				//
 				if ( includingHasPartIsPartWithConnections )
 				{
 					//manually add other connections
-					if ( ci.HasPartCount > 0 )
+					if ( item.HasPartCount > 0 )
 					{
-						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Includes", SchemaName = "hasPart", Totals = ci.HasPartCount } );
+						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Includes", SchemaName = "hasPart", Totals = item.HasPartCount } );
 					}
-					if ( ci.IsPartOfCount > 0 )
+					if ( item.IsPartOfCount > 0 )
 					{
-						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Included With", SchemaName = "isPartOf", Totals = ci.IsPartOfCount } );
+						index.ConnectionsList.Results.Add( new CodeItem() { Id = 0, Title = "Included With", SchemaName = "isPartOf", Totals = item.IsPartOfCount } );
 					}
 				}
 
-				index.HasPartsList = Fill_CredentialConnectionsResult( ci.HasPartsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.HasPartsList = Fill_CredentialConnectionsResult( item.HasPartsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-				index.IsPartOfList = Fill_CredentialConnectionsResult( ci.IsPartOfList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.IsPartOfList = Fill_CredentialConnectionsResult( item.IsPartOfList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-				index.CredentialsList = Fill_CredentialConnectionsResult( ci.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-				index.ListTitle = ci.ListTitle;
-				index.Subjects = ci.Subjects.Select( x => x.Name ).Distinct().ToList();
+				index.CredentialsList = Fill_CredentialConnectionsResult( item.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.ListTitle = item.ListTitle;
+				index.Subjects = item.Subjects.Select( x => x.Name ).Distinct().ToList();
 
-				index.AssessmentDeliveryType = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, false );
-				index.LearningDeliveryType = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+				index.AssessmentDeliveryType = Fill_CodeItemResults( item.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, false );
+				index.LearningDeliveryType = Fill_CodeItemResults( item.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
 
 				//16-09-12 mp - changed to use pipe (|) rather than ; due to conflicts with actual embedded semicolons
-				index.AudienceLevelsResults = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
-				index.AudienceTypesResults = Fill_CodeItemResults( ci.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+				index.AudienceLevelsResults = Fill_CodeItemResults( item.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+				index.AudienceTypesResults = Fill_CodeItemResults( item.CredentialProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
 
 				//addressess                
 
-				index.Addresses = ci.Addresses.Select( x => new CM.Address
+				index.Addresses = item.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -1110,9 +1200,11 @@ namespace workIT.Factories
 						}
 
 						index = new OrganizationIndex();
-						index.EntityTypeId = 2;
+						
 						index.Id = GetRowColumn( dr, "Id", 0 );
 						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						index.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 2 );
+						index.EntityType = OrganizationManager.MapEntityType( index.EntityTypeId );
 						index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
@@ -1173,6 +1265,11 @@ namespace workIT.Factories
 						index.PathwaysCount = GetRowPossibleColumn( dr, "PathwayCount", 0 );
 						index.PathwaySetsCount = GetRowPossibleColumn( dr, "PathwaySetCount", 0 );
 						index.TransferValueProfilesCount = GetRowPossibleColumn( dr, "TransferValueCount", 0 );
+						index.DataSetProfileCount = GetRowPossibleColumn( dr, "DataSetProfileCount", 0 );
+						index.JurisdictionProfilesCount = GetRowPossibleColumn( dr, "JurisdictionProfilesCount", 0 );
+
+						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = dr["LifeCycleStatusType"].ToString();
 
 						#region Addresses
 						var addresses = dr[ "Addresses" ].ToString();
@@ -1180,30 +1277,6 @@ namespace workIT.Factories
 						{
 							HandleAddresses( index, addresses );
 
-							//var xDoc = new XDocument();
-							//xDoc = XDocument.Parse( addresses );
-
-							//foreach ( var child in xDoc.Root.Elements() )
-							//{
-							//	string region = ( string )child.Attribute( "Region" ) ?? "";
-							//	string city = ( string )child.Attribute( "City" ) ?? "";
-							//	string country = ( string )child.Attribute( "Country" ) ?? "";
-							//	index.Addresses.Add( new Address
-							//	{
-							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-							//		City = ( string )child.Attribute( "City" ) ?? "",
-							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-							//		PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-							//		Country = ( string )child.Attribute( "Country" ) ?? ""
-							//	} );
-							//	AddLocation( index, city, region, country );
-							//	//AddLocation( index, city, "city" );
-							//	//AddLocation( index, region, "region" );
-							//	//AddLocation( index, country, "country" );
-							//}
 							if ( index.Addresses != null && index.Addresses.Any() && populatingOrganizationJsonProperties )
 							{
 								AddOrganizationJsonProperties( index );
@@ -1373,7 +1446,7 @@ namespace workIT.Factories
 								var framework = new IndexReferenceFramework
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-									ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+									ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
 									Name = ( string )child.Attribute( "Name" ) ?? "",
 									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
 									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
@@ -1461,6 +1534,9 @@ namespace workIT.Factories
 
 						#region Custom Reports
 						int propertyId = 0;
+						index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						AddReportProperty( index, index.ProcessProfilesCount, thisReportCategoryId, "Has Process Profile", "orgReport:HasProcessProfile" );
+						AddReportProperty( index, index.JurisdictionProfilesCount, thisReportCategoryId, "orgReport:HasJurisdictionProfile" );
 
 						//TODO - could replace this approach and just add the schema text the text index
 						if ( index.VerificationProfilesCount > 0 )
@@ -1475,6 +1551,7 @@ namespace workIT.Factories
 							if ( GetPropertyId( thisReportCategoryId, "orgReport:HasNoVerificationService", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
 						}
+						
 						if ( index.CostManifestsCount > 0 )
 						{
 							if ( GetPropertyId( thisReportCategoryId, "orgReport:HasCostManifest", ref propertyId ) )
@@ -1498,7 +1575,18 @@ namespace workIT.Factories
 						AddReportProperty( index, index.PathwaysCount, thisReportCategoryId, "Has Pathways", "orgReport:HasPathways" );
 						AddReportProperty( index, index.PathwaySetsCount, thisReportCategoryId, "Has Pathway Sets", "orgReport:HasPathwaySets" );
 						AddReportProperty( index, index.TransferValueProfilesCount, thisReportCategoryId, "Has Transfer Value Profiles", "orgReport:HasTransferValueProfiles" );
+						AddReportProperty( index, index.DataSetProfileCount, thisReportCategoryId, "Has Outcome Profiles", "orgReport:HasOutcomeProfiles" );
 						//
+						if ( string.IsNullOrWhiteSpace( index.CTID ) )
+						{
+							if ( GetPropertyId( thisReportCategoryId, "orgReport:IsReferenceOrg", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						}
+						else
+						{
+							if ( GetPropertyId( thisReportCategoryId, "orgReport:IsRegisteredOrg", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						}
 						if ( index.SubsidiariesCount > 0 )
 						{
 							if ( GetPropertyId( thisReportCategoryId, "orgReport:HasSubsidiary", ref propertyId ) )
@@ -1554,8 +1642,6 @@ namespace workIT.Factories
 		/// populate Credential JsonProperties - starting with addresses
 		/// </summary>
 		/// <param name="index"></param>
-		/// <param name="input"></param>
-		/// <param name="addingToPremium"></param>
 		public static void AddOrganizationJsonProperties( OrganizationIndex index )
 		{
 			if ( index.Addresses == null || !index.Addresses.Any() )
@@ -1592,46 +1678,52 @@ namespace workIT.Factories
 			var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
 
 			int rowNbr = ( pageNbr - 1 ) * pageSize;
-			foreach ( var oi in organizations )
+			foreach ( var item in organizations )
 			{
 				rowNbr++;
 				var index = new CM.OrganizationSummary
 				{
-					Id = oi.Id,
+					Id = item.Id,
 					ResultNumber = rowNbr,
-					Name = oi.Name,
-					FriendlyName = oi.FriendlyName,
-					SubjectWebpage = oi.SubjectWebpage,
-					RowId = oi.RowId,
-					Description = oi.Description,
-					CTID = oi.CTID,
+					Name = item.Name,
+					FriendlyName = item.FriendlyName,
+					SubjectWebpage = item.SubjectWebpage,
+					RowId = item.RowId,
+					Description = item.Description,
+					CTID = item.CTID,
 					//CredentialRegistryId = oi.CredentialRegistryId,
-					EntityStateId = oi.EntityStateId,
-					//DateEffective = ci.DateEffective,
-					Created = oi.Created,
-					LastUpdated = oi.LastUpdated,
-				};
+					EntityStateId = item.EntityStateId,
+					Created = item.Created,
+					LastUpdated = item.LastUpdated,
+					LifeCycleStatus = item.LifeCycleStatusType,
 
+				};
+				if ( index.EntityTypeId > 0 )
+				{
+					index.EntityType = OrganizationManager.MapEntityType( index.EntityTypeId );
+					index.EntityTypeLabel = OrganizationManager.MapEntityTypeLabel( index.EntityTypeId );
+					index.EntityTypeSchema = "ceterms:" + index.EntityType;
+				}
 				if ( index.EntityStateId == 2 )
 				{
 					index.Name += " [reference]";
 				}
-				if ( oi.ImageURL != null && oi.ImageURL.Trim().Length > 0 )
-					index.Image = oi.ImageURL;
+				if ( item.ImageURL != null && item.ImageURL.Trim().Length > 0 )
+					index.Image = item.ImageURL;
 				else
 					index.Image = null;
 
-				if ( IsValidDate( oi.Created ) )
-					index.Created = oi.Created;
+				if ( IsValidDate( item.Created ) )
+					index.Created = item.Created;
 
-				if ( IsValidDate( oi.LastUpdated ) )
-					index.LastUpdated = oi.LastUpdated;
+				if ( IsValidDate( item.LastUpdated ) )
+					index.LastUpdated = item.LastUpdated;
 
-				index.IsACredentialingOrg = oi.IsACredentialingOrg;
+				index.IsACredentialingOrg = item.IsACredentialingOrg;
 
 				//addressess                
 
-				index.Addresses = oi.Addresses.Select( x => new CM.Address
+				index.Addresses = item.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -1644,40 +1736,42 @@ namespace workIT.Factories
 				} ).ToList();
 
 				//these should be derived from the codes property
-				index.AgentType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
-				index.AgentSectorType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
+				index.AgentType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE );
+				index.AgentSectorType = EntityPropertyManager.FillEnumeration( item.RowId, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE );
 				//index.OrganizationClaimType = EntityPropertyManager.FillEnumeration( oi.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
 				index.ServiceType = EntityPropertyManager.FillEnumeration( index.RowId, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE );
 				//
-				index.TotalPathways = oi.PathwaysCount;
-				index.TotalPathwaySets = oi.PathwaySetsCount;
-				index.TotalTransferValueProfiles = oi.TransferValueProfilesCount;
+				index.TotalPathways = item.PathwaysCount;
+				index.TotalPathwaySets = item.PathwaySetsCount;
+				index.TotalTransferValueProfiles = item.TransferValueProfilesCount;
+				index.DataSetProfileCount = item.DataSetProfileCount;
+
 				//
-				if ( oi.Industries != null && oi.Industries.Count > 0 )
+				if ( item.Industries != null && item.Industries.Count > 0 )
 				{
-					index.IndustryResults = Fill_CodeItemResults( oi.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 				}
-				index.OwnedByResults = Fill_CodeItemResults( oi.OwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.OwnedByResults = Fill_CodeItemResults( item.OwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.OfferedByResults = Fill_CodeItemResults( oi.OfferedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.OfferedByResults = Fill_CodeItemResults( item.OfferedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.AsmtsOwnedByResults = Fill_CodeItemResults( oi.AsmtsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.AsmtsOwnedByResults = Fill_CodeItemResults( item.AsmtsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.LoppsOwnedByResults = Fill_CodeItemResults( oi.LoppsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
-				index.FrameworksOwnedByResults = Fill_CodeItemResults( oi.FrameworksOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.LoppsOwnedByResults = Fill_CodeItemResults( item.LoppsOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.FrameworksOwnedByResults = Fill_CodeItemResults( item.FrameworksOwnedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.AccreditedByResults = Fill_CodeItemResults( oi.AccreditedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.AccreditedByResults = Fill_CodeItemResults( item.AccreditedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.ApprovedByResults = Fill_CodeItemResults( oi.ApprovedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.ApprovedByResults = Fill_CodeItemResults( item.ApprovedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.RecognizedByResults = Fill_CodeItemResults( oi.RecognizedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.RecognizedByResults = Fill_CodeItemResults( item.RecognizedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.RegulatedByResults = Fill_CodeItemResults( oi.RegulatedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
+				index.RegulatedByResults = Fill_CodeItemResults( item.RegulatedByResults, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false );
 
-				index.QualityAssurance = Fill_AgentRelationship( oi.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Organization" );
+				index.QualityAssurance = Fill_AgentRelationship( item.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Organization" );
 
-				index.QualityAssurancePerformed = Fill_TargetQaAssertion( oi.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "" );
-				var results = oi.QualityAssurancePerformed.GroupBy( a => new
+				index.QualityAssurancePerformed = Fill_TargetQaAssertion( item.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "" );
+				var results = item.QualityAssurancePerformed.GroupBy( a => new
 				{
 					a.TargetEntityTypeId,
 					a.TargetEntityBaseId,
@@ -1816,6 +1910,8 @@ namespace workIT.Factories
 
 						//don't thinks this is necessary!
 						//index.QARolesCount = GetRowColumn( dr, "QARolesCount", 0 );
+						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = dr[ "LifeCycleStatusType" ].ToString();
 
 						index.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
 						index.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
@@ -1834,6 +1930,7 @@ namespace workIT.Factories
 						index.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
 						index.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
 						index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+
 						//index.HasInstructionalPrograms = GetRowPossibleColumn( dr, "HasCIPCount", 0 );
 						//-actual connection type (no credential info)
 						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
@@ -1889,7 +1986,7 @@ namespace workIT.Factories
 						}
 
 						#region AssessesCompetencies
-
+						//21-08-31 - currently the competency search is not specific for assesses or requires. So use the general competencies for now
 						assessesCompetencies = dr[ "AssessesCompetencies" ].ToString();
 						if ( !string.IsNullOrWhiteSpace( assessesCompetencies ) )
 						{
@@ -1912,6 +2009,7 @@ namespace workIT.Factories
 									};
 
 									index.AssessesCompetencies.Add( competency );
+									index.Competencies.Add( competency );
 								}
 							}
 							catch ( Exception ex )
@@ -1945,6 +2043,8 @@ namespace workIT.Factories
 									};
 
 									index.RequiresCompetencies.Add( competency );
+									index.Competencies.Add( competency );
+
 								}
 							}
 							catch ( Exception ex )
@@ -2032,10 +2132,16 @@ namespace workIT.Factories
 						}
 
 						#endregion
-
+						//
+						index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 );
+						index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
+						if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
+						{
+							index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+						}
 
 						#region AssessmentProperties - these are stored to enable use by gray button clicks
-						
+
 						try
 						{
 							var assessmentProperties = dr[ "AssessmentProperties" ].ToString();
@@ -2095,7 +2201,7 @@ namespace workIT.Factories
 							//	var framework = new IndexReferenceFramework
 							//	{
 							//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
 							//		Name = ( string )child.Attribute( "Name" ) ?? "",
 							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
 							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
@@ -2134,75 +2240,19 @@ namespace workIT.Factories
 							HandleAddresses( index, addresses );
 
 							var xDoc = new XDocument();
-							//xDoc = XDocument.Parse( addresses );
-							//foreach ( var child in xDoc.Root.Elements() )
-							//{
-							//	string region = ( string )child.Attribute( "Region" ) ?? "";
-							//	string city = ( string )child.Attribute( "City" ) ?? "";
-							//	string country = ( string )child.Attribute( "Country" ) ?? "";
-							//	index.Addresses.Add( new Address
-							//	{
-							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-							//		City = ( string )child.Attribute( "City" ) ?? "",
-							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-							//		PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-							//		Country = ( string )child.Attribute( "Country" ) ?? ""
-							//	} );
-							//	AddLocation( index, city, region, country );
-
-							//	AddLocation( index, city, "city" );
-							//	AddLocation( index, region, "region" );
-							//	AddLocation( index, country, "country" );
-							//}
+						
 						}
 						if ( index.Addresses.Count == 0 )
 						{
-							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
-							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 							{
-								HandleAddresses( index, orgAddresses );
 
-								//try
-								//{
-								//	var xDoc = new XDocument();
-								//	xDoc = XDocument.Parse( orgAddresses );
-								//	//actually will only focus on regions
-								//	string prevRegion = "";
-								//	string prevCountry = "";
-
-								//	foreach ( var child in xDoc.Root.Elements() )
-								//	{
-								//		string region = ( string )child.Attribute( "Region" ) ?? "";
-								//		string city = ( string )child.Attribute( "City" ) ?? "";
-								//		if ( prevRegion != region )
-								//		{
-								//			index.Addresses.Add( new Address
-								//			{
-								//				Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-								//				Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-								//				StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-								//				Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-								//				AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-								//				Country = ( string )child.Attribute( "Country" ) ?? ""
-								//			} );
-								//			prevRegion = region;
-								//			AddLocation( index, city, "city" );
-								//			AddLocation( index, region, "region" );
-								//			AddLocation( index, country, "country" );
-								//		}
-								//		//should only be one, just in case some change in future
-								//		//break;
-								//	}
-								//	//}
-								//}
-								//catch ( Exception ex )
-								//{
-								//	LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-								//}
+								//prototype: if no resource addresses, and one org address, then add to index (not detail page)
+								var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+								if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+								{
+									HandleAddresses( index, orgAddresses );
+								}
 							}
 						}
 						#endregion
@@ -2212,8 +2262,14 @@ namespace workIT.Factories
 						#endregion
 
 						#region custom reports
-
+						//
+						AddReportProperty( index, index.AggregateDataProfileCount, 60, "Has Aggregate Data Profile", "asmtReport:HasAggregateDataProfile" );
+						AddReportProperty( index, index.AggregateDataProfileCount + index.DataSetProfileCount, 60, "Has Outcome Data", "asmtReport:HasOutcomeData" );
 						int propertyId = 0;
+						index.HasTransferValueProfilesCount = GetRowColumn( dr, "HasTransferValueProfileCount", 0 );
+						AddReportProperty( index, index.HasTransferValueProfilesCount, 60, "Has Transfer Values", "asmtReport:HasTransferValues" );
+
+
 						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
 							if ( GetPropertyId( 60, "asmtReport:AvailableOnline", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
@@ -2323,7 +2379,10 @@ namespace workIT.Factories
 			{
 				propertyId = index.Id;
 				return true;
-			}
+			} else
+            {
+				LoggingHelper.DoTrace( 5, string.Format( "WARNING: ElasticManager.GetPropertyId. A property was not found for: categoryId: {0}, schemaName: {1}, ", categoryId, schemaName ) );
+            }
 			return false;
 		}
 
@@ -2334,6 +2393,10 @@ namespace workIT.Factories
 			foreach ( var item in assessments )
 			{
 				rowNbr++;
+				if ( item.Id == 0)
+                {
+					continue;
+                }
 				var index = new PM.AssessmentProfile
 				{
 					Id = item.Id,
@@ -2353,6 +2416,7 @@ namespace workIT.Factories
 					Created = item.Created,
 					//define LastUpdated to be EntityLastUpdated
 					LastUpdated = item.LastUpdated,
+					LifeCycleStatus = item.LifeCycleStatusType,
 					RequiresCount = item.RequiresCount,
 					RecommendsCount = item.RecommendsCount,
 					RequiredForCount = item.IsRequiredForCount,
@@ -2361,21 +2425,30 @@ namespace workIT.Factories
 					AdvancedStandingFromCount = item.AdvancedStandingFromCount,
 					PreparationForCount = item.IsPreparationForCount,
 					PreparationFromCount = item.PreparationFromCount,
-					CompetenciesCount = item.AssessesCompetencies.Count,
+					CompetenciesCount = item.Competencies.Count, //21-08-31 chg to use total
 					//TotalCostCount = ai.TotalCostCount,
 					CostProfilesCount = item.CostProfilesCount,
 					NumberOfCostProfileItems = item.NumberOfCostProfileItems,
 					CommonCostsCount = item.CommonCostsCount,
 					CommonConditionsCount = item.CommonConditionsCount,
-					FinancialAidCount = item.FinancialAidCount
+					FinancialAidCount = item.FinancialAidCount,
+					AggregateDataProfileCount = item.AggregateDataProfileCount,
+					DataSetProfileCount = item.DataSetProfileCount,
+					TransferValueCount = item.HasTransferValueProfilesCount
+
 				};
 
 				if ( item.OwnerOrganizationId > 0 )
 					index.OwningOrganization = new CM.Organization() { Id = item.OwnerOrganizationId, Name = item.OwnerOrganizationName };
+				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
+
 				if ( index.EntityStateId == 2 )
 				{
 					index.Name += " [reference]";
 				}
+				//
+				if ( index.CompetenciesCount == 0 && item.AssessesCompetencies != null && item.AssessesCompetencies.Any() )
+					index.CompetenciesCount = item.AssessesCompetencies.Count();
 				//addresses
 				index.Addresses = item.Addresses.Select( x => new CM.Address
 				{
@@ -2398,7 +2471,8 @@ namespace workIT.Factories
 				index.ScoringMethodTypes = Fill_CodeItemResults( item.AssessmentProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Scoring_Method ).ToList(), CodesManager.PROPERTY_CATEGORY_Scoring_Method, false, false );
 				index.DeliveryMethodTypes = Fill_CodeItemResults( item.AssessmentProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
 				index.AudienceTypes = Fill_CodeItemResults( item.AssessmentProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
-
+				index.AudienceLevelTypes = Fill_CodeItemResults( item.AssessmentProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+				//
 				if ( item.Industries != null && item.Industries.Count > 0 )
 					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 
@@ -2407,7 +2481,16 @@ namespace workIT.Factories
 
 				if ( item.InstructionalPrograms != null && item.InstructionalPrograms.Count > 0 )
 					index.InstructionalProgramClassification = Fill_CodeItemResults( item.InstructionalPrograms.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
-
+				//
+				if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
+				{
+					//21-04-19 - decided to use a simple generic summary for all outcome data
+					index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+					//hack 
+					if ( index.AggregateDataProfileCount == 0 )
+						index.AggregateDataProfileCount += index.DataSetProfileCount;
+				}
+				//
 				index.CredentialsList = Fill_CredentialConnectionsResult( item.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 				index.ListTitle = item.ListTitle;
 				index.Subjects = item.SubjectAreas;
@@ -2424,6 +2507,11 @@ namespace workIT.Factories
 		public static List<LearningOppIndex> LearningOpp_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
+			bool usingGeneratedTable = true;
+			var proc = "[LearningOpportunity.ElasticSearch]";
+			//work around where cannot seem to contact the lopp elastic proc
+			if ( UtilityManager.GetAppKeyValue( "using_LearningOpportunity_IndexBuild", false ) )
+				proc = "[LearningOpportunity.ElasticSearchV2]";
 
 			var index = new LearningOppIndex();
 			var list = new List<LearningOppIndex>();
@@ -2433,7 +2521,7 @@ namespace workIT.Factories
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
 			{
 				c.Open();
-				using ( SqlCommand command = new SqlCommand( "[LearningOpportunity.ElasticSearch]", c ) )
+				using ( SqlCommand command = new SqlCommand( proc, c ) )
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
@@ -2467,6 +2555,8 @@ namespace workIT.Factories
 					}
 				}
 				int costProfilesCount = 0;
+				int conditionProfilesCount = 0;
+
 				try
 				{
 
@@ -2482,6 +2572,8 @@ namespace workIT.Factories
 						{
 
 						}
+						index.EntityTypeId = GetRowColumn( dr, "LearningEntityTypeId", 7 );
+						index.EntityType = LearningOpportunityManager.MapLearningEntityType( index.EntityTypeId );
 						index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
@@ -2525,7 +2617,8 @@ namespace workIT.Factories
 						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
-
+						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = dr[ "LifeCycleStatusType" ].ToString();
 						//competencies. either arbitrarily get all, or if filters exist, only return matching ones
 						index.CompetenciesCount = GetRowPossibleColumn( dr, "CompetenciesCount", 0 );
 
@@ -2541,10 +2634,19 @@ namespace workIT.Factories
 						//index.TotalCostCount = GetRowPossibleColumn( dr, "TotalCostCount", 0M );
 						index.NumberOfCostProfileItems = GetRowColumn( dr, "NumberOfCostProfileItems", 0 );
 						costProfilesCount = index.CostProfilesCount = GetRowPossibleColumn( dr, "CostProfilesCount", 0 );
+						conditionProfilesCount = GetRowPossibleColumn( dr, "conditionProfilesCount", 0 );
+
 						index.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
 						index.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
 						index.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
-						index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						//index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						//
+						index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 );
+						index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
+						if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
+						{
+							index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+						}
 						//-actual connection type (no credential info)
 						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
 						//connection type, plus Id, and name of credential
@@ -2612,6 +2714,8 @@ namespace workIT.Factories
 								};
 
 								index.TeachesCompetencies.Add( competency );
+								index.Competencies.Add( competency );
+
 							}
 						}
 
@@ -2638,6 +2742,8 @@ namespace workIT.Factories
 								};
 
 								index.RequiresCompetencies.Add( competency );
+								index.Competencies.Add( competency );
+
 							}
 						}
 
@@ -2764,7 +2870,7 @@ namespace workIT.Factories
 							//	var framework = new IndexReferenceFramework
 							//	{
 							//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
 							//		Name = ( string )child.Attribute( "Name" ) ?? "",
 							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
 							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
@@ -2803,77 +2909,19 @@ namespace workIT.Factories
 						if ( !string.IsNullOrWhiteSpace( addresses ) )
 						{
 							HandleAddresses( index, addresses );
-
-							//var xDoc = new XDocument();
-							//xDoc = XDocument.Parse( addresses );
-							////index.AvailableAddresses = xDoc.Root.Elements().Count();
-							//foreach ( var child in xDoc.Root.Elements() )
-							//{
-							//	string region = ( string )child.Attribute( "Region" ) ?? "";
-							//	string city = ( string )child.Attribute( "City" ) ?? "";
-							//	index.Addresses.Add( new Address
-							//	{
-							//		Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-							//		Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-							//		StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-							//		Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-							//		City = ( string )child.Attribute( "City" ) ?? "",
-							//		AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-							//		PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-							//		Country = ( string )child.Attribute( "Country" ) ?? ""
-							//	} );
-							//	AddLocation( index, city, "city" );
-							//	AddLocation( index, region, "region" );
-							//	AddLocation( index, country, "country" );
-							//}
 						}
 
 						if ( index.Addresses.Count == 0 )
 						{
-							//prototype: if no cred addresses, and one org address, then add to index (not detail page)
-							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 							{
-								HandleAddresses( index, orgAddresses );
 
-								//try
-								//{
-								//	var xDoc = new XDocument();
-								//	xDoc = XDocument.Parse( orgAddresses );
-								//	//actually will only focus on regions
-								//	string prevRegion = "";
-								//	string prevCountry = "";
-								//	//if ( xDoc.Root.Elements().Count() == 1)
-								//	//{
-								//	foreach ( var child in xDoc.Root.Elements() )
-								//	{
-								//		string region = ( string )child.Attribute( "Region" ) ?? "";
-								//		string city = ( string )child.Attribute( "City" ) ?? "";
-								//		if ( prevRegion != region )
-								//		{
-								//			index.Addresses.Add( new Address
-								//			{
-								//				Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
-								//				Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-								//				StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-								//				Address2 = ( string )child.Attribute( "Address2" ) ?? "",
-								//				//City = ( string )child.Attribute( "City" ) ?? "",
-								//				AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-								//				//PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-								//				Country = ( string )child.Attribute( "Country" ) ?? ""
-								//			} );
-								//			prevRegion = region;
-								//			AddLocation( index, city, "city" );
-								//			AddLocation( index, region, "region" );
-								//			AddLocation( index, country, "country" );
-								//		}
-								//		//}
-								//	}
-								//}
-								//catch ( Exception ex )
-								//{
-								//	LoggingHelper.DoTrace( 2, string.Format( " # {0}. Exception on OrgAddresses id: {1}; \r\n{2}", cntr, index.Id, ex.Message ) );
-								//}
+								//prototype: if no cred addresses, and one org address, then add to index (not detail page)
+								var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+								if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+								{
+									HandleAddresses( index, orgAddresses );
+								}
 							}
 						}
 						#endregion
@@ -2883,6 +2931,11 @@ namespace workIT.Factories
 						#endregion
 
 						#region custom reports
+						AddReportProperty( index, index.AggregateDataProfileCount, 61, "Has Aggregate Data Profile", "loppReport:HasAggregateDataProfile" );
+						AddReportProperty( index, index.AggregateDataProfileCount + index.DataSetProfileCount, 61, "Has Outcome Data", "loppReport:HasOutcomeData" );
+
+						index.HasTransferValueProfilesCount = GetRowColumn( dr, "HasTransferValueProfileCount", 0 );
+						AddReportProperty( index, index.HasTransferValueProfilesCount, 61, "Has Transfer Values", "loppReport:HasTransferValues" );
 
 						int propertyId = 0;
 						if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
@@ -2901,6 +2954,9 @@ namespace workIT.Factories
 						if ( costProfilesCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:HasCostProfile", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
+						if ( conditionProfilesCount > 0 )
+							if ( GetPropertyId( 61, "loppReport:HasConditionProfile", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
 
 						if ( index.CommonConditionsCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:ReferencesCommonConditions", ref propertyId ) )
@@ -2911,9 +2967,10 @@ namespace workIT.Factories
 						if ( index.FinancialAidCount > 0 )
 							if ( GetPropertyId( 61, "loppReport:FinancialAid", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
-						if ( index.ProcessProfilesCount > 0 )
-							if ( GetPropertyId( 61, "loppReport:HasProcessProfile", ref propertyId ) )
-								index.ReportFilters.Add( propertyId );
+						//if ( index.ProcessProfilesCount > 0 )
+						//	if ( GetPropertyId( 61, "loppReport:HasProcessProfile", ref propertyId ) )
+						//		index.ReportFilters.Add( propertyId );
+						AddReportProperty( index, index.HasSubjects, 61, "Has Subjects", "loppReport:HasSubjects" );
 						if ( index.HasOccupations )
 							if ( GetPropertyId( 61, "loppReport:HasOccupations", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
@@ -2948,54 +3005,88 @@ namespace workIT.Factories
 		{
 			var list = new List<PM.LearningOpportunityProfile>();
 			int rowNbr = ( pageNbr - 1 ) * pageSize;
-			foreach ( var li in learningOpps )
+			foreach ( var item in learningOpps )
 			{
 				rowNbr++;
+				//not used yet. Prototype for general use (subregions)
+				var lwias = item.RegionIdentifier
+						.Where( b => b.IdentifierType == "illinois:LWIA" )
+						.ToList();
+				var lwias2 = (from record in item.RegionIdentifier
+								where record.IdentifierType == "illinois:LWIA" 
+								select new {record.IdentifierValueCode}
+							)
+						.ToList();
+				if (lwias?.Count > 0)
+                {
+
+                }
+				var edrs = item.RegionIdentifier
+						.Where( b => b.IdentifierType == "illinois:EDR" )
+						.ToList();
 				var index = new PM.LearningOpportunityProfile
 				{
-					Id = li.Id,
+					Id = item.Id,
+					EntityTypeId = item.EntityTypeId,
 					ResultNumber = rowNbr,
-					Name = li.Name,
-					FriendlyName = li.FriendlyName,
-					Description = li.Description,
-					EntityStateId = li.EntityStateId,
-					RowId = li.RowId,
-					SubjectWebpage = li.SubjectWebpage,
-					AvailableOnlineAt = li.AvailableOnlineAt,
-					CodedNotation = li.IdentificationCode,
-					CTID = li.CTID,
-					PrimaryOrganizationCTID = li.PrimaryOrganizationCTID,
+					Name = item.Name,
+					FriendlyName = item.FriendlyName,
+					Description = item.Description,
+					EntityStateId = item.EntityStateId,
+					RowId = item.RowId,
+					SubjectWebpage = item.SubjectWebpage,
+					AvailableOnlineAt = item.AvailableOnlineAt,
+					CodedNotation = item.IdentificationCode,
+					CTID = item.CTID,
+					PrimaryOrganizationCTID = item.PrimaryOrganizationCTID,
 					//CredentialRegistryId = li.CredentialRegistryId,
-					DateEffective = li.DateEffective,
-					Created = li.Created,
-					LastUpdated = li.LastUpdated,
-					RequiresCount = li.RequiresCount,
-					RecommendsCount = li.RecommendsCount,
-					RequiredForCount = li.IsRequiredForCount,
-					IsRecommendedForCount = li.IsRecommendedForCount,
-					IsAdvancedStandingForCount = li.IsAdvancedStandingForCount,
-					AdvancedStandingFromCount = li.AdvancedStandingFromCount,
-					PreparationForCount = li.IsPreparationForCount,
-					PreparationFromCount = li.PreparationFromCount,
-					CompetenciesCount = li.TeachesCompetencies.Count,
+					DateEffective = item.DateEffective,
+					Created = item.Created,
+					LastUpdated = item.LastUpdated,
+					LifeCycleStatus = item.LifeCycleStatusType,
+					RequiresCount = item.RequiresCount,
+					RecommendsCount = item.RecommendsCount,
+					RequiredForCount = item.IsRequiredForCount,
+					IsRecommendedForCount = item.IsRecommendedForCount,
+					IsAdvancedStandingForCount = item.IsAdvancedStandingForCount,
+					AdvancedStandingFromCount = item.AdvancedStandingFromCount,
+					PreparationForCount = item.IsPreparationForCount,
+					PreparationFromCount = item.PreparationFromCount,
+					CompetenciesCount = item.Competencies.Count, //21-08-31 - use total competencies
 					//TotalCostCount = li.TotalCostCount,
-					CostProfilesCount = li.CostProfilesCount,
-					NumberOfCostProfileItems = li.NumberOfCostProfileItems,
+					CostProfilesCount = item.CostProfilesCount,
+					NumberOfCostProfileItems = item.NumberOfCostProfileItems,
 
-					CommonCostsCount = li.CommonCostsCount,
-					CommonConditionsCount = li.CommonConditionsCount,
-					FinancialAidCount = li.FinancialAidCount
+					CommonCostsCount = item.CommonCostsCount,
+					CommonConditionsCount = item.CommonConditionsCount,
+					FinancialAidCount = item.FinancialAidCount,
+					AggregateDataProfileCount = item.AggregateDataProfileCount,
+					DataSetProfileCount = item.DataSetProfileCount,
+					TransferValueCount = item.HasTransferValueProfilesCount
+
 				};
+				//or take this hit in populate elastic
+				if ( index.EntityTypeId > 0 )
+				{
+					index.LearningEntityType = LearningOpportunityManager.MapLearningEntityType( index.EntityTypeId );
+					index.LearningEntityTypeLabel = LearningOpportunityManager.MapLearningEntityTypeLabel( index.EntityTypeId );
+					index.LearningTypeSchema = "ceterms:" +  index.LearningEntityType;
+				}
+				//
+				if ( item.OwnerOrganizationId > 0 )
+					index.OwningOrganization = new CM.Organization() { Id = item.OwnerOrganizationId, Name = item.OwnerOrganizationName };
+				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
 
-				if ( li.OwnerOrganizationId > 0 )
-					index.OwningOrganization = new CM.Organization() { Id = li.OwnerOrganizationId, Name = li.OwnerOrganizationName };
 				if ( index.EntityStateId == 2 )
 				{
 					index.Name += " [reference]";
 				}
-				//addressess                
+				//
+				if ( index.CompetenciesCount == 0 && item.TeachesCompetencies != null && item.TeachesCompetencies.Any() )
+					index.CompetenciesCount = item.TeachesCompetencies.Count();
 
-				index.Addresses = li.Addresses.Select( x => new CM.Address
+				//addressess                
+				index.Addresses = item.Addresses.Select( x => new CM.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -3004,30 +3095,51 @@ namespace workIT.Factories
 					AddressLocality = x.AddressLocality,
 					AddressRegion = x.AddressRegion,
 					PostalCode = x.PostalCode,
-					AddressCountry = x.AddressCountry
+					AddressCountry = x.AddressCountry, 
+					//Identifier = x.Identifier.Select()
 				} ).ToList();
+
 				index.EstimatedDuration = DurationProfileManager.GetAll( index.RowId );
-				index.Org_QAAgentAndRoles = Fill_AgentRelationship( li.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
-				index.QualityAssurance = Fill_AgentRelationship( li.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "LearningOpportunity" );
-				index.CredentialsList = Fill_CredentialConnectionsResult( li.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-				index.Subjects = li.SubjectAreas;
+				index.Org_QAAgentAndRoles = Fill_AgentRelationship( item.Org_QAAgentAndRoles, 130, false, false, true, "Organization" );
+				index.QualityAssurance = Fill_AgentRelationship( item.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "LearningOpportunity" );
+				index.CredentialsList = Fill_CredentialConnectionsResult( item.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				index.Subjects = item.SubjectAreas;
 
-				if ( li.Industries != null && li.Industries.Count > 0 )
-					index.IndustryResults = Fill_CodeItemResults( li.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
+				if ( item.Industries != null && item.Industries.Count > 0 )
+					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 
-				if ( li.Occupations != null && li.Occupations.Count > 0 )
-					index.OccupationResults = Fill_CodeItemResults( li.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
+				if ( item.Occupations != null && item.Occupations.Count > 0 )
+					index.OccupationResults = Fill_CodeItemResults( item.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 
-				if ( li.InstructionalPrograms != null && li.InstructionalPrograms.Count > 0 )
-					index.InstructionalProgramClassification = Fill_CodeItemResults( li.InstructionalPrograms.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
+				if ( item.InstructionalPrograms != null && item.InstructionalPrograms.Count > 0 )
+					index.InstructionalProgramClassification = Fill_CodeItemResults( item.InstructionalPrograms.Where( x => x.CategoryId == 23 ).ToList(), CodesManager.PROPERTY_CATEGORY_CIP, false, false );
 
-				index.LearningMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Learning_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, false, false );
-				index.DeliveryMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
-				index.AudienceTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
-				index.AssessmentMethodTypes = Fill_CodeItemResults( li.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
-
+				index.LearningMethodTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Learning_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, false, false );
+				index.DeliveryMethodTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
+				index.AudienceTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
+				index.AudienceLevelTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
+				index.AssessmentMethodTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
 				//
-				index.ListTitle = li.ListTitle;
+				if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
+				{
+					//21-04-19 - decided to use a simple generic summary for all outcome data
+					index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
+					//hack 
+					if ( index.AggregateDataProfileCount == 0 )
+						index.AggregateDataProfileCount += index.DataSetProfileCount;
+				}
+				//add at end as to not affect other uses
+				if ( UtilityManager.GetAppKeyValue( "envType" ) != "production" )
+				{
+					if ( item.LWIAList?.Count > 0 )
+					{
+						//index.Name += " [ LWIA(s): " + String.Join( ", ", item.LWIAList ) + "]";
+						//OR before descr? OR add a special pill for debug stuff
+						index.Description = "[ LWIA(s): " + String.Join( ", ", item.LWIAList ) + "]. " + index.Description;
+					}
+				}
+				//
+				index.ListTitle = item.ListTitle;
 				list.Add( index );
 			}
 
@@ -3035,6 +3147,158 @@ namespace workIT.Factories
 		}
 		#endregion
 
+		#region Collection Search
+		public static List<ManyInOneIndex> Collection_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "Collection_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[Collection.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " Collection loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION;
+						index.EntityType = "Collection";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						//needs to be a list. Just store first one
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						if ( !string.IsNullOrWhiteSpace( index.SubjectWebpage ) )
+						{
+							//do a split
+							string[] swps = index.SubjectWebpage.Split( '|' );
+							foreach ( var item in swps )
+							{
+								index.SubjectWebpage = item.Trim();
+								break;
+							}
+						}
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+
+						//counts
+
+
+						//temp - included list of for and from credentials - will like use the counts and ajax gets
+						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
+						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
+						{
+							//not sure we need addresses?
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
+						}
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 71;
+						//TODO
+
+
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Collection_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Collection_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+
+		//NOT USED SEE GENERAL
+		//public static List<ManyInOneIndex> Collection_MapFromElastic( List<ManyInOneIndex> Collections, int pageNbr, int pageSize )
+		//{
+		//	var list = new List<ManyInOneIndex>();
+
+		//	return list;
+		//}
+		#endregion
 		#region CompetencyFramework Elastic Index
 		public static List<CompetencyFrameworkIndex> CompetencyFramework_SearchForElastic( string filter, int pageNumber = 1, int pageSize = 0 )
 		{
@@ -3267,7 +3531,7 @@ namespace workIT.Factories
 					RowId = oi.RowId,
 					Description = oi.Description,
 					CTID = oi.CTID,
-					SourceUrl = oi.SourceUrl,
+					Source = oi.SourceUrl,
 					OrganizationCTID = oi.OwnerOrganizationCTID,
 					OrganizationId = oi.OwnerOrganizationId,
 					//FrameworkUri = oi.FrameworkUri,
@@ -3457,10 +3721,13 @@ namespace workIT.Factories
 						
 						HandleAgentRelationshipsForEntity( dr, index );
 						//
-						var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-						if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
-							HandleAddresses( index, orgAddresses );
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
 						}
 						#region Reference Frameworks - industries, occupations and classifications
 						string frameworks = GetRowColumn( dr, "Frameworks" );
@@ -3515,7 +3782,7 @@ namespace workIT.Factories
 						if ( index.HasIndustries )
 							if ( GetPropertyId( 70, "pathwayReport:HasIndustries", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
-
+						AddReportProperty( index, index.HasSubjects, 70, "Has Subjects", "pathwayReport:HasSubjects" );
 						#endregion
 
 						list.Add( index );
@@ -3569,6 +3836,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrWhiteSpace( index.FriendlyName ) )
 					index.FriendlyName = FormatFriendlyTitle( index.Name );
+				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
 
 				//TBD for format
 				//index. = oi.PathwayGraph;
@@ -3699,11 +3967,14 @@ namespace workIT.Factories
 						}
 						//relationships
 						HandleAgentRelationshipsForEntity( dr, index );
-
-						var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-						if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
-							HandleAddresses( index, orgAddresses );
+
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
 						}
 						#region Custom Reports
 						//int propertyId = 0;
@@ -3782,6 +4053,545 @@ namespace workIT.Factories
 		}
 		#endregion
 
+		#region Occupation/Jobs Elastic Index
+		public static List<ManyInOneIndex> Occupation_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "Occupation_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[Occupation.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " Occupation loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
+						index.EntityType = "OccupationProfile";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = dr[ "LifeCycleStatusType" ].ToString();
+						//counts
+
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 71;
+						//TODO
+
+
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Occupation_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Occupation_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+
+		public static List<ManyInOneIndex> Job_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "Job_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[Job.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " Job loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE;
+						index.EntityType = "JobProfile";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+
+						//counts
+
+
+						//temp - included list of for and from credentials - will like use the counts and ajax gets
+						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
+						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+
+						//not sure we need addresses?
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
+						{
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
+						}
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 71;
+						//TODO
+
+				
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Job_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Job_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+		public static List<ManyInOneIndex> Task_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "Task_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[Task.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " Task loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_TASK_PROFILE;
+						index.EntityType = "TaskProfile";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+
+						//counts
+
+
+						//temp - included list of for and from credentials - will like use the counts and ajax gets
+						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
+						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+
+						///not sure we need addresses?
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
+						{
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
+						}
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 71;
+						//TODO
+
+
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Task_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Task_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+
+		public static List<ManyInOneIndex> WorkRole_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "WorkRole_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[WorkRole.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " WorkRole loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_WORKROLE_PROFILE;
+						index.EntityType = "WorkRoleProfile";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+
+						//counts
+
+
+						//temp - included list of for and from credentials - will like use the counts and ajax gets
+						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
+						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+
+						//not sure we need addresses?
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
+						{
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
+						}
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 71;
+						//TODO
+
+
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "WorkRole_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "WorkRole_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+		#endregion
 
 		#region TransferValue Elastic Index
 		public static List<ManyInOneIndex> TransferValue_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
@@ -3862,7 +4672,9 @@ namespace workIT.Factories
 						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
-
+						//
+						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = dr["LifeCycleStatusType"].ToString();
 						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
 
 						string date = GetRowColumn( dr, "Created", "" );
@@ -3876,28 +4688,51 @@ namespace workIT.Factories
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 
-						var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-						if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+						//counts
+						index.TransferValueForCredentialsCount = GetRowColumn( dr, "TransferValueForCredentialsCount", 0 );
+						index.TransferValueFromCredentialsCount = GetRowColumn( dr, "TransferValueFromCredentialsCount", 0 );
+
+						index.TransferValueForAssessmentsCount = GetRowColumn( dr, "TransferValueForAssessmentsCount", 0 );
+						index.TransferValueFromAssessmentsCount = GetRowColumn( dr, "TransferValueFromAssessmentsCount", 0 );
+
+						index.TransferValueForLoppsCount = GetRowColumn( dr, "TransferValueForLoppsCount", 0 );
+						index.TransferValueFromLoppsCount = GetRowColumn( dr, "TransferValueFromLoppsCount", 0 );
+						//
+						index.TransferValueHasDevProcessCount = GetRowColumn( dr, "TransferValueHasDevProcessCount", 0 );
+
+						//temp - included list of for and from credentials - will like use the counts and ajax gets
+						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
+						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+
+						//not sure we need addresses?
+						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
-							HandleAddresses( index, orgAddresses );
+							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
+							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
+							{
+								HandleAddresses( index, orgAddresses );
+							}
 						}
 						#region AgentRelationshipsForEntity
-						//
+						//do we need these
 						HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
 
 						#region Custom Reports
+						var reportCategoryId = 71;
 						//TODO
-						//indicator of in registry
-						//if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
-						//{
-						//	if ( GetPropertyId( 69, "cfReport:IsInRegistry", ref propertyId ) )
-						//		index.ReportFilters.Add( propertyId );
-						//}
-						//else if ( GetPropertyId( 69, "cfReport:IsNotInRegistry", ref propertyId ) )
-						//	index.ReportFilters.Add( propertyId );
 
+						AddReportProperty( index, index.TransferValueForCredentialsCount, reportCategoryId, "Has Transfer Value For Credentials", "tvpReport:HasTransferValueForCredentials" );
+						AddReportProperty( index, index.TransferValueFromCredentialsCount, reportCategoryId, "Has Transfer Value From Credentials", "tvpReport:HasTransferValueFromCredentials" );
+						//
+						AddReportProperty( index, index.TransferValueForAssessmentsCount, reportCategoryId, "Has Transfer Value For Assessments", "tvpReport:HasTransferValueForAssessments" ); 
+						AddReportProperty( index, index.TransferValueFromAssessmentsCount, reportCategoryId, "Has Transfer Value From Assessments", "tvpReport:HasTransferValueFromAssessments" );
+						//
+						AddReportProperty( index, index.TransferValueForLoppsCount, reportCategoryId, "Has Transfer Value For Learning Opportunities", "tvpReport:HasTransferValueForLopps" ); 
+						AddReportProperty( index, index.TransferValueFromLoppsCount, reportCategoryId, "Has Transfer Value From Learning Opportunities", "tvpReport:HasTransferValueFromLopps" );
+						//
+						AddReportProperty( index, index.TransferValueHasDevProcessCount, reportCategoryId, "Has Transfer Value For Learning Opportunities", "tvpReport:TransferValueHasDevProcess" ); 
 						#endregion
 
 						list.Add( index );
@@ -3917,52 +4752,13 @@ namespace workIT.Factories
 			}
 		}
 
-
-		public static List<ManyInOneIndex> TransferValue_MapFromElastic( List<ManyInOneIndex> TransferValues, int pageNbr, int pageSize )
-		{
-			var list = new List<ManyInOneIndex>();
-			int rowNbr = ( pageNbr - 1 ) * pageSize;
-			foreach ( var oi in TransferValues )
-			{
-				rowNbr++;
-				var index = new ManyInOneIndex
-				{
-					Id = oi.Id,
-					ResultNumber = rowNbr,
-					Name = oi.Name,
-					FriendlyName = oi.FriendlyName,
-					RowId = oi.RowId,
-					Description = oi.Description,
-					CTID = oi.CTID,
-					SubjectWebpage = oi.SubjectWebpage,
-					//OrganizationCTID = oi.OwnerOrganizationCTID,
-					//OrganizationId = oi.OwnerOrganizationId,
-					//OrganizationName = oi.PrimaryOrganizationName,
-					//FrameworkUri = oi.FrameworkUri,
-					//CredentialRegistryId = oi.CredentialRegistryId,
-					EntityStateId = oi.EntityStateId,
-					//DateEffective = ci.DateEffective,
-					Created = oi.Created,
-					LastUpdated = oi.LastUpdated,
-				};
-
-
-				//TBD for format
-				//index. = oi.TransferValueGraph;
-
-				if ( IsValidDate( oi.Created ) )
-					index.Created = oi.Created;
-
-				if ( IsValidDate( oi.LastUpdated ) )
-					index.LastUpdated = oi.LastUpdated;
-
-
-
-				list.Add( index );
-			}
-
-			return list;
-		}
+		//NOT USED SEE GENERAL
+		//public static List<ManyInOneIndex> TransferValue_MapFromElastic( List<ManyInOneIndex> TransferValues, int pageNbr, int pageSize )
+		//{
+		//	var list = new List<ManyInOneIndex>();
+			
+		//	return list;
+		//}
 		#endregion
 		public static void HandleFrameworks( IIndex index, string frameworks )
 		{
@@ -3973,7 +4769,7 @@ namespace workIT.Factories
 				var framework = new IndexReferenceFramework
 				{
 					CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
-					ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkId" ).Value ),
+					ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
 					Name = ( string )child.Attribute( "Name" ) ?? "",
 					CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
 					SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
@@ -3983,27 +4779,51 @@ namespace workIT.Factories
 
 				if ( framework.CategoryId == 11 )
 				{
-					index.Occupations.Add( framework );
-					//should have a dups check
-					index.Occupation.Add( framework.Name );
-					//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-					//	AddTextValue( index, "occupation " + framework.Name );
+					if ( index.Occupation.Contains( framework.CodedNotation ) )
+					{
+						//skip, risks?
+					}
+					else
+					{
+						index.Occupations.Add( framework );
+						//should have a dups check
+						index.Occupation.Add( framework.Name );
+						index.Occupation.Add( framework.CodedNotation );
+						//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//	AddTextValue( index, "occupation " + framework.Name );
+					}
 				}
 				else if ( framework.CategoryId == 10 )
 				{
-					index.Industries.Add( framework );
-					//should have a dups check
-					index.Industry.Add( framework.Name );
-					//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-					//	AddTextValue( index, "industry " + framework.Name );
+					if ( index.Industry.Contains( framework.CodedNotation ) )
+					{
+						//skip, risks?
+					}
+					else
+					{
+						index.Industries.Add( framework );
+						//should have a dups check
+						index.Industry.Add( framework.Name );
+						index.Industry.Add( framework.CodedNotation );
+						//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//	AddTextValue( index, "industry " + framework.Name );
+					}
 				}
 				else if ( framework.CategoryId == 23 )
 				{
-					index.InstructionalPrograms.Add( framework );
-					//should have a dups check
-					index.InstructionalProgram.Add( framework.Name );
-					//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
-					//	AddTextValue( index, "program " + framework.Name );
+					if ( index.InstructionalProgram.Contains( framework.CodedNotation ) )
+					{
+						//skip, risks?
+					}
+					else
+					{
+						index.InstructionalPrograms.Add( framework );
+						//should have a dups check
+						index.InstructionalProgram.Add( framework.Name );
+						index.InstructionalProgram.Add( framework.CodedNotation );
+						//if ( UtilityManager.GetAppKeyValue( "includingFrameworksInTextValueIndex", false ) )
+						//	AddTextValue( index, "program " + framework.Name );
+					}
 				}
 
 			}//
@@ -4011,6 +4831,8 @@ namespace workIT.Factories
 		public static void HandleAddresses( IIndex index, string addresses )
 		{
 			var xDoc = new XDocument();
+			//index.RegionIdentifier = new List<CM.IdentifierValue>();
+
 			try
 			{
 				xDoc = XDocument.Parse( addresses );
@@ -4019,16 +4841,57 @@ namespace workIT.Factories
 					string region = ( string )child.Attribute( "Region" ) ?? "";
 					string city = ( string )child.Attribute( "City" ) ?? "";
 					string country = ( string )child.Attribute( "Country" ) ?? "";
+					//check for identifier
+					string identifierJson = ( string ) child.Attribute( "IdentifierJson" ) ?? "";
+					List<CM.IdentifierValue> identifier = null;
+					if ( !string.IsNullOrWhiteSpace( identifierJson ) )
+					{
+						identifier = JsonConvert.DeserializeObject<List<CM.IdentifierValue>>( identifierJson );
+						//actually should eliminate duplicates
+						foreach(var item in identifier)
+                        {
+							if ( item.IdentifierTypeName == "LWIA" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
+							{
+								item.IdentifierType = "illinois:LWIA";
+								//??
+								//item.IdentifierValueCode = "LWIA" + item.IdentifierValueCode;
+							} else if ( item.IdentifierTypeName == "EDR" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
+							{
+								item.IdentifierType = "illinois:EDR";
+								item.IdentifierValueCode = "EDR" + item.IdentifierValueCode;
+							}
+							else if ( region == "Illinois" && string.IsNullOrWhiteSpace( item.IdentifierTypeName )
+								&& item.IdentifierValueCode.Length < 3)
+							{
+								item.IdentifierType = "illinois:LWIA";
+								item.IdentifierTypeName = "LWIA";
+								//item.IdentifierValueCode = "LWIA" + item.IdentifierValueCode;
+							}
+							var exists = index.RegionIdentifier.FirstOrDefault( s => s.IdentifierTypeName == item.IdentifierTypeName && s.IdentifierValueCode == item.IdentifierValueCode );
+							if ( exists == null || exists?.IdentifierTypeName == "" )
+							{
+								index.RegionIdentifier.Add( item );
+
+								if ( item.IdentifierType == "illinois:LWIA" )
+									index.LWIAList.Add( item.IdentifierValueCode );
+								if ( item.IdentifierType == "illinois:EDR" )
+									index.EDRList.Add( item.IdentifierValueCode );
+							}
+						}
+						//index.RegionIdentifier.AddRange(identifier);
+					}
+
 					index.Addresses.Add( new Address
 					{
 						Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 						Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-						StreetAddress = ( string )child.Attribute( "StreetAddress" ) ?? "",
-						//Address2 = ( string )child.Attribute( "Address2" ) ?? "",
+						StreetAddress = ( string )child.Attribute( "Address1" ) ?? "",
 						AddressLocality = ( string )child.Attribute( "City" ) ?? "",
 						AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
 						PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-						AddressCountry = ( string )child.Attribute( "Country" ) ?? ""
+						PostOfficeBoxNumber = ( string ) child.Attribute( "PostOfficeBoxNumber" ) ?? "",
+						AddressCountry = ( string )child.Attribute( "Country" ) ?? "",
+						Identifier = identifier,
 					} );
 					AddLocation( index, city, region, country );
 
@@ -4052,11 +4915,17 @@ namespace workIT.Factories
 					string region = item.AddressRegion ?? "";
 					string city = item.AddressLocality ?? "";
 					string country = item.AddressCountry ?? "";
+					string identifier = item.IdentifierJson ?? "";
+					if ( !string.IsNullOrWhiteSpace( identifier )) 
+					{
+						List<Entity_IdentifierValue> evIdentifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( identifier );
+						//need to convert to Identifier
+					}
 
 					index.Addresses.Add( new Address
 					{
 						Latitude = item.Latitude,
-						Longitude = item.Latitude,
+						Longitude = item.Longitude,
 						StreetAddress = item.StreetAddress,
 						//Address2 = item.Address2 ?? "",
 						AddressLocality = city,
@@ -4123,7 +4992,7 @@ namespace workIT.Factories
 				foreach ( var child in xDoc.Root.Elements() )
 					index.AgentRelationships.Add( int.Parse( ( string )child.Attribute( "RelationshipTypeId" ) ) );
 			}
-
+			//includes publishedBy
 			string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
 			if ( !string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
 			{
@@ -4174,6 +5043,45 @@ namespace workIT.Factories
 						//add phrase. ex Accredited by microsoft. Should not be doing owned or offered by 
 						if ( !string.IsNullOrWhiteSpace( relationships ) && !string.IsNullOrWhiteSpace( agentName ) && relationships.ToLower().IndexOf("owned") == -1 && relationships.ToLower().IndexOf( "offered" ) == -1 )
 							index.QualityAssurancePhrase.Add( string.Format( "{0} {1}", relationships, agentName ) );
+					}
+				}
+			}
+		}
+
+		public static void HandleDataProvidersForEntity( DataRow dr, BaseIndex index )
+		{
+
+			//
+			string providers = GetRowPossibleColumn( dr, "DataSetProfileProviders" );
+			if ( !string.IsNullOrWhiteSpace( providers ) )
+			{
+				if ( ContainsUnicodeCharacter( providers ) )
+				{
+					providers = Regex.Replace( providers, @"[^\u0000-\u007F]+", string.Empty );
+				}
+				providers = providers.Replace( "&", " " );
+				var xDoc = XDocument.Parse( providers );
+				foreach ( var child in xDoc.Root.Elements() )
+				{
+					string agentName = ( string )child.Attribute( "DataProviderName" ) ?? "";
+
+					if ( !string.IsNullOrWhiteSpace( agentName )  )
+					{
+						//for now only one relationship/purpose
+						//var relationshipIds = new List<int>();
+						//foreach ( var s in child.Attribute( "RelationshipTypeIds" ).Value.Split( new char[] { ',' } ) )
+						//{
+						//	relationshipIds.Add( int.Parse( s.Trim() ) );
+						//}
+
+						index.OutcomeProvidersForEntity.Add( new AgentRelationshipForEntity
+						{
+							OrgId = int.Parse( child.Attribute( "OrgId" ).Value ),
+							AgentName = ( string )child.Attribute( "DataProviderName" ) ?? "",
+							AgentUrl = ( string )child.Attribute( "SubjectWebpage" ) ?? "",
+							EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),							 
+							
+						} );
 					}
 				}
 			}

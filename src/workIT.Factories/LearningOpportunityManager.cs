@@ -18,13 +18,16 @@ using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 using Newtonsoft.Json;
+using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworkItemManager;
+//using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworksManager;
 
 namespace workIT.Factories
 {
     public class LearningOpportunityManager : BaseFactory
     {
         static string thisClassName = "LearningOpportunityManager";
-        EntityManager entityMgr = new EntityManager();
+		static string EntityType = "LearningOpportunity";
+		EntityManager entityMgr = new EntityManager();
         #region LearningOpportunity - persistance ==================
         /// <summary>
         /// Update a LearningOpportunity
@@ -38,7 +41,8 @@ namespace workIT.Factories
 
 			bool isValid = true;
             int count = 0;
-            try
+			DateTime lastUpdated = System.DateTime.Now;
+			try
             {
                 using ( var context = new EntityContext() )
                 {
@@ -54,20 +58,6 @@ namespace workIT.Factories
 
                         if ( efEntity != null && efEntity.Id > 0 )
                         {
-                            //delete the entity and re-add
-                            //Entity e = new Entity()
-                            //{
-                            //    EntityBaseId = efEntity.Id,
-                            //    EntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE,
-                            //    EntityType = "LearningOpportunity",
-                            //    EntityUid = efEntity.RowId,
-                            //    EntityBaseName = efEntity.Name
-                            //};
-                            //if ( entityMgr.ResetEntity( e, ref statusMessage ) )
-                            //{
-
-                            //}
-
                             //fill in fields that may not be in entity
                             entity.RowId = efEntity.RowId;
 
@@ -76,12 +66,9 @@ namespace workIT.Factories
 							//19-05-21 mp - should add a check for an update where currently is deleted
 							if ( ( efEntity.EntityStateId ?? 0 ) == 0 )
 							{
-								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "learningopportunity/{0}", efEntity.Id );
-								//notify, and???
-								//EmailManager.NotifyAdmin( "Previously Deleted LearningOpportunity has been reactivated", string.Format( "<a href='{2}'>LearningOpportunity: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
 								SiteActivity sa = new SiteActivity()
 								{
-									ActivityType = "LearningOpportunity",
+									ActivityType = entity.LearningEntityType,
 									Activity = "Import",
 									Event = "Reactivate",
 									Comment = string.Format( "LearningOpportunity had been marked as deleted, and was reactivted by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
@@ -100,6 +87,7 @@ namespace workIT.Factories
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
+								lastUpdated = status.LocalUpdatedDate;
 							}
 							//has changed?
 							if ( HasStateChanged( context ) )
@@ -129,15 +117,16 @@ namespace workIT.Factories
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
                                 new EntityManager().UpdateModifiedDate( entity.RowId, ref status );
                             }
-
-                            if ( isValid )
+							entity.LastUpdated = lastUpdated;
+							UpdateEntityCache( entity, ref status );
+							if ( isValid )
                             {
                                 if ( !UpdateParts( entity, ref status ) )
                                     isValid = false;
 
                                 SiteActivity sa = new SiteActivity()
                                 {
-                                    ActivityType = "LearningOpportunity",
+                                    ActivityType = entity.LearningEntityType,
                                     Activity = "Import",
                                     Event = "Update",
                                     Comment = string.Format( "LearningOpportunity was updated by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
@@ -223,12 +212,16 @@ namespace workIT.Factories
                     int count = context.SaveChanges();
                     if ( count > 0 )
                     {
-                        entity.Id = efEntity.Id;
-                        entity.RowId = efEntity.RowId;
-                        //add log entry
-                        SiteActivity sa = new SiteActivity()
+						//
+						entity.RowId = efEntity.RowId;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						entity.Id = efEntity.Id;
+						UpdateEntityCache( entity, ref status );
+						//add log entry
+						SiteActivity sa = new SiteActivity()
                         {
-                            ActivityType = "LearningOpportunity",
+                            ActivityType = entity.LearningEntityType,
                             Activity = "Import",
                             Event = "Add",
                             Comment = string.Format( "Full LearningOpportunity was added by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
@@ -271,7 +264,7 @@ namespace workIT.Factories
 
             return entity.Id;
         }
-        public int AddBaseReference( ThisEntity input, ref SaveStatus status )
+        public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
         {
 			//*** need to handle updates, do we?
             DBEntity efEntity = new DBEntity();
@@ -279,8 +272,8 @@ namespace workIT.Factories
             {
                 using ( var context = new EntityContext() )
                 {
-                    if ( input == null ||
-                        ( string.IsNullOrWhiteSpace( input.Name )) 
+                    if ( entity == null ||
+                        ( string.IsNullOrWhiteSpace( entity.Name )) 
 						//||                        string.IsNullOrWhiteSpace( input.SubjectWebpage )) 
 						)
                     {
@@ -291,22 +284,26 @@ namespace workIT.Factories
 					//only add DB required properties
 					//NOTE - an input will be created via trigger
 					//20-08-27 mp - using full MapToDB to handle any additions that appear in the future
-					MapToDB( input, efEntity );
+					MapToDB( entity, efEntity );
 					efEntity.EntityStateId = 2;
-     //               efEntity.Name = input.Name;
-     //               efEntity.Description = input.Description;
-     //               efEntity.SubjectWebpage = input.SubjectWebpage;
+					//set to active 
+					var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+					efEntity.LifeCycleStatusTypeId = defStatus.Id;
+
+					//               efEntity.Name = input.Name;
+					//               efEntity.Description = input.Description;
+					//               efEntity.SubjectWebpage = input.SubjectWebpage;
 					////
 					//efEntity.AssessmentMethodDescription = input.AssessmentMethodDescription;
 					//efEntity.LearningMethodDescription = input.LearningMethodDescription;
 					//efEntity.IdentificationCode = input.CodedNotation;
 					//
-					if ( IsValidGuid( input.RowId ) )
-                        efEntity.RowId = input.RowId;
+					if ( IsValidGuid( entity.RowId ) )
+                        efEntity.RowId = entity.RowId;
                     else
                         efEntity.RowId = Guid.NewGuid();
                     //set to return, just in case
-                    input.RowId = efEntity.RowId;
+                    entity.RowId = efEntity.RowId;
                     efEntity.Created = System.DateTime.Now;
                     efEntity.LastUpdated = System.DateTime.Now;
 
@@ -314,7 +311,7 @@ namespace workIT.Factories
                     int count = context.SaveChanges();
                     if ( count > 0 )
                     {
-                        input.Id = efEntity.Id;
+                        entity.Id = efEntity.Id;
 						/* handle new parts
 						 * AvailableAt
 						 * CreditValue
@@ -323,19 +320,25 @@ namespace workIT.Factories
 						 * OwnedBy
 						 * teaches
 						 */
-						if ( UpdateParts( input, ref status ) == false )
+						if ( UpdateParts( entity, ref status ) == false )
 						{
 
 						}
 
 						SiteActivity sa = new SiteActivity()
 						{
-							ActivityType = "LearningOpportunity",
+							ActivityType = entity.LearningEntityType,
 							Activity = "Import",
 							Event = "Add Reference",
-							Comment = string.Format( "Reference LearningOpportunity was added by the import. Name: {0}, SWP: {1}", input.Name, input.SubjectWebpage ),
-							ActivityObjectId = input.Id
+							Comment = string.Format( "Reference LearningOpportunity was added by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+							ActivityObjectId = entity.Id
 						};
+
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
                     }
 
@@ -345,21 +348,21 @@ namespace workIT.Factories
 			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 			{
 				status.AddError( HandleDBValidationError( dbex, thisClassName + ".AddBaseReference() ", "LearningOpportunity" ) );
-				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Add(), Name: {0}, UserId: {1}", input.Name, input.CreatedById ) );
+				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Add(), Name: {0}, SubjectWebpage: {1}", entity.Name, entity.SubjectWebpage ) );
 
 
 			}
 			catch ( Exception ex )
             {
                 string message = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddBaseReference. Name:  {0}, SubjectWebpage: {1}", input.Name, input.SubjectWebpage ), true );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddBaseReference. Name:  {0}, SubjectWebpage: {1}", entity.Name, entity.SubjectWebpage ), true );
                 status.AddError( thisClassName + " Error - the save was not successful. " + message );
 
             }
             return 0;
         }
 
-        public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+        public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
         {
             DBEntity efEntity = new DBEntity();
             try
@@ -368,7 +371,7 @@ namespace workIT.Factories
                 {
                     if ( !IsValidGuid( entityUid ) )
                     {
-                        status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+                        status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity");
                         return 0;
                     }
                     //quick check to ensure not existing
@@ -380,13 +383,17 @@ namespace workIT.Factories
                     //NOTE - an entity will be created via trigger
                     efEntity.Name = "Placeholder until full document is downloaded";
                     efEntity.Description = "Placeholder until full document is downloaded";
-                    efEntity.EntityStateId = 1;
+					//default to 7
+					efEntity.EntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+					efEntity.EntityStateId = 1;
                     efEntity.RowId = entityUid;
                     //watch that Ctid can be  updated if not provided now!!
                     efEntity.CTID = ctid;
                     efEntity.SubjectWebpage = registryAtId;
-
-                    efEntity.Created = System.DateTime.Now;
+					//set to active 
+					var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+					efEntity.LifeCycleStatusTypeId = defStatus.Id;
+					efEntity.Created = System.DateTime.Now;
                     efEntity.LastUpdated = System.DateTime.Now;
 
                     context.LearningOpportunity.Add( efEntity );
@@ -395,17 +402,29 @@ namespace workIT.Factories
                     {
                         SiteActivity sa = new SiteActivity()
                         {
-                            ActivityType = "LearningOpportunity",
+                            ActivityType = entity.LearningEntityType,
                             Activity = "Import",
-                            Event = "Add Pending LearningOpportunity",
-                            Comment = string.Format( "Pending LearningOpportunity was added by the import. ctid: {0}, registryAtId: {1}", ctid, registryAtId ),
+                            Event = string.Format("Add Pending {0}", EntityType),
+							Comment = string.Format( "Pending {0} was added by the import. ctid: {1}, registryAtId: {2}", EntityType, ctid, registryAtId ),
                             ActivityObjectId = efEntity.Id
                         };
                         new ActivityManager().SiteActivityAdd( sa );
-                        return efEntity.Id;
+						//Question should this be in the EntityCache?
+						//SaveStatus status = new SaveStatus();
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.SubjectWebpage;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						UpdateEntityCache( entity, ref status );
+						return efEntity.Id;
                     }
 
-                    status = thisClassName + " Error - the save was not successful, but no message provided. ";
+                    status.AddError( thisClassName + " Error - the save was not successful, but no message provided. ");
                 }
             }
 
@@ -413,13 +432,37 @@ namespace workIT.Factories
             {
                 string message = FormatExceptions( ex );
                 LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-                status = thisClassName + " Error - the save was not successful. " + message;
+                status.AddError( thisClassName + " Error - the save was not successful. " + message);
 
             }
             return 0;
         }
-
-        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = 7, //document.LearningEntityTypeId,
+				EntityType = document.LearningEntityType, // "LearningOpportunity",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
+		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
         {
             status.HasSectionErrors = false;
 
@@ -436,7 +479,27 @@ namespace workIT.Factories
                 //status.AddWarning( "An owning organization is missing" );
             }
 
-            if ( !string.IsNullOrWhiteSpace( profile.DateEffective ) && !IsValidDate( profile.DateEffective ) )
+			//
+			var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
+			{
+				profile.LifeCycleStatusTypeId = defStatus.Id;
+			}
+			else
+			{
+				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
+				CodeItem ci = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				if ( ci == null || ci.Id < 1 )
+				{
+					//while this should never happen, should have a default
+					status.AddError( string.Format( "A valid LifeCycleStatusType must be included. Invalid: {0}", schemaName ) );
+					profile.LifeCycleStatusTypeId = defStatus.Id;
+				}
+				else
+					profile.LifeCycleStatusTypeId = ci.Id;
+			}
+
+			if ( !string.IsNullOrWhiteSpace( profile.DateEffective ) && !IsValidDate( profile.DateEffective ) )
             {
                 status.AddWarning( "Error the effective date is invalid" );
             }
@@ -463,8 +526,8 @@ namespace workIT.Factories
             //if ( profile.CreditHourValue < 0 || profile.CreditHourValue > 10000 )
             //    status.AddWarning( "Error: invalid value for Credit Hour Value. Must be a reasonable decimal value greater than zero." );
 
-            if ( profile.CreditUnitValue < 0 || profile.CreditUnitValue > 1000 )
-                status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
+            //if ( profile.CreditUnitValue < 0 || profile.CreditUnitValue > 1000 )
+            //    status.AddWarning( "Error: invalid value for Credit Unit Value. Must be a reasonable decimal value greater than zero." );
 
 
             //can only have credit hours properties, or credit unit properties, not both
@@ -481,106 +544,6 @@ namespace workIT.Factories
                 status.AddWarning( "Error: Data can be entered for Credit Hour related properties or Credit Unit related properties, but not for both." );
 
 			return status.WasSectionValid;
-		}
-
-
-		/// <summary>
-		/// Delete a Learning Opportunity, and related Entity - where related entity.LearningOpportunity was deleted
-		/// </summary>
-		/// <param name="id"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public bool Delete( int id, ref string statusMessage )
-		{
-			bool isValid = false;
-			if ( id == 0 )
-			{
-				statusMessage = "Error - missing an identifier for the LearningOpportunity";
-				return false;
-			}
-			int orgId = 0;
-			Guid orgUid = Guid.Empty;
-
-			using ( var context = new EntityContext() )
-			{
-				try
-				{
-					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.LearningOpportunity
-								.FirstOrDefault( s => s.Id == id );
-
-					if ( efEntity != null && efEntity.Id > 0 )
-					{
-						if ( IsValidGuid( efEntity.OwningAgentUid ) )
-						{
-							var org = OrganizationManager.GetForSummary( ( Guid )efEntity.OwningAgentUid );
-							if ( org != null && org.Id > 0 )
-							{
-								orgId = org.Id;
-								orgUid = org.RowId;
-							}
-						}
-						int count = 0;
-						if ( efEntity.EntityStateId == 3 )
-						{
-							//log with reason
-							string msg = string.Format( " Learning Opportunity. Id: {0}, Name: {1}, Ctid: {2}.", efEntity.Id, efEntity.Name, efEntity.CTID );
-
-							//18-04-05 mparsons - change to set inactive, and notify - seems to have been some incorrect deletes
-							efEntity.EntityStateId = 0;
-							efEntity.LastUpdated = System.DateTime.Now;
-							count = context.SaveChanges();
-							if ( count > 0 )
-							{
-								//trace is done in import
-								//LoggingHelper.DoTrace( 2, "Learning Opportunity virtually deleted: " + msg );
-								new ActivityManager().SiteActivityAdd( new SiteActivity()
-								{
-									ActivityType = "LearningOpportunity",
-									Activity = "Import",
-									Event = "Delete From Related",
-									Comment = msg,
-									ActivityObjectId = efEntity.Id
-								} );
-							}
-						}
-						else
-						{
-							context.LearningOpportunity.Remove( efEntity );
-							count = context.SaveChanges();
-						}
-
-						if ( count > 0 )
-						{
-							isValid = true;
-							//add pending request 
-							List<String> messages = new List<string>();
-							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, id, ref messages );
-
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
-							//also check for any relationships
-							new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( orgUid );
-						}
-					}
-					else
-					{
-						statusMessage = "Error - LearningOpportunity delete failed, as record was not found.";
-					}
-					
-				}
-				catch ( Exception ex )
-				{
-					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + string.Format(".Delete(id: {0})", id) );
-
-					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
-					{
-						statusMessage = "Error: this learning opportunity cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this learning opportunity can be deleted.";
-					}
-				}
-			}
-
-			return isValid;
 		}
 
 
@@ -634,22 +597,26 @@ namespace workIT.Factories
                         int count = context.SaveChanges();
                         if ( count > 0 )
                         {
-                            isValid = true;
+							var entityType = CodesManager.Codes_EntityType_Get( efEntity.EntityTypeId, "LearningOpportunity" );
+							isValid = true;
                             //trace is done in import
                             //LoggingHelper.DoTrace( 2, "Learning Opportunity virtually deleted: " + msg );
                             new ActivityManager().SiteActivityAdd( new SiteActivity()
                             {
-                                ActivityType = "LearningOpportunity",
+                                ActivityType = entityType,
                                 Activity = "Import",
                                 Event = "Delete",
 								Comment = msg,
 								ActivityObjectId = efEntity.Id
 							} );
-                            //add pending request 
-                            List<String> messages = new List<string>();
+							//delete cache
+							new EntityManager().EntityCacheDelete( 7, efEntity.Id, ref statusMessage );
+
+							//add pending request 
+							List<String> messages = new List<string>();
                             new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, efEntity.Id, ref messages );
 							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 
 							//delete all relationships
 							workIT.Models.SaveStatus status = new SaveStatus();
@@ -699,9 +666,9 @@ namespace workIT.Factories
             Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
             erfm.DeleteAll( relatedEntity, ref status );
 
-			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.OccupationTypes, ref status ) == false )
 				isAllValid = false;
-			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.IndustryTypes, ref status ) == false )
 				isAllValid = false;
 
 			//TODO - handle Naics if provided separately
@@ -807,6 +774,9 @@ namespace workIT.Factories
 
 				if ( mgr.AddProperties( entity.AudienceType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
 					isAllValid = false;
+				//TODO - remove after completing direct assignments
+				if ( mgr.AddProperties( entity.LifeCycleStatusType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status ) == false )
+					isAllValid = false;
 			} catch (Exception ex)
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "**EXCEPTION** LearningOpportunityManager.UpdateProperties. Name: {0}, Id: {1}, Message: {2}.", entity.Name, entity.Id, ex.Message ) );
@@ -826,10 +796,10 @@ namespace workIT.Factories
 				dpm.SaveList( entity.EstimatedDuration, entity.RowId, ref status );
 
 				//Identifiers - do delete for first one and then assign
-				new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.LEARNING_OPP_Identifier, ref status, true );
+				new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier, ref status, true );
 
 				//VersionIdentifier
-				new Entity_IdentifierValueManager().SaveList( entity.VersionIdentifierList, entity.RowId, Entity_IdentifierValueManager.LEARNING_OPP_VersionIdentifier, ref status, false );
+				new Entity_IdentifierValueManager().SaveList( entity.VersionIdentifierList, entity.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier, ref status, false );
 
 				//CostProfile
 				CostProfileManager cpm = new Factories.CostProfileManager();
@@ -873,11 +843,8 @@ namespace workIT.Factories
 				new Entity_FinancialAssistanceProfileManager().SaveList( entity.FinancialAssistance, entity.RowId, ref status );
 
 				//competencies
-				if ( entity.TeachesCompetencies != null && entity.TeachesCompetencies.Count > 0 )
-				{
-					Entity_CompetencyManager ecm = new Entity_CompetencyManager();
-					ecm.SaveList( entity.TeachesCompetencies, entity.RowId, ref status );
-				}
+				Entity_CompetencyManager ecm = new Entity_CompetencyManager();
+				ecm.SaveList( entity.TeachesCompetencies, entity.RowId, ref status ); 			
 
 				//addresses
 				new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref status );
@@ -897,6 +864,10 @@ namespace workIT.Factories
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "**EXCEPTION** LearningOpportunityManager.AddProfiles - 3. Name: {0}, Id: {1}, Message: {2}.", entity.Name, entity.Id, ex.Message ) );
 			}
+
+			var adpm = new Entity_AggregateDataProfileManager();
+			if ( adpm.SaveList( entity.AggregateData, relatedEntity, ref status ) == false )
+				status.HasSectionErrors = true;
 
 			LoggingHelper.DoTrace( 7, thisClassName + ".AddProfiles - exited." );
 
@@ -924,7 +895,8 @@ namespace workIT.Factories
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RecognizedBy, entity.RecognizedBy, ref status );
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RegulatedBy, entity.RegulatedBy, ref status );
-
+			//
+			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateAssertedBys - exited." );
 
 			return isAllValid;
@@ -1016,35 +988,103 @@ namespace workIT.Factories
             }
             return entity;
         }
-        public static ThisEntity GetByName_SubjectWebpage( string name, string swp )
-        {
-            ThisEntity entity = new ThisEntity();
-            using ( var context = new EntityContext() )
-            {
-                context.Configuration.LazyLoadingEnabled = false;
-                DBEntity from = context.LearningOpportunity
-                        .FirstOrDefault( s => s.Name.ToLower() == name.ToLower() && s.SubjectWebpage == swp );
+		public static ThisEntity GetByName_SubjectWebpage(string name, string swp)
+		{
+			ThisEntity entity = new ThisEntity();
+			if (string.IsNullOrWhiteSpace(swp))
+				return null;
+			if (swp.IndexOf("//") == -1)
+				return null;
+			bool hasHttps = false;
+			if (swp.ToLower().IndexOf("https:") > -1)
+				hasHttps = true;
 
-                if ( from != null && from.Id > 0 )
-                {
-                    //entity.RowId = from.RowId;
-                    //entity.Id = from.Id;
-                    //entity.Name = from.Name;
-                    //entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
-                    //entity.Description = from.Description;
-                    //entity.SubjectWebpage = from.SubjectWebpage;
+			//swp = swp.Substring( swp.IndexOf( "//" ) + 2 );
+			//swp = swp.ToLower().TrimEnd( '/' );
+			var host = new Uri(swp).Host;
+			var domain = host.Substring(host.LastIndexOf('.', host.LastIndexOf('.') - 1) + 1);
+			//DBEntity from = new DBEntity();
+			using (var context = new EntityContext())
+			{
+				//s.Name.ToLower() == name.ToLower() && 
+				context.Configuration.LazyLoadingEnabled = false;
+				var list = context.LearningOpportunity
+						.Where(s => s.SubjectWebpage.ToLower().Contains(domain) && s.EntityStateId > 1)
+						.OrderByDescending(s => s.EntityStateId)
+						.ThenBy(s => s.Name)
+						.ToList();
+				int cntr = 0;
 
-                    //entity.CTID = from.CTID;
-                    //entity.CredentialRegistryId = from.CredentialRegistryId;
-					MapFromDB( from, entity,
-						true, //includingProperties
-						true,
-						true );
+				ActivityManager amgr = new ActivityManager();
+				foreach (var from in list)
+				{
+					cntr++;
+					//any way to check further?
+					//the full org will be returned first
+					//may want a secondary check and send notifications if additional full orgs found, or even if multiples are found.
+					if (from.Name.ToLower().Contains(name.ToLower())
+					|| name.ToLower().Contains(from.Name.ToLower())
+					)
+					{
+						//OK, take me
+						if (cntr == 1 || entity.Id == 0)
+						{
+							//hmmm if input was https and found http, and a reference, should update to https!
+							if (hasHttps && from.SubjectWebpage.StartsWith("http:"))
+							{
+
+							}
+							//
+							MapFromDB(from, entity, true, true, true);
+						}
+						else
+						{
+							if (from.EntityStateId == 3)
+							{
+								//could log warning conditions to activity log, and then report out at end of an import?
+								amgr.SiteActivityAdd(new SiteActivity()
+								{
+									ActivityType = "System",
+									Activity = "Import",
+									Event = "Organization Reference Check",
+									Comment = string.Format("Org get by name/swp. Found addtional full org for name: {0}, swp: {1}. First org: {2} ({3})", name, swp, entity.Name, entity.Id)
+								});
+
+							}
+							MapFromDB(from, entity, true, true, true);
+							break;
+						}
+					}
 				}
-            }
-            return entity;
-        }
-        public static ThisEntity GetForDetail( int id )
+			}
+
+			return entity;
+			//using (var context = new EntityContext())
+			//{
+			//    context.Configuration.LazyLoadingEnabled = false;
+			//    DBEntity from = context.LearningOpportunity
+			//            .FirstOrDefault(s => s.Name.ToLower() == name.ToLower() && s.SubjectWebpage == swp);
+
+			//    if (from != null && from.Id > 0)
+			//    {
+			//        //entity.RowId = from.RowId;
+			//        //entity.Id = from.Id;
+			//        //entity.Name = from.Name;
+			//        //entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
+			//        //entity.Description = from.Description;
+			//        //entity.SubjectWebpage = from.SubjectWebpage;
+
+			//        //entity.CTID = from.CTID;
+			//        //entity.CredentialRegistryId = from.CredentialRegistryId;
+			//        MapFromDB(from, entity,
+			//            true, //includingProperties
+			//            true,
+			//            true);
+			//    }
+			//}
+			//return entity;
+		}
+		public static ThisEntity GetForDetail( int id, bool isAPIRequest = false )
         {
             ThisEntity entity = new ThisEntity();
             bool includingProfiles = true;
@@ -1057,14 +1097,20 @@ namespace workIT.Factories
 
                 if ( item != null && item.Id > 0 )
                 {
-                    //check for virtual deletes
-                    if ( item.EntityStateId == 0 )
-                        return entity;
-
-                    MapFromDB( item, entity,
+					//check for virtual deletes
+					if ( item.EntityStateId == 0 )
+					{
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + " Error: encountered request for detail for a deleted record. Name: {0}, CTID:{1}", item.Name, item.CTID ) );
+						entity.Name = "Record was not found.";
+						entity.CTID = item.CTID;
+						return entity;
+					}
+					//21-07-12 mp - determine if there is a difference between detail and API now
+					MapFromDB( item, entity,
                         true, //includingProperties
                         includingProfiles,
-                        true );
+                        true,
+						isAPIRequest );
                 }
             }
 
@@ -1088,7 +1134,7 @@ namespace workIT.Factories
 
                 if ( item != null && item.Id > 0 )
                 {
-                    MapFromDB_Basic( item, entity, false );
+                    MapFromDB_Basic( item, entity );
                 }
             }
 
@@ -1112,7 +1158,7 @@ namespace workIT.Factories
 					foreach ( DBEntity item in results )
                     {
                         entity = new ThisEntity();
-                        MapFromDB_Basic( item, entity, false );
+                        MapFromDB_Basic( item, entity );
 
                         list.Add( entity );
 						if ( maxRecords > 0 && list.Count >= maxRecords )
@@ -1140,7 +1186,7 @@ namespace workIT.Factories
 					foreach ( DBEntity item in results )
 					{
 						entity = new ThisEntity();
-						MapFromDB_Basic( item, entity, false );
+						MapFromDB_Basic( item, entity );
 
 						list.Add( entity );
 						if ( maxRecords > 0 && list.Count >= maxRecords )
@@ -1167,60 +1213,206 @@ namespace workIT.Factories
 
                 if ( item != null && item.Id > 0 )
                 {
-                    MapFromDB_Basic( item, entity, false );
+                    MapFromDB_Basic( item, entity );
                 }
             }
 
             return entity;
         }
-        public static void MapFromDB_Basic( DBEntity from, ThisEntity entity,
-                bool includingCosts )
+        public static void MapFromDB_Basic( DBEntity input, ThisEntity output )
         {
-            entity.Id = from.Id;
-            entity.RowId = from.RowId;
-            entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
-            entity.Name = from.Name;
-            entity.Description = from.Description;
-            entity.SubjectWebpage = from.SubjectWebpage;
-            entity.CTID = from.CTID;
+            output.Id = input.Id;
+            output.RowId = input.RowId;
+			output.CTID = input.CTID;
+			output.EntityStateId = ( int )( input.EntityStateId ?? 1 );
+			//TBD - watch this doesn't get changed somewhere
+			//*********** need to update the trigger that creates the Entity ********************
+			output.LearningEntityTypeId = input.EntityTypeId;
+			if ( output.LearningEntityTypeId > 0 )
+			{
+				CodeItem ct = CodesManager.Codes_EntityType_Get( output.LearningEntityTypeId );
+				if ( ct != null && ct.Id > 0 )
+				{
+					output.LearningEntityType = ct.Title;
+					output.LearningEntityTypeLabel = MapLearningEntityTypeLabel( output.LearningEntityTypeId );
+					output.LearningTypeSchema = ct.SchemaName;
+				} else
+				{
+					output.LearningEntityType = "Learning Opportunity";
+					output.LearningEntityTypeLabel = "Learning Opportunity";
+					output.LearningTypeSchema = "ceterms:LearningOpportunityProfile";
+				}
+			}
 
-            if ( string.IsNullOrWhiteSpace( from.CTID ) )
-                entity.IsReferenceVersion = true;
-            if ( IsGuidValid( from.OwningAgentUid ) )
+			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
+			output.Description = input.Description;
+            output.SubjectWebpage = input.SubjectWebpage;
+
+			if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
+				output.IsReferenceVersion = true;
+			//
+			bool havePrimaryOrg = false;
+			var orgRoleManager = new OrganizationRoleManager();
+			if ( IsGuidValid( input.OwningAgentUid ) )
             {
-                entity.OwningAgentUid = ( Guid )from.OwningAgentUid;
-				entity.OwningOrganization = OrganizationManager.GetForSummary( entity.OwningAgentUid );
+                output.OwningAgentUid = ( Guid )input.OwningAgentUid;
+				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+				havePrimaryOrg = true;
 
 				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( entity.RowId, entity.OwningAgentUid );
-				entity.OwnerRoles = orp.AgentRole;
+				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				output.OwnerRoles = orp.AgentRole;
+				//
+				if ( output.OwningOrganizationId > 0 && !string.IsNullOrWhiteSpace( output.CTID ) && output.EntityStateId == 3 )
+				{
+					//new - get owner QA now. only if particular context
+					//actually don't want this as is slow. Break up into parts
+					//var ownersQAReceived = Entity_AssertionManager.GetAllCombinedForTarget( 2, output.OwningOrganization.Id, output.OwningOrganization.Id );
+					//output.OwningOrganizationQAReceived = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
+					//var orgFirstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
+					//if ( orgFirstPartyAssertions != null && orgFirstPartyAssertions.Any() )
+					//	output.OwningOrganizationQAReceived.AddRange( orgFirstPartyAssertions );
+					output.OwningOrganizationQAReceived = orgRoleManager.GetAllCombinedForTarget( 2, output.OwningOrganizationId, output.OwningOrganizationId, true );
+				}
 			}
-
-			entity.AvailabilityListing = from.AvailabilityListing;
-			entity.AvailableOnlineAt = from.AvailableOnlineAt;
-
-			//costs? = shouldn't need, but make optional
-			if ( includingCosts )
+			if ( output.OwningOrganizationId > 0 )
 			{
-				entity.EstimatedCost = CostProfileManager.GetAll( entity.RowId );
-				entity.CommonCosts = Entity_CommonCostManager.GetAll( entity.RowId );
+				//OLD
+				//output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
+				//NEW
+				output.OrganizationRole = orgRoleManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
+				//output.OrganizationRole = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 7, output.RowId, output.OwningOrganizationId );
+				//var firstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 7, output.RowId, output.OwningOrganizationId, false );
+				//if ( firstPartyAssertions != null && firstPartyAssertions.Any() )
+				//	output.OrganizationRole.AddRange( firstPartyAssertions );
 			}
-			if ( IsValidDate( from.Created ) )
-				entity.Created = ( DateTime )from.Created;
+			if ( output.EntityStateId == 2 )
+			{
+				//not sure how this is possible?
+				if ( ( output.OrganizationRole == null || !output.OrganizationRole.Any() )
+					&& output.OwningOrganizationId > 0 )
+				{
+					output.OrganizationRole.Add( new OrganizationRoleProfile()
+					{
+						ActingAgentUid = output.OwningAgentUid,
+						ActingAgent = new Organization()
+						{
+							Id = output.OwningOrganizationId,
+							RowId = output.OwningAgentUid,
+							Name = output.OwningOrganization.Name,
+							SubjectWebpage = output.OwningOrganization.SubjectWebpage
+						},
+						AgentRole = new Enumeration()
+						{
+							Items = new List<EnumeratedItem>() { new EnumeratedItem()
+						{
+							Name="Owned By"
+						} }
+						}
+					} );
+				}
+			}
 
-			if ( IsValidDate( from.LastUpdated ) )
-				entity.LastUpdated = ( DateTime )from.LastUpdated;
-			var relatedEntity = EntityManager.GetEntity( entity.RowId, false );
+			//TBD
+			if ( !havePrimaryOrg )
+			{
+				//temp set owning org to first offered by?
+				if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+				{
+					int cntr = 0;
+					foreach ( var item in output.OrganizationRole )
+					{
+						var exists = item.AgentRole.Items.Where( x => x.Id == 7 ).ToList();
+						if ( exists != null && exists.Any() )
+						{
+							//may not want to set the owningAgent?
+							//output.OwningAgentUid = item.ActingAgentUid;
+							output.OwningOrganization = OrganizationManager.GetForSummary( item.ActingAgentUid );
+							output.OwnerRoles = item.AgentRole;
+							break;
+						}
+						cntr++;
+					}
+				}
+			}
+			//
+			//22-07-10 - LifeCycleStatusTypeId is now on the credential directly
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			if ( output.LifeCycleStatusTypeId > 0 )
+			{
+				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
+				if ( ct != null && ct.Id > 0 )
+				{
+					output.LifeCycleStatus = ct.Title;
+				}
+				//retain example using an Enumeration for by other related tableS??? - old detail page?
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE );
+				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+			}
+			else
+			{
+				//OLD
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				{
+					
+				}
+			}
+			
+			output.AvailabilityListing = input.AvailabilityListing;
+			output.AvailableOnlineAt = input.AvailableOnlineAt;
+			//only true should be published. Ensure the save only saves True
+			if ( input.IsNonCredit != null && input.IsNonCredit == true )
+				output.IsNonCredit = input.IsNonCredit;
+			else
+				output.IsNonCredit = null;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime )input.Created;
+
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime )input.LastUpdated;
+			//now more for references 
+			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				entity.EntityLastUpdated = relatedEntity.LastUpdated;
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 
 		}
+		public static string MapLearningEntityType( int learningEntityTypeId )
+		{
+			var learningEntityType = "";
+			switch ( learningEntityTypeId )
+			{
+				case 7:
+					return "LearningOpportunityProfile";
+				case 36:
+					return "LearningProgram";
+				case 37:
+					return "Course";
 
+			}
+			return learningEntityType;
+		}
+		public static string MapLearningEntityTypeLabel( int learningEntityTypeId )
+		{
+			var learningEntityType = "";
+			switch ( learningEntityTypeId )
+			{
+				case 7:
+					return "Learning Opportunity";
+				case 36:
+					return "Learning Program";
+				case 37:
+					return "Course";
 
-        public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
+			}
+			return learningEntityType;
+		}
+		public static List<string> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
         {
             bool autocomplete = true;
-            List<object> results = new List<object>();
+            var results = new List<string>();
             List<string> competencyList = new List<string>();
             //get minimal entity
             List<ThisEntity> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, ref competencyList, autocomplete );
@@ -1389,10 +1581,11 @@ namespace workIT.Factories
                 output.CredentialRegistryId = input.CredentialRegistryId;
             output.Id = input.Id;
             output.Name = GetData( input.Name );
+			output.EntityTypeId = input.LearningEntityTypeId > 0 ? input.LearningEntityTypeId : 7;
 
-            output.Description = GetData( input.Description );
-
-            if ( IsGuidValid( input.OwningAgentUid ) )
+			output.Description = GetData( input.Description );
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			if ( IsGuidValid( input.OwningAgentUid ) )
             {
                 if ( output.Id > 0 && output.OwningAgentUid != input.OwningAgentUid )
                 {
@@ -1416,7 +1609,13 @@ namespace workIT.Factories
 
             output.SubjectWebpage = GetUrlData( input.SubjectWebpage, null );
             output.IdentificationCode = GetData( input.CodedNotation );
-            output.AvailableOnlineAt = GetUrlData( input.AvailableOnlineAt, null );
+			//only true should be published. Ensure the save only saves True
+			if ( input.IsNonCredit != null && input.IsNonCredit == true )
+				output.IsNonCredit = input.IsNonCredit;
+			else
+				output.IsNonCredit = null;
+			output.SCED = GetData( input.SCED );
+			output.AvailableOnlineAt = GetUrlData( input.AvailableOnlineAt, null );
             output.AvailabilityListing = GetUrlData( input.AvailabilityListing, null );
             output.DeliveryTypeDescription = input.DeliveryTypeDescription;
 			//output.VerificationMethodDescription = input.VerificationMethodDescription;
@@ -1425,7 +1624,7 @@ namespace workIT.Factories
 			output.LearningMethodDescription = input.LearningMethodDescription;
 			if ( input.TargetLearningResource != null && input.TargetLearningResource.Any() )
 			{
-				output.TargetLearningResource = JsonConvert.SerializeObject( output.TargetLearningResource, JsonHelper.GetJsonSettings() );
+				output.TargetLearningResource = JsonConvert.SerializeObject( input.TargetLearningResource, JsonHelper.GetJsonSettings() );
 			}
 			else
 				output.TargetLearningResource = null;
@@ -1457,65 +1656,11 @@ namespace workIT.Factories
 
 			//=========================================================
 			//21-03-23 - now using ValueProfile
-			//			- interim use both until all converted
-			var loppUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "loppUsingValueProfileForCreditValue", false );
+
 
 			//***actually may have to fill out credit units etc?
 			output.CreditValue = string.IsNullOrWhiteSpace( input.CreditValueJson ) ? null : input.CreditValueJson;
-			if ( !loppUsingValueProfileForCreditValue )
-			{
-				//if ( input.CreditValueList != null && input.CreditValueList.Any() )
-				//{
-				//	//output.CreditValueJson = input.CreditValueJson;
-				//	input.CreditValue = input.CreditValueList[ 0 ];
-				//}
-				//if ( input.QVCreditValue.HasData() )
-				//{
-				//	if ( input.QVCreditValue.CreditUnitType != null && input.QVCreditValue.CreditUnitType.HasItems() )
-				//	{
-				//		//get Id if available
-				//		EnumeratedItem item = input.QVCreditValue.CreditUnitType.GetFirstItem();
-				//		if ( item != null && item.Id > 0 )
-				//			output.CreditUnitTypeId = item.Id;
-				//		else
-				//		{
-				//			//if not get by schema
-				//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-				//			output.CreditUnitTypeId = code.Id;
-				//		}
-				//	}
-				//	output.CreditUnitValue = input.QVCreditValue.Value;
-				//	output.CreditUnitMaxValue = input.QVCreditValue.MaxValue;
-				//	if ( input.QVCreditValue.MaxValue > 0 )
-				//		output.CreditUnitValue = input.QVCreditValue.MinValue;
-				//	if ( !string.IsNullOrWhiteSpace( input.QVCreditValue.Description ) )
-				//		output.CreditUnitTypeDescription = input.QVCreditValue.Description;
-				//}
-			}
-			
-			
-			//else if ( UtilityManager.GetAppKeyValue( "usingQuantitiveValue", false ) == false )
-			//{
 
-			//	//output.CreditHourType = GetData( input.CreditHourType, null );
-			//	//output.CreditHourValue = SetData( input.CreditHourValue, 0.5M );
-			//	//output.CreditUnitTypeId = SetData( input.CreditUnitTypeId, 1 );
-			//	if ( input.CreditUnitType != null && input.CreditUnitType.HasItems() )
-			//	{
-			//		//get Id if available
-			//		EnumeratedItem item = input.CreditUnitType.GetFirstItem();
-			//		if ( item != null && item.Id > 0 )
-			//			output.CreditUnitTypeId = item.Id;
-			//		else
-			//		{
-			//			//if not get by schema
-			//			CodeItem code = CodesManager.GetPropertyBySchema( "ceterms:CreditUnit", item.SchemaName );
-			//			output.CreditUnitTypeId = code.Id;
-			//		}
-			//	}
-			//	output.CreditUnitTypeDescription = GetData( input.CreditUnitTypeDescription );
-			//	output.CreditUnitValue = SetData( input.CreditUnitValue, 0.5M );
-			//}
 
 			if ( IsValidDate( input.LastUpdated ) )
                 output.LastUpdated = input.LastUpdated;
@@ -1524,106 +1669,26 @@ namespace workIT.Factories
 		public static void MapFromDB( DBEntity input, ThisEntity output,
 				bool includingProperties = false,
 				bool includingProfiles = true,
-				bool includeWhereUsed = true )
+				bool includeWhereUsed = true,
+				bool isAPIRequest = false )
 		{
 
 			//TODO add a tomap basic, and handle for lists
-			output.Id = input.Id;
-			output.RowId = input.RowId;
-			output.EntityStateId = ( int )( input.EntityStateId ?? 1 );
-			bool havePrimaryOrg = false;
-			if ( IsGuidValid( input.OwningAgentUid ) )
-			{
-				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
-				havePrimaryOrg = true;
-				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
-				output.OwnerRoles = orp.AgentRole;
-			}
-			output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
-			if ( output.EntityStateId == 2 )
-			{
-				//not sure how this is possible?
-				if ( (output.OrganizationRole == null || !output.OrganizationRole.Any()) 
-					&& output.OwningOrganizationId > 0 )
-				{
-					output.OrganizationRole.Add( new OrganizationRoleProfile()
-					{
-						ActingAgentUid = output.OwningAgentUid,
-						ActingAgent = new Organization()
-						{
-							Id = output.OwningOrganizationId,
-							RowId = output.OwningAgentUid,
-							Name = output.OwningOrganization.Name,
-							SubjectWebpage = output.OwningOrganization.SubjectWebpage
-						},
-						AgentRole = new Enumeration() { Items = new List<EnumeratedItem>() { new EnumeratedItem()
-						{
-							Name="Owned By"
-						} } }
-					} );
-				}
-			}
-			if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-			{
-				//only the owner here?
-				//no - why over writing?
-				//output.OrganizationRole = output.OrganizationRole.Where( b => b.ActingAgent.RowId == output.OwningAgentUid ).ToList();
-			}
-			//TBD
-			if ( !havePrimaryOrg )
-			{
-				//temp set owning org to first offered by?
-				if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-				{
-					int cntr = 0;
-					foreach ( var item in output.OrganizationRole )
-					{
-						var exists = item.AgentRole.Items.Where( x => x.Id == 7 ).ToList();
-						if ( exists != null && exists.Any() )
-						{
-							//may not want to set the owningAgent?
-							//output.OwningAgentUid = item.ActingAgentUid;
-							output.OwningOrganization = OrganizationManager.GetForSummary( item.ActingAgentUid );
-							output.OwnerRoles = item.AgentRole;
-							break;
-						}
-						cntr++;
-					}
-				}
-			}
-			//used for detail - actually latter can probably be used for the detail as well 
-			output.OfferedByOrganization = Entity_AgentRelationshipManager.GetAllOfferingOrgs( output.RowId );
-			if ( output.OfferedByOrganization != null )
-			{
-				output.OfferedByOrganization = output.OfferedByOrganization.Where( m => m.RowId != output.OwningAgentUid ).ToList();
-			}
-			//
-			output.Name = input.Name;
-			output.Description = input.Description == null ? "" : input.Description;
-			output.SubjectWebpage = input.SubjectWebpage;
-			if ( IsValidDate( input.Created ) )
-				output.Created = ( DateTime )input.Created;
-
-			if ( IsValidDate( input.LastUpdated ) )
-				output.LastUpdated = ( DateTime )input.LastUpdated;
-			output.CTID = input.CTID;
-			//now more for references 
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
+			MapFromDB_Basic( input, output );
+			//duplicate?
+			//var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 
 			output.Addresses = Entity_AddressManager.GetAll( output.RowId );
-			output.AvailabilityListing = input.AvailabilityListing;
+
 			output.CodedNotation = input.IdentificationCode;
-			output.AvailableOnlineAt = input.AvailableOnlineAt;
+			output.SCED = input.SCED;
+
 			output.DeliveryTypeDescription = input.DeliveryTypeDescription;
 
 			//
 			output.AssessmentMethodDescription = input.AssessmentMethodDescription;
 			output.LearningMethodDescription = input.LearningMethodDescription;
-			if ( !string.IsNullOrWhiteSpace( input.TargetLearningResource ) )
+			if ( !string.IsNullOrWhiteSpace( input.TargetLearningResource ) && input.TargetLearningResource != "null" && input.TargetLearningResource.IndexOf( "\"null") == -1 )
 			{
 				output.TargetLearningResource = JsonConvert.DeserializeObject<List<string>>( input.TargetLearningResource );
 			}
@@ -1634,47 +1699,12 @@ namespace workIT.Factories
 				output.EstimatedDuration = DurationProfileManager.GetAll( output.RowId );
 				//=========================================================
 				//21-03-23 - now using ValueProfile
-				//			- interim use both until all converted
-				var loppUsingValueProfileForCreditValue = UtilityManager.GetAppKeyValue( "loppUsingValueProfileForCreditValue", false );
-				if ( !string.IsNullOrWhiteSpace( input.CreditValue ) )
+
+				if ( !string.IsNullOrWhiteSpace( input.CreditValue ) && input.CreditValue!= "[]" )
 				{
 					output.CreditValue = JsonConvert.DeserializeObject<List<ValueProfile>>( input.CreditValue );
-				} else
-				{
-					//output.QVCreditValue = FormatQuantitiveValue( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription, input.CreditHourType );
-					//next
-					var creditValue = FormatValueProfile( input.CreditUnitTypeId, input.CreditUnitValue, input.CreditUnitMaxValue, input.CreditUnitTypeDescription );
-
-					if ( creditValue.HasData() )
-					{
-						//pending
-						output.CreditValue.Add( creditValue );
-						//
-						//output.CreditUnitType = output.QVCreditValue.CreditUnitType;
-						//output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-						//output.CreditUnitTypeDescription = output.QVCreditValue.Description;
-
-						//output.CreditUnitValue = output.QVCreditValue.Value;
-						//output.CreditUnitMaxValue = output.QVCreditValue.MaxValue;
-						//if ( output.CreditUnitMaxValue > 0 )
-						//{
-						//	output.CreditUnitValue = output.QVCreditValue.MinValue;
-						//	output.CreditUnitMinValue = output.QVCreditValue.MinValue;
-						//	output.CreditValueIsRange = true;
-						//}
-
-					}
-					else
-					{
-						/*
-						output.CreditUnitTypeId = ( input.CreditUnitTypeId ?? 0 );
-						output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
-						output.CreditUnitValue = input.CreditUnitValue ?? 0M;
-						output.CreditUnitMaxValue = input.CreditUnitMaxValue ?? 0M;
-						*/
-					}
-				}
-				
+				} 
+				output.CreditUnitTypeDescription = input.CreditUnitTypeDescription;
 
 				// Begin edits - Need these output populate Credit Unit Type -  NA 3/31/2017
 				//20-11-30 mp - is this still applicable???
@@ -1687,11 +1717,6 @@ namespace workIT.Factories
 				//		output.CreditUnitType.Items.Add( match );
 				//	}
 				//}
-				//teaches
-				MapFromDB_Competencies( output );
-				//20-10-05 - get as much as possible for a reference esp for TVP case
-				output.AudienceType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
-				output.AudienceLevelType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 				if ( IsValidDate( input.DateEffective ) )
 					output.DateEffective = ( ( DateTime )input.DateEffective ).ToString("yyyy-MM-dd");
 				else
@@ -1700,48 +1725,64 @@ namespace workIT.Factories
 					output.ExpirationDate = ( ( DateTime )input.ExpirationDate ).ToString("yyyy-MM-dd");
 				else
 					output.ExpirationDate = "";
-				output.DeliveryType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE );
-
-				output.FinancialAssistance = Entity_FinancialAssistanceProfileManager.GetAll( output.RowId, false );
-
-				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
-				output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
-				
-
-				output.LearningMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type );
-				output.AssessmentMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type );
-
-				output.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
-
-				output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-				//
-				//Fix costs
-				output.EstimatedCost = CostProfileManager.GetAll( output.RowId );
-
-				//Include currencies output fix null errors in various places (detail, compare, publishing) - NA 3/17/2017
-				var currencies = CodesManager.GetCurrencies();
-				//Include cost types output fix other null errors - NA 3/31/2017
-				var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
-				foreach ( var cost in output.EstimatedCost )
+				if (includingProperties)
 				{
-					cost.CurrencyTypes = currencies;
+					//teaches
+					MapFromDB_Competencies( output );
 
-					foreach ( var costItem in cost.Items )
-					{
-						costItem.DirectCostType.Items.Add( costTypes.Items.FirstOrDefault( m => m.CodeId == costItem.CostTypeId ) );
-					}
+					//20-10-05 - get as much as possible for a reference esp for TVP case
+					output.AudienceType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
+					output.AudienceLevelType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
+
+					output.DeliveryType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE );
+					output.LearningMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type );
+					output.AssessmentMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type );
+
+					output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+
+					output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+
+					output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //  = 76;
+
 				}
 
-			}catch(Exception ex)
-			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format("MapfromDB(). Section 1. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CreditUnitTypeDescription), true );
+				//put outside, just in case
+				//Include currencies output fix null errors in various places (detail, compare, publishing) - NA 3/17/2017
+				var currencies = CodesManager.GetCurrencies();
+
+				if ( includingProfiles )
+				{
+					output.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
+
+					//
+					//Fix costs
+					output.EstimatedCost = CostProfileManager.GetAll( output.RowId );
+					output.FinancialAssistance = Entity_FinancialAssistanceProfileManager.GetAll( output.RowId, false );
+
+					output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
+					
+					//Include cost types output fix other null errors - NA 3/31/2017
+					var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
+					foreach ( var cost in output.EstimatedCost )
+					{
+						cost.CurrencyTypes = currencies;
+
+						foreach ( var costItem in cost.Items )
+						{
+							costItem.DirectCostType.Items.Add( costTypes.Items.FirstOrDefault( m => m.CodeId == costItem.CostTypeId ) );
+						}
+					}
+
+					output.AggregateData = Entity_AggregateDataProfileManager.GetAll( output.RowId, true, isAPIRequest );
+
+				}
+
 			}
-			//----------------------------------------------------------------------------
-			if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
-            {
-                output.IsReferenceVersion = true;
-                //return;
-            }
+			catch(Exception ex)
+			{
+				LoggingHelper.LogError( ex, thisClassName + string.Format("MapfromDB(). Section 1. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CTID), true );
+			}
+
 
             output.CredentialRegistryId = input.CredentialRegistryId;
 			//====			
@@ -1751,135 +1792,196 @@ namespace workIT.Factories
 
 				//assumes only one identifier type per class
 				//20-12-01 now two types - will need a property designatiion, or store as json
-				output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.LEARNING_OPP_VersionIdentifier );
+				output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
 
-				output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.LEARNING_OPP_Identifier );
+				output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier );
 
 				output.InLanguageCodeList = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
 
-				output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //  = 76;
-																													   //properties
-
-				//get condition profiles
-				List<ConditionProfile> list = new List<ConditionProfile>();
-
-				list = Entity_ConditionProfileManager.GetAll( output.RowId, false );
-				if ( list != null && list.Count > 0 )
-				{
-					foreach ( ConditionProfile item in list )
-					{
-						if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_LearningOpportunity )
-						{
-							output.LearningOppConnections.Add( item );
-						}
-						else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
-							output.Requires.Add( item );
-						else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Recommendation )
-							output.Recommends.Add( item );
-						else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Corequisite )
-							output.Corequisite.Add( item );
-						else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition )
-							output.EntryCondition.Add( item );
-						else
-						{
-							EmailManager.NotifyAdmin( "Unexpected Condition Profile for learning opportunity", string.Format( "LearningOppId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
-
-							//add output required, for dev only?
-							if ( IsDevEnv() )
-							{
-								item.ProfileName = ( item.ProfileName ?? "" ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
-								output.Requires.Add( item );
-							}
-						}
-					}
-					//
-					output.AdvancedStandingFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).AdvancedStandingFrom;
-					output.IsAdvancedStandingFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsAdvancedStandingFor;
-					output.IsRequiredFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRequiredFor;
-					output.IsRecommendedFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRecommendedFor;
-					output.IsPreparationFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsPreparationFor;
-					output.PreparationFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).PreparationFrom;
-				}
-				//TODO
-				output.CommonConditions = Entity_CommonConditionManager.GetAll( output.RowId );
-
-				output.CommonCosts = Entity_CommonCostManager.GetAll( output.RowId );
-
-				output.Occupation = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-
-				output.Industry = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-
-				output.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
-
-
-				output.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, 3 );
-				bool forProfilesList = false;
-				MapFromDB_HasPart( output, forProfilesList );
-
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format( "MapfromDB(). Section 2. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CreditUnitTypeDescription ), true );
-			}
-			//TODO - re: forEditView, not sure about approach for learning opp parts
-			//for now getting all, although may only need as links - except may also need output get competencies
-
-			try
-			{
-
-				//16-09-02 mp - always get for now
-				//really only needed for detail view
-				//===> need a means output determine request is input microsearch, so only minimal is returned!
-				//if ( includeWhereUsed )
-				//{
+				//properties
 				output.WhereReferenced = new List<string>();
-				if ( input.Entity_LearningOpportunity != null && input.Entity_LearningOpportunity.Count > 0 )
+				if ( includingProfiles )
 				{
-					//the Entity_LearningOpportunity could be for a parent lopp, or a condition profile
-					foreach ( EM.Entity_LearningOpportunity item in input.Entity_LearningOpportunity )
+					//get condition profiles
+					List<ConditionProfile> list = new List<ConditionProfile>();
+
+					list = Entity_ConditionProfileManager.GetAll( output.RowId, false );
+					if ( list != null && list.Count > 0 )
 					{
-						if ( item.Entity == null )
+						foreach ( ConditionProfile item in list )
 						{
-							//shouldn't happen? - log
-							continue;
-						}
-						//
-						output.WhereReferenced.Add( string.Format( "EntityUid: {0}, Type: {1}", item.Entity.EntityUid, item.Entity.Codes_EntityTypes.Title ) );
-						if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-						{
-							//only if downloaded
-							var lo = GetAs_IsPartOf( item.Entity.EntityUid );
-							if ( lo.EntityStateId > 1 )
-								output.IsPartOf.Add( lo );
-						}//or better as ENTITY_TYPE_CONDITION_PROFILE
-						else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONNECTION_PROFILE )
-						{
-							ConditionProfile cp = CondProfileMgr.GetAs_IsPartOf( item.Entity.EntityUid );
-							output.IsPartOfConditionProfile.Add( cp );
-							//need output check cond prof for parent of credential
-							//will need output ensure no dups, or realistically, don't do the direct credential check
-							if ( cp.ParentCredential != null && cp.ParentCredential.Id > 0 )
+							if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_LearningOpportunity )
 							{
-								if ( cp.ParentCredential.EntityStateId > 1 )
+								output.LearningOppConnections.Add( item );
+							}
+							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
+								output.Requires.Add( item );
+							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Recommendation )
+								output.Recommends.Add( item );
+							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Corequisite )
+								output.Corequisite.Add( item );
+							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition )
+								output.EntryCondition.Add( item );
+							else
+							{
+								EmailManager.NotifyAdmin( "Unexpected Condition Profile for learning opportunity", string.Format( "LearningOppId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
+
+								//add output required, for dev only?
+								if ( IsDevEnv() )
 								{
-									//output.IsPartOfCredential.Add( cp.ParentCredential );
-									AddCredentialReference( cp.ParentCredential.Id, output );
+									item.ProfileName = ( item.ProfileName ?? "" ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
+									output.Requires.Add( item );
 								}
 							}
 						}
-						else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+					}
+					
+					//
+					//16-09-02 mp - always get for now
+					//really only needed for detail view
+					//===> need a means output determine request is input microsearch, so only minimal is returned!
+					//if ( includeWhereUsed )
+					//{
+
+					if ( input.Entity_LearningOpportunity != null && input.Entity_LearningOpportunity.Count > 0 )
+					{
+						//the Entity_LearningOpportunity could be for a parent lopp, or a condition profile
+						foreach ( EM.Entity_LearningOpportunity item in input.Entity_LearningOpportunity )
 						{
-							//this is not possible in the finder
-							//AddCredentialReference( (int)item.Entity.EntityBaseId, output );
+							TopLevelObject tlo = new TopLevelObject();
+							if ( item.Entity == null )
+							{
+								//shouldn't happen? - log?
+								continue;
+							}
+							//
+							output.WhereReferenced.Add( string.Format( "EntityUid: {0}, Type: {1}", item.Entity.EntityUid, item.Entity.Codes_EntityTypes.Title ) );
+							if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+							{
+								//only if downloaded
+								var lo = GetAs_IsPartOf( item.Entity.EntityUid );
+								if ( lo.EntityStateId > 1 )
+									output.IsPartOf.Add( lo );
+							}//or better as ENTITY_TYPE_CONDITION_PROFILE
+							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONNECTION_PROFILE )
+							{
+								//21-09-07 mp - may need to pass in the connections so duplicate checks can be done generically.
+								ConditionProfile cp = CondProfileMgr.GetAs_IsPartOf( item.Entity.EntityUid, output.Name, output.LearningOppConnections );
+								//first check if the parent (ex credential) is already in a condition profile - with inverse relationship type
+								if (isAPIRequest) //skip if not API context-actually may not be needed at all.
+									output.IsPartOfConditionProfile.Add( cp );
+								//now done in GetAs_IsPartOf
+								//output.LearningOppConnections.Add( cp );
+								//need output check cond prof for parent of credential
+								//will need output ensure no dups, or realistically, don't do the direct credential check
+								//or do this earlier and add to 'output.LearningOppConnections '
+								if ( cp.ParentCredential != null && cp.ParentCredential.Id > 0 )
+								{
+									if ( cp.ParentCredential.EntityStateId > 1 )
+									{
+										//will not need this for API context
+										AddCredentialReference( cp.ParentCredential.Id, output );
+									}
+								}
+								else if ( cp.ParentLearningOpportunity != null && cp.ParentLearningOpportunity.Id > 0 )
+								{
+									if ( cp.ParentLearningOpportunity.EntityStateId > 1 )
+									{
+										//should not need to store - but may use to set default content for the condition profile
+										var exists = output.IsPartOfLearningOpp.FirstOrDefault( s => s.Id == cp.ParentLearningOpportunity.Id );
+										//hmm  would be useful to know how connected for display purposes  -and to format the cp
+										if ( exists == null || exists.Id == 0 )
+										{
+											tlo = GetBasic( cp.ParentLearningOpportunity.Id );
+											output.IsPartOfLearningOpp.Add( GetBasic( cp.ParentLearningOpportunity.Id ) );
+										}
+										//
+									}
+								}
+							}
+							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+							{
+								//this is not possible in the finder
+								//AddCredentialReference( (int)item.Entity.EntityBaseId, output );
+							}
+							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
+							{
+								//so should these be kept separate?
+								var dsp = DataSetProfileManager.Get( ( int )item.Entity.EntityBaseId, true, isAPIRequest );
+								if ( dsp != null && dsp.Id > 0 )
+									output.ExternalDataSetProfiles.Add( dsp );
+
+							}
+							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
+							{
+								//so should these be kept separate?
+								//get minimum
+								var tvp = TransferValueProfileManager.Get( ( int )item.Entity.EntityBaseId, false );
+								if ( tvp != null && tvp.Id > 0 )
+									output.HasTransferValueProfile.Add( tvp );
+
+							}
+							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
+							{
+								//need to get the pathway
+								var pc = PathwayComponentManager.Get( ( int )item.Entity.EntityBaseId, 1 );
+								if ( pc != null && pc.Id > 0 )
+								{
+									var pathway = PathwayManager.GetByCtid( pc.PathwayCTID );
+									if ( pathway != null && pathway.Id > 0 )
+										output.TargetPathway.Add( pathway );
+								}
+
+							}
 						}
 					}
+
+
+					//
+					//DisambiguateConditionProfiles actually returns a split object, so why call 6 times
+					var splitConnections = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections );
+					output.AdvancedStandingFrom = splitConnections.AdvancedStandingFrom;
+					output.IsAdvancedStandingFor = splitConnections.IsAdvancedStandingFor;
+					output.IsRequiredFor = splitConnections.IsRequiredFor;
+					output.IsRecommendedFor = splitConnections.IsRecommendedFor;
+					output.IsPreparationFor = splitConnections.IsPreparationFor;
+					output.PreparationFrom = splitConnections.PreparationFrom;
+
+						//output.AdvancedStandingFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).AdvancedStandingFrom;
+						//output.IsAdvancedStandingFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsAdvancedStandingFor;
+						//output.IsRequiredFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRequiredFor;
+						//output.IsRecommendedFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRecommendedFor;
+						//output.IsPreparationFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsPreparationFor;
+						//output.PreparationFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).PreparationFrom;
+				
+					//TODO
+					output.CommonConditions = Entity_CommonConditionManager.GetAll( output.RowId );
+					output.CommonCosts = Entity_CommonCostManager.GetAll( output.RowId );
+
+					//new
+					output.OccupationTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+					output.IndustryTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					output.InstructionalProgramTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+
+					//OLD
+					//output.Occupation = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );		
+					//output.Industry = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					//output.InstructionalProgramType = ReferenceFrameworkItemsManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_CIP);
+					//21-07-22 mparsons - TargetPathway is a list of pathways were this record exists anywhere in the pathway
+					//						NO- lopp don't publish has pathay, the relationship comes from the pathway component.
+					//output.TargetPathway = Entity_PathwayManager.GetAll( output.RowId );
+
+					output.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, 3 );
+					bool forProfilesList = false;
+					MapFromDB_HasPart( output, forProfilesList );
 				}
+
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format( "MapfromDB(). Section 3. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CreditUnitTypeDescription ), true );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( "MapfromDB(). Section 2. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CTID ), true );
 			}
+
 
 
 		}
@@ -1923,6 +2025,7 @@ namespace workIT.Factories
 		private static void AddCredentialReference( int credentialId, ThisEntity to )
 		{
 			Credential exists = to.IsPartOfCredential.FirstOrDefault( s => s.Id == credentialId );
+			//hmm  would be useful to know how connected for display purposes.
 			if ( exists == null || exists.Id == 0 )
 				to.IsPartOfCredential.Add( CredentialManager.GetBasic( credentialId ) );
 		}

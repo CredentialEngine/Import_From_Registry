@@ -325,9 +325,15 @@ namespace workIT.Factories
 			to.LastUpdatedById = ( int )( from.LastUpdatedById ?? 0 );
 
 			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime )from.Created;
+			{
+				to.Created = ( DateTime ) from.Created;
+				to.CreatedDisplay = to.Created.ToString( "MMM d, yyyy" );
+			}
 			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime )from.LastUpdated;
+			{
+				to.LastUpdated = ( DateTime ) from.LastUpdated;
+				to.LastUpdatedDisplay = to.LastUpdated.ToString( "MMM d, yyyy" );
+			}
 
 			to.WidgetAlias = from.WidgetAlias;
 
@@ -343,7 +349,7 @@ namespace workIT.Factories
 			else
 				to.WidgetStyles = new WidgetStyles();
 
-
+			to.AllowsCSVExport = from.AllowsCSVExport != null ? ( bool ) from.AllowsCSVExport : false;
 
 			if ( !string.IsNullOrWhiteSpace( to.CustomStylesFileName ) )
 				to.CustomStylesURL = UtilityManager.GetAppKeyValue( "widgetResourceUrl" ) + to.CustomStylesFileName;
@@ -381,7 +387,7 @@ namespace workIT.Factories
 				}
 			}
 
-
+			//22-05-11 mp these are stored in the db, everything is in CustomStyles.
 			to.SearchFilters = from.SearchFilters;
 			if ( !string.IsNullOrEmpty( to.SearchFilters ) )
 			{
@@ -429,7 +435,15 @@ namespace workIT.Factories
 			{
 				to.SearchFilters = from.SearchFilters;
 			}
-
+			//until in interface, do not attempt to map
+			if ( to.AllowsCSVExport == null )
+			{
+				to.AllowsCSVExport = from.AllowsCSVExport;
+			}
+			else
+			{
+				//to.AllowsCSVExport = from.AllowsCSVExport;
+			}
 
 			//if ( IsDevEnv() )
 			//{

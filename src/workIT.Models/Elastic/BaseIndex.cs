@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using workIT.Models.Common;
+
 namespace workIT.Models.Elastic
 {
 
@@ -20,13 +22,14 @@ namespace workIT.Models.Elastic
 
 		public string NameOrganizationKey { get; set; }
 		public string Name { get; set; }
+		public string ListTitle { get; set; }
 		//TBD
 		public string NameAlphanumericOnly { get; set; }
 		//
 		public string FriendlyName { get; set; }
 		public string Description { get; set; }
 		public string SubjectWebpage { get; set; }
-		
+
 		public DateTime Created { get; set; }
 		public DateTime LastUpdated { get; set; }
 		public string StatusMessage { get; set; }
@@ -37,13 +40,17 @@ namespace workIT.Models.Elastic
 		public string PrimaryOrganizationName { get; set; }
 
 		public string PrimaryOrganizationCTID { get; set; }
+		public int PublishedByThirdPartyOrganizationId { get; set; }
+
 		public List<int> AgentRelationships { get; set; } = new List<int>();
 		public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+		public List<AgentRelationshipForEntity> OutcomeProvidersForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+
 		public List<string> CodedNotation { get; set; } = new List<string>();
 		//
-		public int PublishedByOrganizationId { get; set; }
-
-		public string PublishedByOrganizationName { get; set; }
+		public int? PublishedByOrganizationId { get; set; }
+		//don't include the name, not typically something we would to get filter hits on. 
+		//public string PublishedByOrganizationName { get; set; }
 
 		public string PublishedByOrganizationCTID { get; set; }
 		//
@@ -53,8 +60,16 @@ namespace workIT.Models.Elastic
 		public List<string> Cities { get; set; } = new List<string>();
 		public List<string> Regions { get; set; } = new List<string>();
 		public List<string> Countries { get; set; } = new List<string>();
+		/// <summary>
+		/// Identifier - primarily for region identifiers like LWIA, etc
+		/// </summary>
+		public List<IdentifierValue> RegionIdentifier { get; set; } = new List<IdentifierValue>();
+		public List<string> LWIAList { get; set; } = new List<string>();
+		public List<string> EDRList { get; set; } = new List<string>();
 		//
 		public List<string> Keyword { get; set; } = new List<string>();
+		//
+		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
 		//
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();

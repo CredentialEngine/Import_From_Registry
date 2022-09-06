@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using MC = workIT.Models.Common;
 using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
@@ -11,7 +12,8 @@ using WMS = workIT.Models.Search;
 
 namespace workIT.Models.API
 {
-	public class LearningOpportunityDetail : BaseDisplay
+	[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
+	public class LearningOpportunityDetail : BaseAPIType
 	{
 		public LearningOpportunityDetail()
 		{
@@ -20,11 +22,13 @@ namespace workIT.Models.API
 			CTDLType = "ceterms:LearningOpportunityProfile";
 			CTDLTypeLabel = "Learning Opportunity";
 		}
-		//public string CTDLType { get; set; }
-		//public string RecordLanguage { get; set; } = "en-US";
+		public int LearningEntityTypeId { get; set; }
 		public bool IsReferenceVersion { get; set; }
+		//helper where referenced by something else
+		public string URL { get; set; }
 
 		public List<LabelLink> OwnerRoles { get; set; }
+		public List<AggregateDataProfile> AggregateData { get; set; }
 
 		public List<LabelLink> AudienceLevelType { get; set; }
 		public List<LabelLink> AudienceType { get; set; } = new List<LabelLink>();
@@ -42,8 +46,8 @@ namespace workIT.Models.API
 
 		public List<string> AvailabilityListing { get; set; }
 
-		public string CredentialId { get; set; }
 		public string CodedNotation { get; set; }
+		public string SCED { get; set; }
 		public List<ValueProfile> CreditValue { get; set; }
 		public string CreditUnitTypeDescription { get; set; }
 		public string DateEffective { get; set; }
@@ -71,21 +75,38 @@ namespace workIT.Models.API
 		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
 
 
-		public List<Outline> HasPart { get; set; }
-		public List<Outline> IsPartOf { get; set; }
+		public WMS.AJAXSettings HasPart { get; set; }
+		public WMS.AJAXSettings HasTransferValue { get; set; }
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
+
+		public WMS.AJAXSettings IsPartOf { get; set; }
 		public List<LabelLink> LearningMethodType { get; set; } = new List<LabelLink>();
 		public string LearningMethodDescription { get; set; }
+		public LabelLink LifeCycleStatusType { get; set; }
 
 		public List<Outline> QAReceived { get; set; } = new List<Outline>();
 		public List<Outline> OwnerQAReceived { get; set; } = new List<Outline>();
 
-		public List<LabelLink> IndustryType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> OccupationType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> InstructionalProgramType { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
+		public List<LabelLink> OccupationTypeOld { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
+
+		public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 		public List<string> SameAs { get; set; }
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
+		public WMS.AJAXSettings TargetAssessment { get; set; }
+		public WMS.AJAXSettings TargetLearningOpportunity { get; set; }
+		public WMS.AJAXSettings TargetPathway { get; set; }
+		public List<string> TargetLearningResource { get; set; }
 		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public WMS.AJAXSettings TeachesCompetencies { get; set; }
+
+		public List<DataSetProfile> ExternalDataSetProfiles { get; set; }
 
 		#region Jurisdiction
 		//in base class

@@ -56,7 +56,7 @@ namespace workIT.Models.ProfileModels
             VersionIdentifierList = new List<Entity_IdentifierValue>();
         }
         public string Name { get; set; }
-        public string FriendlyName { get; set; }
+        //public string FriendlyName { get; set; }
         public int EntityStateId { get; set; }
 
         public System.Guid OwningAgentUid { get; set; }

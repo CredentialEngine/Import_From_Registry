@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
-using workIT.Models.ProfileModels;
+using WMP=workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
@@ -48,10 +48,15 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// AbilityEmbodied
 		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
+		/// This can be one of five types. Using an approach like Entity.Assertation
+		/// Any one of: Competency (most likely?), Job, Occupation. Task, WorkRole
 		/// ceasn:abilityEmbodied
 		/// </summary>
 		public List<string> AbilityEmbodied { get; set; }
 		//public Enumeration AbilityEmbodied { get; set; } 
+
+		public string CodedNotation { get; set; }
+
 
 		/// <summary>
 		/// Category or classification of this resource.
@@ -59,7 +64,8 @@ namespace workIT.Models.Common
 		/// URI to a Concept
 		/// ceterms:classification
 		/// </summary>
-		public List<string> Classification { get; set; } 
+		public List<string> ClassificationList { get; set; }
+		public Enumeration Classification { get; set; }
 
 		/// <summary>
 		/// Comment
@@ -73,7 +79,7 @@ namespace workIT.Models.Common
 		/// CTID for an existing Job
 		/// ceterms:hasJob
 		/// </summary>
-		public List<string> HasJob { get; set; } 
+		public List<string> HasJob { get; set; }
 
 		/// <summary>
 		/// More specialized profession, trade, or career field that is encompassed by the one being described.
@@ -88,7 +94,7 @@ namespace workIT.Models.Common
 		/// List of URIs for an existing WorkRole
 		/// ceterms:hasWorkRole
 		/// </summary>
-		public List<string> HasWorkRole { get; set; } 
+		public List<string> HasWorkRole { get; set; }
 
 		/// <summary>
 		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
@@ -111,7 +117,7 @@ namespace workIT.Models.Common
 		/// List of URIs for an existing Occupation
 		/// ceterms:isSpecializationOf
 		/// </summary>
-		public List<string> IsSpecializationOf { get; set; } 
+		public List<string> IsSpecializationOf { get; set; }
 
 		/// <summary>
 		/// Body of information embodied either directly or indirectly in this resource.
@@ -126,15 +132,16 @@ namespace workIT.Models.Common
 		/// ceterms:keyword
 		/// </summary>
 		//public List<string> Keyword { get; set; }
-		public List<TextValueProfile> Keyword { get; set; }
+		public List<WMP.TextValueProfile> Keyword { get; set; }
 
 		/// <summary>
 		/// OccupationType
 		/// Type of occupation; select from an existing enumeration of such types.
 		///  For U.S. credentials, best practice is to identify an occupation using a framework such as the O*Net. 
 		///  Other credentials may use any framework of the class ceterms:OccupationClassification, such as the EU's ESCO, ISCO-08, and SOC 2010.
-		public Enumeration OccupationType { get; set; } 
+		public Enumeration OccupationType { get; set; }
 
+		public List<WMP.ConditionProfile> Requires { get; set; }
 
 		/// <summary>
 		/// Another source of information about the entity being described.
@@ -142,7 +149,7 @@ namespace workIT.Models.Common
 		/// ceterms:sameAs
 		/// </summary>
 		//public List<string> SameAs { get; set; }
-		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+		public List<WMP.TextValueProfile> SameAs { get; set; } = new List<WMP.TextValueProfile>();
 
 		/// <summary>
 		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
@@ -165,8 +172,22 @@ namespace workIT.Models.Common
 
 
 		#region import
+		public List<int> AbilitiesIds { get; set; }
+		public List<Guid> AbilityEmbodiedIds { get; set; } = new List<Guid>();
+		public List<Guid> KnowledgeUIDs { get; set; } = new List<Guid>();
+		public List<Guid> TasksIds { get; set; } = new List<Guid>();
 		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
 		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
 		#endregion
+	}
+
+	public class RelatedKSA
+	{
+		public List<WMP.Competency> Competencies { get; set; } = new List<WMP.Competency>();
+		public List<Job> Jobs { get; set; } = new List<Job>();
+		public List<OccupationProfile> Occupations { get; set; }
+		public List<Task> Tasks { get; set; } = new List<Task>();
+
+		public List<WorkRole> WorkRoles { get; set; } = new List<WorkRole>();
 	}
 }

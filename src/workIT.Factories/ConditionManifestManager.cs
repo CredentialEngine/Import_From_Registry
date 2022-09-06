@@ -24,6 +24,9 @@ namespace workIT.Factories
 	public class ConditionManifestManager : BaseFactory
 	{
 		static string thisClassName = "Factories.ConditionManifestManager";
+		static string EntityType = "ConditionManifest";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_CONDITION_MANIFEST;
+
 		EntityManager entityMgr = new EntityManager();
 
 		#region === Persistance ==================
@@ -48,7 +51,7 @@ namespace workIT.Factories
 			}
 			
 			int count = 0;
-
+			DateTime lastUpdated = System.DateTime.Now;
 			DBEntity efEntity = new DBEntity();
 			int parentOrgId = 0;
 
@@ -59,7 +62,7 @@ namespace workIT.Factories
 				status.AddError( "Error - the entity for the parent organization was not found." );
 				return false;
 			}
-			if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
+			if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
 			{
 				parentOrgId = parent.EntityBaseId;
 				condtionManifestParentUid = parent.EntityUid;
@@ -96,10 +99,11 @@ namespace workIT.Factories
 						else
 							efEntity.Created = DateTime.Now;
 						//
-						if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+						if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
+						{
 							efEntity.LastUpdated = status.LocalUpdatedDate;
-						else
-							efEntity.LastUpdated = DateTime.Now;
+							lastUpdated = status.LocalUpdatedDate;
+						}
 
 						if ( IsValidGuid( entity.RowId ) )
 							efEntity.RowId = entity.RowId;
@@ -117,6 +121,11 @@ namespace workIT.Factories
 						}
 						else
 						{
+							entity.RowId = efEntity.RowId;
+							entity.Created = efEntity.Created.Value;
+							entity.LastUpdated = efEntity.LastUpdated.Value;
+							entity.Id = efEntity.Id;
+							UpdateEntityCache( entity, ref status );
 							//create the Entity.ConditionManifest
 							//ensure to handle this properly when adding a commonCondition CM to a CM
 							Entity_HasConditionManifest_Add( condtionManifestParentUid, efEntity.Id, ref status );
@@ -172,6 +181,7 @@ namespace workIT.Factories
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
+								lastUpdated = status.LocalUpdatedDate;
 							}
 
 							//has changed?
@@ -189,6 +199,9 @@ namespace workIT.Factories
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
                                 //new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
                             }
+							entity.LastUpdated = lastUpdated;
+							UpdateEntityCache( entity, ref status );
+
 							//the Entity.ConditionManifest should exist, try to be sure
 							Entity_HasConditionManifest_Add( condtionManifestParentUid, efEntity.Id, ref status );
 							//
@@ -232,6 +245,31 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
@@ -257,7 +295,7 @@ namespace workIT.Factories
 		} //
 
 
-		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -266,33 +304,38 @@ namespace workIT.Factories
 				{
 					if ( !IsValidGuid( entityUid ) )
 					{
-						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity" );
 						return 0;
 					}
-					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					var entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
+					{
 						return entity.Id;
-
-					//only add DB required properties
-					//NOTE - an entity will be created via trigger
+					}
 					efEntity.Name = "Placeholder until full document is downloaded";
 					efEntity.Description = "Placeholder until full document is downloaded";
 					efEntity.EntityStateId = 1;
 					efEntity.RowId = entityUid;
-					//watch that Ctid can be  updated if not provided now!!
 					efEntity.CTID = ctid;
 					efEntity.SubjectWebpage = registryAtId;
-
-					efEntity.Created = System.DateTime.Now;
-					efEntity.LastUpdated = System.DateTime.Now;
-
+					efEntity.Created = DateTime.Now;
+					efEntity.LastUpdated = DateTime.Now;
 					context.ConditionManifest.Add( efEntity );
-					int count = context.SaveChanges();
-					if ( count > 0 )
+					if ( context.SaveChanges() > 0 )
+					{
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.SubjectWebpage;
+						entity.Created = efEntity.Created.Value;
+						entity.LastUpdated = efEntity.LastUpdated.Value;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
-
-					status = thisClassName + " Error - the save was not successful, but no message provided. ";
+					}
+					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
 
@@ -300,11 +343,11 @@ namespace workIT.Factories
 			{
 				string message = FormatExceptions( ex );
 				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-				status = thisClassName + " Error - the save was not successful. " + message;
-
+				status.AddError( thisClassName + " Error - the save was not successful. " + message );
 			}
 			return 0;
 		}
+		
 
 		/// <summary>
 		/// Delete a Condition Manifest, and related Entity
@@ -312,81 +355,75 @@ namespace workIT.Factories
 		/// <param name="Id"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Delete( int Id, ref string statusMessage )
-		{
-			bool isValid = false;
-			if ( Id == 0 )
-			{
-				statusMessage = "Error - missing an identifier for the ConditionManifest";
-				return false;
-			}
-			using ( var context = new EntityContext() )
-			{
-				try
-				{
-					DBEntity efEntity = context.ConditionManifest
-								.SingleOrDefault( s => s.Id == Id );
+		//public bool Delete( int Id, ref string statusMessage )
+		//{
+		//	bool isValid = false;
+		//	if ( Id == 0 )
+		//	{
+		//		statusMessage = "Error - missing an identifier for the ConditionManifest";
+		//		return false;
+		//	}
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		try
+		//		{
+		//			DBEntity efEntity = context.ConditionManifest
+		//						.SingleOrDefault( s => s.Id == Id );
 
-					if ( efEntity != null && efEntity.Id > 0 )
-					{
-						Guid rowId = efEntity.RowId;
+		//			if ( efEntity != null && efEntity.Id > 0 )
+		//			{
+		//				Guid rowId = efEntity.RowId;
 
-						context.ConditionManifest.Remove( efEntity );
-						int count = context.SaveChanges();
-						if ( count > 0 )
-						{
-							isValid = true;
-							//do with trigger now
-							//new EntityManager().Delete( rowId, ref statusMessage );
-						}
-					}
-					else
-					{
-						statusMessage = "Error - delete failed, as record was not found.";
-					}
-				}
-				catch ( Exception ex )
-				{
-					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
+		//				context.ConditionManifest.Remove( efEntity );
+		//				int count = context.SaveChanges();
+		//				if ( count > 0 )
+		//				{
+		//					isValid = true;
+		//					//do with trigger now
+		//					//new EntityManager().Delete( rowId, ref statusMessage );
+		//				}
+		//			}
+		//			else
+		//			{
+		//				statusMessage = "Error - delete failed, as record was not found.";
+		//			}
+		//		}
+		//		catch ( Exception ex )
+		//		{
+		//			statusMessage = FormatExceptions( ex );
+		//			LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
 					
-					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
-					{
-						statusMessage = "Error: this Condition Manifest cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this Condition Manifest can be deleted.";
-					}
-				}
-			}
+		//			if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
+		//			{
+		//				statusMessage = "Error: this Condition Manifest cannot be deleted as it is being referenced by other items, such as roles or credentials. These associations must be removed before this Condition Manifest can be deleted.";
+		//			}
+		//		}
+		//	}
 
-			return isValid;
-		}
+		//	return isValid;
+		//}
 		/// <summary>
 		/// Delete by envelopeId
 		/// </summary>
 		/// <param name="envelopeId"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-            if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-                && string.IsNullOrWhiteSpace( ctid ) )
+            if ( string.IsNullOrWhiteSpace( ctid ) )
             {
-                statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
+                statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided.";
                 return false;
             }
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-				envelopeId = "SKIP ME";
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-                ctid = "SKIP ME";
+
             using ( var context = new EntityContext() )
 			{
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.ConditionManifest
-                                .FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-                                || ( s.CTID == ctid )
-                                );
+								.FirstOrDefault( s => s.CTID == ctid );
 
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -411,10 +448,12 @@ namespace workIT.Factories
                                 Comment = msg
                             } );
                             isValid = true;
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, efEntity.Id, ref statusMessage );
 						}
 						List<String> messages = new List<string>();
 						//mark owning org for updates 
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 					}
 					else
 					{
@@ -423,7 +462,7 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					LoggingHelper.LogError( ex, thisClassName + ".Delete(ctid)" );
 					statusMessage = FormatExceptions( ex );
 					isValid = false;
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
@@ -442,7 +481,7 @@ namespace workIT.Factories
 			//check if empty
 
 			//&& ( profile.EstimatedCost == null || profile.EstimatedCost.Count == 0 )
-			if ( string.IsNullOrWhiteSpace( profile.ProfileName ) )
+			if ( string.IsNullOrWhiteSpace( profile.Name ) )
 			{
 				//actually optional
 				status.AddError( "A Condition Manifest name must be entered" );
@@ -557,11 +596,6 @@ namespace workIT.Factories
 			ThisEntity to = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
 
-			//Entity parent = EntityManager.GetEntity( 2, orgId );
-			//if ( parent == null || parent.Id == 0 )
-			//{
-			//	return list;
-			//}
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -584,7 +618,8 @@ namespace workIT.Factories
 								to.OrganizationId = (int)from.OrganizationId;
 								//to.OwningAgentUid = from.Entity.EntityUid;
 								//
-								to.ProfileName = from.Name;
+								to.Name = from.Name;
+								to.Description = from.Description;
 							} else
 							{
 								MapFromDB( from, to );
@@ -632,7 +667,7 @@ namespace workIT.Factories
 								to.OrganizationId = ( int )from.Entity.EntityBaseId;
 								to.OwningAgentUid = from.Entity.EntityUid;
 								//
-								to.ProfileName = from.ConditionManifest.Name;
+								to.Name = from.ConditionManifest.Name;
 							}
 							else
 							{
@@ -734,7 +769,7 @@ namespace workIT.Factories
 							to.Description = from.ConditionManifest.Description;
 							to.OrganizationId = ( int ) from.Entity.EntityBaseId;
 							to.OwningAgentUid = from.Entity.EntityUid;
-							to.ProfileName = from.ConditionManifest.Name;
+							to.Name = from.ConditionManifest.Name;
 							
 							list.Add( to );
 						}
@@ -809,7 +844,7 @@ namespace workIT.Factories
 					item = new ThisEntity();
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-					item.ProfileName = GetRowColumn( dr, "Name", "missing" );
+					item.Name = GetRowColumn( dr, "Name", "missing" );
 					
 					item.Description = GetRowColumn( dr, "Description", "" );
 
@@ -867,6 +902,8 @@ namespace workIT.Factories
 			}
 
 			to.Name = from.Name;
+			to.FriendlyName = FormatFriendlyTitle( from.Name );
+
 			to.Description = from.Description == null ? "" : from.Description;
 			
 			to.CTID = from.CTID;
@@ -879,7 +916,10 @@ namespace workIT.Factories
 		
 			if ( IsValidDate( from.LastUpdated ) )
 				to.LastUpdated = ( DateTime ) from.LastUpdated;
-
+			//=====
+			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			if ( relatedEntity != null && relatedEntity.Id > 0 )
+				to.EntityLastUpdated = relatedEntity.LastUpdated;
 			//get common conditions
 			//TODO - determine what to return for edit vs non-edit states
 			//if ( forEditView )
@@ -1075,7 +1115,7 @@ namespace workIT.Factories
 						entity.ConditionManifestId = from.ConditionManifestId;
 						entity.EntityId = from.EntityId;
 						//entity.ConditionManifest = ConditionManifestManager.GetBasic( from.ConditionManifestId );
-						entity.ProfileSummary = entity.ConditionManifest.ProfileName;
+						entity.ProfileSummary = entity.ConditionManifest.Name;
 
 						//entity.ConditionManifest = from.ConditionManifest;
 						if ( IsValidDate( from.Created ) )

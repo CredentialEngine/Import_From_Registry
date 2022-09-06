@@ -11,62 +11,25 @@ namespace workIT.Models.Common
 	/// <summary>
 	/// Specific activity, typically related to performing a function or achieving a goal.
 	/// </summary>
-	public class Task : BaseTask
-	{
-		///// <summary>
-		///// Name
-		///// </summary>
-		//[JsonProperty( PropertyName = "ceterms:name" )]
-		//public LanguageMap Name { get; set; }
-
-		///// <summary>
-		///// Description
-		///// </summary>
-		//[JsonProperty( PropertyName = "ceterms:description" )]
-		//public LanguageMap Description { get; set; }
-
-		///// <summary>
-		///// Comment
-		///// Definition:	en-US: Supplemental text provided by the promulgating body that clarifies the nature, scope or use of this competency.
-		///// ceasn:comment
-		///// </summary>
-		//[JsonProperty( PropertyName = "ceasn:comment" )]
-		//public LanguageMapList Comment { get; set; } 
-
-
-	//}
-	///// <summary>
-	///// Specific activity, typically related to performing a function or achieving a goal.
-	///// </summary>
-	//public class TaskPlain : BaseTask
-	//{
-
-		/// <summary>
-		/// Name
-		/// </summary>
-		public string Name { get; set; }
-
-		/// <summary>
-		/// Description
-		/// </summary>
-		public string Description { get; set; }
-
-
-		/// <summary>
-		/// Comment
-		/// Definition:	en-US: Supplemental text provided by the promulgating body that clarifies the nature, scope or use of this competency.
-		/// ceasn:comment
-		/// </summary>
-		public List<string> Comment { get; set; }
-
-
-	}
-	public class BaseTask
+	public class Task : BaseEmploymentObject
 	{
 		/// <summary>
 		///  type
 		/// </summary>
 		public string Type { get; set; } = "ceterms:Task";
+
+
+		#region import
+		public List<int> HasChild { get; set; }
+		public List<int> IsChildOf { get; set; }
+
+		public List<int> ListId { get; set; }
+		#endregion
+
+	}
+	public class BaseTask
+	{
+
 
 		/// <summary>
 		/// URI

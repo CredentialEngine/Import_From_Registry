@@ -149,6 +149,8 @@ namespace workIT.Models.Elastic
 		public int AggregateDataProfileCount { get; set; }
 		public string AggregateDataProfileSummary { get; set; }
 		public int DataSetProfileCount { get; set; }
+		public int JurisdictionProfilesCount { get; set; }
+		
 		//
 		public int HoldersProfileCount { get; set; }
 		public string HoldersProfileSummary { get; set; }
@@ -161,7 +163,7 @@ namespace workIT.Models.Elastic
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
 		public bool HasInstructionalPrograms { get; set; }
-
+		public int HasTransferValueProfilesCount { get; set; }
 		#endregion
 		public List<Connection> Connections { get; set; } = new List<Connection>();
 
@@ -179,7 +181,7 @@ namespace workIT.Models.Elastic
 		public string IsPartOfList { get; set; }
 
 		//credential name plus organization
-		public string ListTitle { get; set; }
+		//public string ListTitle { get; set; }
 
 		public bool HasSubjects { get; set; }
 		public List<IndexSubject> Subjects { get; set; }
@@ -189,8 +191,6 @@ namespace workIT.Models.Elastic
 
 		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
 		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = new List<IndexReferenceFramework>();
-
-		public List<IndexCompetency> Competencies { get; set; }
 
 		//public List<Address> Addresses { get; set; }
 

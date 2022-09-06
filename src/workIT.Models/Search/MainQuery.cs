@@ -21,6 +21,7 @@ namespace workIT.Models.Search
 		public int PageSize { get; set; }
 		public string SortOrder { get; set; }
 		public WidgetFilter WidgetFilter { get; set; }
+		public string AutocompleteContext { get; set; }
 	}
 
 	public class AutoCompleteQuery
@@ -40,7 +41,7 @@ namespace workIT.Models.Search
 		public string FilterURI { get; set; }
 		/// <summary>
 		/// URI for the associated FilterItem. Provided by the FilterItem that was used to render this autocomplete text box. (FilterItem.URI)
-		/// example:filterItem:TextValue
+		/// example: interfaceType:TextValue
 		/// </summary>
 		public string FilterItemURI { get; set; }
 
@@ -51,6 +52,7 @@ namespace workIT.Models.Search
 	{
 		public List<FilterItem> Items { get; set; }
 	}
+
 	//
 	/// <summary>
 	/// AJAXSettings
@@ -70,7 +72,7 @@ namespace workIT.Models.Search
 		public string URL { get; set; }
 		public string TestURL { get; set; }
 		public string Description { get; set; }
-		public int Total { get; set; }
+		public int? Total { get; set; }
 		public List<object> Values { get; set; }
 		public object QueryData { get; set; }
 
@@ -103,23 +105,20 @@ namespace workIT.Models.Search
 	//
 	public class MapFilter
 	{
-		public Coordinates Center { get; set; }
-		public Coordinates BBoxTopLeft { get; set; }
-		public Coordinates BBoxBottomRight { get; set; }
+		public double BBoxCenterLatitude { get; set; }
+		public double BBoxCenterLongitude { get; set; }
+		public double BBoxNorth { get; set; }
+		public double BBoxEast { get; set; }
+		public double BBoxSouth { get; set; }
+		public double BBoxWest { get; set; }
+		public string Label { get; set; } //Will be a city, state, or some other equivalent name of the result
 		public string Region { get; set; }
-		public string City { get; set; }
 		public string Country { get; set; }
 		public string PositionType { get; set; }
 		public int RadiusMiles { get; set; }
 	}
 	//
-	public class Coordinates
-	{
-		public float Latitude { get; set; }
-		public float Longitude { get; set; }
-	}
-	//
-	//
+
 	public class WidgetFilter
 	{
 		public int WidgetId { get; set; }
@@ -133,5 +132,6 @@ namespace workIT.Models.Search
 		}
 		public int TotalResults { get; set; }
 		public List<JObject> Results { get; set; }
+		public JObject Debug { get; set; }
 	}
 }

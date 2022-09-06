@@ -4,15 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using MC = workIT.Models.Common;
 using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
 //using MPM =workIT.Models.ProfileModels;
 using WMS = workIT.Models.Search;
+
 namespace workIT.Models.API
 {
-	public class AssessmentDetail : BaseDisplay
+	[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
+	public class AssessmentDetail : BaseAPIType
 	{
 		public AssessmentDetail() 
 		{
@@ -21,7 +24,8 @@ namespace workIT.Models.API
 			CTDLType = "ceterms:AssessmentProfile";
 			CTDLTypeLabel = "Assessment";
 		}
-		
+		//helper where referenced by something else
+		public string URL { get; set; }
 		//public string RecordLanguage { get; set; } = "en-US";
 		public bool IsReferenceVersion { get; set; }
 		public List<LabelLink> OwnerRoles { get; set; }
@@ -57,6 +61,8 @@ namespace workIT.Models.API
 		public string ExternalResearch { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
 		public string LearningMethodDescription { get; set; }
+		public LabelLink LifeCycleStatusType { get; set; }
+
 		//
 		public List<WMA.ConditionManifest> CommonConditions { get; set; }
 		public List<WMA.ConditionProfile> Corequisite { get; set; } = new List<WMA.ConditionProfile>();
@@ -71,20 +77,28 @@ namespace workIT.Models.API
 		public List<WMA.ConditionProfile> IsRequiredFor { get; set; }
 		public List<WMA.ConditionProfile> IsRecommendedFor { get; set; }
 		//
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
+		//
 		public bool? HasGroupEvaluation { get; set; }
 		public bool? HasGroupParticipation { get; set; }
 		public bool? IsProctored { get; set; }
 		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
 
-		
+		public WMS.AJAXSettings HasTransferValue { get; set; }
 
 		public List<Outline> QAReceived { get; set; } = new List<Outline>();
 
 		public List<Outline> OwnerQAReceived { get; set; } = new List<Outline>();
 
-		public List<LabelLink> IndustryType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> OccupationType { get; set; } = new List<LabelLink>();
-		public List<LabelLink> InstructionalProgramType { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
+		public List<LabelLink> OccupationTypeOld { get; set; } = new List<LabelLink>(); 
+		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
+
+        public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 
 
@@ -100,7 +114,13 @@ namespace workIT.Models.API
 
 
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
+		public WMS.AJAXSettings TargetPathway { get; set; }
+		public List<string> TargetLearningResource { get; set; }
 		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public WMS.AJAXSettings AssessesCompetencies { get; set; }
+		public List<AggregateDataProfile> AggregateData { get; set; }
+
+		public List<DataSetProfile> ExternalDataSetProfiles { get; set; }
 
 		#region Jurisdiction
 		//in base class

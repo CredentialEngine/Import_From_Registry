@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Net.Http.Headers;
 
 using workIT.Models.ProfileModels;
-
+using workIT.Models.QData;
 namespace workIT.Models.Common
 {
     [Serializable]
@@ -65,10 +65,10 @@ namespace workIT.Models.Common
 
 			HasConditionManifest = new List<ConditionManifest>();
 			HasCostManifest = new List<CostManifest>();
+
+			UserAccountRolesForThisOrganization = new List<string>();
 		}
 
-		public OrganizationExternalProperties OrganizationExternalProperties { get; set; } = new OrganizationExternalProperties();
-		public string JsonProperties { get; set; }
 
 		/// <summary>
 		/// Organization, CredentialOrganization or QAOrganization
@@ -100,10 +100,10 @@ namespace workIT.Models.Common
 		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 		public List<string> AlternateName { get; set; } = new List<string>();
 
-		/// <summary>
-		/// Why do we still have a single addres in use?
-		/// </summary>
-		public Address Address { get; set; } = new Address();
+		///// <summary>
+		///// Why do we still have a single addres in use?
+		///// </summary>
+		//public Address Address { get; set; } = new Address();
 
 		public List<Address> Addresses { get; set; } = new List<Address>();
 		public string AddressesJson { get; set; }
@@ -123,27 +123,10 @@ namespace workIT.Models.Common
 				}
 			}
 		}
-		//Alias used for search
-		//as above, why do we still have a single address? for a default where needed?
-		public List<Address> Auto_Address
-		{
-			get
-			{
-				var result = new List<Address>();
-				if ( Address != null && Address.Id > 0 )
-				{
-					result.Add( Address );
-				}
-				result = result.Concat( Addresses ).ToList();
 
-				return result;
-			}
-		}
-		/// <summary>
-		/// AlternativeIdentifier should just be added to IdentificationCodes
-		/// </summary>
-		//public string AlternativeIdentifier { get; set; }
-		//public List<Entity_IdentifierValue> AlternativeIdentifierList { get; set; } = new List<Entity_IdentifierValue>();
+
+		//public OrganizationExternalProperties OrganizationExternalProperties { get; set; } = new OrganizationExternalProperties();
+		//public string JsonProperties { get; set; }
 
 		/// <summary>
 		/// Identifier
@@ -152,7 +135,9 @@ namespace workIT.Models.Common
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
 		//or could store this as json
 		public string IdentifierJson { get; set; }
-
+		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public string LifeCycleStatus { get; set; }
+		public int LifeCycleStatusTypeId { get; set; }	
 		/// <summary>
 		/// Listing of online and/or physical locations where a credential can be pursued.
 		/// </summary>
@@ -162,7 +147,7 @@ namespace workIT.Models.Common
 		//public Enumeration OrganizationClaimType { get; set; }
         public Enumeration ServiceType { get; set; }
 
-		public string ServiceTypeOther { get; set; }
+		//public string ServiceTypeOther { get; set; }
 
 		//public bool IsThirdPartyOrganization { get; set; }
 
@@ -212,6 +197,7 @@ namespace workIT.Models.Common
 		public List<Guid> ParentOrganization { get; set; }
 		public List<Guid> Departments { get; set; }
 		public List<Guid> SubOrganizations { get; set; }
+		public List<Guid> ProvidesOutcomes { get; set; }
 		#endregion
 		#region Output for detail
 		public List<ConditionManifest> HasConditionManifest { get; set; }
@@ -220,27 +206,21 @@ namespace workIT.Models.Common
 
 		public string MissionAndGoalsStatement { get; set; }
 		public string MissionAndGoalsStatementDescription { get; set; }
-		
 
-		//Added to agent
-		//public List<TextValueProfile> Phones { get; set; }
-		//added to Agent
-		//public List<TextValueProfile> Emails { get; set; }
-
-			/// <summary>
-			/// Should only be one parent, but using list for consistancy
-			/// </summary>
+		/// <summary>
+		/// Should only be one parent, but using list for consistancy
+		/// </summary>
 		public List<OrganizationRoleProfile> ParentOrganizations { get; set; }
 		public List<OrganizationRoleProfile> OrganizationRole_Dept { get; set; }
-		public List<TextValueProfile> Auto_OrganizationRole_Dept { get
-			{
-				return OrganizationRole_Dept.ConvertAll( m => new TextValueProfile() { TextValue = m.ActingAgent.CTID } );
-			} }
+		//public List<TextValueProfile> Auto_OrganizationRole_Dept { get
+		//	{
+		//		return OrganizationRole_Dept.ConvertAll( m => new TextValueProfile() { TextValue = m.ActingAgent.CTID } );
+		//	} }
 		public List<OrganizationRoleProfile> OrganizationRole_Subsidiary{ get; set; }
-		public List<TextValueProfile> Auto_OrganizationRole_SubOrganization { get
-			{
-				return OrganizationRole_Subsidiary.ConvertAll( m => new TextValueProfile() { TextValue = m.ActingAgent.CTID } );
-			} }
+		//public List<TextValueProfile> Auto_OrganizationRole_SubOrganization { get
+		//	{
+		//		return OrganizationRole_Subsidiary.ConvertAll( m => new TextValueProfile() { TextValue = m.ActingAgent.CTID } );
+		//	} }
 
 		/// <summary>
 		/// roles where org is the actor, ie Accredits something
@@ -260,12 +240,6 @@ namespace workIT.Models.Common
 		/// Roles where org was acted upon - that is accrdedited by another agent
 		/// </summary>
 		public List<OrganizationRoleProfile> OrganizationRole_Recipient { get; set; }
-		//public List<OrganizationRoleProfile> OrganizationRole {
-		//	get { return OrganizationRole_Recipient; }
-		//	set { OrganizationRole_Recipient = value; } 
-		//}
-		//public List<OrganizationRoleProfile> Department { get; set; } = new List<OrganizationRoleProfile>();
-		//public List<OrganizationRoleProfile> Suborganization { get; set; } = new List<OrganizationRoleProfile>();
 
 		//Identifiers is saved as an OrganizationProperty
 		public Enumeration Identifiers { get; set; }
@@ -273,6 +247,7 @@ namespace workIT.Models.Common
 		public int TotalCredentials { get; set; }
 		public int TotalAssessments { get; set; }
 		public int TotalLopps{ get; set; }
+		public int TotalCollections { get; set; }
 		public int TotalFrameworks { get; set; }
 		public int TotalConceptSchemes { get; set; }
 		public int RenewsCredentials { get; set; }
@@ -280,6 +255,8 @@ namespace workIT.Models.Common
 		public int RegulatesCredentials { get; set; }
 		//
 		public int TotalTransferValueProfiles { get; set; }
+		
+
 		public int TotalPathways{ get; set; }
 		public int TotalPathwaySets { get; set; }
 		public int TotalCredentialsPublishedByThirdParty { get; set; }
@@ -290,6 +267,7 @@ namespace workIT.Models.Common
 		public List<Credential> QACredentials { get; set; }
         public List<AssessmentProfile> OwnedAssessments { get; set; } = new List<AssessmentProfile>();
         public List<LearningOpportunityProfile> OwnedLearningOpportunities { get; set; } = new List<LearningOpportunityProfile>();
+
         /// <summary>
         /// URL
         /// </summary>
@@ -306,7 +284,7 @@ namespace workIT.Models.Common
 		}
 
 		public List<string> Naics { get; set; }
-		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; }
 		public Enumeration Industry { get; set; }
 		public Enumeration IndustryType
 		{
@@ -323,16 +301,16 @@ namespace workIT.Models.Common
 		} //Used for publishing
 		public List<TextValueProfile> OtherIndustries { get; set; }
 		public List<TextValueProfile> Emails { get; set; } = new List<TextValueProfile>();
-		public List<TextValueProfile> Auto_Email
-		{
-			get
-			{
-				var result = new List<TextValueProfile>()
-					.Concat( Emails ).ToList();
+		//public List<TextValueProfile> Auto_Email
+		//{
+		//	get
+		//	{
+		//		var result = new List<TextValueProfile>()
+		//			.Concat( Emails ).ToList();
 
-				return result;
-			}
-		}
+		//		return result;
+		//	}
+		//}
 
 		public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
 
@@ -349,20 +327,26 @@ namespace workIT.Models.Common
 		public string ID_ISICV4 { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:isicv4" )?.TextValue; } }
 		public string ID_NECS { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:ceterms:ncesID" )?.TextValue; } }
 
-		public List<IdentifierValue> ID_AlternativeIdentifier
-		{
-			get
-			{
-				return IdentificationCodes.Where( m => m.CodeSchema == "ceterms:alternativeIdentifier" ).ToList().ConvertAll( m =>
-				new IdentifierValue()
-				{
-					IdentifierType = m.TextTitle,
-					IdentifierValueCode = m.TextValue
-				} );
-			}
-		}
+		//used in detail page
+		//21-11-23 mp this not in ctdl
+		//public List<IdentifierValue> ID_AlternativeIdentifier
+		//{
+		//	get
+		//	{
+		//		return IdentificationCodes.Where( m => m.CodeSchema == "ceterms:alternativeIdentifier" ).ToList().ConvertAll( m =>
+		//		new IdentifierValue()
+		//		{
+		//			IdentifierType = m.TextTitle,
+		//			IdentifierValueCode = m.TextValue
+		//		} );
+		//	}
+		//}
 
 		public List<TextValueProfile> SocialMediaPages { get; set; } = new List<TextValueProfile>();
+
+		public string SupersededBy { get; set; } //URL
+		public string Supersedes { get; set; } //URL
+
 		/// <summary>
 		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.
 		/// URI
@@ -373,6 +357,9 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string TransferValueStatementDescription { get; set; }
 
+		//shouldn't need TotalDataSetProfiles and DataSetProfileCount
+		public int DataSetProfileCount { get; set; }
+		public List<DataSetProfile> DataSetProfiles { get; set; }
 		#region Process Profiles
 
 		public List<CodeItem> ProcessProfilesSummary { get; set; } = new List<CodeItem>();
@@ -390,6 +377,12 @@ namespace workIT.Models.Common
 		//public List<VerificationStatus> VerificationStatus { get; set; }
 		public int VerificationServiceProfileCount { get; set; }
 		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
+
+		/// <summary>
+		/// Populated via Accounts System
+		/// </summary>
+		public List<string> UserAccountRolesForThisOrganization { get; set; }
+		public bool CanCreateWidgets { get; set; }
 
 	}
 	[Serializable]

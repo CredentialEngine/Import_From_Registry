@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
+
+using WMA = workIT.Models.API;
+
+
 namespace workIT.Models.QData
 {
 	/// <summary>
@@ -16,13 +20,21 @@ namespace workIT.Models.QData
 	/// </summary>
 	public class DataSetProfile : OutcomesBaseObject
 	{
+		public DataSetProfile()
+		{
+			RelevantDataSet = null;
+		}
 		//public string Ctid { get; set; }
 		/// <summary>
 		/// Entity describing the process by which a credential, assessment, organization, or aspects of it, are administered.
 		/// <see cref="https://credreg.net/ctdl/terms/administrationProcess#administrationProcess"/>
 		/// </summary>
 		public List<ProcessProfile> AdministrationProcess { get; set; } = new List<ProcessProfile>();
+		public List<TopLevelEntityReference> AboutInternal { get; set; }
+		public List<WMA.Outline> About { get; set; }
 
+		public List<Guid> AboutUids { get; set; }
+		public List<Guid> RelevantDataSetForUids { get; set; }
 		//public string Description { get; set; }
 		//public LanguageMap Description_Map { get; set; } = new LanguageMap();
 
@@ -40,7 +52,8 @@ namespace workIT.Models.QData
 		/// <summary>
 		/// Credentialing organization or a third party providing the data.
 		/// </summary>
-		public Organization DataProvider { get; set; } = new Organization();
+		public Organization DataProviderOld { get; set; } = new Organization();
+		public WMA.Outline DataProvider { get; set; }
 		public Guid DataProviderUID { get; set; }
 
 		/// <summary>
@@ -66,6 +79,15 @@ namespace workIT.Models.QData
 		/// Identification of data point(s) in the data set that describe personal subject attribute(s) used to uniquely identify a subject for the purpose of matching records and an indication of level of confidence in the accuracy of the match.
 		/// </summary>
 		public string SubjectIdentification { get; set; }
+
+		#region Import
+		public int DataProviderId { get; set; }
+		public string DataProviderName { get; set; }
+		public string DataProviderCTID { get; set; }
+		public List<int> AssessmentIds { get; set; } = new List<int>();
+		public List<int> CredentialIds { get; set; } = new List<int>();
+		public List<int> LearningOpportunityIds { get; set; } = new List<int>();
+		#endregion
 
 	}
 

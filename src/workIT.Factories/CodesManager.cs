@@ -27,9 +27,11 @@ namespace workIT.Factories
 	public class CodesManager : BaseFactory
 	{
 		#region constants - property categories
-		//public static int PROPERTY_CATEGORY_JURISDICTION = 1;
+		public static int PROPERTY_CATEGORY_ORGANIZATION_CLASS_TYPE = 1;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_TYPE = 2;
-		public static int PROPERTY_CATEGORY_CREDENTIAL_PURPOSE = 3;
+		public static int PROPERTY_CATEGORY_LEARNING_OBJECT_TYPE = 3;
+	
+		//public static int PROPERTY_CATEGORY_CREDENTIAL_PURPOSE = 3;
 		/// <summary>
 		/// AudienceLevelType
 		/// </summary>
@@ -76,6 +78,7 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE = 37;
 		public static int PROPERTY_CATEGORY_ALTERNATE_NAME = 38;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE = 39;
+		public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_ACTIVE = "credentialStat:Active";
 
 		public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
 		public static int PROPERTY_CATEGORY_CLAIM_TYPE = 41;
@@ -104,10 +107,29 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_DEGREE_MINOR = 64;
 
 		public static int PROPERTY_CATEGORY_LANGUAGE = 65;
-
+		//
+		public static int PROPERTY_CATEGORY_PHONE_TYPE_FAX = 73; //change to 73 from 77
+		public static int PROPERTY_CATEGORY_ACTION_STATUS = 74;
 		public static int PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE = 75;
 		public static int PROPERTY_CATEGORY_SAME_AS = 76;
-		public static int PROPERTY_CATEGORY_PHONE_TYPE_FAX = 77;
+		public static int PROPERTY_CATEGORY_DATA_SOURCE_COVERAGE = 77;
+		public static int PROPERTY_CATEGORY_DATA_WITHHOLDING_CATEGORY = 78;
+		public static int PROPERTY_CATEGORY_INCOME_DETERMINATION_METHOD = 79;
+		public static int PROPERTY_CATEGORY_SUBJECT_CATEGORY = 80;
+		//
+		public static int PROPERTY_PUBLICATION_STATUS = 81;
+		public static int PROPERTY_CATEGORY_ADMINISTRATIVE_RECORD_CATEGORY = 82;
+		public static int PROPERTY_CATEGORY_KSA_TYPE = 83;
+		public static int PROPERTY_CATEGORY_LIFE_CYCLE_STATUS = 84;
+		public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE = "lifeCycle:Active";
+		
+			public static int PROPERTY_CATEGORY_COLLECTION_CATEGORY = 85;
+		//
+
+
+		//proxy/virtual
+		public static int PROPERTY_CATEGORY_US_REGIONS = 99;
+
 
 		//help categories for FinderAPI
 		public static int PROPERTY_CATEGORY_HISTORY = 100;
@@ -115,11 +137,13 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_OTHER_FILTERS = 101;
 		public static int PROPERTY_CATEGORY_QA_PERFORMED = 102;
 
+
+
 		#endregion
 		#region constants - entity types. 
 		//An Entity is typically created only where it can have a child relationship, ex: Entity.Property
 		public static int ENTITY_TYPE_CREDENTIAL = 1;
-		public static int ENTITY_TYPE_ORGANIZATION = 2; //what about QACred
+		public static int ENTITY_TYPE_CREDENTIAL_ORGANIZATION = 2; //what about QACred
 		public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
 		public static int ENTITY_TYPE_CONNECTION_PROFILE = 4;
 		public static int ENTITY_TYPE_CONDITION_PROFILE = 4;
@@ -127,17 +151,23 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_COST_PROFILE_ITEM = 6;
 		public static int ENTITY_TYPE_LEARNING_OPP_PROFILE = 7;
 		public static int ENTITY_TYPE_PATHWAY = 8;
-		public static int ENTITY_TYPE_RUBRIC = 9;
+		public static int ENTITY_TYPE_COLLECTION = 9;
 
 		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;
 		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;
+		public static int ENTITY_TYPE_PROGRESSION_MODEL = 12;
 
-		public static int ENTITY_TYPE_REVOCATION_PROFILE = 12;
-		public static int ENTITY_TYPE_VERIFICATION_PROFILE = 13;
-		public static int ENTITY_TYPE_PROCESS_PROFILE = 14;
-		public static int ENTITY_TYPE_CONTACT_POINT = 15;
+		public static int ENTITY_TYPE_QAORGANIZATION = 13;
+		//for now use plain until addressed all chgs
+		public static int ENTITY_TYPE_PLAIN_ORGANIZATION = 14;
+
+		//public static int ENTITY_TYPE_REVOCATION_PROFILE = 12;
+		//public static int ENTITY_TYPE_VERIFICATION_PROFILE = 13;
+		//public static int ENTITY_TYPE_PROCESS_PROFILE = 14;
+		//public static int ENTITY_TYPE_CONTACT_POINT = 15;
+
 		public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
-		public static int ENTITY_TYPE_CASS_COMPETENCY_FRAMEWORK = 17;//???N/A in the finder
+		public static int ENTITY_TYPE_COMPETENCY = 17;//unique to finder - need to update publisher
 		public static int ENTITY_TYPE_JURISDICTION_PROFILE = 18;
 		public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
 		public static int ENTITY_TYPE_COST_MANIFEST = 20;
@@ -150,18 +180,26 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
 		//
 		public static int ENTITY_TYPE_AGGREGATE_DATA_PROFILE = 27;
-		public static int ENTITY_TYPE_EARNINGS_PROFILE = 28;
-		public static int ENTITY_TYPE_HOLDERS_PROFILE = 29;
-		public static int ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE = 30;
+		public static int ENTITY_TYPE_TRANSFER_INTERMEDIARY = 28;
+
 		public static int ENTITY_TYPE_DATASET_PROFILE = 31;
 		//
 		public static int ENTITY_TYPE_JOB_PROFILE = 32;
 		public static int ENTITY_TYPE_TASK_PROFILE = 33;
 		public static int ENTITY_TYPE_WORKROLE_PROFILE = 34;
 		public static int ENTITY_TYPE_OCCUPATIONS_PROFILE = 35;
-
-		//
-
+		public static int ENTITY_TYPE_LEARNING_PROGRAM = 36;
+		public static int ENTITY_TYPE_COURSE = 37;
+		//refactored non top level resources
+		public static int ENTITY_TYPE_REVOCATION_PROFILE = 40;
+		public static int ENTITY_TYPE_VERIFICATION_PROFILE = 41;
+		public static int ENTITY_TYPE_PROCESS_PROFILE = 42;
+		public static int ENTITY_TYPE_CONTACT_POINT = 43;
+		//obsolete/unused yet
+		public static int ENTITY_TYPE_EARNINGS_PROFILE = 55;
+		public static int ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE = 56;
+		public static int ENTITY_TYPE_HOLDERS_PROFILE = 57;
+		public static int ENTITY_TYPE_RUBRIC = 58;
 		/// <summary>
 		/// Placeholder for stats, will not actually have an entity
 		/// </summary>
@@ -170,11 +208,11 @@ namespace workIT.Factories
 
 
 		#endregion
-		#region constants - entity status
-		public static int ENTITY_STATUS_IN_PROGRESS = 1;
-		public static int ENTITY_STATUS_PUBLISHED = 2;
-
-		public static int ENTITY_STATUS_DELETED = 6;
+		#region constants - EntityStateId
+		public static int ENTITY_STATEID_DELETED = 0;
+		public static int ENTITY_STATEID_PENDING = 1;
+		public static int ENTITY_STATEID_REFERENCE = 2;
+		public static int ENTITY_STATEID_FULL_ENTITY = 3;
 		#endregion
 
 		#region NON-json emumerations retrieve
@@ -306,6 +344,156 @@ namespace workIT.Factories
 			return selectedId;
 
 		}
+
+		public static Enumeration GetCredentialTypes( string datasource, bool getAll, bool includingAllBadges = false, string parentSchemaName = "")
+		{
+			Enumeration entity = new Enumeration();	
+			using ( var context = new EntityContext() )
+			{
+				//context.Configuration.LazyLoadingEnabled = false;
+
+				Codes_PropertyCategory category = context.Codes_PropertyCategory
+							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() 
+												&& s.IsActive == true 
+												);
+							
+				if ( category != null && category.Id > 0 )
+				{
+					entity.Id = category.Id;
+					entity.Name = category.Title;
+					entity.Description = category.Description;
+
+					entity.SchemaName = category.SchemaName;
+					entity.Url = category.SchemaUrl;
+					entity.Items = new List<EnumeratedItem>();
+
+					var results = context.Codes_PropertyValue
+							.Where( s => s.IsActive == true && s.CategoryId == category.Id
+							&& ( getAll || s.Totals > 0 )
+							&& ( parentSchemaName == "" || s.ParentSchemaName == parentSchemaName )
+							)
+							.OrderBy( p => p.Title )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						EnumeratedItem val = new EnumeratedItem();
+						var sortedList = results.Where( s => s.IsActive == true ).OrderBy( x => x.SortOrder ).ThenBy( z => z.Title ).ToList();
+
+						//21-05-13 - only return one badge type
+						bool hasABadge = false;
+						foreach ( Codes_PropertyValue item in results )
+						{
+							val = new EnumeratedItem();
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.ParentId = category.Id;
+
+							val.Name = item.Title;
+							val.Description = item.Description != null ? item.Description : "";
+							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
+							val.SchemaName = item.SchemaName ?? "";
+							val.SchemaUrl = item.SchemaUrl;
+							val.ParentSchemaName = item.ParentSchemaName ?? "";
+							if (val.ParentSchemaName== "Badge" )
+							{
+								if ( hasABadge && !includingAllBadges )
+									continue;
+								hasABadge = true;
+							}
+							val.Value = item.Id.ToString();
+							val.Totals = item.Totals ?? 0;
+							if ( IsDevEnv() )
+								val.Name += string.Format( " ({0})", val.Totals );
+							if ( val.SchemaName == "{none}" )
+							{
+								//skip
+								//consider other exceptions
+							}
+							else
+								entity.Items.Add( val );
+						}
+						//need to reorder the Items by sortOrder, then name. 
+					}
+					
+				}
+				
+
+			}
+			return entity;
+		}
+		public static Enumeration GetCredentialBadgeTypes( string datasource, bool getAll )
+		{
+			Enumeration entity = new Enumeration();
+			using ( var context = new EntityContext() )
+			{
+				Codes_PropertyCategory category = context.Codes_PropertyCategory
+							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() && s.IsActive == true);
+
+				if ( category != null && category.Id > 0 )
+				{
+					entity.Id = category.Id;
+					entity.Name = category.Title;
+					entity.Description = category.Description;
+					entity.SchemaName = category.SchemaName;
+					entity.Url = category.SchemaUrl;
+					entity.Items = new List<EnumeratedItem>();
+
+					var results = context.Codes_PropertyValue
+							.Where( s => s.IsActive == true && s.CategoryId == category.Id
+							&& ( getAll || s.Totals > 0 )
+							&& ( s.ParentSchemaName == "Badge" )
+							)
+							.OrderBy( p => p.Title )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						EnumeratedItem val = new EnumeratedItem();
+						var sortedList = results.Where( s => s.IsActive == true ).OrderBy( x => x.SortOrder ).ThenBy( z => z.Title ).ToList();
+
+						//21-05-13 - only return one badge type
+						bool hasABadge = false;
+						foreach ( Codes_PropertyValue item in results )
+						{
+							val = new EnumeratedItem();
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.ParentId = category.Id;
+
+							val.Name = item.Title;
+							val.Description = item.Description != null ? item.Description : "";
+							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
+							val.SchemaName = item.SchemaName ?? "";
+							val.SchemaUrl = item.SchemaUrl;
+							val.ParentSchemaName = item.ParentSchemaName ?? "";
+							if ( val.ParentSchemaName == "Badge" )
+							{
+								if ( hasABadge )
+									continue;
+								hasABadge = true;
+							}
+							val.Value = item.Id.ToString();
+							val.Totals = item.Totals ?? 0;
+							if ( IsDevEnv() )
+								val.Name += string.Format( " ({0})", val.Totals );
+							if ( val.SchemaName == "{none}" )
+							{
+								//skip
+								//consider other exceptions
+							}
+							else
+								entity.Items.Add( val );
+						}
+						//need to reorder the Items by sortOrder, then name. 
+					}
+
+				}
+
+
+			}
+			return entity;
+		}
 		#endregion
 
 		#region Counts.SiteTotals
@@ -346,7 +534,12 @@ namespace workIT.Factories
 						foreach ( var item in results )
 						{
 							val = new EnumeratedItem();
-							val.Id = item.CodeId == null ? 0 : ( int )item.CodeId;
+							//21-05-11 mparsons - found that for at least language, want to use Id. Not sure if this will be a proble for other codes
+							if ( item.CodeId == null || item.CodeId == 0 )
+								val.Id = item.Id;
+							else 
+								val.Id = item.CodeId == null ? 0 : ( int )item.CodeId;
+
 							val.CodeId = item.CodeId == null ? 0 : ( int )item.CodeId;
 							val.ParentId = category.Id;
 							val.Name = item.Title;
@@ -356,6 +549,8 @@ namespace workIT.Factories
 							if ( category.Id == 65 )
 							{
 								val.Value = item.Title;
+								//just in case the above chg gets reversed
+								val.Id = item.Id;
 							}
 							else
 							{
@@ -455,7 +650,7 @@ namespace workIT.Factories
 			CodeItem code;
 			using ( var context = new EntityContext() )
 			{
-				List<Counts_EntityStatistic> results = context.Counts_EntityStatistic.ToList();
+				List<Counts_EntityStatistic> results = context.Counts_EntityStatistic.Where(s => s.IsActive == true ).ToList();
 
 				if ( results != null && results.Count > 0 )
 				{
@@ -467,7 +662,10 @@ namespace workIT.Factories
 						{
 							Id = ( int )item.Id,
 							//CategoryId = ( int )( item.CategoryId ?? 0 ),
-							CategoryId = item.EntityTypeId,
+							//21-08-09 mp - force this to be 101 for better handling in new finder
+							//21-08-13 mp - but now doesn't work in old finder
+							CategoryId = CodesManager.PROPERTY_CATEGORY_OTHER_FILTERS, // item.EntityTypeId,
+							EntityTypeId = item.EntityTypeId,
 							Title = item.Title,
 							SchemaName = item.SchemaName,
 							Description = item.Description,
@@ -496,15 +694,17 @@ namespace workIT.Factories
 							&& s.SchemaName.Trim() == schemaName.Trim() );
 				if ( item != null && item.Id > 0 )
 				{
-					//could have an additional check that the returned category is correct - no guarentees though
-					code = new CodeItem();
-					code.Id = ( int )item.Id;
-					code.CategoryId = ( int )( item.CategoryId ?? 0 );
-					code.Title = item.Title;
-					code.Description = item.Description;
-					code.SchemaName = item.SchemaName;
-					code.Totals = item.Totals ?? 0;
-				}
+                    //could have an additional check that the returned category is correct - no guarentees though
+                    code = new CodeItem
+                    {
+                        Id = ( int ) item.Id,
+                        CategoryId = ( int ) ( item.CategoryId ?? 0 ),
+                        Title = item.Title,
+                        Description = item.Description,
+                        SchemaName = item.SchemaName,
+                        Totals = item.Totals ?? 0
+                    };
+                }
 			}
 			return code;
 		}
@@ -514,7 +714,7 @@ namespace workIT.Factories
 
 			using ( var context = new EntityContext() )
 			{
-				var list = context.Counts_EntityStatistic.Where( s => schemaNames.Contains( s.SchemaName.Trim() ) );
+				var list = context.Counts_EntityStatistic.Where( s => s.IsActive == true && schemaNames.Contains( s.SchemaName.Trim() ) );
 				foreach ( var item in list )
 					ids.Add( item.Id );
 			}
@@ -539,19 +739,23 @@ namespace workIT.Factories
 
 				if ( entity != null && entity.Id > 0 )
 				{
-					enumeration.Id = entity.Id;
+					//
+					//enumeration.Id = entity.Id;
+					//maybe??
+					enumeration.Id = CodesManager.PROPERTY_CATEGORY_OTHER_FILTERS;
 					enumeration.Name = entity.Title;
 					enumeration.Description = entity.Description;
 					enumeration.SchemaName = entity.SchemaName;
 					enumeration.Items = new List<EnumeratedItem>();
 
 					var results = context.Counts_EntityStatistic
-							.Where( s => s.EntityTypeId == entityTypeId
-								 && ( getAll || s.Totals > 0 ) )
-							.OrderBy( p => p.Title )
+							.Where( s => s.EntityTypeId == entityTypeId && s.IsActive == true 
+								 && ( getAll || s.Totals > 0 ) 
+								 )
+							.OrderBy( p => p.SortOrder).ThenBy( p => p.Title )
 							.ToList();
 
-					if ( results != null && results.Count > 0 )
+					if ( results != null && results.Count() > 0 )
 					{
 						EnumeratedItem val = new EnumeratedItem();
 						foreach ( var item in results )
@@ -564,7 +768,10 @@ namespace workIT.Factories
 								ParentId = entity.Id, //??
 								Name = item.Title,
 								Value = item.Title,
-								CategoryId = item.CategoryId ?? 0,
+								//prototype using same approach as GetAllEntityStatistics
+								//CategoryId = item.CategoryId ?? 0,
+								CategoryId = CodesManager.PROPERTY_CATEGORY_OTHER_FILTERS, 
+
 								Totals = item.Totals ?? 0,
 								SchemaName = item.SchemaName
 							};
@@ -889,10 +1096,27 @@ namespace workIT.Factories
 			return code;
 
 		}
+		public static string Codes_EntityType_Get( int entityTypeId, string defaultType = "" )
+		{
+			var entityType = "";
+			using ( var context = new EntityContext() )
+			{
+				List<Codes_EntityTypes> results = context.Codes_EntityTypes
+					.Where( s => s.IsActive == true && s.Id == entityTypeId )
+					.OrderBy( s => s.Title )
+							.ToList();
 
+				if ( results != null && results.Count > 0 )
+				{
+					entityType = results[0].Title;
+				}
+			}
+			return entityType;
+
+		}
 		#endregion
 
-		#region Codes_PropertyCategory and values
+		#region Codes_PropertyCategory and values as List<CodeItem> 
 		//public static CodeItem Codes_PropertyCategory_Get( int categoryId )
 		//{
 		//    CodeItem code = new CodeItem();
@@ -1072,38 +1296,6 @@ namespace workIT.Factories
 			}
 			return code;
 		}
-		public static CodeItem GetPropertyBySchema( string schemaName )
-		{
-			CodeItem code = new CodeItem();
-
-			using ( var context = new EntityContext() )
-			{
-
-				Codes_PropertyValue item = context.Codes_PropertyValue
-					.FirstOrDefault( s => ( s.IsActive == true )
-							&& s.SchemaName.Trim() == schemaName.Trim() );
-				if ( item != null && item.Id > 0 )
-				{
-					//could have an additional check that the returned category is correct - no guarentees though
-					code = new CodeItem
-					{
-						Id = ( int )item.Id,
-						CategoryId = item.CategoryId,
-						Title = item.Title,
-						Description = item.Description,
-						URL = item.SchemaUrl,
-						SchemaName = item.SchemaName,
-						ParentSchemaName = item.ParentSchemaName,
-						Totals = item.Totals ?? 0
-					};
-					if ( item.Codes_PropertyCategory != null && item.Codes_PropertyCategory.Id > 0 )
-					{
-						code.Category = item.Codes_PropertyCategory.Title;
-					}
-				}
-			}
-			return code;
-		}
 		/// <summary>
 		/// Get a code item by category and title
 		/// </summary>
@@ -1140,7 +1332,51 @@ namespace workIT.Factories
 			}
 			return code;
 		}
+		
+		/// <summary>
+		/// Get a propertyValue by Schema.
+		/// This is mostly safe, but the next method is better (think delivery type)
+		/// </summary>
+		/// <param name="schemaName"></param>
+		/// <returns></returns>
+		public static CodeItem GetPropertyBySchema( string schemaName )
+		{
+			CodeItem code = new CodeItem();
 
+			using ( var context = new EntityContext() )
+			{
+
+				Codes_PropertyValue item = context.Codes_PropertyValue
+					.FirstOrDefault( s => ( s.IsActive == true )
+							&& s.SchemaName.Trim() == schemaName.Trim() );
+				if ( item != null && item.Id > 0 )
+				{
+					//could have an additional check that the returned category is correct - no guarentees though
+					code = new CodeItem
+					{
+						Id = ( int ) item.Id,
+						CategoryId = item.CategoryId,
+						Title = item.Title,
+						Description = item.Description,
+						URL = item.SchemaUrl,
+						SchemaName = item.SchemaName,
+						ParentSchemaName = item.ParentSchemaName,
+						Totals = item.Totals ?? 0
+					};
+					if ( item.Codes_PropertyCategory != null && item.Codes_PropertyCategory.Id > 0 )
+					{
+						code.Category = item.Codes_PropertyCategory.Title;
+					}
+				}
+			}
+			return code;
+		}
+		/// <summary>
+		/// Get a propertyValue by CategoryId, and Schema.
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="schemaName"></param>
+		/// <returns></returns>
 		public static CodeItem Codes_PropertyValue_GetBySchema( int categoryId, string schemaName )
 		{
 			CodeItem code = new CodeItem();
@@ -1202,7 +1438,7 @@ namespace workIT.Factories
 		}
 		#endregion
 
-		#region country/Currency/Language Codes
+		#region country, locations, etc
 		public static List<CodeItem> GetExistingCountries()
 		{
 			List<CodeItem> list = new List<CodeItem>();
@@ -1305,6 +1541,65 @@ namespace workIT.Factories
 			return list;
 
 		}
+
+		public static bool Codes_IsState(string region, ref string fullRegion, ref int boostLevel)
+		{
+			List<CodeItem> list = new List<CodeItem>();
+			CodeItem code;
+			fullRegion = "";
+			boostLevel = 20;
+			using ( var context = new EntityContext() )
+			{
+				if ( region.Length == 2 )
+				{
+					//need to be careful this, but OK if there were only two letters.
+					var results1 = context.Codes_State
+							.Where( a => ( a.StateCode == region.ToUpper() ) )
+							.OrderBy( s => s.State ).ToList();
+					if ( results1 != null && results1.Count > 0 )
+					{
+						//can only be one
+						foreach ( var item in results1 )
+						{
+							fullRegion = item.State;
+							boostLevel = 60;
+							break;
+						}
+						return true;
+					}
+					return false;
+				}
+				List<Codes_State> results = context.Codes_State
+					.Where( a =>  a.State.ToLower() == region.ToLower() 
+							|| a.State.ToLower().IndexOf( region.ToLower()) == 0 )
+					.OrderBy( s => s.State ).ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( var item in results )
+					{
+						if( item.State.ToLower() == region.ToLower())
+						{
+							fullRegion = item.State;
+							boostLevel = 60;
+							break;
+						}
+						
+						//just take first one
+						var lenDiff = item.State.Length - region.Length;
+						if( region.Length > ( item.State.Length / 2 ) )
+						{
+							fullRegion = item.State;
+							boostLevel = 40;
+						}
+					}
+					return true;
+
+				}
+			}
+			return false;
+
+		}
 		public static List<CodeItem> GetCountries_AsCodes()
 		{
 			List<CodeItem> list = new List<CodeItem>();
@@ -1381,6 +1676,64 @@ namespace workIT.Factories
 
 			return entity;
 		}
+
+		public static Enumeration GetAddressRegionsAsEnumeration( int regionTypeId, string codeSuffix )
+		{
+			Enumeration entity = new Enumeration();
+			using ( var context = new EntityContext() )
+			{
+				//entity.Id = regionTypeId;
+				//entity.Name = "LWIA";
+				//entity.Description = "";
+				//entity.Items = new List<EnumeratedItem>();
+				var regionType = context.Codes_ReqionType
+						.FirstOrDefault( s => s.Id == regionTypeId && s.IsActive == true );
+				if ( regionType?.Id > 0 )
+				{
+					entity = new Enumeration()
+					{
+						Id = regionType.Id,
+						Name = regionType.Name,
+						Description = regionType.Description
+
+					};
+
+					var results = context.Codes_ReqionTypeRegion
+							.Where( s => s.RegionTypeId == regionTypeId && s.IsActive == true )
+							.OrderBy( p => p.Id ) //this will be proper order until possible updates
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						EnumeratedItem val = new EnumeratedItem();
+						foreach ( var item in results )
+						{
+							val = new EnumeratedItem();
+							if (IsInteger( item.Value ) )
+                            {
+								val.Id = Int32.Parse( item.Value );
+                            } else 
+								val.Id = item.Id;
+							val.Name = item.Name;
+							//the current react filters don't seem to handle a string?
+							//seems like they may, as there is a Text property.
+							val.Value = item.Value;
+							//possible option to suffix name with equiv of (LWIA 15)
+							if ( !string.IsNullOrWhiteSpace( codeSuffix ) || IsDevEnv() )
+								val.Name += string.Format( " ( {0} {1} )", codeSuffix, item.Value );
+
+							entity.Items.Add( val );
+						}
+					}
+				}
+			}
+
+			return entity;
+		}
+		#endregion
+
+
+		#region		Currencies
 		public static Enumeration GetCurrencies()
 		{
 
@@ -1412,8 +1765,10 @@ namespace workIT.Factories
 
 						foreach ( Codes_Currency item in results )
 						{
-							val = new EnumeratedItem();
-							val.Id = ( int )item.NumericCode;
+							val = new EnumeratedItem
+							{
+								Id = ( int )item.NumericCode
+							};
 							val.CodeId = val.Id;
 							val.Name = item.Currency + " (" + item.AlphabeticCode + ")";
 							val.Description = item.Currency;
@@ -1430,35 +1785,31 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		public static Codes_Currency GetCurrencyItem( int numericCode )
+		public static CurrencyCode GetCurrencyItem( int numericCode )
 		{
-			Codes_Currency item = new Codes_Currency();
+			var item = new CurrencyCode();
 			using ( var context = new ViewContext() )
 			{
 				Codes_Currency currency = context.Codes_Currency.FirstOrDefault( s => s.NumericCode == numericCode );
 				if ( currency != null && currency.NumericCode > 0 )
 				{
-					return currency;
+					item = new CurrencyCode()
+					{
+						AlphabeticCode = currency.AlphabeticCode,
+						Currency = currency.Currency,
+						HtmlCodes = currency.HtmlCodes,
+						NumericCode = currency.NumericCode,
+						UnicodeDecimal = currency.UnicodeDecimal,
+						UnicodeHex = currency.UnicodeHex
+					};
+					//return currency;
+					return item;
 				}
 
 			}
 			return item;
 		}
-		public static Codes_Currency GetCurrencyItem( string currencyCode )
-		{
-			Codes_Currency item = new Codes_Currency();
-			using ( var context = new ViewContext() )
-			{
-				Codes_Currency currency = context.Codes_Currency.FirstOrDefault( s => s.AlphabeticCode == currencyCode || s.Currency == currencyCode );
-				if ( currency != null && currency.NumericCode > 0 )
-				{
-					return currency;
-				}
-
-			}
-			return item;
-		}
-		public static CurrencyCode GetCurrencyCode( string currencyCode )
+		public static CurrencyCode GetCurrencyItem( string currencyCode )
 		{
 			var item = new CurrencyCode();
 			using ( var context = new ViewContext() )
@@ -1481,6 +1832,9 @@ namespace workIT.Factories
 			}
 			return item;
 		}
+
+		#endregion
+		#region Language Codes
 		public static Enumeration GetLanguages()
 		{
 
@@ -1674,16 +2028,18 @@ namespace workIT.Factories
 				{
 					foreach ( ONET_SOC item in results )
 					{
-						entity = new CodeItem();
-						entity.Id = item.Id;
-						entity.Name = item.Title;// +" ( " + item.OnetSocCode + " )";
-						entity.Description = item.Description;
-						entity.URL = item.URL;
-						entity.Code = item.OnetSocCode;
-						entity.CodeGroup = item.JobFamily.ToString();
-						entity.Totals = item.Totals ?? 0;
+                        entity = new CodeItem
+                        {
+                            Id = item.Id,
+                            Name = item.Title,// +" ( " + item.OnetSocCode + " )";
+                            Description = item.Description,
+                            URL = item.URL,
+                            Code = item.OnetSocCode,
+                            CodeGroup = item.JobFamily.ToString(),
+                            Totals = item.Totals ?? 0
+                        };
 
-						list.Add( entity );
+                        list.Add( entity );
 					}
 				}
 			}
@@ -1741,7 +2097,6 @@ namespace workIT.Factories
 		}
 
 		#endregion
-
 
 		#region NAICS
 		public static CodeItem Naics_Get( string naicsCode )
@@ -2057,7 +2412,6 @@ namespace workIT.Factories
 		//}
 		#endregion
 
-
 		#region CIPS	NOT USED
 		//public static List<CodeItem> CIP_Get( string code )
 		//{
@@ -2331,9 +2685,6 @@ namespace workIT.Factories
 		//}
 		#endregion
 
-
-
-
 		#region Reporting 
 
 		/// <summary>
@@ -2426,7 +2777,17 @@ namespace workIT.Factories
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
 						if ( total > 0 || allowingZero )
+						{
+							if(efEntity.Id == 10 && (total - efEntity.Totals == 3))
+							{
+								//what - could just send email, and admin will have to check if legit. If not, then running from menu will either set to correct (or stay the same), or be rejected here if valid!!!!
+								//could do a compare from database?
+								var oldFinder = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
+								EmailManager.NotifyAdmin( "<p>Competency Framework count +3 warning", string.Format( "Competency Framework count updated by 3. Please validate. Old count: {0}, new count: {1}. </p><p><a href='{2}/Admin/Site/UpdateCompetencyFrameworkTotals'>Update count from menu</a></p>", efEntity.Totals, total, oldFinder) );
+								return;
+							}
 							efEntity.Totals = total;
+						}
 
 						if ( HasStateChanged( context ) )
 						{
@@ -2482,7 +2843,10 @@ namespace workIT.Factories
 						//note this is used as a hack on some properties
 						code.ParentSchemaName = item.CategorySchema;
 						//code.URL = item.PropertySchemaUrl;
+						if (item.CategoryId == 84)
+						{
 
+						}
 						code.Description = item.Description;
 						code.CategoryId = item.CategoryId;
 						code.Category = item.Category;
@@ -2525,34 +2889,58 @@ namespace workIT.Factories
 		/// Get Entity Codes with totals for Credential, Organization, assessments, and learning opp
 		/// </summary>
 		/// <returns></returns>
-		public static List<CodeItem> CodeEntity_GetMainClassTotals( bool gettingAll = true )
+		public static List<CodeItem> CodeEntity_GetTopLevelEntity( bool gettingAll = true, string onlyTheseEntities = "", string excludeTheseEntities = "" )
         {
             List<CodeItem> list = new List<CodeItem>();
-		CodeItem code;
-
-            using (var context = new EntityContext() )
+			CodeItem code;
+			List<int> includeList = new List<int>();
+			if(!string.IsNullOrWhiteSpace(onlyTheseEntities))
+            {
+				includeList = onlyTheseEntities.Split( ',' ).Select( x => int.Parse( x.Trim() ) ).ToList();
+			}
+			List<int> excludeList = new List<int>();
+			if ( !string.IsNullOrWhiteSpace( excludeTheseEntities ) )
+			{
+				excludeList = excludeTheseEntities.Split( ',' ).Select( x => int.Parse( x.Trim() ) ).ToList();
+			}
+			using (var context = new EntityContext() )
             {
 				//21-01-05 mparsons - need to future proof this so that don't have to update every time a new top level entity is identified. 
-				//					- currently the calling method will select out what is needed, so could return almost everything? - Codes_EntityTypes_GetAll
-				List<Codes_EntityTypes> results = context.Codes_EntityTypes
-					.Where( s => "".Contains( s.Id.ToString() )
-						|| s.Id < 4 || s.Id == 7 || s.Id == 8 || s.Id == 10 || s.Id == 11 || s.Id == 23 || s.Id == 26
-					)
-							.OrderBy( s => s.Id )
-							.ToList();
+				//					- currently the calling method will select out what is needed, so could return almost everything?  
+				//22-05-16 mp	- added IsTopLevelEntity check
+				var query = context.Codes_EntityTypes
+					.Where( s => s.IsTopLevelEntity == true );
+							//.OrderBy( s => s.SortOrder )
+							//.ThenBy ( s => s.Title )
+							//.ToList();
+				if ( includeList.Any() )
+				{
+					query = query.Where( t2 => includeList.Contains(t2.Id) );
+				}
 
-                if (results != null && results.Count > 0 )
+				if ( excludeList != null &&  excludeList.Any() )
+				{
+					query = query.Where( t2 => !excludeList.Contains( t2.Id ) );
+				}
+
+				var results = query.OrderBy( s => s.SortOrder ).ThenBy( s => s.Title )
+									.ToList();
+				if (results != null && results.Count > 0 )
                 {
-
                     foreach (var item in results )
                     {
-                        code = new CodeItem();
-	code.Id = item.Id;
-                        code.Title = item.Title;
-                        code.Totals = item.Totals ?? 0;
+                        //if ( excludeList?.Count > 0 && excludeList.Contains( item.Id ))
+                        //	continue;
+                        code = new CodeItem
+                        {
+                            Id = item.Id,
+                            Title = item.Title,
+                            //description should contain the display friendly label
+                            Description = item.Description,
+                            Totals = item.Totals ?? 0
+                        };
 
-                        code.Description = item.Description;
-						if (code.Totals > 0 || gettingAll)
+                        if (code.Totals > 0 || gettingAll)
 							list.Add( code );
                     }
                 }
@@ -2567,8 +2955,99 @@ namespace workIT.Factories
             }
             return list;
         }
+		public static Enumeration GetLearningObjectTypesEnumeration( bool getAll = true )
+		{
+			Enumeration entity = new Enumeration();
+			entity.Id = 3; //why 3 - changed this in PropertyCategory
+			entity.Name = "Learning Types";
+			entity.Description = "Different types of learning opportunities.";
 
-        public static List<CodeItem> CodeEntity_GetCountsSiteTotals()
+			entity.SchemaName = "";
+			entity.Url = "";
+			entity.Items = new List<EnumeratedItem>();
+
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Codes_EntityTypes
+							.Where( s => s.IsActive == true && ( s.Id == 7 || s.Id == 36 || s.Id == 37 ) )
+							.OrderBy( a => a.Id )
+							.ToList();
+				if ( results != null && results.Count > 0 )
+				{
+					EnumeratedItem val = new EnumeratedItem();
+					foreach ( var item in results )
+					{
+						val = new EnumeratedItem();
+						val.CategoryId = 3;
+						val.Id = item.Id;
+						val.CodeId = item.Id;
+						val.ParentId = 0;
+						val.Name = item.Title;
+						val.Description = item.Description != null ? item.Description : "";
+						val.SortOrder = item.Id;
+						val.SchemaName = item.SchemaName ?? "";
+						val.SchemaUrl = item.SchemaName;
+						val.Value = item.Id.ToString();
+						val.Totals = item.Totals ?? 0;
+						if ( IsDevEnv() )
+							val.Name += string.Format( " ({0})", val.Totals );
+						if ( getAll  || item.Totals > 0)
+							entity.Items.Add( val );
+					}
+				}
+			}
+
+			return entity;
+		}
+
+		public static Enumeration GetOrgSubclasses( bool getAll = true )
+		{
+			Enumeration entity = new Enumeration();
+			entity.Id = 1; //why 1 - changed this in PropertyCategory
+			entity.Name = "Organization Classes";
+			entity.Description = "Different organization classes.";
+
+			entity.SchemaName = "";
+			entity.Url = "";
+			entity.Items = new List<EnumeratedItem>();
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Codes_EntityTypes
+							.Where( s => s.IsActive == true 
+								&& ( s.Id == 2 || s.Id == 13 || s.Id == 14 ) 
+								//&& (getAll || s.Totals > 0)
+							)
+							.OrderBy( a => a.Id )
+							.ToList();
+				if ( results != null && results.Count > 0 )
+				{
+					EnumeratedItem val = new EnumeratedItem();
+					foreach ( var item in results )
+					{
+						val = new EnumeratedItem();
+						val.CategoryId = 1;
+						val.Id = item.Id;
+						val.CodeId = item.Id;
+						val.ParentId = 0;
+						val.Name = item.Title;
+						val.Description = item.Description != null ? item.Description : "";
+						val.SortOrder = item.Id;
+						val.SchemaName = item.SchemaName ?? "";
+						val.SchemaUrl = item.SchemaName;
+						val.Value = item.Id.ToString();
+						val.Totals = item.Totals ?? 0;
+						if ( IsDevEnv() )
+							val.Name += string.Format( " ({0})", val.Totals );
+						if ( getAll || item.Totals > 0 )
+							entity.Items.Add( val );
+					}
+				}
+			}
+
+			return entity;
+		}
+
+		public static List<CodeItem> CodeEntity_GetCountsSiteTotals()
         {
             List<CodeItem> list = new List<CodeItem>();
 			CodeItem code;
@@ -2627,7 +3106,7 @@ namespace workIT.Factories
 					{
 						code = new CodeItem();
 						code.Id = item.Id;
-						code.CategoryId = item.EntityTypeId;
+						code.CategoryId = PROPERTY_CATEGORY_US_REGIONS;
 						//?? - need entity type for filtering
 						code.EntityTypeId = item.EntityTypeId;
 						code.EntityType = item.EntityTypeId.ToString();
@@ -2643,6 +3122,37 @@ namespace workIT.Factories
 
 			}
 			return list;
+		}
+
+		public static CodeItem GetEntityRegionTotal( int entityTypeId, int recordId )
+		{
+			CodeItem code = new CodeItem();
+
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Counts_RegionTotals
+					.Where( a => a.EntityTypeId == entityTypeId && a.Id == recordId )
+							.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+
+					foreach ( var item in results )
+					{
+						code = new CodeItem();
+						code.Id = item.Id;
+						code.CategoryId = PROPERTY_CATEGORY_US_REGIONS;
+											 //?? - need entity type for filtering
+						code.EntityTypeId = item.EntityTypeId;
+						code.EntityType = item.EntityTypeId.ToString();
+
+						code.CodeGroup = item.Country;
+						code.Title = item.Region;
+						code.Totals = ( int )item.Totals;
+					}
+				}
+			}
+			return code;
 		}
 
 		#endregion

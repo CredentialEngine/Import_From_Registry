@@ -27,8 +27,8 @@ namespace workIT.Factories
 		#region persistance ==================
 		public bool SaveList( List<ThisEntity> list, int parentId, ref SaveStatus status )
 		{
-			if ( list == null || list.Count == 0 )
-				return true;
+			//if ( list == null || list.Count == 0 )
+			//	return true;
 
 			bool isAllValid = true;
 
@@ -463,7 +463,7 @@ namespace workIT.Factories
 					item.ParentEntityType = GetRowColumn( dr, "EntityType", "" );
 
 					item.ProfileName = GetRowColumn( dr, "CostProfileName", "Cost Profile" );
-
+					//need means to sort this, with aggregate last
 					item.CostTypeName = GetRowColumn( dr, "CostType", "" );
 					
 					item.Currency = GetRowColumn( dr, "Currency", "" );
@@ -474,7 +474,6 @@ namespace workIT.Factories
 						item.CostDescription = GetRowColumn( dr, "CostDescription", "" );
 					list.Add( item );
 				}
-
 				return list;
 
 			}

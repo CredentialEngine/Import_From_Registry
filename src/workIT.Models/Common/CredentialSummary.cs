@@ -32,7 +32,7 @@ namespace workIT.Models.Common
 
 		}
 		public string Name { get; set; }
-		public string FriendlyName { get; set; }
+		//public string FriendlyName { get; set; }
 		public int EntityStateId { get; set; }
 		public string ListTitle { get; set; }
 		//public int ResultNumber { get; set; }
@@ -46,7 +46,7 @@ namespace workIT.Models.Common
 		
 		public string SubjectWebpage { get; set; }
 		public string ImageUrl { get; set; }
-
+		public string CredentialStatus { get; set; }
 		public string CredentialType { get; set; }
 		public string CredentialTypeSchema { get; set; }
 		public string CTID { get; set; }
@@ -68,7 +68,11 @@ namespace workIT.Models.Common
 					return "";
 			}
 		}
+		public string PrimaryOrganizationFriendlyName { get; set; }
 		public string PrimaryOrganizationCTID { get; set; }
+		//
+		public int RequiresCompetenciesCount { get; set; }
+
 		public int LearningOppsCompetenciesCount { get; set; }
 		public int AssessmentsCompetenciesCount { get; set; }
 		public int QARolesCount { get; set; }
@@ -84,6 +88,7 @@ namespace workIT.Models.Common
 		public int RecommendedLoppCount { get; set; }
 		//
 		public int AggregateDataProfileCount { get; set; }
+		public int DataSetProfileCount { get; set; }
 		public string AggregateDataProfileSummary { get; set; }
 		public int HoldersProfileCount { get; set; }
 		public string HoldersProfileSummary { get; set; }
@@ -107,7 +112,9 @@ namespace workIT.Models.Common
         public int CommonConditionsCount { get; set; }
        // public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
-        public List<string> Subjects { get; set; }
+		public int TransferValueCount { get; set; }
+		
+		public List<string> Subjects { get; set; }
 		public List<string> DegreeConcentration { get; set; } = new List<string>();
 		public string HasDegreeConcentation
 		{

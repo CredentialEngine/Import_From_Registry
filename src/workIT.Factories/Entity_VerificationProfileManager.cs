@@ -170,7 +170,14 @@ namespace workIT.Factories
 					ecm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 				}
 			}
-
+			//
+			//JurisdictionProfile 
+			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+			//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
+			jpm.DeleteAll( relatedEntity, ref status );
+			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			jpm.SaveAssertedInList( entity.RowId, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY, entity.OfferedIn, ref status );
+			
 			return isAllValid;
 		}
 
@@ -261,7 +268,7 @@ namespace workIT.Factories
 			{
 				status.AddWarning( "The Subject Webpage Url is invalid. " + commonStatusMessage );
 			}
-			if ( !IsUrlValid( profile.VerificationServiceUrl, ref commonStatusMessage ) )
+			if ( !IsUrlValid( profile.VerificationService, ref commonStatusMessage ) )
 			{
 				status.AddWarning( "The Verification Service Url is invalid. " + commonStatusMessage );
 			}
@@ -390,7 +397,7 @@ namespace workIT.Factories
 
 			to.SubjectWebpage = GetUrlData( from.SubjectWebpage );
 
-			to.VerificationService = from.VerificationServiceUrl;
+			to.VerificationService = from.VerificationService;
 			to.VerificationDirectory = from.VerificationDirectory;
 			to.VerificationMethodDescription = from.VerificationMethodDescription;
 
@@ -430,7 +437,7 @@ namespace workIT.Factories
 				to.DateEffective = "";
 
 			to.SubjectWebpage = from.SubjectWebpage;
-			to.VerificationServiceUrl = from.VerificationService;
+			to.VerificationService = from.VerificationService;
 			to.VerificationDirectory = from.VerificationDirectory;
 			to.VerificationMethodDescription = from.VerificationMethodDescription;
 			
@@ -447,7 +454,7 @@ namespace workIT.Factories
 				//edit - get profile list
 				//detail - get basic
 				bool isForDetailPageCredential = true;
-				
+				//make sure this is minimum data
 				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForDetailPageCredential );
 
 				to.EstimatedCost = CostProfileManager.GetAll( to.RowId );
@@ -457,7 +464,7 @@ namespace workIT.Factories
 				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE );
 
 				to.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
-				to.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
+				to.OfferedIn = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
 
 				//to.VerificationStatus = Entity_VerificationStatusManager.GetAll( to.Id );
 			}

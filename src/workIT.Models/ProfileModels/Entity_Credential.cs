@@ -12,6 +12,11 @@ namespace workIT.Models.ProfileModels
 	{
 
 		public int CredentialId { get; set; }
+		/// <summary>
+		/// Relationship Type
+		/// 1-HasPart
+		/// 2-IsPartOf
+		/// </summary>
 		public int RelationshipTypeId { get; set; }
 		//public Guid CredentialUid { get; set; }
 		public string CredentialTitle { get; set; }

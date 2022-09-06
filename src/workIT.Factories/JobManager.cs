@@ -24,6 +24,9 @@ namespace workIT.Factories
 	public class JobManager : BaseFactory
 	{
 		static readonly string thisClassName = "JobManager";
+		static string EntityType = "JobProfile";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE;
+
 		EntityManager entityMgr = new EntityManager();
 
 		#region Job - persistance ==================
@@ -62,9 +65,6 @@ namespace workIT.Factories
 							//19-05-21 mp - should add a check for an update where currently is deleted
 							if ( ( efEntity.EntityStateId ) == 0 )
 							{
-								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "Job/{0}", efEntity.Id );
-								//notify, and???
-								//EmailManager.NotifyAdmin( "Previously Deleted Job has been reactivated", string.Format( "<a href='{2}'>Job: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "JobProfile",
@@ -98,6 +98,8 @@ namespace workIT.Factories
 								//can be zero if no data changed
 								if ( count >= 0 )
 								{
+									entity.LastUpdated = efEntity.LastUpdated.Value;
+									UpdateEntityCache( entity, ref status );
 									isValid = true;
 								}
 								else
@@ -198,8 +200,11 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
-						entity.Id = efEntity.Id;
 						entity.RowId = efEntity.RowId;
+						entity.Created = efEntity.Created.Value;
+						entity.LastUpdated = efEntity.LastUpdated.Value;
+						entity.Id = efEntity.Id;
+						UpdateEntityCache( entity, ref status );
 						//add log entry
 						SiteActivity sa = new SiteActivity()
 						{
@@ -283,6 +288,11 @@ namespace workIT.Factories
 					if ( count > 0 )
 					{
 						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.Created = efEntity.Created.Value;
+						entity.LastUpdated = efEntity.LastUpdated.Value;
+						UpdateEntityCache( entity, ref status );
+						UpdateParts( entity, ref status );
 						/* handle new parts
 						 * AvailableAt
 						 * CreditValue
@@ -304,7 +314,7 @@ namespace workIT.Factories
 			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 			{
 				status.AddError( HandleDBValidationError( dbex, thisClassName + ".AddBaseReference() ", "Job" ) );
-				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Add(), Name: {0}, UserId: {1}", entity.Name, entity.CreatedById ) );
+				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Add(), Name: {0}", entity.Name) );
 
 
 			}
@@ -317,7 +327,7 @@ namespace workIT.Factories
 			}
 			return 0;
 		}
-		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -326,11 +336,11 @@ namespace workIT.Factories
 				{
 					if ( !IsValidGuid( entityUid ) )
 					{
-						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity" );
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					var entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -353,17 +363,28 @@ namespace workIT.Factories
 					{
 						SiteActivity sa = new SiteActivity()
 						{
-							ActivityType = "JobProfile",
+							ActivityType = EntityType,
 							Activity = "Import",
-							Event = "Add Pending Job",
-							Comment = string.Format( "Pending Job was added by the import. ctid: {0}, registryAtId: {1}", ctid, registryAtId ),
+							Event = string.Format( "Add Pending {0}", EntityType ),
+							Comment = string.Format( "Pending {0} was added by the import. ctid: {1}, registryAtId: {2}", EntityType, ctid, registryAtId ),
 							ActivityObjectId = efEntity.Id
 						};
 						new ActivityManager().SiteActivityAdd( sa );
+						//Question should this be in the EntityCache?
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.SubjectWebpage;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
 					}
 
-					status = thisClassName + ".AddPendingRecord. Error - the save was not successful, but no message provided. ";
+					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
 
@@ -371,10 +392,36 @@ namespace workIT.Factories
 			{
 				string message = FormatExceptions( ex );
 				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-				status = thisClassName + ".AddPendingRecord. Error - the save was not successful. " + message;
+				status.AddError( thisClassName + " Error - the save was not successful. " + message );
 
 			}
 			return 0;
+		}
+
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
 		}
 		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
@@ -439,7 +486,7 @@ namespace workIT.Factories
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, id, ref messages );
 							//
-							//new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							//new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 							//also check for any relationships
 							//new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( orgUid );
 						}
@@ -506,11 +553,13 @@ namespace workIT.Factories
 								ActivityObjectId = efEntity.Id
 							} );
 							isValid = true;
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_JOB_PROFILE, efEntity.Id, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, efEntity.Id, ref messages );
 							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
-							//new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							//new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 
 							//delete all relationships
 							workIT.Models.SaveStatus status = new SaveStatus();
@@ -557,6 +606,8 @@ namespace workIT.Factories
 			{
 				isAllValid = false;
 			}
+			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 
 			//Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
 			//erfm.DeleteAll( relatedEntity, ref status );
@@ -627,46 +678,30 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static ThisEntity GetBySubjectWebpage( string swp )
+		public static ThisEntity Get( Guid profileUid )
 		{
 			ThisEntity entity = new ThisEntity();
-			using ( var context = new EntityContext() )
+			if ( !IsGuidValid( entity.RowId ) )
+				return null;
+			try
 			{
-				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.JobProfile
-						.FirstOrDefault( s => s.SubjectWebpage.ToLower() == swp.ToLower() );
-
-				if ( from != null && from.Id > 0 )
+				using ( var context = new EntityContext() )
 				{
-					entity.RowId = from.RowId;
-					entity.Id = from.Id;
-					entity.Name = from.Name;
-					entity.EntityStateId = from.EntityStateId;
-					entity.Description = from.Description;
-					entity.SubjectWebpage = from.SubjectWebpage;
+					DBEntity item = context.JobProfile
+							.SingleOrDefault( s => s.RowId == profileUid );
 
-					entity.CTID = from.CTID;
-					//entity.CredentialRegistryId = from.CredentialRegistryId;
+					if ( item != null && item.Id > 0 )
+					{
+						MapFromDB( item, entity, false );
+					}
 				}
 			}
-			return entity;
-		}
-		public static ThisEntity GetByName_SubjectWebpage( string name, string swp )
-		{
-			ThisEntity entity = new ThisEntity();
-			using ( var context = new EntityContext() )
+			catch ( Exception ex )
 			{
-				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.JobProfile
-						.FirstOrDefault( s => s.Name.ToLower() == name.ToLower() && s.SubjectWebpage == swp );
-
-				if ( from != null && from.Id > 0 )
-				{
-					MapFromDB( from, entity, false );
-				}
+				LoggingHelper.LogError( ex, thisClassName + ".Get" );
 			}
 			return entity;
-		}
+		}//
 		public static ThisEntity GetBasic( int id )
 		{
 			ThisEntity entity = new ThisEntity();
@@ -684,33 +719,7 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		//public static List<ThisEntity> GetAll( ref int totalRecords, int maxRecords = 100 )
-		//{
-		//	List<ThisEntity> list = new List<ThisEntity>();
-		//	ThisEntity entity = new ThisEntity();
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		List<DBEntity> results = context.JobProfile
-		//					 .Where( s => s.EntityStateId > 2 )
-		//					 .OrderBy( s => s.Name )
-		//					 .ToList();
-		//		if ( results != null && results.Count > 0 )
-		//		{
-		//			totalRecords = results.Count();
-
-		//			foreach ( DBEntity item in results )
-		//			{
-		//				entity = new ThisEntity();
-		//				MapFromDB( item, entity, false );
-		//				list.Add( entity );
-		//				if ( maxRecords > 0 && list.Count >= maxRecords )
-		//					break;
-		//			}
-		//		}
-		//	}
-
-		//	return list;
-		//}
+		
 		public static ThisEntity GetForDetail( int id )
 		{
 			ThisEntity entity = new ThisEntity();
@@ -723,7 +732,12 @@ namespace workIT.Factories
 				{
 					//check for virtual deletes
 					if ( item.EntityStateId == 0 )
+					{
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + " Error: encountered request for detail for a deleted record. Name: {0}, CTID:{1}", item.Name, item.CTID ) );
+						entity.Name = "Record was not found.";
+						entity.CTID = item.CTID;
 						return entity;
+					}
 
 					MapFromDB( item, entity,
 							true //includingProperties
@@ -891,27 +905,28 @@ namespace workIT.Factories
 				bool includingProperties )
 		{
 
-			input.Id = output.Id;
-			input.RowId = output.RowId;
-			input.EntityStateId = output.EntityStateId;
+			output.Id = input.Id;
+			output.RowId = input.RowId;
+			output.EntityStateId = input.EntityStateId;
 
 			//
-			input.Name = output.Name;
-			input.Description = output.Description == null ? "" : output.Description;
-			input.CTID = output.CTID;
+			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			input.SubjectWebpage = output.SubjectWebpage;
-			if ( IsValidDate( output.Created ) )
-				input.Created = ( DateTime )output.Created;
-			if ( IsValidDate( output.LastUpdated ) )
-				input.LastUpdated = ( DateTime )output.LastUpdated;
+			output.Description = input.Description == null ? "" : input.Description;
+			output.CTID = input.CTID;
+
+			output.SubjectWebpage = input.SubjectWebpage;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime )input.Created;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime )input.LastUpdated;
 
 
 			//=====
-			//var relatedEntity = EntityManager.GetEntity( input.RowId, false );
-			//if ( relatedEntity != null && relatedEntity.Id > 0 )
-			//	input.EntityLastUpdated = relatedEntity.LastUpdated;
-
+			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
+			if ( relatedEntity != null && relatedEntity.Id > 0 )
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 
 
 		} //

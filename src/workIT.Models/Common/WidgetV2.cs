@@ -30,6 +30,8 @@ namespace workIT.Models.Common
 		public string OrganizationName { get; set; }
 		public string OrganizationCTID { get; set; }
 		public string CustomJSON { get; set; }
+		public int CreatedById { get; set; }
+		public int LastUpdatedById { get; set; }
 
 		//Location Filters
 		public LocationSet Locations { get; set; }
@@ -40,8 +42,11 @@ namespace workIT.Models.Common
 		public FilterSet AssessmentFilters { get; set; }
 		public FilterSet LearningOpportunityFilters { get; set; }
         public FilterSet CompetencyFrameworkFilters { get; set; }
-
-        public List<string> HideGlobalFilters { get; set; }
+		public FilterSet PathwayFilters { get; set; } = new FilterSet();
+		public FilterSet PathwaySetFilters { get; set; } = new FilterSet();
+		public FilterSet TransferValueFilters { get; set; } = new FilterSet();
+		public FilterSet ConceptSchemeFilters { get; set; } = new FilterSet();
+		public List<string> HideGlobalFilters { get; set; }
 
         //Features
         public List<string> SearchFeatures { get; set; }
@@ -49,6 +54,7 @@ namespace workIT.Models.Common
 		public List<ColorPair> WidgetColors { get; set; }
 		//
 		public bool HasCredentialPotentialResults { get; set; }
+		public bool AllowsCSVExport { get; set; } //Allow export/download of search results to a CSV file
 
 		//Internal classes
 		//Location Set
@@ -65,6 +71,11 @@ namespace workIT.Models.Common
 			public List<string> Regions { get; set; }
 			public List<string> Cities { get; set; }
 			public bool IsAvailableOnline { get; set; }
+			//example an LWIA or EDR
+			public List<string> Subregions { get; set; }
+			//add specific properties
+			public List<string> LWIAs { get; set; }
+			public List<string> EDRs { get; set; }
 		}
 		//
 

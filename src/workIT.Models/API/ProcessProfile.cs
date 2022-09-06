@@ -32,22 +32,21 @@ namespace workIT.Models.API
 
 		public string DateEffective { get; set; }
 
-
+		// Interval of process occurence.
 		public string ProcessFrequency { get; set; }
 		//URL
-		public string ProcessMethod { get; set; }
+		public LabelLink ProcessMethod { get; set; }
 		public string ProcessMethodDescription { get; set; }
 		//URL
-		public string ProcessStandards { get; set; }
+		public LabelLink ProcessStandards { get; set; }
 		public string ProcessStandardsDescription { get; set; }
 		public string ScoringMethodDescription { get; set; }
 		//URL
-		public string ScoringMethodExample { get; set; }
+		public LabelLink ScoringMethodExample { get; set; }
 		public string ScoringMethodExampleDescription { get; set; }
 		public string SubjectWebpage { get; set; }
 
 		public string VerificationMethodDescription { get; set; }
-		//public string SubjectWebpage { get; set; }
 
 		public List<ME.JurisdictionProfile> Jurisdiction { get; set; } = new List<ME.JurisdictionProfile>();
 		/// <summary>
@@ -59,7 +58,8 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings TargetCredential { get; set; }
 
 		public WMS.AJAXSettings TargetLearningOpportunity { get; set; }
-		public List<TopLevelEntityReference> TargetCompetencyFramework { get; set; } = new List<TopLevelEntityReference>();
+		public WMS.AJAXSettings TargetCompetencyFramework { get; set; }
+		public int Meta_Id { get; set; }
 
 		//public string ProcessType
 		//{

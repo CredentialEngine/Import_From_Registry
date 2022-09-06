@@ -19,8 +19,11 @@ namespace workIT.Models
 
 		public string ValidationGroup { get; set; }
 		public string Community { get; set; }
-		public List<string> Communities { get; set; } = new List<string>();
+		//public List<string> Communities { get; set; } = new List<string>();
 		public string Ctid { get; set; }
+		//should not need this, as we have MappingHelperV3.CurrentOwningAgentUid
+		//but could be useful further down the line.
+		public Guid CurrentDataProvider { get; set; }
 		public bool UpdateElasticIndex { get; set; }
 		 
 		public string EnvelopeId { get; set; }

@@ -82,6 +82,10 @@
     <None Include="LICENSE" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\workIT.Data\workIT.Data.csproj">
+      <Project>{22db7fde-7f0b-4a48-9261-1fab15767cae}</Project>
+      <Name>workIT.Data</Name>
+    </ProjectReference>
     <ProjectReference Include="..\workIT.Models\workIT.Models.csproj">
       <Project>{7f2454e1-4cee-4955-9b84-b5645414bd6a}</Project>
       <Name>workIT.Models</Name>
@@ -95,7 +99,7 @@
       <Version>0.1.0</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>12.0.3</Version>
+      <Version>13.0.1</Version>
     </PackageReference>
     <PackageReference Include="Sendgrid">
       <Version>9.9.0</Version>

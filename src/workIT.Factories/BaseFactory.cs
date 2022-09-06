@@ -28,10 +28,16 @@ namespace workIT.Factories
 		protected static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
 		public string commonStatusMessage = "";
 
+		//Has Part is the default, and should be used when parent can only have one credential relationship
 		public static int RELATIONSHIP_TYPE_HAS_PART		= 1;
 		public static int RELATIONSHIP_TYPE_IS_PART_OF		= 2;
 		public static int RELATIONSHIP_TYPE_IsETPLResource	= 3;
+		//ex. resource for TargetPathway - or may need an additional type here. 
 		public static int RELATIONSHIP_TYPE_TARGET_RESOURCE = 4;
+
+		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
+		public static string oldCredentialFinderSite = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
+		public static string finderApiSiteURL = UtilityManager.GetAppKeyValue( "finderApiSiteURL" );
 
 		public static bool IsDevEnv()
 		{
@@ -258,15 +264,20 @@ namespace workIT.Factories
 
 			foreach ( var codeItem in list )
 			{
-				item.Results.Add( new Models.CodeItem()
+				//check for duplicates
+				var exists = item.Results.Where( s => s.Code == codeItem.CodedNotation ).ToList();
+				if ( !item.UsingCodedNotation || ( exists == null || exists.Count == 0 ))
 				{
-					CategoryId = categoryId,
-					Id = codeItem.ReferenceFrameworkId,
-					Code = codeItem.CodedNotation,
-					Title = codeItem.Name,
-					SchemaName = codeItem.SchemaName,
-					CodeTitle = codeItem.CodeTitle
-				} );
+					item.Results.Add( new Models.CodeItem()
+					{
+						CategoryId = categoryId,
+						Id = codeItem.ReferenceFrameworkItemId,
+						Code = codeItem.CodedNotation,
+						Title = codeItem.Name,
+						SchemaName = codeItem.SchemaName,
+						CodeTitle = codeItem.CodeTitle
+					} );
+				}
 			}
 			if ( item.Results.Any() )
 				item.HasAnIdentifer = hasAnIdentifer;
@@ -728,32 +739,102 @@ namespace workIT.Factories
 			var value = row[ column ]?.ToString();
 			if ( !string.IsNullOrEmpty( value ) )
 				colValue = Int32.Parse( value );
-			//SKIPPING try /catcvh now, for performance
-			//try
-			//{
-			//    colValue = Int32.Parse( row[column].ToString() );
+            //SKIPPING try /catcvh now, for performance
+            try
+            {
+                colValue = Int32.Parse( row[column].ToString() );
 
-			//}
-			//catch ( System.FormatException fex )
-			//{
-			//    //Assuming FormatException means null or invalid value, so can ignore
-			//    colValue = defaultValue;
+            }
+            catch ( System.FormatException fex )
+            {
+                //Assuming FormatException means null or invalid value, so can ignore
+                colValue = defaultValue;
 
-			//}
-			//catch ( Exception ex )
-			//{
-			//    if ( HasMessageBeenPreviouslySent( column ) == false )
-			//    {
-			//        string queryString = GetWebUrl();
-			//        LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
-			//    }
-			//    colValue = defaultValue;
-			//    //throw ex;
-			//}
+            }
+            catch ( Exception ex )
+            {
+                if ( HasMessageBeenPreviouslySent( column ) == false )
+                {
+                    string queryString = GetWebUrl();
+                    LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+                }
+                colValue = defaultValue;
+                //throw ex;
+            }
+            return colValue;
+
+		}
+		public static bool GetRowColumn( DataRow row, string column, bool defaultValue )
+		{
+			bool colValue = false;
+
+			try
+			{
+				//need to properly handle int values of 0,1, as bool
+				string strValue = row[column].ToString();
+				if ( !string.IsNullOrWhiteSpace( strValue ) && strValue.Trim().Length == 1 )
+				{
+					strValue = strValue.Trim();
+					if ( strValue == "0" )
+						return false;
+					else if ( strValue == "1" )
+						return true;
+				}
+				colValue = bool.Parse( row[column].ToString() );
+
+			}
+			catch ( System.FormatException fex )
+			{
+				//Assuming FormatException means null or invalid value, so can ignore
+				colValue = defaultValue;
+
+			}
+			catch ( Exception ex )
+			{
+				if ( HasMessageBeenPreviouslySent( column ) == false )
+				{
+					string queryString = GetWebUrl();
+					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+				}
+
+
+				colValue = defaultValue;
+				//throw ex;
+			}
 			return colValue;
 
 		}
+		public static DateTime GetRowColumn( DataRow row, string column, DateTime defaultValue )
+		{
+			DateTime colValue;
 
+			try
+			{
+				string strValue = row[column].ToString();
+				if ( DateTime.TryParse( strValue, out colValue ) == false )
+					colValue = defaultValue;
+			}
+			catch ( System.FormatException fex )
+			{
+				//Assuming FormatException means null or invalid value, so can ignore
+				colValue = defaultValue;
+
+			}
+			catch ( Exception ex )
+			{
+				if ( HasMessageBeenPreviouslySent( column ) == false )
+				{
+					string queryString = GetWebUrl();
+					LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, DateTime defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+				}
+
+
+				colValue = defaultValue;
+				//throw ex;
+			}
+			return colValue;
+
+		}
 		public static int GetRowPossibleColumn( DataRow row, string column, int defaultValue )
 		{
 			int colValue = 0;
@@ -839,77 +920,7 @@ namespace workIT.Factories
 			return colValue;
 
 		}
-		public static bool GetRowColumn( DataRow row, string column, bool defaultValue )
-		{
-			bool colValue = false;
-
-			try
-			{
-				//need to properly handle int values of 0,1, as bool
-				string strValue = row[ column ].ToString();
-				if ( !string.IsNullOrWhiteSpace( strValue ) && strValue.Trim().Length == 1 )
-				{
-					strValue = strValue.Trim();
-					if ( strValue == "0" )
-						return false;
-					else if ( strValue == "1" )
-						return true;
-				}
-				colValue = bool.Parse( row[ column ].ToString() );
-
-			}
-			catch ( System.FormatException fex )
-			{
-				//Assuming FormatException means null or invalid value, so can ignore
-				colValue = defaultValue;
-
-			}
-			catch ( Exception ex )
-			{
-				if ( HasMessageBeenPreviouslySent( column ) == false )
-				{
-					string queryString = GetWebUrl();
-					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
-				}
-
-
-				colValue = defaultValue;
-				//throw ex;
-			}
-			return colValue;
-
-		}
-		public static DateTime GetRowColumn( DataRow row, string column, DateTime defaultValue )
-		{
-			DateTime colValue;
-
-			try
-			{
-				string strValue = row[ column ].ToString();
-				if ( DateTime.TryParse( strValue, out colValue ) == false )
-					colValue = defaultValue;
-			}
-			catch ( System.FormatException fex )
-			{
-				//Assuming FormatException means null or invalid value, so can ignore
-				colValue = defaultValue;
-
-			}
-			catch ( Exception ex )
-			{
-				if ( HasMessageBeenPreviouslySent( column ) == false )
-				{
-					string queryString = GetWebUrl();
-					LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
-				}
-
-
-				colValue = defaultValue;
-				//throw ex;
-			}
-			return colValue;
-
-		}
+		
 
 		public static bool HasMessageBeenPreviouslySent( string keyName )
 		{
@@ -999,6 +1010,44 @@ namespace workIT.Factories
 
 			return queryString;
 		}
+		public static string FormatExternalFinderUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId )
+		{
+			string url = "";
+			if ( string.IsNullOrEmpty( entityCTID ) )
+				url = entitySubjectWebpage;
+			else
+				url = reactFinderSiteURL + string.Format( "{0}/{1}", entityType, recordId );
+
+			return url;
+		}
+		public static string FormatExternalFinderUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId, string friendlyName )
+		{
+			string url = "";
+			if ( string.IsNullOrEmpty( entityCTID ) )
+				url = entitySubjectWebpage;
+			else
+				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? "" : friendlyName );
+
+			return url;
+		}
+		public static string FormatDetailUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId )
+		{
+			string url = "";
+			if ( string.IsNullOrEmpty( entityCTID ) )
+				url = entitySubjectWebpage;
+			else
+				url = oldCredentialFinderSite + string.Format( "{0}/{1}", entityType, recordId );
+			return url;
+		}
+		public static string FormatDetailUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId, string friendlyName )
+		{
+			string url = "";
+			if ( string.IsNullOrEmpty( entityCTID ) )
+				url = entitySubjectWebpage;
+			else
+				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? "" : friendlyName );
+			return url;
+		}
 		#endregion
 		#region validations, etc
 		public static bool IsValidDate( DateTime date )
@@ -1020,7 +1069,10 @@ namespace workIT.Factories
 		{
 			DateTime validDate;
 			if ( string.IsNullOrWhiteSpace( date ) || date.Length < 8 )
+			{
+				//caller should store as is (ex. just a year.
 				return false;
+			}
 
 			if ( !string.IsNullOrWhiteSpace( date )
 				&& DateTime.TryParse( date, out validDate )
@@ -1035,6 +1087,22 @@ namespace workIT.Factories
 		{
 			int validNbr = 0;
 			if ( !string.IsNullOrWhiteSpace( nbr ) && int.TryParse( nbr, out validNbr ) )
+				return true;
+			else
+				return false;
+		}
+		public static bool IsInteger( string nbr, ref int validNbr )
+		{
+			validNbr = 0;
+			if ( !string.IsNullOrWhiteSpace( nbr ) && int.TryParse( nbr, out validNbr ) )
+				return true;
+			else
+				return false;
+		}
+		public static bool IsDecimal( string nbr, ref decimal validNbr )
+		{
+			validNbr = 0;
+			if ( !string.IsNullOrWhiteSpace( nbr ) && decimal.TryParse( nbr, out validNbr ) )
 				return true;
 			else
 				return false;
@@ -1372,6 +1440,66 @@ namespace workIT.Factories
 
 		#endregion
 
+		/// <summary>
+		/// Extract the ctid from a properly formatted registry URI
+		/// </summary>
+		/// <param name="registryURL"></param>
+		/// <returns></returns>
+		public static string ExtractCtid( string registryURL )
+		{
+			string ctid = "";
+			if ( string.IsNullOrWhiteSpace( registryURL ) )
+				return "";
+			//check for just URL
+			if ( registryURL.Length == 39 && registryURL.ToLower().IndexOf( "ce-" ) == 0 )
+				return registryURL;
+			if ( registryURL.ToLower().IndexOf( "/ce-" ) == -1 )
+				return "";
+			var parts = registryURL.ToLower().Split( '/' );
+			if ( parts.Length > 0 )
+			{
+				ctid = parts[parts.Length - 1];
+				return ctid;
+			}
+
+			int pos = registryURL.ToLower().IndexOf( "/graph/ce-" );
+			if ( pos > 1 )
+			{
+				ctid = registryURL.Substring( pos + 7 );
+			}
+			else
+			{
+				pos = registryURL.ToLower().IndexOf( "/resources/ce-" );
+				if ( pos > 1 )
+					ctid = registryURL.Substring( pos + 11 );
+				else
+				{
+					//shouldn't happen, once all fixed. In case was published without ce-
+					pos = registryURL.ToLower().IndexOf( "/resources/" );
+					if ( pos > 10 )
+					{
+						ctid = "ce-" + registryURL.Substring( pos + 11 );
+					}
+					else
+					{
+						pos = registryURL.ToLower().IndexOf( "/ce-" );
+						if ( pos > -1 )
+							ctid = registryURL.Substring( pos + 1 );
+					}
+				}
+			}
+
+			return ctid;
+		}
+		public static string FormatLongLabel( string text, int maxLength = 75 )
+		{
+			if ( string.IsNullOrWhiteSpace( text ) )
+				return "";
+			if ( text.Length > maxLength )
+				return text.Substring( 0, maxLength ) + " ...";
+			else
+				return text;
+		}
 		public static string ConvertWordFluff( string text )
 		{
 			if ( string.IsNullOrWhiteSpace( text ) )
@@ -1396,14 +1524,21 @@ namespace workIT.Factories
 		} //
 		public static string FormatFriendlyTitle( string text )
 		{
-			if ( text == null || text.Trim().Length == 0 )
+			try
+			{
+				if ( text == null || text.Trim().Length == 0 )
+					return "";
+
+				string title = UrlFriendlyTitle( text );
+
+				//encode just incase
+				title = HttpUtility.HtmlEncode( title );
+				return title;
+			}
+			catch ( Exception ex )
+			{
 				return "";
-
-			string title = UrlFriendlyTitle( text );
-
-			//encode just incase
-			title = HttpUtility.HtmlEncode( title );
-			return title;
+			}
 		}
 		/// <summary>
 		/// Format a title (such as for a library) to be url friendly
@@ -1638,6 +1773,148 @@ namespace workIT.Factories
 
 			return text;
 		}
+
+		#region Dynamic Sql
+		public static DataTable ReadTable( string tableViewName, string orderBy = "" )
+		{
+			// Table to store the query results
+			DataTable table = new DataTable();
+			if ( string.IsNullOrWhiteSpace( tableViewName ) )
+				return table;
+			if ( tableViewName.IndexOf( "[" ) == -1 )
+				tableViewName = "[" + tableViewName.Trim() + "]";
+			string sql = string.Format( "SELECT * FROM {0} ", tableViewName );
+			if ( !string.IsNullOrWhiteSpace( orderBy ) )
+				sql += " Order by " + orderBy;
+
+			string connectionString = DBConnectionRO();
+			// Creates a SQL connection
+			using ( var connection = new SqlConnection( DBConnectionRO() ) )
+			{
+				connection.Open();
+
+				// Creates a SQL command
+				using ( var command = new SqlCommand( sql, connection ) )
+				{
+					// Loads the query results into the table
+					table.Load( command.ExecuteReader() );
+				}
+
+				connection.Close();
+			}
+
+			return table;
+		}
+		public static DataTable ReadSql( string sql )
+		{
+			// Table to store the query results
+			DataTable table = new DataTable();
+			if ( string.IsNullOrWhiteSpace( sql ) )
+				return table;
+
+			string connectionString = DBConnectionRO();
+			// Creates a SQL connection
+			using ( var connection = new SqlConnection( DBConnectionRO() ) )
+			{
+				connection.Open();
+
+				// Creates a SQL command
+				using ( var command = new SqlCommand( sql, connection ) )
+				{
+					// Loads the query results into the table
+					table.Load( command.ExecuteReader() );
+				}
+
+				connection.Close();
+			}
+
+			return table;
+		} //
+
+		
+
+		/// <summary>
+		/// Add an entry to the beginning of a Data Table
+		/// </summary>
+		/// <param name="tbl"></param>
+		/// <param name="displayValue"></param>
+		public static void AddEntryToTable( DataTable tbl, string displayValue )
+		{
+			DataRow r = tbl.NewRow();
+			r[0] = displayValue;
+			tbl.Rows.InsertAt( r, 0 );
+		}
+
+		/// <summary>
+		/// Add an entry to the beginning of a Data Table. Uses a default key name of "id" and display column of "name"
+		/// </summary>
+		/// <param name="tbl"></param>
+		/// <param name="keyValue"></param>
+		/// <param name="displayValue"></param>
+		public static void AddEntryToTable( DataTable tbl, int keyValue, string displayValue )
+		{
+			//DataRow r = tbl.NewRow();
+			//r[ 0 ] = id;
+			//r[ 1 ] = displayValue;
+			//tbl.Rows.InsertAt( r, 0 );
+
+			AddEntryToTable( tbl, keyValue, displayValue, "id", "name" );
+
+		}
+
+		/// <summary>
+		/// Add an entry to the beginning of a Data Table. Uses a default key name of "id" and display column of "name"
+		/// </summary>
+		/// <param name="tbl"></param>
+		/// <param name="keyValue"></param>
+		/// <param name="displayValue"></param>
+		/// <param name="keyName"></param>
+		/// <param name="displayName"></param>
+		public static void AddEntryToTable( DataTable tbl, int keyValue, string displayValue, string keyName, string displayName )
+		{
+			DataRow r = tbl.NewRow();
+			r[keyName] = keyValue;
+			r[displayName] = displayValue;
+			tbl.Rows.InsertAt( r, 0 );
+
+		}
+		/// <summary>
+		/// Add an entry to the beginning of a Data Table. Uses the provided key name and display column
+		/// </summary>
+		/// <param name="tbl"></param>
+		/// <param name="keyValue"></param>
+		/// <param name="displayValue"></param>
+		/// <param name="keyName"></param>
+		/// <param name="displayName"></param>
+		public static void AddEntryToTable( DataTable tbl, string keyValue, string displayValue, string keyName, string displayName )
+		{
+			DataRow r = tbl.NewRow();
+			r[keyName] = keyValue;
+			r[displayName] = displayValue;
+			tbl.Rows.InsertAt( r, 0 );
+
+		}
+		/// Check is dataset is valid and has at least one table with at least one row
+		/// </summary>
+		/// <param name="ds"></param>
+		/// <returns></returns>
+		public static bool DoesDataSetHaveRows( DataSet ds )
+		{
+
+			try
+			{
+				if ( ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 )
+					return true;
+				else
+					return false;
+			}
+			catch
+			{
+
+				return false;
+			}
+		}//
+		#endregion
 
 	}
 }

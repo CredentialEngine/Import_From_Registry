@@ -13,6 +13,7 @@ namespace workIT.Models.Common
 		/// Currency abbreviation (e.g., USD).
 		/// </summary>
 		public string Currency { get; set; }
+		public string CurrencySymbol { get; set; }
 		public string Description { get; set; }
 		public decimal Value { get; set; }
 		public decimal MinValue { get; set; }
@@ -47,6 +48,7 @@ namespace workIT.Models.Common
 		/// Currency abbreviation (e.g., USD).
 		/// </summary>
 		public string Currency { get; set; }
+		public string CurrencySymbol { get; set; }
 
 		/// <summary>
 		/// Median salary value.

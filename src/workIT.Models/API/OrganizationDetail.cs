@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using MC = workIT.Models.Common;
 using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
@@ -12,9 +13,8 @@ using WMS = workIT.Models.Search;
 
 namespace workIT.Models.API
 {
-	[Serializable]
-
-	public class OrganizationDetail : BaseDisplay
+	[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
+	public class OrganizationDetail : BaseAPIType
 	{
 		public OrganizationDetail()
 		{
@@ -34,7 +34,8 @@ namespace workIT.Models.API
 		public bool IsReferenceVersion { get; set; }
 		//URL
 		public LabelLink AgentPurpose { get; set; }
-		public string AgentPurposeDescription { get; set; }
+		//AgentPurposeDescription is combined with AgentPurpose in a Link object
+		//public string AgentPurposeDescription { get; set; }
 		public List<LabelLink> AgentType { get; set; } = new List<LabelLink>();
 		//will only ever be one value, using an array for consistency
 		public List<LabelLink> AgentSectorType { get; set; } = new List<LabelLink>();
@@ -48,16 +49,16 @@ namespace workIT.Models.API
 		public string FoundingDate { get; set; }
 		//
 		public WMS.AJAXSettings HasConditionManifest { get; set; } 
-		public List<WMA.ConditionManifest> HasConditionManifest2 { get; set; }
 		public WMS.AJAXSettings HasCostManifest { get; set; }
-		public List<WMA.CostManifest> HasCostManifest2 { get; set; }
 		//TBD
 		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
 		//URL
 		public string Image { get; set; }
 		//Note: the industry type link is set up to just to a keyword search. This should probably change
-		public List<LabelLink> IndustryType { get; set; } = new List<LabelLink>();
+		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
+		public LabelLink LifeCycleStatusType { get; set; }
+
 		//URL
 		public LabelLink MissionAndGoalsStatement { get; set; }
 		//public string MissionAndGoalsStatementDescription { get; set; }
@@ -70,6 +71,8 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings ParentOrganization { get; set; }
 		public WMS.AJAXSettings Department { get; set; }
 		public WMS.AJAXSettings SubOrganization { get; set; }
+		public LabelLink SupersededBy { get; set; } //URL
+		public LabelLink Supersedes { get; set; } //URL
 		/// <summary>
 		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.
 		/// URI
@@ -134,7 +137,7 @@ namespace workIT.Models.API
 
 		//TBD
 		public WMS.AJAXSettings HasVerificationService { get; set; }
-		public List<WMA.VerificationServiceProfile> HasVerificationServiceTemp { get; set; }
+		//public List<WMA.VerificationServiceProfile> HasVerificationServiceTemp { get; set; }
 
 	}
 }

@@ -281,18 +281,7 @@ namespace workIT.Models.QData
 		/// </summary>
 		//public Enumeration IncomeDeterminationType { get; set; } = new Enumeration();
 
-		/// <summary>
-		/// Category of subject excluded from the data.
-		/// qdata:subjectExcluded
-		/// </summary>
-		//public List<SubjectProfile> SubjectExcluded { get; set; } = new List<SubjectProfile>();
-
-		/// <summary>
-		/// Category of subject included in the data.
-		/// qdata:subjectIncluded
-		/// </summary>
-		//public List<SubjectProfile> SubjectIncluded { get; set; } = new List<SubjectProfile>();
-
+		
 		/// <summary>
 		/// Statement of earnings thresholds used in determining whether a sufficient level of workforce attachment has been achieved to qualify as employed during the chosen employment and earnings time period.
 		/// qdata:workTimeThreshold
@@ -393,6 +382,18 @@ namespace workIT.Models.QData
 		/// qdata:relatedEmployment
 		/// </summary>
 		public List<QuantitativeValue> RelatedEmployment { get; set; } = new List<QuantitativeValue>();
+
+		/// <summary>
+		/// Category of subject excluded from the data.
+		/// qdata:subjectExcluded
+		/// </summary>
+		public List<QuantitativeValue> SubjectExcluded { get; set; } = new List<QuantitativeValue>();
+
+		/// <summary>
+		/// Category of subject included in the data.
+		/// qdata:subjectIncluded
+		/// </summary>
+		//public List<SubjectProfile> SubjectIncluded { get; set; } = new List<SubjectProfile>();
 
 
 		/// <summary>

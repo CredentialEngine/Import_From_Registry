@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
+using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
@@ -23,14 +24,15 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string CtdlId { get; set; }
 
-
-
 		/// <summary>
 		/// AbilityEmbodied
 		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
 		/// ceasn:abilityEmbodied
 		/// </summary>
 		public List<string> AbilityEmbodied { get; set; }
+
+		public string CodedNotation { get; set; }
+
 
 		/// <summary>
 		/// Category or classification of this resource.
@@ -50,28 +52,28 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Occupation related to this resource.
 		/// </summary>
-		public List<string> HasOccupation { get; set; }
+		public List<int> HasOccupation { get; set; }
 
 		/// <summary>
 		/// Task related to this resource.
 		/// <see cref="https://credreg.net/ctdl/terms/hasTask"/>
 		/// ceterms:hasSpecialization
 		/// </summary>
-		public List<string> HasTask { get; set; }
+		public List<int> HasTask { get; set; }
 
 		/// <summary>
 		/// Work Role related to this resource.
 		/// List of URIs for an existing WorkRole
 		/// ceterms:hasWorkRole
 		/// </summary>
-		public List<string> HasWorkRole { get; set; }
+		public List<int> HasWorkRole { get; set; }
 
 		/// <summary>
 		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// <see cref="http://purl.org/ctdl/terms/identifier"/>
 		/// </summary>
 		public List<IdentifierValue> Identifier { get; set; }
-
+		public string IdentifierJson { get; set; }
 		/// <summary>
 		/// IndustryType
 		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
@@ -93,7 +95,8 @@ namespace workIT.Models.Common
 		/// Keyword or key phrase describing relevant aspects of an entity.
 		/// ceterms:keyword
 		/// </summary>
-		public List<string> Keyword { get; set; }
+		//public List<string> Keyword { get; set; }
+		public List<TextValueProfile> Keyword { get; set; }
 
 
 		/// <summary>
@@ -107,14 +110,19 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Organization(s) that offer this resource
 		/// </summary>
-		public List<string> OfferedBy { get; set; }
+		public List<Organization> OfferedBy { get; set; }
+
+		public List<Guid> OfferedByImport { get; set; }
+
+		public List<ConditionProfile> Requires { get; set; }
 
 		/// <summary>
 		/// Another source of information about the entity being described.
 		/// List of URIs
 		/// ceterms:sameAs
 		/// </summary>
-		public List<string> SameAs { get; set; }
+		//public List<string> SameAs { get; set; }
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
 		/// <summary>
 		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
@@ -127,6 +135,11 @@ namespace workIT.Models.Common
 		/// ceterms:versionIdentifier
 		/// </summary>
 		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string VersionIdentifierJson { get; set; }
 
+		#region import
+		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
+		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		#endregion
 	}
 }

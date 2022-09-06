@@ -416,9 +416,10 @@ namespace workIT.Factories
 		public static void MapFromDB( DBEntity input, ThisEntity output,
 				bool includingParts )
 		{
-
+			output.DataSetProfileId = input.DataSetProfileId;
 			output.Id = input.Id;
 			output.RowId = input.RowId;
+			output.Name = input.Name;
 			output.Description = input.Description == null ? "" : input.Description;
 			if ( IsValidDate( input.StartDate ) )
 				output.StartDate = input.StartDate;
@@ -450,7 +451,6 @@ namespace workIT.Factories
 			//components
 			if ( includingParts )
 			{
-
 				//get DataAttributes
 				output.DataAttributes = DataProfileManager.GetAll( output.Id );
 				

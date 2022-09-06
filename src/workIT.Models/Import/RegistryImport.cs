@@ -53,6 +53,7 @@ namespace workIT.Models
 	{
 		public int Id { get; set; }
 		public System.DateTime Created { get; set; }
+		//21-10-29 Environment will now contain the community
 		public string Environment { get; set; }
 		public string DataOwnerCTID { get; set; }
 		public string PublisherCTID { get; set; }
@@ -61,7 +62,7 @@ namespace workIT.Models
 		public string EntityCtid { get; set; }
 		public string EnvelopeId { get; set; }
 		public string EntityName { get; set; }
-		public System.DateTime EnvelopeLastUpdated { get; set; }
+		public Nullable<System.DateTime> EnvelopeLastUpdated { get; set; }
 		public bool WasChanged { get; set; }
 		public bool WasProcessed { get; set; }
 		public bool ImportWasSuccessful { get; set; }

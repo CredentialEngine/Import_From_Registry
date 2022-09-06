@@ -23,6 +23,8 @@ namespace workIT.Factories
 	public class CostManifestManager : BaseFactory
 	{
 		static string thisClassName = "Factories.CostManifestManager";
+		static string EntityType = "CostManifest";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_COST_MANIFEST;
 		EntityManager entityMgr = new EntityManager();
 
 		#region === -Persistance ==================
@@ -47,7 +49,7 @@ namespace workIT.Factories
 			}
 
 			int count = 0;
-
+			DateTime lastUpdated = System.DateTime.Now;
 			DBEntity efEntity = new DBEntity();
 			int parentOrgId = 0;
 			
@@ -58,7 +60,7 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-			if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
+			if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
 			{
 				parentOrgId = parent.EntityBaseId;
 				conditionManifestParentUid = parent.EntityUid;
@@ -122,6 +124,12 @@ namespace workIT.Factories
 						}
 						else
 						{
+							entity.RowId = efEntity.RowId;
+							entity.Created = efEntity.Created.Value;
+							entity.LastUpdated = efEntity.LastUpdated.Value;
+							entity.Id = efEntity.Id;
+							UpdateEntityCache( entity, ref status );
+							//
 							if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 
@@ -195,6 +203,8 @@ namespace workIT.Factories
                                 //update entity.LastUpdated - assuming there has to have been some change in related data
                                 //new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
                             }
+							lastUpdated = status.LocalUpdatedDate;
+							UpdateEntityCache( entity, ref status );
 							//just in case
 							EntityCostManifest_Add( conditionManifestParentUid, efEntity.Id, ref status );
 
@@ -248,65 +258,7 @@ namespace workIT.Factories
 			return status.WasSectionValid;
 		} //
 
-		/// <summary>
-		/// Not actually sure this should be possible??
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
-		{
-			DBEntity efEntity = new DBEntity();
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					if ( entity == null ||
-						( string.IsNullOrWhiteSpace( entity.Name ) ||
-						string.IsNullOrWhiteSpace( entity.CostDetails )
-						) )
-					{
-						status.AddError( thisClassName + ". AddBaseReference() The assessment is incomplete" );
-						return 0;
-					}
-
-					//only add DB required properties
-					//NOTE - an entity will be created via trigger
-					efEntity.EntityStateId = 2;
-					efEntity.Name = entity.Name;
-					efEntity.Description = entity.Description;
-					efEntity.CostDetails = entity.CostDetails;
-					if ( IsValidGuid( entity.RowId ) )
-						efEntity.RowId = entity.RowId;
-					else
-						efEntity.RowId = Guid.NewGuid();
-                    //set to return, just in case
-                    entity.RowId = efEntity.RowId;
-                    efEntity.Created = System.DateTime.Now;
-					efEntity.LastUpdated = System.DateTime.Now;
-
-					context.CostManifest.Add( efEntity );
-					int count = context.SaveChanges();
-					if ( count > 0 )
-					{
-						entity.Id = efEntity.Id;
-						return efEntity.Id;
-					}
-
-					status.AddError( thisClassName + ". AddBaseReference() Error - the save was not successful, but no message provided. " );
-				}
-			}
-
-			catch ( Exception ex )
-			{
-				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddBaseReference. Name:  {0}, SubjectWebpage: {1}", entity.Name, entity.CostDetails ) );
-				status.AddError( thisClassName + " Error - the save was not successful. " + message );
-
-			}
-			return 0;
-		}
-		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -315,33 +267,40 @@ namespace workIT.Factories
 				{
 					if ( !IsValidGuid( entityUid ) )
 					{
-						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity" );
 						return 0;
 					}
-					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					var entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
+					{
 						return entity.Id;
-
-					//only add DB required properties
-					//NOTE - an entity will be created via trigger
+					}
 					efEntity.Name = "Placeholder until full document is downloaded";
 					efEntity.Description = "Placeholder until full document is downloaded";
 					efEntity.EntityStateId = 1;
 					efEntity.RowId = entityUid;
-					//watch that Ctid can be  updated if not provided now!!
 					efEntity.CTID = ctid;
 					efEntity.CostDetails = registryAtId;
-
-					efEntity.Created = System.DateTime.Now;
-					efEntity.LastUpdated = System.DateTime.Now;
-
+					efEntity.Created = DateTime.Now;
+					efEntity.LastUpdated = DateTime.Now;
+					//
 					context.CostManifest.Add( efEntity );
-					int count = context.SaveChanges();
-					if ( count > 0 )
+					//
+					if ( context.SaveChanges() > 0 )
+					{
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.CostDetails;
+						entity.Created = efEntity.Created.Value;
+						entity.LastUpdated = efEntity.LastUpdated.Value;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
-
-					status = thisClassName + " Error - the save was not successful, but no message provided. ";
+					}
+					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
 
@@ -349,13 +308,35 @@ namespace workIT.Factories
 			{
 				string message = FormatExceptions( ex );
 				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-				status = thisClassName + " Error - the save was not successful. " + message;
-
+				status.AddError( thisClassName + " Error - the save was not successful. " + message );
 			}
 			return 0;
 		}
 
-
+		public void UpdateEntityCache( CostManifest document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache
+			{
+				EntityTypeId = CodesManager.ENTITY_TYPE_COST_MANIFEST,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			string statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 
 		/// <summary>
 		/// Delete a Cost Manifest, and related Entity
@@ -417,28 +398,22 @@ namespace workIT.Factories
 		/// <param name="envelopeId"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-            if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-                && string.IsNullOrWhiteSpace( ctid ) )
-            {
-                statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
-                return false;
-            }
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-				envelopeId = "SKIP ME";
 			if ( string.IsNullOrWhiteSpace( ctid ) )
-                ctid = "SKIP ME";
+			{
+				statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
+				return false;
+			}
+		
             using ( var context = new EntityContext() )
 			{
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.CostManifest
-                                .FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-                                || ( s.CTID == ctid )
-                                );
+                                .FirstOrDefault( s => s.CTID == ctid );
 
                     if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -463,10 +438,12 @@ namespace workIT.Factories
                                 Comment = msg
                             } );
                             isValid = true;
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_COST_MANIFEST, efEntity.Id, ref statusMessage );
 						}
 						List<String> messages = new List<string>();
 						//mark owning org for updates 
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 					}
 					else
 					{
@@ -475,7 +452,7 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					LoggingHelper.LogError( ex, thisClassName + ".Delete()" );
 					statusMessage = FormatExceptions( ex );
 					isValid = false;
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
@@ -549,10 +526,12 @@ namespace workIT.Factories
 		public static ThisEntity GetByCtid( string ctid )
 		{
 			ThisEntity entity = new ThisEntity();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+				return entity;
 			using ( var context = new EntityContext() )
 			{
 				DBEntity from = context.CostManifest
-						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
+						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower().Trim() );
 
 				if ( from != null && from.Id > 0 )
 				{
@@ -660,60 +639,11 @@ namespace workIT.Factories
 								//to.OwningAgentUid = from.Entity.EntityUid;
 								//
 								to.Name = from.Name;
+								to.Description = from.Description;
 							}
 							else
 							{
 								MapFromDB( from, to);
-							}
-							list.Add( to );
-						}
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll(int orgId)" );
-			}
-			return list;
-		}//
-
-		public static List<ThisEntity> GetAllOLD( int orgId, bool isForLinks )
-		{
-			ThisEntity to = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
-
-			Entity parent = EntityManager.GetEntity( 2, orgId );
-			if ( parent == null || parent.Id == 0 )
-			{
-				return list;
-			}
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					List<EM.Entity_CostManifest> results = context.Entity_CostManifest
-							.Where( s => s.EntityId == parent.Id )
-							.OrderBy( s => s.Created )
-							.ToList();
-
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( EM.Entity_CostManifest from in results )
-						{
-							to = new ThisEntity();
-							if ( isForLinks )
-							{
-								to.Id = from.CostManifestId;
-								to.RowId = from.CostManifest.RowId;
-
-								to.OrganizationId = ( int )from.Entity.EntityBaseId;
-								to.OwningAgentUid = from.Entity.EntityUid;
-								//
-								to.Name = from.CostManifest.Name;
-							}
-							else
-							{
-								MapFromDB( from.CostManifest, to );
 							}
 							list.Add( to );
 						}
@@ -953,6 +883,8 @@ namespace workIT.Factories
 			}
 
 			to.Name = from.Name;
+			to.FriendlyName = FormatFriendlyTitle( from.Name );
+
 			to.Description = from.Description == null ? "" : from.Description;
 
 			to.CTID = from.CTID;
@@ -964,8 +896,11 @@ namespace workIT.Factories
 				to.Created = ( DateTime ) from.Created;
 			
 			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;	
-
+				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			//=====
+			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			if ( relatedEntity != null && relatedEntity.Id > 0 )
+				to.EntityLastUpdated = relatedEntity.LastUpdated;
 			if ( IsValidDate( from.StartDate ) )
 				to.StartDate = ( ( DateTime ) from.StartDate ).ToString("yyyy-MM-dd");
 			else
@@ -992,6 +927,7 @@ namespace workIT.Factories
 		#endregion
 
 		#region === Entity_HasCostManifest ================
+		//**** see Entity_CommonCostManager ***
 		public bool EntityCostManifest_SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
 		{
             Entity parent = EntityManager.GetEntity( parentUid );
@@ -1212,41 +1148,7 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		//public static List<ThisEntity> GetAllManifests( Guid parentUid, bool forEditView )
-		//{
-		//	List<ThisEntity> list = new List<ThisEntity>();
-		//	ThisEntity entity = new ThisEntity();
-		//	Entity parent = EntityManager.GetEntity( parentUid );
 
-		//	try
-		//	{
-		//		using ( var context = new EntityContext() )
-		//		{
-		//			List<EM.Entity_CostManifest> results = context.Entity_CostManifest
-		//					.Where( s => s.EntityId == parent.Id )
-		//					.OrderBy( s => s.CostManifestId )
-		//					.ToList();
-
-		//			if ( results != null && results.Count > 0 )
-		//			{
-		//				foreach ( EM.Entity_CostManifest item in results )
-		//				{
-		//					//TODO - optimize the appropriate MapFromDB methods
-		//					entity = new ThisEntity();
-		//					CostManifestManager.MapFromDB( item.CostManifest, entity );
-
-		//					list.Add( entity );
-		//				}
-		//			}
-		//			return list;
-		//		}
-		//	}
-		//	catch ( Exception ex )
-		//	{
-		//		LoggingHelper.LogError( ex, thisClassName + ".GetAllManifests" );
-		//	}
-		//	return list;
-		//}
 		#endregion
 
 

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,11 +19,13 @@ namespace workIT.Models.Common
 			ContactPoint = new List<ContactPoint>();
 		}
 		public string Name { get; set; }
-        public string Name_Map { get; set; }
+		[JsonIgnore]
+		public string Name_Map { get; set; }
 		public string Description { get; set; }
 		public string StreetAddress { get; set; }
-        public string Address1_Map { get; set; }
-        public string Address2 { get; set; }
+		[JsonIgnore]
+		public string Address1_Map { get; set; }
+        //public string Address2 { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
 
 		public string AddressLocality { get; set; }
@@ -34,19 +38,22 @@ namespace workIT.Models.Common
 		//public string AddressRegionFull { get; set; }
 		public string SubRegion { get; set; }
 		public string AddressCountry { get; set; }
-        public string Country_Map { get; set; }
+		[JsonIgnore]
+		public string Country_Map { get; set; }
 
         public string PostalCode { get; set; }
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
 		/// <summary>
 		/// Identifier
-		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// Definition:	Means of identifying a resource, typically consisting of an alphanumeric token and a context or scheme from which that token originates.
+		/// 21-11-03 MP - we should move to just using Identifier not Entity_IdentifierValue
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
 		public string IdentifierJson { get; set; }
 
 		public bool IsMainAddress { get; set; }
+		[JsonIgnore]
 		public Guid ParentRowId { get; set; }
 		public string DisplayAddress(string separator = ", ")
 		{

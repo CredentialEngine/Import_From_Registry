@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,16 +24,10 @@ namespace workIT.Models.Common
 			StatusMessage = "";
 		}
 		public int Id { get; set; }
-		public bool IsReferenceVersion { get; set; }
-        //public bool CanEditRecord { get; set; }
-		//public bool CanUserEditEntity { 
-		//	get { return this.CanEditRecord; }
-		//	set { 
-		//		this.CanEditRecord = value; 
-		//	}
+		public string FriendlyName { get; set; }
 
-		//}
-		//public bool CanViewRecord { get; set; }
+		public bool IsReferenceVersion { get; set; }
+		[JsonIgnore]
 		public Guid RowId { get; set; }
 		/// <summary>
 		/// ParentId will typically be the Entity.Id related to the base class
@@ -43,14 +39,13 @@ namespace workIT.Models.Common
 		public string ExpirationDate { get; set; }
 		public string StatusMessage { get; set; }
 
+		[JsonIgnore]
 		public DateTime Created { get; set; }
-		public int CreatedById { get; set; }
-		//public string CreatedBy { get; set; }
+		public string CreatedDisplay { get; set; }
+		[JsonIgnore]
 		public DateTime LastUpdated { get; set; }
-		public string CreatedDisplay { get { return Created == null ? "" : Created.ToShortDateString(); } }
-		public string LastUpdatedDisplay { get { return LastUpdated == null ? CreatedDisplay : LastUpdated.ToShortDateString(); } }
-		public int LastUpdatedById { get; set; }
-		//public string LastUpdatedBy { get; set; }
+		public string LastUpdatedDisplay { get; set; }
+		[JsonIgnore]
 		public DateTime EntityLastUpdated { get; set; }
 
 		//store language map properties
@@ -68,16 +63,99 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string Name { get; set; }
 		public LanguageMap Name_Map { get; set; }
-		public string FriendlyName { get; set; }
-		public string ProfileName
-		{
-			get { return this.Name; }
-			set { this.Name = value; }
-		}
+
 		public string Description { get; set; }
 		public LanguageMap Description_Map { get; set; }
 		public int EntityStateId { get; set; }
-		public int EntityTypeId { get; set; }
+		private int _entityTypeId { get; set; }
+		public int EntityTypeId
+		{
+			get { return _entityTypeId; }
+			set
+			{
+				_entityTypeId = value;
+				switch ( _entityTypeId )
+				{
+					case 1:
+						EntityType = "Credential";
+						break;
+					case 2:
+						EntityType = "Organization";
+						break;
+					case 3:
+						EntityType = "Assessment";
+						break;
+					case 7:
+						EntityType = "LearningOpportunity";
+						break;
+					case 8:
+						EntityType = "Pathway";
+						break;
+					case 9:
+						EntityType = "Collection";
+						break;
+					case 10:
+					case 17:
+						EntityType = "CompetencyFramework";
+						break;
+					case 11:
+						EntityType = "ConceptScheme";
+						break;
+					case 19:
+						EntityType = "ConditionManifest";
+						break;
+					case 20:
+						EntityType = "CostManifest";
+						break;
+
+					case 23:
+						EntityType = "PathwaySet";
+						break;
+					case 24:
+						EntityType = "PathwayComponent";
+						break;
+					case 26:
+						EntityType = "TransferValue";
+						break;
+					case 28:
+						EntityType = "EarningsProfile";
+						break;
+					case 29:
+						EntityType = "HoldersProfile";
+						break;
+					case 30:
+						EntityType = "EmploymentOutcomeProfile";
+						break;
+					case 31:
+						EntityType = "DataSetProfile";
+						break;
+					case 32:
+						EntityType = "JobProfile";
+						break;
+					case 33:
+						EntityType = "TaskProfile";
+						break;
+					case 34:
+						EntityType = "WorkRoleProfile";
+						break;
+					case 35:
+						EntityType = "OccupationProfile";
+						break;
+					case 36:
+						EntityType = "LearningProgram";
+						break;
+					case 37:
+						EntityType = "Course";
+						break;
+					default:
+						EntityType = string.Format( "Unexpected EntityTypeId of {0}", _entityTypeId );
+						break;
+				}
+			}
+		}
+		public string EntityType { get; set; }
+		public string EntityTypeLabel { get; set; }
+		public string EntityTypeSchema { get; set; }
 		public string CTID { get; set; }
 		public bool IsReferenceEntity
 		{
@@ -111,6 +189,18 @@ namespace workIT.Models.Common
 					return "";
 			}
 		}
+		public string OrganizationFriendlyName
+		{
+			get
+			{
+				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+					return OwningOrganization.FriendlyName;
+				else
+					return "";
+			}
+		}
+		//public string OrganizationFriendlyName { get; set; }
+
 		//this would appear to be a duplicate of the latter
 		//determine if can remove it.
 		//public string OwningOrgDisplay { get; set; }
@@ -130,6 +220,8 @@ namespace workIT.Models.Common
 			{
 				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
 					return OwningOrganization.Id;
+				else if (OrganizationId > 0)
+					return OrganizationId;
 				else
 					return 0;
 			}
@@ -138,8 +230,10 @@ namespace workIT.Models.Common
 		public int OrganizationId { get; set; }
 		//for searches
 		public string PrimaryOrganizationName{ get; set; }
+		public string PrimaryOrganizationFriendlyName { get; set; }
+
 		//3rdParty PublishedBy - really only need PublishedBy now?
-		//public int PublishedByOrganizationId { get; set; }
+		public int PublishedByThirdPartyOrganizationId { get; set; }
 
 		//public string PublishedByOrganizationName { get; set; }
 
@@ -157,6 +251,75 @@ namespace workIT.Models.Common
 		/// The geo-political region in which the described resource is applicable.
 		/// </summary>
 		public List<JurisdictionProfile> Jurisdiction { get; set; } = new List<JurisdictionProfile>();
+
+	}
+
+
+	//
+	[Serializable]
+	public class BaseEmploymentObject : TopLevelObject 
+	{
+		/// <summary>
+		/// URI
+		/// </summary>
+		public string CtdlId { get; set; }
+
+
+
+		/// <summary>
+		/// AbilityEmbodied
+		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
+		/// ceasn:abilityEmbodied
+		/// </summary>
+		public List<string> AbilityEmbodied { get; set; }
+
+		/// <summary>
+		/// Category or classification of this resource.
+		/// Where a more specific property exists, such as ceterms:naics, ceterms:isicV4, ceterms:credentialType, etc., use that property instead of this one.
+		/// URI to a competency
+		/// ceterms:classification
+		/// </summary>
+		public Enumeration Classification { get; set; }
+
+		public string CodedNotation { get; set; }
+
+
+		/// <summary>
+		/// Comment
+		/// Definition:	en-US: Supplemental text provided by the promulgating body that clarifies the nature, scope or use of this competency.
+		/// ceasn:comment
+		/// </summary>
+		public List<string> Comment { get; set; } = new List<string>();
+
+
+		/// <summary>
+		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
+		/// <see cref="http://purl.org/ctdl/terms/identifier"/>
+		/// </summary>
+		public List<IdentifierValue> Identifier { get; set; }
+		public string IdentifierJson { get; set; }
+
+		/// <summary>
+		/// Body of information embodied either directly or indirectly in this resource.
+		/// List of URIs for a competency
+		/// ceasn:knowledgeEmbodied
+		/// </summary>
+		public List<string> KnowledgeEmbodied { get; set; }
+
+
+
+		/// <summary>
+		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
+		/// </summary>
+		public List<string> SkillEmbodied { get; set; }
+
+
+		/// <summary>
+		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
+		/// ceterms:versionIdentifier
+		/// </summary>
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string VersionIdentifierJson { get; set; }
 
 	}
 

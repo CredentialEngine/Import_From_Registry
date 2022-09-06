@@ -20,28 +20,6 @@ namespace workIT.Models.Common
 		public bool IsProgressionModel { get; set; }
 		public string PublicationStatusType { get; set; } = "Published";
 
-		/// <summary>
-		/// CTID - identifier for Concept Scheme. 
-		/// Format: ce-UUID (lowercase)
-		/// example: ce-534ec203-be18-49c3-a806-7e01d1cf0460
-		/// </summary>
-		//public string CTID { get; set; }
-		/// <summary>
-		/// Name of the Concept Scheme
-		/// Required
-		/// </summary>
-		//public string Name { get; set; }
-
-		public string EditorUri { get; set; }
-
-		/// <summary>
-		/// Concept Scheme description 
-		/// Required
-		/// </summary>
-		//public string Description { get; set; }
-
-		//
-
 		public int TotalConcepts { get; set; }
 		/// <summary>
 		/// Top Concepts - list of CTIDs

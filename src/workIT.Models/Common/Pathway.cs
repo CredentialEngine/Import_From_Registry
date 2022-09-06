@@ -52,10 +52,10 @@ namespace workIT.Models.Common
 		public Enumeration IndustryType { get; set; } = new Enumeration();
 		public List<TextValueProfile> AlternativeIndustries { get; set; } = new List<TextValueProfile>();
 
-		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
-		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
 		public Enumeration OccupationType { get; set; } = new Enumeration();
 		public List<TextValueProfile> AlternativeOccupations { get; set; } = new List<TextValueProfile>();
+
+
 
 		public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
 		public List<TextValueProfile> Subject { get; set; } = new List<TextValueProfile>();
@@ -66,6 +66,9 @@ namespace workIT.Models.Common
 		public string AvailabilityListing { get; set; }
 
 		#region Import
+		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+
 		public List<Guid> HasPartList { get; set; } = new List<Guid>();
 		public List<Guid> HasChildList { get; set; } = new List<Guid>();
 		public List<Guid> HasDestinationList { get; set; } = new List<Guid>();

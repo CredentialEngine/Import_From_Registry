@@ -25,7 +25,8 @@ namespace workIT.Factories
 	public class PathwayManager : BaseFactory
 	{
 		static readonly string thisClassName = "PathwayManager";
-
+		static string EntityType = "Pathway";
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY;
 		#region Pathway - persistance ==================
 		public bool Save( ThisEntity entity, ref SaveStatus status )
 		{
@@ -55,9 +56,6 @@ namespace workIT.Factories
 							//19-05-21 mp - should add a check for an update where currently is deleted
 							if ( ( efEntity.EntityStateId ?? 0 ) == 0 )
 							{
-								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "pathway/{0}", efEntity.Id );
-								//notify, and???
-								//EmailManager.NotifyAdmin( "Previously Deleted Pathway has been reactivated", string.Format( "<a href='{2}'>Pathway: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "Pathway",
@@ -92,6 +90,8 @@ namespace workIT.Factories
 								//can be zero if no data changed
 								if ( count >= 0 )
 								{
+									entity.LastUpdated = efEntity.LastUpdated.Value;
+									UpdateEntityCache( entity, ref status );
 									isValid = true;
 								}
 								else
@@ -197,8 +197,11 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
-						entity.Id = efEntity.Id;
 						entity.RowId = efEntity.RowId;
+						entity.Created = efEntity.Created.Value;
+						entity.LastUpdated = efEntity.LastUpdated.Value;
+						entity.Id = efEntity.Id;
+						UpdateEntityCache( entity, ref status );
 						//add log entry
 						SiteActivity sa = new SiteActivity()
 						{
@@ -242,7 +245,7 @@ namespace workIT.Factories
 
 			return efEntity.Id;
 		}
-		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
+		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -251,7 +254,7 @@ namespace workIT.Factories
 				{
 					if ( !IsValidGuid( entityUid ) )
 					{
-						status = thisClassName + " - A valid GUID must be provided to create a pending entity";
+						status.AddError( thisClassName + " - A valid GUID must be provided to create a pending entity" );
 						return 0;
 					}
 					//quick check to ensure not existing
@@ -275,9 +278,31 @@ namespace workIT.Factories
 					context.Pathway.Add( efEntity );
 					int count = context.SaveChanges();
 					if ( count > 0 )
+					{
+						SiteActivity sa = new SiteActivity()
+						{
+							ActivityType = EntityType,
+							Activity = "Import",
+							Event = string.Format( "Add Pending {0}", EntityType ),
+							Comment = string.Format( "Pending {0} was added by the import. ctid: {1}, registryAtId: {2}", EntityType, ctid, registryAtId ),
+							ActivityObjectId = efEntity.Id
+						};
+						new ActivityManager().SiteActivityAdd( sa );
+						//Question should this be in the EntityCache?
+						entity.Id = efEntity.Id;
+						entity.RowId = efEntity.RowId;
+						entity.CTID = efEntity.CTID;
+						entity.EntityStateId = 1;
+						entity.Name = efEntity.Name;
+						entity.Description = efEntity.Description;
+						entity.SubjectWebpage = efEntity.SubjectWebpage;
+						entity.Created = ( DateTime )efEntity.Created;
+						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
+					}
 
-					status = thisClassName + " Error - the save was not successful, but no message provided. ";
+					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
 
@@ -285,12 +310,36 @@ namespace workIT.Factories
 			{
 				string message = FormatExceptions( ex );
 				LoggingHelper.LogError( ex, thisClassName + string.Format( ".AddPendingRecord. entityUid:  {0}, ctid: {1}", entityUid, ctid ) );
-				status = thisClassName + " Error - the save was not successful. " + message;
+				status.AddError( thisClassName + " Error - the save was not successful. " + message );
 
 			}
 			return 0;
 		}
-
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				//ImageUrl = document.ImageUrl,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
 		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
@@ -318,19 +367,18 @@ namespace workIT.Factories
 
 			return status.WasSectionValid;
 		}
-		public bool Delete( string envelopeId, string ctid, ref string statusMessage )
+		public bool Delete( string ctid, ref string statusMessage )
 		{
 			bool isValid = true;
-			if ( ( string.IsNullOrWhiteSpace( envelopeId ) || !IsValidGuid( envelopeId ) )
-				&& string.IsNullOrWhiteSpace( ctid ) )
+			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
 				statusMessage = thisClassName + ".Delete() Error - a valid envelope identifier must be provided - OR  valid CTID";
 				return false;
 			}
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-				envelopeId = "SKIP ME";
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-				ctid = "SKIP ME";
+			//if ( string.IsNullOrWhiteSpace( envelopeId ) )
+			//	envelopeId = "SKIP ME";
+			//if ( string.IsNullOrWhiteSpace( ctid ) )
+			//	ctid = "SKIP ME";
 			int orgId = 0;
 			Guid orgUid = new Guid();
 			using ( var context = new EntityContext() )
@@ -339,9 +387,7 @@ namespace workIT.Factories
 				{
 					context.Configuration.LazyLoadingEnabled = false;
 					DBEntity efEntity = context.Pathway
-								.FirstOrDefault( s => s.CredentialRegistryId == envelopeId
-								|| ( s.CTID == ctid )
-								);
+								.FirstOrDefault( s =>  s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -370,12 +416,15 @@ namespace workIT.Factories
 								Comment = msg,
 								ActivityObjectId = efEntity.Id
 							} );
+							//delete cache
+							new EntityManager().EntityCacheDelete( 8, efEntity.Id, ref statusMessage );
+
 							isValid = true;
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_PATHWAY, efEntity.Id, ref messages );
 							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, orgId, 1, ref messages );
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 
 							//delete all relationships
 							workIT.Models.SaveStatus status = new SaveStatus();
@@ -407,7 +456,13 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-
+		/// <summary>
+		/// Update parts for Pathway
+		/// Pathway components are handled separately in the PathwayServices.HandleComponents
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
 		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
@@ -427,9 +482,9 @@ namespace workIT.Factories
 			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
 			erfm.DeleteAll( relatedEntity, ref status );
 
-			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Occupations, ref status ) == false )
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.OccupationTypes, ref status ) == false )
 				isAllValid = false;
-			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.IndustryTypes, ref status ) == false )
 				isAllValid = false;
 
 			//
@@ -661,7 +716,12 @@ namespace workIT.Factories
 				{
 					//check for virtual deletes
 					if ( item.EntityStateId == 0 )
+					{
+						LoggingHelper.DoTrace( 1, string.Format( thisClassName + " Error: encountered request for detail for a deleted record. Name: {0}, CTID:{1}", item.Name, item.CTID ) );
+						entity.Name = "Record was not found.";
+						entity.CTID = item.CTID;
 						return entity;
+					}
 
 					MapFromDB( item, entity,true );
 				}
@@ -905,34 +965,38 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity from, ThisEntity to, bool includingComponents, bool includingExtra = true)
+		public static void MapFromDB( DBEntity input, ThisEntity output, bool includingComponents, bool includingExtra = true)
 		{
-			MapFromDB_Basic( from, to, includingComponents );
+			MapFromDB_Basic( input, output, includingComponents );
 
-			to.CredentialRegistryId = from.CredentialRegistryId;
+			output.CredentialRegistryId = input.CredentialRegistryId;
 
 			//=============================
 			if ( includingExtra )
 			{
-				to.Subject = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+				output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
-				to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+				output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
 				//properties
 
 				try
 				{
+					output.OccupationTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-					to.OccupationType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-					to.AlternativeOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+					output.IndustryTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
-					to.IndustryType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-					to.AlternativeIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					//output.OccupationType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+					////TODO - why are these not using Reference_FrameworkItemManager
+					//output.AlternativeOccupations = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+
+					//output.IndustryType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					//output.AlternativeIndustries = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB_B(), Name: {0} ({1})", to.Name, to.Id ) );
-					to.StatusMessage = FormatExceptions( ex );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB_B(), Name: {0} ({1})", output.Name, output.Id ) );
+					output.StatusMessage = FormatExceptions( ex );
 				}
 			}
 
@@ -945,6 +1009,8 @@ namespace workIT.Factories
 			output.RowId = input.RowId;
 			output.EntityStateId = ( int )( input.EntityStateId ?? 1 );
 			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
+
 			output.Description = input.Description == null ? "" : input.Description;
 			output.CTID = input.CTID;
 			if ( IsGuidValid( input.OwningAgentUid ) )

@@ -13,79 +13,19 @@ using workIT.Utilities;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 using DBEntity = workIT.Data.Tables.Reference_Frameworks;
-using ThisEntity = workIT.Models.Common.ReferenceFramework;
-using ThisEntityItem = workIT.Models.Common.Entity_ReferenceFramework;
-
+using ThisEntity = workIT.Models.Common.ReferenceFrameworks;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 //
 namespace workIT.Factories
 {
+	[Obsolete]
 	public class Reference_FrameworksManager : BaseFactory
 	{
 		static string thisClassName = "Reference_FrameworkManager";
 		
 		#region Persistance ===================
-		/// <summary>
-		/// Check if the provided framework has already been sync'd. 
-		/// If not, it will be added. 
-		/// </summary>
-		/// <param name="request"></param>
-		/// <param name="userId"></param>
-		/// <param name="messages"></param>
-		/// <param name="frameworkId"></param>
-		/// <returns></returns>
-		//public bool HandleFrameworkRequest( CassFramework request,
-		//		int userId,
-		//		ref SaveStatus status,
-		//		ref int frameworkId )
-		//{
-		//	bool isValid = true;
-		//	if ( request == null || string.IsNullOrWhiteSpace(request._IdAndVersion) )
-		//	{
-		//		status.AddWarning( "The Cass Request doesn't contain a valid Cass Framework class." );
-		//		return false;
-		//	}
-		//	ThisEntity item = Get( request._IdAndVersion );
-		//	if (item != null && item.Id > 0)
-		//	{
-		//		//TODO - do we want to attempt an update - if changed
-		//		//		- if we plan to implement a batch refresh of sync'd content, then not necessary
-		//		frameworkId = item.Id;
-		//		return true;
-		//	}
-		//	//add the framework...
-		//	ThisEntity entity = new ThisEntity();
-		//	entity.Name = request.Name;
-		//	entity.Description = request.Description;
-		//	entity.FrameworkUrl = request.Url;
-		//	entity.RepositoryUri = request._IdAndVersion;
-
-		//	//TDO - need owning org - BUT, first person to reference a framework is not necessarily the owner!!!!!
-		//	//actually, we may not care here. Eventually get a ctid from CASS
-		//	//entity.OwningOrganizationId = 0;
-
-		//	isValid = Save( entity, userId, ref status );
-		//	frameworkId = entity.Id;
-		//	return isValid;
-		//}
-
-
-		//actually not likely to have a separate list of frameworks
-		//public bool SaveList( List<ThisEntity> list, ref SaveStatus status )
-		//{
-		//	if ( list == null || list.Count == 0 )
-		//		return true;
-
-		//	bool isAllValid = true;
-		//	foreach ( ThisEntity item in list )
-		//	{
-		//		Save( item, ref status );
-		//	}
-
-		//	return isAllValid;
-		//}
 
 		/// <summary>
 		/// Add/Update a Reference_Framework
@@ -351,7 +291,7 @@ namespace workIT.Factories
 		{			
 			to.Id = from.Id;
 			to.ParentId = ( int ) from.EntityId;
-			to.CodeId = from.ReferenceFrameworkId;
+			to.CodeId = from.ReferenceFrameworkItemId;
 			to.URL = from.TargetNode;
 			to.Value = from.CodedNotation;
 			to.Name = from.Name;
@@ -396,10 +336,11 @@ namespace workIT.Factories
 			to.Name = from.Name;
 			to.CategoryId = from.CategoryId;
 			to.CodedNotation = from.CodedNotation;
-			if ( !string.IsNullOrWhiteSpace( from.CodedNotation ) && from.CodedNotation.Length > 1 )
-			{
-				to.CodeGroup = from.CodedNotation.Substring( 0, 2 );
-			}
+			to.CodeGroup = from.CodeGroup;
+			//if ( !string.IsNullOrWhiteSpace( from.CodedNotation ) && from.CodedNotation.Length > 1 )
+			//{
+			//	to.CodeGroup = from.CodedNotation.Substring( 0, 2 );
+			//}
 			to.Description = from.Description;
 			to.TargetNode = from.TargetNode;
 			//to.ExternalFrameworkId = (int) (from.ExternalFrameworkId ?? 0);

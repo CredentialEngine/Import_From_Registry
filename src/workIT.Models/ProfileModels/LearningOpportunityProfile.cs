@@ -60,56 +60,16 @@ namespace workIT.Models.ProfileModels
 			CredentialsList = new CredentialConnectionsResult();
 		}
 
-		//public string Name { get; set; }
-		//public string FriendlyName { get; set; }
-		//public string SubjectWebpage { get; set; }
 
-		//public int EntityStateId { get; set; }
-		//public string CredentialRegistryId { get; set; }
-		//public string CTID { get; set; }
 
-		/// <summary>
-		/// Single is the primary for now
-		/// </summary>
-		public string VersionIdentifier { get; set; }
-		/// <summary>
-		/// Also doing import of list
-		/// </summary>
-		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
+		public int LearningEntityTypeId { get; set; } = 7;
+		public string LearningEntityType { get; set; }
+		public string LearningEntityTypeLabel { get; set; }
+		public string LearningTypeSchema { get; set; }
+
 
 		public string AvailableOnlineAt { get; set; }
 
-		/// <summary>
-		/// OwningAgentUid
-		///  (Nov2016)
-		/// </summary>
-		//public Guid OwningAgentUid { get; set; }
-		/// <summary>
-		/// Inflate OwningAgentUid for display 
-		/// </summary>
-		//public Organization OwningOrganization { get; set; }
-		//public string OrganizationName
-		//{
-		//	get
-		//	{
-		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-		//			return OwningOrganization.Name;
-		//		else
-		//			return "";
-		//	}
-		//}
-		//public int OwningOrganizationId
-		//{
-		//	get
-		//	{
-		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-		//			return OwningOrganization.Id;
-		//		else
-		//			return 0;
-		//	}
-		//}
-        //public string OwnerOrganizationName { get; set; }
-		//public string PrimaryOrganizationCTID { get; set; }
 		public Enumeration OwnerRoles { get; set; }
 		//public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
 
@@ -117,16 +77,23 @@ namespace workIT.Models.ProfileModels
 		/// CodedNotation replaces IdentificationCode
 		/// </summary>
 		public string CodedNotation { get; set; }
+
 		/// <summary>
 		/// Identifier
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
-		public string IdentifierJson { get; set; }
-		//public int InLanguageId { get; set; }
-		//public string InLanguage { get; set; }
-		//public string InLanguageCode { get; set; }
+		public string IdentifierJSON { get; set; }
+
+		/// <summary>
+		/// Also doing import of list
+		/// </summary>
+		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
+		public List<IdentifierValue> VersionIdentifierNew { get; set; }
+		public string VersionIdentifierJSON { get; set; }
+
 		public List<TextValueProfile> InLanguageCodeList { get; set; }
 
 		//not sure if will use this?
@@ -157,6 +124,7 @@ namespace workIT.Models.ProfileModels
         public Enumeration AudienceType { get; set; } = new Enumeration();
 		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
 		public Enumeration AudienceLevelType { get; set; } = new Enumeration();
+		public CodeItemResult AudienceLevelTypes { get; set; } = new CodeItemResult();
 		public CodeItemResult AssessmentMethodTypes { get; set; } = new CodeItemResult();
 
 		//
@@ -199,9 +167,10 @@ namespace workIT.Models.ProfileModels
 		} //Used for publishing
 		public List<TextValueProfile> OtherOccupations { get; set; }
 
-		//used for import only
-		public List<CredentialAlignmentObjectProfile> Occupations { get; set; } = new List<CredentialAlignmentObjectProfile>();
-		public List<CredentialAlignmentObjectProfile> Industries { get; set; } = new List<CredentialAlignmentObjectProfile>();
+		//used for import only.
+		//22-05-17 and now for API output
+		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
 		public List<string> Naics { get; set; } = new List<string>();
 		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; }
 		public Enumeration InstructionalProgramType { get; set; }
@@ -209,10 +178,19 @@ namespace workIT.Models.ProfileModels
 		public CodeItemResult IndustryResults { get; set; } = new CodeItemResult();
 		public CodeItemResult OccupationResults { get; set; } = new CodeItemResult();
 		public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
-        public List<LearningOpportunityProfile> HasPart { get; set; }
+
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
+
+		public List<LearningOpportunityProfile> HasPart { get; set; }
 		public List<LearningOpportunityProfile> IsPartOf { get; set; } = new List<LearningOpportunityProfile>();
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
+		public List<OrganizationRoleProfile> OwningOrganizationQAReceived { get; set; }
+
 		public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
 
 		/// <summary>
@@ -221,16 +199,32 @@ namespace workIT.Models.ProfileModels
 		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
 		public List<TextValueProfile> Keyword { get; set; }
 
-		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
+		public List<AssessmentProfile> TargetAssessment { get; set; } 
+		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; } 
+		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
+
+		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+		/// <summary>
+		/// School Courses for the Exchange of Data code for a course.
+		/// It is preferable to record the whole 12 character alphanumeric code, however it is also valid to record just the five digit subject code + course number.
+		/// Minimum of 5 characters and maximum of 14 characters for now. 
+		/// COURSE ONLY
+		/// </summary>
+		public string SCED { get; set; }
 		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
+
+
         public List<string> WhereReferenced { get; set; }
 		public List<Address> Addresses { get; set; }
 		public string AvailabilityListing { get; set; }
 
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; }
 		public List<Credential> IsPartOfCredential { get; set; }
+		public List<AssessmentProfile> IsPartOfAssessment { get; set; } = new List<AssessmentProfile>();
+
+		public List<LearningOpportunityProfile> IsPartOfLearningOpp { get; set; } = new List<LearningOpportunityProfile>();
 
 		public int CompetenciesCount { get; set; }
 		public List<CredentialAlignmentObjectProfile> TeachesCompetencies { get; set; }
@@ -246,6 +240,9 @@ namespace workIT.Models.ProfileModels
 
 		public string AssessmentMethodDescription { get; set; }
 		public string LearningMethodDescription { get; set; }
+		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public string LifeCycleStatus { get; set; }
+		public int LifeCycleStatusTypeId { get; set; }
 
 		public Enumeration LearningMethodType { get; set; }
         public CodeItemResult LearningMethodTypes { get; set; } = new CodeItemResult();
@@ -325,11 +322,21 @@ namespace workIT.Models.ProfileModels
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
+		public int AggregateDataProfileCount { get; set; }
+		public string AggregateDataProfileSummary { get; set; }
+		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
 
-        /// <summary>
-        /// The resource being referenced must be pursued concurrently with the resource being described.
-        /// </summary>
-        public List<ConditionProfile> Corequisite { get; set; }
+		public int DataSetProfileCount { get; set; }
+		public List<QData.DataSetProfile> ExternalDataSetProfiles { get; set; } = new List<QData.DataSetProfile>();
+
+		public int TransferValueCount { get; set; }
+		public List<TransferValueProfile> HasTransferValueProfile { get; set; } = new List<TransferValueProfile>();
+
+
+		/// <summary>
+		/// The resource being referenced must be pursued concurrently with the resource being described.
+		/// </summary>
+		public List<ConditionProfile> Corequisite { get; set; }
 
 		/// <summary>
 		/// The prerequisites for entry into the resource being described.

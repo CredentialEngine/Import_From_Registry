@@ -17,6 +17,7 @@ namespace workIT.Models.Elastic
 		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 		//public List<string> Keyword { get; set; } = new List<string>();
 		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
+		public string OwnerOrganizationName { get; set; }
 
 		public int OwnerOrganizationId
 		{
@@ -44,6 +45,7 @@ namespace workIT.Models.Elastic
 
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
+		public bool HasSubjects { get; set; }
 
 		public List<EntityReference> Pathways { get; set; } = null;
 		public bool HasPathwaysCount { get; set; }

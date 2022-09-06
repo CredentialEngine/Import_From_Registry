@@ -42,7 +42,7 @@ namespace workIT.Models.Common
 		//probably not used for BU
 		public static int PathwayComponentRelationship_IsChildOf = 2;
 		public static int PathwayComponentRelationship_HasChild = 3;
-		public static int PathwayComponentRelationship_Preceeds = 4;
+		public static int PathwayComponentRelationship_Precedes = 4;
 		public static int PathwayComponentRelationship_Prerequiste = 5;
 		public static int PathwayComponentRelationship_TargetComponent = 6;
 		public static int PathwayComponentRelationship_HasPart = 7;
@@ -68,7 +68,7 @@ namespace workIT.Models.Common
 			HasDestinationComponent = 1,
 			CHILDOF = 2,
 			HASCHILD = 3,
-			PRECEEDS = 4,
+			PRECEDES = 4,
 			PREREQUISITE = 5,
 			TARGETCOMPONENT = 6
 		}
@@ -197,7 +197,7 @@ namespace workIT.Models.Common
 		/// Provide the CTID or the full URI for the target environment. 
 		/// ceterms:ComponentCondition
 		/// </summary>
-		public List<PathwayComponent> Preceeds { get; set; } = new List<PathwayComponent>();
+		public List<PathwayComponent> Precedes { get; set; } = new List<PathwayComponent>();
 
 		/// <summary>
 		/// Resource(s) required as a prior condition to this resource.
@@ -217,7 +217,7 @@ namespace workIT.Models.Common
 		public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
-
+		public TopLevelEntityReference SourceCompetency { get; set; } = null;
 		/// <summary>
 		/// The webpage that describes this entity.
 		/// URL
@@ -267,7 +267,7 @@ namespace workIT.Models.Common
 		public List<Guid> HasConditionList { get; set; } = new List<Guid>();
 		public List<Guid> HasIsChildOfList { get; set; } = new List<Guid>();
 		public List<Guid> HasPrerequisiteList { get; set; } = new List<Guid>();
-		public List<Guid> HasPreceedsList { get; set; } = new List<Guid>();
+		public List<Guid> HasPrecedesList { get; set; } = new List<Guid>();
 
 		#endregion
 	}
@@ -302,6 +302,7 @@ namespace workIT.Models.Common
 		public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
+		public TopLevelEntityReference SourceCompetency { get; set; } = null;
 	}
 
 	public class Entity_HasPathwayComponent

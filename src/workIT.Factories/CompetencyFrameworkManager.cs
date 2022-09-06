@@ -4,17 +4,17 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 
+using Newtonsoft.Json;
+
 using workIT.Models;
+using workIT.Models.Common;
+using workIT.Utilities;
 //using workIT.Models.Helpers.Cass;
 using ApiFramework = workIT.Models.API.CompetencyFramework;
-
-using workIT.Utilities;
-
 using DBEntity = workIT.Data.Tables.CompetencyFramework;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisEntity = workIT.Models.ProfileModels.CompetencyFramework;
 using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
-using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -36,7 +36,7 @@ namespace workIT.Factories
 		{
 			bool isValid = true;
 			int count = 0;
-
+			DateTime lastUpdated = System.DateTime.Now;
 			DBEntity efEntity = new DBEntity();
 			try
 			{
@@ -78,6 +78,9 @@ namespace workIT.Factories
 						if ( count == 0 )
 						{
 							status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.Name ) ? "no description" : entity.Name ) );
+
+							entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
+							
 						}
 						else
 						{
@@ -94,6 +97,12 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
+							UpdateEntityCache( entity, ref status );
+							//update competencies
+							new CompetencyFrameworkCompetencyManager().SaveList( entity.Id, entity.ImportCompetencies, ref status );
+
+							if ( !UpdateParts( entity, ref status ) )
+								isValid = false;
 						}
 					}
 					else
@@ -114,6 +123,7 @@ namespace workIT.Factories
 							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
+								lastUpdated = status.LocalUpdatedDate;
 							}
 							//has changed?
 							if ( HasStateChanged( context ) )
@@ -138,6 +148,13 @@ namespace workIT.Factories
 									new ActivityManager().SiteActivityAdd( sa );
 								}
 							}
+
+							entity.LastUpdated = lastUpdated;
+							UpdateEntityCache( entity, ref status );
+							//update competencies regardless
+							new CompetencyFrameworkCompetencyManager().SaveList( entity.Id, entity.ImportCompetencies, ref status );
+							if ( !UpdateParts( entity, ref status ) )
+								isValid = false;
 						}
 					}
 				}
@@ -199,6 +216,49 @@ namespace workIT.Factories
 
 			}
 			return 0;
+		}
+		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		{
+			var ec = new EntityCache()
+			{
+				EntityTypeId = 10,
+				EntityType = "CompetencyFramework",
+				EntityStateId = document.EntityStateId,
+				EntityUid = document.RowId,
+				BaseId = document.Id,
+				Description = document.Description,
+				SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = document.Created,
+				LastUpdated = document.LastUpdated,
+				ImageUrl = document.Image,
+				Name = document.Name,
+				OwningAgentUID = document.OwningAgentUid,
+				OwningOrgId = document.OrganizationId,
+				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
+			};
+			var statusMessage = "";
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
+			}
+		}
+
+		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		{
+			bool isAllValid = true;
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			{
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
+			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
+
+			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+
+
+			return isAllValid;
 		}
 
 		/// <summary>
@@ -277,7 +337,8 @@ namespace workIT.Factories
 								Comment = msg
 							} );
 							isValid = true;
-
+							//delete cache
+							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, efEntity.Id, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, efEntity.Id, ref messages );
@@ -299,7 +360,7 @@ namespace workIT.Factories
 							var org = OrganizationManager.GetSummaryByCtid( orgCtid );
 							if ( org != null && org.Id > 0 )
 							{
-								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, org.Id, 1, ref messages );
+								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, org.Id, 1, ref messages );
 
 								//also check for any relationships
 								new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( org.RowId );
@@ -347,7 +408,7 @@ namespace workIT.Factories
 		#region  retrieval ==================
 
 		/// <summary>
-		/// Get a competency record
+		/// Get a competency framework record
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
@@ -396,8 +457,8 @@ namespace workIT.Factories
 					|| frameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/" ) > -1 )
 				entity.FrameworkUri = frameworkUri;
 			else
-				entity.SourceUrl = frameworkUri;
-			Save( entity, ref status );
+				entity.Source = frameworkUri;
+			Save( entity, ref status, true );
 			if ( entity.Id > 0 )
 				return entity.Id;
 
@@ -428,7 +489,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl" );
+				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl: " + frameworkUri );
 			}
 			return entity;
 		}//
@@ -465,7 +526,7 @@ namespace workIT.Factories
 
 			to.Name = from.Name;
 			to.Description = from.Description;
-			to.SourceUrl = from.SourceUrl ?? "";
+			to.SourceUrl = from.Source ?? "";
 			to.FrameworkUri = from.FrameworkUri ?? "";
 			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
 			//will want to extract from FrameworkUri (for now)
@@ -506,8 +567,8 @@ namespace workIT.Factories
 				to.ExistsInRegistry = false;
 			}
 			to.TotalCompetencies = from.TotalCompetencies;
-			if ( !string.IsNullOrWhiteSpace( from.CompentenciesStore ) )
-				to.CompetenciesStore = from.CompentenciesStore;
+			if ( !string.IsNullOrWhiteSpace( from.ElasticCompentenciesStore ) )
+				to.CompetenciesStore = from.ElasticCompentenciesStore;
 			else
 			{
 				//ensure we don't reset the store
@@ -537,22 +598,19 @@ namespace workIT.Factories
 			to.RowId = from.RowId;
 			to.EntityStateId = from.EntityStateId;
 			to.Name = from.Name;
+			to.FriendlyName = FormatFriendlyTitle( from.Name );
+
 			to.Description = from.Description;
 			to.CTID = from.CTID;
 			to.OrganizationCTID = from.OrganizationCTID ?? "";
-			to.SourceUrl = from.SourceUrl;
+			to.Source = from.SourceUrl;
 			to.FrameworkUri = from.FrameworkUri;
 			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
 
 			to.TotalCompetencies = from.TotalCompetencies;
-			to.CompentenciesStore = from.CompetenciesStore;
+			to.ElasticCompentenciesStore = from.CompetenciesStore;
 			to.CompetencyFrameworkGraph = from.CompetencyFrameworkGraph;
-			to.APIFramework = from.CompetencyFrameworkHierarchy;
-			if( !string.IsNullOrEmpty(to.APIFramework))
-			{
-				//ApiFramework
-				to.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( to.APIFramework );
-			}
+
 
 			//this should be replace by presence of CredentialRegistryId
 			if ( from.ExistsInRegistry != null )
@@ -562,12 +620,41 @@ namespace workIT.Factories
 			if ( from.LastUpdated != null )
 				to.LastUpdated = ( DateTime )from.LastUpdated;
 
+			to.APIFramework = from.CompetencyFrameworkHierarchy;
+			try
+			{
+				if ( !string.IsNullOrWhiteSpace( to.APIFramework ) )
+				{
+					//ApiFramework
+					to.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( to.APIFramework );
+				}
+			} catch (Exception ex)
+            {
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB. Name: '{0}', CTID: {1} ", to.Name, to.CTID ));
+
+			}
 			//soon to be obsolete
 			//to.FrameworkUrl = from.FrameworkUrl;
 		}
 
 		#endregion
+		public static int FrameworkCount_InRegistry()
+		{
+			int totalRecords = 0;
 
+			using ( var context = new EntityContext() )
+			{
+				var results = context.CompetencyFramework.Where( s => s.CredentialRegistryId != null && s.CredentialRegistryId.Length == 36).ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					totalRecords = results.Count();
+
+				}
+			}
+
+			return totalRecords;
+		}
 		public static int FrameworkCount_ForOwningOrg(string orgCtid)
 		{
 			int totalRecords = 0;
@@ -600,6 +687,8 @@ namespace workIT.Factories
 
 		/// <summary>
 		/// Search for competencies (not CompetencyFrameworks!)
+		/// Currently uses: ConditionProfile_Competencies_cache
+		/// 21-07-23 mparsons - need to review this process!
 		/// </summary>
 		/// <param name="pFilter"></param>
 		/// <param name="pOrderBy"></param>

@@ -11,13 +11,13 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using EM = workIT.Data;
 using workIT.Utilities;
-
 using workIT.Data.Views;
 
 using ThisEntity = workIT.Models.ProfileModels.TextValueProfile;
 using DBEntity = workIT.Data.Tables.Entity_Reference;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
+using workIT.Models.Search;
 
 namespace workIT.Factories
 {
@@ -513,7 +513,8 @@ namespace workIT.Factories
 
                 if ( !string.IsNullOrWhiteSpace( profile.TextValue ) && profile.TextValue.Length > maxReferenceTextLength )
                 {
-                    status.AddWarning( string.Format( "Warning - the text value must be less than {0} characters, categoryId: {1}.", maxReferenceTextLength, profile.CategoryId ) );
+                    //TextValue is MAX
+                    //status.AddWarning( string.Format( "Warning - the text value must be less than {0} characters, categoryId: {1}.", maxReferenceTextLength, profile.CategoryId ) );
                 }
             }
             if ( profile.CategoryId != CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM
@@ -617,7 +618,7 @@ namespace workIT.Factories
             {
                 using ( var context = new EntityContext() )
                 {
-                    List<DBEntity> search = context.Entity_Reference
+                    var search = context.Entity_Reference
                             .Where( s => s.EntityId == parent.Id
                             && s.CategoryId == categoryId )
                             .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
@@ -746,157 +747,264 @@ namespace workIT.Factories
         /// <param name="keyword"></param>
         /// <param name="maxTerms"></param>
         /// <returns></returns>
-        public static List<object> QuickSearch_Subjects( int entityTypeId, string keyword, int maxTerms = 0 )
+        public static List<string> QuickSearch_Subjects( MainSearchInput query, int entityTypeId, string keyword, int maxTerms = 0 )
         {
-            List<object> list = new List<object>();
+            var list = new List<string>();
+            var actualTerms = UtilityManager.GetAppKeyValue( "autocompleteTerms", 15 );
 
-            keyword = keyword.Trim();
+            if ( query != null && !string.IsNullOrWhiteSpace( query.Keywords ) )
+                keyword = query.Keywords.Trim();
+            else
+                keyword = keyword.Trim();
 
-            if ( maxTerms == 0 ) maxTerms = 50;
+            //if ( maxTerms == 0 ) 
+                maxTerms = 50;
 
-            using ( var context = new ViewContext() )
+            List<int> targetOrgIds = new List<int>();
+            var relationshipTypeIds = PropertyMappingHelper.GetAnyRelationships( query, ref targetOrgIds );
+            int orgId = 0;
+            //just handle one for now
+            if ( targetOrgIds.Count > 0 )
+                orgId = targetOrgIds[0];
+
+
+            if ( query != null && orgId > 0 )
             {
-                list = context.Entity_Subjects.Where( s => s.EntityTypeId == entityTypeId && s.Subject.Contains( keyword ) ).OrderBy( s => s.Subject ).Take( maxTerms ).Select( x => x.Subject ).Distinct().ToList().Cast<object>().ToList();
+                using ( var context = new EntityContext() )
+                {
+                    var results = ( from item in context.Entity_Reference
+                                  join entity in context.Entity
+                                          on item.EntityId equals entity.Id
+                                  join ear in context.Entity_AgentRelationship
+                                          on entity.Id equals ear.EntityId
+                                  join org in context.Organization
+                                          on ear.AgentUid equals org.RowId      // 
+                                  join codes in context.Codes_CredentialAgentRelationship on ear.RelationshipTypeId equals 30
+                                  where entity.EntityTypeId == entityTypeId && item.CategoryId == 34 && org.Id == orgId
+                                              && ( keyword == "" || item.TextValue.Contains( keyword ) )
 
-                //if ( results != null && results.Count > 0 )
-                //{
-                //    string prev = "";
-
-                //    foreach ( Entity_Subjects item in results )
-                //    {
-                //        if ( prev != item.Subject )
-                //        {
-                //            list.Add( item.Subject );
-                //            prev = item.Subject;
-                //        }
-                //    }
-                //}
+                                  select new
+                                  {
+                                      item.TextValue,
+                                  } ).Distinct().Take( maxTerms ).ToList();
+                    results.ForEach( x =>
+                    {
+                        if ( !string.IsNullOrEmpty( x.TextValue ) )
+                            list.Add( x.TextValue );
+                    } );
+                    list = list.Distinct().Take( actualTerms ).ToList();
+                }
             }
+            else
+            {
+                using ( var context = new ViewContext() )
+                {
+                    list = context.Entity_Subjects.Where( s => s.EntityTypeId == entityTypeId && s.Subject.Contains( keyword ) )
+                        .OrderBy( s => s.Subject ).Take( maxTerms ).Select( x => x.Subject ).Distinct().ToList();
 
+                    //if ( results != null && results.Count > 0 )
+                    //{
+                    //    string prev = "";
+
+                    //    foreach ( Entity_Subjects item in results )
+                    //    {
+                    //        if ( prev != item.Subject )
+                    //        {
+                    //            list.Add( item.Subject );
+                    //            prev = item.Subject;
+                    //        }
+                    //    }
+                    //}
+                }
+            }
             return list;
         } //
 
-        //public static List<string> QuickSearch_TextValue( int entityTypeId, int categoryId, string keyword, int maxTerms = 0 )
-        //{
-        //    List<string> list = new List<string>();
-
-        //    keyword = keyword.Trim();
-
-        //    if ( maxTerms == 0 )
-        //        maxTerms = 50;
-
-        //    using ( var context = new ViewContext() )
-        //    {
-        //        // will only return active credentials
-        //        var results = context.Entity_Reference_Summary
-        //            .Where( s => s.EntityTypeId == entityTypeId
-        //                && s.CategoryId == categoryId
-        //                && (
-        //                    ( s.TextValue.Contains( keyword ) ||
-        //                    ( s.Title.Contains( keyword ) )
-        //                    )
-        //                ) )
-        //            .OrderBy( s => s.TextValue )
-        //            .Select( m => m.TextValue ).Distinct()
-        //            .Take( maxTerms )
-        //            .ToList();
-
-        //        if ( results != null && results.Count > 0 )
-        //        {
-
-        //            foreach ( string item in results )
-        //            {
-        //                list.Add( item );
-        //            }
-
-        //        }
-        //    }
-
-        //    return list;
-        //}
-
-        public static List<object> QuickSearch_ReferenceFrameworks( int entityTypeId, int categoryId, string headerId, string keyword, int maxTerms = 0 )
+       
+        /// <summary>
+        /// Why is this under Entity_Reference?
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="entityTypeId"></param>
+        /// <param name="categoryId"></param>
+        /// <param name="headerId"></param>
+        /// <param name="keyword"></param>
+        /// <param name="maxTerms"></param>
+        /// <returns></returns>
+        public static List<string> QuickSearch_ReferenceFrameworks( MainSearchInput query, int entityTypeId, int categoryId, string headerId, string keyword, int maxTerms = 0 )
         {
-            var list = new List<object>();
+            var list = new List<string>();
+            if ( query != null && !string.IsNullOrWhiteSpace(query.Keywords) )
+                keyword = query.Keywords.Trim();
+            else
+                keyword = keyword.Trim();
 
-            keyword = keyword.Trim();
-            var coded = keyword.Replace( "-", "" ).Replace( " ", "" );
-
-            if ( maxTerms == 0 ) maxTerms = 50;
+            var actualTerms = UtilityManager.GetAppKeyValue( "autocompleteTerms", 15 ); 
+            //should initially set maxTerms high and then reduce after selections
+            //if ( maxTerms == 0 ) 
+                maxTerms = 50;
 
             if ( headerId == "0" ) headerId = "";
-
-            using ( var context = new ViewContext() )
+            if (keyword.Length == 2 && IsInteger( keyword ) )
             {
-                var results = ( from rf in context.Entity_ReferenceFramework_Totals                         
-                         let cn = rf.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
-                         where ( headerId == "" || rf.CodeGroup == headerId )
-                                 && ( rf.CategoryId == categoryId )
-                                 && ( rf.EntityTypeId == entityTypeId )
-                                 && ( keyword == ""
-                                 || rf.CodedNotation.Contains( keyword )
-                                 || cn.Contains( coded )
-                                 || rf.Name.Contains( keyword ) )
-                                 && ( rf.Totals > 0 )
-                         orderby rf.Name
-                         select rf ).Distinct().Take( maxTerms ).ToList();
-
-                results.ForEach( x => {
-                    var cd = "";
-                   if ( !string.IsNullOrEmpty( x.CodedNotation ) )
-                        cd = string.Format( " ({0})", x.CodedNotation );
-
-                    list.Add( string.Format( "{0}{1}", x.Name, cd ) );
-                } );
-                //list = context.Entity_ReferenceFramework_Totals
-                //        .Where( s => ( headerId == "" || s.CodeGroup == headerId )
-                //        && ( s.CategoryId == categoryId )
-                //        && ( s.EntityTypeId == entityTypeId )
-                //        && ( keyword == ""
-                //        || s.CodedNotation.Contains( keyword )
-                //        || s.Name.Contains( keyword ) )
-                //        && ( s.Totals > 0 ) )
-                //    .OrderBy( s => s.Name )
-                //    .Take( maxTerms )
-                //    .Select( x => x.Name )
-                //    .Distinct()
-                //    .ToList();
+                headerId = keyword.Substring( 0, 2 );
             }
 
+            List<int> targetOrgIds = new List<int>();
+            var relationshipTypeIds = PropertyMappingHelper.GetAnyRelationships( query, ref targetOrgIds );
+            int orgId = 0;
+            //just handle one for now
+            if (targetOrgIds.Count > 0)
+                orgId = targetOrgIds[0];
+
+            //check for full query
+            //also if no org relationships, use current filter
+            if ( query != null && orgId > 0 )
+            {
+                var coded = keyword.Replace( "-", "" ).Replace( " ", "" );
+
+                //actually only need to store the org, if has target relationship
+                var targetRelationships = new List<int>() { 6, 7, 30 };
+                //Text or Code?
+                foreach ( var filter in query?.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+                {
+                    var item = filter.AsCodeItem();
+                    if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE )
+                    {
+                        //mostly only care about 30 for now, possibly 6,7
+                        if ( targetRelationships.FindIndex( mbr => item.Id == mbr ) > -1 )
+                        {
+                            //want to get orgIds now as well
+                            relationshipTypeIds.Add( item.Id );
+                        }
+                    }
+                }
+                if ( orgId > 0 ) {
+                    using ( var context = new EntityContext() )
+                    {
+                        //
+                        var list1 = (from item in context.Entity_ReferenceFramework
+                                    join entity in context.Entity
+                                            on item.EntityId equals entity.Id
+                                    join refFrameworkItem in context.Reference_FrameworkItem
+                                            on item.ReferenceFrameworkItemId equals refFrameworkItem.Id
+                                    join ear in context.Entity_AgentRelationship
+                                            on entity.Id equals ear.EntityId
+                                    join org in context.Organization
+                                            on ear.AgentUid equals org.RowId      // 
+                                    join codes in context.Codes_CredentialAgentRelationship on ear.RelationshipTypeId equals 30
+                                    let cn = refFrameworkItem.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
+                                    where entity.EntityTypeId == entityTypeId && item.CategoryId == categoryId && org.Id == orgId  
+                                                && ( headerId == "" || refFrameworkItem.CodeGroup == headerId )
+                                                && ( keyword == ""
+                                                || refFrameworkItem.CodedNotation.Contains( keyword )
+                                                || cn.Contains( coded )
+                                                || refFrameworkItem.Name.Contains( keyword ) )
+
+                                    select new
+                                    {
+                                        refFrameworkItem.CodedNotation,
+                                        refFrameworkItem.Name,                                        
+                                    }).Distinct().Take( maxTerms ).ToList();
+
+                        var results = list1.OrderBy( m => m.Name ).ToList();
+                        results.ForEach( x =>
+                        {
+                            var cd = "";
+                            if ( !string.IsNullOrEmpty( x.CodedNotation ) )
+                                cd = string.Format( " ({0})", x.CodedNotation );
+
+                            list.Add( string.Format( "{0}{1}", x.Name, cd ) );
+                        } );
+                        list = list.Distinct().Take( actualTerms ).ToList();
+                    }
+                }
+                else
+                {
+
+
+                    using ( var context = new ViewContext() )
+                    {
+                        var results1 = context.Entity_ReferenceFramework_Summary
+                            .Where( s => s.CategoryId == categoryId && s.EntityTypeId == entityTypeId )
+                            .OrderBy( s => s.Name )
+                            .ToList();
+                        if ( orgId > 0 )
+                        {
+
+                        }
+
+                        var results = ( from rf in context.Entity_ReferenceFramework_Summary
+                                         let cn = rf.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
+                                        where ( headerId == "" || rf.CodeGroup == headerId )
+                                                && ( rf.CategoryId == categoryId )
+                                                && ( rf.EntityTypeId == entityTypeId )
+                                                && ( keyword == ""
+                                                || rf.CodedNotation.Contains( keyword )
+                                                || cn.Contains( coded )
+                                                || rf.Name.Contains( keyword ) )
+
+                                        orderby rf.Name
+                                        select rf ).Distinct().Take( maxTerms ).ToList();
+                        results.ForEach( x =>
+                        {
+                            var cd = "";
+                            if ( !string.IsNullOrEmpty( x.CodedNotation ) )
+                                cd = string.Format( " ({0})", x.CodedNotation );
+
+                            list.Add( string.Format( "{0}{1}", x.Name, cd ) );
+                        } );
+
+                    }
+                }
+            }
+            else
+            {
+
+                var coded = keyword.Replace( "-", "" ).Replace( " ", "" );
+
+                using ( var context = new ViewContext() )
+                {
+                    var results = ( from rf in context.Entity_ReferenceFramework_Totals
+                                    let cn = rf.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
+                                    where ( headerId == "" || rf.CodeGroup == headerId )
+                                            && ( rf.CategoryId == categoryId )
+                                            && ( rf.EntityTypeId == entityTypeId )
+                                            && ( keyword == ""
+                                            || rf.CodedNotation.Contains( keyword )
+                                            || cn.Contains( coded )
+                                            || rf.Name.Contains( keyword ) )
+                                            && ( rf.Totals > 0 )
+                                    orderby rf.Name
+                                    select rf ).Distinct().Take( maxTerms ).ToList();
+
+                    results.ForEach( x =>
+                    {
+                        var cd = "";
+                        if ( !string.IsNullOrEmpty( x.CodedNotation ) )
+                            cd = string.Format( " ({0})", x.CodedNotation );
+
+                        list.Add( string.Format( "{0}{1}", x.Name, cd ) );
+                    } );
+                    list = list.Distinct().Take( actualTerms ).ToList();
+                    //list = context.Entity_ReferenceFramework_Totals
+                    //        .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+                    //        && ( s.CategoryId == categoryId )
+                    //        && ( s.EntityTypeId == entityTypeId )
+                    //        && ( keyword == ""
+                    //        || s.CodedNotation.Contains( keyword )
+                    //        || s.Name.Contains( keyword ) )
+                    //        && ( s.Totals > 0 ) )
+                    //    .OrderBy( s => s.Name )
+                    //    .Take( maxTerms )
+                    //    .Select( x => x.Name )
+                    //    .Distinct()
+                    //    .ToList();
+                }
+            }
             return list;
         } //
-          
-          /// <summary>
-          /// Get single entity reference, summary
-          /// </summary>
-          /// <param name="entityReferenceId"></param>
-          /// <returns></returns>
-        //public static ThisEntity Get( int entityReferenceId )
-        //{
-        //    ThisEntity entity = new ThisEntity();
-        //    if ( entityReferenceId == 0 )
-        //    {
-        //        return entity;
-        //    }
-        //    try
-        //    {
-        //        using ( var context = new ViewContext() )
-        //        {
-        //            Entity_Reference_Summary item = context.Entity_Reference_Summary
-        //                    .SingleOrDefault( s => s.EntityReferenceId == entityReferenceId );
-
-        //            if ( item != null && item.EntityReferenceId > 0 )
-        //            {
-        //                MapFromDB( item, entity );
-        //            }
-        //        }
-        //    }
-        //    catch ( Exception ex )
-        //    {
-        //        LoggingHelper.LogError( ex, thisClassName + ".Entity_Get" );
-        //    }
-        //    return entity;
-        //}//
+       
         private static void MapToDB( ThisEntity from, DBEntity to )
         {
             //want to ensure fields from create are not wiped
@@ -1028,7 +1136,8 @@ namespace workIT.Factories
 
         private static void SendNewOtherIdentityNotice( ThisEntity entity )
         {
-            string message = string.Format( "New identity. <ul><li>OrganizationId: {0}</li><li>PersonId: {1}</li><li>Title: {2}</li><li>Value: {3}</li></ul>", entity.EntityBaseId, entity.LastUpdatedById, entity.TextTitle, entity.TextValue );
+            string message = string.Format( "New identity. <ul><li>OrganizationId: {0}</li><li>Title: {1}</li><li>Value: {2}</li></ul>", entity.EntityBaseId, entity.TextTitle, entity.TextValue );
+
             workIT.Utilities.EmailManager.NotifyAdmin( "New Organization Identity has been created", message );
         }
         #endregion

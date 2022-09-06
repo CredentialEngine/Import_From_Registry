@@ -138,6 +138,7 @@ namespace workIT.Models.ProfileModels
 		public string LearningMethodDescription { get; set; }
 
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
+		public List<OrganizationRoleProfile> OwningOrganizationQAReceived { get; set; }
 		//
 		public List<CodeItem> ProcessProfilesSummary { get; set; } = new List<CodeItem>();
 		public List<ProcessProfile> AdministrationProcess { get; set; }
@@ -180,14 +181,7 @@ namespace workIT.Models.ProfileModels
 
 		public string AvailableOnlineAt { get; set; }
 
-		/// <summary>
-		/// Single is the primary for now
-		/// </summary>
-		public string VersionIdentifier { get; set; }
-		/// <summary>
-		/// Also doing import of list
-		/// </summary>
-		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
+
 
 		public string CodedNotation { get; set; }
 		/// <summary>
@@ -195,8 +189,19 @@ namespace workIT.Models.ProfileModels
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
-		public string IdentifierJson { get; set; }
+		public string IdentifierJSON { get; set; }
+
+		/// <summary>
+		/// Also doing import of list
+		/// </summary>
+		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
+		public List<IdentifierValue> VersionIdentifierNew { get; set; }
+		public string VersionIdentifierJSON { get; set; }
+
+
+
 		public List<string> WhereReferenced { get; set; }
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; }
 		public List<Credential> IsPartOfCredential { get; set; }
@@ -208,6 +213,10 @@ namespace workIT.Models.ProfileModels
 		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
 		public List<Address> Addresses { get; set; }
 		public string AvailabilityListing { get; set; }
+
+		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public string LifeCycleStatus { get; set; }
+		public int LifeCycleStatusTypeId { get; set; }
 
 		#region import 
 		//CostManifestId
@@ -240,6 +249,8 @@ namespace workIT.Models.ProfileModels
 		#region Output for detail
 		public List<CostManifest> CommonCosts { get; set; }
 		public List<ConditionManifest> CommonConditions { get; set; }
+		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
+
 		#endregion
 
 
@@ -281,7 +292,18 @@ namespace workIT.Models.ProfileModels
         public int CommonConditionsCount { get; set; }
         //public decimal TotalCostCount { get; set; }
         public int FinancialAidCount { get; set; }
-        public string ListTitle { get; set; }
+		public int TransferValueCount { get; set; }
+		public int AggregateDataProfileCount { get; set; }
+		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
+
+		//
+		public int DataSetProfileCount { get; set; }
+		public List<QData.DataSetProfile> ExternalDataSetProfiles { get; set; } = new List<QData.DataSetProfile>();
+		//
+		public List<TransferValueProfile> HasTransferValueProfile { get; set; } = new List<TransferValueProfile>();
+		public string AggregateDataProfileSummary { get; set; }
+		public int HoldersProfileCount { get; set; }
+		public string ListTitle { get; set; }
         public CredentialConnectionsResult CredentialsList { get; set; }
 		public Enumeration Industry { get; set; }
 		public Enumeration IndustryType
@@ -317,8 +339,9 @@ namespace workIT.Models.ProfileModels
 			set { Occupation = value; }
 		} //Used for publishing
 		public List<TextValueProfile> OtherOccupations { get; set; }
-		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
-		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
+		//import
+		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; }
+		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; }
 		public List<string> Naics { get; set; }
 		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; }
 		public Enumeration InstructionalProgramType { get; set; }
@@ -342,6 +365,12 @@ namespace workIT.Models.ProfileModels
 		//		return result;
 		//	}
 		//}
+
+		/// <summary>
+		/// Is Non-Credit
+		/// Resource carries or confers no official academic credit towards a program or a credential.
+		/// </summary>
+		public bool? IsNonCredit { get; set; }
 		public bool? HasGroupEvaluation { get; set; }
 		public bool? HasGroupParticipation { get; set; }
 		public bool? IsProctored { get; set; }
@@ -363,6 +392,8 @@ namespace workIT.Models.ProfileModels
         public CodeItemResult ScoringMethodTypes { get; set; } = new CodeItemResult();
         public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
 		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
+		public CodeItemResult AudienceLevelTypes { get; set; } = new CodeItemResult();
+
 		public AgentRelationshipResult QualityAssurance { get; set; }
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
     }
