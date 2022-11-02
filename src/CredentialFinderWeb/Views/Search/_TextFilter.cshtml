@@ -1,7 +1,0 @@
-﻿@model workIT.Models.Search.TextFilterSettings
-
-<div class="filter textFilter" data-searchtype="@Model.SearchType" data-filtername="@Model.FilterName" data-categoryID="@Model.CategoryId" data-fields="@(string.Join(",", @Model.Fields))" data-tagTitle="@Model.TagTitle" data-filterSchema="@Model.FilterSchema">
-    <div class="textFilterTitle">@Model.InputTitle</div>
-    <p class="filterGuidance">@Model.Guidance</p>
-    <input type="text" class="textFilterText hasAutoComplete" data-autocompletecontext="@Model.FilterName" placeholder="@Model.Placeholder" />
-</div>
