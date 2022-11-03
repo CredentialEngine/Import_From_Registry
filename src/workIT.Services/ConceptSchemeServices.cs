@@ -60,12 +60,12 @@ namespace workIT.Services
 						if ( messages.Count > 0 )
 							status.AddWarningRange( messages );
 					}
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
 				}
 				else
 				{
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -93,38 +93,67 @@ namespace workIT.Services
 			return entity;
 		}
 		//
+
+		//public static string GetCTIDFromID( int id )
+		//{
+		//	return Manager.GetCTIDFromID( id );
+		//}
+		//
+
+		public static List<ConceptSchemeSummary> Autocomplete( string keywords, int maxRows, ref int totalRows )
+		{
+
+			string where = "";
+			SetKeywordFilter( keywords, false, ref where );
+
+			LoggingHelper.DoTrace( 7, "ConceptSchemeServices.Autocomplete(). Filter: " + where );
+
+			return Manager.Search( where, "", 1, maxRows, ref totalRows );
+	
+		}
+
 		public static List<ConceptSchemeSummary> Search( MainSearchInput data, ref int totalRows )
 		{
-			string where = "";
-			List<string> messages = new List<string>();
-			List<string> competencies = new List<string>();
-			//int userId = 0;
-			//AppUser user = AccountServices.GetCurrentUser();
-			//if ( user != null && user.Id > 0 )
-			//	userId = user.Id;
-			//only target records with a ctid
-			where = " (len(Isnull(base.Ctid,'')) = 39) ";
 
-			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetLanguageFilter( data, CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, ref where );
+			//if ( UtilityManager.GetAppKeyValue( "usingElasticConceptSchemeSearch", false ) )
+			//{
+			//	//return ElasticServices.ConceptSchemeSearch( data, ref totalRows );
+			//}
+			//else
+			{
 
-			////
-			//SearchServices.SetAuthorizationFilter( user, "ConceptScheme_Summary", ref where );
+				string where = "";
+				List<string> messages = new List<string>();
+				List<string> competencies = new List<string>();
+				//int userId = 0;
+				//AppUser user = AccountServices.GetCurrentUser();
+				//if ( user != null && user.Id > 0 )
+				//	userId = user.Id;
+				//only target records with a ctid
+				//21-09-14 mp - all will have ctids at this point
+				where = "";//" (len(Isnull(base.Ctid,'')) = 39) ";
 
-			//SearchServices.HandleCustomFilters( data, 60, ref where );
-			//
+				SetKeywordFilter( data.Keywords, false, ref where );
+				//SearchServices.SetLanguageFilter( data, CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, ref where );
 
-			//can this be replaced by following
-			SearchServices.SetRolesFilter( data, ref where );
+				////
+				//SearchServices.SetAuthorizationFilter( user, "ConceptScheme_Summary", ref where );
 
-			//owned/offered
-			//SearchServices.SetOrgRolesFilter( data, 3, ref where );
-			//probably N/A
-			SearchServices.SetBoundariesFilter( data, ref where );
+				//SearchServices.HandleCustomFilters( data, 60, ref where );
+				//
 
-			LoggingHelper.DoTrace( 5, "ConceptSchemeServices.Search(). Filter: " + where );
+				//can this be replaced by following
+				SearchServices.SetRolesFilter( data, ref where );
 
-			return Manager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+				//owned/offered
+				//SearchServices.SetOrgRolesFilter( data, 3, ref where );
+				//probably N/A
+				SearchServices.SetBoundariesFilter( data, ref where );
+
+				LoggingHelper.DoTrace( 5, "ConceptSchemeServices.Search(). Filter: " + where );
+
+				return Manager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			}
 		}
 
 		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
@@ -138,7 +167,7 @@ namespace workIT.Services
 				keywords = keywords.Substring( 0, keywords.IndexOf( "('" ) );
 
 			//OR base.Description like '{0}'  
-			var text = " (base.name like '{0}' OR base.Organization like '{0}' OR base.Description like '{0}' ) ";
+			var text = " (base.name like '{0}' OR base.OrganizationName like '{0}' OR base.Description like '{0}' ) ";
 
 			bool isCustomSearch = false;
 			//for ctid, needs a valid ctid or guid
@@ -178,7 +207,7 @@ namespace workIT.Services
 			keywords = ServiceHelper.HandleApostrophes( keywords );
 			if ( keywords.IndexOf( "%" ) == -1 && !isCustomSearch )
 			{
-				keywords = SearchServices.SearchifyWord( keywords );
+				keywords = SearchServices.SearchifyWord( keywords, false );
 			}
 
 			//skip url  OR base.Url like '{0}' 

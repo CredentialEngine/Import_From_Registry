@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 namespace RA.Models.JsonV2
 {
-	public class PathwaySet : JsonLDDocument
+	public class PathwaySet : BaseResourceDocument
 	{
 		public PathwaySet()
 		{

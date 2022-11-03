@@ -11,6 +11,7 @@ using EntityServices = workIT.Services.LearningOpportunityServices;
 using InputEntity = RA.Models.Json.LearningOpportunityProfile;
 
 using InputEntityV3 = RA.Models.JsonV2.LearningOpportunityProfile;
+using JsonInput = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
 using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using workIT.Factories;
@@ -52,47 +53,6 @@ namespace Import.Services
                     LoggingHelper.DoTrace( 1, string.Format( "     - (). Successfully imported pending record: {0}", item.Id ) );
             }
         }
-        /// <summary>
-        /// Retrieve an envelop from the registry and do import
-        /// </summary>
-        /// <param name="envelopeId"></param>
-        /// <param name="status"></param>
-        /// <returns></returns>
-        //public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
-        //{
-        //    //this is currently specific, assumes envelop contains a credential
-        //    //can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
-
-        //    if ( string.IsNullOrWhiteSpace( envelopeId ) )
-        //    {
-        //        status.AddError( thisClassName + ".ImportByEnvelope - a valid envelope id must be provided" );
-        //        return false;
-        //    }
-
-        //    string statusMessage = "";
-        //    EntityServices mgr = new EntityServices();
-        //    string ctdlType = "";
-        //    try
-        //    {
-        //        ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
-        //        if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-        //        {
-        //            return CustomProcessEnvelope( envelope, status );
-        //        }
-        //        else
-        //            return false;
-        //    }
-        //    catch ( Exception ex )
-        //    {
-        //        LoggingHelper.LogError( ex, thisClassName + ".ImportByEnvelopeId()" );
-        //        status.AddError( ex.Message );
-        //        if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-        //        {
-        //            status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-        //        }
-        //        return false;
-        //    }
-        //}
 
         /// <summary>
         /// Retrieve an resource from the registry by ctid and do import
@@ -136,48 +96,6 @@ namespace Import.Services
             }
         }
 
-    //    public bool ImportByResourceUrl( string resourceUrl, SaveStatus status )
-    //    {
-    //        if ( string.IsNullOrWhiteSpace( resourceUrl ) )
-    //        {
-    //            status.AddError( thisClassName + ".ImportByResourceUrl - a valid resourceUrl must be provided" );
-    //            return false;
-    //        }
-    //        //this is currently specific, assumes envelop contains an organization
-    //        //can use the hack for GetResourceType to determine the type, and then call the appropriate import method
-    //        string statusMessage = "";
-    //        EntityServices mgr = new EntityServices();
-    //        string ctdlType = "";
-    //        try
-    //        {
-    //            string payload = RegistryServices.GetResourceByUrl( resourceUrl, ref ctdlType, ref statusMessage );
-
-    //            if ( !string.IsNullOrWhiteSpace( payload ) )
-    //            {
-				//	return ImportV3( payload, status );
-				//}
-    //            else
-    //                return false;
-    //        }
-    //        catch ( Exception ex )
-    //        {
-    //            LoggingHelper.LogError( ex, thisClassName + ".ImportByResourceUrl()" );
-    //            status.AddError( ex.Message );
-    //            if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-    //            {
-    //                status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-    //            }
-    //            return false;
-    //        }
-    //    }
-    //    public bool ImportByPayload( string payload, SaveStatus status )
-    //    {
-    //        //if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-    //        //{
-				////if ( payload.IndexOf( "\"en\":" ) > 0 )
-				//return ImportV3( payload, "status );
-
-    //    }
 		#endregion
 		/// <summary>
 		/// Custom version, typically called outside a scheduled import
@@ -202,6 +120,12 @@ namespace Import.Services
             }
             return importSuccessfull;
         }
+		/// <summary>
+		/// Process a learning opportunity or its subclasses of LearningProgram, and Course
+		/// </summary>
+		/// <param name="item"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
         public bool ProcessEnvelope( ReadEnvelope item, SaveStatus status )
         {
             if ( item == null || string.IsNullOrWhiteSpace( item.EnvelopeIdentifier ) )
@@ -234,33 +158,29 @@ namespace Import.Services
 			//
 			string payload = item.DecodedResource.ToString();
             status.EnvelopeId = item.EnvelopeIdentifier;
-            string ctdlType = RegistryServices.GetResourceType( payload );
-            //string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
-			//Already done in  RegistryImport
-			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_lopp", payload, "", false );
 
-			//if ( ImportServiceHelpers.IsAGraphResource( payload ) )
-   //         {     }
-                //if ( payload.IndexOf( "\"en\":" ) > 0 )
-                    return ImportV3( payload, status );
-                //else
-                //    return ImportV2( payload, envelopeIdentifier, status );
-       
-            //else
-            //{
-            //    LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-            //    //LoggingHelper.WriteLogFile( 1, "lopp_" + item.EnvelopeIdentifier, payload, "", false );
-            //    input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
-
-            //    return Import( input, envelopeIdentifier, status );
-            //}
+            return ImportV3( item.EnvelopeCtdlType, payload, status );
         }
 
-        public bool ImportV3( string payload, SaveStatus status )
+		/// <summary>
+		/// Import a learning opportunity class or subclass.
+		/// </summary>
+		/// <param name="learningOppClass"></param>
+		/// <param name="payload"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+        public bool ImportV3( string learningOppClass, string payload, SaveStatus status )
         {
 			LoggingHelper.DoTrace( 7, thisClassName + ".ImportV3 - entered." );
 			DateTime started = DateTime.Now;
 			var saveDuration = new TimeSpan();
+			var dataSetProfiles = new List<JsonInput.QData.DataSetProfile>();
+			var outcomesDTO = new OutcomesDTO();
+			//HMMM - this will be in the payload that is deserialized to the JSON-LD input class
+			if ( string.IsNullOrWhiteSpace( learningOppClass ) )
+				learningOppClass = "LearningOpportunity";
+			learningOppClass = learningOppClass.Replace( "ceterms:", "" );
+
 
 			InputEntityV3 input = new InputEntityV3();
             var bnodes = new List<BNode>();
@@ -298,13 +218,13 @@ namespace Import.Services
             bool importSuccessfull = false;
             EntityServices mgr = new EntityServices();
             MappingHelperV3 helper = new MappingHelperV3(7);
-            helper.entityBlankNodes = bnodes;
+          
             helper.entityBlankNodes = bnodes;
             helper.CurrentEntityCTID = input.CTID;
 
             helper.CurrentEntityName = input.Name.ToString();
             string ctid = input.CTID;
-            string referencedAtId = input.CtdlId;
+            status.ResourceURL = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             //LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
             //LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
@@ -320,7 +240,30 @@ namespace Import.Services
 				{
 					//set the rowid now, so that can be referenced as needed
 					output.RowId = Guid.NewGuid();
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+					LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+
+					switch ( learningOppClass.ToLower() )
+					{
+						case "learningopportunity":
+						case "learningopportunityprofile":
+							output.LearningEntityType = "LearningOpportunity";
+							output.LearningEntityTypeId = 7;
+							break;
+						case "learningprogram":
+							output.LearningEntityType = "LearningProgram";
+							output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_PROGRAM;
+							break;
+						case "course":
+							output.LearningEntityType = "Course";
+							output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_COURSE;
+							break;
+						default:
+							messages.Add( string.Format( "CTID: {0}. Invalid value for Learning Type: '{1}. Valid values are: LearningOpportunity/LearningOpportunityProfile, LearningProgram or Course", ctid, learningOppClass ) );
+							output.LearningEntityType = "LearningOpportunity";
+							output.LearningEntityTypeId = 7;
+							break;
+					}
+					output.EntityTypeId = output.LearningEntityTypeId;
 				}
 				else
 				{
@@ -329,7 +272,8 @@ namespace Import.Services
 				helper.currentBaseObject = output;
 
 				//start with language and may use with language maps
-				helper.MapInLanguageToTextValueProfile( input.InLanguage, "LearningOpportunity.InLanguage.CTID: " + ctid );
+				output.InLanguageCodeList = helper.MapInLanguageToTextValueProfile( input.InLanguage, "LearningOpportunity.InLanguage. CTID: " + ctid );
+
 				//foreach ( var l in input.InLanguage )
 				//{
 				//	if ( !string.IsNullOrWhiteSpace( l ) )
@@ -346,56 +290,65 @@ namespace Import.Services
 
 				if ( input.InLanguage.Count > 0 )
 				{
-					//could use to alter helper.DefaultLanguage
+					helper.DefaultLanguage = input.InLanguage[0];
+				}
+				else
+				{
+					//OR set based on the first language
+					helper.SetDefaultLanguage( input.Name, "Name" );
 				}
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+				output.LearningEntityType = learningOppClass;
 
 				output.CTID = input.CTID;
 				output.CredentialRegistryId = status.EnvelopeId;
 				//TBD handling of referencing third party publisher
-				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				{
-					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-					var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-					if ( porg != null && porg.Id > 0 )
-					{
-						//TODO - store this in a json blob??????????
-						//output.PublishedByOrganizationId = porg.Id;
-						//output.PublishedByOrganizationName = porg.Name;
-						//this will result in being added to Entity.AgentRelationship
-						output.PublishedBy = new List<Guid>() { porg.RowId };
-					}
-					else
-					{
-						//if publisher not imported yet, all publishee stuff will be orphaned
-						var entityUid = Guid.NewGuid();
-						var statusMsg = "";
-						var resPos = referencedAtId.IndexOf( "/resources/" );
-						var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+				helper.MapOrganizationPublishedBy( output, ref status );
+				//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+				//{
+				//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+				//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
+				//	if ( porg != null && porg.Id > 0 )
+				//	{
+				//		//TODO - store this in a json blob??????????
+				//		output.PublishedByThirdPartyOrganizationId = porg.Id;
+				//		//output.PublishedByOrganizationName = porg.Name;
+				//		//this will result in being added to Entity.AgentRelationship
+				//		output.PublishedBy = new List<Guid>() { porg.RowId };
+				//	}
+				//	else
+				//	{
+				//		//if publisher not imported yet, all publishee stuff will be orphaned
+				//		var entityUid = Guid.NewGuid();
+				//		var statusMsg = "";
+				//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
+				//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+				//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
+				//		output.PublishedBy = new List<Guid>() { entityUid };
+				//	}
+				//}
+				//else
+				//{
+				//	//may need a check for existing published by to ensure not lost
+				//	if ( output.Id > 0 )
+				//	{
+				//		if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+				//		{
+				//			var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+				//			if ( publishedByList != null && publishedByList.Any() )
+				//			{
+				//				var pby = publishedByList[ 0 ].ActingAgentUid;
+				//				output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
 
-					}
-				}
-				else
-				{
-					//may need a check for existing published by to ensure not lost
-					if ( output.Id > 0 )
-					{
-						if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-						{
-							var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-							if ( publishedByList != null && publishedByList.Any() )
-							{
-								var pby = publishedByList[ 0 ].ActingAgentUid;
-								output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+				//			}
+				//		}
 
-							}
-						}
+				//	}
+				//}
+				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
 
-					}
-				}
 				//BYs - do owned and offered first
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.OwnedBy", input.OwnedBy, ref status );
 				output.OfferedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.OfferedBy", input.OfferedBy, ref status );
@@ -410,6 +363,11 @@ namespace Import.Services
 					if ( output.OfferedBy == null && output.OfferedBy.Count == 0 )
 					{
 						status.AddWarning( "document doesn't have an owning or offering organization." );
+					}
+					else
+					{
+						output.OwningAgentUid = output.OfferedBy[ 0 ];
+						helper.CurrentOwningAgentUid = output.OfferedBy[ 0 ];
 					}
 				}
 				output.AccreditedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.AccreditedBy", input.AccreditedBy, ref status );
@@ -430,14 +388,23 @@ namespace Import.Services
 				output.AudienceType = helper.MapCAOListToEnumermation( input.AudienceType );
 				//CAO
 				output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevelType );
-				output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
-				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
+				
 				output.CodedNotation = input.CodedNotation;
+				//=========================================
 				output.Identifier = helper.MapIdentifierValueList( input.Identifier );
-				if ( output.Identifier != null && output.Identifier.Count() > 0 )
+				output.IdentifierNew = helper.MapIdentifierValueList2( input.Identifier );
+
+				if ( output.IdentifierNew != null && output.IdentifierNew.Count() > 0 )
 				{
-					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+					output.IdentifierJSON = JsonConvert.SerializeObject( output.IdentifierNew, MappingHelperV3.GetJsonSettings() );
 				}
+				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
+				output.VersionIdentifierNew = helper.MapIdentifierValueList2( input.VersionIdentifier );
+				if ( output.VersionIdentifierNew != null && output.VersionIdentifierNew.Count() > 0 )
+				{
+					output.VersionIdentifierJSON = JsonConvert.SerializeObject( output.VersionIdentifierNew, MappingHelperV3.GetJsonSettings() );
+				}
+				//
 				//handle QuantitativeValue
 				//output.CreditValue = helper.HandleQuantitiveValue( input.CreditValue, "LearningOpportunity.CreditValue" );
 				//output.QVCreditValueList = helper.HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue" );
@@ -451,22 +418,25 @@ namespace Import.Services
 				output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "LearningOpportunity.CreditUnitTypeDescription" );
 
 
+				//only true should be published. Ensure the save only saves True
+				output.IsNonCredit = input.IsNonCredit;
+
 				//occupations
 				//output.Occupation = helper.MapCAOListToEnumermation( input.OccupationType );
 				//actually used by import
-				output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+				output.OccupationTypes = helper.MapCAOListToCAOProfileList( input.OccupationType );
 				//just append alternative items. Ensure empty lists are ignored
 				//output.Occupations.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeOccupationType ) );
 
 				//skip if no occupations
-				if ( output.Occupations.Count() == 0
+				if ( output.OccupationTypes.Count() == 0
 					&& UtilityManager.GetAppKeyValue( "skipCredImportIfNoOccupations", false ) )
 				{
 					//LoggingHelper.DoTrace( 2, string.Format( "		***Skipping lopp# {0}, {1} as it has no occupations and this is a special run.", output.Id, output.Name ) );
 					//return true;
 				}
 				//Industries
-				output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
+				output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
 				//output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
 				//naics
 				//output.Naics = input.Naics;
@@ -495,6 +465,8 @@ namespace Import.Services
 				if ( output.FinancialAssistance != null && output.FinancialAssistance.Any() )
 					output.FinancialAssistanceJson = JsonConvert.SerializeObject( output.FinancialAssistance, MappingHelperV3.GetJsonSettings() );
 				//
+				output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status );
+				//
 				output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
 
 				//***EstimatedCost
@@ -522,9 +494,8 @@ namespace Import.Services
 				//SameAs URI
 				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
 
-				//TODO - develope entity for IdentitifierValue
-				output.VersionIdentifier = helper.MapIdentifierValueListToString( input.VersionIdentifier );
-				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
+				output.SCED = input.SCED;
+
 				//
 				//21-04-13 mp - TargetLearningResource will be URLs not registry resources
 				if ( input.TargetLearningResource != null && input.TargetLearningResource.Count > 0 )
@@ -536,13 +507,14 @@ namespace Import.Services
 				if ( input.TargetPathway != null && input.TargetPathway.Count > 0 )
 					output.TargetPathwayIds = helper.MapEntityReferences( "LearningOpportunity.TargetPathway", input.TargetPathway, CodesManager.ENTITY_TYPE_PATHWAY, ref status );
 				//teaches compentencies
-				output.TeachesCompetencies = helper.MapCAOListToCAOProfileList( input.Teaches );
+				output.TeachesCompetencies = helper.MapCAOListToCAOProfileList( input.Teaches, true );
 				if ( output.TeachesCompetencies.Count() == 0 && UtilityManager.GetAppKeyValue( "skipLoppImportIfNoCompetencies", false ) )
 				{
 					//skip
 					LoggingHelper.DoTrace( 2, string.Format( "		***Skipping lopp# {0}, {1} as it has no competencies and this is a special run.", output.Id, output.Name ) );
 					return true;
 				}
+				//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 				//common conditions
 				output.ConditionManifestIds = helper.MapEntityReferences( input.CommonConditions, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
@@ -558,9 +530,11 @@ namespace Import.Services
 				output.ApprovedIn = helper.MapToJurisdiction( input.ApprovedIn, ref status );
 				output.RecognizedIn = helper.MapToJurisdiction( input.RecognizedIn, ref status );
 				output.RegulatedIn = helper.MapToJurisdiction( input.RegulatedIn, ref status );
+				//TODO - do we need to specify Course here?
+				//output.LearningEntityTypeId, The prereq must be a course, so use LearningEntityTypeId
+				//output.PrerequisiteIds = helper.MapEntityReferences( input.Prerequisite, output.LearningEntityTypeId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
-
-				//var hasPartIds = input.HasPart.Select( x => x.CtdlId ).ToList();
+				//we don't know the actual type of the part, so stay generic
 				output.HasPartIds = helper.MapEntityReferences( input.HasPart, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
 				//var isPartIds = input.IsPartOf.Select( x => x.CtdlId ).ToList();
@@ -598,7 +572,7 @@ namespace Import.Services
 					importSuccessfull = false;
 
 				//if record was added to db, add to/or set EntityResolution as resolved
-				int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 							ctid, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE,
 							output.RowId,
 							output.Id,

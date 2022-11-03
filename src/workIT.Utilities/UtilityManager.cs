@@ -584,12 +584,25 @@ namespace workIT.Utilities
 
 			return value;
 		}//
+        public static string ExtractDelimitedValue( string sourceString, string beginDelimiter = "(", string endDelimiter = ")" )
+        {
+            int pos = sourceString.IndexOf( beginDelimiter );
 
-		#endregion
+            if ( pos == -1 )
+                return "";
 
-		#region HTTP Request Helpers
+            string value = sourceString.Substring( pos + 1 );
+            int pos2 = value.IndexOf( endDelimiter );
+            if ( pos2 > -1 )
+                value = value.Substring( 0, pos2 );
 
-		public static URLResult GetHttpData( string url, bool getFromCacheIfPossible = true, bool addToCache = true, int cacheMinutes = 30 )
+            return value.Trim();
+        }//
+        #endregion
+
+        #region HTTP Request Helpers
+
+        public static URLResult GetHttpData( string url, bool getFromCacheIfPossible = true, bool addToCache = true, int cacheMinutes = 30 )
 		{
 			var data = ( URLResult ) MemoryCache.Default[ url ];
 			if ( data == null || !getFromCacheIfPossible )

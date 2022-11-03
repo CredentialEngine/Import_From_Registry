@@ -34,11 +34,14 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string CTID { get; set; }
 
+		//22-05-11 mp - noticed that name and description were not language maps.
+		//				- while need to start using language maps, will likely need a notification. Or use an object?
+		//				- actually this OK, as they get converted to language maps in blank nodes
 		[JsonProperty( "ceterms:name" )]
-		public string Name { get; set; }
+		public LanguageMap Name { get; set; }
 
 		[JsonProperty( "ceterms:description" )]
-		public string Description { get; set; }
+		public LanguageMap Description { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; }

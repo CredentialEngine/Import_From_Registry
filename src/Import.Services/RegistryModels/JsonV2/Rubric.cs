@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	public class Rubric
+	public class Rubric : BaseResourceDocument
 	{
 		public Rubric()
 		{
@@ -96,6 +96,15 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( "dcterms:description" )]
 		public LanguageMap Description { get; set; }
+
+		[JsonProperty( "dcterms:Language" )]
+		public List<string> Language { get; set; }
+
+		/// <summary>
+		/// Numeric value representing the resource's position in a list (array) of resources.
+		/// </summary>
+		[JsonProperty( "asn:sequence" )]
+		public int Sequence { get; set; }
 
 		/// <summary>
 		/// A name given to the resource.

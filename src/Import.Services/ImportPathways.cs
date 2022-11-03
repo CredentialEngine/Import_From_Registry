@@ -28,49 +28,6 @@ namespace Import.Services
 		ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-
-		/// <summary>
-		/// Retrieve an envelop from the registry and do import
-		/// </summary>
-		/// <param name="envelopeId"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
-		{
-			//this is currently specific, assumes envelop contains a credential
-			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
-
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-			{
-				status.AddError( thisClassName + ".ImportByEnvelope - a valid envelope id must be provided" );
-				return false;
-			}
-
-			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
-				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-				{
-					return CustomProcessEnvelope( envelope, status );
-				}
-				else
-					return false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportByEnvelopeId()" );
-				status.AddError( ex.Message );
-				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-				{
-					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-				}
-				return false;
-			}
-		}
-
 		/// <summary>
 		/// Retrieve an resource from the registry by ctid and do import
 		/// </summary>
@@ -170,12 +127,12 @@ namespace Import.Services
 			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_Pathway", payload, "", false );
 
 			//just store input for now
-			return Import( payload, envelopeIdentifier, status );
+			return Import( payload, status );
 
 			//return true;
 		} //
 
-		public bool Import( string payload, string envelopeIdentifier, SaveStatus status )
+		public bool Import( string payload, SaveStatus status )
 		{
 			LoggingHelper.DoTrace( 6, "ImportPathways - entered." );
 			List<string> messages = new List<string>();
@@ -235,11 +192,11 @@ namespace Import.Services
 			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
 
-			status.EnvelopeId = envelopeIdentifier;
+			//status.EnvelopeId = envelopeIdentifier;
 			try
 			{
 				string ctid = input.CTID;
-				string referencedAtId = input.CtdlId;
+				status.ResourceURL = input.CtdlId;
 
 				LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
 				LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
@@ -257,7 +214,7 @@ namespace Import.Services
 
 					//set the rowid now, so that can be referenced as needed
 					output.RowId = Guid.NewGuid();
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+					LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
 				}
 				else
 				{
@@ -277,6 +234,8 @@ namespace Import.Services
 					if ( porg != null && porg.Id > 0 )
 					{
 						//TODO - store this in a json blob??????????
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
+
 						//this will result in being added to Entity.AgentRelationship
 						output.PublishedBy = new List<Guid>() { porg.RowId };
 					}
@@ -285,9 +244,12 @@ namespace Import.Services
 						//if publisher not imported yet, all publishee stuff will be orphaned
 						var entityUid = Guid.NewGuid();
 						var statusMsg = "";
-						var resPos = referencedAtId.IndexOf( "/resources/" );
-						var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+						var resPos = status.ResourceURL.IndexOf( "/resources/" );
+						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
+
+						output.PublishedBy = new List<Guid>() { entityUid };
 					}
 				}
 				else
@@ -307,7 +269,7 @@ namespace Import.Services
 					}
 				}
 				//warning this gets set to blank if doing a manual import by ctid
-				output.CredentialRegistryId = envelopeIdentifier;
+				//output.CredentialRegistryId = envelopeIdentifier;
 
 				//BYs - do owned and offered first
 				output.OfferedBy = helper.MapOrganizationReferenceGuids( "Pathway.OfferedBy", input.OfferedBy, ref status );
@@ -325,17 +287,22 @@ namespace Import.Services
 					{
 						status.AddWarning( "document doesn't have an owning or offering organization." );
 					}
+					else
+					{
+						output.OwningAgentUid = output.OfferedBy[ 0 ];
+						helper.CurrentOwningAgentUid = output.OfferedBy[ 0 ];
+					}
 				}
 				//hasPart could contain all components. The API should have done a validation
 				//not clear if necessary to do anything here
 				//this would be a first step to create pending records?
 				if ( input.HasPart != null && input.HasPart.Count() > 0 )
 				{
-					output.HasPartList = helper.MapEntityReferenceGuids( "Pathway.HasPart", input.HasPart, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+					output.HasPartList = helper.MapEntityReferenceGuids( "Pathway.HasPart", input.HasPart, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.CTID );
 				}
 				//
-				output.HasChildList = helper.MapEntityReferenceGuids( "Pathway.HasChild", input.HasChild, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
-				output.HasDestinationList = helper.MapEntityReferenceGuids( "Pathway.HasDestination", input.HasDestinationComponent, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+				output.HasChildList = helper.MapEntityReferenceGuids( "Pathway.HasChild", input.HasChild, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.CTID );
+				output.HasDestinationList = helper.MapEntityReferenceGuids( "Pathway.HasDestination", input.HasDestinationComponent, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.CTID );
 
 				//has progression model
 				//TODO - IMPORT CONCEPT SCHEMES
@@ -345,8 +312,9 @@ namespace Import.Services
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 				output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 				//Industries/occupations
-				output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
-				output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+				output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
+				output.OccupationTypes = helper.MapCAOListToCAOProfileList( input.OccupationType );
+				//output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
 
 				//may need to save the pathway and then handle components
 				//or do a create pending for hasDestination and any hasChild (actually already done by MapEntityReferenceGuids)
@@ -368,7 +336,7 @@ namespace Import.Services
 				status.DetailPageUrl = string.Format( "~/pathway/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
 				//if record was added to db, add to/or set EntityResolution as resolved
-				int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 						ctid,
 						CodesManager.ENTITY_TYPE_PATHWAY,
 						output.RowId,
@@ -395,7 +363,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Pathway Import exception" );
+				LoggingHelper.LogError( ex, string.Format( "Exception encountered in CTID: {0}", input.CTID ), false, "Pathway Import exception" );
 			}
 
 			return importSuccessfull;
@@ -450,17 +418,19 @@ namespace Import.Services
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.SourceData = input.SourceData;
 
+				//we are assuming SourceData is single, can it be a list?
 				if ( !string.IsNullOrWhiteSpace( output.SourceData ) && output.SourceData.IndexOf( "/resources/" ) > 0 )
 				{
 					var ctid = ResolutionServices.ExtractCtid( output.SourceData );
 					if ( !string.IsNullOrWhiteSpace( ctid ) )
 					{
-						if ( output.PathwayComponentType.ToLower().IndexOf( "credential" ) > -1 )
+						if ( output.PathwayComponentType.ToLower().IndexOf( "credentialcomp" ) > -1 )
 						{
 							var target = CredentialManager.GetMinimumByCtid( ctid );
 							if ( target != null && target.Id > 0 )
 							{
 								//this approach 'buries' the cred from external references like credential in pathway
+								//21-07-22 mparsons - OK, the database manager creates the Entity.Credential relationships as needed
 								output.SourceCredential = new TopLevelEntityReference()
 								{
 									Id = target.Id,
@@ -479,6 +449,7 @@ namespace Import.Services
 							if ( target != null && target.Id > 0 )
 							{
 								//may not really need this, just the json
+								//OK, the database manager creates the Entity.Assessment relationships as needed
 								output.SourceAssessment = new TopLevelEntityReference()
 								{
 									Id = target.Id,
@@ -496,7 +467,7 @@ namespace Import.Services
 							var target = LearningOpportunityManager.GetByCtid( ctid );
 							if ( target != null && target.Id > 0 )
 							{
-								//may not really need this, just the json
+								//21-07-22 mparsons - OK, the database manager creates the Entity.LearningOpp relationships as needed
 								output.SourceLearningOpportunity = new TopLevelEntityReference()
 								{
 									Id = target.Id,
@@ -507,6 +478,25 @@ namespace Import.Services
 									//RowId = target.RowId
 								};
 								output.JsonProperties.SourceLearningOpportunity = output.SourceLearningOpportunity;
+							}
+						}
+						else if ( output.PathwayComponentType.ToLower().IndexOf( "competencycomponent" ) > -1 )
+						{
+							//TODO
+							var target = CompetencyFrameworkCompetencyManager.GetByCtid( ctid );
+							if ( target != null && target.Id > 0 )
+							{
+								//21-07-22 mparsons - add handling for a competency
+								output.SourceCompetency = new TopLevelEntityReference()
+								{
+									Id = target.Id,
+									Name = target.CompetencyText,
+									Description = "",
+									CTID = target.CTID,
+									SubjectWebpage = "",
+									//RowId = target.RowId
+								};
+								output.JsonProperties.SourceCompetency = output.SourceCompetency;
 							}
 						}
 					}
@@ -546,12 +536,12 @@ namespace Import.Services
 				output.ProgramTerm = helper.HandleLanguageMap( input.ProgramTerm, output, "ProgramTerm" );
 				//need to get relationshiptype to store-> this can be done by manager
 				//3
-				output.HasChildList = helper.MapEntityReferenceGuids( "PathwayComponent.HasChild", input.HasChild, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+				output.HasChildList = helper.MapEntityReferenceGuids( "PathwayComponent.HasChild", input.HasChild, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.PathwayCTID );
 				//2
-				output.HasIsChildOfList = helper.MapEntityReferenceGuids( "PathwayComponent.IsChildOf", input.IsChildOf, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+				output.HasIsChildOfList = helper.MapEntityReferenceGuids( "PathwayComponent.IsChildOf", input.IsChildOf, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.PathwayCTID );
 
-				output.HasPrerequisiteList = helper.MapEntityReferenceGuids( "PathwayComponent.Prerequisite", input.Prerequisite, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
-				output.HasPreceedsList = helper.MapEntityReferenceGuids( "PathwayComponent.Preceeds", input.Preceeds, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+				output.HasPrerequisiteList = helper.MapEntityReferenceGuids( "PathwayComponent.Prerequisite", input.Prerequisite, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.PathwayCTID );
+				output.HasPrecedesList = helper.MapEntityReferenceGuids( "PathwayComponent.Precedes", input.Precedes, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.PathwayCTID );
 
 				//populate JSON properties
 				output.JsonProperties.ComponentDesignationList = output.ComponentDesignationList;
@@ -571,7 +561,7 @@ namespace Import.Services
 						cc.Description = helper.HandleLanguageMap( item.Description, cc, "ComponentCondition.Description" );
 						cc.RequiredNumber = item.RequiredNumber;
 						cc.PathwayCTID = pathway.CTID;
-						cc.HasTargetComponentList = helper.MapEntityReferenceGuids( "ComponentCondition.TargetComponent", item.TargetComponent, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status );
+						cc.HasTargetComponentList = helper.MapEntityReferenceGuids( "ComponentCondition.TargetComponent", item.TargetComponent, CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, ref status, output.PathwayCTID );
 
 						output.HasCondition.Add( cc );
 					}

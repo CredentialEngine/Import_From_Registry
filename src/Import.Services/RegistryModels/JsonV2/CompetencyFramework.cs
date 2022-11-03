@@ -57,8 +57,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:altIdentifier" )]
 		public List<string> altIdentifier { get; set; }
 
-		[JsonProperty( "@author" )]
-		public List<string> author { get; set; }
+		[JsonProperty( "ceasn:author" )]
+		public string author { get; set; }
+		//public List<string> author { get; set; }
 
 
 		[JsonProperty( "ceasn:conceptKeyword" )]
@@ -75,16 +76,28 @@ namespace RA.Models.JsonV2
 
 		/// <summary>
 		/// Only allow date (yyyy-mm-dd), no time
+		/// xsd:date
 		/// </summary>
 		[JsonProperty( "ceasn:dateCreated" )]
 		public string dateCreated { get; set; }
 
+		/// <summary>
+		/// Originally only allowing date (yyyy-mm-dd), no time. 
+		/// However, this is defined as: xsd:dateTime. So consumers like the credential registry search, expect a datetime format.
+		/// </summary>
+
 		[JsonProperty( "ceasn:dateModified" )]
 		public string dateModified { get; set; }
 
+		/// <summary>
+		/// xsd:dateTime
+		/// </summary>
 		[JsonProperty( "ceasn:dateValidFrom" )]
 		public string dateValidFrom { get; set; }
 
+		/// <summary>
+		/// xsd:dateTime
+		/// </summary>
 		[JsonProperty( "ceasn:dateValidUntil" )]
 		public string dateValidUntil { get; set; }
 
@@ -94,10 +107,10 @@ namespace RA.Models.JsonV2
 
 		//???language map??
 		[JsonProperty( "ceasn:description" )]
-		public LanguageMap description { get; set; } 
+		public LanguageMap description { get; set; }
 
-		[JsonProperty("ceasn:educationLevelType" )]
-		public List<string> educationLevelType { get; set; } 
+		[JsonProperty( "ceasn:educationLevelType" )]
+		public List<string> educationLevelType { get; set; }
 
 		/// <summary>
 		/// Top-level child competency of a competency framework.
@@ -121,7 +134,8 @@ namespace RA.Models.JsonV2
 		public LanguageMap name { get; set; } = new LanguageMap();
 
 		[JsonProperty("ceasn:publicationStatusType" )]
-		public string publicationStatusType { get; set; }//
+		public string publicationStatusType { get; set; }
+		//
 		[JsonProperty( "ceasn:publisher" )]
 		public List<string> publisher { get; set; } 
 
@@ -157,8 +171,10 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; }
 		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
-		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
+		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } 
 
+
+		//*** Helper properties where publishing input is a graph. These will not be published
 		/// <summary>
 		/// CIP List is a helper when publishing from a graph. It will not be published
 		/// </summary>
@@ -205,14 +221,14 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:altIdentifier" )]
 		public List<string> altIdentifier { get; set; }
 
-		[JsonProperty( "@author" )]
-		public List<string> author { get; set; }
+        //[JsonProperty( "ceasn:author" )]
+        //public List<string> author { get; set; }
 
 
-		[JsonProperty( "ceasn:conceptKeyword" )]
-		public List<string> conceptKeyword { get; set; } = new List<string>();
+        [JsonProperty( "ceasn:conceptKeyword" )]
+        public List<string> conceptKeyword { get; set; } = new List<string>();
 
-		[JsonProperty( "ceasn:conceptTerm" )]
+        [JsonProperty( "ceasn:conceptTerm" )]
 		public List<string> conceptTerm { get; set; } = new List<string>();
 
 		[JsonProperty( "ceasn:creator" )]

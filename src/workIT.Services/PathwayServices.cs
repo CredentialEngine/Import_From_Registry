@@ -61,7 +61,7 @@ namespace workIT.Services
 				else
 				{
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -145,7 +145,7 @@ namespace workIT.Services
 
 					ReplacePathwayComponentRelationships( cntr, component.RowId, item.HasPrerequisiteList, pathway, PathwayComponent.PathwayComponentRelationship_Prerequiste, "PathwayComponent.Prerequisite", ref status );
 					//
-					ReplacePathwayComponentRelationships( cntr, component.RowId, item.HasPreceedsList, pathway, PathwayComponent.PathwayComponentRelationship_Preceeds, "PathwayComponent.Preceeds", ref status );
+					ReplacePathwayComponentRelationships( cntr, component.RowId, item.HasPrecedesList, pathway, PathwayComponent.PathwayComponentRelationship_Precedes, "PathwayComponent.Precedes", ref status );
 
 				}
 
@@ -327,6 +327,14 @@ namespace workIT.Services
 
 			return GetDetail( record.Id, skippingCache );
 		}
+		//
+
+		//public static string GetCTIDFromID( int id )
+		//{
+		//	return EntityMgr.GetCTIDFromID( id );
+		//}
+		//
+
 		public static ThisEntity GetBasic( int id )
 		{
 			ThisEntity entity = EntityMgr.GetBasic( id );
@@ -516,7 +524,7 @@ namespace workIT.Services
 				else
 				{
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -555,43 +563,15 @@ namespace workIT.Services
 			return entity;
 		}
 
-		public static List<PathwaySetSummary> PathwaySetSearch( MainSearchInput data, ref int pTotalRows )
+		public static List<CommonSearchSummary> PathwaySetSearch( MainSearchInput data, ref int pTotalRows )
 		{
-			//if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
-			//{
-			//	return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
-			//}
-			//else
-			{
-				//var results = new List<CommonSearchSummary>();
-				var list = DoPathwaySetSearch( data, ref pTotalRows );
-				//foreach ( var item in list )
-				//{
-				//	results.Add( new CommonSearchSummary()
-				//	{
-				//		Id = item.Id,
-				//		Name = item.Name,
-				//		Description = item.Description,
-				//		SubjectWebpage = item.SubjectWebpage,
-				//		PrimaryOrganizationName = item.PrimaryOrganizationName,
-				//		CTID = item.CTID,
-				//		EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET,
-				//		EntityType = "PathwaySet"
-				//	} );
-				//}
-				return list;
-			}
-
-		}//
-		public static List<CommonSearchSummary> PathwaySetSearch2( MainSearchInput data, ref int pTotalRows )
-		{
-			if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
-			{
-				return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
-			}
-			else
-			{
-				List<CommonSearchSummary> results = new List<CommonSearchSummary>();
+            if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
+            {
+                return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
+            }
+            else
+            {
+				var results = new List<CommonSearchSummary>();
 				var list = DoPathwaySetSearch( data, ref pTotalRows );
 				foreach ( var item in list )
 				{
@@ -611,6 +591,7 @@ namespace workIT.Services
 			}
 
 		}//
+
 		public static List<PathwaySetSummary> DoPathwaySetSearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";

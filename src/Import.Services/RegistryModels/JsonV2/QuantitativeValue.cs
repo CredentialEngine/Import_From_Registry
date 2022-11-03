@@ -12,6 +12,8 @@ namespace RA.Models.JsonV2
 		public QuantitativeValue()
 		{
 			Type = "schema:QuantitativeValue";
+			Value = null;
+			Percentage = null;
 		}
 		[JsonProperty( "@type" )]
 		public string Type { get; set; }
@@ -20,7 +22,7 @@ namespace RA.Models.JsonV2
 		public CredentialAlignmentObject UnitText { get; set; }
 
 		[JsonProperty( "schema:value" )]
-		public decimal Value { get; set; }
+		public decimal? Value { get; set; }
 
 
 		/// <summary>
@@ -42,7 +44,7 @@ namespace RA.Models.JsonV2
 		/// qdata:percentage
 		/// </summary>
 		[JsonProperty( "qdata:percentage" )]
-		public decimal Percentage { get; set; }
+		public decimal? Percentage { get; set; }
 
 		[JsonProperty( "schema:description" )]
 		public LanguageMap Description { get; set; }

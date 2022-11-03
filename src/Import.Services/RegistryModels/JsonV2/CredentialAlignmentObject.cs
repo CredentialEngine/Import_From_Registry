@@ -14,6 +14,9 @@ namespace RA.Models.JsonV2
 	/// </summary>
 	public class CredentialAlignmentObject
     {
+        /// <summary>
+        /// constructor
+        /// </summary>
         public CredentialAlignmentObject()
         {
             Type = "ceterms:CredentialAlignmentObject";
@@ -31,6 +34,11 @@ namespace RA.Models.JsonV2
         [JsonProperty( "@type" )]
         public string Type { get; set; }
 
+        /// <summary>
+        /// An identifier for use with blank nodes, to minimize duplicates
+        /// </summary>
+        [JsonProperty( "@id" )]
+        public string BNodeId { get; set; }
 
         /// <summary>
         /// Alignment Date

@@ -38,7 +38,7 @@ namespace RA.Models.JsonV2
 		//public List<string> ContactOption { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:faxNumber" )]
-		public List<string> FaxNumber { get; set; } = new List<string>();
+		public List<string> FaxNumber { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:email" )]
 		public List<string> Emails { get; set; }

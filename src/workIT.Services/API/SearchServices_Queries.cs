@@ -15,18 +15,21 @@ namespace workIT.Services.API
 	public partial class SearchServices
 	{
 		//TODO: Update this to accept a debug JObject
-		public static MainSearchInput TranslateMainQueryToMainSearchInput( MainQuery query )
+		public static MainSearchInput TranslateMainQueryToMainSearchInput( MainQuery query, JObject debug = null )
 		{
 			var translated = new MainSearchInput();
+			debug = debug ?? new JObject();
 
 			translated.SearchType = query.SearchType;
+			//translated.AutoCompleteContext = query.AutocompleteContext;
 			translated.Keywords = query.Keywords;
 			translated.StartPage = query.SkipPages + 1;
 			translated.PageSize = query.PageSize;
 			translated.SortOrder = TranslateMainQuerySortOrderToMainSearchInputSortOrder( query.SortOrder );
-			translated.FiltersV2 = TranslateMainQueryFiltersToMainSearchInputFilters( query.MainFilters, query.MapFilter );
+			translated.FiltersV2 = TranslateMainQueryFiltersToMainSearchInputFilters( query.MainFilters, query.MapFilter, query.SearchType, debug );
+			translated.AutocompleteContext = query.AutocompleteContext;
 
-			translated.WidgetId = query.WidgetFilter?.WidgetId ?? 0;
+			//translated.WidgetId = query.WidgetId;
 			//translated.MustHaveWidget = ? //TBD
 			//translated.MustNotHaveWidget = ? //TBD
 
@@ -46,96 +49,174 @@ namespace workIT.Services.API
 
 		public static string TranslateMainQuerySortOrderToMainSearchInputSortOrder( string mainQuerySortOrder )
 		{
-			switch ( mainQuerySortOrder ?? "" )
-			{
-				case "sortOrder:MostRelevant": return "relevance";
-				case "sortOrder:Newest": return "newest";
-				case "sortOrder:AtoZ": return "alpha";
-				case "sortOrder:Oldest": return "oldest";
-				case "sortOrder:ZtoA": return "zalpha"; //Z to A is not supported
-				default: return "relevance";
-			}
+			mainQuerySortOrder = mainQuerySortOrder ?? "";
+			return MainQuerySortOrderToMainSearchInputSortOrder.FirstOrDefault( m => m.NewValue == mainQuerySortOrder )?.OldValue ?? "relevance";
 		}
 		//
 
-		public static string TranslateMainQueryFilterURIToMainSearchInputFilterName( string mainFilterURI )
+		public static string TranslateMainQueryFilterURIToMainSearchInputFilterName( string mainFilterURI, string searchType )
 		{
-			switch( mainFilterURI ?? "" )
-			{
-				case "filter:CredentialType": return "credentialtypes";
-				case "filter:Custom_DateRange": return "history";
-				case "filter:Custom_OrganizationRoles": return "organizationroles";
-				case "filter:Custom_QualityAssurance": return "qualityassurance";
-				default: return ( mainFilterURI ?? "" ).Replace( "originalFilterName:", "" );
-			}
+			mainFilterURI = mainFilterURI ?? "";
+			return MainQueryFilterURIToSearchInputFilterName.Where( m => m.SearchType == searchType.ToLower() || m.SearchType == null ).FirstOrDefault( m => m.NewValue == mainFilterURI )?.OldValue ?? mainFilterURI.Replace( "originalFilterName:", "" );
 		}
 		//
 
-		public static List<MainSearchFilterV2> TranslateMainQueryFiltersToMainSearchInputFilters( List<Filter> mainFilters, MapFilter mapFilter )
+		public static List<MainSearchFilterV2> TranslateMainQueryFiltersToMainSearchInputFilters( List<Filter> mainFilters, MapFilter mapFilter, string searchType, JObject debug = null )
 		{
 			mainFilters = mainFilters ?? new List<Filter>();
 			var translated = new List<MainSearchFilterV2>();
+			debug = debug ?? new JObject();
 			
 			//Expand each MainFilter out into its Filters and merge their data into a list of MainSearchFilterV2
 			foreach( var mainFilter in mainFilters )
 			{
 				//Handle "CUSTOM" filters
-				if( mainFilter.Parameters != null )
+				if( mainFilter.Parameters != null && mainFilter.Parameters.Properties().Count() > 0 )
 				{
 					var translatedItem = new MainSearchFilterV2();
 					translatedItem.Type = MainSearchFilterV2Types.CUSTOM;
-					translatedItem.Values = TranslateJObjectToDictionaryStringObject( mainFilter.Parameters );
-					translatedItem.Name = new List<string>()
+					translatedItem.Name = mainFilter.Parameters[ "n" ]?.ToString() ?? "";
+					switch ( translatedItem.Name )
 					{
-						TranslateMainQueryFilterURIToMainSearchInputFilterName( translatedItem.Values.ContainsKey("n") ? (string) translatedItem.Values["n"] : "" ),
-						TranslateMainQueryFilterURIToMainSearchInputFilterName( mainFilter.URI ),
-						TranslateMainQueryFilterURIToMainSearchInputFilterName( mainFilter.Id.ToString() )
-					}.FirstOrDefault( m => m.Length > 0 );
+						case "organizationroles": //Seems to be the only custom filter?
+						if( searchType == "competencyframework" )
+						{
+							//Get the data
+							var agentID = int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" );
+							var relationshipIDs = ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList();
+							
+							//Lookup the agent ID
+							var agentCTID = OrganizationServices.GetForSummary( agentID )?.CTID ?? "";
+							if ( string.IsNullOrWhiteSpace( agentCTID ) )
+							{
+								break;
+							}
+
+							//Hack - Assume that 6 and/or 7 represents an owns/offers relationship
+							//Additional Hack - CTDL-ASN doesn't have/use ownedBy or offeredBy, it uses publisher/creator, and those connections are reversed compared to CTDL anyway
+							//So assume that if 6 and/or 7 are present, we want to do a reverse publisher/creator lookup
+							if( relationshipIDs.Contains(6) || relationshipIDs.Contains( 7 ) )
+							{
+								translatedItem.TranslationHelper = new JObject()
+								{
+									{ "> ceasn:publisher > ceterms:ctid", agentCTID },
+									{ "> ceasn:creator > ceterms:ctid", agentCTID }
+								};
+							}
+						}
+						else
+						{
+							/* Doing this the right way breaks code later on that is expecting it to be done the wrong way
+							translatedItem.Values = new Dictionary<string, object>()
+							{
+								{ "AgentId", int.Parse( mainFilter.Parameters["aid"]?.ToString() ?? "0" ) },
+								{ "RelationshipId", ( (JArray) mainFilter.Parameters["rid"] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() }
+							};
+							*/
+							//So hack in the wrong conversion behavior to make the code later on work as expected
+							translatedItem.Values = new Dictionary<string, object>();
+							translatedItem.Values.Add( "AgentId", int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" ) );
+							var counter = 0;
+							foreach ( var id in ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() )
+							{
+								translatedItem.Values.Add( "RelationshipId[" + counter + "]", id );
+								counter++;
+							}
+						}
+						break;
+
+						case "potentialresults":
+						{
+							translatedItem.CustomJSON = ( ( JArray ) mainFilter.Parameters[ "ids" ] )?.ToString( Formatting.None );
+						}
+						break;
+
+						default:
+						translatedItem.Values = TranslateJObjectToDictionaryStringObject( mainFilter.Parameters );
+						break;
+					}
 					translated.Add( translatedItem );
 				}
 				//Handle all the other kinds of filters
 				else
 				{
+					//Hacky duct tape Badge behavior
+					if ( mainFilter.Items.Any( m => m.URI == "ceterms:Badge" ) )
+					{
+						var filters = ConvertEnumeration( "Credential Type", "credentialType", new EnumerationServices().GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, true, true  ) );
+						mainFilter.Items.Add( filters.Items.FirstOrDefault( m => m.URI == "ceterms:DigitalBadge" ) );
+						mainFilter.Items.Add( filters.Items.FirstOrDefault( m => m.URI == "ceterms:OpenBadge" ) );
+					}
+
+					//Process filters
 					foreach ( var filterItem in mainFilter.Items )
 					{
 						var translatedItem = new MainSearchFilterV2();
-						switch ( filterItem.InterfaceType )
+						if ( filterItem != null )
 						{
-							case "interfaceType:CheckBox": translatedItem.Type = MainSearchFilterV2Types.CODE; break;
-							case "interfaceType:Text": translatedItem.Type = MainSearchFilterV2Types.TEXT; break;
-							//Note: Date range filters would (apparently?) use the default of "CODE" since there is no "DATE" in MainSearchFilterV2Types
-							default: break;
-						}
-
-						translatedItem.Name = TranslateMainQueryFilterURIToMainSearchInputFilterName( mainFilter.URI );
-
-						translatedItem.Values = new Dictionary<string, object>();
-						if( mainFilter.Id > 0 )
-						{
-							translatedItem.Values.Add( "CategoryId", mainFilter.Id );
-						}
-						if( filterItem.Id > 0 )
-						{
-							translatedItem.Values.Add( "CodeId", filterItem.Id );
-							translatedItem.Values.Add( "CodeText", filterItem.Id.ToString() );
-						}
-						if ( !string.IsNullOrWhiteSpace( filterItem.Text ) )
-						{
-							translatedItem.Values.Add( "TextValue", filterItem.Text );
-						}
-						if ( !string.IsNullOrWhiteSpace( filterItem.URI ) )
-						{
-							if( mainFilter.URI == "filter:Custom_DateRange" ) //Kind of a kludge, but only the date range filters use PropertyName instead of SchemaName
+							//Bypass conversion for widget locationset filter
+							if ( filterItem.Type?.ToLower() == "locationset" || filterItem.URI?.ToLower() == "locationset" )
 							{
-								translatedItem.Values.Add( "PropertyName", filterItem.URI.Replace( "originalFilterItemName:", "" ) );
+								//Not sure which of these is correct
+								translated.Add( new MainSearchFilterV2()
+								{
+									Name = "LOCATIONSET",
+									Type = MainSearchFilterV2Types.CODE,
+									Values = filterItem.Values
+								} );
+
+								translated.Add( new MainSearchFilterV2()
+								{
+									Name = "bounds",
+									Type = MainSearchFilterV2Types.MAP,
+									Map_PositionType = "positionType:In",
+									Map_Country = filterItem.Values.ContainsKey( "Countries" ) ? string.Join( ", ", ( ( JArray ) filterItem.Values[ "Countries" ] )?.Select( m => m?.ToString() ).Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList() ) : null,
+									Map_Region = filterItem.Values.ContainsKey( "Regions" ) ? string.Join( ", ", ( ( JArray ) filterItem.Values[ "Regions" ] )?.Select( m => m?.ToString() ).Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList() ) : null,
+									Map_Locality = filterItem.Values.ContainsKey( "Cities" ) ? string.Join( ", ", ( ( JArray ) filterItem.Values[ "Cities" ] )?.Select( m => m?.ToString() ).Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList() ) : null
+								} );
 							}
+							//Handle other filters
 							else
 							{
-								translatedItem.Values.Add( "SchemaName", filterItem.URI );
+								switch ( filterItem.InterfaceType )
+								{
+									case "interfaceType:CheckBox": translatedItem.Type = MainSearchFilterV2Types.CODE; break;
+									case "interfaceType:Text": translatedItem.Type = MainSearchFilterV2Types.TEXT; break;
+									//Note: Date range filters would (apparently?) use the default of "CODE" since there is no "DATE" in MainSearchFilterV2Types
+									default: break;
+								}
+
+								translatedItem.Name = TranslateMainQueryFilterURIToMainSearchInputFilterName( mainFilter.URI, searchType );
+
+								translatedItem.Values = new Dictionary<string, object>();
+								if ( mainFilter.Id > 0 )
+								{
+									translatedItem.Values.Add( "CategoryId", mainFilter.Id );
+								}
+								if ( filterItem.Id > 0 )
+								{
+									translatedItem.Values.Add( "CodeId", filterItem.Id );
+									translatedItem.Values.Add( "CodeText", !string.IsNullOrWhiteSpace( filterItem.Text ) ? filterItem.Text : !string.IsNullOrWhiteSpace( filterItem.Label ) ? filterItem.Label : filterItem.Id.ToString() );
+								}
+								if ( !string.IsNullOrWhiteSpace( filterItem.Text ) )
+								{
+									translatedItem.Values.Add( "TextValue", filterItem.Text );
+								}
+								if ( !string.IsNullOrWhiteSpace( filterItem.URI ) )
+								{
+									if ( mainFilter.URI == "filter:Custom_DateRange" ) //Kind of a kludge, but only the date range filters use PropertyName instead of SchemaName
+									{
+										translatedItem.Values.Add( "PropertyName", filterItem.URI.Replace( "originalFilterItemName:", "" ) );
+									}
+									else
+									{
+										translatedItem.Values.Add( "SchemaName", filterItem.URI );
+									}
+								}
+
+								translated.Add( translatedItem );
 							}
 						}
-
-						translated.Add( translatedItem );
 					}
 				}
 			}
@@ -146,15 +227,43 @@ namespace workIT.Services.API
 				{
 					Type = MainSearchFilterV2Types.MAP,
 					Name = "bounds",
-					Values = new Dictionary<string, object>()
-					{
-						{ "north", mapFilter.BBoxTopLeft?.Latitude ?? 0 },
-						{ "east", mapFilter.BBoxBottomRight?.Longitude ?? 0 },
-						{ "south", mapFilter.BBoxBottomRight?.Latitude ?? 0 },
-						{ "west", mapFilter.BBoxTopLeft?.Longitude ?? 0 },
-					}
+					Map_PositionType = mapFilter.PositionType,
+					Map_Country = mapFilter.Country,
+					Map_Region = mapFilter.Region,
+					Map_Locality = mapFilter.Region == mapFilter.Label ? null : mapFilter.Label
 				};
-				translated.Add( translatedMapFilter );
+
+				//If all of the bounding box values are non-zero, use them directly
+				//We'll need to improve this to use something other than a box and/or factor in the an irregularly-shaped geographic region like a state
+				if ( mapFilter.PositionType == "positionType:In" && new List<double>() { mapFilter.BBoxNorth, mapFilter.BBoxEast, mapFilter.BBoxSouth, mapFilter.BBoxWest }.All( m => m != 0 ) )
+				{
+					translatedMapFilter.Values = new Dictionary<string, object>()
+					{
+						{ "north", (decimal) mapFilter.BBoxNorth },
+						{ "east", (decimal) mapFilter.BBoxEast },
+						{ "south", (decimal) mapFilter.BBoxSouth },
+						{ "west", (decimal) mapFilter.BBoxWest },
+					};
+
+					translated.Add( translatedMapFilter );
+				}
+				//Otherwise, create a box with a roughly 50 mile radius (0.75 degrees = 51.75 miles) from the center point
+				//Once the interface has a drop-down box for selecting the radius, this will need to be adjusted
+				else if( mapFilter.BBoxCenterLatitude != 0 && mapFilter.BBoxCenterLongitude != 0 )
+				{
+					translatedMapFilter.Values = new Dictionary<string, object>()
+					{
+						{ "north", (decimal) mapFilter.BBoxCenterLatitude + 0.75m },
+						{ "east", (decimal) mapFilter.BBoxCenterLongitude + 0.75m },
+						{ "south", (decimal) mapFilter.BBoxCenterLatitude + -0.75m },
+						{ "west", (decimal) mapFilter.BBoxCenterLongitude + -0.75m },
+					};
+
+					translated.Add( translatedMapFilter );
+				}
+
+				//Otherwise, don't include anything
+
 			}
 
 			return translated;
@@ -210,8 +319,10 @@ namespace workIT.Services.API
 			translated.SkipPages = query.StartPage - 1;
 			translated.PageSize = query.PageSize;
 			translated.SortOrder = TranslateMainSearchInputSortOrderToMainQuerySortOrder( query.SortOrder );
-			translated.MainFilters = TranslateMainSearchInputFiltersToMainQueryFilters( query.FiltersV2 );
-			translated.WidgetFilter = query.WidgetId > 0 ? new WidgetFilter() { WidgetId = query.WidgetId } : null;
+			translated.MainFilters = TranslateMainSearchInputFiltersToMainQueryFilters( query.FiltersV2, query.SearchType );
+			//translated.WidgetId = query.WidgetId;
+			translated.MapFilter = TranslateMainSearchMapFilterToMainQueryMapFilter( query.FiltersV2, query.SearchType );
+			translated.AutocompleteContext = query.AutocompleteContext;
 
 			return translated;
 		}
@@ -219,37 +330,25 @@ namespace workIT.Services.API
 
 		public static string TranslateMainSearchInputSortOrderToMainQuerySortOrder( string mainSearchInputSortOrder )
 		{
-			switch ( mainSearchInputSortOrder ?? "" )
-			{
-				case "relevance": return "sortOrder:MostRelevant";
-				case "newest": return "sortOrder:Newest";
-				case "alpha": return "sortOrder:AtoZ"; //Z to A is not supported
-				case "oldest": return "sortOrder:Oldest";
-				default: return "sortOrder:MostRelevant";
-			}
+			mainSearchInputSortOrder = mainSearchInputSortOrder ?? "";
+			return MainQuerySortOrderToMainSearchInputSortOrder.FirstOrDefault( m => m.OldValue == mainSearchInputSortOrder )?.NewValue ?? "sortOrder:MostRelevant";
 		}
 		//
 
-		public static string TranslateMainSearchInputFilterNameToMainQueryFilterURI( string mainFilterName )
+		public static string TranslateMainSearchInputFilterNameToMainQueryFilterURI( string mainFilterName, string searchType )
 		{
-			switch ( mainFilterName ?? "" )
-			{
-				case "credentialtypes": return "filter:CredentialType";
-				case "history": return "filter:Custom_DateRange";
-				case "organizationroles": return "filter:Custom_OrganizationRoles";
-				case "qualityassurance": return "filter:Custom_QualityAssurance";
-				default: return "originalFilterName:" + mainFilterName;
-			}
+			mainFilterName = mainFilterName ?? "";
+			return MainQueryFilterURIToSearchInputFilterName.Where( m => m.SearchType == searchType.ToLower() || m.SearchType == null ).FirstOrDefault( m => m.OldValue == mainFilterName )?.NewValue ?? "originalFilterName:" + mainFilterName;
 		}
 		//
 
-		public static List<Filter> TranslateMainSearchInputFiltersToMainQueryFilters( List<MainSearchFilterV2> mainFilters )
+		public static List<Filter> TranslateMainSearchInputFiltersToMainQueryFilters( List<MainSearchFilterV2> mainFilters, string searchType )
 		{
 			var translated = new List<Filter>();
 
 			foreach( var filter in mainFilters.Where( m => m.Type != MainSearchFilterV2Types.MAP ).ToList() )
 			{
-				var filterURI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name );
+				var filterURI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name, searchType );
 				var matchingFilter = translated.FirstOrDefault( m => m.URI == filterURI );
 				if( matchingFilter == null )
 				{
@@ -267,7 +366,7 @@ namespace workIT.Services.API
 
 				if( filter.Type == MainSearchFilterV2Types.CUSTOM )
 				{
-					matchingFilter.URI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name );
+					matchingFilter.URI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name, searchType );
 					matchingFilter.Parameters = JObject.FromObject( filter.Values );
 				}
 				else
@@ -293,21 +392,117 @@ namespace workIT.Services.API
 					matchingFilter.Items.Add( item );
 				}
 			}
-			foreach( var filter in mainFilters.Where( m => m.Type == MainSearchFilterV2Types.MAP ).ToList() )
-			{
-				try
-				{
-					var map = new MapFilter();
-					map.BBoxTopLeft = new Coordinates() { Latitude = float.Parse( filter.Values[ "north" ].ToString() ), Longitude = float.Parse( filter.Values[ "west" ].ToString() ) };
-					map.BBoxBottomRight = new Coordinates() { Latitude = float.Parse( filter.Values[ "south" ].ToString() ), Longitude = float.Parse( filter.Values[ "east" ].ToString() ) };
-				}
-				catch { }
-			}
+
+			//Hacky duct tape Badge behavior
+			translated = translated.Where( m => m.URI != "ceterms:DigitalBadge" && m.URI != "ceterms:OpenBadge" ).ToList();
 
 			return translated;
 		}
 		//
 
+		public static MapFilter TranslateMainSearchMapFilterToMainQueryMapFilter( List<MainSearchFilterV2> mainFilters, string searchType )
+		{
+			var mapFilter = mainFilters.FirstOrDefault( m => m.Type == MainSearchFilterV2Types.MAP );
+			if( mapFilter != null )
+			{
+				try
+				{
+					var map = new MapFilter();
+					map.BBoxNorth = double.Parse( mapFilter.Values[ "north" ]?.ToString() ?? "0.0" );
+					map.BBoxEast = double.Parse( mapFilter.Values[ "east" ]?.ToString() ?? "0.0" );
+					map.BBoxSouth = double.Parse( mapFilter.Values[ "south" ]?.ToString() ?? "0.0" );
+					map.BBoxWest = double.Parse( mapFilter.Values[ "west" ]?.ToString() ?? "0.0" );
+					map.BBoxCenterLatitude = ( map.BBoxNorth + map.BBoxSouth ) / 2;
+					map.BBoxCenterLongitude = ( map.BBoxEast + map.BBoxWest ) / 2;
+					//Average out the vertical and horizontal radii and multiply by 69 to convert degrees to miles
+					map.RadiusMiles = (int) Math.Ceiling( ( ( Math.Abs( map.BBoxNorth - map.BBoxCenterLatitude ) + Math.Abs( map.BBoxEast - map.BBoxCenterLongitude ) ) / 2 ) * 69 );
+					return map;
+				}
+				catch { }
+			}
+
+			return null;
+		}
+		//
+
+		#endregion
+
+		#region Mappings
+		private class Mapping
+		{
+			public Mapping( string newValue, string oldValue, string searchType = null )
+			{
+				NewValue = newValue;
+				OldValue = oldValue;
+				SearchType = searchType;
+			}
+
+			public string NewValue { get; set; }
+			public string OldValue { get; set; }
+			public string SearchType { get; set; }
+		}
+
+		private static List<Mapping> MainQueryFilterURIToSearchInputFilterName
+		{
+			get
+			{
+				return new List<Mapping>()
+				{
+					//Common
+					new Mapping( "filter:QAReceived", "qualityassurance" ),
+					new Mapping( "filter:AudienceLevelType", "audienceleveltypes" ), //Learning Opportunities use filter:AudienceLevel
+					new Mapping( "filter:AudienceType", "audiencetypes" ),
+					new Mapping( "filter:Competencies", "competencies" ),
+					new Mapping( "filter:Subjects", "subjects" ),
+					new Mapping( "filter:IndustryType", "industries" ),
+					new Mapping( "filter:OccupationType", "occupations" ),
+					new Mapping( "filter:InstructionalProgramType", "instructionalprogramtypes" ),
+					new Mapping( "filter:InLanguage", "languages" ),
+					new Mapping( "filter:OtherFilters", "reports" ),
+
+					//Organization-Specific
+					new Mapping( "filter:OrganizationTypes", "organizationtypes", "organization" ),
+					new Mapping( "filter:QAPerformed", "qaperformed", "organization" ),
+					new Mapping( "filter:ServiceTypes", "servicetypes", "organization" ),
+					new Mapping( "filter:SectorTypes", "sectortypes", "organization" ),
+					new Mapping( "filter:ClaimTypes", "claimtypes", "organization" ),
+
+					//Credential-Specific
+					new Mapping( "filter:CredentialType", "credentialtypes", "credential" ),
+					new Mapping( "filter:CredentialConnection", "credentialconnections", "credential" ),
+					new Mapping( "filter:AssessmentDeliveryType", "assessmentdeliverytypes", "credential" ),
+					new Mapping( "filter:LearningDeliveryType", "learningdeliverytypes", "credential" ),
+					new Mapping( "filter:CredentialStatus", "credentialstatustypes", "credential" ),
+
+					//Assessment-Specific
+					new Mapping( "filter:Connections", "assessmentconnections", "assessment" ),
+					new Mapping( "filter:AssessmentMethodType", "assessmentmethodtypes", "assessment" ),
+					new Mapping( "filter:AssessmentUse", "assessmentusetypes", "assessment" ),
+					new Mapping( "filter:AssessmentDeliveryType", "deliverymethodtypes", "assessment" ),
+
+					//LearningOpportunity-Specific
+					new Mapping( "filter:Connections", "learningopportunityconnections", "learningopportunity" ),
+					new Mapping( "filter:AudienceLevel", "audienceleveltypes", "learningopportunity" ), //Should probably use filter:AudienceLevelType (see "Common" section above)
+					new Mapping( "filter:LearningDeliveryType", "deliverymethodtypes", "learningopportunity" ),
+					new Mapping( "filter:LearningMethodTypes", "learningmethodtypes", "learningopportunity" )
+				};
+			}
+		}
+
+		private static List<Mapping> MainQuerySortOrderToMainSearchInputSortOrder
+		{
+			get
+			{
+				return new List<Mapping>()
+				{
+					new Mapping( "sortOrder:MostRelevant", "relevance" ),
+					new Mapping( "sortOrder:Newest", "newest" ),
+					new Mapping( "sortOrder:AtoZ", "alpha" ),
+					new Mapping( "sortOrder:Oldest", "oldest" ),
+					new Mapping( "sortOrder:ZtoA", "zalpha" )
+				};
+			}
+		}
 		#endregion
 	}
 }

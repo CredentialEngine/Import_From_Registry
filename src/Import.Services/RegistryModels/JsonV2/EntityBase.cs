@@ -14,7 +14,6 @@ namespace RA.Models.JsonV2
 	{
 		public EntityBase()
 		{
-			//SubjectWebpage = new List<string>();
 			SubjectWebpage = null;
 		}
 
@@ -31,14 +30,23 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "@type" )]
 		public string Type { get; set; }
 
+		//OH crap - while need to start using language maps, will likely need a notification. Or use an object?
+		//				- actually this OK, as they get converted to language maps in blank nodes. However the input classes need to support language maps
 		[JsonProperty( "ceterms:name" )]
-		public string Name { get; set; }
+		public LanguageMap Name { get; set; }
 
 		[JsonProperty( "ceterms:description" )]
-		public string Description { get; set; }
+		public LanguageMap Description { get; set; }
+
+		//[JsonProperty( "ceterms:name" )]
+		//public LanguageMap Name_Map { get; set; }
+
+		//[JsonProperty( "ceterms:description" )]
+		//public LanguageMap Description_Map { get; set; }
+
 
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
-		public string Ctid { get; set; }
+		public string CTID { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; }
@@ -70,7 +78,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
 		public List<DurationProfile> EstimatedDuration { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 		//
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
@@ -93,6 +101,9 @@ namespace RA.Models.JsonV2
 		//
 		[JsonProperty( PropertyName = "ceterms:ownedBy" )]
 		public List<string> OwnedBy { get; set; }
+		//
+		[JsonProperty( PropertyName = "ceterms:recognizedIn" )]
+		public List<JurisdictionProfile> RecognizedIn { get; set; }
 		//
 		[JsonProperty( PropertyName = "ceterms:requires" )]
 		public List<ConditionProfile> Requires { get; set; }
@@ -126,7 +137,7 @@ namespace RA.Models.JsonV2
 			Name = null;
 			Description = null;
 			SubjectWebpage = null;
-			Ctid = null;
+			CTID = null;
 		}
 	}
 }

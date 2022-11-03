@@ -77,9 +77,9 @@ namespace Import.Services
 					};
 
 					entity.TargetNodeName = helper.HandleLanguageMap( rating.Name, helper.currentBaseObject, "TargetNodeName" );
-					entity.TargetNodeName_Map = helper.lastLanguageMapString;
+					entity.TargetNodeName_Map = helper.ConvertLanguageMap(rating.Name);
 					entity.TargetNodeDescription = helper.HandleLanguageMap( rating.Description, helper.currentBaseObject, "TargetNodeDescription", false );
-					entity.TargetNodeDescription_Map = helper.lastLanguageMapString;
+					entity.TargetNodeDescription_Map = helper.ConvertLanguageMap( rating.Description );
 
 					//if ( !string.IsNullOrWhiteSpace( item.Framework ) )
 					//{

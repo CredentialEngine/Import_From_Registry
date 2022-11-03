@@ -14,7 +14,7 @@ namespace Import.Services
 	public class ResolutionServices
 	{
 
-		public static Guid ResolveEntityByRegistryAtIdToGuid( string property, string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved )
+		public static Guid ResolveEntityByRegistryAtIdToGuid( string property, string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved, string parentCTID = "" )
 		{
 			Guid entityUid = new Guid();
 			string ctid = "";
@@ -43,7 +43,7 @@ namespace Import.Services
 					//if ( BaseFactory.IsGuidValid( item.EntityUid ) )
 					//20-07-30 mparsons - why is EntityUid returned here?
 					//check this
-					return ( Guid )item.EntityUid;
+					return ( Guid ) item.EntityUid;
 				}
 				else
 				{
@@ -77,6 +77,11 @@ namespace Import.Services
 			ImportManager importManager = new ImportManager();
 			entityUid = Guid.NewGuid();
 			string statusMsg = "";
+			//if no entityTypeId, do a lookup - may not exist, which is likely why we got this far!
+			if ( entityTypeId == 0 )
+			{
+			}
+
 			if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
 			{
 				newEntityId = new CredentialManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
@@ -89,7 +94,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
 			{
-				newEntityId = new AssessmentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new AssessmentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -97,9 +102,11 @@ namespace Import.Services
 					entityUid = new Guid();
 				}
 			}
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE
+				|| entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_PROGRAM
+				|| entityTypeId == CodesManager.ENTITY_TYPE_COURSE )
 			{
-				newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				//newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -110,7 +117,7 @@ namespace Import.Services
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_COST_MANIFEST )
 			{
 				//should know the parent org, add to this method
-				newEntityId = new CostManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new CostManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -120,7 +127,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_CONDITION_MANIFEST )
 			{
-				newEntityId = new ConditionManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new ConditionManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -131,7 +138,7 @@ namespace Import.Services
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
 			{
 				//not sure we will ever have a reference to a TVP?
-				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status);
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -141,7 +148,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
 			{
-				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status);
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -155,8 +162,8 @@ namespace Import.Services
 				{
 
 				}
-				//need pathwayCTID for this ce-abcb5fe0-8fde-4f06-9d70-860cd5bdc763
-				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				//need pathwayCTID for this so cannot add. Could use a placeholder?
+				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, parentCTID );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -169,6 +176,8 @@ namespace Import.Services
 			{
 				//for properties like organization.Offers, we don't know what the entity type is.
 				//SO.....
+				LoggingHelper.DoTrace(4, string.Format( "ResolutionServices.ResolveEntityByRegistryAtIdToGuid. The property: '{0}' with an entityTypeId of: {1} could not be resolved. URI: {2}", property, entityTypeId, referencedAtId ) );
+				return entityUid;
 			}
 
 			if ( BaseFactory.IsGuidValid( entityUid) )
@@ -192,7 +201,16 @@ namespace Import.Services
 
 			return entityUid;
 		}
-		public static int ResolveEntityByRegistryAtId( string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved )
+		/// <summary>
+		/// Resolve a registry entity to a record in the database.
+		/// </summary>
+		/// <param name="referencedAtId"></param>
+		/// <param name="entityTypeId"></param>
+		/// <param name="status"></param>
+		/// <param name="isResolved"></param>
+		/// <param name="parentCTID"></param>
+		/// <returns></returns>
+		public static int ResolveEntityByRegistryAtId( string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved, string parentCTID = "" )
 		{
 			Guid entityUid = Guid.NewGuid();
 			int newEntityId = 0;
@@ -267,7 +285,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
 			{
-				newEntityId = new AssessmentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new AssessmentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -276,9 +294,11 @@ namespace Import.Services
 					entityUid = new Guid();
 				}
 			}
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE 
+				|| entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_PROGRAM 
+				|| entityTypeId == CodesManager.ENTITY_TYPE_COURSE )
 			{
-				newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+			//	newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -289,7 +309,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_COST_MANIFEST )
 			{
-				newEntityId = new CostManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new CostManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -300,7 +320,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_CONDITION_MANIFEST )
 			{
-				newEntityId = new ConditionManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new ConditionManifestManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -311,7 +331,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
 			{
-				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new PathwayManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -322,7 +342,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
 			{
-				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, parentCTID );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -346,7 +366,19 @@ namespace Import.Services
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
 			{
 				//actually should not happen - confirm the tvp must exist or will be rejected by API
-				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+				newEntityId = new TransferValueProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
+				if ( newEntityId == 0 )
+				{
+					//need to log, and reset 
+					status.AddError( statusMsg );
+					//need to know what property would need to be fixed - really shouldn't happen
+					entityUid = new Guid();
+				}
+			}
+			else if ( entityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
+			{
+				//actually should not happen - confirm the tvp must exist or will be rejected by API
+				newEntityId = new DataSetProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -442,7 +474,7 @@ namespace Import.Services
 			entityUid = Guid.NewGuid();
 			
 			string statusMsg = "";
-			int orgId = new OrganizationManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref statusMsg );
+			int orgId = new OrganizationManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
 			if ( orgId  == 0)
 			{
 				//need to log, and reset 
@@ -453,7 +485,7 @@ namespace Import.Services
 			{
 				int id = importManager.Import_EntityResolutionAdd( referencedAtId,
 						ctid,
-						CodesManager.ENTITY_TYPE_ORGANIZATION,
+						CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION,
 						entityUid,
 						orgId,
 						false,
@@ -524,9 +556,17 @@ namespace Import.Services
 			string ctid = "";
 			if ( string.IsNullOrWhiteSpace( registryURL ) )
 				return "";
-
+			//check for just URL
 			if ( registryURL.Length == 39 && registryURL.ToLower().IndexOf( "ce-" ) == 0 )
 				return registryURL;
+			if ( registryURL.ToLower().IndexOf( "/ce-" ) == -1 )
+				return "";
+			var parts = registryURL.ToLower().Split( '/' );
+			if (parts.Length > 0)
+			{
+				ctid = parts[ parts.Length-1 ];
+				return ctid;
+			}
 
 			int pos = registryURL.ToLower().IndexOf( "/graph/ce-" );
 			if ( pos > 1 )

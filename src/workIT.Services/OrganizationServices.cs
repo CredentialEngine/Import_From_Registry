@@ -19,6 +19,8 @@ using EntityMgr = workIT.Factories.OrganizationManager;
 using CM = workIT.Models.Common;
 using Mgr = workIT.Factories.OrganizationManager;
 using workIT.Factories;
+using System.Web.Script.Serialization;
+using System.Net.Http;
 
 namespace workIT.Services
 {
@@ -39,7 +41,13 @@ namespace workIT.Services
 				return entity;
 			return EntityMgr.GetSummaryByCtid( ctid );
 		}
-
+		public static ThisEntity GetMinimumSummaryByCtid( string ctid )
+		{
+			ThisEntity entity = new ThisEntity();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+				return entity;
+			return EntityMgr.GetMinimumSummaryByCtid( ctid, true );
+		}
 
 
 		public bool Import( ThisEntity entity, ref SaveStatus status )
@@ -68,7 +76,7 @@ namespace workIT.Services
 				}
 				else
 				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.Id, 1, ref messages );
 					//add all credential in a verification profile
 					if ( entity.VerificationServiceProfiles != null && entity.VerificationServiceProfiles.Count > 0 )
 					{
@@ -95,24 +103,7 @@ namespace workIT.Services
 			if ( entity.GetType() != typeof( Models.Common.Organization ) )
 				return;
 			var document = ( entity as Models.Common.Organization );
-			EntityCache ec = new EntityCache()
-			{
-				EntityTypeId = 2,
-				EntityType = "Organization",
-				EntityStateId = document.EntityStateId,
-				EntityUid = document.RowId,
-				BaseId = document.Id,
-				Description = document.Description,
-				SubjectWebpage = document.SubjectWebpage,
-				CTID = document.CTID,
-				Created = document.Created,
-				LastUpdated = document.LastUpdated,
-				ImageUrl = document.Image,
-				Name = document.Name,
-				OwningOrgId = document.OrganizationId
-			};
-			var statusMessage = "";
-			new EntityManager().EntityCacheSave( ec, ref statusMessage );
+			//EntityCache is now updated as part of the save
 
 
 			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
@@ -122,16 +113,16 @@ namespace workIT.Services
 			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
 				ElasticHelper.Organization_UpdateIndex( document.Id );
 			else
-				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, document.Id, 1, ref messages );
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, document.Id, 1, ref messages );
 
 		}
-		public static ThisEntity GetBySubjectWebpage( string swp )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( string.IsNullOrWhiteSpace( swp ) )
-				return entity;
-			return EntityMgr.GetBySubjectWebpage( swp );
-		}
+		//public static ThisEntity GetBySubjectWebpage( string swp )
+		//{
+		//	ThisEntity entity = new ThisEntity();
+		//	if ( string.IsNullOrWhiteSpace( swp ) )
+		//		return entity;
+		//	return EntityMgr.GetBySubjectWebpage( swp );
+		//}
 		#endregion
 
 		#region Search
@@ -158,7 +149,7 @@ namespace workIT.Services
 
 			return Mgr.Search( filter, pOrderBy, pageNumber, pageSize, ref pTotalRows );
 		}
-		public static List<object> Autocomplete( string keyword = "", int maxTerms = 25, int widgetId = 0 )
+		public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25, int widgetId = 0 )
 		{
 			int userId = 0;
 			string where = "";
@@ -171,10 +162,11 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
 			{
-				return ElasticHelper.OrganizationAutoComplete( keyword, maxTerms, ref totalRows );
+				return ElasticHelper.OrganizationAutoComplete( query, maxTerms, ref totalRows ).Select( m => m.Text ).ToList();
 			}
 			else
 			{
+				string keyword = query.Keywords;
 				SetKeywordFilter( keyword, true, ref where );
 				//string keywords = ServiceHelper.HandleApostrophes( keyword );
 				//if ( keywords.IndexOf( "%" ) == -1 )
@@ -460,15 +452,27 @@ namespace workIT.Services
         {
             return Mgr.GetForSummary( id, true );
 		}
-		
-        public static CM.Organization GetDetail( int id, bool skippingCache = false )
+
+		public static CM.Organization GetDetail( int id, bool skippingCache = false )
+		{
+			var request = new OrganizationManager.OrganizationRequest( 1 );
+
+			request.IncludingProcessProfiles = true; //UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true );
+			request.IncludingManifests = true; //UtilityManager.GetAppKeyValue( "includeManifestDetails", true );
+			request.IncludingVerificationProfiles = true;
+			request.AllowCaching = !skippingCache;
+
+			return GetDetail( id, request );
+		}
+
+		public static CM.Organization GetDetail( int id, EntityMgr.OrganizationRequest request )
         {
             int cacheMinutes = UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 );
             DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
 
             string key = "organization_" + id.ToString();
 
-            if ( skippingCache == false
+            if ( request.AllowCaching
                 && HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
             {
                 var cache = new CachedOrganization();

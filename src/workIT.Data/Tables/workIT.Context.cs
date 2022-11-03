@@ -99,8 +99,6 @@ namespace workIT.Data.Tables
         public virtual DbSet<OccupationProfile> OccupationProfile { get; set; }
         public virtual DbSet<Organization> Organization { get; set; }
         public virtual DbSet<Pathway> Pathway { get; set; }
-        public virtual DbSet<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
-        public virtual DbSet<PathwayComponent> PathwayComponent { get; set; }
         public virtual DbSet<PathwaySet> PathwaySet { get; set; }
         public virtual DbSet<Reference_Framework> Reference_Framework { get; set; }
         public virtual DbSet<Reference_FrameworkItem> Reference_FrameworkItem { get; set; }
@@ -114,5 +112,18 @@ namespace workIT.Data.Tables
         public virtual DbSet<WorkRole> WorkRole { get; set; }
         public virtual DbSet<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
         public virtual DbSet<Collection_Competency> Collection_Competency { get; set; }
+        public virtual DbSet<HoldersProfile> HoldersProfile { get; set; }
+        public virtual DbSet<EarningsProfile> EarningsProfile { get; set; }
+        public virtual DbSet<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; }
+        public virtual DbSet<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
+        public virtual DbSet<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
+        public virtual DbSet<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
+        public virtual DbSet<Counts_SiteTotals> Counts_SiteTotals { get; set; }
+        public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
+        public virtual DbSet<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
+        public virtual DbSet<Counts_RegionTotals> Counts_RegionTotals { get; set; }
+        public virtual DbSet<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
+        public virtual DbSet<PathwayComponent> PathwayComponent { get; set; }
+        public virtual DbSet<Collection_CollectionMember> Collection_CollectionMember { get; set; }
     }
 }

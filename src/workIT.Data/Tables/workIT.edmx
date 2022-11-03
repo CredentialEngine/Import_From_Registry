@@ -151,7 +151,6 @@
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="Title" Type="varchar" MaxLength="100" />
-          <Property Name="Label" Type="varchar" MaxLength="100" />
           <Property Name="Description" Type="varchar" MaxLength="500" />
           <Property Name="IsActive" Type="bit" />
           <Property Name="SchemaName" Type="varchar" MaxLength="200" />
@@ -159,6 +158,7 @@
           <Property Name="Totals" Type="int" />
           <Property Name="SortOrder" Type="int" Nullable="false" />
           <Property Name="IsTopLevelEntity" Type="bit" Nullable="false" />
+          <Property Name="Label" Type="varchar" MaxLength="100" />
         </EntityType>
         <EntityType Name="Codes_PathwayComponentRelationship">
           <Key>
@@ -289,6 +289,21 @@
           <Property Name="ExpirationDate" Type="datetime" />
           <Property Name="LifeCycleStatusTypeId" Type="int" Nullable="false" />
         </EntityType>
+        <EntityType Name="Collection_CollectionMember">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CollectionId" Type="int" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="500" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="MemberUID" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="StartDate" Type="datetime" />
+          <Property Name="EndDate" Type="datetime" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+        </EntityType>
         <EntityType Name="Collection_Competency">
           <Key>
             <PropertyRef Name="Id" />
@@ -415,6 +430,54 @@
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="EntityStateId" Type="int" />
+        </EntityType>
+        <EntityType Name="Counts_EntityMonthlyTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Period" Type="datetime" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CreatedTotal" Type="int" Nullable="false" />
+          <Property Name="UpdatedTotal" Type="int" Nullable="false" />
+          <Property Name="DeletedTotal" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Counts_EntityStatistic">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CategoryId" Type="int" />
+          <Property Name="Title" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Description" Type="varchar" MaxLength="2000" />
+          <Property Name="SortOrder" Type="int" />
+          <Property Name="IsActive" Type="bit" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="Totals" Type="int" />
+          <Property Name="Created" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Counts_RegionTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="Country" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Region" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Totals" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Counts_SiteTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CategoryId" Type="int" Nullable="false" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
+          <Property Name="CodeId" Type="int" />
+          <Property Name="Title" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="SchemaName" Type="varchar" MaxLength="100" />
+          <Property Name="Totals" Type="int" />
         </EntityType>
         <EntityType Name="Credential">
           <Key>
@@ -558,6 +621,41 @@
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="DataAttributesJson" Type="nvarchar(max)" />
+        </EntityType>
+        <EntityType Name="EarningsProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="500" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="DateEffective" Type="datetime" />
+          <Property Name="Source" Type="varchar" MaxLength="500" />
+          <Property Name="LowEarnings" Type="int" />
+          <Property Name="MedianEarnings" Type="int" />
+          <Property Name="HighEarnings" Type="int" />
+          <Property Name="PostReceiptMonths" Type="int" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+        </EntityType>
+        <EntityType Name="EmploymentOutcomeProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="500" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="DateEffective" Type="datetime" />
+          <Property Name="Source" Type="varchar" MaxLength="500" />
+          <Property Name="JobsObtainedJson" Type="varchar(max)" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
         </EntityType>
         <EntityType Name="Entity">
           <Key>
@@ -837,6 +935,24 @@
           <Property Name="AverageMinutes" Type="int" />
           <Property Name="DurationSummary" Type="nvarchar" MaxLength="200" />
         </EntityType>
+        <EntityType Name="Entity_EarningsProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EarningsProfileId" Type="int" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Entity_EmploymentOutcomeProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="EmploymentOutcomeProfileId" Type="int" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
+        </EntityType>
         <EntityType Name="Entity_FinancialAssistanceProfile">
           <Key>
             <PropertyRef Name="Id" />
@@ -870,6 +986,15 @@
           <Property Name="PathwayComponentId" Type="int" Nullable="false" />
           <Property Name="ComponentRelationshipTypeId" Type="int" Nullable="false" />
           <Property Name="Created" Type="datetime" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Entity_HoldersProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EntityId" Type="int" Nullable="false" />
+          <Property Name="HoldersProfileId" Type="int" Nullable="false" />
+          <Property Name="Created" Type="datetime" />
         </EntityType>
         <EntityType Name="Entity_IdentifierValue">
           <Key>
@@ -1106,6 +1231,23 @@
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
         </EntityType>
+        <EntityType Name="HoldersProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="500" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="DateEffective" Type="datetime" />
+          <Property Name="Source" Type="varchar" MaxLength="500" />
+          <Property Name="NumberAwarded" Type="int" />
+          <Property Name="Created" Type="datetime" />
+          <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="DemographicInformation" Type="nvarchar(max)" />
+        </EntityType>
         <EntityType Name="Import_EntityResolution">
           <Key>
             <PropertyRef Name="Id" />
@@ -1331,7 +1473,6 @@
           <Property Name="PathwayCTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="Created" Type="datetime" Nullable="false" />
           <Property Name="LastUpdated" Type="datetime" Nullable="false" />
-          <Property Name="HasConstraint" Type="varchar(max)" />
         </EntityType>
         <EntityType Name="PathwayComponent">
           <Key>
@@ -1339,8 +1480,7 @@
           </Key>
           <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
-          <Property Name="ComponentTypeId" Type="int" Nullable="false" />
-          <Property Name="EntityStateId" Type="int" Nullable="false" />
+          <Property Name="ComponentTypeId" Type="int" />
           <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="Name" Type="nvarchar" MaxLength="500" />
           <Property Name="Description" Type="varchar(max)" />
@@ -1351,11 +1491,14 @@
           <Property Name="ComponentCategory" Type="varchar" MaxLength="100" />
           <Property Name="ProgramTerm" Type="varchar" MaxLength="100" />
           <Property Name="HasProgressionLevel" Type="varchar" MaxLength="500" />
+          <Property Name="ExternalIdentifier" Type="varchar" MaxLength="50" />
           <Property Name="PathwayCTID" Type="varchar" MaxLength="50" />
           <Property Name="Created" Type="datetime" />
+          <Property Name="CreatedById" Type="int" />
           <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="LastUpdatedById" Type="int" />
           <Property Name="Properties" Type="varchar(max)" />
-          <Property Name="ProxyFor" Type="varchar" MaxLength="500" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
         </EntityType>
         <EntityType Name="PathwaySet">
           <Key>
@@ -1494,7 +1637,6 @@
             <PropertyRef Name="Id" />
           </Key>
           <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
-          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="OrgCTID" Type="varchar" MaxLength="50" />
           <Property Name="OrganizationName" Type="varchar" MaxLength="500" />
           <Property Name="Name" Type="varchar" MaxLength="200" />
@@ -1514,6 +1656,7 @@
           <Property Name="CityFilters" Type="varchar(max)" />
           <Property Name="IncludeIfAvailableOnline" Type="bit" />
           <Property Name="LogoFileName" Type="varchar" MaxLength="50" />
+          <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
           <Property Name="AllowsCSVExport" Type="bit" />
         </EntityType>
         <EntityType Name="Widget_Selection">
@@ -1579,6 +1722,20 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_Collection_CollectionMember_Collection">
+          <End Role="Collection" Type="Self.Collection" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Collection_CollectionMember" Type="Self.Collection_CollectionMember" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Collection">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Collection_CollectionMember">
+              <PropertyRef Name="CollectionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_Collection_Competency_Collection">
           <End Role="Collection" Type="Self.Collection" Multiplicity="1">
             <OnDelete Action="Cascade" />
@@ -1630,6 +1787,18 @@
             </Principal>
             <Dependent Role="ConceptScheme">
               <PropertyRef Name="OrgId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Counts_EntityStatistic_Codes_EntityTypes">
+          <End Role="Codes_EntityTypes" Type="Self.Codes_EntityTypes" Multiplicity="1" />
+          <End Role="Counts_EntityStatistic" Type="Self.Counts_EntityStatistic" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_EntityTypes">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Counts_EntityStatistic">
+              <PropertyRef Name="EntityTypeId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -2059,6 +2228,62 @@
             </Dependent>
           </ReferentialConstraint>
         </Association>
+        <Association Name="FK_Entity_EarningsProfile_EarningsProfile">
+          <End Role="EarningsProfile" Type="Self.EarningsProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_EarningsProfile" Type="Self.Entity_EarningsProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EarningsProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EarningsProfile">
+              <PropertyRef Name="EarningsProfileId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EarningsProfile_Entity">
+          <End Role="Entity" Type="Self.Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_EarningsProfile" Type="Self.Entity_EarningsProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EarningsProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile">
+          <End Role="EmploymentOutcomeProfile" Type="Self.EmploymentOutcomeProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_EmploymentOutcomeProfile" Type="Self.Entity_EmploymentOutcomeProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EmploymentOutcomeProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EmploymentOutcomeProfile">
+              <PropertyRef Name="EmploymentOutcomeProfileId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EmploymentOutcomeProfile_Entity">
+          <End Role="Entity" Type="Self.Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_EmploymentOutcomeProfile" Type="Self.Entity_EmploymentOutcomeProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EmploymentOutcomeProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
         <Association Name="FK_Entity_FinancialAssistanceProfile_Entity">
           <End Role="Entity" Type="Self.Entity" Multiplicity="1">
             <OnDelete Action="Cascade" />
@@ -2138,6 +2363,34 @@
             </Principal>
             <Dependent Role="Entity_HasPathwayComponent">
               <PropertyRef Name="PathwayComponentId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_HoldersProfile_Entity">
+          <End Role="Entity" Type="Self.Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_HoldersProfile" Type="Self.Entity_HoldersProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_HoldersProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_HoldersProfile_HoldersProfile">
+          <End Role="HoldersProfile" Type="Self.HoldersProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Role="Entity_HoldersProfile" Type="Self.Entity_HoldersProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="HoldersProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_HoldersProfile">
+              <PropertyRef Name="HoldersProfileId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -2558,7 +2811,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           </ReferentialConstraint>
         </Association>
         <Association Name="FK_PathwayComponent_Codes_PathwayComponentType">
-          <End Role="Codes_PathwayComponentType" Type="Self.Codes_PathwayComponentType" Multiplicity="1" />
+          <End Role="Codes_PathwayComponentType" Type="Self.Codes_PathwayComponentType" Multiplicity="0..1" />
           <End Role="PathwayComponent" Type="Self.PathwayComponent" Multiplicity="*" />
           <ReferentialConstraint>
             <Principal Role="Codes_PathwayComponentType">
@@ -2651,6 +2904,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="Codes_ReqionTypeRegion" EntityType="Self.Codes_ReqionTypeRegion" Schema="dbo" Table="Codes.ReqionTypeRegion" store:Type="Tables" />
           <EntitySet Name="Codes_State" EntityType="Self.Codes_State" Schema="dbo" Table="Codes.State" store:Type="Tables" />
           <EntitySet Name="Collection" EntityType="Self.Collection" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Collection_CollectionMember" EntityType="Self.Collection_CollectionMember" Schema="dbo" Table="Collection.CollectionMember" store:Type="Tables" />
           <EntitySet Name="Collection_Competency" EntityType="Self.Collection_Competency" Schema="dbo" Table="Collection.Competency" store:Type="Tables" />
           <EntitySet Name="CompetencyFramework" EntityType="Self.CompetencyFramework" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="CompetencyFramework_Competency" EntityType="Self.CompetencyFramework_Competency" Schema="dbo" Table="CompetencyFramework.Competency" store:Type="Tables" />
@@ -2658,11 +2912,17 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="ConceptScheme_Concept" EntityType="Self.ConceptScheme_Concept" Schema="dbo" Table="ConceptScheme.Concept" store:Type="Tables" />
           <EntitySet Name="ConditionManifest" EntityType="Self.ConditionManifest" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="CostManifest" EntityType="Self.CostManifest" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Counts_EntityMonthlyTotals" EntityType="Self.Counts_EntityMonthlyTotals" Schema="dbo" Table="Counts.EntityMonthlyTotals" store:Type="Tables" />
+          <EntitySet Name="Counts_EntityStatistic" EntityType="Self.Counts_EntityStatistic" Schema="dbo" Table="Counts.EntityStatistic" store:Type="Tables" />
+          <EntitySet Name="Counts_RegionTotals" EntityType="Self.Counts_RegionTotals" Schema="dbo" Table="Counts.RegionTotals" store:Type="Tables" />
+          <EntitySet Name="Counts_SiteTotals" EntityType="Self.Counts_SiteTotals" Schema="dbo" Table="Counts.SiteTotals" store:Type="Tables" />
           <EntitySet Name="Credential" EntityType="Self.Credential" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Credential_SummaryCache" EntityType="Self.Credential_SummaryCache" Schema="dbo" Table="Credential.SummaryCache" store:Type="Tables" />
           <EntitySet Name="DataProfile" EntityType="Self.DataProfile" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="DataSetProfile" EntityType="Self.DataSetProfile" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="DataSetTimeFrame" EntityType="Self.DataSetTimeFrame" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EarningsProfile" EntityType="Self.EarningsProfile" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EmploymentOutcomeProfile" EntityType="Self.EmploymentOutcomeProfile" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Entity" EntityType="Self.Entity" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Entity_Address" EntityType="Self.Entity_Address" Schema="dbo" Table="Entity.Address" store:Type="Tables" />
           <EntitySet Name="Entity_AgentRelationship" EntityType="Self.Entity_AgentRelationship" Schema="dbo" Table="Entity.AgentRelationship" store:Type="Tables" />
@@ -2682,9 +2942,12 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="Entity_Credential" EntityType="Self.Entity_Credential" Schema="dbo" Table="Entity.Credential" store:Type="Tables" />
           <EntitySet Name="Entity_DataSetProfile" EntityType="Self.Entity_DataSetProfile" Schema="dbo" Table="Entity.DataSetProfile" store:Type="Tables" />
           <EntitySet Name="Entity_DurationProfile" EntityType="Self.Entity_DurationProfile" Schema="dbo" Table="Entity.DurationProfile" store:Type="Tables" />
+          <EntitySet Name="Entity_EarningsProfile" EntityType="Self.Entity_EarningsProfile" Schema="dbo" Table="Entity.EarningsProfile" store:Type="Tables" />
+          <EntitySet Name="Entity_EmploymentOutcomeProfile" EntityType="Self.Entity_EmploymentOutcomeProfile" Schema="dbo" Table="Entity.EmploymentOutcomeProfile" store:Type="Tables" />
           <EntitySet Name="Entity_FinancialAssistanceProfile" EntityType="Self.Entity_FinancialAssistanceProfile" Schema="dbo" Table="Entity.FinancialAssistanceProfile" store:Type="Tables" />
           <EntitySet Name="Entity_HasPathway" EntityType="Self.Entity_HasPathway" Schema="dbo" Table="Entity.HasPathway" store:Type="Tables" />
           <EntitySet Name="Entity_HasPathwayComponent" EntityType="Self.Entity_HasPathwayComponent" Schema="dbo" Table="Entity.HasPathwayComponent" store:Type="Tables" />
+          <EntitySet Name="Entity_HoldersProfile" EntityType="Self.Entity_HoldersProfile" Schema="dbo" Table="Entity.HoldersProfile" store:Type="Tables" />
           <EntitySet Name="Entity_IdentifierValue" EntityType="Self.Entity_IdentifierValue" Schema="dbo" Table="Entity.IdentifierValue" store:Type="Tables" />
           <EntitySet Name="Entity_JurisdictionProfile" EntityType="Self.Entity_JurisdictionProfile" Schema="dbo" Table="Entity.JurisdictionProfile" store:Type="Tables" />
           <EntitySet Name="Entity_Language" EntityType="Self.Entity_Language" Schema="dbo" Table="Entity.Language" store:Type="Tables" />
@@ -2702,6 +2965,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="Entity_Cache" EntityType="Self.Entity_Cache" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="EntityLanguageMaps" EntityType="Self.EntityLanguageMaps" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="GeoCoordinate" EntityType="Self.GeoCoordinate" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="HoldersProfile" EntityType="Self.HoldersProfile" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Import_EntityResolution" EntityType="Self.Import_EntityResolution" Schema="dbo" Table="Import.EntityResolution" store:Type="Tables" />
           <EntitySet Name="Import_Message" EntityType="Self.Import_Message" Schema="dbo" Table="Import.Message" store:Type="Tables" />
           <EntitySet Name="Import_PendingRequest" EntityType="Self.Import_PendingRequest" Schema="dbo" Table="Import.PendingRequest" store:Type="Tables" />
@@ -2733,6 +2997,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Codes_PropertyCategory" EntitySet="Codes_PropertyCategory" />
             <End Role="Codes_PropertyValue" EntitySet="Codes_PropertyValue" />
           </AssociationSet>
+          <AssociationSet Name="FK_Collection_CollectionMember_Collection" Association="Self.FK_Collection_CollectionMember_Collection">
+            <End Role="Collection" EntitySet="Collection" />
+            <End Role="Collection_CollectionMember" EntitySet="Collection_CollectionMember" />
+          </AssociationSet>
           <AssociationSet Name="FK_Collection_Competency_Collection" Association="Self.FK_Collection_Competency_Collection">
             <End Role="Collection" EntitySet="Collection" />
             <End Role="Collection_Competency" EntitySet="Collection_Competency" />
@@ -2748,6 +3016,10 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_ConceptScheme_Organization" Association="Self.FK_ConceptScheme_Organization">
             <End Role="Organization" EntitySet="Organization" />
             <End Role="ConceptScheme" EntitySet="ConceptScheme" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Counts_EntityStatistic_Codes_EntityTypes" Association="Self.FK_Counts_EntityStatistic_Codes_EntityTypes">
+            <End Role="Codes_EntityTypes" EntitySet="Codes_EntityTypes" />
+            <End Role="Counts_EntityStatistic" EntitySet="Counts_EntityStatistic" />
           </AssociationSet>
           <AssociationSet Name="FK_Credential_SummaryCache_Credential1" Association="Self.FK_Credential_SummaryCache_Credential1">
             <End Role="Credential" EntitySet="Credential" />
@@ -2873,6 +3145,22 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Entity" EntitySet="Entity" />
             <End Role="Entity_DurationProfile" EntitySet="Entity_DurationProfile" />
           </AssociationSet>
+          <AssociationSet Name="FK_Entity_EarningsProfile_EarningsProfile" Association="Self.FK_Entity_EarningsProfile_EarningsProfile">
+            <End Role="EarningsProfile" EntitySet="EarningsProfile" />
+            <End Role="Entity_EarningsProfile" EntitySet="Entity_EarningsProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EarningsProfile_Entity" Association="Self.FK_Entity_EarningsProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_EarningsProfile" EntitySet="Entity_EarningsProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" Association="Self.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile">
+            <End Role="EmploymentOutcomeProfile" EntitySet="EmploymentOutcomeProfile" />
+            <End Role="Entity_EmploymentOutcomeProfile" EntitySet="Entity_EmploymentOutcomeProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EmploymentOutcomeProfile_Entity" Association="Self.FK_Entity_EmploymentOutcomeProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_EmploymentOutcomeProfile" EntitySet="Entity_EmploymentOutcomeProfile" />
+          </AssociationSet>
           <AssociationSet Name="FK_Entity_FinancialAssistanceProfile_Entity" Association="Self.FK_Entity_FinancialAssistanceProfile_Entity">
             <End Role="Entity" EntitySet="Entity" />
             <End Role="Entity_FinancialAssistanceProfile" EntitySet="Entity_FinancialAssistanceProfile" />
@@ -2896,6 +3184,14 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_Entity_HasPathwayComponent_PathwayComponent" Association="Self.FK_Entity_HasPathwayComponent_PathwayComponent">
             <End Role="PathwayComponent" EntitySet="PathwayComponent" />
             <End Role="Entity_HasPathwayComponent" EntitySet="Entity_HasPathwayComponent" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_HoldersProfile_Entity" Association="Self.FK_Entity_HoldersProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_HoldersProfile" EntitySet="Entity_HoldersProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_HoldersProfile_HoldersProfile" Association="Self.FK_Entity_HoldersProfile_HoldersProfile">
+            <End Role="HoldersProfile" EntitySet="HoldersProfile" />
+            <End Role="Entity_HoldersProfile" EntitySet="Entity_HoldersProfile" />
           </AssociationSet>
           <AssociationSet Name="FK_Entity_IdentifierValue_Entity" Association="Self.FK_Entity_IdentifierValue_Entity">
             <End Role="Entity" EntitySet="Entity" />
@@ -3121,8 +3417,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <EntitySet Name="OccupationProfile" EntityType="workITModel.OccupationProfile" />
           <EntitySet Name="Organization" EntityType="workITModel.Organization" />
           <EntitySet Name="Pathway" EntityType="workITModel.Pathway" />
-          <EntitySet Name="Pathway_ComponentCondition" EntityType="workITModel.Pathway_ComponentCondition" />
-          <EntitySet Name="PathwayComponent" EntityType="workITModel.PathwayComponent" />
           <EntitySet Name="PathwaySet" EntityType="workITModel.PathwaySet" />
           <EntitySet Name="Reference_Framework" EntityType="workITModel.Reference_Framework" />
           <EntitySet Name="Reference_FrameworkItem" EntityType="workITModel.Reference_FrameworkItem" />
@@ -3161,10 +3455,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_Entity_HasPathwayComponent_Codes_PathwayComponentRelationship" Association="workITModel.FK_Entity_HasPathwayComponent_Codes_PathwayComponentRelationship">
             <End Role="Codes_PathwayComponentRelationship" EntitySet="Codes_PathwayComponentRelationship" />
             <End Role="Entity_HasPathwayComponent" EntitySet="Entity_HasPathwayComponent" />
-          </AssociationSet>
-          <AssociationSet Name="FK_PathwayComponent_Codes_PathwayComponentType" Association="workITModel.FK_PathwayComponent_Codes_PathwayComponentType">
-            <End Role="Codes_PathwayComponentType" EntitySet="Codes_PathwayComponentType" />
-            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
           </AssociationSet>
           <AssociationSet Name="FK_Entity_ProcessProfile_Codes_ProcessProfileType" Association="workITModel.FK_Entity_ProcessProfile_Codes_ProcessProfileType">
             <End Role="Codes_ProcessProfileType" EntitySet="Codes_ProcessProfileType" />
@@ -3382,10 +3672,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Pathway" EntitySet="Pathway" />
             <End Role="Entity_HasPathway" EntitySet="Entity_HasPathway" />
           </AssociationSet>
-          <AssociationSet Name="FK_Entity_HasPathwayComponent_PathwayComponent" Association="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent">
-            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
-            <End Role="Entity_HasPathwayComponent" EntitySet="Entity_HasPathwayComponent" />
-          </AssociationSet>
           <AssociationSet Name="FK_GeoCoordinate_Entity_JurisdictionProfile" Association="workITModel.FK_GeoCoordinate_Entity_JurisdictionProfile">
             <End Role="Entity_JurisdictionProfile" EntitySet="Entity_JurisdictionProfile" />
             <End Role="GeoCoordinate" EntitySet="GeoCoordinate" />
@@ -3418,10 +3704,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             <End Role="Import_Staging" EntitySet="Import_Staging" />
             <End Role="Import_Message" EntitySet="Import_Message" />
           </AssociationSet>
-          <AssociationSet Name="FK_Pathway_ComponentCondition_PathwayComponent" Association="workITModel.FK_Pathway_ComponentCondition_PathwayComponent">
-            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
-            <End Role="Pathway_ComponentCondition" EntitySet="Pathway_ComponentCondition" />
-          </AssociationSet>
           <AssociationSet Name="FK_Reference_FrameworkItem_Reference_Framework" Association="workITModel.FK_Reference_FrameworkItem_Reference_Framework">
             <End Role="Reference_Framework" EntitySet="Reference_Framework" />
             <End Role="Reference_FrameworkItem" EntitySet="Reference_FrameworkItem" />
@@ -3451,6 +3733,63 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <AssociationSet Name="FK_Collection_Competency_Collection" Association="workITModel.FK_Collection_Competency_Collection">
             <End Role="Collection" EntitySet="Collection" />
             <End Role="Collection_Competency" EntitySet="Collection_Competency" />
+          </AssociationSet>
+          <EntitySet Name="HoldersProfile" EntityType="workITModel.HoldersProfile" />
+          <EntitySet Name="EarningsProfile" EntityType="workITModel.EarningsProfile" />
+          <EntitySet Name="EmploymentOutcomeProfile" EntityType="workITModel.EmploymentOutcomeProfile" />
+          <EntitySet Name="Entity_EarningsProfile" EntityType="workITModel.Entity_EarningsProfile" />
+          <EntitySet Name="Entity_EmploymentOutcomeProfile" EntityType="workITModel.Entity_EmploymentOutcomeProfile" />
+          <EntitySet Name="Entity_HoldersProfile" EntityType="workITModel.Entity_HoldersProfile" />
+          <AssociationSet Name="FK_Entity_EarningsProfile_EarningsProfile" Association="workITModel.FK_Entity_EarningsProfile_EarningsProfile">
+            <End Role="EarningsProfile" EntitySet="EarningsProfile" />
+            <End Role="Entity_EarningsProfile" EntitySet="Entity_EarningsProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" Association="workITModel.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile">
+            <End Role="EmploymentOutcomeProfile" EntitySet="EmploymentOutcomeProfile" />
+            <End Role="Entity_EmploymentOutcomeProfile" EntitySet="Entity_EmploymentOutcomeProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EarningsProfile_Entity" Association="workITModel.FK_Entity_EarningsProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_EarningsProfile" EntitySet="Entity_EarningsProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_EmploymentOutcomeProfile_Entity" Association="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_EmploymentOutcomeProfile" EntitySet="Entity_EmploymentOutcomeProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_HoldersProfile_Entity" Association="workITModel.FK_Entity_HoldersProfile_Entity">
+            <End Role="Entity" EntitySet="Entity" />
+            <End Role="Entity_HoldersProfile" EntitySet="Entity_HoldersProfile" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_HoldersProfile_HoldersProfile" Association="workITModel.FK_Entity_HoldersProfile_HoldersProfile">
+            <End Role="HoldersProfile" EntitySet="HoldersProfile" />
+            <End Role="Entity_HoldersProfile" EntitySet="Entity_HoldersProfile" />
+          </AssociationSet>
+          <EntitySet Name="Counts_SiteTotals" EntityType="workITModel.Counts_SiteTotals" />
+          <EntitySet Name="Counts_EntityMonthlyTotals" EntityType="workITModel.Counts_EntityMonthlyTotals" />
+          <EntitySet Name="Counts_EntityStatistic" EntityType="workITModel.Counts_EntityStatistic" />
+          <AssociationSet Name="FK_Counts_EntityStatistic_Codes_EntityTypes" Association="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes">
+            <End Role="Codes_EntityTypes" EntitySet="Codes_EntityTypes" />
+            <End Role="Counts_EntityStatistic" EntitySet="Counts_EntityStatistic" />
+          </AssociationSet>
+          <EntitySet Name="Counts_RegionTotals" EntityType="workITModel.Counts_RegionTotals" />
+          <EntitySet Name="Pathway_ComponentCondition" EntityType="workITModel.Pathway_ComponentCondition" />
+          <EntitySet Name="PathwayComponent" EntityType="workITModel.PathwayComponent" />
+          <AssociationSet Name="FK_PathwayComponent_Codes_PathwayComponentType" Association="workITModel.FK_PathwayComponent_Codes_PathwayComponentType">
+            <End Role="Codes_PathwayComponentType" EntitySet="Codes_PathwayComponentType" />
+            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Entity_HasPathwayComponent_PathwayComponent" Association="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent">
+            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
+            <End Role="Entity_HasPathwayComponent" EntitySet="Entity_HasPathwayComponent" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pathway_ComponentCondition_PathwayComponent" Association="workITModel.FK_Pathway_ComponentCondition_PathwayComponent">
+            <End Role="PathwayComponent" EntitySet="PathwayComponent" />
+            <End Role="Pathway_ComponentCondition" EntitySet="Pathway_ComponentCondition" />
+          </AssociationSet>
+          <EntitySet Name="Collection_CollectionMember" EntityType="workITModel.Collection_CollectionMember" />
+          <AssociationSet Name="FK_Collection_CollectionMember_Collection" Association="workITModel.FK_Collection_CollectionMember_Collection">
+            <End Role="Collection" EntitySet="Collection" />
+            <End Role="Collection_CollectionMember" EntitySet="Collection_CollectionMember" />
           </AssociationSet>
         </EntityContainer>
         <EntityType Name="ActivityLog">
@@ -3613,6 +3952,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="IsTopLevelEntity" Type="Boolean" Nullable="false" />
           <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_Codes_EntityType" FromRole="Codes_EntityTypes" ToRole="Entity" />
           <Property Name="Label" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="Counts_EntityStatistic" Relationship="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" FromRole="Codes_EntityTypes" ToRole="Counts_EntityStatistic" />
         </EntityType>
         <EntityType Name="Codes_PathwayComponentRelationship">
           <Key>
@@ -3754,6 +4094,7 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <NavigationProperty Name="Entity_Competency" Relationship="workITModel.FK_EntityCompetency_Collection" FromRole="Collection" ToRole="Entity_Competency" />
           <NavigationProperty Name="Collection_Competency" Relationship="workITModel.FK_Collection_Competency_Collection" FromRole="Collection" ToRole="Collection_Competency" />
           <Property Name="LifeCycleStatusTypeId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Collection_CollectionMember" Relationship="workITModel.FK_Collection_CollectionMember_Collection" FromRole="Collection" ToRole="Collection_CollectionMember" />
         </EntityType>
         <EntityType Name="CompetencyFramework">
           <Key>
@@ -4073,6 +4414,9 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <NavigationProperty Name="Entity_ContactPoint" Relationship="workITModel.FK_EntityContactPoint_ParentEntity" FromRole="Entity" ToRole="Entity_ContactPoint" />
           <NavigationProperty Name="Entity_TransferValueProfile" Relationship="workITModel.FK_EntityTVP_Entity" FromRole="Entity" ToRole="Entity_TransferValueProfile" />
           <NavigationProperty Name="Entity_CompetencyFramework" Relationship="workITModel.FK_EntityCF_Entity" FromRole="Entity" ToRole="Entity_CompetencyFramework" />
+          <NavigationProperty Name="Entity_EarningsProfile" Relationship="workITModel.FK_Entity_EarningsProfile_Entity" FromRole="Entity" ToRole="Entity_EarningsProfile" />
+          <NavigationProperty Name="Entity_EmploymentOutcomeProfile" Relationship="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity" FromRole="Entity" ToRole="Entity_EmploymentOutcomeProfile" />
+          <NavigationProperty Name="Entity_HoldersProfile" Relationship="workITModel.FK_Entity_HoldersProfile_Entity" FromRole="Entity" ToRole="Entity_HoldersProfile" />
         </EntityType>
         <EntityType Name="Entity_Address">
           <Key>
@@ -4881,49 +5225,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <NavigationProperty Name="Entity_HasPathway" Relationship="workITModel.FK_Entity_HasPathway_Pathway" FromRole="Pathway" ToRole="Entity_HasPathway" />
         </EntityType>
-        <EntityType Name="Pathway_ComponentCondition">
-          <Key>
-            <PropertyRef Name="Id" />
-          </Key>
-          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
-          <Property Name="RowId" Type="Guid" Nullable="false" />
-          <Property Name="ParentComponentId" Type="Int32" Nullable="false" />
-          <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="true" />
-          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="RequiredNumber" Type="Int32" />
-          <Property Name="PathwayCTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Created" Type="DateTime" Nullable="false" Precision="3" />
-          <Property Name="LastUpdated" Type="DateTime" Nullable="false" Precision="3" />
-          <NavigationProperty Name="PathwayComponent" Relationship="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" FromRole="Pathway_ComponentCondition" ToRole="PathwayComponent" />
-          <Property Name="HasConstraint" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-        </EntityType>
-        <EntityType Name="PathwayComponent">
-          <Key>
-            <PropertyRef Name="Id" />
-          </Key>
-          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
-          <Property Name="RowId" Type="Guid" Nullable="false" />
-          <Property Name="ComponentTypeId" Type="Int32" Nullable="false" />
-          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
-          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
-          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="SubjectWebpage" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="SourceData" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="CodedNotation" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="CredentialType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="ComponentCategory" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="ProgramTerm" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="HasProgressionLevel" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="PathwayCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Created" Type="DateTime" Precision="3" />
-          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
-          <Property Name="Properties" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <NavigationProperty Name="Codes_PathwayComponentType" Relationship="workITModel.FK_PathwayComponent_Codes_PathwayComponentType" FromRole="PathwayComponent" ToRole="Codes_PathwayComponentType" />
-          <NavigationProperty Name="Entity_HasPathwayComponent" Relationship="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent" FromRole="PathwayComponent" ToRole="Entity_HasPathwayComponent" />
-          <NavigationProperty Name="Pathway_ComponentCondition" Relationship="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" FromRole="PathwayComponent" ToRole="Pathway_ComponentCondition" />
-          <Property Name="ProxyFor" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
-        </EntityType>
         <EntityType Name="PathwaySet">
           <Key>
             <PropertyRef Name="Id" />
@@ -5212,18 +5513,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             </Principal>
             <Dependent Role="Entity_HasPathwayComponent">
               <PropertyRef Name="ComponentRelationshipTypeId" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
-        <Association Name="FK_PathwayComponent_Codes_PathwayComponentType">
-          <End Type="workITModel.Codes_PathwayComponentType" Role="Codes_PathwayComponentType" Multiplicity="1" />
-          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="Codes_PathwayComponentType">
-              <PropertyRef Name="Id" />
-            </Principal>
-            <Dependent Role="PathwayComponent">
-              <PropertyRef Name="ComponentTypeId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -5971,20 +6260,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        <Association Name="FK_Entity_HasPathwayComponent_PathwayComponent">
-          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="1">
-            <OnDelete Action="Cascade" />
-          </End>
-          <End Type="workITModel.Entity_HasPathwayComponent" Role="Entity_HasPathwayComponent" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="PathwayComponent">
-              <PropertyRef Name="Id" />
-            </Principal>
-            <Dependent Role="Entity_HasPathwayComponent">
-              <PropertyRef Name="PathwayComponentId" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
         <Association Name="FK_GeoCoordinate_Entity_JurisdictionProfile">
           <End Type="workITModel.Entity_JurisdictionProfile" Role="Entity_JurisdictionProfile" Multiplicity="1">
             <OnDelete Action="Cascade" />
@@ -6094,20 +6369,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
             </Principal>
             <Dependent Role="Import_Message">
               <PropertyRef Name="ParentId" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
-        <Association Name="FK_Pathway_ComponentCondition_PathwayComponent">
-          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="1">
-            <OnDelete Action="Cascade" />
-          </End>
-          <End Type="workITModel.Pathway_ComponentCondition" Role="Pathway_ComponentCondition" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="PathwayComponent">
-              <PropertyRef Name="Id" />
-            </Principal>
-            <Dependent Role="Pathway_ComponentCondition">
-              <PropertyRef Name="ParentComponentId" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -6231,6 +6492,353 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
               <PropertyRef Name="Id" />
             </Principal>
             <Dependent Role="Collection_Competency">
+              <PropertyRef Name="CollectionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="HoldersProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="DateEffective" Type="DateTime" Precision="3" />
+          <Property Name="Source" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="NumberAwarded" Type="Int32" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="DemographicInformation" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <NavigationProperty Name="Entity_HoldersProfile" Relationship="workITModel.FK_Entity_HoldersProfile_HoldersProfile" FromRole="HoldersProfile" ToRole="Entity_HoldersProfile" />
+        </EntityType>
+        <EntityType Name="EarningsProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="DateEffective" Type="DateTime" Precision="3" />
+          <Property Name="Source" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="LowEarnings" Type="Int32" />
+          <Property Name="MedianEarnings" Type="Int32" />
+          <Property Name="HighEarnings" Type="Int32" />
+          <Property Name="PostReceiptMonths" Type="Int32" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Entity_EarningsProfile" Relationship="workITModel.FK_Entity_EarningsProfile_EarningsProfile" FromRole="EarningsProfile" ToRole="Entity_EarningsProfile" />
+        </EntityType>
+        <EntityType Name="EmploymentOutcomeProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="DateEffective" Type="DateTime" Precision="3" />
+          <Property Name="Source" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="JobsObtainedJson" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Entity_EmploymentOutcomeProfile" Relationship="workITModel.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" FromRole="EmploymentOutcomeProfile" ToRole="Entity_EmploymentOutcomeProfile" />
+        </EntityType>
+        <EntityType Name="Entity_EarningsProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EarningsProfileId" Type="Int32" Nullable="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="EarningsProfile" Relationship="workITModel.FK_Entity_EarningsProfile_EarningsProfile" FromRole="Entity_EarningsProfile" ToRole="EarningsProfile" />
+          <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_EarningsProfile_Entity" FromRole="Entity_EarningsProfile" ToRole="Entity" />
+        </EntityType>
+        <EntityType Name="Entity_EmploymentOutcomeProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EmploymentOutcomeProfileId" Type="Int32" Nullable="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="EmploymentOutcomeProfile" Relationship="workITModel.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" FromRole="Entity_EmploymentOutcomeProfile" ToRole="EmploymentOutcomeProfile" />
+          <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity" FromRole="Entity_EmploymentOutcomeProfile" ToRole="Entity" />
+        </EntityType>
+        <EntityType Name="Entity_HoldersProfile">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="HoldersProfileId" Type="Int32" Nullable="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Entity" Relationship="workITModel.FK_Entity_HoldersProfile_Entity" FromRole="Entity_HoldersProfile" ToRole="Entity" />
+          <NavigationProperty Name="HoldersProfile" Relationship="workITModel.FK_Entity_HoldersProfile_HoldersProfile" FromRole="Entity_HoldersProfile" ToRole="HoldersProfile" />
+        </EntityType>
+        <Association Name="FK_Entity_EarningsProfile_EarningsProfile">
+          <End Type="workITModel.EarningsProfile" Role="EarningsProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_EarningsProfile" Role="Entity_EarningsProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EarningsProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EarningsProfile">
+              <PropertyRef Name="EarningsProfileId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile">
+          <End Type="workITModel.EmploymentOutcomeProfile" Role="EmploymentOutcomeProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_EmploymentOutcomeProfile" Role="Entity_EmploymentOutcomeProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EmploymentOutcomeProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EmploymentOutcomeProfile">
+              <PropertyRef Name="EmploymentOutcomeProfileId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EarningsProfile_Entity">
+          <End Type="workITModel.Entity" Role="Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_EarningsProfile" Role="Entity_EarningsProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EarningsProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_EmploymentOutcomeProfile_Entity">
+          <End Type="workITModel.Entity" Role="Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_EmploymentOutcomeProfile" Role="Entity_EmploymentOutcomeProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_EmploymentOutcomeProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_HoldersProfile_Entity">
+          <End Type="workITModel.Entity" Role="Entity" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_HoldersProfile" Role="Entity_HoldersProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Entity">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_HoldersProfile">
+              <PropertyRef Name="EntityId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_HoldersProfile_HoldersProfile">
+          <End Type="workITModel.HoldersProfile" Role="HoldersProfile" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_HoldersProfile" Role="Entity_HoldersProfile" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="HoldersProfile">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_HoldersProfile">
+              <PropertyRef Name="HoldersProfileId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Counts_SiteTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CodeId" Type="Int32" />
+          <Property Name="Title" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Counts_EntityMonthlyTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Period" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CreatedTotal" Type="Int32" Nullable="false" />
+          <Property Name="UpdatedTotal" Type="Int32" Nullable="false" />
+          <Property Name="DeletedTotal" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Counts_EntityStatistic">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CategoryId" Type="Int32" />
+          <Property Name="Title" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="2000" FixedLength="false" Unicode="false" />
+          <Property Name="SortOrder" Type="Int32" />
+          <Property Name="IsActive" Type="Boolean" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Codes_EntityTypes" Relationship="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" FromRole="Counts_EntityStatistic" ToRole="Codes_EntityTypes" />
+        </EntityType>
+        <Association Name="FK_Counts_EntityStatistic_Codes_EntityTypes">
+          <End Type="workITModel.Codes_EntityTypes" Role="Codes_EntityTypes" Multiplicity="1" />
+          <End Type="workITModel.Counts_EntityStatistic" Role="Counts_EntityStatistic" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_EntityTypes">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Counts_EntityStatistic">
+              <PropertyRef Name="EntityTypeId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Counts_RegionTotals">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="Country" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Region" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Pathway_ComponentCondition">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="ParentComponentId" Type="Int32" Nullable="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="RequiredNumber" Type="Int32" />
+          <Property Name="PathwayCTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Nullable="false" Precision="3" />
+          <NavigationProperty Name="PathwayComponent" Relationship="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" FromRole="Pathway_ComponentCondition" ToRole="PathwayComponent" />
+        </EntityType>
+        <EntityType Name="PathwayComponent">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <Property Name="ComponentTypeId" Type="Int32" />
+          <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="SubjectWebpage" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="SourceData" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="CredentialType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ComponentCategory" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ProgramTerm" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="HasProgressionLevel" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="ExternalIdentifier" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="PathwayCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="CreatedById" Type="Int32" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdatedById" Type="Int32" />
+          <Property Name="Properties" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="Codes_PathwayComponentType" Relationship="workITModel.FK_PathwayComponent_Codes_PathwayComponentType" FromRole="PathwayComponent" ToRole="Codes_PathwayComponentType" />
+          <NavigationProperty Name="Entity_HasPathwayComponent" Relationship="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent" FromRole="PathwayComponent" ToRole="Entity_HasPathwayComponent" />
+          <NavigationProperty Name="Pathway_ComponentCondition" Relationship="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" FromRole="PathwayComponent" ToRole="Pathway_ComponentCondition" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_PathwayComponent_Codes_PathwayComponentType">
+          <End Type="workITModel.Codes_PathwayComponentType" Role="Codes_PathwayComponentType" Multiplicity="0..1" />
+          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Codes_PathwayComponentType">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="PathwayComponent">
+              <PropertyRef Name="ComponentTypeId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Entity_HasPathwayComponent_PathwayComponent">
+          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Entity_HasPathwayComponent" Role="Entity_HasPathwayComponent" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PathwayComponent">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Entity_HasPathwayComponent">
+              <PropertyRef Name="PathwayComponentId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pathway_ComponentCondition_PathwayComponent">
+          <End Type="workITModel.PathwayComponent" Role="PathwayComponent" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Pathway_ComponentCondition" Role="Pathway_ComponentCondition" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PathwayComponent">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Pathway_ComponentCondition">
+              <PropertyRef Name="ParentComponentId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityType Name="Collection_CollectionMember">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CollectionId" Type="Int32" Nullable="false" />
+          <Property Name="Name" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="MemberUID" Type="Guid" Nullable="false" />
+          <Property Name="StartDate" Type="DateTime" Precision="3" />
+          <Property Name="EndDate" Type="DateTime" Precision="3" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="LastUpdated" Type="DateTime" Precision="3" />
+          <Property Name="RowId" Type="Guid" Nullable="false" />
+          <NavigationProperty Name="Collection" Relationship="workITModel.FK_Collection_CollectionMember_Collection" FromRole="Collection_CollectionMember" ToRole="Collection" />
+        </EntityType>
+        <Association Name="FK_Collection_CollectionMember_Collection">
+          <End Type="workITModel.Collection" Role="Collection" Multiplicity="1">
+            <OnDelete Action="Cascade" />
+          </End>
+          <End Type="workITModel.Collection_CollectionMember" Role="Collection_CollectionMember" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Collection">
+              <PropertyRef Name="Id" />
+            </Principal>
+            <Dependent Role="Collection_CollectionMember">
               <PropertyRef Name="CollectionId" />
             </Dependent>
           </ReferentialConstraint>
@@ -7603,47 +8211,6 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-          <EntitySetMapping Name="Pathway_ComponentCondition">
-            <EntityTypeMapping TypeName="workITModel.Pathway_ComponentCondition">
-              <MappingFragment StoreEntitySet="Pathway_ComponentCondition">
-                <ScalarProperty Name="HasConstraint" ColumnName="HasConstraint" />
-                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
-                <ScalarProperty Name="Created" ColumnName="Created" />
-                <ScalarProperty Name="PathwayCTID" ColumnName="PathwayCTID" />
-                <ScalarProperty Name="RequiredNumber" ColumnName="RequiredNumber" />
-                <ScalarProperty Name="Description" ColumnName="Description" />
-                <ScalarProperty Name="Name" ColumnName="Name" />
-                <ScalarProperty Name="ParentComponentId" ColumnName="ParentComponentId" />
-                <ScalarProperty Name="RowId" ColumnName="RowId" />
-                <ScalarProperty Name="Id" ColumnName="Id" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="PathwayComponent">
-            <EntityTypeMapping TypeName="workITModel.PathwayComponent">
-              <MappingFragment StoreEntitySet="PathwayComponent">
-                <ScalarProperty Name="ProxyFor" ColumnName="ProxyFor" />
-                <ScalarProperty Name="Properties" ColumnName="Properties" />
-                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
-                <ScalarProperty Name="Created" ColumnName="Created" />
-                <ScalarProperty Name="PathwayCTID" ColumnName="PathwayCTID" />
-                <ScalarProperty Name="HasProgressionLevel" ColumnName="HasProgressionLevel" />
-                <ScalarProperty Name="ProgramTerm" ColumnName="ProgramTerm" />
-                <ScalarProperty Name="ComponentCategory" ColumnName="ComponentCategory" />
-                <ScalarProperty Name="CredentialType" ColumnName="CredentialType" />
-                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
-                <ScalarProperty Name="SourceData" ColumnName="SourceData" />
-                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
-                <ScalarProperty Name="Description" ColumnName="Description" />
-                <ScalarProperty Name="Name" ColumnName="Name" />
-                <ScalarProperty Name="CTID" ColumnName="CTID" />
-                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
-                <ScalarProperty Name="ComponentTypeId" ColumnName="ComponentTypeId" />
-                <ScalarProperty Name="RowId" ColumnName="RowId" />
-                <ScalarProperty Name="Id" ColumnName="Id" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
           <EntitySetMapping Name="PathwaySet">
             <EntityTypeMapping TypeName="workITModel.PathwaySet">
               <MappingFragment StoreEntitySet="PathwaySet">
@@ -7871,6 +8438,201 @@ warning 6035: The relationship 'FK_Entity.VerificationProfile_Organization' has 
                 <ScalarProperty Name="CompetencyCategory" ColumnName="CompetencyCategory" />
                 <ScalarProperty Name="CTID" ColumnName="CTID" />
                 <ScalarProperty Name="CompetencyText" ColumnName="CompetencyText" />
+                <ScalarProperty Name="CollectionId" ColumnName="CollectionId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="HoldersProfile">
+            <EntityTypeMapping TypeName="workITModel.HoldersProfile">
+              <MappingFragment StoreEntitySet="HoldersProfile">
+                <ScalarProperty Name="DemographicInformation" ColumnName="DemographicInformation" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="NumberAwarded" ColumnName="NumberAwarded" />
+                <ScalarProperty Name="Source" ColumnName="Source" />
+                <ScalarProperty Name="DateEffective" ColumnName="DateEffective" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EarningsProfile">
+            <EntityTypeMapping TypeName="workITModel.EarningsProfile">
+              <MappingFragment StoreEntitySet="EarningsProfile">
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="PostReceiptMonths" ColumnName="PostReceiptMonths" />
+                <ScalarProperty Name="HighEarnings" ColumnName="HighEarnings" />
+                <ScalarProperty Name="MedianEarnings" ColumnName="MedianEarnings" />
+                <ScalarProperty Name="LowEarnings" ColumnName="LowEarnings" />
+                <ScalarProperty Name="Source" ColumnName="Source" />
+                <ScalarProperty Name="DateEffective" ColumnName="DateEffective" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EmploymentOutcomeProfile">
+            <EntityTypeMapping TypeName="workITModel.EmploymentOutcomeProfile">
+              <MappingFragment StoreEntitySet="EmploymentOutcomeProfile">
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="JobsObtainedJson" ColumnName="JobsObtainedJson" />
+                <ScalarProperty Name="Source" ColumnName="Source" />
+                <ScalarProperty Name="DateEffective" ColumnName="DateEffective" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_EarningsProfile">
+            <EntityTypeMapping TypeName="workITModel.Entity_EarningsProfile">
+              <MappingFragment StoreEntitySet="Entity_EarningsProfile">
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="EarningsProfileId" ColumnName="EarningsProfileId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_EmploymentOutcomeProfile">
+            <EntityTypeMapping TypeName="workITModel.Entity_EmploymentOutcomeProfile">
+              <MappingFragment StoreEntitySet="Entity_EmploymentOutcomeProfile">
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="EmploymentOutcomeProfileId" ColumnName="EmploymentOutcomeProfileId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_HoldersProfile">
+            <EntityTypeMapping TypeName="workITModel.Entity_HoldersProfile">
+              <MappingFragment StoreEntitySet="Entity_HoldersProfile">
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="HoldersProfileId" ColumnName="HoldersProfileId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_SiteTotals">
+            <EntityTypeMapping TypeName="workITModel.Counts_SiteTotals">
+              <MappingFragment StoreEntitySet="Counts_SiteTotals">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="CodeId" ColumnName="CodeId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_EntityMonthlyTotals">
+            <EntityTypeMapping TypeName="workITModel.Counts_EntityMonthlyTotals">
+              <MappingFragment StoreEntitySet="Counts_EntityMonthlyTotals">
+                <ScalarProperty Name="DeletedTotal" ColumnName="DeletedTotal" />
+                <ScalarProperty Name="UpdatedTotal" ColumnName="UpdatedTotal" />
+                <ScalarProperty Name="CreatedTotal" ColumnName="CreatedTotal" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Period" ColumnName="Period" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_EntityStatistic">
+            <EntityTypeMapping TypeName="workITModel.Counts_EntityStatistic">
+              <MappingFragment StoreEntitySet="Counts_EntityStatistic">
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="IsActive" ColumnName="IsActive" />
+                <ScalarProperty Name="SortOrder" ColumnName="SortOrder" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Title" ColumnName="Title" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Counts_RegionTotals">
+            <EntityTypeMapping TypeName="workITModel.Counts_RegionTotals">
+              <MappingFragment StoreEntitySet="Counts_RegionTotals">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="Region" ColumnName="Region" />
+                <ScalarProperty Name="Country" ColumnName="Country" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Pathway_ComponentCondition">
+            <EntityTypeMapping TypeName="workITModel.Pathway_ComponentCondition">
+              <MappingFragment StoreEntitySet="Pathway_ComponentCondition">
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="PathwayCTID" ColumnName="PathwayCTID" />
+                <ScalarProperty Name="RequiredNumber" ColumnName="RequiredNumber" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="ParentComponentId" ColumnName="ParentComponentId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PathwayComponent">
+            <EntityTypeMapping TypeName="workITModel.PathwayComponent">
+              <MappingFragment StoreEntitySet="PathwayComponent">
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="Properties" ColumnName="Properties" />
+                <ScalarProperty Name="LastUpdatedById" ColumnName="LastUpdatedById" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="CreatedById" ColumnName="CreatedById" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="PathwayCTID" ColumnName="PathwayCTID" />
+                <ScalarProperty Name="ExternalIdentifier" ColumnName="ExternalIdentifier" />
+                <ScalarProperty Name="HasProgressionLevel" ColumnName="HasProgressionLevel" />
+                <ScalarProperty Name="ProgramTerm" ColumnName="ProgramTerm" />
+                <ScalarProperty Name="ComponentCategory" ColumnName="ComponentCategory" />
+                <ScalarProperty Name="CredentialType" ColumnName="CredentialType" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="SourceData" ColumnName="SourceData" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="ComponentTypeId" ColumnName="ComponentTypeId" />
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Collection_CollectionMember">
+            <EntityTypeMapping TypeName="workITModel.Collection_CollectionMember">
+              <MappingFragment StoreEntitySet="Collection_CollectionMember">
+                <ScalarProperty Name="RowId" ColumnName="RowId" />
+                <ScalarProperty Name="LastUpdated" ColumnName="LastUpdated" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="EndDate" ColumnName="EndDate" />
+                <ScalarProperty Name="StartDate" ColumnName="StartDate" />
+                <ScalarProperty Name="MemberUID" ColumnName="MemberUID" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
                 <ScalarProperty Name="CollectionId" ColumnName="CollectionId" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>

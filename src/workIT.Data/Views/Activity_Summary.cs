@@ -21,7 +21,7 @@ namespace workIT.Data.Views
         public string Event { get; set; }
         public string Comment { get; set; }
         public Nullable<int> TargetUserId { get; set; }
-        public Nullable<int> ActionByUserId { get; set; }
+        public int ActionByUserId { get; set; }
         public string ActionByUser { get; set; }
         public Nullable<int> ActivityObjectId { get; set; }
         public Nullable<int> ObjectRelatedId { get; set; }
@@ -34,5 +34,9 @@ namespace workIT.Data.Views
         public Nullable<int> EntityTypeId { get; set; }
         public Nullable<int> OwningOrgId { get; set; }
         public string Organization { get; set; }
+        public string EntityName { get; set; }
+        public string EntityCTID { get; set; }
+        public int EntityStateId { get; set; }
+        public int OrganizationEntityStateId { get; set; }
     }
 }

@@ -66,7 +66,7 @@ namespace workIT.Services
 		/// <returns></returns>
 		public static List<CodeItem> MainEntityTotals( bool gettingAll = true )
 		{
-			List<CodeItem> list = CodesManager.CodeEntity_GetMainClassTotals( gettingAll );
+			List<CodeItem> list = CodesManager.CodeEntity_GetTopLevelEntity( gettingAll );
 
 			return list;
 		}

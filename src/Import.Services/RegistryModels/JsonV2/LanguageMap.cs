@@ -74,8 +74,31 @@ namespace RA.Models.JsonV2
             //Default
             return "";
         }
-    }
 
+    //    /// <summary>
+    //    /// Helper prototype in case useful
+    //    /// </summary>
+    //    /// <returns></returns>
+    //    public List<LanguageItem> ToList()
+    //    {
+    //        List<LanguageItem> list = new List<LanguageItem>();
+    //        LanguageItem li = new LanguageItem();
+    //        foreach ( var item in this )
+    //        {
+    //            li = new LanguageItem();
+    //            li.Language = item.Key;
+    //            li.Text = item.Value;
+    //            list.Add( li );
+    //        }
+    //        return list;
+    //    }
+
+    }
+    //public class LanguageItem
+    //{
+    //    public string Language { get; set; }
+    //    public string Text { get; set; }
+    //}
     public class LanguageMapList : Dictionary<string, List<string>>
     {
         public LanguageMapList() { }

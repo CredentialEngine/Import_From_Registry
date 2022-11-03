@@ -48,5 +48,8 @@ namespace workIT.Data.Views
         public string Org_QAAgentAndRoles { get; set; }
         public Nullable<System.Guid> OwningAgentUid { get; set; }
         public string OwningOrganizationCtid { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
+        public string LifeCycleStatusType { get; set; }
+        public Nullable<bool> IsNonCredit { get; set; }
     }
 }

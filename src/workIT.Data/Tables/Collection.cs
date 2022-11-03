@@ -19,6 +19,7 @@ namespace workIT.Data.Tables
         {
             this.Entity_Competency = new HashSet<Entity_Competency>();
             this.Collection_Competency = new HashSet<Collection_Competency>();
+            this.Collection_CollectionMember = new HashSet<Collection_CollectionMember>();
         }
     
         public int Id { get; set; }
@@ -43,5 +44,7 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Collection_Competency> Collection_Competency { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Collection_CollectionMember> Collection_CollectionMember { get; set; }
     }
 }

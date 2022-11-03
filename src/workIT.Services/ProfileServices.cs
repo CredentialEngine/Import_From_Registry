@@ -47,7 +47,7 @@ namespace workIT.Services
 				tlo = CredentialManager.GetBasic( entity.EntityBaseId );
 				tlo.EntityTypeId = entity.EntityTypeId;
 			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_ORGANIZATION )
+			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
 			{
 				tlo = OrganizationManager.GetBasics( entity.EntityUid );
 				tlo.EntityTypeId = entity.EntityTypeId;
@@ -74,18 +74,31 @@ namespace workIT.Services
 			}
 			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_SET )
 			{
-				tlo = PathwaySetManager.Get( entity.EntityBaseId );
+				tlo = PathwaySetManager.Get( entity.EntityBaseId, false );
 				tlo.EntityTypeId = entity.EntityTypeId;
 			}
 			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
 			{
-				tlo = TransferValueProfileManager.Get( entity.EntityBaseId );
+				//these need to be light versions
+				tlo = TransferValueProfileManager.Get( entity.EntityBaseId, false );
+				tlo.EntityTypeId = entity.EntityTypeId;
+			}
+			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+			{
+				tlo = OccupationManager.GetBasic( entity.EntityBaseId );
+				tlo.EntityTypeId = entity.EntityTypeId;
+			}
+			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
+			{
+				tlo = JobManager.GetBasic( entity.EntityBaseId );
 				tlo.EntityTypeId = entity.EntityTypeId;
 			}
 			return tlo;
 		}
 
-		public static void HandleAddressGeoCoding()
+
+        #region addresses
+        public static void HandleAddressGeoCoding()
 		{
 			//should we do all?
 			int maxRecords = 0;
@@ -119,7 +132,7 @@ namespace workIT.Services
 				return;
 			}
 			//may be OK from API
-			if ( UtilityManager.GetAppKeyValue( "envType" ) == "development" )
+			if ( UtilityManager.GetAppKeyValue( "environment" ) == "development" )
 			{
 				//message="Sorry the NormalizeAddresses process is not available in the development environment (not allowed by Google)." ;
 				//return;
@@ -148,5 +161,124 @@ namespace workIT.Services
 			//	}
 			//}
 		}
+
+		#endregion
+
+		//public bool HandleDeleteRequest( int cntr, string ctid, string ctdlType, ref string statusMessage )
+		//{
+		//	statusMessage = "";
+		//	List<string> messages = new List<string>();
+
+		//	bool isValid = true;
+		//	DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+
+		//	switch ( ctdlType.ToLower() )
+		//	{
+		//		case "credentialorganization":
+		//		case "qacredentialorganization":
+		//		case "organization":
+		//			if ( !new OrganizationManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+
+		//		case "assessmentprofile":
+		//		case "assessment":
+		//			if ( !new AssessmentManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "learningopportunityprofile":
+		//		case "learningopportunity":
+		//		case "learningprogram":
+		//		case "course":
+		//			if ( !new LearningOpportunityManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "conditionmanifest":
+		//			if ( !new ConditionManifestManager().Delete( ctid, ref statusMessage ) )
+		//			{
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			}
+		//			break;
+		//		case "costmanifest":
+		//			if ( !new CostManifestManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "collection":
+		//		case "ceterms:collection":
+		//			if ( !new CollectionManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "competencyframework": //CompetencyFramework
+		//			if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "conceptscheme":
+		//		case "skos:conceptscheme":
+		//			if ( !new ConceptSchemeManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		//
+		//		case "datasetprofile":
+		//		case "qdata:datasetprofile":
+		//			if ( !new DataSetProfileManager().Delete( ctid, ref messages ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		//
+		//		case "pathway":
+		//			if ( !new PathwayManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "pathwayset":
+		//			if ( !new PathwaySetManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "transfervalueprofile":
+		//			if ( !new TransferValueProfileManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "transferintermediary":
+		//			if ( !new TransferIntermediaryManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "job":
+		//			if ( !new JobManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "occupation":
+		//			if ( !new OccupationManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "task":
+		//			if ( !new TaskManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		case "workrole":
+		//			if ( !new WorkRoleManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//		default:
+		//			//default to credential
+		//			//DisplayMessages( string.Format( "{0}. Deleting Credential ({1}) by ctid: {2} ", cntr, ctdlType, ctid ) );
+		//			if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )
+		//				DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+		//			break;
+		//	}
+
+		//	if ( statusMessage.Length > 0 )
+		//		isValid = false;
+
+		//	return isValid;
+		//}
+		///// <summary>
+		///// simple helper, retained for where methods called from console app.
+		///// </summary>
+		///// <param name="message"></param>
+		///// <returns></returns>
+		//public static string DisplayMessages( string message )
+		//{
+		//	LoggingHelper.DoTrace( 1, message );
+
+		//	return message;
+		//}
 	}
 }

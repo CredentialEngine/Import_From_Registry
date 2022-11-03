@@ -225,7 +225,7 @@ namespace ImportHelpers
 				//
 				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
 				{
-					LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, CTID: {1} ", envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
+					//LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, CTID: {1} ", envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
 					//TODO - can we just use string envelope.EnvelopeCtdlType consistently 
 					ctdlType = ctdlType.Replace( "ceterms:", "" );
 
@@ -264,7 +264,7 @@ namespace ImportHelpers
 						case "task":
 						case "workrole":
 						{
-							LoggingHelper.DoTrace( 1, string.Format( "ImportHelperServices.ImportEnvelope. {0} ({1}-{2}) is not handled at this time. ", ctdlType, envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
+							//LoggingHelper.DoTrace( 1, string.Format( "ImportHelperServices.ImportEnvelope. {0} ({1}-{2}) is not handled at this time. ", ctdlType, envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
 							return false;
 						}
 						//break;

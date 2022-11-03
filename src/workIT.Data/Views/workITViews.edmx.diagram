@@ -29,8 +29,6 @@
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkItemSummary" Width="3.375" PointX="20.75" PointY="0.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" Width="1.5" PointX="10.25" PointY="21.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" Width="3.5" PointX="12.25" PointY="21.5" FillColor="0, 192, 0" />
-        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Summary" Width="1.5" PointX="21.75" PointY="6.625" FillColor="0, 192, 0" />
-        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Totals" Width="1.5" PointX="20.75" PointY="11.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.SiteTotalsSummary" Width="1.5" PointX="7.375" PointY="0.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CodesProperty_Counts_ByEntity" Width="1.5" PointX="20.75" PointY="15.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CodesProperty_Summary" Width="2.125" PointX="2.875" PointY="7.125" FillColor="0, 192, 0" />
@@ -44,6 +42,8 @@
         <EntityTypeShape EntityType="workITViewModels.Query_IndianaCredentials" Width="2.125" PointX="18.375" PointY="19.75" FillColor="255, 128, 0" />
         <EntityTypeShape EntityType="workITViewModels.Organization_CombinedConnections" Width="2.375" PointX="23.375" PointY="11.75" />
         <EntityTypeShape EntityType="workITViewModels.Organization_Summary" Width="1.5" PointX="16.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Totals" Width="1.5" PointX="18.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Summary" Width="1.5" PointX="20.375" PointY="23.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

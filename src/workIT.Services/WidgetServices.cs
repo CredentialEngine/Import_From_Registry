@@ -59,7 +59,8 @@ namespace workIT.Services
         public static Widget Get( int id )
         {
             Widget item = new Widget();
-
+            if ( id == 0 )
+                return item;
             item = Manager.Get( id );
 
             return item;

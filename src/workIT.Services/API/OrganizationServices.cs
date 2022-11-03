@@ -1,4 +1,4 @@
-﻿using System;
+﻿	using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,86 +11,198 @@ using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
 using workIT.Models.Search;
 using workIT.Factories;
-using workIT.Utilities;
+using workIT.Utilities;		
 using ElasticHelper = workIT.Services.ElasticServices;
 
 using EntityHelper = workIT.Services.OrganizationServices;
 using ThisEntity = workIT.Models.Common.Organization;
 using EntityMgr = workIT.Factories.OrganizationManager;
+using OutputEntity = workIT.Models.API.OrganizationDetail;
+using CachedEntity = workIT.Services.API.CachedApiEntity;
+
 namespace workIT.Services.API
 {
 	public class OrganizationServices
 	{
-		public static string externalFinderSiteURL = UtilityManager.GetAppKeyValue( "externalFinderSiteURL" );
-		public static string searchType = "organization";
+		public static string searchType = "Organization";
+		public static string thisClassName = "workIT.Services.API.OrganizationServices";
 		#region methods for new API
-		public static WMA.OrganizationDetail GetDetailForAPI( int id, bool skippingCache = false, bool includingAll=false )
+		public static ThisEntity GetForSummary( int id, bool includingRoles = false )
+		{
+			return OrganizationManager.GetForSummary( id, includingRoles );
+		}
+
+		public static WMA.OrganizationDetail GetDetailForAPI( int id, bool skippingCache = false, bool includingAll = false )
 		{
 			//var output = EntityHelper.GetDetail( id, skippingCache );
-			var request = new OrganizationManager.OrganizationRequest(2);
+			var request = new OrganizationManager.OrganizationRequest( 2 );
 			if ( includingAll )
 				request = new OrganizationManager.OrganizationRequest( 1 );
 
-			if ( UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true ) )
-				request.IncludingProcessProfiles = true;
-			if ( UtilityManager.GetAppKeyValue( "includeManifestDetails", true ) )
-				request.IncludingManifests = true;
+			request.IncludingProcessProfiles = UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true );
+			request.IncludingManifests = UtilityManager.GetAppKeyValue( "includeManifestDetails", true );
+			request.IncludingVerificationProfiles = UtilityManager.GetAppKeyValue( "includeVerficationServicesProfileDetails", true );
+			request.AllowCaching = !skippingCache;
+			OutputEntity outputEntity = new OutputEntity();
+			if ( UsingCache( id, request, ref outputEntity ) )
+			{
+				return outputEntity;
+			}
+			//only cache longer processes
+			DateTime start = DateTime.Now;
 
 			var output = EntityMgr.GetDetailForAPI( id, request );
-
-			return MapToAPI( output, request );
+			if ( output == null || output.Id == 0 )
+			{
+				WMA.OrganizationDetail detail = new WMA.OrganizationDetail()
+				{
+					Name = "Organization was not found!"
+				};
+				return detail;
+			}
+			else
+			{
+				DateTime end = DateTime.Now;
+				//for now don't include the mapping in the elapsed
+				int elasped = ( end - start ).Seconds;
+				outputEntity = MapToAPI( output, request );
+				if (elasped > 5 && !skippingCache )
+					CacheEntity( outputEntity );
+				return outputEntity;
+			}
 
 		}
-		//called by the search
-		public static WMA.OrganizationDetail GetDetailForAPI( int id, bool skippingCache = false)
-		{
-			//var output = EntityHelper.GetDetail( id, skippingCache );
-			var request = new OrganizationManager.OrganizationRequest( 2 );
+		//called by the search (formerly)
+		//public static WMA.OrganizationDetail GetDetailForAPI( int id, bool skippingCache = false )
+		//{
+		//	//var output = EntityHelper.GetDetail( id, skippingCache );
+		//	var request = new OrganizationManager.OrganizationRequest( 2 );
+		//	request.IncludingProcessProfiles = UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true );
+		//	request.IncludingManifests = UtilityManager.GetAppKeyValue( "includeManifestDetails", true );
+		//	request.IncludingVerificationProfiles = UtilityManager.GetAppKeyValue( "includeVerficationServicesProfileDetails", true );
+		//	request.AllowCaching = !skippingCache;
+		//	//
+		//	var output = EntityMgr.GetDetailForAPI( id, request );
 
-			if ( UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true ) )
-				request.IncludingProcessProfiles = true;
-			if ( UtilityManager.GetAppKeyValue( "includeManifestDetails", true ) )
-				request.IncludingManifests = true;
+		//	return MapToAPI( output, request );
 
-			var output = EntityMgr.GetDetailForAPI( id, request );
+		//}
 
-			return MapToAPI( output, request );
-
-		}
+		//also used by CredentialFinderWebAPI.Controllers.DetailController.OrganizationSimplified
 		public static WMA.OrganizationDetail GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
-			var request = new OrganizationManager.OrganizationRequest( 2 );
-			var output = EntityMgr.GetDetailForAPI( ctid, request );
+			bool includingAll = false;
+			var record = OrganizationManager.GetSummaryByCtid( ctid, false );
+			return GetDetailForAPI( record.Id, skippingCache, includingAll );
+		}
 
-			return MapToAPI( output, request );
+
+		private static bool UsingCache( int id, OrganizationManager.OrganizationRequest request, ref OutputEntity output )
+		{
+			int cacheMinutes = UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 );
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+
+			string key = "organizationbyapi_" + id.ToString();
+
+			if ( request.AllowCaching && cacheMinutes > 0 
+				&& HttpRuntime.Cache[ key ] != null)
+			{
+				var cache = new CachedEntity();
+				try
+				{
+					cache = ( CachedEntity )HttpRuntime.Cache[ key ];
+					if ( cache.LastUpdated > maxTime )
+					{
+						LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
+						output = cache.Item;
+						return true;
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".UsingCache === exception " + ex.Message );
+				}
+			}
+			else
+			{
+				LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".UsingCache === Will retrieve full version of record, Id: {0}", id ) );
+			}
+			return false;
+		}
+		private static void CacheEntity( OutputEntity entity )
+		{
+			int cacheMinutes = UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 );
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+			string key = "organizationbyapi_" + entity.Meta_Id.ToString();
+
+			if ( key.Length > 0 && cacheMinutes > 0 )
+			{
+				try
+				{
+					var newCache = new CachedEntity()
+					{
+						Item = entity,
+						LastUpdated = DateTime.Now
+					};
+					if ( HttpContext.Current != null )
+					{
+						if ( HttpContext.Current.Cache[ key ] != null )
+						{
+							HttpRuntime.Cache.Remove( key );
+							HttpRuntime.Cache.Insert( key, newCache );
+
+							LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".CacheEntity $$$ Updating cached version of record, Id: {0}, {1}", entity.Meta_Id, entity.Name ) );
+							if (HttpRuntime.Cache[ key ] != null)
+							{
+
+							}
+						}
+						else
+						{
+							LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".CacheEntity ****** Inserting new cached version of record, Id: {0}, {1}", entity.Meta_Id, entity.Name ) );
+
+							System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
+						}
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".CacheEntity. Updating Cache === exception " + ex.Message );
+				}
+			}
+			
 		}
 		private static WMA.OrganizationDetail MapToAPI( Organization input, OrganizationManager.OrganizationRequest request )
 		{
-
-
 
 			var output = new WMA.OrganizationDetail()
 			{
 				Meta_Id = input.Id,
 				Name = input.Name,
-				FriendlyName = HttpUtility.UrlPathEncode( input.Name ),
+				Meta_FriendlyName = HttpUtility.UrlPathEncode( input.Name ),
 				Description = input.Description,
 				SubjectWebpage = input.SubjectWebpage,
-				EntityTypeId = 2,
+				EntityTypeId = input.EntityTypeId,
+				//BroadType = ( input.EntityType ?? "" ).Replace( " ", "" ), //always Organization
+				CTDLTypeLabel = input.EntityTypeLabel,
+				CTDLType = input.EntityTypeSchema,
 				CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID ),
-				RegistryData = ServiceHelper.FillRegistryData( input.CTID )
+				RegistryData = ServiceHelper.FillRegistryData( input.CTID, searchType )
 
 			};
-			if ( input.ISQAOrganization )
-			{
-				output.CTDLType = "ceterms:QACredentialOrganization";
-				output.CTDLTypeLabel = "Quality Assurance Organization";
-			}
-			else
-			{
-				output.CTDLType = "ceterms:CredentialOrganization";
-				output.CTDLTypeLabel = "Credentialing Organization";
-			}
+			if ( input.EntityStateId == 0 )
+				return output;
+			//TODO - should not need this once 
+			//if ( input.ISQAOrganization )
+			//{
+			//	output.CTDLType = "ceterms:QACredentialOrganization";
+			//	output.CTDLTypeLabel = "Quality Assurance Organization";
+			//}
+			//else
+			//{
+			//	output.CTDLType = "ceterms:CredentialOrganization";
+			//	output.CTDLTypeLabel = "Credential Organization";
+			//}
 			
 			//output.CTDLType = record.AgentDomainType;
 			output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( input.AgentSectorType, "organization" );
@@ -102,20 +214,22 @@ namespace workIT.Services.API
 			//output.AgentPurposeDescription = input.AgentPurposeDescription;
 			//
 			output.AlternateName = input.AlternateName;
-			if (!string.IsNullOrWhiteSpace( input.AvailabilityListing ) )
-				output.AvailabilityListing = new List<string>() { input.AvailabilityListing };
-			else
+			//if (!string.IsNullOrWhiteSpace( input.AvailabilityListing ) )
+			//	output.AvailabilityListing = new List<string>() { input.AvailabilityListing };
+			//else
+			//	output.AvailabilityListing = input.AvailabilityListings;
+			if ( input.AvailabilityListings?.Count > 0 )
 				output.AvailabilityListing = input.AvailabilityListings;
 			//
 			output.CTID = input.CTID;
 			if ( input.Emails != null && input.Emails.Any() )
 				output.Email = input.Emails.Select( s => s.TextValue ).ToList();
 
-			output.Meta_LastUpdated = input.EntityLastUpdated;
+			output.EntityLastUpdated = input.EntityLastUpdated;
 			output.Meta_StateId = input.EntityStateId;
 			output.EntityTypeId = input.EntityTypeId;
 			output.FoundingDate = input.FoundingDate;
-			output.FriendlyName = input.FriendlyName;
+			output.Meta_FriendlyName = input.FriendlyName;
 			//identifiers
 			output.Identifier = ServiceHelper.MapIdentifierValue(input.Identifier);
 			output.DUNS = input.ID_DUNS;
@@ -127,12 +241,16 @@ namespace workIT.Services.API
 			output.OPEID = input.ID_OPEID;
 			//
 			output.Image = input.Image;
-			output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
+			output.IndustryType = ServiceHelper.MapReferenceFramework( input.IndustryTypes, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
+			//
+			//output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole_Recipient, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By" );
+			//output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
 			//output.IsReferenceVersion = record.IsReferenceVersion;
 			//
 			if ( input.Keyword != null && input.Keyword.Any() )
 				output.Keyword = ServiceHelper.MapPropertyLabelLinks( input.Keyword, "organization" );
 
+			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
 
 			//output.MissionAndGoalsStatement = ServiceHelper.MapPropertyLabelLink( input.MissionAndGoalsStatement, "Mission Statement" );
 			//output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
@@ -145,6 +263,9 @@ namespace workIT.Services.API
 			output.ServiceType = ServiceHelper.MapPropertyLabelLinks( input.ServiceType, "organization" );
 			output.SameAs = ServiceHelper.MapTextValueProfileTextValue( input.SameAs );
 			output.SocialMedia = ServiceHelper.MapTextValueProfileTextValue( input.SocialMediaPages );
+
+			output.Supersedes = ServiceHelper.MapPropertyLabelLink( input.Supersedes, "Supersedes" );
+			output.SupersededBy = ServiceHelper.MapPropertyLabelLink( input.SupersededBy, "Superseded By" );
 
 			//output.TransferValueStatement = ServiceHelper.MapPropertyLabelLink( input.TransferValueStatement, "Transfer Value Statement" );
 			//output.TransferValueStatementDescription = input.TransferValueStatementDescription;
@@ -183,19 +304,43 @@ namespace workIT.Services.API
 			}
 
 			if ( input.TotalFrameworks > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links );
+				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links, "6,7", output.CTID );
 
 			if ( input.TotalConceptSchemes > 0 )
 				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalConceptSchemes, "Owns {0} Concept Scheme(s)", "conceptscheme", ref links );
 
-			//21-03-10 combining revokes and renews 
+			if ( input.TotalCollections > 0 )
+				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalCollections, "Owns {0} Collection(s)", "collection", ref links, "6,7", output.CTID );
+			//hmm do these use entity.agentrelationship?
+			//for now, disable any link
+			if ( input.DataSetProfileCount > 0 )
+			{
+				//ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.DataSetProfileCount, "Has Outcome Profile(s)", "datasetprofile", ref links, "31", output.CTID );
+			}
+			//21-03-10 combining revokes and renews
+			//	- technically should not add together.
 			if ( input.RevokesCredentials > 0 || input.RenewsCredentials > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.RevokesCredentials + input.RenewsCredentials, "Renews/Revokes {0} Credential(s)", "credential", ref links, "11, 13" );
+			{
+				var total = 0;
+				if ( input.RevokesCredentials == input.RenewsCredentials )
+					total = input.RevokesCredentials;
+				else
+				{
+					//what? Use total and allow for inconsistency? Otherwise the source count will to distinguish the unique credentials
+					total = input.RenewsCredentials > input.RevokesCredentials ? input.RenewsCredentials : input.RevokesCredentials;
+				}
+				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, total, "Renews/Revokes {0} Credential(s)", "credential", ref links, "11, 13" );
+			}
 			//if ( org.RegulatesCredentials > 0 )
 			//	ServiceHelper.MapEntitySearchLink( org.Id, org.Name, org.RegulatesCredentials, "Regulates {0} Credential(s)", "credential", ref links, "12" );
 			//if ( input.RenewsCredentials > 0 )
 			//	ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.RenewsCredentials, "Renews {0} Credential(s)", "credential", ref links, "13" );
 
+			//add third party publishers
+			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalCredentialsPublishedByThirdParty, "Published {0} Credentials", "credential", ref links, "30" );
+			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalOrganizationsPublishedByThirdParty, "Published {0} Organizations", "organization", ref links, "30" );
+			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalAssessmentsPublishedByThirdParty, "Published {0} Assessments", "assessment", ref links, "30" );
+			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalLoppsPublishedByThirdParty, "Published {0} Learning Opportunities", "learningopportunity", ref links, "30" );
 			//
 			if ( links.Any() )
 				output.Connections = links;
@@ -216,10 +361,12 @@ namespace workIT.Services.API
 
 			if ( links.Any() )
 				output.QAPerformed = links;
+			else
+				output.QAPerformed = null;
 
 			//21-03-12 these should be populated now. Be sure to remove them from QaReceived.
 			//need to be consistent. Seems this property will use acting agent, but dept/sub will use participating agent
-			output.ParentOrganization = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.ParentOrganizations, "Has Parent Organization" );
+			output.ParentOrganization = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.Id, input.ParentOrganizations, "Has Parent Organization" );
 			if ( input.ParentOrganization != null && input.ParentOrganization.Any() )
 			{
 				var parents = ServiceHelper.MapOrganizationRoleProfileToOutline( input.ParentOrganizations,Entity_AgentRelationshipManager.ROLE_TYPE_PARENT_ORG );
@@ -230,8 +377,8 @@ namespace workIT.Services.API
 				}
 			}
 			//
-			output.Department = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.OrganizationRole_Dept, "Has {0} Departments(s)" );
-			output.SubOrganization = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.OrganizationRole_Subsidiary, "Has {0} Suborganization(s)" );
+			output.Department = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.Id, input.OrganizationRole_Dept, "Has {0} Departments(s)" );
+			output.SubOrganization = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.Id, input.OrganizationRole_Subsidiary, "Has {0} Suborganization(s)" );
 			//
 
 			//QAReceived
@@ -261,7 +408,7 @@ namespace workIT.Services.API
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = externalFinderSiteURL + string.Format( "organization/{0}", input.Id );
+						orp.URL = ServiceHelper.reactFinderSiteURL + string.Format( "organization/{0}", input.Id );
 					bool isPublishedByRole = false;
 					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
@@ -296,13 +443,6 @@ namespace workIT.Services.API
 			//
 			MapAddress( input, ref output );
 
-			if(request.IncludingManifests)
-			{
-
-			} else
-			{
-
-			}
 			//manifests
 			MapManifests( input, ref output, request );
 
@@ -325,16 +465,15 @@ namespace workIT.Services.API
 				if ( request.IncludingManifests )
 				{
 					//convert this to ajax
-					output.HasCostManifest2 = ServiceHelper.MapCostManifests( org.HasCostManifest, searchType );
+					var manifests = ServiceHelper.MapCostManifests( org.HasCostManifest, searchType );
 					output.HasCostManifest = new AJAXSettings()
 					{
 						//Type=null,
 						Label = string.Format( "Has {0} Cost Manifest(s)", org.HasCostManifest.Count() ),
-						Total = org.HasCostManifest.Count()
+						Total = manifests.Count()
 					};
-					List<object> obj = output.HasCostManifest2.Select( f => ( object )f ).ToList();
+					List<object> obj = manifests.Select( f => ( object )f ).ToList();
 					output.HasCostManifest.Values = obj;
-					output.HasCostManifest2 = null;
 				}
 				else
 				{
@@ -343,7 +482,8 @@ namespace workIT.Services.API
 					{
 						Label = string.Format("Has {0} Cost Manifest(s)", org.HasCostManifest.Count()),
 						Total = org.HasCostManifest.Count(),
-						URL = externalFinderSiteURL + url,
+						//changed from reactFinderSiteURL to finderApiSiteURL
+						URL = ServiceHelper.finderApiSiteURL + url,
 						TestURL = ServiceHelper.finderApiSiteURL + url
 					};
 				}				
@@ -353,16 +493,15 @@ namespace workIT.Services.API
 			{
 				if ( request.IncludingManifests )
 				{
-					output.HasConditionManifest2 = ServiceHelper.MapConditionManifests( org.HasConditionManifest, searchType );
+					var manifests = ServiceHelper.MapConditionManifests( org.HasConditionManifest, searchType );
 					output.HasConditionManifest = new AJAXSettings()
 					{
 						//Type=null,
 						Label = string.Format( "Has {0} Condition Manifest(s)", org.HasConditionManifest.Count() ),
-						Total = org.HasConditionManifest.Count()
+						Total = manifests.Count()
 					};
-					List<object> obj = output.HasConditionManifest2.Select( f => ( object )f ).ToList();
+					List<object> obj = manifests.Select( f => ( object )f ).ToList();
 					output.HasConditionManifest.Values = obj;
-					output.HasConditionManifest2 = null;
 				}
 				else
 				{
@@ -370,8 +509,9 @@ namespace workIT.Services.API
 					output.HasConditionManifest = new AJAXSettings()
 					{
 						Label = string.Format( "Has {0} Condition Manifest(s)", org.HasConditionManifest.Count() ),
-						Total = org.HasCostManifest.Count(),
-						URL = externalFinderSiteURL + url,
+						Total = org.HasConditionManifest.Count(),
+						//changed from reactFinderSiteURL to finderApiSiteURL
+						URL = ServiceHelper.finderApiSiteURL + url,
 						TestURL = ServiceHelper.finderApiSiteURL + url
 					};
 				}
@@ -419,7 +559,7 @@ namespace workIT.Services.API
 					var cpOutput = new WMA.ContactPoint()
 					{
 						Name = cp.Name,
-						ContactType = string.IsNullOrWhiteSpace( cp.ContactType ) ? cp.ProfileName : cp.ContactType,
+						ContactType = string.IsNullOrWhiteSpace( cp.ContactType ) ? "" : cp.ContactType,
 						Email = cp.Emails,
 						Telephone = cp.PhoneNumbers,
 						SocialMedia = cp.SocialMediaPages
@@ -432,7 +572,7 @@ namespace workIT.Services.API
 					if ( cp.SocialMedia != null && cp.SocialMedia.Any() )
 						cpOutput.SocialMedia = ServiceHelper.MapTextValueProfileToStringList( cp.SocialMedia );
 
-					if ( cpOutput.Email.Any() || cpOutput.Telephone.Any() || cpOutput.SocialMedia.Any() )
+					if ( cpOutput.Email.Any() || cpOutput.Telephone.Any() || cpOutput.FaxNumber.Any() || cpOutput.SocialMedia.Any() )
 						address.TargetContactPoint.Add( cpOutput );
 				}
 				output.Address.Add( address );
@@ -492,7 +632,8 @@ namespace workIT.Services.API
 						Label = item.Name,
 						Description = "",
 						Total = item.Totals,
-						URL = externalFinderSiteURL + url + item.Id.ToString(),
+						//changed from reactFinderSiteURL to finderApiSiteURL
+						URL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 						TestURL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 					};
 					//not sure we need this as part of the URL
@@ -500,8 +641,9 @@ namespace workIT.Services.API
 					{
 						Id = input.RowId.ToString(),
 						ProcessTypeId = item.Id,
-						//EndPoint = externalFinderSiteURL + url + item.Id.ToString()
+						//EndPoint = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
 					};
+					//will not be currently used - just URL
 					ajax.QueryData = qd;
 					/*need to know
 					 * endpoint: detail/processprofile
@@ -513,11 +655,37 @@ namespace workIT.Services.API
 					//{
 					//	Label = item.Name,
 					//	Count = item.Totals,
-					//	URL = externalFinderSiteURL + url + item.Id.ToString()
+					//	URL = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
 					//} );
-
-
-					output.ProcessProfiles.Add( ajax );
+					//alternate - populate the individual properties or return a list?
+					var processType = item.Name.Replace( " ", "" );
+					switch ( processType )
+					{
+						case "AdministrationProcess":
+							output.AdministrationProcess = ajax;
+							break;
+						case "AppealProcess":
+							output.AppealProcess = ajax;
+							break;
+						case "ComplaintProcess":
+							output.ComplaintProcess = ajax;
+							break;
+						case "DevelopmentProcess":
+							output.DevelopmentProcess = ajax;
+							break;
+						case "MaintenanceProcess":
+							output.MaintenanceProcess = ajax;
+							break;
+						case "ReviewProcess":
+							output.ReviewProcess = ajax;
+							break;
+						case "RevocationProcess":
+							output.RevocationProcess = ajax;
+							break;
+						default:
+							break;
+					}
+					//output.ProcessProfiles.Add( ajax );
 				}
 
 				return;
@@ -561,7 +729,7 @@ namespace workIT.Services.API
 				if ( org.VerificationServiceProfiles == null || !org.VerificationServiceProfiles.Any() )
 					return;
 
-				output.HasVerificationServiceTemp = new List<WMA.VerificationServiceProfile>();
+				var hasVerificationServiceTemp = new List<WMA.VerificationServiceProfile>();
 				foreach ( var item in org.VerificationServiceProfiles )
 				{
 					WMA.VerificationServiceProfile vsp = new WMA.VerificationServiceProfile()
@@ -570,10 +738,15 @@ namespace workIT.Services.API
 						Description = item.Description,
 						HolderMustAuthorize = item.HolderMustAuthorize,
 						SubjectWebpage = item.SubjectWebpage,
-						VerificationDirectory = item.VerificationDirectory,
-						VerificationMethodDescription = item.VerificationMethodDescription,
-						VerificationService = item.VerificationServiceUrl
+						VerificationMethodDescription = item.VerificationMethodDescription
 					};
+
+					vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory, "Verification Directory" );
+					vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService, "Verification Service" );
+
+					//do we just need to provide a label for HolderMustAuthorize?
+					vsp.HolderMustAuthorizeLabel = item.HolderMustAuthorize == null ? "" : ( bool )item.HolderMustAuthorize ? "The holder of the credential must authorize this service." : "This service does not require authorization.";
+
 					if ( item.Jurisdiction != null && item.Jurisdiction.Any() )
 					{
 						vsp.Jurisdiction = ServiceHelper.MapJurisdiction( item.Jurisdiction );
@@ -589,9 +762,9 @@ namespace workIT.Services.API
 					}
 
 					//OfferredIn
-					if ( item.JurisdictionAssertions != null && item.JurisdictionAssertions.Any() )
+					if ( item.OfferedIn != null && item.OfferedIn.Any() )
 					{
-						vsp.OfferedIn = ServiceHelper.MapJurisdiction( item.JurisdictionAssertions, "OfferedIn" );
+						vsp.OfferedIn = ServiceHelper.MapJurisdiction( item.OfferedIn, "OfferedIn" );
 					}
 					//
 					//if ( item.OfferedByAgent != null && !string.IsNullOrWhiteSpace( item.OfferedByAgent.Name ) )
@@ -615,18 +788,18 @@ namespace workIT.Services.API
 						//vsp.TargetCredential = ServiceHelper.MapToEntityReference( item.TargetCredential );
 					}
 
-					output.HasVerificationServiceTemp.Add( vsp );
+					hasVerificationServiceTemp.Add( vsp );
 					
 				}
 				output.HasVerificationService = new AJAXSettings()
 				{
 					//Type=null,
-					Label = string.Format( "Has {0} Verification Service(s)", output.HasVerificationServiceTemp.Count() ),
-					Total = output.HasVerificationServiceTemp.Count()
+					Label = string.Format( "Has {0} Verification Service(s)", hasVerificationServiceTemp.Count() ),
+					Total = hasVerificationServiceTemp.Count()
 				};
-				List<object> obj = output.HasVerificationServiceTemp.Select( f => ( object )f ).ToList();
+				List<object> obj = hasVerificationServiceTemp.Select( f => ( object )f ).ToList();
 				output.HasVerificationService.Values = obj;
-				output.HasVerificationServiceTemp = null;
+				//hasVerificationServiceTemp = null;
 
 			} else if (org.VerificationServiceProfileCount > 0)
 			{
@@ -634,16 +807,17 @@ namespace workIT.Services.API
 				output.HasVerificationService = new AJAXSettings();
 				var ajax = new AJAXSettings()
 				{
-					Label = string.Format( "Has {0} Verification Service(s)", org.HasCostManifest.Count() ),
+					Label = string.Format( "Has {0} Verification Service(s)", org.VerificationServiceProfileCount ),
 					Total = org.VerificationServiceProfileCount,
-					URL = externalFinderSiteURL + url ,
+					//changed from reactFinderSiteURL to finderApiSiteURL
+					URL = ServiceHelper.finderApiSiteURL + url,
 					TestURL = ServiceHelper.finderApiSiteURL + url
 				};
 				//don't need this, as have the URL
 				//var qd = new ProcessProfileAjax()
 				//{
 				//	Id = org.RowId.ToString(),
-				//	//EndPoint = externalFinderSiteURL + url + item.Id.ToString()
+				//	//EndPoint = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
 				//};
 				//ajax.QueryData = qd;
 				output.HasVerificationService = ajax ;
@@ -651,7 +825,7 @@ namespace workIT.Services.API
 				//{
 				//	Label = "Has Verification Service",
 				//	Count = org.VerificationServiceProfileCount,
-				//	URL = externalFinderSiteURL + url 
+				//	URL = ServiceHelper.reactFinderSiteURL + url 
 				//} );
 				//output.HasVerificationServiceSummary.Add( filter );
 			
@@ -681,10 +855,14 @@ namespace workIT.Services.API
 						Description = item.Description,
 						HolderMustAuthorize = item.HolderMustAuthorize,
 						SubjectWebpage = item.SubjectWebpage,
-						VerificationDirectory = item.VerificationDirectory,
+						//VerificationDirectory = item.VerificationDirectory,
 						VerificationMethodDescription = item.VerificationMethodDescription,
-						VerificationService = item.VerificationServiceUrl
+						//VerificationService = item.VerificationService
 					};
+
+					vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory, "Verification Directory" );
+					vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService, "Verification Service" );
+
 					if ( item.Jurisdiction != null && item.Jurisdiction.Any() )
 					{
 						vsp.Jurisdiction = ServiceHelper.MapJurisdiction( item.Jurisdiction );
@@ -700,9 +878,9 @@ namespace workIT.Services.API
 					}
 
 					//OfferredIn
-					if ( item.JurisdictionAssertions != null && item.JurisdictionAssertions.Any() )
+					if ( item.OfferedIn != null && item.OfferedIn.Any() )
 					{
-						vsp.OfferedIn = ServiceHelper.MapJurisdiction( item.JurisdictionAssertions, "OfferedIn" );
+						vsp.OfferedIn = ServiceHelper.MapJurisdiction( item.OfferedIn, "OfferedIn" );
 					}
 					//
 					if ( item.OfferedByAgent != null && !string.IsNullOrWhiteSpace( item.OfferedByAgent.Name ) )
@@ -733,7 +911,16 @@ namespace workIT.Services.API
 
 		#endregion
 	}
+	public class CachedApiEntity
+	{
+		public CachedApiEntity()
+		{
+			LastUpdated = DateTime.Now;
+		}
+		public DateTime LastUpdated { get; set; }
+		public WMA.OrganizationDetail Item { get; set; }
 
+	}
 	public class QueryData
 	{
 		public string EndPoint { get; set; }

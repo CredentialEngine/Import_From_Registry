@@ -62,6 +62,7 @@
     <Compile Include="AccountServices.cs" />
     <Compile Include="ActivityServices.cs" />
     <Compile Include="API\AssessmentServices.cs" />
+    <Compile Include="API\CompetencyFrameworkServices.cs" />
     <Compile Include="API\CredentialServices.cs" />
     <Compile Include="API\LearningOpportunityServices.cs" />
     <Compile Include="API\PathwayServices.cs" />
@@ -75,6 +76,7 @@
     <Compile Include="API\SearchServices_Queries.cs" />
     <Compile Include="API\TransferValueServices.cs" />
     <Compile Include="AssessmentServices.cs" />
+    <Compile Include="CollectionServices.cs" />
     <Compile Include="CompetencyFrameworkServices.cs" />
     <Compile Include="CompetencyFrameworkServicesV2.cs" />
     <Compile Include="ConceptSchemeServices.cs" />
@@ -86,6 +88,7 @@
     <Compile Include="ElasticServices.cs" />
     <Compile Include="EnumerationServices.cs" />
     <Compile Include="FileReferenceServices.cs" />
+    <Compile Include="JobServices.cs" />
     <Compile Include="LearningOpportunityServices.cs" />
     <Compile Include="MicroSearchServicesV2.cs" />
     <Compile Include="OccupationServices.cs" />
@@ -93,14 +96,18 @@
     <Compile Include="PathwayServices.cs" />
     <Compile Include="ProfileServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QueryFilters.cs" />
     <Compile Include="RegistryServices.cs" />
+    <Compile Include="RegistryServicesV2.cs" />
     <Compile Include="ReportServices.cs" />
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
+    <Compile Include="TaskServices.cs" />
     <Compile Include="ThirdPartyApiServices.cs" />
+    <Compile Include="TransferIntermediaryServices.cs" />
     <Compile Include="TransferValueServices.cs" />
-    <Compile Include="WidgetQueryFilters.cs" />
     <Compile Include="WidgetServices.cs" />
+    <Compile Include="WorkRoleServices.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\workIT.Factories\workIT.Factories.csproj">

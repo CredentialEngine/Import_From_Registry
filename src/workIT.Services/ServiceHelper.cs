@@ -17,7 +17,8 @@ using MD = workIT.Models.API;
 using ME = workIT.Models.Elastic;
 using MPM = workIT.Models.ProfileModels;
 using MSR = workIT.Models.Search;
-
+using workIT.Models.Search;
+using workIT.Factories;
 
 namespace workIT.Services
 {
@@ -127,6 +128,7 @@ namespace workIT.Services
 		#endregion
 
 		
+
 		#region Helpers and validaton
 		public static bool IsLocalHost()
 		{
@@ -180,7 +182,21 @@ namespace workIT.Services
 
 		}
 
+		public static bool IsValidDate( DateTime date )
+		{
+			if ( date != null && date > new DateTime( 1492, 1, 1 ) )
+				return true;
+			else
+				return false;
+		}
 
+		public static bool IsValidDate( DateTime? date )
+		{
+			if ( date != null && date > new DateTime( 1492, 1, 1 ) )
+				return true;
+			else
+				return false;
+		}
 		/// <summary>
 		/// IsDate - test if passed string is a valid date
 		/// </summary>

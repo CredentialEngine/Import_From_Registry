@@ -554,8 +554,8 @@ namespace workIT.Factories
 			//
 			output.IdentifierJson = input.IdentifierJson;
 
-			if ( !string.IsNullOrWhiteSpace( output.IdentifierJson ) )
-				output.Identifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( input.IdentifierJson );
+			//if ( !string.IsNullOrWhiteSpace( output.IdentifierJson ) )
+			//	output.Identifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( input.IdentifierJson );
 
 
 			//output.ContactPoint = Entity_ContactPointManager.GetAll( output.RowId );

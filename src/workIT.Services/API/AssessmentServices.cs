@@ -8,7 +8,7 @@ using System.Web;
 
 using workIT.Models;
 using workIT.Models.Common;
-using MCD = workIT.Models.API;
+using WMA = workIT.Models.API;
 using workIT.Models.Search;
 using workIT.Factories;
 
@@ -24,66 +24,78 @@ namespace workIT.Services.API
 {
 	public class AssessmentServices
 	{
-		public static string externalFinderSiteURL = UtilityManager.GetAppKeyValue( "externalFinderSiteURL" );
+		public static string searchType = "Assessment";
 
-	
 		public static ThisEntityDetail GetDetailForAPI( int id, bool skippingCache = false )
 		{
-			var output = EntityHelper.GetDetail( id, skippingCache );
+			var request = new AssessmentRequest( 2 );
+			request.IncludingProcessProfiles = UtilityManager.GetAppKeyValue( "includeProcessProfileDetails", true );
+			request.AllowCaching = !skippingCache;
+			//
+			var output = EntityHelper.GetDetail( id, request );
 			return MapToAPI( output );
 
 		}
 		public static ThisEntityDetail GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
-			var output = EntityHelper.GetDetailByCtid( ctid, skippingCache );
-			return MapToAPI( output );
+			var record = AssessmentManager.GetSummaryByCtid( ctid );
+			return GetDetailForAPI( record.Id, skippingCache );
 		}
 		private static ThisEntityDetail MapToAPI( ThisEntity input )
 		{
-			var searchType = "assessment";
 
-			var output = new MCD.AssessmentDetail()
+			var output = new WMA.AssessmentDetail()
 			{
 				Meta_Id = input.Id,
 				CTID = input.CTID,
 				Name = input.Name,
-				FriendlyName = HttpUtility.UrlPathEncode ( input.Name ),
+				Meta_FriendlyName = HttpUtility.UrlPathEncode ( input.Name ),
 				Description = input.Description,
 				SubjectWebpage = input.SubjectWebpage,
 				EntityTypeId = 3,
 				CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID ),
-				RegistryData = ServiceHelper.FillRegistryData( input.CTID )
+				RegistryData = ServiceHelper.FillRegistryData( input.CTID, searchType )
 
 			};
+			if ( input.EntityStateId == 0 )
+				return output;
+
+			output.RegistryDataList.Add( output.RegistryData );
 			//
 			//output.CTDLType = input.assessmentType; ;
 			//need a label link for header
 			if ( input.OwningOrganizationId > 0 )
 			{
-				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId );
+				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.OwningOrganization.FriendlyName );
 			}
-			var work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
-			output.OwnedBy = ServiceHelper.MapOutlineToAJAX( work, "" );
 			//
-			work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
-			output.OfferedBy = ServiceHelper.MapOutlineToAJAX( work, "Offered by {0} Organization(s)" );
+			var ownedBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
+			var offeredBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
+			//if there is just one org, and has both owned and offered by
+			if ( ownedBy != null && offeredBy != null && ownedBy.Count == 1 && offeredBy.Count == 1
+				&& ownedBy[ 0 ].Meta_Id == offeredBy[ 0 ].Meta_Id )
+			{
+				output.OwnedOfferedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
+			}
+			else
+			{
+				output.OwnedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
+				//
+				output.OfferedBy = ServiceHelper.MapOutlineToAJAX( offeredBy, "Offered by {0} Organization(s)" );
+			}
+			//output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By" );
 			//
 			//output.OwnedBy2 = ServiceHelper.MapRoleReceived( input.OrganizationRole, searchType, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
 			//output.OwnedBy = ServiceHelper.MapOutlineToAJAX( output.OwnedBy2, "" );
 			//output.OfferedBy2 = ServiceHelper.MapRoleReceived( input.OrganizationRole, searchType, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
 			//output.OfferedBy = ServiceHelper.MapOutlineToAJAX( output.OfferedBy2, "Offered by {0} Organization(s)" );
 			//QA for owner,not offerer
-			if ( input.OwningOrganization != null && input.OwningOrganization.Id > 0 )
+			if ( input.OwningOrganizationQAReceived != null && input.OwningOrganizationQAReceived.Any() )
 			{
-				if ( input.OwningOrganization.OrganizationRole_Recipient != null && input.OwningOrganization.OrganizationRole_Recipient.Any() )
-				{
-					output.OwnerQAReceived = ServiceHelper.MapQAReceived( input.OwningOrganization.OrganizationRole_Recipient, searchType );
-				}
-				//var inheritedRoles = SetupRoles( roleSet.ActingAgent.OrganizationRole_Recipient, loadedAgentIDs );
-				//wrapper.QAFromOwner = inheritedRoles.QADirect;
+				output.OwnerQAReceived = ServiceHelper.MapQAReceived( input.OwningOrganizationQAReceived, searchType );
 			}
 			//
-			output.Meta_LastUpdated = input.EntityLastUpdated;
+			output.EntityLastUpdated = input.EntityLastUpdated;
 			output.Meta_StateId = input.EntityStateId;
 			if ( input.InLanguageCodeList != null && input.InLanguageCodeList.Any() )
 			{
@@ -94,15 +106,19 @@ namespace workIT.Services.API
 					output.InLanguage.Add( item.TextTitle );
 				}
 			}
+			//output.AlternateName = input.AlternateName;
+
 			//
 			//output.AssessmentExample = input.AssessmentExample;
 			//output.AssessmentExampleDescription = input.AssessmentExampleDescription;
-			output.AssessmentExample = ServiceHelper.MapPropertyLabelLink( input.AssessmentExample, "Assessment Example", input.AssessmentExampleDescription );
+			output.AssessmentExample = ServiceHelper.MapPropertyLabelLink( input.AssessmentExample, "Example Data", input.AssessmentExampleDescription );
 
 			//
 			output.AssessmentMethodDescription = input.AssessmentMethodDescription;
 			output.AssessmentMethodType = ServiceHelper.MapPropertyLabelLinks( input.AssessmentMethodType, searchType );
 			output.AssessmentOutput = input.AssessmentOutput;
+			//output.AssessmentOutput = ServiceHelper.MapPropertyLabelLink( input.AssessmentOutput, "Assessment Output", "" );
+
 			output.AssessmentUseType = ServiceHelper.MapPropertyLabelLinks( input.AssessmentUseType, searchType );
 
 			if ( !string.IsNullOrWhiteSpace( input.AvailabilityListing ) )
@@ -140,12 +156,12 @@ namespace workIT.Services.API
 			if ( input.CommonCosts != null && input.CommonCosts.Any() )
 			{
 				output.CommonCosts = ServiceHelper.MapCostManifests( input.CommonCosts, searchType );
-				output.EstimatedCost = new List<Models.Elastic.CostProfile>();
-				foreach ( var item in output.CommonCosts )
-				{
-					output.EstimatedCost.AddRange( item.EstimatedCost );
-				}
-				output.CommonCosts = null;
+				//output.EstimatedCost = new List<Models.Elastic.CostProfile>();
+				//foreach ( var item in output.CommonCosts )
+				//{
+				//	output.EstimatedCost.AddRange( item.EstimatedCost );
+				//}
+				//output.CommonCosts = null;
 			}
 
 			if ( input.EstimatedCost != null && input.EstimatedCost.Any() )
@@ -167,7 +183,6 @@ namespace workIT.Services.API
 			output.Corequisite = ServiceHelper.MapToConditionProfiles( input.Corequisite, searchType );
 			output.EntryCondition = ServiceHelper.MapToConditionProfiles( input.EntryCondition, searchType );
 			output.Recommends = ServiceHelper.MapToConditionProfiles( input.Recommends, searchType );
-			output.EntryCondition = ServiceHelper.MapToConditionProfiles( input.EntryCondition, searchType );
 			output.Requires = ServiceHelper.MapToConditionProfiles( input.Requires, searchType );
 			//
 			if ( input.CommonConditions != null && input.CommonConditions.Any() )
@@ -175,31 +190,42 @@ namespace workIT.Services.API
 				output.CommonConditions = ServiceHelper.MapConditionManifests( input.CommonConditions, searchType );
 				if ( output.CommonConditions != null && output.CommonConditions.Any() )
 				{
-					foreach ( var item in output.CommonConditions )
-					{
-						if ( item.Requires != null && item.Requires.Any() )
-						{
-							output.Requires = ServiceHelper.AppendConditions( item.Requires, output.Requires );
-						}
-						if ( item.Recommends != null && item.Recommends.Any() )
-						{
-							output.Recommends = ServiceHelper.AppendConditions( item.Recommends, output.Recommends );
-						}
-						if ( item.Corequisite != null && item.Corequisite.Any() )
-						{
-							output.Corequisite = ServiceHelper.AppendConditions( item.Corequisite, output.Corequisite );
-						}
-						if ( item.EntryCondition != null && item.EntryCondition.Any() )
-						{
-							output.EntryCondition = ServiceHelper.AppendConditions( item.EntryCondition, output.EntryCondition );
-						}
-					}
+					//foreach ( var item in output.CommonConditions )
+					//{
+					//	if ( item.Requires != null && item.Requires.Any() )
+					//	{
+					//		output.Requires = ServiceHelper.AppendConditions( item.Requires, output.Requires );
+					//	}
+					//	if ( item.Recommends != null && item.Recommends.Any() )
+					//	{
+					//		output.Recommends = ServiceHelper.AppendConditions( item.Recommends, output.Recommends );
+					//	}
+					//	if ( item.Corequisite != null && item.Corequisite.Any() )
+					//	{
+					//		output.Corequisite = ServiceHelper.AppendConditions( item.Corequisite, output.Corequisite );
+					//	}
+					//	if ( item.EntryCondition != null && item.EntryCondition.Any() )
+					//	{
+					//		output.EntryCondition = ServiceHelper.AppendConditions( item.EntryCondition, output.EntryCondition );
+					//	}
+					//}
 				}
 			}
+			//new 
+			output.OccupationType = ServiceHelper.MapReferenceFramework( input.OccupationTypes, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
+			output.IndustryType = ServiceHelper.MapReferenceFramework( input.IndustryTypes, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
+			output.InstructionalProgramType = ServiceHelper.MapReferenceFramework( input.InstructionalProgramTypes, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+
+			//old
+			//output.OccupationTypeOld = ServiceHelper.MapReferenceFrameworkLabelLink( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
+			//output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+			//output.InstructionalProgramType = ServiceHelper.MapReferenceFrameworkLabelLink( input.InstructionalProgramTypes, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
 			//
-			output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
-			output.OccupationType = ServiceHelper.MapReferenceFrameworkLabelLink( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
-			output.InstructionalProgramType = ServiceHelper.MapReferenceFrameworkLabelLink( input.InstructionalProgramType, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+			//if ( input.CollectionMembers != null && input.CollectionMembers.Count > 0 )
+			//{
+			//	output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
+			//}
 			output.IsReferenceVersion = input.IsReferenceVersion;
 			//
 			if ( input.Keyword != null && input.Keyword.Any() )
@@ -207,7 +233,8 @@ namespace workIT.Services.API
 			if ( input.Subject != null && input.Subject.Any() )
 				output.Subject = ServiceHelper.MapPropertyLabelLinks( input.Subject, searchType );
 			//
-
+			if ( input.IsNonCredit != null && input.IsNonCredit == true )
+				output.IsNonCredit = input.IsNonCredit;
 			//
 			output.HasGroupEvaluation = input.HasGroupEvaluation;
 			output.HasGroupParticipation = input.HasGroupParticipation;
@@ -217,6 +244,8 @@ namespace workIT.Services.API
 			//
 			output.Identifier = ServiceHelper.MapIdentifierValue( input.Identifier );
 			output.LearningMethodDescription = input.LearningMethodDescription;
+			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
+
 			//
 			MapProcessProfiles( input, ref output );
 			//
@@ -228,12 +257,20 @@ namespace workIT.Services.API
 			output.ScoringMethodDescription = input.ScoringMethodDescription;
 			//output.ScoringMethodExample = input.ScoringMethodExample;
 			//output.ScoringMethodExampleDescription = input.ScoringMethodExampleDescription;
-			output.ScoringMethodExample = ServiceHelper.MapPropertyLabelLink( input.ScoringMethodExample, "Scoring Method Example", input.ScoringMethodExampleDescription );
+			output.ScoringMethodExample = ServiceHelper.MapPropertyLabelLink( input.ScoringMethodExample, "Scoring Method Data", input.ScoringMethodExampleDescription );
 
 			output.ScoringMethodType = ServiceHelper.MapPropertyLabelLinks( input.ScoringMethodType, searchType );
 
 			output.SameAs = ServiceHelper.MapTextValueProfileTextValue( input.SameAs );
+			output.TargetPathway = ServiceHelper.MapPathwayToAJAXSettings( input.TargetPathway, "Has {0} Target Pathway(s)" );
+			//
+			output.TargetLearningResource = input.TargetLearningResource;
+			//
+			output.AggregateData = ServiceHelper.MapToAggregateDataProfile( input.AggregateData, searchType );
 
+			output.ExternalDataSetProfiles = ServiceHelper.MapToDatasetProfile( input.ExternalDataSetProfiles, searchType );
+
+			//
 			output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifierList, "Version Identifier" );
 			//
 			MapJurisdictions( input, ref output );
@@ -246,17 +283,39 @@ namespace workIT.Services.API
 				
 			}
 
+			//Competencies
+			//21-08-24 mp - will now need to collect the framework CTIDs and add to RegistryDataList
+			output.AssessesCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Assesses {#} Competenc{ies}", input.AssessesCompetenciesFrameworks );
+			//
+
+			if ( input.HasTransferValueProfile != null && input.HasTransferValueProfile.Any() )
+			{
+				var work = new List<WMA.Outline>();
+				foreach ( var target in input.HasTransferValueProfile )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						work.Add( ServiceHelper.MapToOutline( target, "transfervalue" ) );
+				}
+				//
+				output.HasTransferValue = new AJAXSettings()
+				{
+					Label = string.Format( "Has {0} Transfer Values", input.HasTransferValueProfile.Count ),
+					Total = input.HasTransferValueProfile.Count
+				};
+				List<object> obj = work.Select( f => ( object )f ).ToList();
+				output.HasTransferValue.Values = obj;
+			}
 			//
 			return output;
 		}
-		private static void MapAddress( ThisEntity input, ref MCD.AssessmentDetail output )
+		private static void MapAddress( ThisEntity input, ref WMA.AssessmentDetail output )
 		{
 			//addresses
 			//if ( input.Addresses.Any() )
 			//{
 			//	foreach ( var item in input.Addresses )
 			//	{
-			//		var address = new MCD.Address()
+			//		var address = new WMA.Address()
 			//		{
 			//			StreetAddress = item.Address1,
 			//			PostOfficeBoxNumber = item.PostOfficeBoxNumber,
@@ -271,11 +330,11 @@ namespace workIT.Services.API
 			//		if ( item.HasContactPoints() )
 			//		{
 			//			//???
-			//			//output.ContactPoint = new List<MCD.ContactPoint>();
-			//			address.TargetContactPoint = new List<MCD.ContactPoint>();
+			//			//output.ContactPoint = new List<WMA.ContactPoint>();
+			//			address.TargetContactPoint = new List<WMA.ContactPoint>();
 			//			foreach ( var cp in item.ContactPoint )
 			//			{
-			//				var cpOutput = new MCD.ContactPoint()
+			//				var cpOutput = new WMA.ContactPoint()
 			//				{
 			//					ContactType = cp.ContactType,
 			//					Email = cp.Emails,
@@ -292,7 +351,7 @@ namespace workIT.Services.API
 
 		}
 
-		private static void MapJurisdictions( ThisEntity org, ref MCD.AssessmentDetail output )
+		private static void MapJurisdictions( ThisEntity org, ref WMA.AssessmentDetail output )
 		{
 			if ( org.Jurisdiction != null && org.Jurisdiction.Any() )
 			{
@@ -330,7 +389,7 @@ namespace workIT.Services.API
 			if ( assertedIn != null && assertedIn.Any() )
 				output.RegulatedIn = ServiceHelper.MapJurisdiction( assertedIn, "RegulatedIn" );
 		}
-		private static void MapProcessProfiles( ThisEntity input, ref MCD.AssessmentDetail output )
+		private static void MapProcessProfiles( ThisEntity input, ref WMA.AssessmentDetail output )
 		{
 			if ( input.ProcessProfilesSummary != null && input.ProcessProfilesSummary.Any() )
 			{
@@ -343,7 +402,8 @@ namespace workIT.Services.API
 						Label = item.Name,
 						Description = "",
 						Total = item.Totals,
-						URL = externalFinderSiteURL + url + item.Id.ToString(),
+						//changed from reactFinderSiteURL to finderApiSiteURL
+						URL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 						TestURL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 					};
 					//not sure we need this as part of the URL
@@ -351,10 +411,26 @@ namespace workIT.Services.API
 					{
 						Id = input.RowId.ToString(),
 						ProcessTypeId = item.Id,
-						//EndPoint = externalFinderSiteURL + url + item.Id.ToString()
+						//EndPoint = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
 					};
 					ajax.QueryData = qd;
-					output.ProcessProfiles.Add( ajax );
+					var processType = item.Name.Replace( " ", "" );
+					switch ( processType )
+					{
+						case "AdministrationProcess":
+							output.AdministrationProcess = ajax;
+							break;
+						case "DevelopmentProcess":
+							output.DevelopmentProcess = ajax;
+							break;
+						case "MaintenanceProcess":
+							output.MaintenanceProcess = ajax;
+							break;
+						
+						default:
+							break;
+					}
+					//output.ProcessProfiles.Add( ajax );
 				}
 
 				return;

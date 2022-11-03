@@ -180,12 +180,12 @@ namespace Import.Services
 			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_PathwaySet", payload, "", false );
 
 			//just store input for now
-			return Import( payload, envelopeIdentifier, status );
+			return Import( payload, status );
 
 			//return true;
 		} //
 
-		public bool Import( string payload, string envelopeIdentifier, SaveStatus status )
+		public bool Import( string payload, SaveStatus status )
 		{
 			LoggingHelper.DoTrace( 6, "ImportPathwaySets - entered." );
 			List<string> messages = new List<string>();
@@ -240,11 +240,11 @@ namespace Import.Services
 			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
 
-			status.EnvelopeId = envelopeIdentifier;
+			//status.EnvelopeId = envelopeIdentifier;
 			try
 			{
 				string ctid = input.CTID;
-				string referencedAtId = input.CtdlId;
+				status.ResourceURL = input.CtdlId;
 
 				LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
 				LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
@@ -276,6 +276,7 @@ namespace Import.Services
 					if ( porg != null && porg.Id > 0 )
 					{
 						//TODO - store this in a json blob??????????
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
 						//this will result in being added to Entity.AgentRelationship
 						output.PublishedBy = new List<Guid>() { porg.RowId };
 					}
@@ -284,9 +285,11 @@ namespace Import.Services
 						//if publisher not imported yet, all publishee stuff will be orphaned
 						var entityUid = Guid.NewGuid();
 						var statusMsg = "";
-						var resPos = referencedAtId.IndexOf( "/resources/" );
-						var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
+						var resPos = status.ResourceURL.IndexOf( "/resources/" );
+						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
+						output.PublishedBy = new List<Guid>() { entityUid };
 					}
 				}
 				else
@@ -294,19 +297,19 @@ namespace Import.Services
 					//may need a check for existing published by to ensure not lost
 					if ( output.Id > 0 )
 					{
-						if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-						{
-							var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-							if ( publishedByList != null && publishedByList.Any() )
-							{
-								var pby = publishedByList[ 0 ].ActingAgentUid;
-								output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-							}
-						}
+						//if ( ef.OrganizationRole != null && ef.OrganizationRole.Any() )
+						//{
+						//	var publishedByList = ef.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+						//	if ( publishedByList != null && publishedByList.Any() )
+						//	{
+						//		var pby = publishedByList[ 0 ].ActingAgentUid;
+						//		ef.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+						//	}
+						//}
 					}
 				}
 				//warning this gets set to blank if doing a manual import by ctid
-				output.CredentialRegistryId = envelopeIdentifier;
+				//output.CredentialRegistryId = envelopeIdentifier;
 
 				//BYs - do owned and offered first
 				output.OfferedBy = helper.MapOrganizationReferenceGuids( "PathwaySet.OfferedBy", input.OfferedBy, ref status );
@@ -342,7 +345,7 @@ namespace Import.Services
 				status.DetailPageUrl = string.Format( "~/pathwayset/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
 				//if record was added to db, add to/or set EntityResolution as resolved
-				int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 						ctid,
 						CodesManager.ENTITY_TYPE_PATHWAY_SET,
 						output.RowId,
@@ -358,7 +361,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "PathwaySet Import exception" );
+				LoggingHelper.LogError( ex, string.Format( "Exception encountered in CTID: {0}", input.CTID ), false, "PathwaySet Import exception" );
 			}
 
 			return importSuccessfull;

@@ -56,14 +56,14 @@ namespace RA.Models.JsonV2
 		/// Definition:	Alphanumeric Identifier value.
 		/// List of URIs 
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:latitude" )]
-		public double Latitude { get; set; }
+		public double? Latitude { get; set; } = null;
 
 		[JsonProperty( PropertyName = "ceterms:longitude" )]
-		public double Longitude { get; set; }
+		public double? Longitude { get; set; } = null;
 
 
 		[JsonProperty( "ceterms:targetContactPoint" )]

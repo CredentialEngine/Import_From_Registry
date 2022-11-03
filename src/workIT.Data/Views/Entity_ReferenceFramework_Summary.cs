@@ -16,18 +16,21 @@ namespace workIT.Data.Views
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
+        public System.Guid EntityUid { get; set; }
+        public int EntityTypeId { get; set; }
+        public Nullable<int> EntityBaseId { get; set; }
         public int CategoryId { get; set; }
+        public Nullable<System.DateTime> refCreated { get; set; }
         public string PropertyCategory { get; set; }
         public string SchemaName { get; set; }
-        public int ReferenceFrameworkId { get; set; }
+        public int ReferenceFrameworkItemId { get; set; }
         public string CodeGroup { get; set; }
         public string CodedNotation { get; set; }
         public string Name { get; set; }
         public string TargetNode { get; set; }
-        public System.Guid EntityUid { get; set; }
         public string Description { get; set; }
-        public int EntityTypeId { get; set; }
-        public Nullable<int> EntityBaseId { get; set; }
-        public Nullable<System.DateTime> refCreated { get; set; }
+        public string RelatedTargetNode { get; set; }
+        public string FrameworkName { get; set; }
+        public string Framework { get; set; }
     }
 }

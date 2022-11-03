@@ -21,35 +21,47 @@ using ThisEntityDetail = workIT.Models.API.CredentialDetail;
 using ThisSearchEntity = workIT.Models.Common.CredentialSummary;
 using EntityMgr = workIT.Factories.CredentialManager;
 
-
+using OutputEntity = workIT.Models.API.CredentialDetail;
+using CachedEntity = workIT.Services.API.CachedCredential;
 
 namespace workIT.Services.API
 {
 	public class CredentialServices
 	{
 		static string thisClassName = "API.CredentialServices";
-		public static string externalFinderSiteURL = UtilityManager.GetAppKeyValue( "externalFinderSiteURL" );
-		public static string searchType = "credential";
+		public static string searchType = "Credential";
 
 		public static WMA.CredentialDetail GetDetailForAPI( int id, bool skippingCache = false )
 		{
 			CredentialRequest cr = new CredentialRequest();
-			cr.IsDetailRequest();
-			cr.IncludingProcessProfiles = false;
-			var entity = EntityHelper.GetDetail( id, cr, skippingCache );
-			return MapToAPI( entity );
+			cr.IsAPIRequest();
+			cr.IncludingProcessProfiles = UtilityManager.GetAppKeyValue( "includeProcessProfileDetails",false);
+			cr.AllowCaching = !skippingCache;
+
+			OutputEntity outputEntity = new OutputEntity();
+			if ( UsingCache( id, cr, ref outputEntity ) )
+			{
+				return outputEntity;
+			}
+			//only cache longer processes
+			DateTime start = DateTime.Now;
+			//var entity = EntityHelper.GetDetail( id, cr, skippingCache );
+			var entity = CredentialManager.GetForDetail( id, cr );
+
+			DateTime end = DateTime.Now;
+			//for now don't include the mapping in the elapsed
+			int elasped = ( DateTime.Now - start ).Seconds;
+			outputEntity = MapToAPI( entity );
+			if ( elasped > 5 )
+				CacheEntity( outputEntity );
+			return outputEntity;
 
 		}
 		public static WMA.CredentialDetail GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
 			var credential = EntityMgr.GetMinimumByCtid( ctid );
 			return GetDetailForAPI( credential.Id, skippingCache );
-			//CredentialRequest cr = new CredentialRequest();
-			//cr.IsDetailRequest();
-			//cr.IncludingProcessProfiles = false;
-			//var entity = EntityHelper.GetDetail( credential.Id, skippingCache );
 
-			//return MapToAPI( entity );
 		}
 		private static WMA.CredentialDetail MapToAPI( ThisEntity input )
 		{
@@ -64,41 +76,64 @@ namespace workIT.Services.API
 				EntityTypeId = 1,
 				CTDLTypeLabel = input.CredentialType,
 				CTDLType = input.CredentialTypeSchema,
-				CredentialRegistryURL = RegistryServices.GetResourceUrl(input.CTID),
-				RegistryData = ServiceHelper.FillRegistryData( input.CTID )
+				CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID )
 
 			};
+			if ( input.EntityStateId == 0 )
+			{
+				return output;
+			}
+			output.RegistryData = ServiceHelper.FillRegistryData( input.CTID, searchType );
+			//experimental - not used in UI yet
+			output.RegistryDataList.Add( output.RegistryData );
+			//check for others
+
 			//
 			//output.CTDLType = record.CredentialType; ;
 			//output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( org.AgentSectorType, "organization" );
-			output.FriendlyName = HttpUtility.UrlPathEncode( input.Name );
+			output.Meta_FriendlyName = HttpUtility.UrlPathEncode( input.Name );
 			output.AlternateName = input.AlternateName;
 
 			//owned by and offered by 
 			//need a label link for header
 			if ( input.OwningOrganizationId > 0 )
 			{
-				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId );
+				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.OwningOrganization.FriendlyName );
 			}
-			var work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
-			output.OwnedBy = ServiceHelper.MapOutlineToAJAX( work, "" );
-			//
-			work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
-			output.OfferedBy = ServiceHelper.MapOutlineToAJAX( work, "Offered by {0} Organization(s)" );
-			//
-
-			//QA for owner,not offerer
-			if ( input.OwningOrganization != null && input.OwningOrganization.Id > 0 )
+			//if there is just one org, and has both owned and offered by
+			//if ( ServiceHelper.AreOnlyRolesOwnsOffers( input.OrganizationRole ) )
+			//{
+				
+			//}
+			//else
 			{
-				if ( input.OwningOrganization.OrganizationRole_Recipient != null && input.OwningOrganization.OrganizationRole_Recipient.Any() )
+				var ownedBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
+				var offeredBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
+				if ( ownedBy != null && offeredBy != null && ownedBy.Count == 1 && offeredBy.Count == 1 
+					&& ownedBy[ 0 ].Meta_Id == offeredBy[ 0 ].Meta_Id )
 				{
-					output.OwnerQAReceived = ServiceHelper.MapQAReceived( input.OwningOrganization.OrganizationRole_Recipient, searchType );
+					//if ( ownedBy[ 0 ].Meta_Id == offeredBy[ 0 ].Meta_Id )
+					//{
+					//	//var ooBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
+						output.OwnedOfferedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
+					//}
 				}
-				//var inheritedRoles = SetupRoles( roleSet.ActingAgent.OrganizationRole_Recipient, loadedAgentIDs );
-				//wrapper.QAFromOwner = inheritedRoles.QADirect;
+				else
+				{
+					output.OwnedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
+					//
+					output.OfferedBy = ServiceHelper.MapOutlineToAJAX( offeredBy, "Offered by {0} Organization(s)" );
+				}
+			}
+			//should only do if different from owner! Actually only populated if by a 3rd party
+			//output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By");
+			//QA for owner,not offerer
+			if ( input.OwningOrganizationQAReceived != null && input.OwningOrganizationQAReceived.Any() )
+			{
+				output.OwnerQAReceived = ServiceHelper.MapQAReceived( input.OwningOrganizationQAReceived, searchType );
 			}
 			//
-			output.Meta_LastUpdated = input.EntityLastUpdated;
+			output.EntityLastUpdated = input.EntityLastUpdated;
 			output.Meta_StateId = input.EntityStateId;
 			output.EntityTypeId = input.EntityTypeId;
 			if ( input.InLanguageCodeList != null && input.InLanguageCodeList.Any() )
@@ -113,7 +148,10 @@ namespace workIT.Services.API
 			try
 			{
 				if ( input.HasVerificationType_Badge )
-					output.CTDLTypeLabel += " + Badge Issued";
+				{
+					//output.CTDLTypeLabel += " + Badge Issued";
+					output.Meta_HasVerificationBadge = true;
+				}
 				output.Image = input.Image;
 				//
 				if ( !string.IsNullOrWhiteSpace( input.AvailabilityListing ) )
@@ -132,8 +170,8 @@ namespace workIT.Services.API
 							//TODO - add overload to only get minimum data - like Link
 							output.CopyrightHolder.Add( ServiceHelper.MapToOutline( target, "organization" ) );
 
-							//var link = ServiceHelper.MapDetailLink( "organization", target.Name, target.Id );
-							//output.CopyrightHolder2.Add( link );
+							//OR return AjaxSettings?
+							var copyrightHolder = ServiceHelper.MapOutlineToAJAX( output.CopyrightHolder, "Copyright Holder {0}" );
 						}
 					}
 					//or Link objects
@@ -157,27 +195,27 @@ namespace workIT.Services.API
 				//
 				if ( input.EmbeddedCredentials != null && input.EmbeddedCredentials.Any() )
 				{
-					output.HasPart2 = new List<WMA.Outline>();
+					var hasPart = new List<WMA.Outline>();
 					foreach ( var target in input.EmbeddedCredentials )
 					{
 						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
-							output.HasPart2.Add( ServiceHelper.MapToOutline( target, searchType ) );
+							hasPart.Add( ServiceHelper.MapToOutline( target, searchType ) );
 					}
-					output.HasPart = ServiceHelper.MapOutlineToAJAX( output.HasPart2, "Includes {0} Credential(s)" );
-					output.HasPart2 = null;
+					output.HasPart = ServiceHelper.MapOutlineToAJAX( hasPart, "Includes {0} Credential(s)" );
+					//output.HasPart2 = null;
 
 				}
 				//
 				if ( input.IsPartOf != null && input.IsPartOf.Any() )
 				{
-					output.IsPartOf2 = new List<WMA.Outline>();
+					var isPartOf = new List<WMA.Outline>();
 					foreach ( var target in input.IsPartOf )
 					{
 						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
-							output.IsPartOf2.Add( ServiceHelper.MapToOutline( target, searchType ) );
+							isPartOf.Add( ServiceHelper.MapToOutline( target, searchType ) );
 					}
-					output.IsPartOf = ServiceHelper.MapOutlineToAJAX( output.IsPartOf2, "Is Part of {0} Credential(s)" );
-					output.IsPartOf2 = null;
+					output.IsPartOf = ServiceHelper.MapOutlineToAJAX( isPartOf, "Is Part of {0} Credential(s)" );
+					//output.IsPartOf2 = null;
 				}
 			}
 			catch ( Exception ex )
@@ -189,15 +227,24 @@ namespace workIT.Services.API
 			//addresses
 			//MapAddress( input, ref output );
 			output.AvailableAt = ServiceHelper.MapAddress( input.Addresses );
-
+			//
+			//if ( input.CollectionMembers != null && input.CollectionMembers.Count > 0 )
+			//{
+			//	output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
+			//}
 			//
 			output.Image = input.Image;
-			if(!string.IsNullOrWhiteSpace( input.CredentialTypeSchema ) )
+			if ( !string.IsNullOrWhiteSpace( input.CredentialTypeSchema ) )
 				output.Meta_Icon = WorkITSearchServices.GetCredentialIcon( input.CredentialTypeSchema.ToLower() );
+			//new
+			output.IndustryType = ServiceHelper.MapReferenceFramework( input.IndustryTypes, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
+			output.OccupationType = ServiceHelper.MapReferenceFramework( input.OccupationTypes, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
+			output.InstructionalProgramType = ServiceHelper.MapReferenceFramework( input.InstructionalProgramTypes, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+			//Old
+			//output.OccupationTypeOld = ServiceHelper.MapReferenceFrameworkLabelLink( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
 			//
-			output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
-			output.OccupationType = ServiceHelper.MapReferenceFrameworkLabelLink( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
-			output.InstructionalProgramType = ServiceHelper.MapReferenceFrameworkLabelLink( input.InstructionalProgramType, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+			if ( input.IsNonCredit != null && input.IsNonCredit == true )
+				output.IsNonCredit = input.IsNonCredit;
 			//
 			output.IsReferenceVersion = input.IsReferenceVersion;
 			//
@@ -225,25 +272,25 @@ namespace workIT.Services.API
 					output.CommonConditions = ServiceHelper.MapConditionManifests( input.CommonConditions, searchType );
 					if ( output.CommonConditions != null && output.CommonConditions.Any() )
 					{
-						foreach ( var item in output.CommonConditions )
-						{
-							if ( item.Requires != null && item.Requires.Any() )
-							{
-								output.Requires = AppendConditions( item.Requires, output.Requires );
-							}
-							if ( item.Recommends != null && item.Recommends.Any() )
-							{
-								output.Recommends = AppendConditions( item.Recommends, output.Recommends );
-							}
-							if ( item.Corequisite != null && item.Corequisite.Any() )
-							{
-								output.Corequisite = AppendConditions( item.Requires, output.Corequisite );
-							}
-							if ( item.Renewal != null && item.Renewal.Any() )
-							{
-								output.Renewal = AppendConditions( item.Renewal, output.Renewal );
-							}
-						}
+						//foreach ( var item in output.CommonConditions )
+						//{
+						//	if ( item.Requires != null && item.Requires.Any() )
+						//	{
+						//		output.Requires = AppendConditions( item.Requires, output.Requires );
+						//	}
+						//	if ( item.Recommends != null && item.Recommends.Any() )
+						//	{
+						//		output.Recommends = AppendConditions( item.Recommends, output.Recommends );
+						//	}
+						//	if ( item.Corequisite != null && item.Corequisite.Any() )
+						//	{
+						//		output.Corequisite = AppendConditions( item.Requires, output.Corequisite );
+						//	}
+						//	if ( item.Renewal != null && item.Renewal.Any() )
+						//	{
+						//		output.Renewal = AppendConditions( item.Renewal, output.Renewal );
+						//	}
+						//}
 					}
 				}
 				//connection profiles
@@ -276,7 +323,58 @@ namespace workIT.Services.API
 				//
 				output.IsRequiredFor = ServiceHelper.MapToConditionProfiles( input.IsRequiredFor, searchType );
 				output.IsRecommendedFor = ServiceHelper.MapToConditionProfiles( input.IsRecommendedFor, searchType );
+				//check for any inverse connections 
+				//if hasPartOfConditionProfile, add to appropriate connection. 
+				if ( input.IsPartOfConditionProfile != null && input.IsPartOfConditionProfile.Any() )
+				{
+					//the parent will be the target
+					foreach ( var item in input.IsPartOfConditionProfile )
+					{
+						if ( item.ParentCredential != null && item.ParentCredential.Id > 0 )
+						{
+							//see what we get with a straight map and then add the target credential
+							var cp = ServiceHelper.MapToConditionProfile( item, "credential" );
+							if ( cp != null )
+							{
+								// 
+								var clist = new List<Credential>();
+								clist.Add( item.ParentCredential );
+								cp.TargetCredential = ServiceHelper.MapCredentialToAJAXSettings( clist, "Condition Target {0} Credential(s)" );
+								//proposed:
+								cp.Description = "";
+								cp.Name = "The following are 'Required For' this credential";
+								//initially assume required, then customize
+								if ( output.IsRequiredFor == null )
+									output.IsRequiredFor = new List<WMA.ConditionProfile>();
+								else
+								{
+									//Should also check for dups if both sides were published
+								}
+								output.IsRequiredFor.Add( cp );
+							}
+						}
+						//else if ( item.ParentLearningOpportunity != null && item.ParentLearningOpportunity.Id > 0 )
+						//{
+						//	//see what we get with a straight map and then add the target credential
+						//	var cp = ServiceHelper.MapToConditionProfile( item, "LearningOpportunity" );
+						//	if ( cp != null )
+						//	{
+						//		// could get many required for this way instead of one with many credentials
+						//		var list = new List<ThisEntity>();
+						//		list.Add( item.ParentLearningOpportunity );
+						//		cp.TargetLearningOpportunity = ServiceHelper.MapLearningOppToAJAXSettings( list, "Condition Target {0} Learning Opportunities" );
 
+						//		if ( output.IsRequiredFor == null )
+						//			output.IsRequiredFor = new List<WMA.ConditionProfile>();
+						//		else
+						//		{
+						//			//Should also check for dups if both sides were published
+						//		}
+						//		output.IsRequiredFor.Add( cp );
+						//	}
+						//}
+					}
+				}
 			}
 			catch ( Exception ex )
 			{
@@ -290,9 +388,10 @@ namespace workIT.Services.API
 			var dataConnections = new ConnectionData();
 			ServiceHelper.GetAllChildren( dataMergedRequirements, dataMergedRecommendations, dataConnections, input, null, null );
 			//now pull out estimated durations
-			if (dataMergedRequirements.TargetCredential != null && dataMergedRequirements.TargetCredential.Any() )
+			if ( dataMergedRequirements.TargetCredential != null && dataMergedRequirements.TargetCredential.Any() )
 			{
-				output.CredentialEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.CredentialsSansSelf(input.Id), "Estimated Time to Complete Required Embedded Credentials" );
+				//21-07-12 currently not being used.
+				output.CredentialEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.CredentialsSansSelf( input.Id ), "Estimated Time to Complete Required Embedded Credentials" );
 			}
 			if ( dataMergedRequirements.TargetAssessment != null && dataMergedRequirements.TargetAssessment.Any() )
 			{
@@ -303,51 +402,29 @@ namespace workIT.Services.API
 			{
 				output.LearningOpportunityEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.TargetLearningOpportunity, "Estimated Time to Complete Required Learning Opportunities" );
 			}
-			
+
 
 			//competencies
-			var dataAllCompetencies = ServiceHelper.GetAllCompetencies( dataMergedRequirements );
-
-			var allCompetencies = dataAllCompetencies.RequiresByFramework
-							.Concat( dataAllCompetencies.AssessesByFramework )
-							.Concat( dataAllCompetencies.TeachesByFramework )
-							.ToList();
-			var allFrameWorks = new Dictionary<string, List<string>>();
-			foreach ( var frameWork in allCompetencies )
-			{
-				if ( !string.IsNullOrWhiteSpace( frameWork.CaSSViewerUrl ) && !allFrameWorks.ContainsKey( frameWork.CaSSViewerUrl ?? "" ) )
-				{
-					allFrameWorks.Add( frameWork.CaSSViewerUrl, frameWork.Items.Select( m => m.TargetNode ).ToList() );
-				}
-			}
-			var frameworkGraphs = new List<string>();
-			
-			foreach ( var framework in allCompetencies )
-			{
-				var uri = ( framework.FrameworkUri ?? "" ).Replace( "/resources/", "/graph/" );
-				if ( framework.IsARegistryFrameworkUrl && framework.ExistsInRegistry )
-				{
-
-					var frameworkData = RegistryServices.GetRegistryData( "", uri );
-					if ( !string.IsNullOrWhiteSpace( frameworkData ) && frameworkData.IndexOf( "<" ) != 0 ) //Avoid empty results and results like "<h2>Incomplete response received from application</h2>"
-					{
-						frameworkGraphs.Add( frameworkData );
-					}
-				}
-			}
-
-			if ( dataAllCompetencies.RequiresByFramework.Count() > 0 )
-			{
-
-			}
-			if ( dataAllCompetencies.AssessesByFramework.Count() > 0 )
-			{
-
-			}
-			if ( dataAllCompetencies.TeachesByFramework.Count() > 0 )
-			{
-
-			}
+			var started2 = DateTime.Now;
+			var dataAllCompetencies = ServiceHelper.GetAllCompetencies( new List<WMP.ConditionProfile>() { dataMergedRequirements }, true );
+			var saveDuration = DateTime.Now.Subtract( started2 );
+			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.GetAllCompetencies Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			started2 = DateTime.Now;
+			//
+			output.RequiresCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Requires {#} Competenc{ies}", dataAllCompetencies.RequiresByFramework );
+			saveDuration = DateTime.Now.Subtract( started2 ); 
+			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			started2 = DateTime.Now;
+			//
+			output.AssessesCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Assesses {#} Competenc{ies}", dataAllCompetencies.AssessesByFramework );
+			saveDuration = DateTime.Now.Subtract( started2 );
+			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			started2 = DateTime.Now;
+			//
+			//slow?
+			output.TeachesCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Teaches {#} Competenc{ies}", dataAllCompetencies.TeachesByFramework );
+			saveDuration = DateTime.Now.Subtract( started2 );
+			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
 			//=======================================
 			try
 			{
@@ -355,12 +432,12 @@ namespace workIT.Services.API
 				if ( input.CommonCosts != null && input.CommonCosts.Any() )
 				{
 					output.CommonCosts = ServiceHelper.MapCostManifests( input.CommonCosts, searchType );
-					output.EstimatedCost = new List<Models.Elastic.CostProfile>();
-					foreach ( var item in output.CommonCosts )
-					{
-						output.EstimatedCost.AddRange( item.EstimatedCost );
-					}
-					output.CommonCosts = null;
+					//output.EstimatedCost = new List<Models.Elastic.CostProfile>();
+					//foreach ( var item in output.CommonCosts )
+					//{
+					//	output.EstimatedCost.AddRange( item.EstimatedCost );
+					//}
+					//output.CommonCosts = null;
 				}
 
 				if ( input.EstimatedCost != null && input.EstimatedCost.Any() )
@@ -438,8 +515,24 @@ namespace workIT.Services.API
 				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 3, Name: {0}, Id: [1}", input.Name, input.Id ) );
 
 			}
-
-
+			//
+			output.AggregateData = ServiceHelper.MapToAggregateDataProfile( input.AggregateData, searchType );
+			if (output.AggregateData != null )
+			{
+				//hmm check for dataSetProfile to add to RegistryDataList.
+				//Might be better to do this in the managers
+			}
+			//TBD - need to exclude those that are already in the AggregateDataProfile ==> try to handle this in the managers!
+			output.ExternalDataSetProfiles = ServiceHelper.MapToDatasetProfile( input.ExternalDataSetProfiles, searchType );
+			//could add these to RegistryDataList??
+			if ( output.ExternalDataSetProfiles != null && output.ExternalDataSetProfiles.Any() )
+            {
+				foreach(var item in output.ExternalDataSetProfiles)
+                {
+					var regData = ServiceHelper.FillRegistryData( item.CTID, searchType );
+					output.RegistryDataList.Add( regData );
+				}
+            }
 			//
 			if ( input.FinancialAssistance != null && input.FinancialAssistance.Any() )
 			{
@@ -499,7 +592,23 @@ namespace workIT.Services.API
 			}
 			//
 
-
+			if ( input.HasTransferValueProfile != null && input.HasTransferValueProfile.Any() )
+			{
+				var work = new List<WMA.Outline>();
+				foreach ( var target in input.HasTransferValueProfile )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						work.Add( ServiceHelper.MapToOutline( target, "transfervalue" ) );
+				}
+				//
+				output.HasTransferValue = new AJAXSettings()
+				{
+					Label = string.Format( "Has {0} Transfer Values", input.HasTransferValueProfile.Count ),
+					Total = input.HasTransferValueProfile.Count
+				};
+				List<object> obj = work.Select( f => ( object )f ).ToList();
+				output.HasTransferValue.Values = obj;
+			}
 
 			//
 			return output;
@@ -533,42 +642,43 @@ namespace workIT.Services.API
 			//output.JurisdictionAssertion = ServiceHelper.MapJurisdiction( input.JurisdictionAssertions, "OfferedIn" );
 			//OR
 
-			var assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_AccreditedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
+			var assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_AccreditedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
 			{
-				output.AccreditedIn = ServiceHelper.MapJurisdiction( assertedIn, "AccreditedIn" );
+				output.AccreditedIn = ServiceHelper.MapJurisdiction( assertions, "AccreditedIn" );
 			}
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_ApprovedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.ApprovedIn = ServiceHelper.MapJurisdiction( assertedIn, "ApprovedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_ApprovedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.ApprovedIn = ServiceHelper.MapJurisdiction( assertions, "ApprovedIn" );
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.OfferedIn = ServiceHelper.MapJurisdiction( assertedIn, "OfferedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.OfferedIn = ServiceHelper.MapJurisdiction( assertions, "OfferedIn" );
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RecognizedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.RecognizedIn = ServiceHelper.MapJurisdiction( assertedIn, "RecognizedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RecognizedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.RecognizedIn = ServiceHelper.MapJurisdiction( assertions, "RecognizedIn" );
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RegulatedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.RegulatedIn = ServiceHelper.MapJurisdiction( assertedIn, "RegulatedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RegulatedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.RegulatedIn = ServiceHelper.MapJurisdiction( assertions, "RegulatedIn" );
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RenewedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.RenewedIn = ServiceHelper.MapJurisdiction( assertedIn, "RenewedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RenewedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.RenewedIn = ServiceHelper.MapJurisdiction( assertions, "RenewedIn" );
 			//
-			assertedIn = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RevokedBy ).ToList();
-			if ( assertedIn != null && assertedIn.Any() )
-				output.RevokedIn = ServiceHelper.MapJurisdiction( assertedIn, "RevokedIn" );
+			assertions = input.JurisdictionAssertions.Where( s => s.AssertedInTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_RevokedBy ).ToList();
+			if ( assertions != null && assertions.Any() )
+				output.RevokedIn = ServiceHelper.MapJurisdiction( assertions, "RevokedIn" );
 		}
 		private static void MapProcessProfiles( ThisEntity input, ref ThisEntityDetail output )
 		{
+			//will use summary, where the UI will get the detail on click
 			if ( input.ProcessProfilesSummary != null && input.ProcessProfilesSummary.Any() )
 			{
 				var url = string.Format( "detail/ProcessProfile/{0}/", input.RowId.ToString() );
-				output.ProcessProfiles = new List<AJAXSettings>();
+				output.ProcessProfiles = null;// new List<AJAXSettings>();
 				foreach ( var item in input.ProcessProfilesSummary )
 				{
 					var ajax = new AJAXSettings()
@@ -576,7 +686,8 @@ namespace workIT.Services.API
 						Label = item.Name,
 						Description = "",
 						Total = item.Totals,
-						URL = externalFinderSiteURL + url + item.Id.ToString(),
+						//changed from reactFinderSiteURL to finderApiSiteURL
+						URL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 						TestURL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 					};
 					//not sure we need this as part of the URL
@@ -584,7 +695,6 @@ namespace workIT.Services.API
 					{
 						Id = input.RowId.ToString(),
 						ProcessTypeId = item.Id,
-						//EndPoint = externalFinderSiteURL + url + item.Id.ToString()
 					};
 					ajax.QueryData = qd;
 					/*need to know
@@ -597,11 +707,36 @@ namespace workIT.Services.API
 					//{
 					//	Label = item.Name,
 					//	Count = item.Totals,
-					//	URL = externalFinderSiteURL + url + item.Id.ToString()
 					//} );
+					var processType = item.Name.Replace( " ", "" );
+					switch ( processType )
+					{
+						case "AdministrationProcess":
+							output.AdministrationProcess = ajax;
+							break;
+						case "AppealProcess":
+							output.AppealProcess = ajax;
+							break;
+						case "ComplaintProcess":
+							output.ComplaintProcess = ajax;
+							break;
+						case "DevelopmentProcess":
+							output.DevelopmentProcess = ajax;
+							break;
+						case "MaintenanceProcess":
+							output.MaintenanceProcess = ajax;
+							break;
+						case "ReviewProcess":
+							output.ReviewProcess = ajax;
+							break;
+						case "RevocationProcess":
+							output.RevocationProcess = ajax;
+							break;
+						default:
+							break;
+					}
 
-
-					output.ProcessProfiles.Add( ajax );
+					//output.ProcessProfiles.Add( ajax );
 				}
 
 				return;
@@ -638,211 +773,87 @@ namespace workIT.Services.API
 			}
 		}
 
-		//
-
-		//
-		/*
-
-		public static CompetencyWrapper GetAllCompetencies( WMP.ConditionProfile container )
+		private static bool UsingCache( int id, CredentialRequest request, ref OutputEntity output )
 		{
-			var wrapper = new CompetencyWrapper();
+			int cacheMinutes = UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 );
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+			string key = "credentialbyapi_" + id.ToString();
 
-			//Data by framework is reliably populated
-			//.Concat( container.TargetAssessment.SelectMany( m => m.RequiresCompetenciesFrameworks ) )
-			wrapper.RequiresByFramework = container.TargetCredential.SelectMany( m => m.Requires ).SelectMany( m => m.RequiresCompetenciesFrameworks )
-				.Concat( container.TargetLearningOpportunity.SelectMany( m => m.RequiresCompetenciesFrameworks ) )
-				.Where( m => m != null )
-				.ToList();
-			wrapper.AssessesByFramework = container.TargetAssessment.SelectMany( m => m.AssessesCompetenciesFrameworks ).Where( m => m != null ).ToList();
-			wrapper.TeachesByFramework = container.TargetLearningOpportunity.SelectMany( m => m.TeachesCompetenciesFrameworks ).Where( m => m != null ).ToList();
-
-			//Data by competency is not reliably populated, so, instead get it from the frameworks
-			wrapper.Requires = CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.RequiresByFramework );
-			wrapper.Assesses = CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.AssessesByFramework );
-			wrapper.Teaches = CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.TeachesByFramework );
-
-			return wrapper;
-		}
-		//
-		//
-
-		public static void GetChildLearningOpps( List<WMP.LearningOpportunityProfile> learningOpportunities, List<WMP.LearningOpportunityProfile> runningTotal )
-		{
-			foreach ( var lopp in learningOpportunities )
+			if ( request.AllowCaching
+				&& HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
 			{
-				if ( runningTotal.Where( m => m.Id == lopp.Id ).Count() == 0 )
+				try
 				{
-					runningTotal.Add( lopp );
-					GetChildLearningOpps( lopp.HasPart, runningTotal );
+					var cache = ( CachedEntity )HttpRuntime.Cache[ key ];
+					if ( cache.LastUpdated > maxTime )
+					{
+						LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
+						output = cache.Item;
+						return true;
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".UsingCache === exception " + ex.Message );
 				}
 			}
-		}
-		//
-
-		public static void GetChildCredentials( List<Credential> credentials, List<Credential> runningCredTotal, List<WMP.AssessmentProfile> runningAssessmentTotal, List<WMP.LearningOpportunityProfile> runningLoppTotal )
-		{
-			foreach ( var cred in credentials )
+			else
 			{
-				if ( runningCredTotal.Where( m => m.Id == cred.Id ).Count() == 0 )
+				LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".UsingCache === Will retrieve full version of record, Id: {0}", id ) );
+			}
+			return false;
+		}
+		private static void CacheEntity( OutputEntity entity )
+		{
+			int cacheMinutes = UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 );
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+			string key = "credentialapi_" + entity.Meta_Id.ToString();
+
+			if ( key.Length > 0 && cacheMinutes > 0 )
+			{
+				try
 				{
-					runningCredTotal.Add( cred );
-					//GetChildCredentials( cred.EmbeddedCredentials, runningCredTotal, runningAssessmentTotal, runningLoppTotal );
-					GetChildCredentials( cred.Requires.SelectMany( m => m.TargetCredential ).ToList(), runningCredTotal, runningAssessmentTotal, runningLoppTotal );
-
-					foreach ( var assessment in cred.Requires.SelectMany( m => m.TargetAssessment ) )
+					var newCache = new CachedEntity()
 					{
-						if ( runningAssessmentTotal.Where( m => m.Id == assessment.Id ).Count() == 0 )
+						Item = entity,
+						LastUpdated = DateTime.Now
+					};
+					if ( HttpContext.Current != null )
+					{
+						if ( HttpContext.Current.Cache[ key ] != null )
 						{
-							runningAssessmentTotal.Add( assessment );
+							HttpRuntime.Cache.Remove( key );
+							HttpRuntime.Cache.Insert( key, newCache );
+
+							LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".CacheEntity $$$ Updating cached version of record, Id: {0}, {1}", entity.Meta_Id, entity.Name ) );
 						}
-					}
-
-					foreach ( var lopp in cred.Requires.SelectMany( m => m.TargetLearningOpportunity ) )
-					{
-						if ( runningLoppTotal.Where( m => m.Id == lopp.Id ).Count() == 0 )
+						else
 						{
-							runningLoppTotal.Add( lopp );
+							LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".CacheEntity ****** Inserting new cached version of record, Id: {0}, {1}", entity.Meta_Id, entity.Name ) );
+
+							System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
 						}
 					}
 				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".CacheEntity. Updating Cache === exception " + ex.Message );
+				}
 			}
-		}*/
+
+		}
 	}
-	
-	//
-	/*
-	public class MergedConditions : WMP.ConditionProfile
+	public class CachedCredential
 	{
-		public MergedConditions()
+		public CachedCredential()
 		{
-			TopLevelCredentials = new List<Credential>();
-			TopLevelAssessments = new List<WMP.AssessmentProfile>();
-			TopLevelLearningOpportunities = new List<WMP.LearningOpportunityProfile>();
+			LastUpdated = DateTime.Now;
 		}
+		public DateTime LastUpdated { get; set; }
+		public WMA.CredentialDetail Item { get; set; }
 
-		public List<Credential> CredentialsSansSelf( int id )
-		{
-			return TargetCredential.Where( m => m.Id != id ).ToList();
-		}
-		public List<WMP.AssessmentProfile> AssessmentsSansSelf( int id )
-		{
-			return TargetAssessment.Where( m => m.Id != id ).ToList();
-		}
-		public List<WMP.LearningOpportunityProfile> LearningOpportunitiesSansSelf( int id )
-		{
-			return TargetLearningOpportunity.Where( m => m.Id != id ).ToList();
-		}
-
-		public List<Credential> TopLevelCredentials { get; set; }
-		public List<WMP.AssessmentProfile> TopLevelAssessments { get; set; }
-		public List<WMP.LearningOpportunityProfile> TopLevelLearningOpportunities { get; set; }
 	}
-	//
-	public class CompetencyWrapper
-	{
-		public CompetencyWrapper()
-		{
-			Requires = new List<CredentialAlignmentObjectProfile>();
-			Teaches = new List<CredentialAlignmentObjectProfile>();
-			Assesses = new List<CredentialAlignmentObjectProfile>();
-			RequiresByFramework = new List<CredentialAlignmentObjectFrameworkProfile>();
-			AssessesByFramework = new List<CredentialAlignmentObjectFrameworkProfile>();
-			TeachesByFramework = new List<CredentialAlignmentObjectFrameworkProfile>();
-		}
-		public List<CredentialAlignmentObjectProfile> Requires { get; set; }
-		public List<CredentialAlignmentObjectProfile> Teaches { get; set; }
-		public List<CredentialAlignmentObjectProfile> Assesses { get; set; }
-		public List<CredentialAlignmentObjectProfile> Concatenated { get { return Requires.Concat( Teaches ).Concat( Assesses ).ToList(); } }
-		public int Total { get { return Concatenated.Count(); } }
+		//
 
-		public List<CredentialAlignmentObjectFrameworkProfile> RequiresByFramework { get; set; }
-		public List<CredentialAlignmentObjectFrameworkProfile> AssessesByFramework { get; set; }
-		public List<CredentialAlignmentObjectFrameworkProfile> TeachesByFramework { get; set; }
-		public List<CredentialAlignmentObjectFrameworkProfile> ConcatenatedFrameworks { get { return RequiresByFramework.Concat( TeachesByFramework ).Concat( AssessesByFramework ).ToList(); } }
-		// Will be checked later
-		public List<CredentialAlignmentObjectItem> ConcatenatedCompetenciesFromFrameworks { get { return ConcatenatedFrameworks.SelectMany( m => m.Items ).ToList(); } }
-		public int TotalFrameworks { get { return ConcatenatedFrameworks.Count(); } }
-		public int TotalCompetenciesWithinFrameworks { get { return ConcatenatedCompetenciesFromFrameworks.Count(); } }
-	}
-	//
-
-	public class ConnectionData
-	{
-		public ConnectionData()
-		{
-			foreach ( var item in this.GetType().GetProperties().Where( m => m.PropertyType == typeof( List<WMP.ConditionProfile> ) ) )
-			{
-				item.SetValue( this, new List<WMP.ConditionProfile>() );
-			}
-		}
-		public static ConnectionData Process( List<WMP.ConditionProfile> connections, ConnectionData existing, List<ConditionManifest> commonConditions )
-		{
-			var result = new ConnectionData();
-			connections = connections ?? new List<WMP.ConditionProfile>();
-			existing = existing ?? new ConnectionData();
-			//Handle common conditions
-			var manifests = ConditionManifestExpanded.ExpandConditionManifestList( commonConditions ?? new List<ConditionManifest>() );
-			//Handle condition profiles
-			var conditions = ConditionManifestExpanded.DisambiguateConditionProfiles( connections );
-			result.Requires = existing.Requires
-				.Concat( conditions.Requires )
-				.Concat( manifests.SelectMany( m => m.Requires ) )
-				.ToList();
-			result.Recommends = existing.Recommends
-				.Concat( conditions.Recommends )
-				.Concat( manifests.SelectMany( m => m.Recommends ) )
-				.ToList();
-			result.PreparationFrom = existing.PreparationFrom
-				.Concat( conditions.PreparationFrom )
-				.Concat( manifests.SelectMany( m => m.PreparationFrom ) )
-				.ToList();
-			result.AdvancedStandingFrom = existing.AdvancedStandingFrom
-				.Concat( conditions.AdvancedStandingFrom )
-				.Concat( manifests.SelectMany( m => m.AdvancedStandingFrom ) )
-				.ToList();
-			result.IsRequiredFor = existing.IsRequiredFor
-				.Concat( conditions.IsRequiredFor )
-				.Concat( manifests.SelectMany( m => m.IsRequiredFor ) )
-				.ToList();
-			result.IsRecommendedFor = existing.IsRecommendedFor
-				.Concat( conditions.IsRecommendedFor )
-				.Concat( manifests.SelectMany( m => m.IsRecommendedFor ) )
-				.ToList();
-			result.IsAdvancedStandingFor = existing.IsAdvancedStandingFor
-				.Concat( conditions.IsAdvancedStandingFor )
-				.Concat( manifests.SelectMany( m => m.IsAdvancedStandingFor ) )
-				.ToList();
-			result.IsPreparationFor = existing.IsPreparationFor
-				.Concat( conditions.IsPreparationFor )
-				.Concat( manifests.SelectMany( m => m.IsPreparationFor ) )
-				.ToList();
-			result.Corequisite = existing.Corequisite
-				.Concat( conditions.Corequisite )
-				.Concat( manifests.SelectMany( m => m.Corequisite ) )
-				.ToList();
-			result.EntryCondition = existing.EntryCondition
-				.Concat( conditions.EntryCondition )
-				.Concat( manifests.SelectMany( m => m.EntryCondition ) )
-				.ToList();
-			result.Renewal = existing.Renewal
-				.Concat( conditions.Renewal )
-				.Concat( manifests.SelectMany( m => m.Renewal ) )
-				.ToList();
-
-			return result;
-		}
-		public List<WMP.ConditionProfile> Requires { get; set; }
-		public List<WMP.ConditionProfile> Recommends { get; set; }
-		public List<WMP.ConditionProfile> PreparationFrom { get; set; }
-		public List<WMP.ConditionProfile> AdvancedStandingFrom { get; set; }
-		public List<WMP.ConditionProfile> IsRequiredFor { get; set; }
-		public List<WMP.ConditionProfile> IsRecommendedFor { get; set; }
-		public List<WMP.ConditionProfile> IsAdvancedStandingFor { get; set; }
-		public List<WMP.ConditionProfile> IsPreparationFor { get; set; }
-		public List<WMP.ConditionProfile> Corequisite { get; set; }
-		public List<WMP.ConditionProfile> EntryCondition { get; set; }
-		public List<WMP.ConditionProfile> Renewal { get; set; }
-	}
-	*/
-	//
+		//
 }

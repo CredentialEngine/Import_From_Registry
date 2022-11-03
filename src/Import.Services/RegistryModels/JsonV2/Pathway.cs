@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	public class Pathway : JsonLDDocument
+	public class Pathway : BaseResourceDocument
 	{
 		public Pathway()
 		{
@@ -52,6 +52,10 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
+
+		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
+		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } 
+		//
 
 		//
 		[JsonProperty( PropertyName = "ceterms:keyword" )]

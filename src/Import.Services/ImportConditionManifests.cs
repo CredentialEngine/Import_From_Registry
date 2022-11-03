@@ -112,7 +112,7 @@ namespace Import.Services
 		//}
 		public bool ImportByPayload( string payload, SaveStatus status )
 		{
-			return ImportV3( payload, "", status );
+			return ImportV3( payload, status );
 			//if ( ImportServiceHelpers.IsAGraphResource( payload ) )
    //         {
 			//	//if ( payload.IndexOf( "\"en\":" ) > 0 )
@@ -174,7 +174,7 @@ namespace Import.Services
 			if ( ImportServiceHelpers.IsAGraphResource( payload ) )
             {
 				//if ( payload.IndexOf( "\"en\":" ) > 0 )
-				return ImportV3( payload, "", status );
+				return ImportV3( payload, status );
 				//else
 				//    return ImportV2( payload, "", status );
 			}
@@ -198,7 +198,7 @@ namespace Import.Services
   //          //{
   //          //input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
   //          string ctid = input.Ctid;
-		//	string referencedAtId = input.CtdlId;
+		//	string status.ResourceURL = input.CtdlId;
 		//	LoggingHelper.DoTrace( 5, "		name: " + input.Name );
 		//	LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
 		//	LoggingHelper.DoTrace( 5, "		ctid: " + input.Ctid );
@@ -243,7 +243,7 @@ namespace Import.Services
 		//		importSuccessfull = false;
 
 		//	//if record was added to db, add to/or set EntityResolution as resolved
-		//	int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+		//	int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 		//				ctid,
 		//				CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,
 		//				output.RowId,
@@ -255,7 +255,7 @@ namespace Import.Services
 		//	return importSuccessfull;
 		//}
  
-        public bool ImportV3( string payload, string envelopeIdentifier, SaveStatus status )
+        public bool ImportV3( string payload, SaveStatus status )
         {
             InputEntityV3 input = new InputEntityV3();
             var bnodes = new List<BNodeV3>();
@@ -301,7 +301,7 @@ namespace Import.Services
 			//{
 			//input = JsonConvert.DeserializeObject<InputEntity>( item.DecodedResource.ToString() );
 			string ctid = input.CTID;
-            string referencedAtId = input.CtdlId;
+            status.ResourceURL = input.CtdlId;
             LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
             LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
             LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
@@ -316,7 +316,7 @@ namespace Import.Services
 				if ( !DoesEntityExist( input.CTID, ref output ) )
 				{
 					output.RowId = Guid.NewGuid();
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+					LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
 				}
 				else
 				{
@@ -325,14 +325,53 @@ namespace Import.Services
 				helper.currentBaseObject = output;
 				//re:messages - currently passed to mapping but no errors are trapped??
 				//				- should use SaveStatus and skip import if errors encountered (vs warnings)
-
+				//TBD handling of referencing third party publisher
+				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+				{
+					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+					var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
+					if ( porg != null && porg.Id > 0 )
+					{
+						//TODO - store this in a json blob??????????
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
+						//this will result in being added to Entity.AgentRelationship
+						output.PublishedBy = new List<Guid>() { porg.RowId };
+					}
+					else
+					{
+						//if publisher not imported yet, all publishee stuff will be orphaned
+						var entityUid = Guid.NewGuid();
+						var statusMsg = "";
+						var resPos = status.ResourceURL.IndexOf( "/resources/" );
+						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
+						output.PublishedByThirdPartyOrganizationId = porg.Id;
+						output.PublishedBy = new List<Guid>() { entityUid };
+					}
+				}
+				else
+				{
+					//may need a check for existing published by to ensure not lost
+					if ( output.Id > 0 )
+					{
+						//if ( ef.OrganizationRole != null && ef.OrganizationRole.Any() )
+						//{
+						//	var publishedByList = ef.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+						//	if ( publishedByList != null && publishedByList.Any() )
+						//	{
+						//		var pby = publishedByList[ 0 ].ActingAgentUid;
+						//		ef.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
+						//	}
+						//}
+					}
+				}
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.CTID = input.CTID;
-				output.CredentialRegistryId = envelopeIdentifier;
+				//output.CredentialRegistryId = envelopeIdentifier;
 				output.SubjectWebpage = input.SubjectWebpage;
 
-				output.OwningAgentUid = helper.MapOrganizationReferencesGuid( "ConditionManifest.OwningAgentUid", input.ConditionManifestOf, ref status );
+				output.OwningAgentUid = helper.MapOrganizationReferencesToGuid( "ConditionManifest.OwningAgentUid", input.ConditionManifestOf, ref status );
 				helper.CurrentOwningAgentUid = output.OwningAgentUid;
 
 				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
@@ -354,7 +393,7 @@ namespace Import.Services
 					importSuccessfull = false;
 
 				//if record was added to db, add to/or set EntityResolution as resolved
-				int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 							ctid,
 							CodesManager.ENTITY_TYPE_CONDITION_MANIFEST,
 							output.RowId,

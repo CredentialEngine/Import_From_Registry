@@ -57,7 +57,7 @@ namespace workIT.Services
 				{
 					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
 
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -66,7 +66,7 @@ namespace workIT.Services
 					//only update elatic if has apparent relevent changes
 					if (status.UpdateElasticIndex)
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					//check for embedded items
 					//has part
 					AddCredentialsToPendingReindex( entity.HasPartIds );
@@ -84,25 +84,25 @@ namespace workIT.Services
 			if ( entity.GetType() != typeof( Models.Common.Credential ) )
 				return;
 			var document = ( entity as Models.Common.Credential );
-			EntityCache ec = new EntityCache()
-			{
-				EntityTypeId = 1,
-				EntityType = "credential",
-				EntityStateId = document.EntityStateId,
-				EntityUid = document.RowId,
-				BaseId = document.Id,
-				Description = document.Description,
-				SubjectWebpage = document.SubjectWebpage,
-				CTID = document.CTID,
-				Created = document.Created,
-				LastUpdated = document.LastUpdated,
-				ImageUrl = document.Image,
-				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
-				OwningOrgId = document.OrganizationId
-			};
-			var statusMessage = "";
-			new EntityManager().EntityCacheSave( ec, ref statusMessage );
+			//EntityCache ec = new EntityCache()
+			//{
+			//	EntityTypeId = 1,
+			//	EntityType = "credential",
+			//	EntityStateId = document.EntityStateId,
+			//	EntityUid = document.RowId,
+			//	BaseId = document.Id,
+			//	Description = document.Description,
+			//	SubjectWebpage = document.SubjectWebpage,
+			//	CTID = document.CTID,
+			//	Created = document.Created,
+			//	LastUpdated = document.LastUpdated,
+			//	ImageUrl = document.Image,
+			//	Name = document.Name,
+			//	OwningAgentUID = document.OwningAgentUid,
+			//	OwningOrgId = document.OrganizationId
+			//};
+			//var statusMessage = "";
+			//new EntityManager().EntityCacheSave( ec, ref statusMessage );
 
 			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
 			//update Elastic
@@ -140,7 +140,7 @@ namespace workIT.Services
 		/// <param name="keyword"></param>
 		/// <param name="maxTerms"></param>
 		/// <returns></returns>
-		public static List<object> Autocomplete( string keywords, int maxTerms = 25 )
+		public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
 		{
 			int userId = 0;
 			string where = " base.EntityStateId = 3 ";
@@ -152,10 +152,11 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialAutocomplete", false ) )
 			{
-				return ElasticHelper.CredentialAutoComplete( keywords, maxTerms, ref pTotalRows );
+				return ElasticHelper.CredentialAutoComplete( query, maxTerms, ref pTotalRows );
 			}
 			else
 			{
+				var keywords = query.Keywords;
 				bool usingLinqAutocomplete = true;
 				if ( usingLinqAutocomplete )
 				{
@@ -179,6 +180,7 @@ namespace workIT.Services
 				// return new List<string>();
 			}
 		}
+	
 		public static List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
 		{
 			int userId = 0;
@@ -335,7 +337,7 @@ namespace workIT.Services
 			}
 
 			//use Entity.SearchIndex for all
-			string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where (b.EntityTypeId = 1 AND ( a.TextValue like '{0}' OR a.[CodedNotation] like '{0}' ) ))) ";
+			string indexFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.SearchIndex] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where (b.EntityTypeId = 1 AND ( a.TextValue like '{0}') ))) ";
 
 			//removed 10,11 as part of the frameworkItemSummary
 			//string keywordsFilter = " OR (base.Id in (SELECT c.id FROM [dbo].[Entity.Reference] a inner join Entity b on a.EntityId = b.Id inner join Credential c on b.EntityUid = c.RowId where [CategoryId] = 35 and a.TextValue like '{0}' )) ";
@@ -709,8 +711,8 @@ namespace workIT.Services
 
             string key = "credential_" + id.ToString();
 
-            if ( skippingCache == false
-                && HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
+            if ( skippingCache == false && cacheMinutes > 0 
+                && HttpRuntime.Cache[ key ] != null)
             {
                 var cache = ( CachedCredential )HttpRuntime.Cache[ key ];
                 try

@@ -4752,11 +4752,158 @@ namespace workIT.Factories
 			}
 		}
 
+		public static List<ManyInOneIndex> TransferIntermediary_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "TransferValue_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[TransferIntermediary.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " TransferValue loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = 28;
+						index.EntityType = "TransferIntermediary";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+
+						//add helpers
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						//used for autocomplete and phrase prefix queries
+						index.OwnerOrganizationName = index.PrimaryOrganizationName;
+						index.NameOrganizationKey = index.Name;
+						index.ListTitle = index.Name;
+						if ( index.OwnerOrganizationName.Length > 0 && index.Name.IndexOf( index.OwnerOrganizationName ) == -1 )
+						{
+							index.NameOrganizationKey = index.Name + " " + index.OwnerOrganizationName;
+							//ListTitle is not used anymore
+							index.ListTitle = index.Name + " (" + index.OwnerOrganizationName + ")";
+						}
+						//
+
+						string date = GetRowColumn( dr, "Created", "" );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", "" );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+						//IntermediaryForJson
+						var intermediaryForJson = GetRowColumn( dr, "IntermediaryForJson" );
+						if ( !string.IsNullOrWhiteSpace( intermediaryForJson ) )
+						{
+							//var xDoc = XDocument.Parse( intermediaryForJson );
+							// foreach ( var child in xDoc.Root.Elements() )
+							// {
+							// var id = int.Parse( child.Attribute( "TransferIntermediaryId" ).Value );
+							// if ( id > 0 )
+							// index.TransferIntermediariesFor.Add( id );
+							// }//
+						}
+						//counts
+
+						//index.HasTransferValueProfiles = GetRowColumn( dr, "HasTransferValueProfiles", 0 );
+
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						var reportCategoryId = 72;
+						//TODO
+
+						//AddReportProperty( index, index.TransferValueForCredentialsCount, reportCategoryId, "Has Transfer Value For Credentials", "tvpReport:HasTransferValueForCredentials" );
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "TransferIntermediary_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "TransferIntermediary_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
+
 		//NOT USED SEE GENERAL
 		//public static List<ManyInOneIndex> TransferValue_MapFromElastic( List<ManyInOneIndex> TransferValues, int pageNbr, int pageSize )
 		//{
 		//	var list = new List<ManyInOneIndex>();
-			
+
 		//	return list;
 		//}
 		#endregion

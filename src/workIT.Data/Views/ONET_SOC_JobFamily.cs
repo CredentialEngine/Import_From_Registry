@@ -17,5 +17,6 @@ namespace workIT.Data.Views
         public int JobFamilyId { get; set; }
         public string Description { get; set; }
         public Nullable<int> Totals { get; set; }
+        public string URL { get; set; }
     }
 }

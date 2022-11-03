@@ -589,7 +589,7 @@ namespace workIT.Factories
 				to.CurrencyTypeId = from.CurrencyTypeId;
 			else if (!string.IsNullOrWhiteSpace(from.Currency))
 			{
-				Views.Codes_Currency currency = CodesManager.GetCurrencyItem( from.Currency );
+				var currency = CodesManager.GetCurrencyItem( from.Currency );
 				if ( currency != null && currency.NumericCode > 0 )
 					to.CurrencyTypeId = currency.NumericCode;
 			}
@@ -617,7 +617,7 @@ namespace workIT.Factories
 			to.CostDetails = from.DetailsUrl;
 			
 			to.CurrencyTypeId = (int)(from.CurrencyTypeId ?? 0);
-			Views.Codes_Currency code = CodesManager.GetCurrencyItem( to.CurrencyTypeId );
+			var code = CodesManager.GetCurrencyItem( to.CurrencyTypeId );
 			if ( code != null && code.NumericCode > 0 )
 			{
 				to.Currency = code.Currency;

@@ -30,6 +30,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:dateEffective" )]
 		public string DateEffective { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:expirationDate" )]
+		public string ExpirationDate { get; set; }
 		/// <summary>
 		/// DemographicInformation
 		/// Aggregate data or summaries of statistical data relating to the population of credential holders including data about gender, geopolitical regions, age, education levels, and other categories of interest.
@@ -53,7 +55,7 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// Jurisdiction Profile
 		/// Geo-political information about applicable geographic areas and their exceptions.
-		/// <see cref="https://credreg.net/ctdl/terms/JurisdictionProfile"/>
+		/// <see href="https://credreg.net/ctdl/terms/JurisdictionProfile"/>
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
 		public List<JurisdictionProfile> Jurisdiction { get; set; }
@@ -71,7 +73,7 @@ namespace RA.Models.JsonV2
 		public int MedianEarnings { get; set; }
 
 		/// <summary>
-		///  Upper interquartile earnings.
+		///  Number of credentials awarded.
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:numberAwarded" )]
 		public int NumberAwarded { get; set; }
@@ -100,5 +102,49 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
 		public List<string> RelevantDataSet { get; set; }
 
+		/// <summary>
+		/// Check if actual outcome data was provided!
+		/// </summary>
+		/// <returns></returns>
+		public bool HasOutcomeData()
+		{
+			if ( JobsObtained != null     //prime
+			|| RelevantDataSet != null  //prime
+
+			|| HighEarnings > 0
+			|| LowEarnings > 0
+			|| MedianEarnings > 0
+			|| NumberAwarded > 0
+			|| PostReceiptMonths > 0
+			|| NumberAwarded > 0
+			)
+				return true;
+			else
+				return false;
+		}
+		public bool HasData()
+        {
+			if ( Name != null		//name is not important without other data
+			//|| Description != null		//skip description here. Use with check for HasData. Actual Name as well
+			|| DemographicInformation != null
+			|| JobsObtained != null		//prime
+			|| Jurisdiction != null
+			|| RelevantDataSet != null	//prime
+
+			|| !string.IsNullOrWhiteSpace( Currency )
+			|| !string.IsNullOrWhiteSpace( DateEffective )
+			|| !string.IsNullOrWhiteSpace( ExpirationDate )
+			|| !string.IsNullOrWhiteSpace( Source )
+			|| HighEarnings> 0
+			|| LowEarnings > 0
+			|| MedianEarnings > 0
+			|| NumberAwarded > 0
+			|| PostReceiptMonths > 0
+			|| NumberAwarded > 0
+			)
+				return true;
+			else
+				return false;
+        }
 	}
 }

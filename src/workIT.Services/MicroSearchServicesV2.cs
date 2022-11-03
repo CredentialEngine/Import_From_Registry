@@ -124,52 +124,52 @@ namespace workIT.Services
 
 
 	
-		public static MicroProfile ConvertEnumeratedItemToMicroProfile( MC.EnumeratedItem item )
-		{
-			var guid = new Guid();
-			Guid.TryParse( item.RowId, out guid );
+		//public static MicroProfile ConvertEnumeratedItemToMicroProfile( MC.EnumeratedItem item )
+		//{
+		//	var guid = new Guid();
+		//	Guid.TryParse( item.RowId, out guid );
 
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = guid,
-				Name = item.Name,
-				Description = item.Description,
-				Properties = new Dictionary<string, object>() 
-				{ 
-					{ "FrameworkCode", item.Value }, 
-					{ "Url", item.URL } 
-				},
-				Selectors = new Dictionary<string, object>()
-				{
-					{ "CategoryId", item.CodeId },
-					{ "CodeId", item.Value },
-					{ "RecordId", item.Id }
-				}
-			};
-		}
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = guid,
+		//		Name = item.Name,
+		//		Description = item.Description,
+		//		Properties = new Dictionary<string, object>() 
+		//		{ 
+		//			{ "FrameworkCode", item.Value }, 
+		//			{ "Url", item.URL } 
+		//		},
+		//		Selectors = new Dictionary<string, object>()
+		//		{
+		//			{ "CategoryId", item.CodeId },
+		//			{ "CodeId", item.Value },
+		//			{ "RecordId", item.Id }
+		//		}
+		//	};
+		//}
 		//
 
-		public static MicroProfile ConvertCodeItemToMicroProfile( Models.CodeItem item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				Name = item.Name,
-				Description = item.Description,
-				Properties = new Dictionary<string, object>()
-				{
-					{ "FrameworkCode", item.SchemaName },
-					{ "Url", item.URL }
-				},
-				Selectors = new Dictionary<string, object>() {
-					//{ "CategoryId", item.Code },
-                    { "CategoryId", item.CategoryId },
-                    { "Name", item.Name },
-                    { "CodeId", item.Id }
-				}
-			};
-		}
+		//public static MicroProfile ConvertCodeItemToMicroProfile( Models.CodeItem item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		Name = item.Name,
+		//		Description = item.Description,
+		//		Properties = new Dictionary<string, object>()
+		//		{
+		//			{ "FrameworkCode", item.SchemaName },
+		//			{ "Url", item.URL }
+		//		},
+		//		Selectors = new Dictionary<string, object>() {
+		//			//{ "CategoryId", item.Code },
+  //                  { "CategoryId", item.CategoryId },
+  //                  { "Name", item.Name },
+  //                  { "CodeId", item.Id }
+		//		}
+		//	};
+		//}
 		//
 
 		public static MicroProfile ConvertRegionToMicroProfile( MC.GeoCoordinates item )
@@ -203,99 +203,99 @@ namespace workIT.Services
 		}
 		//
 
-		public static MicroProfile ConvertAddressToMicroProfile( MC.Address item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = item.RowId,
-				Name = item.Name,
-				Properties = new Dictionary<string, object>()
-				{
-					{ "Address1", item.StreetAddress },
-					{ "City", item.AddressLocality },
-					{ "Region", item.AddressRegion },
-					{ "PostalCode", item.PostalCode },
-					{ "Country", item.AddressCountry }
-					//{ "CountryId", item.CountryId }
-				}
-			};
-		}
+		//public static MicroProfile ConvertAddressToMicroProfile( MC.Address item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = item.RowId,
+		//		Name = item.Name,
+		//		Properties = new Dictionary<string, object>()
+		//		{
+		//			{ "Address1", item.StreetAddress },
+		//			{ "City", item.AddressLocality },
+		//			{ "Region", item.AddressRegion },
+		//			{ "PostalCode", item.PostalCode },
+		//			{ "Country", item.AddressCountry }
+		//			//{ "CountryId", item.CountryId }
+		//		}
+		//	};
+		//}
 		//
-		public static MicroProfile ConvertCostProfileToMicroProfile( MP.CostProfile item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = item.RowId,
-				Name = item.ProfileName,
-				Heading2 = item.ProfileSummary,
-				Description = item.Description,
-				Selectors = new Dictionary<string, object>()
-				{
-					{ "RowId", item.RowId },
-					{ "Id", item.Id },
-					{ "Name", item.ProfileName },
-					{ "TypeName", item.GetType().Name }
-				}
-			};
-		}
-		public static MicroProfile ConvertEntityToMicroProfile( MC.Entity item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = item.EntityUid,
-				Name = item.EntityBaseName,
-				Heading2 = item.EntityType,
-				Description = "",
-				Selectors = new Dictionary<string, object>()
-				{
-					{ "RowId", item.EntityUid },
-					{ "Id", item.Id },
-					{ "Name", item.EntityBaseName },
-					{ "TypeName", item.GetType().Name }
-				}
-			};
-		}
+		//public static MicroProfile ConvertCostProfileToMicroProfile( MP.CostProfile item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = item.RowId,
+		//		Name = item.ProfileName,
+		//		Heading2 = item.ProfileSummary,
+		//		Description = item.Description,
+		//		Selectors = new Dictionary<string, object>()
+		//		{
+		//			{ "RowId", item.RowId },
+		//			{ "Id", item.Id },
+		//			{ "Name", item.ProfileName },
+		//			{ "TypeName", item.GetType().Name }
+		//		}
+		//	};
+		//}
+		//public static MicroProfile ConvertEntityToMicroProfile( MC.Entity item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = item.EntityUid,
+		//		Name = item.EntityBaseName,
+		//		Heading2 = item.EntityType,
+		//		Description = "",
+		//		Selectors = new Dictionary<string, object>()
+		//		{
+		//			{ "RowId", item.EntityUid },
+		//			{ "Id", item.Id },
+		//			{ "Name", item.EntityBaseName },
+		//			{ "TypeName", item.GetType().Name }
+		//		}
+		//	};
+		//}
 		//
-		public static MicroProfile ConvertConditionManifestToMicroProfile( MC.ConditionManifest item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = item.RowId,
-				Name = item.ProfileName,
-				Heading2 = "", // item.ConditionType,
-				Description = item.Description,
-				Selectors = new Dictionary<string, object>()
-				{
-					{ "RowId", item.RowId },
-					{ "Id", item.Id },
-					{ "Name", item.ProfileName },
-					{ "TypeName", item.GetType().Name }
-				}
-			};
-		}
+		//public static MicroProfile ConvertConditionManifestToMicroProfile( MC.ConditionManifest item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = item.RowId,
+		//		Name = item.Name,
+		//		Heading2 = "", // item.ConditionType,
+		//		Description = item.Description,
+		//		Selectors = new Dictionary<string, object>()
+		//		{
+		//			{ "RowId", item.RowId },
+		//			{ "Id", item.Id },
+		//			{ "Name", item.Name },
+		//			{ "TypeName", item.GetType().Name }
+		//		}
+		//	};
+		//}
 		//
-		public static MicroProfile ConvertCostManifestToMicroProfile( MC.CostManifest item )
-		{
-			return new MicroProfile()
-			{
-				Id = item.Id,
-				RowId = item.RowId,
-				Name = item.Name,
-				Heading2 = "", 
-				Description = item.Description,
-				Selectors = new Dictionary<string, object>()
-				{
-					{ "RowId", item.RowId },
-					{ "Id", item.Id },
-					{ "Name", item.Name },
-					{ "TypeName", item.GetType().Name }
-				}
-			};
-		}
+		//public static MicroProfile ConvertCostManifestToMicroProfile( MC.CostManifest item )
+		//{
+		//	return new MicroProfile()
+		//	{
+		//		Id = item.Id,
+		//		RowId = item.RowId,
+		//		Name = item.Name,
+		//		Heading2 = "", 
+		//		Description = item.Description,
+		//		Selectors = new Dictionary<string, object>()
+		//		{
+		//			{ "RowId", item.RowId },
+		//			{ "Id", item.Id },
+		//			{ "Name", item.Name },
+		//			{ "TypeName", item.GetType().Name }
+		//		}
+		//	};
+		//}
 		//
 		public static MicroProfile ConvertProfileToMicroProfile( object item )
 		{

@@ -10,30 +10,31 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using CF = workIT.Factories;
+using workIT.Models.Common;
 using workIT.Models.Search;
 using workIT.Models.API;
 using System.Text.RegularExpressions;
+using workIT.Utilities;
 
 namespace workIT.Services.API
 {
 	//Search Services dealing with results and result transformation
 	public partial class SearchServices
 	{
+		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
+
 		public static MainQueryResponse TranslateMainSearchResultsToAPIResults( MainSearchResults mainResultsData, JObject debug = null )
 		{
 			//Translate the outer layer and debugging stuff
 			debug = debug ?? new JObject();
-			//just in case, have been seeing exception messages
-			var translatedResultsData = new MainQueryResponse();
-			if ( mainResultsData != null )
+
+			//Prevent exceptions
+			mainResultsData = mainResultsData ?? new MainSearchResults();
+			var translatedResultsData = new MainQueryResponse()
 			{
-				translatedResultsData = new MainQueryResponse()
-				{
-					TotalResults = mainResultsData.TotalResults
-				};
-			}
-			else
-				mainResultsData = new MainSearchResults();
+				TotalResults = mainResultsData.TotalResults
+			};
 
 			//Translate each result
 			foreach ( var sourceResult in mainResultsData.Results )
@@ -54,61 +55,6 @@ namespace workIT.Services.API
 					} );
 				}
 			}
-
-			/*
-			//Translate each result
-			foreach( var sourceResult in mainResultsData.Results )
-			{
-				//Hold the translated result - may want a more formalized class for this later?
-				var translatedResult = new JObject();
-
-				//Try to get the result from the cache
-				var cacheName = "CachedAPIResult_" + mainResultsData.SearchType.ToLower() + "_" + sourceResult.RecordId;
-				var cached = ( string ) MemoryCache.Default.Get( cacheName );
-
-				//Otherwise, get it for real
-				if ( string.IsNullOrWhiteSpace( cached ) )
-				{
-					//Do the translation - Get the detail page for now, as it should match the Data Model Planning spreadsheet (may want to trim it down to a subset later?)
-					try
-					{
-						switch ( mainResultsData.SearchType.ToLower() )
-						{
-							case "organization": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.OrganizationServices.GetDetailForAPI ); break;
-							case "credential": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.CredentialServices.GetDetailForAPI ); break;
-							case "assessment": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.AssessmentServices.GetDetailForAPI ); break;
-							case "learningopportunity": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.LearningOpportunityServices.GetDetailForAPI ); break;
-							case "competencyframework": TranslateMainSearchResultToAPIResult_CompetencyFramework( mainResultsData, sourceResult, translatedResult ); break;
-							case "conceptscheme": TranslateMainSearchResultToAPIResult_ConceptScheme( mainResultsData, sourceResult, translatedResult ); break;
-							case "pathwayset": TranslateMainSearchResultToAPIResult_PathwaySet( mainResultsData, sourceResult, translatedResult ); break;
-							case "pathway": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.PathwayServices.GetDetailForAPI ); break;
-							case "transfervalueprofile": translatedResult = TranslateMainSearchResultToAPIResult_Generic( mainResultsData, sourceResult, API.TransferValueServices.GetDetailForAPI ); break;
-							default: break;
-						}
-					}
-					catch ( Exception ex )
-					{
-						translatedResult.Add( "debug:error", ex.Message );
-					}
-
-					//Add the debugging helper
-					translatedResult.Add( "debug:originalData", JObject.FromObject( sourceResult ) );
-					translatedResult.Add( "debug:loadedFromCache", false );
-
-					//Cache the result
-					MemoryCache.Default.Remove( cacheName );
-					MemoryCache.Default.Add( cacheName, translatedResult.ToString( Formatting.None ), new DateTimeOffset( DateTime.Now.AddMinutes( 5 ) ) );
-				}
-				else
-				{
-					translatedResult = JObject.Parse( cached );
-					translatedResult[ "debug:loadedFromCache" ] = true;
-				}
-
-				//Add the translated result to the translated results data
-				translatedResultsData.Results.Add( translatedResult );
-			}
-			*/
 
 			//Return the data
 			return translatedResultsData;
@@ -138,6 +84,10 @@ namespace workIT.Services.API
 				TranslateLocations( sourceResult, result, "AvailableAt" );
 				AddIfPresent( sourceResult.Properties, "ResultImageUrl", result, "Image" );
 				AddIfPresent( sourceResult.Properties, "ResultIconUrl", result, "Meta_Icon" );
+				if( sourceResult.Properties.ContainsKey("HasBadge") && (bool) sourceResult.Properties["HasBadge"] == true )
+				{
+					result.Add( "Meta_HasVerificationBadge", true );
+				}
 				break;
 
 				case "assessment":
@@ -155,27 +105,29 @@ namespace workIT.Services.API
 		}
 		//
 
-		private static BaseDisplay TranslateBasicData( MainSearchResults mainResultsData, MainSearchResult sourceResult )
+		private static BaseAPIType TranslateBasicData( MainSearchResults mainResultsData, MainSearchResult sourceResult )
 		{
 			//Hold result
-			var result = new BaseDisplay();
+			var result = new BaseAPIType();
 
 			//Meta info
 			result.Meta_Language = "en"; //Not sure how to obtain this
 			result.Meta_Id = sourceResult.RecordId;
-			try { result.Meta_LastUpdated = DateTime.Parse( GetValueIfPresent( sourceResult.Properties, "T_LastUpdated" ) ?? DateTime.Now.ToString( "yyyy-MM-dd HH:mm:ss" ) ); } catch { }
+			try { result.EntityLastUpdated = DateTime.Parse( GetValueIfPresent( sourceResult.Properties, "T_LastUpdated" ) ?? DateTime.Now.ToString( "yyyy-MM-dd HH:mm:ss" ) ); } catch { }
 			try { result.Meta_StateId = int.Parse( GetValueIfPresent( sourceResult.Properties, "T_StateId" ) ?? "0" ); } catch { }
 
 			//Common info
 			result.BroadType = GetValueIfPresent( sourceResult.Properties, "T_BroadType" );
 			result.CTDLType = GetValueIfPresent( sourceResult.Properties, "T_CTDLType" );
 			result.CTDLTypeLabel = GetValueIfPresent( sourceResult.Properties, "T_CTDLTypeLabel" );
-			result.CTID = GetValueIfPresent( sourceResult.Properties, "CTID" ) ?? GetValueIfPresent( sourceResult.Properties, "ctid" ) ?? "unknown";
+			//21-07-12 - CTID is ctid in the properties
+			result.CTID = GetValueIfPresent( sourceResult.Properties, "ctid" ) ?? GetValueIfPresent( sourceResult.Properties, "CTID" ) ?? "unknown";
 			result.Name = sourceResult.Name;
-			result.FriendlyName = sourceResult.FriendlyName;
+			result.Meta_FriendlyName = sourceResult.FriendlyName;
 			result.Description = sourceResult.Description;
 
 			//Owner
+			//Populate both OwnedByLabel and OwnedBy since it's not clear which one the interface should/will need
 			try
 			{
 				if ( sourceResult.Properties.ContainsKey( "Owner" ) )
@@ -185,24 +137,59 @@ namespace workIT.Services.API
 						var owner = ( JObject ) sourceResult.Properties[ "Owner" ];
 						if ( owner != null )
 						{
-							result.OwnedByLabel = new LabelLink()
+							var ownerName = CompetencyFrameworkServicesV2.GetEnglishString( owner[ "ceterms:name" ], "" );
+							if ( ownerName != "" && ownerName != "Unknown Organization" )
 							{
-								Label = CompetencyFrameworkServicesV2.GetEnglishString( owner[ "ceterms:name" ], "Unknown Owner" ),
-								URL = "/resources/" + owner[ "ceterms:ctid" ].ToString()
-							};
+								var friendlyName = Factories.BaseFactory.FormatFriendlyTitle( ownerName );
+								result.OwnedByLabel = new LabelLink()
+								{
+									Label = CompetencyFrameworkServicesV2.GetEnglishString( owner[ "ceterms:name" ], "" ),
+									URL = "/resources/" + owner[ "ceterms:ctid" ].ToString() + (string.IsNullOrWhiteSpace(friendlyName) ? "" : "/" + friendlyName)
+								};
+								result.OwnedBy = new AJAXSettings()
+								{
+									Total = 1,
+									Values = new List<object>()
+								{
+									new LabelLink()
+									{
+										Label = ownerName,
+										URL = "/resources/" + owner[ "ceterms:ctid" ].ToString()+ (string.IsNullOrWhiteSpace(friendlyName) ? "" : "/" + friendlyName)
+									}
+								}
+								};
+							}
 						}
 					}
 					else
 					{
+						var ownerName = GetValueIfPresent( sourceResult.Properties, "Owner" ) ?? "";
+						var friendlyName = Factories.BaseFactory.FormatFriendlyTitle( ownerName );
+
 						result.OwnedByLabel = new LabelLink()
 						{
-							Label = GetValueIfPresent( sourceResult.Properties, "Owner" ) ?? "Unknown Owner",
-							URL = "/organization/" + GetValueIfPresent( sourceResult.Properties, "OwnerId" ) ?? "0"
+							Label = GetValueIfPresent( sourceResult.Properties, "Owner" ) ?? "",
+							URL = "/organization/" + (GetValueIfPresent( sourceResult.Properties, "OwnerId" ) ?? "0") + ( string.IsNullOrWhiteSpace( friendlyName ) ? "" : "/" + friendlyName )
+						};
+						result.OwnedBy = new AJAXSettings()
+						{
+							Total = 1,
+							Values = new List<object>()
+								{
+									new LabelLink()
+									{
+										Label = GetValueIfPresent( sourceResult.Properties, "Owner" ) ?? "",
+										URL = "/organization/" + (GetValueIfPresent( sourceResult.Properties, "OwnerId" ) ?? "0") + ( string.IsNullOrWhiteSpace( friendlyName ) ? "" : "/" + friendlyName )
+									}
+								}
 						};
 					}
 				}
 			}
-			catch { }
+			catch( Exception ex ) 
+			{ 
+				
+			}
 
 			return result;
 		}
@@ -240,9 +227,10 @@ namespace workIT.Services.API
 								foreach( var rawIdentifier in rawIdentifierData )
 								{
 									var identifierItem = new JObject();
-									AddIfPresent( rawIdentifier, "Name", identifierItem, "IdentifierTypeName" );
+									AddIfPresent( rawIdentifier, "IdentifierTypeName", identifierItem, "IdentifierTypeName" );
 									AddIfPresent( rawIdentifier, "IdentifierValueCode", identifierItem, "IdentifierValueCode" );
-									if(identifierItem.Properties().Count() > 0 )
+									AddIfPresent( rawIdentifier, "IdentifierType", identifierItem, "IdentifierType" );
+									if ( identifierItem.Properties().Count() > 0 )
 									{
 										identifierData.Add( identifierItem );
 									}
@@ -322,6 +310,7 @@ namespace workIT.Services.API
 		{
 			var pills = new List<Models.API.TagSet>();
 			var grayButtonErrors = new List<JObject>();
+			var finderBaseSiteURL = ConfigHelper.GetConfigValue( "credentialFinderMainSiteBaseURL", "/" );
 			foreach( var button in sourceResult.Buttons ?? new List<Models.Helpers.SearchResultButton>() )
 			{
 				var set = new Models.API.TagSet();
@@ -337,61 +326,61 @@ namespace workIT.Services.API
 					{
 						case "handler_RenderCheckboxFilter":
 						case "handler_RenderExternalCodeFilter":
-						set.TagItemType = "tagItemType:FilterItem";
-						foreach ( var item in button.Items )
-						{
-							set.Values.Add( new Models.API.TagItem()
+							set.TagItemType = "tagItemType:FilterItem";
+							foreach ( var item in button.Items )
 							{
-								Label = GetValueIfPresent( item, "ItemCodeTitle" ) ?? GetValueIfPresent( item, "ItemLabel" ),
-								FilterID = int.Parse( GetValueIfPresent( item, "CategoryId" ) ?? "0" ),
-								FilterItemID = int.Parse( GetValueIfPresent( item, "ItemCodeId" ) ?? "0" ),
-								FilterItemText = GetValueIfPresent( item, "ItemCodeTitle" )
-							} );
-						}
-						break;
+								set.Values.Add( new Models.API.TagItem()
+								{
+									Label = GetValueIfPresent( item, "ItemCodeTitle" ) ?? GetValueIfPresent( item, "ItemLabel" ),
+									FilterID = int.Parse( GetValueIfPresent( item, "CategoryId" ) ?? "0" ),
+									FilterItemID = int.Parse( GetValueIfPresent( item, "ItemCodeId" ) ?? "0" ),
+									FilterItemText = GetValueIfPresent( item, "ItemCodeTitle" )
+								} );
+							}
+							break;
 
 						case "handler_RenderDetailPageLink":
 						case "handler_RenderConnection":
-						set.TagItemType = "tagItemType:Link";
-						foreach ( var item in button.Items )
-						{
-							set.Values.Add( new Models.API.TagItem()
+							set.TagItemType = "tagItemType:Link";
+							foreach ( var item in button.Items )
 							{
-								Label = GetValueIfPresent( item, "TargetLabel" ),
-								URL = "/" + GetValueIfPresent( item, "TargetType" ) + "/" + ( GetValueIfPresent( item, "TargetId" ) == "0" ? GetValueIfPresent( item, "TargetCTID" ) : GetValueIfPresent( item, "TargetId" ) )
-							} );
-						}
-						break;
+								set.Values.Add( new Models.API.TagItem()
+								{
+									Label = GetValueIfPresent( item, "TargetLabel" ),
+									URL = finderBaseSiteURL + GetValueIfPresent( item, "TargetType" ) + "/" + ( GetValueIfPresent( item, "TargetId" ) == "0" ? GetValueIfPresent( item, "TargetCTID" ) : GetValueIfPresent( item, "TargetId" ) )
+								} );
+							}
+							break;
 
 						case "handler_RenderQualityAssurance":
-						set.TagItemType = "tagItemType:Link";
-						foreach ( var item in button.Items )
-						{
-							set.Values.Add( new Models.API.TagItem()
+							set.TagItemType = "tagItemType:Link";
+							foreach ( var item in button.Items )
 							{
-								Label = GetValueIfPresent( item, "Relationship" ) + " " + GetValueIfPresent( item, "Agent" ),
-								URL = "/organization/" + GetValueIfPresent( item, "AgentId" )
-							} );
-						}
-						break;
+								set.Values.Add( new Models.API.TagItem()
+								{
+									Label = GetValueIfPresent( item, "Relationship" ) + " " + GetValueIfPresent( item, "Agent" ),
+									URL = finderBaseSiteURL + "organization/" + GetValueIfPresent( item, "AgentId" )
+								} );
+							}
+							break;
 
 						case "handler_GetRelatedItemsViaAJAX":
-						set.TagItemType = "tagItemType:Link";
-						set.URL = "/Search/GetTagSetItems";
-						set.QueryData = new TagSetRequest()
-						{
-							TargetType = GetValueIfPresent( button.RenderData, "TargetEntityType" ),
-							RecordId = sourceResult.RecordId,
-							SearchType = mainResultsData.SearchType
-						};
-						break;
+							set.TagItemType = "tagItemType:Link";
+							set.URL = "/Search/GetTagSetItems";
+							set.QueryData = new TagSetRequest()
+							{
+								TargetType = GetValueIfPresent( button.RenderData, "TargetEntityType" ),
+								RecordId = sourceResult.RecordId,
+								SearchType = mainResultsData.SearchType
+							};
+							break;
 
 						default:
-						grayButtonErrors.Add( new JObject()
-						{
-							{ "Error matching handler", button.HandlerType }
-						} );
-						break;
+							grayButtonErrors.Add( new JObject()
+							{
+								{ "Error matching handler", button.HandlerType }
+							} );
+							break;
 					}
 				}
 				catch ( Exception ex )
@@ -416,21 +405,29 @@ namespace workIT.Services.API
 		}
 		//
 
-		public static List<Models.API.TagItem> GetTagSetItems( TagSetRequest request, int maxResults = 10 )
+		public static List<Models.API.TagItem> GetTagSetItems( TagSetRequest request, int maxResults = 10, JObject debug = null )
 		{
+			debug = debug ?? new JObject();
+			debug[ "Farthest Point" ] = "Translating Request";
 			var result = new List<Models.API.TagItem>();
 			var enumType = TranslateNewTargetTypeToOldTargetType( request.TargetType );
+			debug[ "Farthest Point" ] = "Getting Data";
 			var rawData = workIT.Services.SearchServices.GetTagSet( request.SearchType, enumType, request.RecordId, maxResults );
 
+			debug[ "Raw Data" ] = JObject.FromObject( rawData );
+			debug[ "Farthest Point" ] = "Processing Data";
 			switch ( rawData.Method?.ToLower() ?? "" )
 			{
 				case "link":
 				foreach ( var item in rawData.EntityTagItems )
 				{
+					if( string.IsNullOrWhiteSpace(item.TargetFriendlyName))
+						item.TargetFriendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
+
 					result.Add( new Models.API.TagItem()
 					{
 						Label = item.TargetEntityName,
-						URL = "/" + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId
+						URL = reactFinderSiteURL + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId + "/" + item.TargetFriendlyName
 					} );
 				}
 				break;
@@ -438,10 +435,11 @@ namespace workIT.Services.API
 				case "direct":
 				foreach( var item in rawData.Items )
 				{
+					var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.Label );
 					result.Add( new Models.API.TagItem()
 					{
 						Label = item.Label,
-						URL = "/" + request.SearchType + "/" + request.RecordId
+						URL = reactFinderSiteURL + request.SearchType + "/" + request.RecordId + "/" + friendlyName
 					} );
 				}
 				break;
@@ -449,15 +447,43 @@ namespace workIT.Services.API
 				case "qaperformed":
 				foreach( var item in rawData.QAItems )
 				{
-					result.Add( new Models.API.TagItem()
+						//21-10-18 mp - this is wrong. If always from org search, then link is to the target
+						var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
+						result.Add( new Models.API.TagItem()
 					{
-						Label = item.AgentToTargetRelationship + " " + item.TargetEntityName, //TODO: Verify that this is the right combination
-						URL = "/organization/" + item.TargetEntityBaseId //And this too
-					} );
+						//Label = item.AgentToTargetRelationship + " by " + item.TargetEntityName, //TODO: Verify that this is the right combination
+						//Label = item.AgentToTargetRelationship + item.TargetEntityName, //TargetEntityType
+						Label = item.AgentToTargetRelationship + " '" + item.TargetEntityName + "' ", //TargetEntityType
+						URL = reactFinderSiteURL + item.TargetEntityType + "/" + item.TargetEntityBaseId + "/" + friendlyName
+						} );
 				}
 				break;
 
 				default: break;
+			}
+
+			return result;
+		}
+		//
+
+		public static List<MapFilter> TranslateGeoCoordinatesListToMapFilterList( List<GeoCoordinates> source )
+		{
+			var result = new List<MapFilter>();
+
+			foreach( var sourceItem in source ?? new List<GeoCoordinates>() )
+			{
+				result.Add( new MapFilter()
+				{
+					BBoxCenterLatitude = sourceItem.Latitude,
+					BBoxCenterLongitude = sourceItem.Longitude,
+					BBoxNorth = Decimal.ToDouble( sourceItem.Bounds?.North ?? 0m ),
+					BBoxEast = Decimal.ToDouble( sourceItem.Bounds?.East ?? 0m ),
+					BBoxSouth = Decimal.ToDouble( sourceItem.Bounds?.South ?? 0m ),
+					BBoxWest = Decimal.ToDouble( sourceItem.Bounds?.West ?? 0m ),
+					Label = sourceItem.ToponymName,
+					Region = sourceItem.Region,
+					Country = sourceItem.Country
+				} );
 			}
 
 			return result;
@@ -469,12 +495,31 @@ namespace workIT.Services.API
 			//Same transformation that happens in SearchV2.cshtml
 			switch ( ( targetType ?? "" ).ToLower() )
 			{
+				case "assessment": return Services.SearchServices.TagTypes.ASSESSMENT;
 				case "assessmentprofile": return Services.SearchServices.TagTypes.ASSESSMENT;
 				case "competency": return Services.SearchServices.TagTypes.COMPETENCIES;
 				case "estimatedcost": return Services.SearchServices.TagTypes.COST;
 				case "financialassistance": return Services.SearchServices.TagTypes.FINANCIAL;
+				case "hasassessmentprofile": return Services.SearchServices.TagTypes.HAS_ASSESSMENT;
+				case "has_assessment": return Services.SearchServices.TagTypes.HAS_ASSESSMENT;
+				case "hascredential": return Services.SearchServices.TagTypes.HAS_CREDENTIAL;
+				case "has_credential": return Services.SearchServices.TagTypes.HAS_CREDENTIAL;
+				case "haslearningopportunityprofile": return Services.SearchServices.TagTypes.HAS_LOPP;				
+				case "has_lopp": return Services.SearchServices.TagTypes.HAS_LOPP;
+				case "hastransfervalue": return Services.SearchServices.TagTypes.HASTRANSFERVALUE;
+
+				case "tvphascredential": return Services.SearchServices.TagTypes.TVPHASCREDENTIAL;
+				case "tvphasassessment": return Services.SearchServices.TagTypes.TVPHASASSESSMENT;
+				case "tvphaslopp": return Services.SearchServices.TagTypes.TVPHASLOPP;
+				case "tvphaslearningopportunity": return Services.SearchServices.TagTypes.TVPHASLOPP;
 				case "learningopportunityprofile": return Services.SearchServices.TagTypes.LEARNINGOPPORTUNITY;
+
+				case "pathway": return Services.SearchServices.TagTypes.PATHWAY;
+				case "pathwayset": return Services.SearchServices.TagTypes.PATHWAYSET;
 				case "qualityassuranceperformed": return Services.SearchServices.TagTypes.QAPERFORMED;
+				case "transfervalue": return Services.SearchServices.TagTypes.TRANSFERVALUE;
+				case "datasetprofile_credential": return Services.SearchServices.TagTypes.DATASETPROFILE_CREDENTIAL;
+				case "datasetprofile": return Services.SearchServices.TagTypes.DATASETPROFILE;
 				default: return ( Services.SearchServices.TagTypes ) Enum.Parse( typeof( Services.SearchServices.TagTypes ), targetType, true );
 			}
 		}
@@ -536,8 +581,11 @@ namespace workIT.Services.API
 		{
 			try
 			{
-				var value = container[ key ].ToString();
-				return string.IsNullOrWhiteSpace( value ) ? null : value;
+				if ( container[ key ] != null )
+				{
+					var value = container[ key ].ToString();
+					return string.IsNullOrWhiteSpace( value ) ? null : value;
+				}
 			}
 			catch { }
 			return null;

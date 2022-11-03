@@ -102,7 +102,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
 		public List<DurationProfile> EstimatedDuration { get; set; }
 		//
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
@@ -119,6 +119,9 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; }
+		//
+		[JsonProperty( PropertyName = "ceterms:recognizedIn" )]
+		public List<JurisdictionProfile> RecognizedIn { get; set; }
 		//
 		[JsonProperty( PropertyName = "ceterms:requires" )]
 		public List<ConditionProfile> Requires { get; set; } = null;

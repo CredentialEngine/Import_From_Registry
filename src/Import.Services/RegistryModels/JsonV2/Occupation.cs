@@ -11,7 +11,7 @@ namespace RA.Models.JsonV2
 	/// <summary>
 	/// Profession, trade, or career field that may involve training and/or a formal qualification.
 	/// </summary>
-	public class Occupation
+	public class Occupation : BaseResourceDocument
 	{
 		/// <summary>
 		///  type
@@ -57,12 +57,19 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// Category or classification of this resource.
 		/// Where a more specific property exists, such as ceterms:naics, ceterms:isicV4, ceterms:credentialType, etc., use that property instead of this one.
-		/// URI to a competency
+		/// URI to a concept
 		/// ceterms:classification
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:classification" )]
 		public List<string> Classification { get; set; }
 		//public List<CredentialAlignmentObject> Classification { get; set; }
+
+		/// <summary>
+		/// Set of alpha-numeric symbols that uniquely identifies an item and supports its discovery and use.
+		/// ceterms:codedNotation
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:codedNotation" )]
+		public string CodedNotation { get; set; }
 
 		/// <summary>
 		/// Comment
@@ -123,6 +130,13 @@ namespace RA.Models.JsonV2
 		public List<string> IsSpecializationOf { get; set; } 
 
 		/// <summary>
+		/// Keyword or key phrase describing relevant aspects of an entity.
+		/// ceterms:keyword
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:keyword" )]
+		public LanguageMapList Keyword { get; set; }
+
+		/// <summary>
 		/// Body of information embodied either directly or indirectly in this resource.
 		/// List of URIs for a competency
 		/// ceasn:knowledgeEmbodied
@@ -131,13 +145,6 @@ namespace RA.Models.JsonV2
 		public List<string> KnowledgeEmbodied { get; set; }
 		//public List<CredentialAlignmentObject> KnowledgeEmbodied { get; set; } 
 
-
-		/// <summary>
-		/// Keyword or key phrase describing relevant aspects of an entity.
-		/// ceterms:keyword
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:keyword" )]
-		public LanguageMapList Keyword { get; set; }
 
 
 		/// <summary>

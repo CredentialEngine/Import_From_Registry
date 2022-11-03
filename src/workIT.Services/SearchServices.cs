@@ -15,6 +15,7 @@ using ME = workIT.Models.Elastic;
 using MSR = workIT.Models.Search;
 
 using workIT.Models.ProfileModels;
+using workIT.Models.QData;
 using workIT.Models.Search;
 using workIT.Utilities;
 using ElasticHelper = workIT.Services.ElasticServices;
@@ -22,11 +23,13 @@ using ElasticHelper = workIT.Services.ElasticServices;
 using CF = workIT.Factories;
 using workIT.Models.Helpers;
 using workIT.Models.API.RegistrySearchAPI;
+using System.Text.RegularExpressions;
 
 namespace workIT.Services
 {
 	public class SearchServices
 	{
+		public static string thisClassName = "workIT.Services.SearchServices";
 		//private static readonly object LoggingHelper;
 		DateTime checkDate = new DateTime( 2016, 1, 1 );
 		public MainSearchResults MainSearch( MainSearchInput data, ref bool valid, ref string status, JObject debug = null )
@@ -92,6 +95,8 @@ namespace workIT.Services
 			}
 
 			//Testing
+			debug.Add( "Raw Query", JObject.FromObject( data ) );
+			/*
 			var finderAPITest = new JObject();
 			try
 			{
@@ -111,9 +116,11 @@ namespace workIT.Services
 				debug.Add( "Finder API Test", finderAPITest );
 			}
 			catch { }
-
+			*/
 
 			//Do the search
+			LoggingHelper.DoTrace( 7, thisClassName + ".MainSearch. Calling: " + searchType );
+			var competencyFrameworkUsingRegistrySearch = UtilityManager.GetAppKeyValue( "competencyFrameworkUsingRegistrySearch", true );
 			var totalResults = 0;
 			switch ( searchType.ToLower() )
 			{
@@ -185,9 +192,17 @@ namespace workIT.Services
 				case "competencyframeworks":
 				case "competencyframeworkdsp":
 				{
-					var results = CompetencyFrameworkServicesV2.SearchViaRegistry( data, true );
-					//debug.Add( "Raw Results Data", JObject.FromObject( results ) ); //Temporary
-					return ConvertCompetencyFrameworkResultsV2( results );
+					if ( competencyFrameworkUsingRegistrySearch )
+					{
+						var results = CompetencyFrameworkServicesV2.SearchViaRegistry( data, true );
+						//debug.Add( "Raw Results Data", JObject.FromObject( results ) ); //Temporary
+						return ConvertCompetencyFrameworkResultsV2( results );
+					}
+					else
+                    {
+						var results = ElasticHelper.CompetencyFrameworkSearch( data, ref totalResults );
+						return ConvertCompetencyFrameworkResults2( results, totalResults, searchType );
+					}
 				}
 				case "conceptscheme":
 				{
@@ -197,20 +212,38 @@ namespace workIT.Services
 				case "pathway":
 				{
 					var results = PathwayServices.PathwaySearch( data, ref totalResults );
-					return ConvertGeneralIndexResults( results, totalResults, searchType );
+					return ConvertGeneralIndexResults( results, totalResults, searchType, "Pathway" );
 				}
 				case "pathwayset":
 				{
 					var results = PathwayServices.PathwaySetSearch( data, ref totalResults );
-					//return ConvertGeneralIndexResults( results, totalResults, searchType );
-					return ConvertPathwaySetResults( results, totalResults, searchType );
+					//return ConvertGeneralIndexResults( results, totalResults, searchType );	"Pathway Set"
+					//return ConvertPathwaySetResults( results, totalResults, searchType );
+					return ConvertGeneralIndexResults( results, totalResults, searchType, "Pathway Set" );
+
 					//
 				}
 				case "transfervalue":
 				{
 					var results = TransferValueServices.Search( data, ref totalResults );
 					//var results2 = ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref totalResults );
-					return ConvertTransferValueResults( results, totalResults, searchType );
+					//return ConvertTransferValueResults( results, totalResults, searchType );
+					return ConvertGeneralIndexResults( results, totalResults, searchType, "Transfer Value Profile" );
+				}
+				case "transferintermediary":
+					{
+						var results = TransferIntermediaryServices.Search( data, ref totalResults );
+						return ConvertGeneralIndexResults( results, totalResults, searchType, "Transfer Intermediary" );
+					}
+				case "datasetprofile":
+				{
+					var results = DataSetProfileServices.Search( data, ref totalResults );
+					return ConvertDataSetProfileResults( results, totalResults, searchType );
+				}
+				case "collection":
+				{
+					var results = CollectionServices.CollectionSearch( data, ref totalResults );
+					return ConvertCollectionResults( results, totalResults, searchType );
 				}
 				default:
 				{
@@ -222,10 +255,244 @@ namespace workIT.Services
 		}
 
 		//Do an autocomplete
-		public static List<object> DoAutoComplete(string searchType, string context, string text, int widgetId = 0)
+		public static List<FilterItem> DoAutoComplete( MainSearchInput data, ref bool valid, ref string status )
 		{
-			var results = new List<object>();
+			var results = new List<FilterItem>();
 			int totalRows = 0;
+			var textValues = new List<string>();
+			data.PageSize = UtilityManager.GetAppKeyValue( "autocompleteTerms", 15 );
+			//Sanitize input
+			data.Keywords = string.IsNullOrWhiteSpace( data.Keywords ) ? "" : data.Keywords;
+			data.Keywords = ServiceHelper.CleanText( data.Keywords );
+			data.Keywords = ServiceHelper.HandleApostrophes( data.Keywords );
+			data.Keywords = data.Keywords.Trim();
+			//
+			data.SortOrder = "relevance";
+			// Default blind searches to "newest" when "relevance" is selected - should not be possible.
+			if ( string.IsNullOrWhiteSpace( data.Keywords ) && data.FiltersV2.Count() == 0 && data.SortOrder == "relevance" )
+			{
+				data.SortOrder = "newest";
+			}
+			//Determine search type
+			var searchType = data.SearchType;
+			if ( string.IsNullOrWhiteSpace( searchType ) )
+			{
+				valid = false;
+				status = "Unable to determine search mode";
+				return null;
+			}
+			var context = data.AutocompleteContext;
+			if ( string.IsNullOrWhiteSpace( context ) )
+			{
+				valid = false;
+				status = "Unable to determine the autocomplete context.";
+				return null;
+			}
+			//temp
+			var text = data.Keywords;
+			int widgetId = 0; //obsolete
+			switch ( searchType.ToLower() )
+			{
+				case "credential":
+					{
+						switch ( context.ToLower() )
+						{
+							//case "mainsearch": return CredentialServices.Autocomplete( text, data.PageSize ).Select( m => m.Name ).ToList();
+							case "mainsearch":
+								textValues = CredentialServices.Autocomplete( data, data.PageSize/*, widgetId*/ ); break; //why is widgetId commented out here?
+							//case "competencies":
+							//	return CredentialServices.AutocompleteCompetencies( text, data.PageSize );
+							case "subjects":
+							case "filter:subjects":
+								textValues = Autocomplete_Subjects( data, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, data.PageSize ); break;
+							case "occupations"://
+							case "filter:occupationtype":
+								textValues = Autocomplete_Occupations( data, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, data.PageSize ); break;
+							case "industries":
+							case "filter:industrytype":
+								textValues = Autocomplete_Industries( data, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, data.PageSize ); break;
+							case "instructionalprogramtypes":
+							case "filter:instructionalprogramtype":
+								textValues = Autocomplete_Cip( data, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, data.PageSize ); break;
+							case "organizations":
+							case "filter:organization":
+							case "filter:qareceived":
+								//why was maxTerms set to 1 here? 22-05-06 mp - set to default
+								return ElasticHelper.OrganizationQAAutoComplete( text, data.PageSize );
+							case "organizationnonqaroles":
+							case "filter:organizationnonqaroles":
+								//why was maxTerms set to 1 here? 22-05-06 mp - set to default
+								return ElasticHelper.OrganizationAutoComplete( data, data.PageSize, ref totalRows );
+							case "filter:location":
+							case "location":
+								var total = 0;
+								var geodata = new ThirdPartyApiServices().GeoNamesSearch( text, 1, data.PageSize, null, ref total, true );
+								textValues = geodata.Select( f => f.LocationFormatted ).ToList();
+								break;
+							default:
+								break;
+						}
+						break;
+					}
+				case "organization":
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								textValues = OrganizationServices.Autocomplete( data, data.PageSize, widgetId ); break;
+							case "industries":
+							case "filter:industrytype":
+								textValues = Autocomplete_Industries( data, CF.CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, text, data.PageSize ); break;
+							case "organizations":
+							case "filter:organization":
+							case "filter:qareceived":
+								//why was maxTerms set to 2 here? 22-05-06 mp - set to default
+								return ElasticHelper.OrganizationQAAutoComplete( text, data.PageSize );
+							default:
+								break;
+						}
+						break;
+					}
+				case "assessment":
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								textValues = AssessmentServices.Autocomplete( data, data.PageSize/*, widgetId */); break;
+							//case "competencies":
+							//	return AssessmentServices.Autocomplete( text, "competencies", data.PageSize );
+							case "subjects":
+							case "filter:subjects":
+								textValues = Autocomplete_Subjects( data, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, data.PageSize ); break;
+							case "occupations"://
+							case "filter:occupationtype":
+								textValues = Autocomplete_Occupations( data, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, data.PageSize ); break;
+							case "industries":
+							case "filter:industrytype":
+								textValues = Autocomplete_Industries( data, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, data.PageSize ); break;
+							case "instructionalprogramtypes":
+							case "filter:instructionalprogramtype":
+								textValues = Autocomplete_Cip( data, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, data.PageSize ); break;
+							case "organizations":
+							case "filter:organization":
+							case "filter:qareceived":
+								return ElasticHelper.OrganizationQAAutoComplete( text, 3 );
+							default:
+								break;
+						}
+						break;
+					}
+				case "learningopportunity":
+					{
+						if ( context == null )
+						{
+							//temp. best guess
+							context = "filter:occupationtype";
+						}
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								textValues = LearningOpportunityServices.Autocomplete( data, widgetId );
+								//textValues = LearningOpportunityServices.Autocomplete( data, text, 15, widgetId );
+								break;
+							//case "competencies":
+							//	return LearningOpportunityServices.Autocomplete( text, "competencies", data.PageSize );
+							case "subjects":
+							case "filter:subjects":
+								textValues = Autocomplete_Subjects( data, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, data.PageSize ); break;
+							case "occupations"://
+							case "filter:occupationtype":
+								textValues = Autocomplete_Occupations( data, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, data.PageSize ); break;
+							//
+							case "industries":
+							case "filter:industrytype":
+								textValues = Autocomplete_Industries( data, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, data.PageSize ); break;
+							case "instructionalprogramtypes":
+							case "filter:instructionalprogramtype":
+								textValues = Autocomplete_Cip( data, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, data.PageSize ); break;
+							case "organizations":
+							case "filter:organization":
+							case "filter:qareceived":
+								return ElasticHelper.OrganizationQAAutoComplete( text, data.PageSize );
+							default:
+								break;
+						}
+						break;
+					}
+				case "cf":
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								textValues = ElasticHelper.CompetencyFrameworkAutoComplete( text, data.PageSize, ref totalRows ); break;
+							//case "competencies":
+							//	return LearningOpportunityServices.Autocomplete( text, "competencies", data.PageSize );
+							//case "subjects":
+							//	return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, data.PageSize );
+							default:
+								break;
+						}
+						break;
+					}
+				case "conceptscheme":
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								var sdata = ConceptSchemeServices.Autocomplete( text, data.PageSize, ref totalRows );
+								textValues = sdata.Select( f => f.Name ).ToList();
+								break;
+							default:
+								break;
+						}
+						break;
+					}
+				case "pathway":
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								textValues = ElasticServices.PathwayAutoComplete( data, data.PageSize, ref totalRows );
+								break;
+							default:
+								break;
+						}
+						break;
+					}
+				case "location": //or is this a context under each top level?
+					{
+						switch ( context.ToLower() )
+						{
+							case "mainsearch":
+								var total = 0;
+								var sdata = new ThirdPartyApiServices().GeoNamesSearch( text, 1, data.PageSize, null, ref total, true );
+								textValues = sdata.Select( f => f.LocationFormatted ).ToList();
+								break;
+							default:
+								break;
+						}
+						break;
+					}
+				default:
+					break;
+			}
+
+			results = textValues != null && textValues.Count() > 0 ? textValues.Select( m => new FilterItem() { Label = m, Text = m } ).ToList() : results;
+
+			return results;
+		}
+
+		public static List<FilterItem> DoAutoCompleteOLD( string searchType, string context, string text, int widgetId = 0 )
+	{
+			var results = new List<FilterItem>();
+			int totalRows = 0;
+			var textValues = new List<string>();
+			MainSearchInput query = new MainSearchInput()
+			{
+				SearchType = searchType,
+				Keywords = text,
+				AutocompleteContext = context
+			};
 			switch ( searchType.ToLower() )
 			{
 				case "credential":
@@ -234,27 +501,39 @@ namespace workIT.Services
 					{
 						//case "mainsearch": return CredentialServices.Autocomplete( text, 10 ).Select( m => m.Name ).ToList();
 						case "mainsearch":
-							return CredentialServices.Autocomplete( text, 15/*, widgetId*/ );
+							textValues = CredentialServices.Autocomplete( query, 15/*, widgetId*/ ); break; //why is widgetId commented out here?
 						//case "competencies":
 						//	return CredentialServices.AutocompleteCompetencies( text, 10 );
 						case "subjects":
 						case "filter:subjects":
-							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
+							textValues = Autocomplete_Subjects( query, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 ); break;
 						case "occupations"://
 						case "filter:occupationtype":
-							return Autocomplete_Occupations( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
+							textValues = Autocomplete_Occupations( query, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 ); 
+								break;
 						case "industries":
 						case "filter:industrytype":
-							return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 );
+							textValues = Autocomplete_Industries( query, CF.CodesManager.ENTITY_TYPE_CREDENTIAL, text, 10 ); 
+								break;
 						case "instructionalprogramtypes":
 						case "filter:instructionalprogramtype":
-							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
+							textValues = Autocomplete_Cip( query, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 ); 
+								break;
 						case "organizations":
 						case "filter:organization":
-							return ElasticHelper.OrganizationQAAutoComplete( text, 1 );
+						case "filter:qareceived":
+							//why was maxTerms set to 1 here? 22-05-06 mp - set to 10
+							return ElasticHelper.OrganizationQAAutoComplete( text, 10 );
 						case "organizationnonqaroles":
-						case "filter:organizationnonqaroles":							
-							return ElasticHelper.OrganizationAutoComplete( text, 1, ref totalRows );
+						case "filter:organizationnonqaroles":
+							//why was maxTerms set to 1 here? 22-05-06 mp - set to 10
+							return ElasticHelper.OrganizationAutoComplete( query, 10, ref totalRows ); 
+						case "filter:location":
+						case "location":
+							var total = 0;
+							var data = new ThirdPartyApiServices().GeoNamesSearch( text, 1, 15, null, ref total, true );
+							textValues = data.Select( f => f.LocationFormatted ).ToList();
+							break;
 						default:
 							break;
 					}
@@ -265,12 +544,13 @@ namespace workIT.Services
 					switch ( context.ToLower() )
 					{
 						case "mainsearch":
-							return OrganizationServices.Autocomplete( text, 10, widgetId );
+							textValues = OrganizationServices.Autocomplete( query, 10, widgetId ); break;
 						case "industries":
 						case "filter:industrytype":
-							return Autocomplete_Industries( CF.CodesManager.ENTITY_TYPE_ORGANIZATION, text, 10 );
+							textValues = Autocomplete_Industries( query, CF.CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, text, 10 ); break;
 						case "organizations":
 						case "filter:organization":
+						case "filter:qareceived":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 2 );
 						default:
 							break;
@@ -282,17 +562,24 @@ namespace workIT.Services
 					switch ( context.ToLower() )
 					{
 						case "mainsearch":
-							return AssessmentServices.Autocomplete( text, 15/*, widgetId */);
+							textValues = AssessmentServices.Autocomplete( query, 15/*, widgetId */); break;
 						//case "competencies":
 						//	return AssessmentServices.Autocomplete( text, "competencies", 10 );
 						case "subjects":
 						case "filter:subjects":
-							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
+							textValues = Autocomplete_Subjects( query, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 ); break;
+						case "occupations"://
+						case "filter:occupationtype":
+							textValues = Autocomplete_Occupations( query, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 ); break;
+						case "industries":
+						case "filter:industrytype":
+							textValues = Autocomplete_Industries( query, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 ); break;
 						case "instructionalprogramtypes":
 						case "filter:instructionalprogramtype":
-							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 );
+							textValues = Autocomplete_Cip( query, CF.CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, text, 10 ); break;
 						case "organizations":
 						case "filter:organization":
+						case "filter:qareceived":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 3 );
 						default:
 							break;
@@ -301,20 +588,35 @@ namespace workIT.Services
 				}
 				case "learningopportunity":
 				{
+						if ( context  == null)
+                        {
+							//temp. best guess
+							context = "filter:occupationtype";
+						}
 					switch ( context.ToLower() )
 					{
 						case "mainsearch":
-							return LearningOpportunityServices.Autocomplete( text, 15, widgetId );
+							textValues = LearningOpportunityServices.AutocompleteOld( text, 15, widgetId );
+							//textValues = LearningOpportunityServices.Autocomplete( text, 15, widgetId );
+							break;
 						//case "competencies":
 						//	return LearningOpportunityServices.Autocomplete( text, "competencies", 10 );
 						case "subjects":
 						case "filter:subjects":
-							return Autocomplete_Subjects( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 );
+							textValues = Autocomplete_Subjects( query, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CF.CodesManager.PROPERTY_CATEGORY_SUBJECT, text, 10 ); break;
+						case "occupations"://
+						case "filter:occupationtype":
+							textValues = Autocomplete_Occupations( query, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 ); break;
+								//
+						case "industries":
+						case "filter:industrytype":
+							textValues = Autocomplete_Industries( query, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 ); break;
 						case "instructionalprogramtypes":
 						case "filter:instructionalprogramtype":
-							return Autocomplete_Cip( CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 );
+							textValues = Autocomplete_Cip( query, CF.CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, text, 10 ); break;
 						case "organizations":
 						case "filter:organization":
+						case "filter:qareceived":
 							return ElasticHelper.OrganizationQAAutoComplete( text, 7 );
 						default:
 							break;
@@ -326,7 +628,7 @@ namespace workIT.Services
 					switch ( context.ToLower() )
 					{
 						case "mainsearch":
-							return ElasticHelper.CompetencyFrameworkAutoComplete( text, 15, ref totalRows );
+							textValues = ElasticHelper.CompetencyFrameworkAutoComplete( text, 15, ref totalRows ); break;
 						//case "competencies":
 						//	return LearningOpportunityServices.Autocomplete( text, "competencies", 10 );
 						//case "subjects":
@@ -335,6 +637,60 @@ namespace workIT.Services
 							break;
 					}
 					break;
+				}
+				case "conceptscheme":
+				{
+					switch ( context.ToLower() )
+					{
+						case "mainsearch":
+							var data = ConceptSchemeServices.Autocomplete( text, 15, ref totalRows ); 
+							textValues = data.Select( f => f.Name ).ToList();
+							break;
+						default:
+							break;
+					}
+					break;
+				}
+				case "location": //or is this a context under each top level?
+				{
+					switch ( context.ToLower() )
+					{
+						case "mainsearch":
+							var total = 0;
+							var data = new ThirdPartyApiServices().GeoNamesSearch( text, 1, 15, null, ref total, true );
+							textValues = data.Select( f => f.LocationFormatted ).ToList();
+							break;
+						default:
+							break;
+					}
+					break;
+				}
+				default:
+					break;
+			}
+
+			results = textValues != null && textValues.Count() > 0 ? textValues.Select( m => new FilterItem() { Label = m, Text = m } ).ToList() : results;
+
+			return results;
+		}
+		//
+		public static List<Credential> EntityCredentialsList( string searchType, int recordId, int maxRecords = 10 )
+		{
+			var results = new List<Credential>();
+			switch ( searchType.ToLower() )
+			{
+				case "credential":
+				{
+					return CF.Entity_ConditionProfileManager.GetAllCredentails( 1, recordId );
+				}
+				case "learningopportunity":
+				{
+					return CF.Entity_ConditionProfileManager.GetAllCredentails( 7, recordId );
+				}
+				case "transfervalue":
+				{
+					return CF.TransferValueProfileManager.GetAllCredentials( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordId );
+
 				}
 				default:
 					break;
@@ -355,6 +711,10 @@ namespace workIT.Services
 				case "learningopportunity":
 				{
 					return CF.Entity_ConditionProfileManager.GetAllAssessments( 7, recordId );
+				}
+				case "transfervalue":
+				{
+					return CF.TransferValueProfileManager.GetAllAssessments( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordId );
 
 				}
 				default:
@@ -376,6 +736,10 @@ namespace workIT.Services
 				case "learningopportunity":
 				{
 					return CF.Entity_ConditionProfileManager.GetAllLearningOpportunities( 7, recordId );
+				}
+				case "transfervalue":
+				{
+					return CF.TransferValueProfileManager.GetAllLearningOpportunities( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordId );
 
 				}
 				default:
@@ -502,7 +866,7 @@ namespace workIT.Services
 		public static List<OrganizationAssertion> QAPerformedList(int orgId, int maxRecords = 10)
 		{
 			//try to use combined!
-			return CF.Entity_AssertionManager.GetAllCombined( orgId, maxRecords );
+			return CF.Entity_AssertionManager.GetAllQAPerformedCombined( orgId, maxRecords );
 		}
 
 		//Convenience method to handle location data
@@ -510,37 +874,66 @@ namespace workIT.Services
 		public static BoundingBox GetBoundaries(MainSearchInput data, string name)
 		{
 			var boundaries = new BoundingBox();
+			if ( data.FiltersV2 == null || !data.FiltersV2.Any() )
+				return boundaries;
 			try
 			{
-				boundaries = data.FiltersV2.FirstOrDefault( m => m.Name == name ).AsBoundaries();
+				var target = data.FiltersV2.FirstOrDefault( m => m.Name == name );
+				if (target != null )
+					boundaries = target.AsBoundaries();
+				//boundaries = data.FiltersV2.FirstOrDefault( m => m.Name == name ).AsBoundaries();
 			}
 			catch { }
 
 			return boundaries;
 		}
 		//
-
-		public enum TagTypes { CONNECTIONS, QUALITY, ASSESSMENT, AUDIENCE_LEVEL, AUDIENCE_TYPE, LEARNINGOPPORTUNITY, OCCUPATIONS, INDUSTRIES, SUBJECTS, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, LOPPS_OWNED_BY, FINANCIAL, FRAMEWORKS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, OWNS_CREDENTIAL, OFFERS_CREDENTIAL, QAPERFORMED, SCORING_METHODS, REFERENCED_BY_CREDENTIAL, REFERENCED_BY_ASSESSMENT, REFERENCED_BY_LOPP, TRANSFERVALUE, PATHWAY, PATHWAYSET }
+		/// <summary>
+		/// explain relationships
+		/// anything added to ButtonCategoryTypes, add to here as all upper case.
+		/// In SearchV2.cshtml apparantly need a translation in method: handler_GetRelatedItemsViaAJAX
+		/// </summary>
+		public enum TagTypes { CONNECTIONS, QUALITY, ASSESSMENT, HAS_ASSESSMENT, AUDIENCE_LEVEL, AUDIENCE_TYPE, LEARNINGOPPORTUNITY, OCCUPATIONS, INDUSTRIES, SUBJECTS, HAS_CREDENTIAL, COMPETENCIES, TIME, COST, ORGANIZATIONTYPE, ORGANIZATIONSECTORTYPE, ORG_SERVICE_TYPE, OWNED_BY, OFFERED_BY, ASMTS_OWNED_BY, HAS_LOPP, LOPPS_OWNED_BY, FINANCIAL, FRAMEWORKS_OWNED_BY, ASMNT_DELIVER_METHODS, DELIVER_METHODS, ASSESSMENT_USE_TYPES, ASSESSMENT_METHOD_TYPES, LEARNING_METHODS, INSTRUCTIONAL_PROGRAM, OWNS_CREDENTIAL, OFFERS_CREDENTIAL, QAPERFORMED, SCORING_METHODS, REFERENCED_BY_CREDENTIAL, REFERENCED_BY_ASSESSMENT, REFERENCED_BY_LOPP, TVPHASCREDENTIAL, TVPHASASSESSMENT, TVPHASLOPP, TRANSFERVALUE, HASTRANSFERVALUE, PATHWAY, PATHWAYSET, DATASETPROFILE, DATASETPROFILE_CREDENTIAL, TRANSFERINTERMEDIARY }
 
 		public enum ButtonSearchTypes { Organization, Credential, AssessmentProfile, LearningOpportunityProfile, CompetencyFramework, Pathway, PathwaySet }
-		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, Pathway, PathwaySet, OutcomeData, HoldersProfile, EarningsProfile, EmploymentOutcomeProfile }
+		/// <summary>
+		/// how do ButtonCategoryTypes relate to TagTypes  
+		/// </summary>
+		public enum ButtonCategoryTypes { QualityAssuranceReceived, QualityAssurancePerformed, OrganizationOwns, OrganizationOffers, Connection, Credential, AssessmentProfile, LearningOpportunityProfile, OccupationType, IndustryType, InstructionalProgramType, Subject, Competency, EstimatedDuration, EstimatedCost, FinancialAssistance, AudienceLevelType, AudienceType, LearningDeliveryType, AssessmentDeliveryType, OrganizationType, SectorType, ServiceType, AssessmentUseType, AssessmentMethodType, ScoringMethodType, LearningMethodType, TransferValue, HasTransferValue, TVPHasCredential, TVPHasAssessment, TVPHasLopp, Pathway, PathwaySet, OutcomeData, HoldersProfile, EarningsProfile, EmploymentOutcomeProfile, DataSetProfile } //, OtherTags
+																																																																																																																																																																																						 //
 		public enum ButtonHandlerTypes { handler_RenderDetailPageLink, handler_RenderQualityAssurance, handler_RenderConnection, handler_RenderCheckboxFilter, handler_RenderExternalCodeFilter, handler_GetRelatedItemsViaAJAX } //use a string that is the function name itself for custom handlers
-		public enum ButtonTargetEntityTypes { Credential, Assessment, LearningOpportunity, CompetencyFramework, Competency, EstimatedCost, FinancialAssistance, QualityAssurancePerformed, TransferValue, Pathway, PathwaySet }
+		public enum ButtonTargetEntityTypes { Credential, Assessment, LearningOpportunity, CompetencyFramework, Competency, EstimatedCost, FinancialAssistance, QualityAssurancePerformed, TransferValue, TVPHasCredential, TVPHasAssessment, TVPHasLearningOpportunity, Pathway, PathwaySet, DataSetProfile }
 
 		public MainSearchResults ConvertCredentialResults(List<CredentialSummary> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+			if ( results == null || results.Count == 0 )
+				return output;
+			int cntr = 0;
 			foreach ( var item in results )
 			{
-				var mergedCosts = item.NumberOfCostProfileItems; // CostProfileMerged.FlattenCosts( item.EstimatedCost );
-				var subjects = Deduplicate( item.Subjects );
-				var mergedQA = item.AgentAndRoles.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
-				var mergedConnections = item.CredentialsList.Results.ToList();
-				var iconUrl = GetCredentialIcon( item.CredentialTypeSchema.ToLower() );
-				//.Concat( item.IsPartOfList.Results ).Concat( item.HasPartsList.Results ).ToList();
-				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
-					new Dictionary<string, object>()
+				cntr++;
+				if (item.Id == 40682 )
+                {
+
+                }
+				try
+				{
+					var mergedCosts = item.NumberOfCostProfileItems; // CostProfileMerged.FlattenCosts( item.EstimatedCost );
+					var subjects = Deduplicate( item.Subjects );
+					var mergedQA = item.AgentAndRoles.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
+					var mergedConnections = item.CredentialsList.Results.ToList();
+					var iconUrl = GetCredentialIcon( item.CredentialTypeSchema.ToLower() );
+					var statusLabel = "";
+					if ( UtilityManager.GetAppKeyValue( "showingNonActiveStatusLabel", false ) )
 					{
+						if ( !string.IsNullOrWhiteSpace( item.CredentialStatus ) && item.CredentialStatus != "Active" )
+							statusLabel = " [** " + item.CredentialStatus.ToUpper() + " **]";
+					}
+					//.Concat( item.IsPartOfList.Results ).Concat( item.HasPartsList.Results ).ToList();
+					output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
+						new Dictionary<string, object>()
+						{
 						{ "Name", item.Name },
 						{ "Description", item.Description },
 						{ "Type", item.CredentialType },
@@ -551,11 +944,13 @@ namespace workIT.Services
 						{ "TypeSchema", item.CredentialTypeSchema.ToLower()},
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
 						{ "Locations", ConvertAddresses( item.Addresses ) },
+							{ "CredentialStatus", item.CredentialStatus },
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
+						{ "OrganizationUrlTitle", item.PrimaryOrganizationFriendlyName },
 						{ "ResultImageUrl", item.ImageUrl ?? "" },
 						{ "ResultIconUrl", iconUrl ?? "" },
 						{ "HasDegreeConcentation", item.HasDegreeConcentation ?? "" },
@@ -570,9 +965,263 @@ namespace workIT.Services
 						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) },
 						{ "T_ImageURL", item.ImageUrl }
 
-					},
-					new List<TagSet>(),
-					//SearchTag is OBSOLETE, use SearchResultButton
+						},
+						new List<TagSet>(),
+						//SearchTag is OBSOLETE, use SearchResultButton
+						new List<Models.Helpers.SearchTag>(),
+
+						new List<SearchResultButton>()
+						{
+						//Credential Quality Assurance
+						new SearchResultButton()
+						{
+							CategoryLabel = "Quality Assurance",
+							CategoryType = ButtonCategoryTypes.QualityAssuranceReceived.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderQualityAssurance.ToString(),
+							TotalItems = mergedQA.Count(),
+							Items = mergedQA.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( m ) ).ToList()
+						},
+						//Connections
+						new SearchResultButton()
+						{
+							CategoryLabel = mergedConnections.Count() == 1 ? "Connection" : "Connections",
+							CategoryType = ButtonCategoryTypes.Connection.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderConnection.ToString(),
+							TotalItems = mergedConnections.Count(),
+							Items = mergedConnections.Take(10).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = m.Connection,
+								ConnectionType = m.ConnectionId.ToString(),
+								TargetLabel = m.Credential,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = m.CredentialId
+							} ) )
+						},
+						//Financial Assistance
+						new SearchResultButton()
+						{
+							CategoryLabel = "Financial Assistance",
+							CategoryType = ButtonCategoryTypes.FinancialAssistance.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.FinancialAidCount,
+							RenderData = JObject.FromObject(new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetFinancialAssistance",
+								TargetEntityType = ButtonTargetEntityTypes.FinancialAssistance.ToString()
+							} )
+						},
+						//Related Assessments
+						new SearchResultButton()
+						{
+							CategoryLabel = item.RequiredAssessmentsCount + item.RecommendedAssessmentsCount == 1 ? "Related Assessment" : "Related Assessments",
+							CategoryType = ButtonCategoryTypes.AssessmentProfile.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.RequiredAssessmentsCount + item.RecommendedAssessmentsCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultAsmt",
+								TargetEntityType = ButtonTargetEntityTypes.Assessment.ToString()
+							} )
+						},
+						//Related Learning Opportunities
+						new SearchResultButton()
+						{
+							CategoryLabel = item.RequiredLoppCount + item.RecommendedLoppCount == 1 ? "Related Learning Opportunity" : "Related Learning Opportunities",
+							CategoryType = ButtonCategoryTypes.LearningOpportunityProfile.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.RequiredLoppCount + item.RecommendedLoppCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultLopp",
+								TargetEntityType = ButtonTargetEntityTypes.LearningOpportunity.ToString()
+							} )
+						},
+						//Audience Level Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AudienceLevelsResults.Results.Count() == 1 ? "Audience Level" : "Audience Levels",
+							CategoryType = ButtonCategoryTypes.AudienceLevelType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.AudienceLevelsResults.Results.Count(),
+							Items = item.AudienceLevelsResults.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceLevelsResults.CategoryId ) ) )
+						},
+						//Audience Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AudienceTypesResults.Results.Count() == 1 ? "Audience Type" : "Audience Types",
+							CategoryType = ButtonCategoryTypes.AudienceType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.AudienceTypesResults.Results.Count(),
+							Items = item.AudienceTypesResults.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceTypesResults.CategoryId ) ) )
+						},
+						//Occupations
+						new SearchResultButton()
+						{
+							CategoryLabel = item.OccupationResults.Results.Count() == 1 ? "Occupation" : "Occupations",
+							CategoryType = ButtonCategoryTypes.OccupationType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
+							TotalItems = item.OccupationResults.Results.Count(),
+							Items = item.OccupationResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.OccupationResults.CategoryId ) ) )
+						},
+						//Industries
+						new SearchResultButton()
+						{
+							CategoryLabel = item.IndustryResults.Results.Count() == 1 ? "Industry" : "Industries",
+							CategoryType = ButtonCategoryTypes.IndustryType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
+							TotalItems = item.IndustryResults.Results.Count(),
+							Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.IndustryResults.CategoryId ) ) )
+						},
+						//Instructional Program Classifications
+						new SearchResultButton()
+						{
+							CategoryLabel = item.InstructionalProgramClassification.Results.Count() == 1 ? "Instructional Program Type" : "Instructional Program Types",
+							CategoryType = ButtonCategoryTypes.InstructionalProgramType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
+							TotalItems = item.InstructionalProgramClassification.Results.Count(),
+							Items = item.InstructionalProgramClassification.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.InstructionalProgramClassification.CategoryId ) ) )
+						},
+						//Assessment Delivery Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AssessmentDeliveryType.Results.Count() == 1 ? "Assessment Delivery Type" : "Assessment Delivery Types",
+							CategoryType = ButtonCategoryTypes.AssessmentDeliveryType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.AssessmentDeliveryType.Results.Count(),
+							Items = item.AssessmentDeliveryType.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AssessmentDeliveryType.CategoryId ) ) )
+						},
+						//Learning Delivery Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.LearningDeliveryType.Results.Count() == 1 ? "Learning Delivery Type" : "Learning Delivery Types",
+							CategoryType = ButtonCategoryTypes.LearningDeliveryType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.LearningDeliveryType.Results.Count(),
+							Items = item.LearningDeliveryType.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.LearningDeliveryType.CategoryId ) ) )
+						},
+						//Subjects
+						new SearchResultButton()
+						{
+							CategoryLabel = subjects.Count() == 1 ? "Subject" : "Subjects",
+							CategoryType = ButtonCategoryTypes.Subject.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = subjects.Count(),
+							Items = item.Subjects.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//OutcomeProfiles
+						new SearchResultButton()
+						{//note item.AggregateDataProfileCount + item.DataSetProfileCount were already combined in Credential_MapFromElastic
+							CategoryLabel = item.AggregateDataProfileCount == 1 ? "Outcome Data" : "Outcome Data",
+							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.AggregateDataProfileCount,
+							Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Outcome Data",
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//Related TVP
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueCount == 1 ? "Has Transfer Value" : "Has Transfer Values",
+							CategoryType = ButtonCategoryTypes.HasTransferValue.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultTVP",
+								TargetEntityType = ButtonTargetEntityTypes.TransferValue.ToString()
+							} )
+						},
+						//EarningsProfiles
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.EarningsProfileCount == 1 ? "Earnings Profile" : "Earnings Profiles",
+						//	CategoryType = ButtonCategoryTypes.EarningsProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.EarningsProfileCount,
+						//	Items = new List<string>() { item.EarningsProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		ConnectionLabel = "Earnings Profile",
+						//		TargetLabel = m,
+						//		TargetType = ButtonSearchTypes.Credential.ToString(),
+						//		TargetId = item.Id
+						//	} ) )
+						//},
+						//EmploymentOutcomeProfiles
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.EmploymentOutcomeProfileCount == 1 ? "EmploymentOutcome Profile" : "EmploymentOutcome Profiles",
+						//	CategoryType = ButtonCategoryTypes.EmploymentOutcomeProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.EmploymentOutcomeProfileCount,
+						//	Items = new List<string>() { item.EmploymentOutcomeProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		ConnectionLabel = "Employment Outcome Profile",
+						//		TargetLabel = m,
+						//		TargetType = ButtonSearchTypes.Credential.ToString(),
+						//		TargetId = item.Id
+						//	} ) )
+						//},
+						//Competencies
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AssessmentsCompetenciesCount + item.LearningOppsCompetenciesCount + item.RequiresCompetenciesCount == 1 ? "Competency" : "Competencies",
+							CategoryType = ButtonCategoryTypes.Competency.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.AssessmentsCompetenciesCount + item.LearningOppsCompetenciesCount + item.RequiresCompetenciesCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultCompetencies",
+								TargetEntityType = ButtonTargetEntityTypes.Competency.ToString()
+							} )
+						},
+						//Durations
+						new SearchResultButton()
+						{
+							CategoryLabel = item.EstimatedTimeToEarn.Count() == 1 ? "Time Estimate" : "Time Estimates",
+							CategoryType = ButtonCategoryTypes.EstimatedDuration.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.EstimatedTimeToEarn.Count(),
+							Items = item.EstimatedTimeToEarn.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								TargetLabel = m.IsRange ? m.MinimumDuration.Print() + " - " + m.MaximumDuration.Print() : string.IsNullOrEmpty(m.ExactDuration.Print()) ? m.Conditions :  m.ExactDuration.Print(),
+								TargetType = ButtonTargetEntityTypes.Credential.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//Costs
+						new SearchResultButton()
+						{
+							CategoryLabel = item.NumberOfCostProfileItems == 1 ? "Estimated Cost" : "Estimated Costs",
+							CategoryType = ButtonCategoryTypes.EstimatedCost.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.NumberOfCostProfileItems,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultCosts",
+								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
+							} )
+						}
+						}
+					) );
+				} catch ( Exception ex )
+                {
+					var msg = BaseFactory.FormatExceptions( ex );
+					var jitem = JsonConvert.SerializeObject( item );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ConvertCredentialResults #{0} Credential: {1} (Id:{2}), Exception: {3}, for:\r\n{4)", cntr, item.Name, item.Id, msg, jitem ) );
+                }
+			}
+			return output;
+			/*
 					new List<Models.Helpers.SearchTag>()
 					{
 						//Credential Quality Assurance
@@ -615,7 +1264,7 @@ namespace workIT.Services
 							SearchQueryType = "link",
 							//Items = GetSearchTagItems_Filter( item.ConnectionsList.Results, "{Name} Credential(s)", item.ConnectionsList.CategoryId )
 							//Something like this...
-							/*	*/
+							
 							Items = mergedConnections.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
 							{
 								Display = "<b>" + m.Connection + "</b>" + " " + m.Credential, //[Is Preparation For] [Some Credential Name] 
@@ -845,238 +1494,7 @@ namespace workIT.Services
 							}
 						}
 					},
-					new List<SearchResultButton>()
-					{
-						//Credential Quality Assurance
-						new SearchResultButton()
-						{
-							CategoryLabel = "Quality Assurance",
-							CategoryType = ButtonCategoryTypes.QualityAssuranceReceived.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderQualityAssurance.ToString(),
-							TotalItems = mergedQA.Count(),
-							Items = mergedQA.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( m ) ).ToList()
-						},
-						//Connections
-						new SearchResultButton()
-						{
-							CategoryLabel = mergedConnections.Count() == 1 ? "Connection" : "Connections",
-							CategoryType = ButtonCategoryTypes.Connection.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderConnection.ToString(),
-							TotalItems = mergedConnections.Count(),
-							Items = mergedConnections.Take(10).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								ConnectionLabel = m.Connection,
-								ConnectionType = m.ConnectionId.ToString(),
-								TargetLabel = m.Credential,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
-								TargetId = m.CredentialId
-							} ) )
-						},
-						//Financial Assistance
-						new SearchResultButton()
-						{
-							CategoryLabel = "Financial Assistance",
-							CategoryType = ButtonCategoryTypes.FinancialAssistance.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
-							TotalItems = item.FinancialAidCount,
-							RenderData = JObject.FromObject(new SearchResultButton.Helpers.AjaxDataForResult()
-							{
-								AjaxQueryName = "GetFinancialAssistance",
-								TargetEntityType = ButtonTargetEntityTypes.FinancialAssistance.ToString()
-							} )
-						},
-						//Related Assessments
-						new SearchResultButton()
-						{
-							CategoryLabel = item.RequiredAssessmentsCount + item.RecommendedAssessmentsCount == 1 ? "Related Assessment" : "Related Assessments",
-							CategoryType = ButtonCategoryTypes.AssessmentProfile.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
-							TotalItems = item.RequiredAssessmentsCount + item.RecommendedAssessmentsCount,
-							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
-							{ 
-								AjaxQueryName = "GetSearchResultAsmt",
-								TargetEntityType = ButtonTargetEntityTypes.Assessment.ToString()
-							} ) 
-						},
-						//Related Learning Opportunities
-						new SearchResultButton()
-						{
-							CategoryLabel = item.RequiredLoppCount + item.RecommendedLoppCount == 1 ? "Related Learning Opportunity" : "Related Learning Opportunities",
-							CategoryType = ButtonCategoryTypes.LearningOpportunityProfile.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
-							TotalItems = item.RequiredLoppCount + item.RecommendedLoppCount,
-							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
-							{
-								AjaxQueryName = "GetSearchResultLopp",
-								TargetEntityType = ButtonTargetEntityTypes.LearningOpportunity.ToString()
-							} )
-						},
-						//Audience Level Type
-						new SearchResultButton()
-						{
-							CategoryLabel = item.AudienceLevelsResults.Results.Count() == 1 ? "Audience Level" : "Audience Levels",
-							CategoryType = ButtonCategoryTypes.AudienceLevelType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
-							TotalItems = item.AudienceLevelsResults.Results.Count(),
-							Items = item.AudienceLevelsResults.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceLevelsResults.CategoryId ) ) )
-						},
-						//Audience Type
-						new SearchResultButton()
-						{
-							CategoryLabel = item.AudienceTypesResults.Results.Count() == 1 ? "Audience Type" : "Audience Types",
-							CategoryType = ButtonCategoryTypes.AudienceType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
-							TotalItems = item.AudienceTypesResults.Results.Count(),
-							Items = item.AudienceTypesResults.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceTypesResults.CategoryId ) ) )
-						},
-						//Occupations
-						new SearchResultButton()
-						{
-							CategoryLabel = item.OccupationResults.Results.Count() == 1 ? "Occupation" : "Occupations",
-							CategoryType = ButtonCategoryTypes.OccupationType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
-							TotalItems = item.OccupationResults.Results.Count(),
-							Items = item.OccupationResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.OccupationResults.CategoryId ) ) )
-						},
-						//Industries
-						new SearchResultButton()
-						{
-							CategoryLabel = item.IndustryResults.Results.Count() == 1 ? "Industry" : "Industries",
-							CategoryType = ButtonCategoryTypes.IndustryType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
-							TotalItems = item.IndustryResults.Results.Count(),
-							Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.IndustryResults.CategoryId ) ) )
-						},
-						//Instructional Program Classifications
-						new SearchResultButton()
-						{
-							CategoryLabel = item.InstructionalProgramClassification.Results.Count() == 1 ? "Instructional Program Type" : "Instructional Program Types",
-							CategoryType = ButtonCategoryTypes.InstructionalProgramType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
-							TotalItems = item.InstructionalProgramClassification.Results.Count(),
-							Items = item.InstructionalProgramClassification.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.InstructionalProgramClassification.CategoryId ) ) )
-						},
-						//Assessment Delivery Type
-						new SearchResultButton()
-						{
-							CategoryLabel = item.AssessmentDeliveryType.Results.Count() == 1 ? "Assessment Delivery Type" : "Assessment Delivery Types",
-							CategoryType = ButtonCategoryTypes.AssessmentDeliveryType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
-							TotalItems = item.AssessmentDeliveryType.Results.Count(),
-							Items = item.AssessmentDeliveryType.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AssessmentDeliveryType.CategoryId ) ) )
-						},
-						//Learning Delivery Type
-						new SearchResultButton()
-						{
-							CategoryLabel = item.LearningDeliveryType.Results.Count() == 1 ? "Learning Delivery Type" : "Learning Delivery Types",
-							CategoryType = ButtonCategoryTypes.LearningDeliveryType.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
-							TotalItems = item.LearningDeliveryType.Results.Count(),
-							Items = item.LearningDeliveryType.Results.ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.LearningDeliveryType.CategoryId ) ) )
-						},
-						//Subjects
-						new SearchResultButton()
-						{
-							CategoryLabel = subjects.Count() == 1 ? "Subject" : "Subjects",
-							CategoryType = ButtonCategoryTypes.Subject.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = subjects.Count(),
-							Items = item.Subjects.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								TargetLabel = m,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
-								TargetId = item.Id
-							} ) )
-						},
-						//OutcomeProfiles
-						new SearchResultButton()
-						{
-							CategoryLabel = item.AggregateDataProfileCount == 1 ? "Outcome Data" : "Outcome Data",
-							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.AggregateDataProfileCount,
-							Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								ConnectionLabel = "Outcome Data",
-								TargetLabel = m,
-								TargetType = ButtonSearchTypes.Credential.ToString(),
-								TargetId = item.Id
-							} ) )
-						},
-						//EarningsProfiles
-						//new SearchResultButton()
-						//{
-						//	CategoryLabel = item.EarningsProfileCount == 1 ? "Earnings Profile" : "Earnings Profiles",
-						//	CategoryType = ButtonCategoryTypes.EarningsProfile.ToString(),
-						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-						//	TotalItems = item.EarningsProfileCount,
-						//	Items = new List<string>() { item.EarningsProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-						//	{
-						//		ConnectionLabel = "Earnings Profile",
-						//		TargetLabel = m,
-						//		TargetType = ButtonSearchTypes.Credential.ToString(),
-						//		TargetId = item.Id
-						//	} ) )
-						//},
-						//EmploymentOutcomeProfiles
-						//new SearchResultButton()
-						//{
-						//	CategoryLabel = item.EmploymentOutcomeProfileCount == 1 ? "EmploymentOutcome Profile" : "EmploymentOutcome Profiles",
-						//	CategoryType = ButtonCategoryTypes.EmploymentOutcomeProfile.ToString(),
-						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-						//	TotalItems = item.EmploymentOutcomeProfileCount,
-						//	Items = new List<string>() { item.EmploymentOutcomeProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-						//	{
-						//		ConnectionLabel = "Employment Outcome Profile",
-						//		TargetLabel = m,
-						//		TargetType = ButtonSearchTypes.Credential.ToString(),
-						//		TargetId = item.Id
-						//	} ) )
-						//},
-						//Competencies
-						new SearchResultButton()
-						{
-							CategoryLabel = item.AssessmentsCompetenciesCount + item.LearningOppsCompetenciesCount == 1 ? "Competency" : "Competencies",
-							CategoryType = ButtonCategoryTypes.Competency.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
-							TotalItems = item.AssessmentsCompetenciesCount + item.LearningOppsCompetenciesCount,
-							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
-							{
-								AjaxQueryName = "GetSearchResultCompetencies",
-								TargetEntityType = ButtonTargetEntityTypes.Competency.ToString()
-							} )
-						},
-						//Durations
-						new SearchResultButton()
-						{
-							CategoryLabel = item.EstimatedTimeToEarn.Count() == 1 ? "Time Estimate" : "Time Estimates",
-							CategoryType = ButtonCategoryTypes.EstimatedDuration.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.EstimatedTimeToEarn.Count(),
-							Items = item.EstimatedTimeToEarn.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								TargetLabel = m.IsRange ? m.MinimumDuration.Print() + " - " + m.MaximumDuration.Print() : string.IsNullOrEmpty(m.ExactDuration.Print()) ? m.Conditions :  m.ExactDuration.Print(),
-								TargetType = ButtonTargetEntityTypes.Credential.ToString(),
-								TargetId = item.Id
-							} ) )
-						},
-						//Costs
-						new SearchResultButton()
-						{
-							CategoryLabel = item.NumberOfCostProfileItems == 1 ? "Estimated Cost" : "Estimated Costs",
-							CategoryType = ButtonCategoryTypes.EstimatedCost.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
-							TotalItems = item.NumberOfCostProfileItems,
-							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
-							{
-								AjaxQueryName = "GetSearchResultCosts",
-								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
-							} )
-						}
-					}
-				) );
-			}
-			return output;
+					*/
 		}
 		//
 
@@ -1084,25 +1502,25 @@ namespace workIT.Services
 		{
 			//defaults
 			credentiaType = credentiaType.Replace( "ceterms:", "" );
-			string url = string.Format( "images/icons/flat_{0}.png", credentiaType);
+			string url = string.Format( "images/icons/flat_{0}_cropped.png", credentiaType);
 			//exceptions
 			if (credentiaType.IndexOf("badge") > -1)
-				url = "~/images/icons/flat_badge.png";
+				url = "~/images/icons/flat_badge_cropped.png";
 			else if ( credentiaType.IndexOf( "certificate" ) > -1 )
-				url = "~/images/icons/flat_certificate.png";
-			else if( credentiaType.IndexOf( "degree" ) > -1 
+				url = "~/images/icons/flat_certificate_cropped.png";
+			else if ( credentiaType.IndexOf( "degree" ) > -1 
 				|| credentiaType.IndexOf( "master" ) > -1
 				|| credentiaType.IndexOf( "doctorate" ) > -1 )
-				url = "~/images/icons/flat_degree.png";
+				url = "~/images/icons/flat_degree_cropped.png";
 			else if ( credentiaType.IndexOf( "diploma" ) > -1
 				|| credentiaType.IndexOf( "generaleducat" ) > -1 )
-				url = "~/images/icons/flat_diploma.png";
+				url = "~/images/icons/flat_diploma_cropped.png";
 			else if ( credentiaType.IndexOf( "apprentice" ) > -1 )
-				url = "~/images/icons/flat_apprentice.png";
+				url = "~/images/icons/flat_apprentice_cropped.png";
 
 			//need to use this as also called from finderAPI
-			string baseFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
-			url= baseFinderSiteURL + url.Replace("~/","");
+			string oldCredentialFinderSite = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
+			url= oldCredentialFinderSite + url.Replace("~/","");
 			return url;
 		}
 
@@ -1245,7 +1663,7 @@ namespace workIT.Services
 						Schema = TagTypes.ASSESSMENT.ToString().ToLower(),
 						Label = "Assessments",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType="Assessment", TargetEntityTypeId=3, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace(m.CTID) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType="Assessment", TargetEntityTypeId=3, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace(m.CTID), TargetFriendlyName=m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1257,7 +1675,7 @@ namespace workIT.Services
 						Schema = TagTypes.LEARNINGOPPORTUNITY.ToString().ToLower(),
 						Label = "LearningOpportunities",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "LearningOpportunity", TargetEntityTypeId = 7, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "LearningOpportunity", TargetEntityTypeId = 7, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1271,7 +1689,7 @@ namespace workIT.Services
 						Schema = TagTypes.OWNS_CREDENTIAL.ToString().ToLower(),
 						Label = "Credentials",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Credential", TargetEntityTypeId = 7, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Credential", TargetEntityTypeId = 7, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1313,11 +1731,18 @@ namespace workIT.Services
 							CodeId = c.CostProfileId,
 							Price = c.Price,
 							CostType = c.Price > 0 ? c.CostTypeName : c.CostDescription,
-							CurrencySymbol = c.CurrencySymbol,
+							CurrencySymbol = c.CurrencySymbol == "&#36;" ? "$" : c.CurrencySymbol,
 							SourceEntity = c.ParentEntityType.ToLower().IndexOf( searchType.ToLower()) == 0 ? "direct" : c.ParentEntityType
-						} ),
-						//not sure why Items is included with CostItems?????????
-						Items = data.ConvertAll( m => new TagItem() { CodeId = m.Id, Label = m.CostTypeName, Description = "" } )
+						} ),	//	doing sort in search proc instead of here .OrderBy( s => s.Price).ToList(),
+						//Items are used for translation in new Search API
+						Items = data.ConvertAll( 
+							m => new TagItem() 
+							{ 
+								CodeId = m.Id, 
+								Label = m.CostTypeName + ( m.Price > 0 ? " - " + ( m.CurrencySymbol == "&#36;" ? "$" : m.CurrencySymbol ) + Regex.Replace( m.Price.ToString(), @"\B(?=(\d{3})+(?!\d))", "," ) : "" ), 
+								Description = "" 
+							} 
+						)
 					};
 					break;
 				}
@@ -1361,16 +1786,113 @@ namespace workIT.Services
 						} )
 					};
 					break;
-				}
-				case TagTypes.TRANSFERVALUE:
+				}//
+				case TagTypes.TRANSFERINTERMEDIARY:    //org transfer value profiles
+					{
+						if ( searchType == "organization" )
+						{
+							var data = TransferIntermediaryServices.GetOwnedByOrg( recordID, maxRecords );
+							result = new TagSet()
+							{
+								Schema = TagTypes.TRANSFERVALUE.ToString().ToLower(),
+								Label = "Transfer Intermediaries",
+								Method = "link",
+								EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferIntermediary", TargetEntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+							};
+						}
+						else
+						{
+							var data = TransferIntermediaryServices.GetEntityHasTransferIntermediary( searchType, recordID, maxRecords );
+							result = new TagSet()
+							{
+								Schema = TagTypes.TRANSFERINTERMEDIARY.ToString().ToLower(),
+								Label = "Transfer Intermediaries",
+								Method = "link",
+								EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferIntermediary", TargetEntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+							};
+						}
+
+						break;
+					}//
+				case TagTypes.TRANSFERVALUE:	//org transfer value profiles
 				{
-					var data = TransferValueServices.GetTVPOwnedByOrg( recordID, maxRecords );
+					if ( searchType == "organization")
+					{
+						var data = TransferValueServices.GetTVPOwnedByOrg( recordID, maxRecords );
+						result = new TagSet()
+						{
+							Schema = TagTypes.TRANSFERVALUE.ToString().ToLower(),
+							Label = "TransferValues",
+							Method = "link",
+							EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferValueProfile", TargetEntityTypeId = 26, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+						};
+					} else
+					{
+						var data = TransferValueServices.GetEntityHasTVP( searchType, recordID, maxRecords );
+						result = new TagSet()
+						{
+							Schema = TagTypes.TRANSFERVALUE.ToString().ToLower(),
+							Label = "TransferValues",
+							Method = "link",
+							EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferValueProfile", TargetEntityTypeId = 26, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+						};
+					}
+					
+					break;
+				}
+				case TagTypes.HASTRANSFERVALUE: //credential etc, has transfer value profiles
+				{
+					//get any TVP for 
+					var data = TransferValueServices.GetEntityHasTVP( searchType, recordID, maxRecords );
 					result = new TagSet()
 					{
-						Schema = TagTypes.TRANSFERVALUE.ToString().ToLower(),
-						Label = "TransferValues",
+						Schema = TagTypes.HASTRANSFERVALUE.ToString().ToLower(),
+						Label = "Has Transfer Values",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferValueProfile", TargetEntityTypeId = 26, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "TransferValueProfile", TargetEntityTypeId = 26, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+					};
+					break;
+				}
+				case TagTypes.TVPHASCREDENTIAL: //credentials for a transfer value profile
+				{
+					//get any TVP for 
+					//var data = TransferValueServices.GetEntityHasTVP( searchType, recordID, maxRecords );
+					var data = TransferValueProfileManager.GetAllCredentials( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordID );
+
+					result = new TagSet()
+					{
+						Schema = TagTypes.HASTRANSFERVALUE.ToString().ToLower(),
+						Label = "Credentials",
+						Method = "link",
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Credential", TargetEntityTypeId = 1, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+					};
+					break;
+				}
+				case TagTypes.TVPHASASSESSMENT: // for a transfer value profile
+				{
+					//get any TVP for 
+					var data = TransferValueProfileManager.GetAllAssessments( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordID );
+
+					result = new TagSet()
+					{
+						Schema = TagTypes.HASTRANSFERVALUE.ToString().ToLower(),
+						Label = "Assessments",
+						Method = "link",
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Assessment", TargetEntityTypeId = 3, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+					};
+					break;
+				}
+				case TagTypes.TVPHASLOPP: // for a transfer value profile
+				{
+					//get any TVP for 
+					var data = TransferValueProfileManager.GetAllLearningOpportunities( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, recordID );
+
+					result = new TagSet()
+					{
+						Schema = TagTypes.HASTRANSFERVALUE.ToString().ToLower(),
+						Label = "Learning Opportunities",
+						Method = "link",
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "LearningOpportunity", TargetEntityTypeId = 7, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1382,7 +1904,7 @@ namespace workIT.Services
 						Schema = TagTypes.PATHWAY.ToString().ToLower(),
 						Label = "Pathway",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Pathway", TargetEntityTypeId = 8, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Pathway", TargetEntityTypeId = 8, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1394,7 +1916,20 @@ namespace workIT.Services
 						Schema = TagTypes.PATHWAYSET.ToString().ToLower(),
 						Label = "Pathway Set",
 						Method = "link",
-						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "PathwaySet", TargetEntityTypeId = 23, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ) } ).Take( 10 ).ToList()
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "PathwaySet", TargetEntityTypeId = 23, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
+					};
+					break;
+				}
+				case TagTypes.DATASETPROFILE_CREDENTIAL:
+				{
+					//21-05-26 - get all credentials for an org's dataset profiles
+					var data = DataSetProfileServices.GetDSPCredentialsForOrg( recordID, maxRecords );
+					result = new TagSet()
+					{
+						Schema = TagTypes.DATASETPROFILE_CREDENTIAL.ToString().ToLower(),
+						Label = "Credentials",
+						Method = "link",
+						EntityTagItems = data.ConvertAll( m => new EntityTagItem() { TargetEntityBaseId = m.Id, TargetEntityType = "Credential", TargetEntityTypeId = 1, TargetEntityName = m.Name, TargetEntitySubjectWebpage = m.SubjectWebpage, IsReference = string.IsNullOrWhiteSpace( m.CTID ), TargetFriendlyName = m.FriendlyName } ).Take( 10 ).ToList()
 					};
 					break;
 				}
@@ -1426,15 +1961,38 @@ namespace workIT.Services
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
 			foreach ( var item in results )
 			{
-				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
+				//probably need to do this for all?
+				List<CodeItem> ownsOffers = new List<CodeItem>();
+				if ( item.OwnedByResults.Results.Count() > item.OfferedByResults.Results.Count() )
+				{
+					ownsOffers = item.OwnedByResults.Results;
+				} else
+				{
+					ownsOffers = item.OfferedByResults.Results;
+				}
+				var totalOwnsOffers = item.OwnedByResults.Results.Count() > item.OfferedByResults.Results.Count() ? item.OwnedByResults.Results.Count() : item.OfferedByResults.Results.Count();
+				var statusLabel = "";
+				if ( UtilityManager.GetAppKeyValue( "showingNonActiveStatusLabel", false ) )
+				{
+					if ( !string.IsNullOrWhiteSpace( item.LifeCycleStatus ) && item.LifeCycleStatus != "Active" )
+						statusLabel = " [** " + item.LifeCycleStatus.ToUpper() + " **]";
+				}
+				//21-11-23 mp - stop using single Address, only Addresses is populated
+				//set first one to a default address
+				Address defaultAddress = new Address();
+				if ( item.Addresses != null && item.Addresses.Any() ) 
+					defaultAddress = item.Addresses[ 0 ];
+				output.Results.Add( Result( item.Name + statusLabel, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
-						{ "Name", item.Name },
+						{ "Name", item.Name + statusLabel},
 						{ "Description", item.Description },
 						{ "OwnerId", 0 },
 						//{ "CanEditRecord", item.CanEditRecord },
-						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( new List<Address>() { item.Address } ) } },
-						{ "Locations", ConvertAddresses( item.Auto_Address ) },
+						//{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( new List<Address>() { item.Address } ) } },
+						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
+						{ "Locations", ConvertAddresses( item.Addresses ) }, //old item.Auto_Address
+							{ "LifeCycleStatus", item.LifeCycleStatus },
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "ResultNumber", item.ResultNumber },
@@ -1442,10 +2000,10 @@ namespace workIT.Services
 						{ "UrlTitle", item.FriendlyName },
 						{ "Logo", item.Image },
 						{ "ResultImageUrl", item.Image ?? "" },
-						{ "Location", item.Address.AddressCountry ?? "" + ( string.IsNullOrWhiteSpace( item.Address.AddressCountry ) ? "" : " - " ) + item.Address.AddressLocality + ( string.IsNullOrWhiteSpace( item.Address.AddressLocality ) ? "" : ", " ) + item.Address.AddressRegion },
+						{ "Location", defaultAddress.AddressCountry ?? "" + ( string.IsNullOrWhiteSpace( defaultAddress.AddressCountry ) ? "" : " - " ) + defaultAddress.AddressLocality + ( string.IsNullOrWhiteSpace( defaultAddress.AddressLocality ) ? "" : ", " ) + defaultAddress.AddressRegion },
 						 { "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
-						{ "Coordinates", new { Type = "coordinates", Data = new { Latitude = item.Address.Latitude, Longitude = item.Address.Longitude } } },
+						{ "Coordinates", new { Type = "coordinates", Data = new { Latitude = defaultAddress.Latitude, Longitude = defaultAddress.Longitude } } },
 						{ "IsQA", item.ISQAOrganization ? "true" : "false" },
 						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
 						{ "T_StateId", item.EntityStateId },
@@ -1455,216 +2013,7 @@ namespace workIT.Services
 						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
-					new List<Models.Helpers.SearchTag>(),
-					//new List<Models.Helpers.SearchTag>()
-					//{
-     //                    //Quality Assurance
-     //                    new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "Quality Assurance",
-					//		DisplayTemplate = "{#} Quality Assurance",
-					//		Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
-					//		TotalItems = item.QualityAssurance.Results.Count(),
-					//		SearchQueryType = "merged", //Change this to "custom", or back to detail
-					//		Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-					//			Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
-					//			QueryValues = new Dictionary<string, object>() {
-					//					{ "Relationship", m.Relationship },
-					//					{ "TextValue", m.Agent },
-					//					{ "RelationshipId", m.RelationshipId },
-					//					{ "AgentId", m.AgentId },
-					//					{ "TargetType", "organization" },
-					//					{ "AgentUrl", m.AgentUrl},
-					//					{ "EntityStateId", m.EntityStateId },
-					//					{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-					//				}
-					//		} ).ToList()
-					//	},
-     //                    //Quality Assurance Performed
-     //                    new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "Quality Assurance Performed",
-					//		DisplayTemplate = "{#} Quality Assurance Performed",
-					//		Name = "qualityassuranceperformed",
-					//		TotalItems = item.QualityAssuranceCombinedTotal,
-                            
-     //                       //Items
-     //                       SearchQueryType = "qaperformed",
-					//		IsAjaxQuery = true,
-					//		AjaxQueryName = "GetSearchResultPerformed",
-					//		AjaxQueryValues = new Dictionary<string, object>()
-					//		{
-					//			{ "SearchType", "organization" },
-					//			{ "RecordId", item.Id },
-					//			{ "TargetEntityType", "QAPERFORMED" }
-					//		}
-					//	},
-                         
-					//	//Organization Type
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OrganizationType",
-					//		CategoryLabel = "Organization Type",
-					//		DisplayTemplate = "{#} Organization Type(s)",
-					//		Name = TagTypes.ORGANIZATIONTYPE.ToString().ToLower(),
-					//		TotalItems = item.AgentType.Items.Count(),
-					//		SearchQueryType = "code",
-					//		Items = GetSearchTagItems_Filter( item.AgentType.Items.Take(10).ToList(), "{Name}", item.AgentType.Id )
-					//	},
-					//	//Organization Sector Type
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OrganizationSector",
-					//		CategoryLabel = "Sector Type",
-					//		DisplayTemplate = "{#} Sector{s}",
-					//		Name = TagTypes.ORGANIZATIONSECTORTYPE.ToString().ToLower(),
-					//		TotalItems = item.AgentSectorType.Items.Count(),
-					//		SearchQueryType = "code",
-					//		Items = GetSearchTagItems_Filter( item.AgentSectorType.Items.Take(10).ToList(), "{Name}", item.AgentSectorType.Id )
-					//	},
-     //                   //Organization Service Type
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OrganizationService",
-					//		CategoryLabel = "Service Type",
-					//		DisplayTemplate = "{#} Service Type(s)",
-					//		Name = TagTypes.ORG_SERVICE_TYPE.ToString().ToLower(),
-					//		TotalItems = item.ServiceType.Items.Count(),
-					//		SearchQueryType = "code",
-					//		Items = GetSearchTagItems_Filter( item.ServiceType.Items, "{Name}", item.ServiceType.Id )
-					//	},
-					//	//owns
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OwnsCredentials",
-					//		CategoryLabel = "Owns Credentials",
-					//		DisplayTemplate = "Owns {#} Credential(s)",
-					//		Name = TagTypes.OWNED_BY.ToString().ToLower(),
-					//		TotalItems = item.OwnedByResults.Results.Count(),
-					//		SearchQueryType = "link",
-					//		Items = item.OwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-					//		{
-					//			Display = m.Title,
-					//			QueryValues = new Dictionary<string, object>()
-					//			{
-					//				{ "TargetId", m.Id }, //Credential ID
-					//				{ "TargetType", "credential" },
-					//				{ "IsReference", "false" },
-					//			}
-					//		} ).ToList()
-					//	},
-					//	//offers
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OffersCredentials",
-					//		CategoryLabel = "Offers Credentials",
-					//		DisplayTemplate = "Offers {#} Credential(s)",
-					//		Name = TagTypes.OFFERED_BY.ToString().ToLower(),
-					//		TotalItems = item.OfferedByResults.Results.Count(),
-					//		SearchQueryType = "link",
-					//		Items = item.OfferedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-					//		{
-					//			Display = m.Title,
-					//			QueryValues = new Dictionary<string, object>()
-					//			{
-					//				{ "TargetId", m.Id }, //Credential ID
-					//				{ "TargetType", "credential" },
-					//				{ "IsReference", "false" },
-					//			}
-					//		} ).ToList()
-					//	},
-					//	//asmts owned by
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OwnsAssessments",
-					//		CategoryLabel = "Owns Assessments",
-					//		DisplayTemplate = "Owns {#} Assessment{s}",
-					//		Name = TagTypes.ASMTS_OWNED_BY.ToString().ToLower(),
-					//		TotalItems = item.AsmtsOwnedByResults.Results.Count(),
-					//		SearchQueryType = "link",
-					//		Items = item.AsmtsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-					//		{
-					//			Display = m.Title,
-					//			QueryValues = new Dictionary<string, object>()
-					//			{
-					//				{ "TargetId", m.Id }, //asmt ID
-					//				{ "TargetType", "assessment" },
-					//				{ "IsReference", "false" },
-					//			}
-					//		} ).ToList()
-					//	},
-					//	//lopps owned by
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OwnsLearningOpportunity",
-					//		CategoryLabel = "Owns Learning Opportunities",
-					//		DisplayTemplate = "Owns {#} Learning Opportunit{ies}",
-					//		Name = TagTypes.LOPPS_OWNED_BY.ToString().ToLower(),
-					//		TotalItems = item.LoppsOwnedByResults.Results.Count(),
-					//		SearchQueryType = "link",
-					//		Items = item.LoppsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-					//		{
-					//			Display = m.Title,
-					//			QueryValues = new Dictionary<string, object>()
-					//			{
-					//				{ "TargetId", m.Id }, //lopp ID
-					//				{ "TargetType", "learningopportunity" }, //??
-					//				{ "IsReference", "false" },
-					//			}
-					//		} ).ToList()
-					//	},
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "OwnsFrameworks",
-					//		CategoryLabel = "Owns Competency Frameworks",
-					//		DisplayTemplate = "Owns {#} Competency Framework{s}",
-					//		Name = TagTypes.FRAMEWORKS_OWNED_BY.ToString().ToLower(),
-					//		TotalItems = item.FrameworksOwnedByResults.Results.Count(),
-					//		SearchQueryType = "link",
-					//		Items = item.FrameworksOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-					//		{
-					//			Display = m.Title,
-					//			QueryValues = new Dictionary<string, object>()
-					//			{
-					//				{ "TargetId", m.Id }, //f ID
-					//				{ "TargetType", "competencyframework" }, //??
-					//			}
-					//		} ).ToList()
-					//	},
-
-       //                 new Models.Helpers.SearchTag()
-       //                 {
-       //                     CategoryName = "Quality Assurance",
-       //                     DisplayTemplate = "{#} Quality Assurance",
-       //                     Name = "qualityAssuranceBy", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
-							//TotalItems = item.QualityAssurance.Results.Count(),
-       //                     SearchQueryType = "link", //Change this to "custom", or back to detail
-							////Something like this...
-							////QAOrgRolesResults is a list of 1 role and 1 org (org repeating for each relevant role)
-							////e.g. [Accredited By] [Organization 1], [Approved By] [Organization 1], [Accredited By] [Organization 2], etc.
-							//Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-       //                     Display = "<b>" + m.Relationship + "</b>" + "  " + m.Agent, //[Accredited By] [Organization 1]
-							//QueryValues = new Dictionary<string, object>() {
-       //                             { "TargetType", "organization" },
-       //                             { "TargetId", m.AgentId },
-       //                             { "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-       //                         }
-       //                     } ).ToList()
-       //                 },
-                       
-			            //Industries
-					//	new Models.Helpers.SearchTag()
-					//	{
-					//		CategoryName = "Industries",
-					//		DisplayTemplate = "{#} Industr{ies}",
-					//		Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-					//		TotalItems = item.IndustryResults.Results.Count(),
-     //                       //SearchQueryType = "framework",
-     //                       SearchQueryType = "text",
-     //                       //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-     //                       Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-					//	},
-					//},
+					new List<Models.Helpers.SearchTag>(),//obsolete					
 					new List<SearchResultButton>()
 					{
 						//Quality Assurance Received
@@ -1679,7 +2028,7 @@ namespace workIT.Services
 						//Quality Assurance Performed
 						new SearchResultButton()
 						{
-							CategoryLabel = "Quality Assurance Performed",
+							CategoryLabel = item.QualityAssuranceCombinedTotal == 1 ? "Quality Assurance Performance Identified" : "Quality Assurance Performances Identified",
 							CategoryType = ButtonCategoryTypes.QualityAssurancePerformed.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
 							TotalItems = item.QualityAssuranceCombinedTotal,
@@ -1715,7 +2064,7 @@ namespace workIT.Services
 								TargetEntityType = ButtonTargetEntityTypes.Pathway.ToString()
 							} )
 						},
-												new SearchResultButton()
+						new SearchResultButton()
 						{
 							CategoryLabel = "Pathway Sets",
 							CategoryType = ButtonCategoryTypes.PathwaySet.ToString(),
@@ -1727,6 +2076,34 @@ namespace workIT.Services
 								TargetEntityType = ButtonTargetEntityTypes.PathwaySet.ToString()
 							} )
 						},
+						//dataset profiles owned
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = "Outcome Data",
+						//	CategoryType = ButtonCategoryTypes.DataSetProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+						//	TotalItems = item.DataSetProfileCount,
+						//	RenderData = JObject.FromObject(new SearchResultButton.Helpers.AjaxDataForResult()
+						//	{
+						//		//we don't distinguish what is in the datasetprofiles, so what to show?
+						//		AjaxQueryName = "GetSearchResultDataSetProfilesCredentials",
+						//		TargetEntityType = ButtonTargetEntityTypes.DataSetProfile.ToString()
+						//	} )
+						//},
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.TotalDataSetProfiles == 1 ? "Outcome Data" : "Outcome Data",
+						//	CategoryType = ButtonCategoryTypes.DataSetProfile.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.TotalDataSetProfiles,
+						//	Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		ConnectionLabel = "Outcome Data",
+						//		TargetLabel = m,
+						//		TargetType = ButtonSearchTypes.Credential.ToString(),
+						//		TargetId = item.Id
+						//	} ) )
+						//},
 						//Organization Type
 						new SearchResultButton()
 						{
@@ -1757,11 +2134,13 @@ namespace workIT.Services
 						//Owns Credentials
 						new SearchResultButton()
 						{
-							CategoryLabel = "Owns " + ( item.OwnedByResults.Results.Count() == 1 ? " 1 Credential" : item.OwnedByResults.Results.Count() + " Credentials" ),
+							//the new UI places the total on the left, so skip here
+							//CategoryLabel = "Owns/Offers " + ( totalOwnsOffers == 1 ? " 1 Credential" : totalOwnsOffers + " Credentials" ),
+							CategoryLabel = "Owns/Offers " + ( totalOwnsOffers == 1 ? " Credential" : " Credentials" ),
 							CategoryType = ButtonCategoryTypes.OrganizationOwns.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.OwnedByResults.Results.Count(),
-							Items = item.OwnedByResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							TotalItems = totalOwnsOffers,
+							Items = ownsOffers.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
 								TargetLabel = m.Title,
 								TargetId = m.Id,
@@ -1769,23 +2148,24 @@ namespace workIT.Services
 							} ) )
 						},
 						//Offers Credentials
-						new SearchResultButton()
-						{
-							CategoryLabel = "Offers " + ( item.OfferedByResults.Results.Count() == 1 ? " 1 Credential" : item.OfferedByResults.Results.Count() + " Credentials" ),
-							CategoryType = ButtonCategoryTypes.OrganizationOffers.ToString(),
-							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
-							TotalItems = item.OfferedByResults.Results.Count(),
-							Items = item.OfferedByResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
-							{
-								TargetLabel = m.Title,
-								TargetId = m.Id,
-								TargetType = ButtonTargetEntityTypes.Credential.ToString()
-							} ) )
-						},
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = "Offers " + ( item.OfferedByResults.Results.Count() == 1 ? " 1 Credential" : item.OfferedByResults.Results.Count() + " Credentials" ),
+						//	CategoryType = ButtonCategoryTypes.OrganizationOffers.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+						//	TotalItems = item.OfferedByResults.Results.Count(),
+						//	Items = item.OfferedByResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+						//	{
+						//		TargetLabel = m.Title,
+						//		TargetId = m.Id,
+						//		TargetType = ButtonTargetEntityTypes.Credential.ToString()
+						//	} ) )
+						//},
 						//Owns Assessments
 						new SearchResultButton()
 						{
-							CategoryLabel = "Owns " + ( item.AsmtsOwnedByResults.Results.Count() == 1 ? " 1 Assessment" : item.AsmtsOwnedByResults.Results.Count() + " Assessments" ),
+							//CategoryLabel = "Owns/Offers " + ( item.AsmtsOwnedByResults.Results.Count() == 1 ? " 1 Assessment" : item.AsmtsOwnedByResults.Results.Count() + " Assessments" ),
+							CategoryLabel = "Owns/Offers " + ( item.AsmtsOwnedByResults.Results.Count() == 1 ? " Assessment" : " Assessments" ),
 							CategoryType = ButtonCategoryTypes.OrganizationOwns.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 							TotalItems = item.AsmtsOwnedByResults.Results.Count(),
@@ -1799,7 +2179,8 @@ namespace workIT.Services
 						//Owns Learning Opportunities
 						new SearchResultButton()
 						{
-							CategoryLabel = "Owns " + ( item.LoppsOwnedByResults.Results.Count() == 1 ? " 1 Learning Opportunity" : item.LoppsOwnedByResults.Results.Count() + " Learning Opportunities" ),
+							//CategoryLabel = "Owns/Offers " + ( item.LoppsOwnedByResults.Results.Count() == 1 ? " 1 Learning Opportunity" : item.LoppsOwnedByResults.Results.Count() + " Learning Opportunities" ),
+							CategoryLabel = "Owns/Offers " + ( item.LoppsOwnedByResults.Results.Count() == 1 ? " Learning Opportunity" : " Learning Opportunities" ),
 							CategoryType = ButtonCategoryTypes.OrganizationOwns.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 							TotalItems = item.LoppsOwnedByResults.Results.Count(),
@@ -1813,7 +2194,8 @@ namespace workIT.Services
 						//Owns Competency Frameworks
 						new SearchResultButton()
 						{
-							CategoryLabel = "Owns " + ( item.FrameworksOwnedByResults.Results.Count() == 1 ? " 1 Competency Framework" : item.FrameworksOwnedByResults.Results.Count() + " Competency Frameworks" ),
+							//CategoryLabel = "Owns " + ( item.FrameworksOwnedByResults.Results.Count() == 1 ? " 1 Competency Framework" : item.FrameworksOwnedByResults.Results.Count() + " Competency Frameworks" ),
+							CategoryLabel = "Owns " + ( item.FrameworksOwnedByResults.Results.Count() == 1 ? " Competency Framework" : " Competency Frameworks" ),
 							CategoryType = ButtonCategoryTypes.OrganizationOwns.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
 							TotalItems = item.FrameworksOwnedByResults.Results.Count(),
@@ -1831,14 +2213,223 @@ namespace workIT.Services
 							CategoryType = ButtonCategoryTypes.IndustryType.ToString(),
 							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
 							TotalItems = item.IndustryResults.Results.Count(),
-							Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.ServiceType.Id ) ) )
+							Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.IndustryType.Id ) ) )
 						}
 					}
 				) );
 			}
 			return output;
+			//new List<Models.Helpers.SearchTag>()
+			//{
+			//                    //Quality Assurance
+			//                    new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "Quality Assurance",
+			//		DisplayTemplate = "{#} Quality Assurance",
+			//		Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+			//		TotalItems = item.QualityAssurance.Results.Count(),
+			//		SearchQueryType = "merged", //Change this to "custom", or back to detail
+			//		Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
+			//			Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
+			//			QueryValues = new Dictionary<string, object>() {
+			//					{ "Relationship", m.Relationship },
+			//					{ "TextValue", m.Agent },
+			//					{ "RelationshipId", m.RelationshipId },
+			//					{ "AgentId", m.AgentId },
+			//					{ "TargetType", "organization" },
+			//					{ "AgentUrl", m.AgentUrl},
+			//					{ "EntityStateId", m.EntityStateId },
+			//					{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
+			//				}
+			//		} ).ToList()
+			//	},
+			//                    //Quality Assurance Performed
+			//                    new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "Quality Assurance Performed",
+			//		DisplayTemplate = "{#} Quality Assurance Performed",
+			//		Name = "qualityassuranceperformed",
+			//		TotalItems = item.QualityAssuranceCombinedTotal,
+
+			//                       //Items
+			//                       SearchQueryType = "qaperformed",
+			//		IsAjaxQuery = true,
+			//		AjaxQueryName = "GetSearchResultPerformed",
+			//		AjaxQueryValues = new Dictionary<string, object>()
+			//		{
+			//			{ "SearchType", "organization" },
+			//			{ "RecordId", item.Id },
+			//			{ "TargetEntityType", "QAPERFORMED" }
+			//		}
+			//	},
+
+			//	//Organization Type
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OrganizationType",
+			//		CategoryLabel = "Organization Type",
+			//		DisplayTemplate = "{#} Organization Type(s)",
+			//		Name = TagTypes.ORGANIZATIONTYPE.ToString().ToLower(),
+			//		TotalItems = item.AgentType.Items.Count(),
+			//		SearchQueryType = "code",
+			//		Items = GetSearchTagItems_Filter( item.AgentType.Items.Take(10).ToList(), "{Name}", item.AgentType.Id )
+			//	},
+			//	//Organization Sector Type
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OrganizationSector",
+			//		CategoryLabel = "Sector Type",
+			//		DisplayTemplate = "{#} Sector{s}",
+			//		Name = TagTypes.ORGANIZATIONSECTORTYPE.ToString().ToLower(),
+			//		TotalItems = item.AgentSectorType.Items.Count(),
+			//		SearchQueryType = "code",
+			//		Items = GetSearchTagItems_Filter( item.AgentSectorType.Items.Take(10).ToList(), "{Name}", item.AgentSectorType.Id )
+			//	},
+			//                   //Organization Service Type
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OrganizationService",
+			//		CategoryLabel = "Service Type",
+			//		DisplayTemplate = "{#} Service Type(s)",
+			//		Name = TagTypes.ORG_SERVICE_TYPE.ToString().ToLower(),
+			//		TotalItems = item.ServiceType.Items.Count(),
+			//		SearchQueryType = "code",
+			//		Items = GetSearchTagItems_Filter( item.ServiceType.Items, "{Name}", item.ServiceType.Id )
+			//	},
+			//	//owns
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OwnsCredentials",
+			//		CategoryLabel = "Owns Credentials",
+			//		DisplayTemplate = "Owns {#} Credential(s)",
+			//		Name = TagTypes.OWNED_BY.ToString().ToLower(),
+			//		TotalItems = item.OwnedByResults.Results.Count(),
+			//		SearchQueryType = "link",
+			//		Items = item.OwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+			//		{
+			//			Display = m.Title,
+			//			QueryValues = new Dictionary<string, object>()
+			//			{
+			//				{ "TargetId", m.Id }, //Credential ID
+			//				{ "TargetType", "credential" },
+			//				{ "IsReference", "false" },
+			//			}
+			//		} ).ToList()
+			//	},
+			//	//offers
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OffersCredentials",
+			//		CategoryLabel = "Offers Credentials",
+			//		DisplayTemplate = "Offers {#} Credential(s)",
+			//		Name = TagTypes.OFFERED_BY.ToString().ToLower(),
+			//		TotalItems = item.OfferedByResults.Results.Count(),
+			//		SearchQueryType = "link",
+			//		Items = item.OfferedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+			//		{
+			//			Display = m.Title,
+			//			QueryValues = new Dictionary<string, object>()
+			//			{
+			//				{ "TargetId", m.Id }, //Credential ID
+			//				{ "TargetType", "credential" },
+			//				{ "IsReference", "false" },
+			//			}
+			//		} ).ToList()
+			//	},
+			//	//asmts owned by
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OwnsAssessments",
+			//		CategoryLabel = "Owns Assessments",
+			//		DisplayTemplate = "Owns {#} Assessment{s}",
+			//		Name = TagTypes.ASMTS_OWNED_BY.ToString().ToLower(),
+			//		TotalItems = item.AsmtsOwnedByResults.Results.Count(),
+			//		SearchQueryType = "link",
+			//		Items = item.AsmtsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+			//		{
+			//			Display = m.Title,
+			//			QueryValues = new Dictionary<string, object>()
+			//			{
+			//				{ "TargetId", m.Id }, //asmt ID
+			//				{ "TargetType", "assessment" },
+			//				{ "IsReference", "false" },
+			//			}
+			//		} ).ToList()
+			//	},
+			//	//lopps owned by
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OwnsLearningOpportunity",
+			//		CategoryLabel = "Owns Learning Opportunities",
+			//		DisplayTemplate = "Owns {#} Learning Opportunit{ies}",
+			//		Name = TagTypes.LOPPS_OWNED_BY.ToString().ToLower(),
+			//		TotalItems = item.LoppsOwnedByResults.Results.Count(),
+			//		SearchQueryType = "link",
+			//		Items = item.LoppsOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+			//		{
+			//			Display = m.Title,
+			//			QueryValues = new Dictionary<string, object>()
+			//			{
+			//				{ "TargetId", m.Id }, //lopp ID
+			//				{ "TargetType", "learningopportunity" }, //??
+			//				{ "IsReference", "false" },
+			//			}
+			//		} ).ToList()
+			//	},
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "OwnsFrameworks",
+			//		CategoryLabel = "Owns Competency Frameworks",
+			//		DisplayTemplate = "Owns {#} Competency Framework{s}",
+			//		Name = TagTypes.FRAMEWORKS_OWNED_BY.ToString().ToLower(),
+			//		TotalItems = item.FrameworksOwnedByResults.Results.Count(),
+			//		SearchQueryType = "link",
+			//		Items = item.FrameworksOwnedByResults.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
+			//		{
+			//			Display = m.Title,
+			//			QueryValues = new Dictionary<string, object>()
+			//			{
+			//				{ "TargetId", m.Id }, //f ID
+			//				{ "TargetType", "competencyframework" }, //??
+			//			}
+			//		} ).ToList()
+			//	},
+
+			//                 new Models.Helpers.SearchTag()
+			//                 {
+			//                     CategoryName = "Quality Assurance",
+			//                     DisplayTemplate = "{#} Quality Assurance",
+			//                     Name = "qualityAssuranceBy", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
+			//TotalItems = item.QualityAssurance.Results.Count(),
+			//                     SearchQueryType = "link", //Change this to "custom", or back to detail
+			////Something like this...
+			////QAOrgRolesResults is a list of 1 role and 1 org (org repeating for each relevant role)
+			////e.g. [Accredited By] [Organization 1], [Approved By] [Organization 1], [Accredited By] [Organization 2], etc.
+			//Items = item.QualityAssurance.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
+			//                     Display = "<b>" + m.Relationship + "</b>" + "  " + m.Agent, //[Accredited By] [Organization 1]
+			//QueryValues = new Dictionary<string, object>() {
+			//                             { "TargetType", "organization" },
+			//                             { "TargetId", m.AgentId },
+			//                             { "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
+			//                         }
+			//                     } ).ToList()
+			//                 },
+
+			//Industries
+			//	new Models.Helpers.SearchTag()
+			//	{
+			//		CategoryName = "Industries",
+			//		DisplayTemplate = "{#} Industr{ies}",
+			//		Name = TagTypes.INDUSTRIES.ToString().ToLower(),
+			//		TotalItems = item.IndustryResults.Results.Count(),
+			//                       //SearchQueryType = "framework",
+			//                       SearchQueryType = "text",
+			//                       //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
+			//                       Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
+			//	},
+			//},
 		}
-		//
+		/*
 		public MainSearchResults ConvertOrganizationResultsOLD(List<Organization> results, int totalResults, string searchType)
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
@@ -1895,7 +2486,7 @@ namespace workIT.Services
 			}
 			return output;
 		}
-		//
+		*/
 
 		public MainSearchResults ConvertAssessmentResults(List<AssessmentProfile> results, int totalResults, string searchType)
 		{
@@ -1905,7 +2496,7 @@ namespace workIT.Services
 				var subjects = Deduplicate( item.Subjects );
 				var mergedQA = item.QualityAssurance.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
 
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -1916,11 +2507,13 @@ namespace workIT.Services
 						{ "ctid", item.CTID },
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
 						{ "Locations", ConvertAddresses( item.Addresses ) },
+							{ "LifeCycleStatus", item.LifeCycleStatus },
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "ResultNumber", item.ResultNumber },
 						{ "UrlTitle", item.FriendlyName },
-						 { "Created", item.Created.ToShortDateString() },
+						{ "OrganizationUrlTitle", item.PrimaryOrganizationFriendlyName },
+						{ "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
 						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
 						{ "T_StateId", item.EntityStateId },
@@ -1930,254 +2523,7 @@ namespace workIT.Services
 						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
-					new List<Models.Helpers.SearchTag>()
-					{                         
-                        //Assessment Quality Assurance
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Quality Assurance",
-							DisplayTemplate = "{#} Quality Assurance",
-							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
-							TotalItems = mergedQA.Count(),
-							SearchQueryType = "merged", //Change this to "custom", or back to detail
-					        Items = mergedQA.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-							Display = "<b>" + m.Relationship + "</b>" + " " + m.Agent, //[Accredited By] [Organization 1]
-							QueryValues = new Dictionary<string, object>() {
-									{ "Relationship", m.Relationship },
-									{ "TextValue", m.Agent },
-									{ "RelationshipId", m.RelationshipId },
-									{ "AgentId", m.AgentId },
-									{ "TargetType", m.EntityType },
-									{ "AgentUrl", m.AgentUrl},
-									{ "EntityStateId", m.EntityStateId },
-									{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-								}
-							} ).ToList()
-						},
-						//financial assistance
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "FinancialAssistance",
-							DisplayTemplate = "{#} Financial Assistance",
-							Name = "financialAssistance", //The CSS on the search page will look for an icon associated with this
-							TotalItems = item.FinancialAidCount,
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetFinancialAssistance", 
-							AjaxQueryValues = new Dictionary<string, object>() //Values to pass to the above query. Probably need to change what's in here to make it work.
-							{
-								{ "SearchType", "assessment" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "financial" }
-							}
-						},
-                        //Connections
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Connections",
-							DisplayTemplate = "{#} Connection{s}",
-							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
-							TotalItems = item.CredentialsList.Results.Count(),
-							SearchQueryType = "link",
-							//Items = GetSearchTagItems_Filter( item.ConnectionsList.Results, "{Name} Credential(s)", item.ConnectionsList.CategoryId )
-							//Something like this...
-							/*	*/
-							Items = item.CredentialsList.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = "<b>" + m.Connection + "</b>" + " " + m.Credential, //[Is Preparation For] [Some Credential Name] 
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.CredentialId }, //AgentId?
-									{ "TargetType", "credential" }, //Probably okay to hard code this for now
-									{ "ConnectionTypeId", m.ConnectionId }, //Connection type
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-
-						},
-                        //Subjects
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Subjects",
-							DisplayTemplate = "{#} Subject{s}",
-							Name = TagTypes.SUBJECTS.ToString().ToLower(),
-							TotalItems = subjects.Count(), //Returns a count of the de-duplicated items
-							SearchQueryType = "text",
-							Items = subjects.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m, QueryValues = new Dictionary<string, object>() { { "TextValue", m } } } )
-						},
-                        
-                        //Assessment Use Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "AssessmentUseTypes",
-							CategoryLabel = "Use Type",
-							DisplayTemplate = "{#} Assessment Use Type(s)",
-							Name = TagTypes.ASSESSMENT_USE_TYPES.ToString().ToLower(),
-							TotalItems = item.AssessmentUseTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.AssessmentUseTypes.Results, "{Name}", item.AssessmentUseTypes.CategoryId)
-						},
-                        //Assessment Method Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "AssessmentMethodTypes",
-							CategoryLabel = "Assessment Method",
-							DisplayTemplate = "{#} Assessment Method Type(s)",
-							Name = TagTypes.ASSESSMENT_METHOD_TYPES.ToString().ToLower(),
-							TotalItems = item.AssessmentMethodTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.AssessmentMethodTypes.Results, "{Name}", item.AssessmentMethodTypes.CategoryId)
-						},
-                        //Scoring Method Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "ScoringMethodTypes",
-							CategoryLabel = "Scoring Method",
-							DisplayTemplate = "{#} Scoring Method Type(s)",
-							Name = TagTypes.SCORING_METHODS.ToString().ToLower(),
-							TotalItems = item.ScoringMethodTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.ScoringMethodTypes.Results, "{Name}", item.ScoringMethodTypes.CategoryId)
-						},
-                        //Delivery Method Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "DeliveryMethodTypes",
-							CategoryLabel = "Delivery Method",
-							DisplayTemplate = "{#} Delivery Method Type(s)",
-							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
-							TotalItems = item.DeliveryMethodTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.DeliveryMethodTypes.Results, "{Name}", item.DeliveryMethodTypes.CategoryId)
-						},
-
-						//Audience Type
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Types",
-							DisplayTemplate = "{#} Audience Type(s)",
-							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
-							TotalItems = item.AudienceTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.AudienceTypes.Results, "{Name}", item.AudienceTypes.CategoryId )
-						},
-						//Costs
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Costs",
-							DisplayTemplate = " Cost{s}",
-							Name = TagTypes.COST.ToString().ToLower(),
-							TotalItems = item.NumberOfCostProfileItems > 0 ? item.NumberOfCostProfileItems : item.CostProfilesCount, //# of cost profiles items
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetSearchResultCosts",
-							AjaxQueryValues = new Dictionary<string, object>()
-							{
-								{ "SearchType", "assessment" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "cost" }
-							}
-						},
-						//Durations
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Time Estimates",
-							DisplayTemplate = " Time Estimate{s}",
-							Name = TagTypes.TIME.ToString().ToLower(),
-							TotalItems = item.EstimatedDuration.Count(), //# of duration profiles
-							SearchQueryType = "detail", //Not sure how this could be any kind of search query
-							Items = item.EstimatedDuration.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.IsRange ? m.MinimumDuration.Print() + " - " + m.MaximumDuration.Print() : string.IsNullOrEmpty(m.ExactDuration.Print()) ? m.Conditions :  m.ExactDuration.Print(),
-
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "ExactDuration", m.ExactDuration },
-									{ "MinimumDuration", m.MinimumDuration },
-									{ "MaximumDuration", m.MaximumDuration },
-									{ "Conditions", m.Conditions}
-								}
-							} ).ToList()
-						},
-						//Occupations
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Occupations",
-							DisplayTemplate = "{#} Occupation{s}",
-							Name = TagTypes.OCCUPATIONS.ToString().ToLower(),
-							TotalItems = item.OccupationResults.Results.Count(),
-                            //SearchQueryType = "framework",
-                            SearchQueryType = "text",
-							Items = item.OccupationResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-                            //Items = GetSearchTagItems_Filter( item.OccupationResults.Results, "{Name}", item.OccupationResults.CategoryId )
-                        },
-						//Industries
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Industries",
-							DisplayTemplate = "{#} Industr{ies}",
-							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-							TotalItems = item.IndustryResults.Results.Count(),
-                            //SearchQueryType = "framework",
-                            SearchQueryType = "text",
-                            //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-						},
-                        //Instructional Program Classfication
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "instructionalprogramtypes",
-							CategoryLabel = "Instructional Program Type",
-							DisplayTemplate = "{#} Instructional Program{s}",
-							Name = "instructionalprogramtypes",
-							TotalItems = item.InstructionalProgramClassification.Results.Count(),
-							SearchQueryType = "text",
-                           //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
-                            Items = item.InstructionalProgramClassification.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-						},
-
-						//Competencies
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "AssessesCompetencies",
-							CategoryLabel = "Assesses Competency",
-							DisplayTemplate = "Assesses {#} Competenc{ies}",
-							Name = TagTypes.COMPETENCIES.ToString().ToLower(),
-							TotalItems = item.CompetenciesCount,
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetSearchResultCompetencies",
-							AjaxQueryValues = new Dictionary<string, object>()
-							{
-								{ "SearchType", "assessment" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "competencies" }
-							}
-						},
-						//Competencies direct - not used
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "AssessesCompetenciesDirect",
-							CategoryLabel = "Assesses Competency",
-							DisplayTemplate = "Assesses {#} Competenc{ies} Direct",
-							Name = TagTypes.COMPETENCIES.ToString().ToLower(),
-							TotalItems = item.AssessesCompetencies.Count(),
-							SearchQueryType = "detail",
-							Items = item.AssessesCompetencies.ConvertAll( m => new Models.Helpers.SearchTagItem()
-							{
-								Display = string.IsNullOrWhiteSpace(m.TargetNodeDescription) ?
-								m.TargetNodeName :
-								"<b>" + m.TargetNodeName + "</b>" + System.Environment.NewLine + m.TargetNodeDescription,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "SchemaName", null },
-									{ "CodeId", m.Id },
-									{ "TextValue", m.TargetNodeName },
-									{ "TextDescription", m.TargetNodeDescription }
-								}
-							} )
-						},
-					},
+					null,
 					new List<SearchResultButton>()
 					{
 						//Assessment Quality Assurance
@@ -2277,6 +2623,15 @@ namespace workIT.Services
 							TotalItems = item.AudienceTypes.Results.Count(),
 							Items = item.AudienceTypes.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceTypes.CategoryId ) ) )
 						},
+						//Audience Level Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AudienceLevelTypes.Results.Count() == 1 ? "Audience Level Type" : "Audience Level Types",
+							CategoryType = ButtonCategoryTypes.AudienceLevelType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.AudienceLevelTypes.Results.Count(),
+							Items = item.AudienceLevelTypes.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceLevelTypes.CategoryId ) ) )
+						},
 						//Durations
 						new SearchResultButton()
 						{
@@ -2342,7 +2697,35 @@ namespace workIT.Services
 								AjaxQueryName = "GetSearchResultCosts",
 								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
 							} )
-						}
+						},
+						//OutcomeProfiles
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AggregateDataProfileCount + item.DataSetProfileCount == 1 ? "Outcome Data" : "Outcome Data",
+							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.AggregateDataProfileCount + item.DataSetProfileCount,
+							Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Outcome Data",
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.AssessmentProfile.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//Related TVP
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueCount == 1 ? "Has Transfer Value" : "Has Transfer Values",
+							CategoryType = ButtonCategoryTypes.HasTransferValue.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultTVP",
+								TargetEntityType = ButtonTargetEntityTypes.TransferValue.ToString()	//this appears wrong results in an org TransverValue search
+							} )
+						},
 					}
 				) );
 			}
@@ -2357,258 +2740,41 @@ namespace workIT.Services
 			{
 				var subjects = Deduplicate( item.Subjects );
 				var mergedQA = item.QualityAssurance.Results.Concat( item.Org_QAAgentAndRoles.Results ).ToList();
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				var statusLabel = "";
+				if ( UtilityManager.GetAppKeyValue( "showingNonActiveStatusLabel", false ) )
+				{
+					if ( !string.IsNullOrWhiteSpace( item.LifeCycleStatus ) && item.LifeCycleStatus != "Active" )
+						statusLabel = " [** " + item.LifeCycleStatus.ToUpper() + " **]";
+				}
+				output.Results.Add( Result( item.Name + statusLabel, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
-						{ "Name", item.Name },
+						{ "Name", item.Name + statusLabel},
 						{ "Description", item.Description },
 						{ "Owner", string.IsNullOrWhiteSpace( item.OrganizationName ) ? "" : item.OrganizationName },
 						{ "OwnerId", item.OwningOrganizationId },
 						{ "OwnerCTID", item.PrimaryOrganizationCTID },
 						{ "AvailableAt", new { Type = "locations", Data = ConvertAddresses( item.Addresses ) } },
 						{ "Locations", ConvertAddresses( item.Addresses ) },
+						{ "LifeCycleStatus", item.LifeCycleStatus },
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
-						 { "Created", item.Created.ToShortDateString() },
+						{ "OrganizationUrlTitle", item.PrimaryOrganizationFriendlyName },
+						{ "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
 						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "EntityTypeId", item.LearningEntityTypeId },
 						{ "T_StateId", item.EntityStateId },
 						{ "T_BroadType", "LearningOpportunity" },
-						{ "T_CTDLType", "ceterms:LearningOpportunityProfile" },
-						{ "T_CTDLTypeLabel", "Learning Opportunity Profile" },
+						{ "T_CTDLType", item.LearningTypeSchema },
+						{ "T_CTDLTypeLabel", item.LearningEntityTypeLabel },
 						{ "T_Locations", ConvertAddressesToJArray(item.Addresses) }
 					},
 					null,
-					new List<Models.Helpers.SearchTag>()
-					{
-                        //Lopp Quality Assurance
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Quality Assurance",
-							DisplayTemplate = "{#} Quality Assurance",
-							Name = "organizationroles", //Using the "quality" enum breaks this filter since it tries to find the matching item in the checkbox list and it doesn't exist
-							TotalItems = mergedQA.Count(),
-							SearchQueryType = "merged", //Change this to "custom", or back to detail
-							Items = mergedQA.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() {
-							Display = "<b>" + m.Relationship + "</b>" + " by " + m.Agent, //[Accredited By] [Organization 1]
-							QueryValues = new Dictionary<string, object>() {
-									{ "Relationship", m.Relationship },
-									{ "TextValue", m.Agent },
-									{ "RelationshipId", m.RelationshipId },
-									{ "AgentId", m.AgentId },
-									{ "TargetType", m.EntityType },
-									{ "AgentUrl", m.AgentUrl},
-									{ "EntityStateId", m.EntityStateId },
-									{ "IsThirdPartyOrganization", m.IsThirdPartyOrganization },
-								}
-							} ).ToList()
-						},
-
-                        //Subjects
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Subjects",
-							DisplayTemplate = "{#} Subject{s}",
-							Name = TagTypes.SUBJECTS.ToString().ToLower(),
-							TotalItems = subjects.Count(), //Returns a count of the de-duplicated items
-							SearchQueryType = "text",
-							Items = subjects.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m, QueryValues = new Dictionary<string, object>() { { "TextValue", m } } } )
-						},
-						//financial assistance
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "FinancialAssistance",
-							DisplayTemplate = "{#} Financial Assistance",
-							Name = "financialAssistance", //The CSS on the search page will look for an icon associated with this
-							TotalItems = item.FinancialAidCount,
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetFinancialAssistance",
-							AjaxQueryValues = new Dictionary<string, object>() //Values to pass to the above query. Probably need to change what's in here to make it work.
-							{
-								{ "SearchType", "learningopportunity" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "financial" }
-							}
-						},
-						//Costs
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Costs",
-							DisplayTemplate = " Cost{s}",
-							Name = TagTypes.COST.ToString().ToLower(),
-							TotalItems = item.NumberOfCostProfileItems > 0 ? item.NumberOfCostProfileItems : item.CostProfilesCount, //# of cost profiles items
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetSearchResultCosts",
-							AjaxQueryValues = new Dictionary<string, object>()
-							{
-								{ "SearchType", "learningopportunity" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "cost" }
-							}
-						},
-                        //Connections
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Connections",
-							DisplayTemplate = "{#} Connection{s}",
-							Name = TagTypes.CONNECTIONS.ToString().ToLower(),
-							TotalItems = item.CredentialsList.Results.Count(),
-							SearchQueryType = "link",
-							//Items = GetSearchTagItems_Filter( item.ConnectionsList.Results, "{Name} Credential(s)", item.ConnectionsList.CategoryId )
-							//Something like this...
-							/*	*/
-							Items = item.CredentialsList.Results.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = "<b>" + m.Connection + "</b>" + " " + m.Credential, //[Is Preparation For] [Some Credential Name] 
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "TargetId", m.CredentialId }, //AgentId?
-									{ "TargetType", "credential" }, //Probably okay to hard code this for now
-									{ "ConnectionTypeId", m.ConnectionId }, //Connection type
-									{ "IsReference", "false" },
-								}
-							} ).ToList()
-
-						},
-
-                        //Delivery Method Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "DeliveryMethodTypes",
-							CategoryLabel = "Delivery Method",
-							DisplayTemplate = "{#} Delivery Method Type(s)",
-							Name = TagTypes.DELIVER_METHODS.ToString().ToLower(),
-							TotalItems = item.DeliveryMethodTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.DeliveryMethodTypes.Results, "{Name}", item.DeliveryMethodTypes.CategoryId)
-						},
-                         //Learning Method Type
-                        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "LearningMethodTypes",
-							CategoryLabel = "Learning Method",
-							DisplayTemplate = "{#} Learning Method Type(s)",
-							Name = TagTypes.LEARNING_METHODS.ToString().ToLower(),
-							TotalItems = item.LearningMethodTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter(item.LearningMethodTypes.Results, "{Name}", item.LearningMethodTypes.CategoryId)
-						},
-
-						//Audience Type
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Types",
-							DisplayTemplate = "{#} Audience Type(s)",
-							Name = TagTypes.AUDIENCE_TYPE.ToString().ToLower(),
-							TotalItems = item.AudienceTypes.Results.Count(),
-							SearchQueryType = "code",
-							Items = GetSearchTagItems_Filter( item.AudienceTypes.Results, "{Name}", item.AudienceTypes.CategoryId )
-						},
-						//Durations
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Time Estimates",
-							DisplayTemplate = " Time Estimate{s}",
-							Name = TagTypes.TIME.ToString().ToLower(),
-							TotalItems = item.EstimatedDuration.Count(), //# of duration profiles
-							SearchQueryType = "detail", //Not sure how this could be any kind of search query
-							Items = item.EstimatedDuration.Take(10).ToList().ConvertAll(m => new Models.Helpers.SearchTagItem()
-							{
-								Display = m.IsRange ? m.MinimumDuration.Print() + " - " + m.MaximumDuration.Print() : string.IsNullOrEmpty(m.ExactDuration.Print()) ? m.Conditions :  m.ExactDuration.Print(),
-
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "ExactDuration", m.ExactDuration },
-									{ "MinimumDuration", m.MinimumDuration },
-									{ "MaximumDuration", m.MaximumDuration },
-									{ "Conditions", m.Conditions}
-								}
-							} ).ToList()
-						},
-						//Occupations
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Occupations",
-							DisplayTemplate = "{#} Occupation{s}",
-							Name = TagTypes.OCCUPATIONS.ToString().ToLower(),
-							TotalItems = item.OccupationResults.Results.Count(),
-                            //SearchQueryType = "framework",
-                            SearchQueryType = "text",
-							Items = item.OccupationResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-                            //Items = GetSearchTagItems_Filter( item.OccupationResults.Results, "{Name}", item.OccupationResults.CategoryId )
-                        },
-						//Industries
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Industries",
-							DisplayTemplate = "{#} Industr{ies}",
-							Name = TagTypes.INDUSTRIES.ToString().ToLower(),
-							TotalItems = item.IndustryResults.Results.Count(),
-                            //SearchQueryType = "framework",
-                            SearchQueryType = "text",
-                            //Items = GetSearchTagItems_Filter( item.NaicsResults.Results, "{Name}", item.NaicsResults.CategoryId )
-                            Items = item.IndustryResults.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-						},
-                        //Instructional Program Classfication
-				        new Models.Helpers.SearchTag()
-						{
-							CategoryName = "instructionalprogramtypes",
-							CategoryLabel = "Instructional Program Type",
-							DisplayTemplate = "{#} Instructional Program{s}",
-							Name = "instructionalprogramtypes",
-							TotalItems = item.InstructionalProgramClassification.Results.Count(),
-							SearchQueryType = "text",
-                           //Items = GetSearchTagItems_Filter( item.InstructionalProgramClassification.Results, "{Name}", item.InstructionalProgramClassification.CategoryId )
-                            Items = item.InstructionalProgramClassification.Results.Take(10).ToList().ConvertAll( m => new Models.Helpers.SearchTagItem() { Display = m.CodeTitle, QueryValues = new Dictionary<string, object>() { { "TextValue", m.CodeTitle } } } )
-						},
-						//Competencies
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "TeachesCompetencies",
-							CategoryLabel = "Teaches Competency",
-							DisplayTemplate = "Teaches {#} Competenc{ies}",
-							Name = TagTypes.COMPETENCIES.ToString().ToLower(),
-							TotalItems = item.CompetenciesCount,
-							SearchQueryType = "text",
-							IsAjaxQuery = true,
-							AjaxQueryName = "GetSearchResultCompetencies",
-							AjaxQueryValues = new Dictionary<string, object>()
-							{
-								{ "SearchType", "learningopportunity" },
-								{ "RecordId", item.Id },
-								{ "TargetEntityType", "competencies" }
-							}
-						},
-						//Competencies direct
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "TeachesCompetenciesDirect",
-							CategoryLabel = "Teaches Competency",
-							DisplayTemplate = "Teaches {#} Competenc{ies} Direct",
-							Name = TagTypes.COMPETENCIES.ToString().ToLower(),
-							TotalItems = item.TeachesCompetencies.Count(),
-							SearchQueryType = "detail",
-							Items = item.TeachesCompetencies.ConvertAll( m => new Models.Helpers.SearchTagItem()
-							{
-								Display = string.IsNullOrWhiteSpace(m.TargetNodeDescription) ?
-								m.TargetNodeName :
-								"<b>" + m.TargetNodeName + "</b>" + System.Environment.NewLine + m.TargetNodeDescription,
-								QueryValues = new Dictionary<string, object>()
-								{
-									{ "SchemaName", null },
-									{ "CodeId", m.Id },
-									{ "TextValue", m.TargetNodeName },
-									{ "TextDescription", m.TargetNodeDescription }
-								}
-							} )
-						},
-
-					},
+					null,
 					new List<SearchResultButton>()
 					{
 						//Learning Opportunity Quality Assurance
@@ -2690,6 +2856,15 @@ namespace workIT.Services
 							TotalItems = item.AudienceTypes.Results.Count(),
 							Items = item.AudienceTypes.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceTypes.CategoryId ) ) )
 						},
+						//Audience Level Type
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AudienceLevelTypes.Results.Count() == 1 ? "Audience Level Type" : "Audience Level Types",
+							CategoryType = ButtonCategoryTypes.AudienceLevelType.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+							TotalItems = item.AudienceLevelTypes.Results.Count(),
+							Items = item.AudienceLevelTypes.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.AudienceLevelTypes.CategoryId ) ) )
+						},
 						//Durations
 						new SearchResultButton()
 						{
@@ -2700,7 +2875,7 @@ namespace workIT.Services
 							Items = item.EstimatedDuration.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
 							{
 								TargetLabel = m.IsRange ? m.MinimumDuration.Print() + " - " + m.MaximumDuration.Print() : string.IsNullOrEmpty( m.ExactDuration.Print() ) ? m.Conditions :  m.ExactDuration.Print(),
-								TargetType = ButtonTargetEntityTypes.Assessment.ToString(),
+								TargetType = ButtonTargetEntityTypes.LearningOpportunity.ToString(),
 								TargetId = item.Id
 							} ) )
 						},
@@ -2756,8 +2931,44 @@ namespace workIT.Services
 								AjaxQueryName = "GetSearchResultCosts",
 								TargetEntityType = ButtonTargetEntityTypes.EstimatedCost.ToString()
 							} )
-						}
-
+						},
+						//OutcomeProfiles
+						new SearchResultButton()
+						{
+							CategoryLabel = item.AggregateDataProfileCount + item.DataSetProfileCount == 1 ? "Outcome Data" : "Outcome Data",
+							CategoryType = ButtonCategoryTypes.OutcomeData.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_RenderDetailPageLink.ToString(),
+							TotalItems = item.AggregateDataProfileCount + item.DataSetProfileCount,
+							Items = new List<string>() { item.AggregateDataProfileSummary }.ToList().ConvertAll( m => JObject.FromObject( new SearchResultButton.Helpers.DetailPageLink()
+							{
+								ConnectionLabel = "Outcome Data",
+								TargetLabel = m,
+								TargetType = ButtonSearchTypes.LearningOpportunityProfile.ToString(),
+								TargetId = item.Id
+							} ) )
+						},
+						//Related TVP
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueCount == 1 ? "Has Transfer Value" : "Has Transfer Values",
+							CategoryType = ButtonCategoryTypes.HasTransferValue.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultTVP",
+								TargetEntityType = ButtonTargetEntityTypes.TransferValue.ToString()
+							} )
+						},
+						//LWIAs
+						//new SearchResultButton()
+						//{
+						//	CategoryLabel = item.LearningMethodTypes.Results.Count() == 1 ? "Other Tags" : "Other Tags",
+						//	CategoryType = ButtonCategoryTypes.OtherTags.ToString(),
+						//	HandlerType = ButtonHandlerTypes.handler_RenderCheckboxFilter.ToString(),
+						//	TotalItems = item.LearningMethodTypes.Results.Count(),
+						//	Items = item.LearningMethodTypes.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.LearningMethodTypes.CategoryId ) ) )
+						//},
 					}
 				) );
 			}
@@ -2854,6 +3065,9 @@ namespace workIT.Services
 				SearchType = "competencyframework",
 				RelatedItems = JArray.FromObject( results.RelatedItems ?? new List<JObject>() ),
 				Debug = new JObject()
+				{
+					{ "Composed Results Debug", results.DebugInfo }
+				}
 			};
 
 			try
@@ -2864,6 +3078,10 @@ namespace workIT.Services
 					output.Debug[ "Farthest Step" ] = "Getting Result URI";
 					var resultURI = result.Data[ "@id" ].ToString();
 
+					output.Debug[ "Farthest Step" ] = "Looking up Framework ID by its CTID";
+					var ctid = result.Data[ "ceterms:ctid" ].ToString();
+					var frameworkID = CompetencyFrameworkManager.GetByCtid( ctid )?.Id ?? -1;
+
 					//Owner
 					output.Debug[ "Farthest Step" ] = "Processing Creator/Owner/Publisher";
 					var creators = results.GetRelatedItems( result.GetURIsForPathRegex( "^> ceasn:creator > ceterms:Agent$" ) );
@@ -2872,11 +3090,13 @@ namespace workIT.Services
 
 					//Process Dates
 					output.Debug[ "Farthest Step" ] = "Processing Other Fields";
-					var ctid = result.Data[ "ceterms:ctid" ].ToString();
 					var name = CompetencyFrameworkServicesV2.GetEnglishString( result.Data[ "ceasn:name" ], "Unknown Name" );
 					var description = CompetencyFrameworkServicesV2.GetEnglishString( result.Data[ "ceasn:description" ], "Unknown Description" );
-					var dateCreated = result.Data[ "ceasn:dateCreated" ] == null ? "Unknown" : result.Data[ "ceasn:dateCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
-					var dateModified = result.Data[ "ceasn:dateCreated" ] == null ? "Unknown" : result.Data[ "ceasn:dateCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					//var dateCreated = result.Data[ "ceasn:dateCreated" ] == null ? "Unknown" : result.Data[ "ceasn:dateCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					//var dateModified = result.Data[ "ceasn:dateModified" ] == null ? "Unknown" : result.Data[ "ceasn:dateModified" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					var dateCreated = result.Metadata?[ "RecordCreated" ] == null ? "Unknown" : result.Metadata[ "RecordCreated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					var dateModified = result.Metadata?[ "RecordUpdated" ] == null ? "Unknown" : result.Metadata[ "RecordUpdated" ].ToString().Split( new string[] { "T" }, StringSplitOptions.RemoveEmptyEntries ).FirstOrDefault() ?? "Unknown";
+					var friendlyName = CF.BaseFactory.FormatFriendlyTitle( name );
 
 					//Process the result core
 					output.Debug[ "Farthest Step" ] = "Processing Core Result";
@@ -2890,11 +3110,12 @@ namespace workIT.Services
 						{ "LastUpdated", dateModified }, //Not sure why we have both
 						{ "RawData", result.Data },
 						{ "Name", name },
+						{ "UrlTitle", friendlyName },
+						{ "FriendlyName", friendlyName },
 						{ "Description", description },
 						{ "Owner", owner },
 						{ "SearchType", "competencyframework" },
 						{ "RecordId", ctid },
-						{ "UrlTitle", "" },
 						{ "Errors", new JArray() },
 						{ "T_LastUpdated", dateModified },
 						{ "T_StateId", 3 },
@@ -3065,7 +3286,7 @@ namespace workIT.Services
 					} );
 
 					//Add the result
-					output.Results.Add( Result( name, description, -1, coreProperties, null, new List<SearchTag>(), buttons ) );
+					output.Results.Add( Result( name, friendlyName, description, frameworkID, coreProperties, null, new List<SearchTag>(), buttons ) );
 				}
 			}
 			catch( Exception ex )
@@ -3682,7 +3903,10 @@ namespace workIT.Services
 
 		public MainSearchResults ConvertCompetencyFrameworkResults2( List<CompetencyFrameworkSummary> results, int totalResults, string searchType )
 		{
-			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+			var output = new MainSearchResults() { 
+				TotalResults = totalResults, 
+				SearchType = searchType
+			};
 			try
 			{
 				foreach ( var item in results )
@@ -3691,7 +3915,7 @@ namespace workIT.Services
 					{
 
 					}
-					output.Results.Add( Result( item.Name, item.Description, item.Id,
+					output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
 						new Dictionary<string, object>()
 						{
 						{ "Name", item.Name },
@@ -3792,7 +4016,7 @@ namespace workIT.Services
 				if ( item.EntityLastUpdated > checkDate )
 					entityLastUpdated = item.EntityLastUpdated.ToString( "yyyy-MM-dd HH:mm" );
 
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 							{ "Name", item.Name },
@@ -3803,6 +4027,7 @@ namespace workIT.Services
 							{ "ctid", item.CTID },
 							{ "SearchType", searchType },
 							{ "RecordId", item.Id },
+							{ "ResultNumber", item.ResultNumber },
 							{ "UrlTitle", item.FriendlyName },
 							{ "Created", item.Created.ToShortDateString() },
 							{ "LastUpdated", entityLastUpdated }
@@ -3818,14 +4043,16 @@ namespace workIT.Services
 		//
 
 		//
-		public MainSearchResults ConvertGeneralIndexResults( List<CommonSearchSummary> results, int totalResults, string searchType )
+		public MainSearchResults ConvertGeneralIndexResults( List<CommonSearchSummary> results, int totalResults, string searchType, string ctdlTypeLabel )
 		{
+			var broadType = ctdlTypeLabel.Replace( " ", "" );
+			var ctdlType = "ceterms:" + broadType;
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
 			foreach ( var item in results )
 			{
 				var subjects = Deduplicate( item.Subjects );
 
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+				output.Results.Add( Result( item.Name, item.FriendlyName, item.Description, item.Id,
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -3838,14 +4065,59 @@ namespace workIT.Services
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
+						{ "OrganizationUrlTitle", item.PrimaryOrganizationFriendlyName },
 						{ "Created", item.Created.ToShortDateString() },
-						{ "LastUpdated", item.LastUpdated.ToShortDateString() }
+						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+						{ "T_StateId", item.EntityStateId },
+						{ "T_BroadType", broadType },
+						{ "T_CTDLType", ctdlType },
+						{ "T_CTDLTypeLabel", ctdlTypeLabel }
 					},
 					null,
 					null,
 					new List<SearchResultButton>()
 					{
-						
+						//TVP
+						//related creds
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueForCredentialsCount + item.TransferValueFromCredentialsCount == 1 ? "Related Credential" : "Related Credentials",
+							CategoryType = ButtonCategoryTypes.TVPHasCredential.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueForCredentialsCount + item.TransferValueFromCredentialsCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultCredential",
+								TargetEntityType = ButtonTargetEntityTypes.TVPHasCredential.ToString()
+							} )
+						},
+						//related asmts
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueForAssessmentsCount + item.TransferValueFromAssessmentsCount == 1 ? "Related Assessment" : "Related Assessments",
+							CategoryType = ButtonCategoryTypes.TVPHasAssessment.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueForAssessmentsCount + item.TransferValueFromAssessmentsCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultAsmt",
+								TargetEntityType = ButtonTargetEntityTypes.TVPHasAssessment.ToString()
+							} )
+						},
+						//related lopps
+						new SearchResultButton()
+						{
+							CategoryLabel = item.TransferValueForLoppsCount + item.TransferValueFromLoppsCount == 1 ? "Related Learning Opportunity" : "Related Learning Opportunities",
+							CategoryType = ButtonCategoryTypes.TVPHasLopp.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.TransferValueForLoppsCount + item.TransferValueFromLoppsCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultLopp",
+								TargetEntityType = ButtonTargetEntityTypes.TVPHasLearningOpportunity.ToString()
+							} )
+						},
 						//Subjects
 						new SearchResultButton()
 						{
@@ -3878,14 +4150,187 @@ namespace workIT.Services
 							HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
 							TotalItems = item.IndustryResults.Results.Count(),
 							Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.IndustryResults.CategoryId ) ) )
-						}
+						},
+						new SearchResultButton()
+						{
+							CategoryLabel = "Pathways",
+							CategoryType = ButtonCategoryTypes.Pathway.ToString(),
+							HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+							TotalItems = item.PathwaysCount,
+							RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+							{
+								AjaxQueryName = "GetSearchResultPathway",
+								TargetEntityType = ButtonTargetEntityTypes.Pathway.ToString()
+							} )
+						},
 					}
 				) );
 			}
 			return output;
 		}
 		//
-		public MainSearchResults ConvertPathwaySetResults( List<PathwaySetSummary> results, int totalResults, string searchType )
+		//public MainSearchResults ConvertPathwaySetResults( List<PathwaySetSummary> results, int totalResults, string searchType )
+		//{
+		//	var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+		//	foreach ( var item in results )
+		//	{
+
+		//		output.Results.Add( Result( item.Name, item.Description, item.Id,
+		//			new Dictionary<string, object>()
+		//			{
+		//				{ "Name", item.Name },
+		//				{ "Description", item.Description },
+		//				{ "Owner", string.IsNullOrWhiteSpace( item.OrganizationName ) ? "" : item.OrganizationName },
+		//				{ "OwnerId", item.OwningOrganizationId },
+		//				{ "OwnerCTID", item.PrimaryOrganizationCTID },
+		//				{ "SearchType", searchType },
+		//				{ "RecordId", item.Id },
+		//				{ "ResultNumber", item.ResultNumber },
+		//				{ "ctid", item.CTID },
+		//				{ "UrlTitle", item.FriendlyName },
+		//				 { "Created", item.Created.ToShortDateString() },
+		//				{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+		//				{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+		//				{ "T_StateId", item.EntityStateId },
+		//				{ "T_BroadType", "PathwaySet" },
+		//				{ "T_CTDLType", "ceterms:PathwaySet" },
+		//				{ "T_CTDLTypeLabel", "Pathway Set" }
+		//			},
+		//			null, null,
+		//			new List<Models.Helpers.SearchResultButton>()
+		//			{
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = "Pathways",
+		//					CategoryType = ButtonCategoryTypes.Pathway.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+		//					TotalItems = item.Pathways.Count,
+		//					RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+		//					{
+		//						AjaxQueryName = "GetSearchResultPathway",
+		//						TargetEntityType = ButtonTargetEntityTypes.Pathway.ToString()
+		//					} )
+		//				},
+		//				//new Models.Helpers.SearchResultButton()
+		//				//{
+		//				//	CategoryLabel = "Pathways",
+		//				//	DisplayTemplate = "{#} Pathway{s}",
+		//				//	Name = "pathways", //The CSS on the search page will look for an icon associated with this
+		//				//	TotalItems = item.Pathways.Count(),
+		//				//	SearchQueryType = "link",
+		//				//	Items = item.Pathways.ConvertAll( m => new Models.Helpers.SearchTagItem()
+		//				//		{
+		//				//			Display = m.Name,
+		//				//			QueryValues = new Dictionary<string, object>()
+		//				//			{
+		//				//				{ "TargetId", m.Id }, 
+		//				//				{ "TargetType", "pathway" },
+		//				//				{ "IsReference", "false" },
+		//				//			}
+		//				//		} ).ToList()
+		//				//}
+		//			}
+		//		) );
+		//	}
+		//	return output;
+		//}
+		//use ConvertGeneralIndexResults
+		//public MainSearchResults ConvertTransferValueResults( List<CommonSearchSummary> results, int totalResults, string searchType )
+		//{
+		//	var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+		//	foreach ( var item in results )
+		//	{
+
+		//		output.Results.Add( Result( item.Name, item.Description, item.Id,
+		//			new Dictionary<string, object>()
+		//			{
+		//				{ "Name", item.Name },
+		//				{ "Description", item.Description },
+		//				{ "Owner", string.IsNullOrWhiteSpace( item.PrimaryOrganizationName ) ? "" : item.PrimaryOrganizationName },
+		//				{ "OwnerId", item.PrimaryOrganizationId },
+		//				{ "OwnerCTID", item.PrimaryOrganizationCTID },
+		//				{ "SearchType", searchType },
+		//				{ "RecordId", item.Id },
+		//				{ "ResultNumber", item.ResultNumber },
+		//				{ "ctid", item.CTID },
+		//				{ "UrlTitle", item.FriendlyName },
+		//				 { "Created", item.Created.ToShortDateString() },
+		//				{ "LastUpdated", item.LastUpdated.ToShortDateString() },
+		//				{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
+		//				{ "T_StateId", item.EntityStateId },
+		//				{ "T_BroadType", "TransferValueProfile" },
+		//				{ "T_CTDLType", "ceterms:TransferValueProfile" },
+		//				{ "T_CTDLTypeLabel", "Transfer Value Profile" }
+		//			},
+		//			null,null,
+		//			new List<SearchResultButton>()
+		//			{
+		//				//TVP
+		//				//related creds
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = item.TransferValueForCredentialsCount + item.TransferValueFromCredentialsCount == 1 ? "Related Credential" : "Related Credentials",
+		//					CategoryType = ButtonCategoryTypes.Credential.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+		//					TotalItems = item.TransferValueForCredentialsCount + item.TransferValueFromCredentialsCount,
+		//					RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+		//					{
+		//						AjaxQueryName = "GetSearchResultCredential",
+		//						TargetEntityType = ButtonTargetEntityTypes.Credential.ToString()
+		//					} )
+		//				},
+		//				//related asmts
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = item.TransferValueForAssessmentsCount + item.TransferValueFromAssessmentsCount == 1 ? "Related Assessment" : "Related Assessments",
+		//					CategoryType = ButtonCategoryTypes.AssessmentProfile.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+		//					TotalItems = item.TransferValueForAssessmentsCount + item.TransferValueFromAssessmentsCount,
+		//					RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+		//					{
+		//						AjaxQueryName = "GetSearchResultAsmt",
+		//						TargetEntityType = ButtonTargetEntityTypes.Assessment.ToString()
+		//					} )
+		//				},
+		//				//related lopps
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = item.TransferValueForLoppsCount + item.TransferValueFromLoppsCount == 1 ? "Related Learning Opportunity" : "Learning Opportunities",
+		//					CategoryType = ButtonCategoryTypes.LearningOpportunityProfile.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_GetRelatedItemsViaAJAX.ToString(),
+		//					TotalItems = item.TransferValueForLoppsCount + item.TransferValueFromLoppsCount,
+		//					RenderData = JObject.FromObject( new SearchResultButton.Helpers.AjaxDataForResult()
+		//					{
+		//						AjaxQueryName = "GetSearchResultLopp",
+		//						TargetEntityType = ButtonTargetEntityTypes.LearningOpportunity.ToString()
+		//					} )
+		//				},
+
+		//				//Occupations
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = item.OccupationResults.Results.Count() == 1 ? "Occupation" : "Occupations",
+		//					CategoryType = ButtonCategoryTypes.OccupationType.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
+		//					TotalItems = item.OccupationResults.Results.Count(),
+		//					Items = item.OccupationResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.OccupationResults.CategoryId ) ) )
+		//				},
+		//				//Industries
+		//				new SearchResultButton()
+		//				{
+		//					CategoryLabel = item.IndustryResults.Results.Count() == 1 ? "Industry" : "Industries",
+		//					CategoryType = ButtonCategoryTypes.IndustryType.ToString(),
+		//					HandlerType = ButtonHandlerTypes.handler_RenderExternalCodeFilter.ToString(),
+		//					TotalItems = item.IndustryResults.Results.Count(),
+		//					Items = item.IndustryResults.Results.Take( 10 ).ToList().ConvertAll( m => JObject.FromObject( GetFilterItem( m, item.IndustryResults.CategoryId ) ) )
+		//				}
+		//			}
+		//		) );
+		//	}
+		//	return output;
+		//}
+		//
+		public MainSearchResults ConvertDataSetProfileResults( List<DataSetProfile> results, int totalResults, string searchType )
 		{
 			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
 			foreach ( var item in results )
@@ -3896,56 +4341,39 @@ namespace workIT.Services
 					{
 						{ "Name", item.Name },
 						{ "Description", item.Description },
-						{ "Owner", string.IsNullOrWhiteSpace( item.OrganizationName ) ? "" : item.OrganizationName },
-						{ "OwnerId", item.OwningOrganizationId },
-						{ "OwnerCTID", item.PrimaryOrganizationCTID },
+						{ "Owner", string.IsNullOrWhiteSpace( item.DataProviderName ) ? "" : item.DataProviderName },
+						{ "OwnerId", item.DataProviderId },
+						{ "OwnerCTID", item.DataProviderCTID },
 						{ "SearchType", searchType },
 						{ "RecordId", item.Id },
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
-						{ "UrlTitle", item.FriendlyName },
+						//{ "UrlTitle", item.FriendlyName },
 						 { "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
 						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
 						{ "T_StateId", item.EntityStateId },
-						{ "T_BroadType", "PathwaySet" },
-						{ "T_CTDLType", "ceterms:PathwaySet" },
-						{ "T_CTDLTypeLabel", "Pathway Set" }
+						{ "T_BroadType", "DataSetProfile" },
+						{ "T_CTDLType", "qdata:DataSetProfile" },
+						{ "T_CTDLTypeLabel", "DataSet Profile" }
 					},
 					null,
-					new List<Models.Helpers.SearchTag>()
-					{
-						new Models.Helpers.SearchTag()
-						{
-							CategoryName = "Pathways",
-							DisplayTemplate = "{#} Pathway{s}",
-							Name = "pathways", //The CSS on the search page will look for an icon associated with this
-							TotalItems = item.Pathways.Count(),
-							SearchQueryType = "link",
-							Items = item.Pathways.ConvertAll( m => new Models.Helpers.SearchTagItem()
-								{
-									Display = m.Name,
-									QueryValues = new Dictionary<string, object>()
-									{
-										{ "TargetId", m.Id }, 
-										{ "TargetType", "pathway" },
-										{ "IsReference", "false" },
-									}
-								} ).ToList()
-						}
-					}
+					null
 				) );
 			}
 			return output;
 		}
 		//
-		public MainSearchResults ConvertTransferValueResults( List<CommonSearchSummary> results, int totalResults, string searchType )
-		{
-			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
-			foreach ( var item in results )
-			{
 
-				output.Results.Add( Result( item.Name, item.Description, item.Id,
+		public MainSearchResults ConvertCollectionResults( List<CommonSearchSummary> results, int totalResults, string searchType )
+		{
+			var broadType = "Collection";
+			var ctdlTypeLabel = "Collection";
+			var ctdlType = "ceterms:Collection";
+			var output = new MainSearchResults() { TotalResults = totalResults, SearchType = searchType };
+			foreach( var item in results )
+			{
+				output.Results.Add( Result( item.Name, item.Description, item.Id, 
 					new Dictionary<string, object>()
 					{
 						{ "Name", item.Name },
@@ -3958,71 +4386,98 @@ namespace workIT.Services
 						{ "ResultNumber", item.ResultNumber },
 						{ "ctid", item.CTID },
 						{ "UrlTitle", item.FriendlyName },
-						 { "Created", item.Created.ToShortDateString() },
+						{ "OrganizationUrlTitle", item.PrimaryOrganizationFriendlyName },
+						{ "Created", item.Created.ToShortDateString() },
 						{ "LastUpdated", item.LastUpdated.ToShortDateString() },
 						{ "T_LastUpdated", item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss") },
 						{ "T_StateId", item.EntityStateId },
-						{ "T_BroadType", "TransferValueProfile" },
-						{ "T_CTDLType", "ceterms:TransferValueProfile" },
-						{ "T_CTDLTypeLabel", "Transfer Value Profile" }
+						{ "T_BroadType", broadType },
+						{ "T_CTDLType", ctdlType },
+						{ "T_CTDLTypeLabel", ctdlTypeLabel }
 					},
 					null,
 					null
 				) );
 			}
+
 			return output;
 		}
 		//
+
 		public static Entity GetEntityByCTID(string ctid)
 		{
-			var entity = CF.EntityManager.EntityGetFromEntityCache( ctid );
-			if ( entity == null || entity.Id == 0 )
-			{
-				//TODO - need to improve use of entity_cache. HINT: just add/update as part of the import!
-				//TEMP, try credential
-				var cred = CredentialManager.GetMinimumByCtid( ctid );
-				if ( cred != null && cred.Id > 0 )
+			var entityCache = CF.EntityManager.EntityCacheGetByCTID( ctid );
+
+			var entity = new Entity();
+			if ( entityCache?.Id > 0 )
+            {
+				entity = new Entity()
 				{
-					entity = CF.EntityManager.GetEntity( cred.RowId, false );
-					return entity;
-				} 
-			}
-			if ( entity == null || entity.Id == 0 )
+					Id = entityCache.Id,
+					EntityType = entityCache.EntityType,
+					EntityTypeId = entityCache.EntityTypeId,
+					EntityUid = entityCache.EntityUid,
+					EntityBaseId = entityCache.BaseId,
+					EntityBaseName = entityCache.Name,
+				};
+				return entity;
+            }
+			//otherwise check individually
+			//TODO - need to improve use of entity_cache. HINT: just add/update as part of the import!
+			//	Others: 
+			//	- CF Competency
+			//	- Collection Competency
+			//TEMP, try credential
+			var cred = CredentialManager.GetMinimumByCtid( ctid );
+			if ( cred != null && cred.Id > 0 )
 			{
-				var org = OrganizationManager.GetSummaryByCtid( ctid );
-				if ( org != null && org.Id > 0 )
-				{
-					entity = CF.EntityManager.GetEntity( org.RowId, false );
-					return entity;
-				}
+				entity = CF.EntityManager.GetEntity( cred.RowId, false );
+				return entity;
 			}
-			if ( entity == null || entity.Id == 0 )
+			//	- CF Competency
+			var cfCompetency = CompetencyFrameworkCompetencyManager.GetByCtid( ctid );
+			if ( cfCompetency != null && cfCompetency.Id > 0 )
 			{
-				var record = AssessmentManager.GetSummaryByCtid( ctid );
-				if ( record != null && record.Id > 0 )
+				//no entity for competency
+				//entity = CF.EntityManager.GetEntity( cfCompetency.RowId, false );
+				entity = new Entity()
 				{
-					entity = CF.EntityManager.GetEntity( record.RowId, false );
-					return entity;
-				}
+					Id = cfCompetency.Id,
+					EntityType = "Competency",
+					EntityTypeId = 0,// entityCache.EntityTypeId, //none at this time
+					EntityUid = cfCompetency.RowId,
+					EntityBaseId = cfCompetency.Id,
+					EntityBaseName = cfCompetency.CompetencyText,
+				};
+				return entity;
 			}
-			if ( entity == null || entity.Id == 0 )
+			var org = OrganizationManager.GetSummaryByCtid( ctid );
+			if ( org != null && org.Id > 0 )
 			{
-				var record = LearningOpportunityManager.GetByCtid( ctid );
-				if ( record != null && record.Id > 0 )
-				{
-					entity = EntityManager.GetEntity( record.RowId, false );
-					return entity;
-				}
+				entity = CF.EntityManager.GetEntity( org.RowId, false );
+				return entity;
 			}
-			if ( entity == null || entity.Id == 0 )
+		
+			var asmt = AssessmentManager.GetSummaryByCtid( ctid );
+			if ( asmt != null && asmt.Id > 0 )
 			{
-				var record = CompetencyFrameworkManager.GetByCtid( ctid );
-				if ( record != null && record.Id > 0 )
-				{
-					entity = CF.EntityManager.GetEntity( record.RowId, false );
-					return entity;
-				}
+				entity = CF.EntityManager.GetEntity( asmt.RowId, false );
+				return entity;
 			}
+				var lopp = LearningOpportunityManager.GetByCtid( ctid );
+			if ( lopp != null && lopp.Id > 0 )
+			{
+				entity = EntityManager.GetEntity( lopp.RowId, false );
+				return entity;
+			}
+			var cf = CompetencyFrameworkManager.GetByCtid( ctid );
+			if ( cf != null && cf.Id > 0 )
+			{
+				entity = CF.EntityManager.GetEntity( cf.RowId, false );
+				return entity;
+			}
+
+
 			return entity;
 		}
 	
@@ -4122,25 +4577,29 @@ namespace workIT.Services
 		}
 		//
 
-		public static List<object> Autocomplete_Subjects(int entityTypeId, int categoryId, string keyword, int maxTerms = 25)
+		public static List<string> Autocomplete_Subjects( MainSearchInput query, int entityTypeId, int categoryId, string keyword, int maxTerms = 25)
 		{
-			List<object> list = new List<object>();
-			list = CF.Entity_ReferenceManager.QuickSearch_Subjects(entityTypeId, keyword, maxTerms);
+			var list = new List<string>();
+			list = CF.Entity_ReferenceManager.QuickSearch_Subjects( query, entityTypeId, keyword, maxTerms);
 			return list;
 		}
 
-		public static List<object> Autocomplete_Occupations(int entityTypeId, string keyword, int maxTerms = 25)
+		public static List<string> Autocomplete_Occupations( MainSearchInput query, int entityTypeId, string keyword, int maxTerms = 25)
 		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 11, "", keyword, maxTerms);
-		}
 
-		public static List<object> Autocomplete_Industries(int entityTypeId, string keyword, int maxTerms = 25)
-		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 10, "", keyword, maxTerms);
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( query, entityTypeId, 11, "", keyword, maxTerms);
 		}
-		public static List<object> Autocomplete_Cip(int entityTypeId, string keyword, int maxTerms = 25)
+		public static List<string> Autocomplete_OccupationsOLD( MainSearchInput query, int entityTypeId, string keyword, int maxTerms = 25 )
 		{
-			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks(entityTypeId, 23, "", keyword, maxTerms);
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( query, entityTypeId, 11, "", keyword, maxTerms );
+		}
+		public static List<string> Autocomplete_Industries( MainSearchInput query, int entityTypeId, string keyword, int maxTerms = 25)
+		{
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( query, entityTypeId, 10, "", keyword, maxTerms);
+		}
+		public static List<string> Autocomplete_Cip( MainSearchInput query, int entityTypeId, string keyword, int maxTerms = 25)
+		{
+			return CF.Entity_ReferenceManager.QuickSearch_ReferenceFrameworks( query, entityTypeId, 23, "", keyword, maxTerms);
 		}
 
 
@@ -4348,7 +4807,7 @@ namespace workIT.Services
 			//Ohhh BAD - assumes all or none
 			if ( forElasticSearch && UtilityManager.GetAppKeyValue("usingElasticCredentialSearch", false))
 			{
-				var env = UtilityManager.GetAppKeyValue("envType");
+				var env = UtilityManager.GetAppKeyValue("environment");
 				//not sure of this
 				if (env != "production" && keyword.IndexOf("*") == -1)
 				{
@@ -4451,19 +4910,49 @@ namespace workIT.Services
 			string next = "";
 			if (where.Length > 0)
 				AND = " AND ";
-			foreach (var filter in data.FiltersV2.Where(m => m.Type == MainSearchFilterV2Types.CODE))
+			if ( data.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
 			{
-				var item = filter.AsCodeItem();
-				if (item.CategoryId == 13)
+				var roles = new List<CodeItem>();
+				//will only be one owner
+				var orgId = 0;
+				string template2 = " ( base.RowId in ( SELECT distinct b.EntityUid FROM [dbo].[Entity.AgentRelationship] a inner join Entity b on a.EntityId = b.Id inner join Organization c on a.AgentUid = c.RowId  where c.Id = {0} AND [RelationshipTypeId] in ({1})   ) ) ";
+				foreach ( var filter in data.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
 				{
-					next += item.Id + ",";
+					var cc = filter.AsOrgRolesItem();
+					orgId = cc.Id;
+					roles.Add( filter.AsOrgRolesItem() );
+					break;
+				}
+				if ( orgId > 0 && roles != null && roles.Count == 1 )
+				{
+					var relationnships = roles.Select( s => s.Id ).ToList();
+					var r2 = roles[ 0 ].IdsList;
+
+					next = String.Join( ", ", r2.ToArray() );
+					next = next.Trim( ',' );
+					if ( !string.IsNullOrWhiteSpace( next ) )
+					{
+						where = where + AND + string.Format( template2, orgId, next );
+					}
+				}
+			} else if ( data.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
+			{
+				foreach ( var filter in data.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ) )
+				{
+					var item = filter.AsCodeItem();
+					if ( item.CategoryId == 13 )
+					{
+						next += item.Id + ",";
+					}
+				}
+				next = next.Trim( ',' );
+				if ( !string.IsNullOrWhiteSpace( next ) )
+				{
+					where = where + AND + string.Format( template, next );
 				}
 			}
-			next = next.Trim(',');
-			if (!string.IsNullOrWhiteSpace(next))
-			{
-				where = where + AND + string.Format(template, next);
-			}
+			
+
 
 			/* //Retained for reference
 			foreach ( MainSearchFilter filter in data.Filters.Where( s => s.CategoryId == 13  ) )

@@ -16,16 +16,19 @@ using workIT.Utilities;
 using MC = workIT.Models.Common;
 using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
+using MQD = workIT.Models.QData;
 using WMP = workIT.Models.ProfileModels;
 using WMS = workIT.Models.Search;
 using workIT.Factories;
+
 
 namespace workIT.Services.API
 {
 	public class ServiceHelper
 	{
-		public static string externalFinderSiteURL = UtilityManager.GetAppKeyValue( "externalFinderSiteURL" );
-		public static string baseFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
+		//externalFinderSiteURL is ????????????
+		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
+		public static string oldCredentialFinderSite = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
 		public static string finderApiSiteURL = UtilityManager.GetAppKeyValue( "finderApiSiteURL" );
 
 		#region Mapping for Finder API
@@ -39,10 +42,13 @@ namespace workIT.Services.API
 		/// <param name="searchType"></param>
 		/// <param name="output"></param>
 		/// <param name="roles"></param>
-		public static void MapEntitySearchLink( int orgId, string orgName, int entityCount, string labelTemplate, string searchType, ref List<WMA.LabelLink> output, string roles = "6,7" )
+		public static void MapEntitySearchLink( int orgId, string orgName, int entityCount, string labelTemplate, string searchType, ref List<WMA.LabelLink> output, string roles = "6,7", string orgCTID="" )
 		{
 			//var output = new WMA.LabelLink();
 			if ( orgId < 1 )
+				return;
+			//21-07-15 mp - the following now results in the QA and owner QA to be skipped?
+			if ( entityCount < 1 && roles != "1,2,10,12")
 				return;
 			//note need the friendly name
 			//
@@ -56,33 +62,35 @@ namespace workIT.Services.API
 				var urlLabel = orgName + ": " + label;
 				//var customTest = string.Format( "custom=(n:'organizationroles',aid:{0},rid:[{3}],p:'{1}',r:'',d:'{2}')", orgId, orgName, label, roles );
 				//retaining r:'', for test url otherwise get undefined
-				var url = string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[{2}],p:'{3}',d:'{4}',r:''))", searchType, orgId, roles, orgName, HttpUtility.UrlPathEncode ( label ) );
-				url = url.Replace( "((", "{" ).Replace( "))", "}" );
-				url = url.Replace( "'", "%27" ).Replace( " ", "%20" );
-				//url = HttpUtility.UrlPathEncode ( url );
+				var oldUrl = string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[{2}],p:'{3}',d:'{4}',r:''))", searchType, orgId, roles, orgName, HttpUtility.UrlPathEncode( label ) );
+				oldUrl = oldUrl.Replace( "((", "{" ).Replace( "))", "}" );
+				oldUrl = oldUrl.Replace( "'", "%27" ).Replace( " ", "%20" );
+				//oldUrl = HttpUtility.UrlPathEncode ( oldUrl );
 
 				//new --------------------------------------
-				var part1 = string.Format( "search?searchType={0}&filteritemtext={1}", searchType, HttpUtility.UrlPathEncode ( urlLabel ) );
+				var part1 = string.Format( "search?searchType={0}&filteritemtext={1}", searchType, HttpUtility.UrlPathEncode( urlLabel ) );
+				if ( !string.IsNullOrWhiteSpace( orgCTID ) )
+					part1 += "&keywords=" + orgCTID.Trim();
 				//json format,probably not
 				var part2 = "{" + string.Format( "\"n\":\"organizationroles\",\"aid\":{0},\"rid\":[{1}]", orgId, roles ) + "}";
-				var part3 = HttpUtility.UrlPathEncode ( part2 );
+				var part3 = HttpUtility.UrlPathEncode( part2 );
 				var part4 = "&filterparameters=" + part3;
 
 				output.Add( new WMA.LabelLink()
 				{
 					Label = label,
 					Total = entityCount,
-					URL = externalFinderSiteURL + part1 + part4,
-					TestURL = baseFinderSiteURL + url
+					URL = reactFinderSiteURL + part1 + part4,
+					TestURL = oldCredentialFinderSite + oldUrl
 				} );
 
-				
+
 
 				//output.Add( new WMA.LabelLink()
 				//{
 				//	Label = label,
 				//	Count = entityCount,
-				//	URL = externalFinderSiteURL + part1 + part4
+				//	URL = reactFinderSiteURL + part1 + part4
 				//} );
 
 
@@ -101,7 +109,7 @@ namespace workIT.Services.API
 				//{
 				//	Label = label,
 				//	Count = entityCount,
-				//	URL = externalFinderSiteURL + part1 + part4
+				//	URL = reactFinderSiteURL + part1 + part4
 				//} );
 
 				//output.Add( filter );
@@ -128,25 +136,25 @@ namespace workIT.Services.API
 
 				var label = string.Format( labelTemplate, entityCount );
 				var urlLabel = orgName + ": " + label;
-				var url = string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[1,2,10,12],p:'{2}',d:'{3}',r:''))", searchType, orgId, orgName, HttpUtility.UrlPathEncode ( label ) );
+				var url = string.Format( "search?autosearch=true&searchType={0}&custom=((n:'organizationroles',aid:{1},rid:[1,2,10,12],p:'{2}',d:'{3}',r:''))", searchType, orgId, orgName, HttpUtility.UrlPathEncode( label ) );
 				url = url.Replace( "((", "{" ).Replace( "))", "}" );
 				url = url.Replace( "'", "%27" ).Replace( " ", "%20" );
 				//url = HttpUtility.UrlPathEncode ( url );
 
 				//new --------------------------------------
 				//var roleList = roles.Split( ',' ).ToList();
-				var part1 = string.Format( "search?searchType={0}&filteritemtext={1}", searchType, HttpUtility.UrlPathEncode ( urlLabel ) );
+				var part1 = string.Format( "search?searchType={0}&filteritemtext={1}", searchType, HttpUtility.UrlPathEncode( urlLabel ) );
 				//json format,probably not
 				var part2 = "{" + string.Format( "\"n\":\"organizationroles\",\"aid\":{0},\"rid\":[{1}]", orgId, roles ) + "}";
-				var part3 = HttpUtility.UrlPathEncode ( part2 );
+				var part3 = HttpUtility.UrlPathEncode( part2 );
 				var part4 = "&filterparameters=" + part3;
 
 				output.Add( new WMA.LabelLink()
 				{
 					Label = label,
 					Total = entityCount,
-					URL = externalFinderSiteURL + part1 + part4,
-					TestURL = baseFinderSiteURL + url
+					URL = reactFinderSiteURL + part1 + part4,
+					TestURL = oldCredentialFinderSite + url
 				} );
 
 
@@ -155,7 +163,7 @@ namespace workIT.Services.API
 				//{
 				//	Label = label,
 				//	Count = entityCount,
-				//	URL = externalFinderSiteURL + part1 + part4
+				//	URL = reactFinderSiteURL + part1 + part4
 				//} );
 			}
 			catch ( Exception ex )
@@ -165,6 +173,36 @@ namespace workIT.Services.API
 			//return output;
 
 		}
+
+		public static bool AreOnlyRolesOwnsOffers( List<WMP.OrganizationRoleProfile> input )
+		{
+			//if ( input == null || !input.Any()  )
+			//	return false;
+			//if ( input.Count() == 1 )
+			//{
+			//	if ( input[ 0 ].AgentRole == null || input[ 0 ].AgentRole.Items == null || input[ 0 ].AgentRole.Items.Count != 2 )
+			//		return false;
+			//	//
+			//	var check = input[ 0 ].AgentRole.Items.Where( s => s.Id == 6 || s.Id == 7 ).ToList();
+			//	if ( check != null && check.Count == 2 )
+			//		return true;
+			//	else
+			//		return false;
+			//}
+
+			//var check2 = input.AgentRole.Items.Select( s => s.Id == 6 || s.Id == 7 ).ToList();
+			//var check3 = input.Select( s => s.AgentRole.Items.Select( x => x.Id == 6 || x.Id == 7 )).ToList();
+			//var check4 = input.Select( s => s.AgentRole.Items.Where( x => x.Id == 6 || x.Id == 7 ) ).ToList();
+			//var check5 = input.Select( s => s.AgentRole ).ToList();
+			//var check6 = check5.Select( x => x.Items ).ToList();
+			//var check7 = check6.Where( x => x.).ToList();
+
+
+			return false;
+
+		}
+
+
 		/// <summary>
 		/// Method to map renewed by and revoked by 
 		/// </summary>
@@ -181,7 +219,7 @@ namespace workIT.Services.API
 			var searchRoles = "11,13";
 
 			try
-			{				
+			{
 				foreach ( var item in input )
 				{
 					var orp = new WMA.Outline()
@@ -200,7 +238,7 @@ namespace workIT.Services.API
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = externalFinderSiteURL + string.Format( "organization/{0}", item.ActingAgent.Id );
+						orp.URL = reactFinderSiteURL + string.Format( "organization/{0}/{1}", item.ActingAgent.Id, string.IsNullOrWhiteSpace( item.ActingAgent.Name ) ? "" : item.ActingAgent.FriendlyName );
 					bool isPublishedByRole = false;
 					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
@@ -212,11 +250,15 @@ namespace workIT.Services.API
 								if ( item.ActingAgent != null && item.ActingAgent.Id > 0 )
 								{
 									//for now include both renews and revokes in the link
+									//21-09-24 mp - when called from a credential, we don't want the search link?
+									//				- also 0 is passed for EntityCount. This will result in no tags?
 									MapEntitySearchLink( item.ActingAgent.Id, item.ActingAgent.Name, 0, ar.Name, searchType, ref orp.Tags, searchRoles );//ar.Id.ToString()
+									//21-09-24 mp add to Tags anyway
+									orp.Tags.Add( new WMA.LabelLink() { Label = ar.Name } );
 								}
 								else
 									orp.Tags.Add( new WMA.LabelLink() { Label = ar.Name } );
-							}							
+							}
 						}
 					}
 					if ( !isPublishedByRole && orp.Tags.Any() )
@@ -235,7 +277,7 @@ namespace workIT.Services.API
 			if ( input == null || !input.Any() )
 				return null;
 			//
-			var output =  new List<WMA.Outline>();
+			var output = new List<WMA.Outline>();
 			var qaroles = "1,2,10,12";
 
 			try
@@ -258,7 +300,9 @@ namespace workIT.Services.API
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = externalFinderSiteURL + string.Format( "organization/{0}", item.ActingAgent.Id );
+					{
+						orp.URL = reactFinderSiteURL + string.Format( "organization/{0}/{1}", item.ActingAgent.Id, string.IsNullOrWhiteSpace(item.ActingAgent.FriendlyName) ? "" : item.ActingAgent.FriendlyName );
+					}
 					bool isPublishedByRole = false;
 					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
@@ -268,6 +312,7 @@ namespace workIT.Services.API
 							if ( ar.Id == 30 )
 							{
 								//if published by, probably will not have other roles!
+								//unless of course the WDI testing 
 								//continue;
 								isPublishedByRole = true;
 								break;
@@ -291,7 +336,8 @@ namespace workIT.Services.API
 								orp.Tags.Add( new WMA.LabelLink() { Label = ar.Name } );
 						}
 					}
-					if ( !isPublishedByRole && orp.Tags.Any() )
+					//!isPublishedByRole && 
+					if ( orp.Tags.Any() )
 						output.Add( orp );
 				}
 			}
@@ -307,7 +353,7 @@ namespace workIT.Services.API
 		/// Map to Outline for a more generic display, like owned and offered by 
 		/// </summary>
 		/// <param name="input"></param>
-		/// <param name="label"></param>
+		/// <param name="roleTypeId">If GT zero, only roles with the latter will be formatted and returned. Use zero where all related orgs are to be returned</param>
 		/// <returns></returns>
 		public static List<WMA.Outline> MapOrganizationRoleProfileToOutline( List<WMP.OrganizationRoleProfile> input, int roleTypeId )
 		{
@@ -331,15 +377,20 @@ namespace workIT.Services.API
 						{
 							orp.Label = item.ActingAgent.Name;
 							orp.Description = item.ActingAgent.Description;
+							orp.Meta_Id = item.ActingAgent.Id;
+							orp.Image = item.ActingAgent.Image;
 						}
 					}
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = externalFinderSiteURL + string.Format( "organization/{0}", item.ActingAgent.Id );
+					{
+						orp.URL = reactFinderSiteURL + string.Format( "organization/{0}", item.ActingAgent.Id ) + ( !string.IsNullOrWhiteSpace( item.FriendlyName ) ? "/" + item.FriendlyName : "" );
+
+					}
 					//
 					//not sure if we want all roles here - current case could be for parent org
-					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
+					if ( roleTypeId > 0 && item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
 						foreach ( var ar in item.AgentRole.Items )
 						{
@@ -352,10 +403,14 @@ namespace workIT.Services.API
 								//	//MapEntitySearchLink( item.ActingAgent.Id, item.ActingAgent.Name, 0, ar.Name, searchType, ref orp.Tags, searchRoles );//ar.Id.ToString()
 								//}
 								//else
-									orp.Tags.Add( new WMA.LabelLink() { Label = ar.Name } );
+								orp.Tags.Add( new WMA.LabelLink() { Label = ar.Name } );
 							}
 						}
 						if ( orp.Tags.Any() )
+							output.Add( orp );
+					} else
+					{
+						if ( roleTypeId == 0 )
 							output.Add( orp );
 					}
 
@@ -373,6 +428,7 @@ namespace workIT.Services.API
 			}
 
 		}
+
 		/// <summary>
 		/// Format Concept based search links
 		/// </summary>
@@ -385,11 +441,7 @@ namespace workIT.Services.API
 			var output = new List<WMA.LabelLink>();
 			if ( input == null || input.Items == null || input.Items.Count() == 0 )
 				return null;
-			//var filter = new WMS.Filter();
-			//if ( input != null && input.Items.Any() )
-			//{
-			//	filter = SearchServices.ConvertEnumeration( input.Name, input );
-			//}
+
 			//
 			//https://sandbox.credentialengine.org/finder/search?autosearch=true&searchType=organization&filters=7-1185
 			foreach ( var item in input.Items )
@@ -399,8 +451,8 @@ namespace workIT.Services.API
 					SearchType = searchType,
 					Label = item.Name,//confirm this will be consistant					
 				};
-				var oldUrl = baseFinderSiteURL + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );
-				var url = externalFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemid={2}", searchType, input.Id, item.Id );
+				var oldUrl = oldCredentialFinderSite + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );
+				var url = reactFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemid={2}", searchType, input.Id, item.Id );
 				if ( formatUrl && !string.IsNullOrWhiteSpace( searchType ) )
 				{
 					value.URL = url;
@@ -432,10 +484,10 @@ namespace workIT.Services.API
 				var value = new WMA.LabelLink()
 				{
 					Label = item.Name,//confirm this will be consistant	
-				
+
 				};
-				var oldUrl = baseFinderSiteURL + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );
-				var url = externalFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemid={2}", searchType, input.Id, item.Id );
+				var oldUrl = oldCredentialFinderSite + string.Format( "search?autosearch=true&searchType={0}&filters={1}-{2}", searchType, input.Id, item.Id );
+				var url = reactFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemid={2}", searchType, input.Id, item.Id );
 
 				if ( formatUrl && !string.IsNullOrWhiteSpace( searchType ) )
 				{
@@ -456,8 +508,25 @@ namespace workIT.Services.API
 			if ( string.IsNullOrWhiteSpace( entityType ) || string.IsNullOrWhiteSpace( label ) )
 				return null;
 			//
-			var oldUrl = baseFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, id, label );
-			var url = externalFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, id, label );
+			var oldUrl = oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", entityType, id, label );
+			var url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, id, label );
+			var output = new WMA.LabelLink()
+			{
+				Label = label,
+				URL = url,
+				TestURL = oldUrl
+			};
+
+			return output;
+
+		}
+		public static WMA.LabelLink MapDetailLink( string entityType, string label, int id, string friendlyName  )
+		{
+			if ( string.IsNullOrWhiteSpace( entityType ) || string.IsNullOrWhiteSpace( label ) )
+				return null;
+			//
+			var oldUrl = oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", entityType, id, label );
+			var url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, id, string.IsNullOrWhiteSpace( friendlyName ) ? "" : friendlyName );
 			var output = new WMA.LabelLink()
 			{
 				Label = label,
@@ -470,13 +539,13 @@ namespace workIT.Services.API
 		}
 		public static WMA.LabelLink MapPropertyLabelLink( string input, string label, bool formatUrl = true )
 		{
-			if ( string.IsNullOrWhiteSpace(input))
+			if ( string.IsNullOrWhiteSpace( input ) )
 				return null;
 			//
 			var output = new WMA.LabelLink()
 			{
-				Label= label,
-				URL= formatUrl ? input : ""
+				Label = label,
+				URL = formatUrl ? input : ""
 			};
 
 			return output;
@@ -514,10 +583,10 @@ namespace workIT.Services.API
 			//https://sandbox.credentialengine.org/finder/search?autosearch=true&searchType=organization&filters=7-1185
 			foreach ( var item in input.Items )
 			{
-				var label = HttpUtility.UrlPathEncode ( item.Name );
-				var oldUrl = baseFinderSiteURL + string.Format( "search?autosearch=true&searchType={0}&keywords={1}", searchType, label );
-				var url = externalFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemtext={2}", searchType, frameworkCategoryId, label );
-				
+				var label = HttpUtility.UrlPathEncode( item.ItemSummary );
+				var oldUrl = oldCredentialFinderSite + string.Format( "search?autosearch=true&searchType={0}&keywords={1}", searchType, label );
+				var url = reactFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemtext={2}", searchType, frameworkCategoryId, label );
+
 				var value = new WMA.LabelLink()
 				{
 					Label = item.ItemSummary,
@@ -531,6 +600,37 @@ namespace workIT.Services.API
 			return output;
 
 		}
+
+		public static List<WMA.ReferenceFramework> MapReferenceFramework( List<MC.CredentialAlignmentObjectProfile> input, string searchType, int frameworkCategoryId, int widgetId = 0 )
+		{
+			var output = new List<WMA.ReferenceFramework>();
+			if ( input == null || input.Count() == 0 )
+				return output;
+			//
+			foreach ( var item in input )
+			{
+				var label = HttpUtility.UrlPathEncode( item.ItemSummary );
+
+				var url = reactFinderSiteURL + string.Format( "search?searchType={0}&filterid={1}&filteritemtext={2}", searchType, frameworkCategoryId, label );
+
+				var value = new WMA.ReferenceFramework()
+				{
+					Label = item.ItemSummary,
+					CodedNotation = item.CodedNotation,
+					TargetNode = item.TargetNode,
+					Description = item.Description,
+					URL = url,
+					Framework = item.Framework,
+					FrameworkName = item.FrameworkName,
+
+				};
+				output.Add( value );
+			}
+
+			return output;
+
+		}
+
 		/// <summary>
 		/// Format search links for main search
 		/// </summary>
@@ -545,18 +645,18 @@ namespace workIT.Services.API
 			//
 			//search?autosearch=true&amp;searchType=organization&amp;keywords=Career and Technical Education
 			var filterId = "";
-			if ( categoryId > 0)
+			if ( categoryId > 0 )
 				filterId = string.Format( "&filterid={0}", categoryId );
 			foreach ( var item in input )
 			{
-				var keyword = HttpUtility.UrlPathEncode ( item.TextValue );
+				var keyword = HttpUtility.UrlPathEncode( item.TextValue );
 
 				if ( !string.IsNullOrWhiteSpace( item.TextValue ) )
 				{
 					var value = new WMA.LabelLink()
 					{
 						Label = item.TextValue,//confirm this will be consistant
-						URL = externalFinderSiteURL + string.Format( "search?autosearch=true&searchType={0}&keywords={1}{2}", searchType, keyword, filterId )
+						URL = reactFinderSiteURL + string.Format( "search?autosearch=true&searchType={0}&keywords={1}{2}", searchType, keyword, filterId )
 					};
 					output.Add( value );
 				}
@@ -590,16 +690,15 @@ namespace workIT.Services.API
 		{
 			var output = new List<ME.JurisdictionProfile>();
 			if ( input == null || input.Count() == 0 )
-			if ( input == null || input.Count() == 0 )
 				return null;
 			//
 			foreach ( var item in input )
 			{
 				var pp = new ME.JurisdictionProfile()
 				{
-					Description = item.Description,
+					Description = string.IsNullOrWhiteSpace( item.Description ) ? null : item.Description,
 					GlobalJurisdiction = item.GlobalJurisdiction,
-					MainJurisdiction=null
+					MainJurisdiction = null
 				};
 				//map address-need a helper to format the jurisdiction - rare
 				//**** need to handle GeoCoordinates
@@ -621,7 +720,7 @@ namespace workIT.Services.API
 					}
 					else
 					{
-						if ( item.MainJurisdiction.HasData())
+						if ( item.MainJurisdiction.HasData() )
 						{
 							pp.MainJurisdiction = new ME.Address()
 							{
@@ -633,7 +732,7 @@ namespace workIT.Services.API
 								Longitude = item.MainJurisdiction.Longitude
 							};
 						}
-						
+
 					}
 				}
 				if ( item.JurisdictionException != null && item.JurisdictionException.Any() )
@@ -715,12 +814,17 @@ namespace workIT.Services.API
 						PostalCode = item.PostalCode,
 						AddressCountry = item.AddressCountry,
 						//identifiers - probably need to customize?
-						Identifier = MapIdentifierValue(item.Identifier)
+						//Identifier = MapIdentifierValue( item.IdentifierOLD )
 					};
+					// assign lat/lng. If the latter are not available and an address exists provide the default 'center'
 					if ( item.Latitude != 0 )
 						address.Latitude = item.Latitude;
+					else if ( string.IsNullOrWhiteSpace( item.StreetAddress ) ) //lat: 39.8283, lng: -98.5795 
+						address.Latitude = 39.8283;
 					if ( item.Longitude != 0 )
 						address.Longitude = item.Longitude;
+					else if ( string.IsNullOrWhiteSpace( item.StreetAddress ) ) //lat: 39.8283, lng: -98.5795 
+						address.Longitude = -98.5795;
 
 					if ( item.HasContactPoints() )
 					{
@@ -755,7 +859,7 @@ namespace workIT.Services.API
 				}
 
 			}
-		
+
 			return output;
 		}
 
@@ -766,13 +870,36 @@ namespace workIT.Services.API
 			if ( input == null || !input.Any() )
 				return null;
 
-			foreach(var item in input)
+			foreach ( var item in input )
 			{
 				if ( item.HasData() ) {
 					var iv = new WMA.IdentifierValue()
 					{
 						IdentifierType = item.IdentifierType,
-						IdentifierTypeName = string.IsNullOrWhiteSpace(item.Name) ? label : item.Name,
+						IdentifierTypeName = string.IsNullOrWhiteSpace( item.IdentifierTypeName ) ? label : item.IdentifierTypeName,
+						IdentifierValueCode = item.IdentifierValueCode
+					};
+					output.Add( iv );
+				}
+			}
+
+			return output;
+		}
+		//
+		public static List<WMA.IdentifierValue> MapIdentifierValue( List<MC.IdentifierValue> input, string label = "" )
+		{
+			var output = new List<WMA.IdentifierValue>();
+			if ( input == null || !input.Any() )
+				return null;
+
+			foreach ( var item in input )
+			{
+				if ( !string.IsNullOrWhiteSpace(item.IdentifierValueCode) )
+				{
+					var iv = new WMA.IdentifierValue()
+					{
+						IdentifierType = item.IdentifierType,
+						IdentifierTypeName = string.IsNullOrWhiteSpace( item.IdentifierTypeName ) ? label : item.IdentifierTypeName,
 						IdentifierValueCode = item.IdentifierValueCode
 					};
 					output.Add( iv );
@@ -828,7 +955,7 @@ namespace workIT.Services.API
 
 			var output = new WMS.AJAXSettings();
 			var list = MapProcessProfile( searchType, input );
-			if (list != null && list.Any())
+			if ( list != null && list.Any() )
 			{
 				output.Label = label;
 				output.Total = list.Count;
@@ -850,23 +977,26 @@ namespace workIT.Services.API
 			{
 				var pp = new WMA.ProcessProfile()
 				{
+					//include id for use in modal windows
+					Meta_Id = item.Id,
+
 					//ProcessProfileType = item.ProcessType,
 					Description = item.Description,
 					DateEffective = item.DateEffective,
 					ProcessFrequency = item.ProcessFrequency,
-					ProcessMethod = item.ProcessMethod,
-					ProcessMethodDescription = item.ProcessMethodDescription,
-					ProcessStandards = item.ProcessStandards,
-					ProcessStandardsDescription = item.ProcessStandardsDescription,
 					ScoringMethodDescription = item.ScoringMethodDescription,
-					ScoringMethodExample = item.ScoringMethodExample,
-					ScoringMethodExampleDescription = item.ScoringMethodExampleDescription,
 					SubjectWebpage = item.SubjectWebpage,
 					VerificationMethodDescription = item.VerificationMethodDescription,
 				};
+				pp.ProcessMethod = ServiceHelper.MapPropertyLabelLink( item.ProcessMethod, "ProcessMethod", item.ProcessMethodDescription );
+				pp.ProcessStandards = ServiceHelper.MapPropertyLabelLink( item.ProcessStandards, "ProcessStandards", item.ProcessStandardsDescription );
+				pp.ScoringMethodExample = ServiceHelper.MapPropertyLabelLink( item.ScoringMethodExample, "ScoringMethodExample", item.ScoringMethodExampleDescription );
+
 				pp.DataCollectionMethodType = MapPropertyLabelLinks( item.DataCollectionMethodType, searchType, false );
 				pp.ExternalInputType = MapPropertyLabelLinks( item.ExternalInputType, searchType, false );
-
+				//
+				pp.Jurisdiction = MapJurisdiction( item.Jurisdiction );
+				//
 				pp.ProcessingAgent = null;
 				//&& item.ProcessingAgent.Id != orgId
 				if ( item.ProcessingAgent != null && item.ProcessingAgent.Id > 0 && !string.IsNullOrWhiteSpace( item.ProcessingAgent.Name ) )
@@ -889,6 +1019,10 @@ namespace workIT.Services.API
 				if ( item.TargetLearningOpportunity != null && item.TargetLearningOpportunity.Any() )
 				{
 					pp.TargetLearningOpportunity = MapLearningOppToAJAXSettings( item.TargetLearningOpportunity, "Has {0} Target Learning Opportunity(ies)" );
+				}
+				if ( item.TargetCompetencyFramework != null && item.TargetCompetencyFramework.Any() )
+				{
+					pp.TargetCompetencyFramework = MapCompetencyFrameworkToAJAXSettings( item.TargetCompetencyFramework, "Has {0} Target Target Competency Framework(s)" );
 				}
 				output.Add( pp );
 			}
@@ -954,16 +1088,16 @@ namespace workIT.Services.API
 					//ProcessProfileType = item.ProcessType,
 					Description = item.Description,
 					DateEffective = item.DateEffective,
-					RevocationCriteriaDescription = item.RevocationCriteriaDescription,
-					RevocationCriteriaUrl = item.RevocationCriteriaUrl
 				};
+				pp.RevocationCriteria = ServiceHelper.MapPropertyLabelLink( item.RevocationCriteriaUrl, "Revocation Criteria", item.RevocationCriteriaDescription );
+
 				pp.Jurisdiction = MapJurisdiction( item.Jurisdiction );
 				//pp.Region = MapJurisdiction( input.Region );
 				list.Add( pp );
 			}
 			if ( list != null && list.Any() )
 			{
-				output.Label = string.Format("Has Revocation Profile", list.Count);
+				output.Label = string.Format( "Has Revocation Profile ({0})", list.Count );
 				output.Total = list.Count;
 				List<object> obj = list.Select( f => ( object )f ).ToList();
 				output.Values = obj;
@@ -971,13 +1105,12 @@ namespace workIT.Services.API
 			return output;
 		}
 
-		public static MC.TopLevelEntityReference MapToEntityReference( MC.TopLevelObject input, string entityType="" )
+		public static MC.TopLevelEntityReference MapToEntityReference( MC.TopLevelObject input, string entityType = "" )
 		{
 
 			if ( input == null || string.IsNullOrWhiteSpace( input.Name ) )
 				return null;// new MC.TopLevelEntityReference();	//or NULL
 
-			//var externalFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
 
 			var output = new MC.TopLevelEntityReference()
 			{
@@ -987,17 +1120,17 @@ namespace workIT.Services.API
 				Description = input.Description,
 				CTID = input.CTID,
 				EntityTypeId = input.EntityTypeId,
-				Image=input.Image
+				Image = input.Image
 			};
 			if ( !string.IsNullOrWhiteSpace( entityType ) )
-				output.DetailURL = externalFinderSiteURL + entityType+"/" + output.Id;
-			else 
+				output.DetailURL = reactFinderSiteURL + entityType + "/" + output.Id;
+			else
 			if ( !string.IsNullOrWhiteSpace( output.CTID ) )
-				output.DetailURL = externalFinderSiteURL + "resources/" + output.CTID;
+				output.DetailURL = reactFinderSiteURL + "resources/" + output.CTID;
 
 			return output;
 		}
-		public static WMS.AJAXSettings MapAssessmentToAJAXSettings( List<WMP.AssessmentProfile> input, string label )
+		public static WMS.AJAXSettings MapAssessmentToAJAXSettings( List<WMP.AssessmentProfile> input, string labelTemplate )
 		{
 
 			if ( input == null || !input.Any() )
@@ -1014,7 +1147,9 @@ namespace workIT.Services.API
 				var output = new WMS.AJAXSettings()
 				{
 					//Type=null,
-					Label = string.Format( label, input.Count ),
+					//Label = string.Format( label, input.Count ),
+					Label = input.Count > 0 ? labelTemplate.Replace( "{#}", input.Count.ToString() ).Replace( "(s)", input.Count == 1 ? "" : "s" ) : "",
+
 					Total = input.Count
 				};
 				List<object> obj = work.Select( f => ( object )f ).ToList();
@@ -1028,7 +1163,7 @@ namespace workIT.Services.API
 			}
 
 		}
-		public static WMS.AJAXSettings MapCredentialToAJAXSettings( List<MC.Credential> input, string label )
+		public static WMS.AJAXSettings MapCredentialToAJAXSettings( List<MC.Credential> input, string labelTemplate )
 		{
 
 			if ( input == null || !input.Any() )
@@ -1045,7 +1180,9 @@ namespace workIT.Services.API
 				var output = new WMS.AJAXSettings()
 				{
 					//Type=null,
-					Label = string.Format( label, input.Count ),
+					//Label = string.Format( label, input.Count ),
+					Label = input.Count > 0 ? labelTemplate.Replace( "{#}", input.Count.ToString() ).Replace( "(s)", input.Count == 1 ? "" : "s" ) : "",
+
 					Total = input.Count
 				};
 				List<object> obj = work.Select( f => ( object )f ).ToList();
@@ -1059,7 +1196,7 @@ namespace workIT.Services.API
 			}
 
 		}
-		public static WMS.AJAXSettings MapLearningOppToAJAXSettings( List<WMP.LearningOpportunityProfile> input, string label )
+		public static WMS.AJAXSettings MapLearningOppToAJAXSettings( List<WMP.LearningOpportunityProfile> input, string labelTemplate )
 		{
 
 			if ( input == null || !input.Any() )
@@ -1082,9 +1219,12 @@ namespace workIT.Services.API
 				var output = new WMS.AJAXSettings()
 				{
 					//Type=null,
-					Label = string.Format( label, input.Count ),
+					//Label = string.Format( labelTemplate, input.Count ),
+					Label = input.Count > 0 ? labelTemplate.Replace( "{#}", input.Count.ToString() ).Replace( "(ies)", input.Count == 1 ? "y" : "ies" ) : "",
 					Total = input.Count
 				};
+				//				Label = input.Count > 0 ? labelTemplate.Replace( "{#}", input.Count.ToString() ).Replace( "{ies}", input.Count == 1 ? "y" : "ies" ) : ""
+
 				List<object> obj = work.Select( f => ( object )f ).ToList();
 				output.Values = obj;
 				return output;
@@ -1096,6 +1236,38 @@ namespace workIT.Services.API
 			}
 
 		}
+		//
+		public static WMS.AJAXSettings MapCompetencyFrameworkToAJAXSettings( List<WMP.CompetencyFramework> input, string label )
+		{
+
+			if ( input == null || !input.Any() )
+				return null;
+			try
+			{
+				var work = new List<WMA.Outline>();
+				foreach ( var target in input )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						work.Add( MapToOutline( target, "CompetencyFramework" ) );
+				}
+				var output = new WMS.AJAXSettings()
+				{
+					//Type=null,
+					Label = string.Format( label, input.Count ),
+					Total = input.Count
+				};
+				List<object> obj = work.Select( f => ( object )f ).ToList();
+				output.Values = obj;
+				return output;
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "ServiceHelper.MapCompetencyFrameworkToAJAXSettings" );
+				return null;
+			}
+
+		}
+
 		public static WMS.AJAXSettings MapPathwayToAJAXSettings( List<MC.Pathway> input, string label )
 		{
 
@@ -1145,17 +1317,17 @@ namespace workIT.Services.API
 				output.Values = obj;
 				return output;
 			}
-			catch(Exception ex)
+			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, "ServiceHelper.MapOutlineToAJAX" );
 				return null;
 			}
-			
+
 		}
 		public static WMS.AJAXSettings MapOutlineToAJAX( WMA.Outline input, string label )
 		{
 
-			if ( input == null || string.IsNullOrWhiteSpace(input.Label ))
+			if ( input == null || string.IsNullOrWhiteSpace( input.Label ) )
 				return null;
 			try
 			{
@@ -1182,7 +1354,6 @@ namespace workIT.Services.API
 			if ( input == null || string.IsNullOrWhiteSpace( input.Name ) )
 				return null;// new MC.TopLevelEntityReference();	//or NULL
 
-			//var externalFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
 
 			var output = new WMA.Outline()
 			{
@@ -1199,55 +1370,191 @@ namespace workIT.Services.API
 			//		a transfer value lopp might be an example
 			//		or the presence of a description
 			// && 
-			if ( (entityType ?? "").ToLower() == "organization" )
-				output.URL = externalFinderSiteURL + entityType + "/" + input.Id;
-
-			else if ( !string.IsNullOrWhiteSpace( entityType ) && ( !input.IsReferenceEntity || !string.IsNullOrWhiteSpace( input.Description ) ) )
-				output.URL = externalFinderSiteURL + entityType + "/" + input.Id;
-
-			else if( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
-				output.URL = input.SubjectWebpage; // externalFinderSiteURL + "resources/" + input.CTID;
-
-			if (input.OwningOrganizationId > 0 && !string.IsNullOrWhiteSpace(input.OrganizationName))
+			if ( ( entityType ?? "" ).ToLower() == "organization" )
 			{
-				output.Provider = new WMA.LabelLink()
+				output.URL = reactFinderSiteURL + entityType + "/" + input.Id + ( !string.IsNullOrWhiteSpace( input.FriendlyName ) ? "/" + input.FriendlyName : "" ); 
+			}
+			else if ( ( entityType ?? "" ).ToLower() == "competencyframework" )
+			{
+				//may not have a description
+				if ( !string.IsNullOrWhiteSpace( input.CredentialRegistryId ) )
+					output.URL = reactFinderSiteURL + entityType + "/" + input.Id;
+				else if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+					output.URL = input.SubjectWebpage;
+			}
+			else if ( !string.IsNullOrWhiteSpace( entityType ) && ( !input.IsReferenceEntity || !string.IsNullOrWhiteSpace( input.Description ) ) )
+			{
+				output.URL = reactFinderSiteURL + entityType + "/" + input.Id + ( !string.IsNullOrWhiteSpace( input.FriendlyName ) ? "/" + input.FriendlyName : "" );
+			}
+			else if ( !string.IsNullOrWhiteSpace( input.CTID ) )    //TODO - use entityTypeId or add entityType
+				output.URL = reactFinderSiteURL + "resources/" + input.CTID;
+			else if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+				output.URL = input.SubjectWebpage; // reactFinderSiteURL + "resources/" + input.CTID;
+
+			if ( ( entityType ?? "" ).ToLower() == "credential" )
+			{
+				if ( input.GetType() == typeof( MC.Credential ) )
+				{
+					var et = ( MC.Credential )input;
+
+					output.Tags.Add( ServiceHelper.MapPropertyLabelLink( et.CredentialTypeEnum, entityType ) );
+
+					if ( et.AudienceType != null && et.AudienceType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceType, entityType ) );
+					}
+					if ( et.AudienceLevelType != null && et.AudienceLevelType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceLevelType, entityType ) );
+					}
+				}
+			}
+			if ( ( entityType ?? "" ).ToLower() == "assessment" )
+			{
+				if ( input.GetType() == typeof( WMP.AssessmentProfile ) )
+				{
+					var et = ( WMP.AssessmentProfile )input;
+					if ( et.AudienceType != null && et.AudienceType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceType, entityType ) );
+					}
+					if ( et.AudienceLevelType != null && et.AudienceLevelType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceLevelType, entityType ) );
+					}
+				}
+			}
+			if ( ( entityType ?? "" ).ToLower() == "learningopportunity" )
+			{
+				if ( input.GetType() == typeof( WMP.LearningOpportunityProfile ) )
+				{
+					//21-08-23 mp - this doesn't work, cannot cast from TLO to lopp
+					var et = ( WMP.LearningOpportunityProfile )input;
+					if ( et.AudienceType != null && et.AudienceType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceType, entityType ) );
+					}
+					if ( et.AudienceLevelType != null && et.AudienceLevelType.Items.Any() )
+					{
+						output.Tags.AddRange( MapPropertyLabelLinks( et.AudienceLevelType, entityType ) );
+					}
+				}
+			}
+			if ( input.OwningOrganizationId > 0 && !string.IsNullOrWhiteSpace( input.OrganizationName ) )
+			{
+				//should this be an Outline?
+				output.Provider = new WMA.Outline()
 				{
 					Label = input.OrganizationName,
-					URL = externalFinderSiteURL + entityType + "organization/" + input.OwningOrganizationId
-				};
+					Meta_Id = input.OwningOrganizationId,
+					URL = reactFinderSiteURL + "organization/" + input.OwningOrganizationId + ( !string.IsNullOrWhiteSpace( input.OrganizationFriendlyName ) ? "/" + input.OrganizationFriendlyName : "" )
+			};
 			}
 			return output;
 
 		}
+		public static List<WMA.Outline> MapToOutline( List<MC.PathwayComponent> list, string entityType = "" )
+		{
 
-		public static WMS.AJAXSettings MapOrganizationRoleProfileToAJAX( List<WMP.OrganizationRoleProfile> input, string label )
+			if ( list == null || !list.Any() )
+				return null;
+			var output = new List<WMA.Outline>();
+
+			foreach ( var input in list )
+			{
+				var item = new WMA.Outline()
+				{
+					Label = input.Name,
+					//URL = input.SourceData,
+					Description = input.Description,
+					//CTID = input.CTID,
+					//EntityTypeId = input.EntityTypeId,
+				};
+				//NO URL for now
+				//if ( !string.IsNullOrWhiteSpace( entityType ) && ( !input.IsReferenceEntity || !string.IsNullOrWhiteSpace( input.Description ) ) )
+				//	item.URL = reactFinderSiteURL + entityType + "/" + input.Id;
+
+				//else if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+				//	item.URL = input.SubjectWebpage; // reactFinderSiteURL + "resources/" + input.CTID;
+
+
+				output.Add( item );
+			}
+
+			return output;
+
+		}
+
+		public static WMS.AJAXSettings MapOrganizationRoleProfileToAJAX( int currentOrgId, List<WMP.OrganizationRoleProfile> input, string label )
 		{
 
 			if ( input == null || !input.Any() )
 				return null;
 			try
 			{
-				var list = new List<MC.TopLevelEntityReference>();
+				//21-06-15
+				//this should be mapped to an Outline
+				var output = new List<WMA.Outline>();
 				foreach ( var item in input )
 				{
-					var tlo = MapToEntityReference( item );
-					if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Name ) )
+					var orp = new WMA.Outline()
 					{
-						list.Add( tlo );
+					};
+					//dept/suborg will be participant
+					if ( item.ParticipantAgent != null && item.ParticipantAgent.Id > 0 && item.ParticipantAgent.Id != currentOrgId )
+					{
+						orp.Label = item.ParticipantAgent.Name;
+						orp.Description = item.ParticipantAgent.Description;
+						orp.Meta_Id = item.ParticipantAgent.Id;
+						orp.Image = item.ParticipantAgent.Image;
+
+						if ( string.IsNullOrEmpty( item.ParticipantAgent.CTID ) )
+						{
+							//21-06-15 mparsons - reference orgs can have data. In this context (dept/sub) perhaps not
+							orp.URL = item.ParticipantAgent.SubjectWebpage;
+						}
+						else
+						{
+							orp.URL = reactFinderSiteURL + string.Format( "organization/{0}", item.ParticipantAgent.Id, item.ParticipantAgent.FriendlyName );
+						}
+						output.Add( orp );
 					}
+					//parent org will be the acting org
+					else if ( item.ActingAgent != null && item.ActingAgent.Id > 0 && item.ActingAgent.Id != currentOrgId )
+					{
+						orp.Label = item.ActingAgent.Name;
+						orp.Description = item.ActingAgent.Description;
+						orp.Meta_Id = item.ActingAgent.Id;
+						orp.Image = item.ActingAgent.Image;
+
+						if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
+						{
+							//21-06-15 mparsons - reference orgs can have data. In this context (dept/sub) perhaps not
+							orp.URL = item.ActingAgent.SubjectWebpage;
+						}
+						else
+						{
+							orp.URL = reactFinderSiteURL + string.Format( "organization/{0}/{1}", item.ActingAgent.Id, item.ActingAgent.FriendlyName );
+						}
+						output.Add( orp );
+					}
+
 				}
-				if ( !list.Any() )
+				if ( !output.Any() )
 					return null;
-				//
-				var output = new WMS.AJAXSettings()
-				{
-					//Type=null,
-					Label = string.Format( label, input.Count ),
-					Total = input.Count
-				};
-				List<object> obj = list.Select( f => ( object )f ).ToList();
-				output.Values = obj;
-				return output;
+				//skip relationship, as will have a heading
+				//var work = ServiceHelper.MapOrganizationRoleProfileToOutline( input, 0 );
+				var output2 = ServiceHelper.MapOutlineToAJAX( output, "" );
+				return output2;
+				//var output = new WMS.AJAXSettings()
+				//{
+				//	//Type=null,
+				//	Label = string.Format( label, input.Count ),
+				//	Total = input.Count
+				//};
+				//List<object> obj = list.Select( f => ( object )f ).ToList();
+				//output.Values = obj;
+				//return output;
 			}
 			catch ( Exception ex )
 			{
@@ -1293,7 +1600,7 @@ namespace workIT.Services.API
 			}
 			//actually reference orgs can have detail pages
 			if ( !string.IsNullOrWhiteSpace( output.CTID ) && output.Id > 0 )
-				output.DetailURL = externalFinderSiteURL + "organization/" + output.Id;
+				output.DetailURL = reactFinderSiteURL + "organization/" + output.Id;
 			else
 				output.DetailURL = input.ActingAgent.SubjectWebpage;
 			//
@@ -1312,7 +1619,7 @@ namespace workIT.Services.API
 			{
 				var qv = new WMA.QuantitativeValue()
 				{
-					Label=item.Label,
+					Label = item.Label,
 					Description = item.Description
 				};
 				if ( item.Value != 0 )
@@ -1328,11 +1635,14 @@ namespace workIT.Services.API
 				{
 					if ( !string.IsNullOrWhiteSpace( item.UnitText ) )
 					{
-						var code = CodesManager.GetCurrencyCode( qv.UnitText );
+						var code = CodesManager.GetCurrencyItem( qv.UnitText );
 						if ( code != null && code.NumericCode > 0 )
-						{
-							qv.CurrencySymbol = code.HtmlCodes;
+						{							
 							qv.UnitText = code.Currency;
+							if ( code.Currency == "USD" )
+								qv.CurrencySymbol = "$";
+							else
+								qv.CurrencySymbol = code.HtmlCodes;
 						}
 					}
 				} else
@@ -1358,6 +1668,7 @@ namespace workIT.Services.API
 				return null;
 			}
 			var output = new List<WMA.ConditionManifest>();
+			var displayAdditionalInfo = UtilityManager.GetAppKeyValue( "DisplayAdditionalInformationForManifests", false );
 
 			foreach ( var item in input )
 			{
@@ -1370,7 +1681,11 @@ namespace workIT.Services.API
 					Description = item.Description,
 					SubjectWebpage = item.SubjectWebpage,
 					CTID = item.CTID,
+					EntityLastUpdated = item.LastUpdated,
 					//Meta_LastUpdated = item.LastUpdated
+					CredentialRegistryURL = RegistryServices.GetResourceUrl( item.CTID ),
+					DisplayAdditionalInformation = displayAdditionalInfo,
+					RegistryData = ServiceHelper.FillRegistryData( item.CTID, "Condition Manifest" )
 
 				};
 				//condition profiles
@@ -1394,6 +1709,7 @@ namespace workIT.Services.API
 			{
 				return null;
 			}
+			var displayAdditionalInfo= UtilityManager.GetAppKeyValue( "DisplayAdditionalInformationForManifests", false );
 			var output = new List<WMA.CostManifest>();
 			foreach ( var item in input )
 			{
@@ -1408,7 +1724,10 @@ namespace workIT.Services.API
 					StartDate = item.StartDate,
 					EndDate = item.EndDate,
 					CTID = item.CTID,
-					Meta_LastUpdated = item.LastUpdated
+					EntityLastUpdated = item.LastUpdated,
+					CredentialRegistryURL = RegistryServices.GetResourceUrl( item.CTID ),
+					DisplayAdditionalInformation= displayAdditionalInfo,
+					RegistryData = ServiceHelper.FillRegistryData( item.CTID, "Cost Manifest" )
 				};
 				//CostProfiles
 				if ( item.EstimatedCost != null && item.EstimatedCost.Any() )
@@ -1451,8 +1770,6 @@ namespace workIT.Services.API
 
 			if ( input == null || string.IsNullOrWhiteSpace( input.Description ) )
 				return null;
-
-			//var externalFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
 
 			var output = new ME.CostProfile()
 			{
@@ -1499,7 +1816,7 @@ namespace workIT.Services.API
 			foreach ( var item in input )
 			{
 				var tlo = MapToConditionProfile( item, searchType );
-				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Description ) )
+				if ( tlo != null && ( !string.IsNullOrWhiteSpace( tlo.Name ) || !string.IsNullOrWhiteSpace( tlo.Description ) ))
 				{
 					output.Add( tlo );
 				}
@@ -1512,13 +1829,13 @@ namespace workIT.Services.API
 		public static WMA.ConditionProfile MapToConditionProfile( WMP.ConditionProfile input, string searchType )
 		{
 
-			if ( input == null || string.IsNullOrWhiteSpace( input.Description ) )
+			if ( input == null || ( string.IsNullOrWhiteSpace(input.Name) && string.IsNullOrWhiteSpace( input.Description ) ))
 				return null;
-
-			//var externalFinderSiteURL = UtilityManager.GetAppKeyValue( "baseFinderSiteURL" );
 
 			var output = new WMA.ConditionProfile()
 			{
+				Meta_ProfileType = !string.IsNullOrWhiteSpace(input.ConnectionProfileType) ? input.ConnectionProfileType : input.ConnectionProfileTypeId.ToString(),
+				Meta_Id = input.Id,
 				Name = input.ProfileName,
 				SubjectWebpage = input.SubjectWebpage,
 				Description = input.Description,
@@ -1528,7 +1845,7 @@ namespace workIT.Services.API
 				CreditUnitTypeDescription = input.CreditUnitTypeDescription,
 				SubmissionOfDescription = input.SubmissionOfDescription,
 			};
-			if ( !string.IsNullOrWhiteSpace(input.DateEffective ))
+			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
 				output.DateEffective = input.DateEffective;
 			//only return if > 0
 			if ( input.MinimumAge > 0 )
@@ -1539,20 +1856,24 @@ namespace workIT.Services.API
 				output.YearsOfExperience = input.YearsOfExperience;
 
 			//
-			if ( input.AssertedBy != null && !string.IsNullOrWhiteSpace(input.AssertedBy.Name))
+			if ( input.AssertedBy != null && !string.IsNullOrWhiteSpace( input.AssertedBy.Name ) )
 			{
 				var ab = ServiceHelper.MapToOutline( input.AssertedBy, "organization" );
 				output.AssertedBy = ServiceHelper.MapOutlineToAJAX( ab, "Asserted by {0} Organization(s)" );
 			}
 			//
-			output.Condition = MapTextValueProfileTextValue( input.Condition ); 
+			output.Condition = MapTextValueProfileTextValue( input.Condition );
+			//CreditValue
 			output.CreditValue = ServiceHelper.MapValueProfile( input.CreditValueList, searchType );
-
+			//
+			if ( input.AlternativeCondition != null && input.AlternativeCondition.Any() )
+			{
+				output.AlternativeCondition = ServiceHelper.MapToConditionProfiles( input.AlternativeCondition, searchType );
+			}
 
 			output.Jurisdiction = MapJurisdiction( input.Jurisdiction );
 			output.ResidentOf = MapJurisdiction( input.ResidentOf );
 			output.SubmissionOf = MapTextValueProfileTextValue( input.SubmissionOf );
-			//CreditValue
 
 			//CommonCosts
 			output.CommonCosts = MapCostManifests( input.CommonCosts, searchType );
@@ -1590,10 +1911,17 @@ namespace workIT.Services.API
 				//		output.TargetLearningOpportunity.Add( MapToEntityReference( target, "learningopportunity" ) );
 				//}
 			}
+
+			//21-09-21 mp - TargetCompetencies was only being used by the import, use RequiresCompetenciesFrameworks
+			if ( input.RequiresCompetenciesFrameworks != null && input.RequiresCompetenciesFrameworks.Any() )
+			{
+				output.TargetCompetency = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Requires {#} Competenc{ies}", input.RequiresCompetenciesFrameworks );
+			}
+			
 			return output;
 
 		}
-		
+
 		//
 		public static List<WMA.ConditionProfile> AppendConditions( List<WMA.ConditionProfile> input, List<WMA.ConditionProfile> existing )
 		{
@@ -1606,7 +1934,288 @@ namespace workIT.Services.API
 
 			return existing;
 		}
+		//=================
+		#region QDATA
+		public static List<WMA.AggregateDataProfile> MapToAggregateDataProfile( List<MC.AggregateDataProfile> input, string searchType = "" )
+		{
+			var output = new List<WMA.AggregateDataProfile>();
+			if ( input == null || !input.Any() )
+				return null;
 
+			foreach ( var item in input )
+			{
+				var tlo = MapToAggregateDataProfile( item, searchType );
+				if ( tlo != null && !string.IsNullOrWhiteSpace( tlo.Description ) )
+				{
+					output.Add( tlo );
+				}
+			}
+			if ( !output.Any() )
+				return null;
+
+			return output;
+		}
+		public static WMA.AggregateDataProfile MapToAggregateDataProfile( MC.AggregateDataProfile input, string searchType )
+		{
+
+			if ( input == null || string.IsNullOrWhiteSpace( input.Description ) )
+				return null;
+
+			var output = new WMA.AggregateDataProfile()
+			{
+				Name = input.Name,
+				Description = input.Description,
+				DemographicInformation = input.DemographicInformation,
+				Source = input.Source,
+				Currency = input.Currency,
+				CurrencySymbol = input.CurrencySymbol
+			};
+			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
+				output.DateEffective = input.DateEffective;
+			if ( !string.IsNullOrWhiteSpace( input.ExpirationDate ) )
+				output.ExpirationDate = input.ExpirationDate;
+
+			//only return if > 0
+			if ( input.HighEarnings > 0 )
+				output.HighEarnings = input.HighEarnings;
+			if ( input.LowEarnings > 0 )
+				output.LowEarnings = input.LowEarnings;
+			if ( input.MedianEarnings > 0 )
+				output.MedianEarnings = input.MedianEarnings;
+			if ( input.NumberAwarded > 0 )
+				output.NumberAwarded = input.NumberAwarded;
+			if ( input.PostReceiptMonths > 0 )
+				output.PostReceiptMonths = input.PostReceiptMonths;
+			//job obtained
+			output.JobsObtainedList = MapQuantitativeValue( input.JobsObtained, false );
+			//
+			output.Jurisdiction = MapJurisdiction( input.Jurisdiction );
+
+			//datasets
+			output.RelevantDataSet = MapToDatasetProfile( input.RelevantDataSet, searchType );
+			return output;
+		}
+		public static List<WMA.DataSetProfile> MapToDatasetProfile( List<MQD.DataSetProfile> list, string searchType )
+		{
+
+			if ( list == null || !list.Any() )
+				return null;
+
+			var output = new List<WMA.DataSetProfile>();
+			foreach ( var input in list )
+			{
+				var profile = new WMA.DataSetProfile()
+				{
+					CTID = input.CTID,
+					EntityLastUpdated = input.LastUpdated,
+					Description = input.Description,
+					Name = input.Name,
+					Source = input.Source,
+					DataSuppressionPolicy = input.DataSuppressionPolicy,
+					SubjectIdentification = input.SubjectIdentification,
+					CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID ),
+					RegistryData=null
+					//RegistryData = ServiceHelper.FillRegistryData( input.CTID )
+				};
+				if ( input.DistributionFile != null && input.DistributionFile.Any() )
+				{
+					profile.DistributionFile = input.DistributionFile;
+				}
+				//dataProvider
+				if ( input.DataProvider != null && !string.IsNullOrWhiteSpace( input.DataProvider.Label ) )
+					profile.DataProvider = input.DataProvider;
+				//
+				profile.Jurisdiction = MapJurisdiction( input.Jurisdiction );
+				//profile.InstructionalProgramType = ServiceHelper.MapReferenceFrameworkLabelLink( input.InstructionalProgramType, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+				profile.InstructionalProgramType = ServiceHelper.MapReferenceFramework( input.InstructionalProgramTypes, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
+
+				//about
+				if ( input.About != null && input.About.Any() )
+				{
+					profile.About = input.About;
+				}
+
+				//admin ProcessProfile
+				if ( input.AdministrationProcess.Any() )
+				{
+					profile.AdministrationProcess = ServiceHelper.MapAJAXProcessProfile( "Administration Process", "", input.AdministrationProcess );
+				}
+
+				//dataSetTimePeriod
+				profile.DataSetTimePeriod = MapToDataSetTimeFrame( input.DataSetTimePeriod, searchType );
+
+				output.Add( profile );
+			}
+
+			return output;
+
+		}
+
+		public static List<WMA.DataSetTimeFrame> MapToDataSetTimeFrame( List<MQD.DataSetTimeFrame> list, string searchType )
+		{
+
+			if ( list == null || !list.Any() )
+				return null;
+
+			var output = new List<WMA.DataSetTimeFrame>();
+			foreach ( var input in list )
+			{
+				var profile = new WMA.DataSetTimeFrame()
+				{
+					Description = input.Description,
+					Name = input.Name,
+					StartDate = input.StartDate,
+					EndDate = input.EndDate,
+				};
+				//datasource coverage
+				profile.DataSourceCoverageType = ServiceHelper.MapPropertyLabelLinks( input.DataSourceCoverageType, searchType );
+				profile.DataAttributes = MapToDataProfile( input.DataAttributes, searchType );
+				//
+				output.Add( profile );
+			}
+	
+			return output;
+
+		}
+
+
+		public static List<WMA.DataProfile> MapToDataProfile( List<MQD.DataProfile> list, string searchType )
+		{
+
+			if ( list == null || !list.Any() )
+				return null;
+
+			var output = new List<WMA.DataProfile>();
+			foreach ( var input in list )
+			{
+				if ( input == null )
+					continue;
+
+				var profile = new WMA.DataProfile()
+				{
+					Description = input.Description,
+
+				};
+				profile.AdministrativeRecordType = ServiceHelper.MapPropertyLabelLinks( input.AdministrativeRecordType, searchType );
+
+				//from DataProfileAttributes
+				//if ( input.DataProfileAttributes != null )
+				//{
+				//}
+				profile.Adjustment = input.DataProfileAttributes.Adjustment;
+				//EarningsAmount
+				profile.EarningsAmount = null;
+				if (input.DataProfileAttributes.EarningsAmount != null && input.DataProfileAttributes.EarningsAmount.Any())
+				{
+					profile.EarningsAmount = new List<WMA.MonetaryAmount>();
+					foreach(var item in input.DataProfileAttributes.EarningsAmount )
+					{
+						var ea = new WMA.MonetaryAmount();
+						if ( item == null || !item.HasData() )
+							continue;
+						//
+						ea.Currency = item.Currency;
+						//==> CurrencySymbol assigned in import now
+						if ( !string.IsNullOrWhiteSpace( item.Currency ) )
+						{
+							if ( item.Currency == "USD" )
+								ea.CurrencySymbol = "$";
+						}
+						
+						ea.Description = item.Description;
+						ea.UnitText = item.UnitText;
+						//will zeroes be allowed?
+						if ( item.Value > 0 )
+							ea.Value = item.Value;
+						if ( item.MaxValue > 0 )
+						{
+							ea.MaxValue = item.MaxValue;
+							ea.MinValue = item.MinValue;
+						}
+						profile.EarningsAmount.Add( ea );
+					}
+				}
+				//
+				profile.EarningsDefinition = input.DataProfileAttributes.EarningsDefinition;
+				//EarningsDistribution
+				profile.EarningsDistribution = null;
+				if ( input.DataProfileAttributes.EarningsDistribution != null && input.DataProfileAttributes.EarningsDistribution.Any() )
+				{
+					profile.EarningsDistribution = new List<WMA.MonetaryAmountDistribution>();
+					foreach ( var item in input.DataProfileAttributes.EarningsDistribution )
+					{
+						var ea = new WMA.MonetaryAmountDistribution();
+						if ( item == null || !item.HasData() )
+							continue;
+						//
+						ea.Currency = item.Currency;
+						//==> CurrencySymbol assigned in import now
+						if ( item.Currency == "USD" )
+							ea.CurrencySymbol = "$";
+						//will zeroes be allowed?
+						if ( item.Median > 0 )
+							ea.Median = item.Median;
+						if ( item.Percentile10 > 0 )
+							ea.Percentile10 = item.Percentile10;
+						if ( item.Percentile25 > 0 )
+							ea.Percentile25 = item.Percentile25;
+						if ( item.Percentile75 > 0 )
+							ea.Percentile75 = item.Percentile75;
+						if ( item.Percentile90 > 0 )
+							ea.Percentile90 = item.Percentile90;
+
+						profile.EarningsDistribution.Add( ea );
+					}
+				}
+				//
+				profile.EarningsThreshold = input.DataProfileAttributes.EarningsThreshold;
+				profile.EmploymentDefinition = input.DataProfileAttributes.EmploymentDefinition;
+
+				profile.IncomeDeterminationType = ServiceHelper.MapPropertyLabelLinks( input.IncomeDeterminationType, searchType );
+				profile.WorkTimeThreshold = input.DataProfileAttributes.WorkTimeThreshold;
+
+				//QV
+				profile.DataAvailable = MapQuantitativeValue( input.DataProfileAttributes.DataAvailable, false );
+				profile.DataNotAvailable = MapQuantitativeValue( input.DataProfileAttributes.DataNotAvailable, false );
+
+				profile.DemographicEarningsRate = MapQuantitativeValue( input.DataProfileAttributes.DemographicEarningsRate, true );
+
+				profile.DemographicEmploymentRate = MapQuantitativeValue( input.DataProfileAttributes.DemographicEmploymentRate, true );
+
+				profile.EmploymentRate = MapQuantitativeValue( input.DataProfileAttributes.EmploymentRate, true );
+				profile.HoldersInSet = MapQuantitativeValue( input.DataProfileAttributes.HoldersInSet, false );
+				profile.IndustryRate = MapQuantitativeValue( input.DataProfileAttributes.IndustryRate, false );
+
+				profile.InsufficientEmploymentCriteria = MapQuantitativeValue( input.DataProfileAttributes.InsufficientEmploymentCriteria, false );
+				profile.MeetEmploymentCriteria = MapQuantitativeValue( input.DataProfileAttributes.MeetEmploymentCriteria, false );
+				//---------
+				profile.NonCompleters = MapQuantitativeValue( input.DataProfileAttributes.NonCompleters, false );
+				profile.NonHoldersInSet = MapQuantitativeValue( input.DataProfileAttributes.NonHoldersInSet, false );
+				profile.OccupationRate = MapQuantitativeValue( input.DataProfileAttributes.OccupationRate, false );
+
+				profile.PassRate = MapQuantitativeValue( input.DataProfileAttributes.PassRate, false );
+				profile.RegionalEarningsDistribution = MapQuantitativeValue( input.DataProfileAttributes.RegionalEarningsDistribution, true );
+				//---------
+				profile.RegionalEmploymentRate = MapQuantitativeValue( input.DataProfileAttributes.RegionalEmploymentRate, true );
+				profile.RelatedEmployment = MapQuantitativeValue( input.DataProfileAttributes.RelatedEmployment, false );
+				profile.SubjectExcluded = MapQuantitativeValue( input.DataProfileAttributes.SubjectExcluded, false );
+
+				profile.SubjectsInSet = MapQuantitativeValue( input.DataProfileAttributes.SubjectsInSet, false );
+				profile.SufficientEmploymentCriteria = MapQuantitativeValue( input.DataProfileAttributes.SufficientEmploymentCriteria, false );
+
+				//
+				profile.UnrelatedEmployment = MapQuantitativeValue( input.DataProfileAttributes.UnrelatedEmployment, false );
+				profile.TotalWIOACompleters = MapQuantitativeValue( input.DataProfileAttributes.TotalWIOACompleters, false );
+
+				profile.TotalWIOAParticipants = MapQuantitativeValue( input.DataProfileAttributes.TotalWIOAParticipants, false );
+				profile.TotalWIOAExiters = MapQuantitativeValue( input.DataProfileAttributes.TotalWIOAExiters, false );
+
+				output.Add( profile );
+			}
+			return output;
+
+		}
+		#endregion
 		//
 		/// <summary>
 		/// Get duration profiles and wrap in a ??????
@@ -1645,9 +2254,7 @@ namespace workIT.Services.API
 		{
 			if ( input == null || !input.Any() )
 				return null;
-			var list = new List<WMA.DurationProfile>();
-
-			var outputList = new List<WMS.AJAXSettings>();
+			var outputList = new List<WMA.CredentialDetail>();
 			foreach ( var item in input )
 			{
 				if ( item.EstimatedDuration == null || !item.EstimatedDuration.Any() )
@@ -1656,70 +2263,48 @@ namespace workIT.Services.API
 				var edlist = MapDurationProfiles( item.EstimatedDuration );
 				if ( edlist != null && edlist.Any() )
 				{
-					list.AddRange( edlist );
-					outputList.Add( new WMS.AJAXSettings()
+					outputList.Add( new WMA.CredentialDetail()
 					{
-						Label = item.Name,
-						URL = baseFinderSiteURL + string.Format( "{0}/{1}/{2}", "Credential", item.Id, item.FriendlyName ),
-						Total = edlist.Count(),
-						Values = edlist.Select( f => ( object )f ).ToList()
+						Name = item.Name,
+						Description = item.Description,
+						CTID = item.CTID,
+						URL = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", "Credential", item.Id, item.FriendlyName ),
+						EstimatedDuration = edlist,
+						//clear out stuff to not show
+						RegistryData = null,
+						EntityLastUpdated = item.EntityLastUpdated
+						//oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName )
+						//Values = edlist.Select( f => ( object )f ).ToList()
 					} );
 				}
 			}
 			var output = new WMS.AJAXSettings();
 
-			if ( list != null && list.Any() )
+			if ( outputList != null && outputList.Any() )
 			{
-				output.Label = label;
+				output.Label = "Related Credentials Duration(s)";
 				output.Total = outputList.Count;
 				List<object> obj = outputList.Select( f => ( object )f ).ToList();
 				output.Values = obj;
 			}
 			return output;
 		}
-		public static WMS.AJAXSettings GetAllDurationsOLD( List<WMP.AssessmentProfile> input, string label )
-		{
-			if ( input == null || !input.Any() )
-				return null;
-			var list = new List<WMA.DurationProfile>();
-			
-			var outputList = new List<WMS.AJAXSettings>();
-			foreach ( var item in input )
-			{
-				if ( item.EstimatedDuration == null || !item.EstimatedDuration.Any() )
-					continue;
-
-				var edlist = MapDurationProfiles( item.EstimatedDuration );
-				if ( edlist != null && edlist.Any() )
-				{
-					list.AddRange( edlist );
-					outputList.Add( new WMS.AJAXSettings()
-					{
-						Label = item.Name,
-						URL = baseFinderSiteURL + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName ),
-						Total = edlist.Count(),
-						Values = edlist.Select( f => ( object )f ).ToList()
-					});
-				} 
-			}
-			var output = new WMS.AJAXSettings();
-
-			if ( list != null && list.Any() )
-			{
-				output.Label = label;
-				output.Total = list.Count;
-				List<object> obj = list.Select( f => ( object )f ).ToList();
-				output.Values = obj;
-			}
-			return output;
-		}
+		/// <summary>
+		/// Speciality method to get duration profiles for assessments
+		/// 21-07-12 This should return AjaxSettings with a list of Assessment Outlines, not AjaxSettings
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="label"></param>
+		/// <returns></returns>
 		public static WMS.AJAXSettings GetAllDurations( List<WMP.AssessmentProfile> input, string label )
 		{
 			if ( input == null || !input.Any() )
 				return null;
 			var list = new List<WMA.DurationProfile>();
 
-			var outputList = new List<WMS.AJAXSettings>();
+			var outputListOld = new List<WMS.AJAXSettings>();
+			//var outputList2 = new List<WMA.Outline>();
+			var outputList = new List<WMA.AssessmentDetail>();
 			foreach ( var item in input )
 			{
 				if ( item.EstimatedDuration == null || !item.EstimatedDuration.Any() )
@@ -1729,33 +2314,60 @@ namespace workIT.Services.API
 				if ( edlist != null && edlist.Any() )
 				{
 					list.AddRange( edlist );
-					outputList.Add( new WMS.AJAXSettings()
+					//outputListOld.Add( new WMS.AJAXSettings()
+					//{
+					//	Label = item.Name,
+					//	URL = oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName ),
+					//	Values = edlist.Select( f => ( object )f ).ToList()
+					//} );
+
+					//or outline????
+					//doesn't make sense. Don't have Values for the duration profiles
+					//outputList2.Add( new WMA.Outline()
+					//{
+					//	Label = item.Name,
+					//	URL = oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName ),
+					//	//Values = edlist.Select( f => ( object )f ).ToList()
+					//} );
+					//or asmt????
+					//doesn't make sense. Don't have Values for the duration profiles
+					outputList.Add( new WMA.AssessmentDetail()
 					{
-						Label = item.Name,
-						URL = baseFinderSiteURL + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName ),
-						Total = edlist.Count(),
-						Values = edlist.Select( f => ( object )f ).ToList()
-					} );
+						Name = item.Name,
+						Description = item.Description,
+						CTID = item.CTID,
+						URL = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName ),						
+						EstimatedDuration = edlist,
+						//clear out stuff to not show
+						RegistryData=null,
+						EntityLastUpdated =item.EntityLastUpdated
+						//oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName )
+						//Values = edlist.Select( f => ( object )f ).ToList()
+					} ); ;
+					//			output.AssessmentExample = ServiceHelper.MapPropertyLabelLink( input.AssessmentExample, "Example Data", input.AssessmentExampleDescription );
+
 				}
 			}
 			var output = new WMS.AJAXSettings();
 
-			if ( list != null && list.Any() )
+			if ( outputList != null && outputList.Any() )
 			{
-				output.Label = label;
+				output.Label = "Related Assessments Duration(s)";
 				output.Total = outputList.Count;
 				List<object> obj = outputList.Select( f => ( object )f ).ToList();
 				output.Values = obj;
-			}
-			return output;
+				return output;
+			} else
+				return null;
+			
 		}
 		public static WMS.AJAXSettings GetAllDurations( List<WMP.LearningOpportunityProfile> input, string label )
 		{
 			if ( input == null || !input.Any() )
 				return null;
-			var list = new List<WMA.DurationProfile>();
 
-			var outputList = new List<WMS.AJAXSettings>();
+			var outputList = new List<WMA.LearningOpportunityDetail>();
+			var outputListOld = new List<WMS.AJAXSettings>();
 			foreach ( var item in input )
 			{
 				if ( item.EstimatedDuration == null || !item.EstimatedDuration.Any() )
@@ -1764,26 +2376,40 @@ namespace workIT.Services.API
 				var edlist = MapDurationProfiles( item.EstimatedDuration );
 				if ( edlist != null && edlist.Any() )
 				{
-					list.AddRange( edlist );
-					outputList.Add( new WMS.AJAXSettings()
+					//outputListOld.Add( new WMS.AJAXSettings()
+					//{
+					//	Label = item.Name,
+					//	URL = oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "LearningOpportunity", item.Id, item.FriendlyName ),
+					//	Total = edlist.Count(),
+					//	Values = edlist.Select( f => ( object )f ).ToList()
+					//} );
+					outputList.Add( new WMA.LearningOpportunityDetail()
 					{
-						Label = item.Name,
-						URL = baseFinderSiteURL + string.Format( "{0}/{1}/{2}", "LearningOpportunity", item.Id, item.FriendlyName ),
-						Total = edlist.Count(),
-						Values = edlist.Select( f => ( object )f ).ToList()
-					} );
+						Name = item.Name,
+						Description = item.Description,
+						CTID = item.CTID,
+						URL = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", "LearningOpportunity", item.Id, item.FriendlyName ),
+						EstimatedDuration = edlist,
+						//clear out stuff to not show
+						RegistryData = null,
+						EntityLastUpdated = item.EntityLastUpdated
+						//oldCredentialFinderSite + string.Format( "{0}/{1}/{2}", "Assessment", item.Id, item.FriendlyName )
+						//Values = edlist.Select( f => ( object )f ).ToList()
+					} ); 
 				}
 			}
 			var output = new WMS.AJAXSettings();
 
-			if ( list != null && list.Any() )
+			if ( outputList != null && outputList.Any() )
 			{
-				output.Label = label;
+				output.Label = "Related Learning Opportunities Duration(s)";
 				output.Total = outputList.Count;
 				List<object> obj = outputList.Select( f => ( object )f ).ToList();
 				output.Values = obj;
+				return output;
 			}
-			return output;
+			else
+				return null;
 		}
 		public static List<WMA.DurationProfile> MapDurationProfiles( List<WMP.DurationProfile> input )
 		{
@@ -1794,8 +2420,9 @@ namespace workIT.Services.API
 			foreach ( var item in input )
 			{
 				var tlo = MapDurationProfile( item );
-				if ( tlo != null && ( !string.IsNullOrWhiteSpace( item.DurationSummary )
-			  || !string.IsNullOrWhiteSpace( item.Description ) ) )
+				if ( tlo != null && 
+					( !string.IsNullOrWhiteSpace( item.DurationSummary ) || !string.IsNullOrWhiteSpace( item.Description ) ) 
+				)
 				{
 					output.Add( tlo );
 				}
@@ -1820,7 +2447,7 @@ namespace workIT.Services.API
 				output.DurationSummary = input.ExactDuration.Print();
 			}
 
-			if ( string.IsNullOrWhiteSpace( output.DurationSummary ) )
+			if ( string.IsNullOrWhiteSpace( output.DurationSummary) && string.IsNullOrWhiteSpace( output.Description ) )
 				return null;
 
 			return output;
@@ -1846,6 +2473,11 @@ namespace workIT.Services.API
 					SubjectWebpage = item.SubjectWebpage,
 					Description = item.Description,
 				};
+				if (fap.Name == "Other(Specify)" && !string.IsNullOrWhiteSpace(fap.Description))
+                {
+					fap.Name = fap.Description;
+					fap.Description = "";
+                }
 				fap.FinancialAssistanceType = ServiceHelper.MapPropertyLabelLinks( item.FinancialAssistanceType, searchType, false );
 
 				//provide QV as well in case needed
@@ -1867,7 +2499,7 @@ namespace workIT.Services.API
 					//}
 				}
 				//
-				if ( fap != null && !string.IsNullOrWhiteSpace( fap.Description ) )
+				if ( fap != null && (!string.IsNullOrWhiteSpace( fap.Name ) || !string.IsNullOrWhiteSpace( fap.Description )) )
 				{
 					output.Add( fap );
 				}
@@ -1895,8 +2527,17 @@ namespace workIT.Services.API
 
 		#region Methods for merged requirements and competencies
 		//
-
-		public static void GetAllChildren( MergedConditions requirements, MergedConditions recommendations, ConnectionData connections, MC.Credential credential, WMP.AssessmentProfile assessment, WMP.LearningOpportunityProfile learningOpportunity )
+		/// <summary>
+		/// Get all children for one of credential, assessment or lopp.
+		/// </summary>
+		/// <param name="requirements"></param>
+		/// <param name="recommendations"></param>
+		/// <param name="connections"></param>
+		/// <param name="credential"></param>
+		/// <param name="assessment"></param>
+		/// <param name="learningOpportunity"></param>
+		public static void GetAllChildren( MergedConditions requirements, MergedConditions recommendations, ConnectionData connections, 
+					MC.Credential credential, WMP.AssessmentProfile assessment, WMP.LearningOpportunityProfile learningOpportunity )
 		{
 			credential = credential ?? new MC.Credential();
 			assessment = assessment ?? new WMP.AssessmentProfile();
@@ -1958,25 +2599,61 @@ namespace workIT.Services.API
 
 		//
 
-		public static CompetencyWrapper GetAllCompetencies( WMP.ConditionProfile container )
+		public static CompetencyWrapper GetAllCompetencies( List<WMP.ConditionProfile> containers, bool includeBubbled )
 		{
 			var wrapper = new CompetencyWrapper();
 
-			//Data by framework is reliably populated
-			//.Concat( container.TargetAssessment.SelectMany( m => m.RequiresCompetenciesFrameworks ) )
-			wrapper.RequiresByFramework = container.TargetCredential.SelectMany( m => m.Requires ).SelectMany( m => m.RequiresCompetenciesFrameworks )
-				.Concat( container.TargetLearningOpportunity.SelectMany( m => m.RequiresCompetenciesFrameworks ) )
-				.Where( m => m != null )
-				.ToList();
-			wrapper.AssessesByFramework = container.TargetAssessment.SelectMany( m => m.AssessesCompetenciesFrameworks ).Where( m => m != null ).ToList();
-			wrapper.TeachesByFramework = container.TargetLearningOpportunity.SelectMany( m => m.TeachesCompetenciesFrameworks ).Where( m => m != null ).ToList();
+			//Concatenate all of the frameworks from all of the condition profiles
+			if ( includeBubbled )
+			{
+				wrapper.RequiresByFramework = containers.SelectMany( m => m.RequiresCompetenciesFrameworks )
+					.Concat( containers.SelectMany( m => m.TargetCredential ).SelectMany( m => m.Requires ).SelectMany( m => m.RequiresCompetenciesFrameworks ) )
+					.Concat( containers.SelectMany( m => m.TargetAssessment ).SelectMany( m => m.RequiresCompetenciesFrameworks ) )
+					.Concat( containers.SelectMany( m => m.TargetLearningOpportunity ).SelectMany( m => m.RequiresCompetenciesFrameworks ) )
+					.Where( m => m != null )
+					.ToList();
+			}
+			else
+			{
+				wrapper.RequiresByFramework = containers.SelectMany( m => m.RequiresCompetenciesFrameworks ).Where( m => m != null ).ToList();
+			}
 
-			//Data by competency is not reliably populated, so, instead get it from the frameworks
-			wrapper.Requires = MC.CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.RequiresByFramework );
-			wrapper.Assesses = MC.CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.AssessesByFramework );
-			wrapper.Teaches = MC.CredentialAlignmentObjectFrameworkProfile.FlattenAlignmentObjects( wrapper.TeachesByFramework );
+			//No bubbling for these(?)
+			wrapper.AssessesByFramework = containers.SelectMany( m => m.TargetAssessment ).SelectMany( m => m.AssessesCompetenciesFrameworks ).Where( m => m != null ).ToList();
+			wrapper.TeachesByFramework = containers.SelectMany( m => m.TargetLearningOpportunity ).SelectMany( m => m.TeachesCompetenciesFrameworks ).Where( m => m != null ).ToList();
+
+			//Remove duplicates
+			wrapper.RequiresByFramework = DeduplicateAndMergeFrameworksAndCompetencies( wrapper.RequiresByFramework );
+			wrapper.AssessesByFramework = DeduplicateAndMergeFrameworksAndCompetencies( wrapper.AssessesByFramework );
+			wrapper.TeachesByFramework = DeduplicateAndMergeFrameworksAndCompetencies( wrapper.TeachesByFramework );
 
 			return wrapper;
+		}
+		private static List<MC.CredentialAlignmentObjectFrameworkProfile> DeduplicateAndMergeFrameworksAndCompetencies( List<MC.CredentialAlignmentObjectFrameworkProfile> source )
+		{
+			var result = new List<MC.CredentialAlignmentObjectFrameworkProfile>();
+
+			foreach( var framework in source )
+			{
+				var match = result.FirstOrDefault( m => m.Framework == framework.Framework );
+				if ( match != null )
+				{
+					//now check if there are any competencies frm the current framework not in the matched framework
+					foreach( var competency in framework.Items )
+					{
+						if( match.Items.FirstOrDefault( m => m.TargetNode == competency.TargetNode ) == null )
+						{
+							match.Items.Add( competency );
+						}
+					}
+				}
+				else
+				{
+					result.Add( framework );
+				}
+			}
+
+			return result;
 		}
 		//
 
@@ -2035,17 +2712,17 @@ namespace workIT.Services.API
 				var fo = new WMA.CompetencyFramework();
 				fo.Name = PickText( new List<string>() { framework.FrameworkName, framework.ProfileName, framework.ProfileSummary } );
 				fo.Description = framework.Description;
-				fo.Source = framework.SourceUrl;
+				fo.Source = framework.Framework;
 				//comptencies
-				foreach (var competency in framework.Items)
+				foreach ( var competency in framework.Items)
 				{
 					var comp = new WMA.Competency();
 					comp.CompetencyLabel = PickText( new List<string>() { competency.TargetNodeName, competency.ProfileName } );
-					comp.Description = PickText( new List<string>() { competency.Description, competency.TargetNodeDescription } );
-					if ( comp.CompetencyText == comp.Description)
-					{
-						comp.Description = "";
-					}
+					//comp.Description = PickText( new List<string>() { competency.Description, competency.TargetNodeDescription } );
+					//if ( comp.CompetencyText == comp.Description) //CompetencyText is already set?
+					//{
+					//	comp.Description = "";
+					//}
 				}
 				
 			}
@@ -2064,7 +2741,7 @@ namespace workIT.Services.API
 		}
 		#endregion
 
-		public static WMA.RegistryData FillRegistryData( string ctid )
+		public static WMA.RegistryData FillRegistryData( string ctid, string label = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 			{
@@ -2074,33 +2751,44 @@ namespace workIT.Services.API
 			var envelopeBase = workIT.Utilities.UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
 			var community = workIT.Utilities.UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			var resourceBase = workIT.Utilities.UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
+			var envelopeURL = string.Format( envelopeBase, community, ctid );
+			var resourceURL = string.Format( resourceBase, community, ctid );
+			if ( community != "ce-registry" && UtilityManager.GetAppKeyValue( "usingAssistantForRegistryGets", false ) )//
+			{
+				var assistantAPIUrl = ConfigHelper.GetConfigValue( "assistantAPIUrl", "" );
+				//only include the key if the default community is not ce-registry
+				string todaysKey = UtilityManager.GenerateMD5String( DateTime.Now.ToString( "yyyy-MM-dd" ) );
+				resourceURL = assistantAPIUrl + string.Format( "resources/{0}/?community={1}&apiKey={2}", ctid, community, todaysKey );
+				envelopeURL = assistantAPIUrl + string.Format( "envelopes/{0}/?community={1}&apiKey={2}", ctid, community, todaysKey );
 
+			}
 			var output = new WMA.RegistryData()
 			{
 				CTID = ctid,
 				Envelope = new WMA.LabelLink()
 				{
 					Label= "View Envelope",
-					URL = string.Format( envelopeBase, community, ctid ),
+					URL = envelopeURL, //string.Format( envelopeBase, community, ctid ),
 				},
 				Resource = new WMA.LabelLink()
 				{
 					Label = "View Resource",
-					URL = string.Format( resourceBase, community, ctid ),
+					URL = resourceURL,//string.Format( resourceBase, community, ctid ),
 				},
 			};
-			if ( UtilityManager.GetAppKeyValue( "includeRegistryPayloadWithDetails", false ) )
-			{
-				var registryImport = workIT.Factories.ImportManager.GetByCtid( ctid );
-				if ( registryImport == null || string.IsNullOrWhiteSpace( registryImport.Payload ) )
-				{
+            //not including show hide
+            if ( UtilityManager.GetAppKeyValue( "includeRegistryPayloadWithDetails", false ) )
+            {
+                var registryImport = workIT.Factories.ImportManager.GetByCtid( ctid );
+                if ( registryImport == null || string.IsNullOrWhiteSpace( registryImport.Payload ) )
+                {
 
-				}
-				else
-					output.RawMetadata = registryImport.Payload;
-			}
+                }
+                else
+                    output.RawMetadata = registryImport.Payload;
+            }
 
-			return output;
+            return output;
 		}
 	}
 

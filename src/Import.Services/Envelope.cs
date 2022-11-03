@@ -10,6 +10,11 @@ namespace Import.Services
 {
 	public class Envelope
 	{
+		public Envelope()
+		{
+			NodeHeader = new NodeHeader();
+		}
+		
 		[JsonProperty( PropertyName = "envelope_type" )]
 		public string EnvelopeType { get; set; }
 
@@ -17,7 +22,7 @@ namespace Import.Services
 		public string EnvelopeVersion { get; set; }
 
         [JsonProperty( PropertyName = "envelope_ceterms_ctid" )]
-        public string EnvelopeCetermsCtid { get; set; }
+        public string EnvelopeCtid { get; set; }
 
         [JsonProperty( PropertyName = "envelope_ctdl_type" )]
         public string EnvelopeCtdlType { get; set; }
@@ -49,6 +54,12 @@ namespace Import.Services
 
 		[JsonProperty( PropertyName = "published_by" )]
 		public string documentPublishedBy { get; set; }
+		[JsonProperty( PropertyName = "node_headers" )]
+		public NodeHeader NodeHeader { get; set; }
+		
+		[JsonProperty( PropertyName = "changed" )]
+		public bool Changed { get; set; }
+		
 	}
 	public class UpdateEnvelope : Envelope
 	{
@@ -63,6 +74,7 @@ namespace Import.Services
 
 	public class ReadEnvelope : Envelope
 	{
+
 		[JsonProperty( PropertyName = "envelope_id" )]
 		public string EnvelopeIdentifier { get; set; }
 
@@ -156,6 +168,42 @@ namespace Import.Services
 
 		[JsonProperty( PropertyName = "delete_token_public_key" )]
 		public string ResourcePublicKey { get; set; }
+
+	}
+
+	public class RegistryResponse
+	{
+		[JsonProperty( PropertyName = "Content" )]
+		public object content { get; set; }
+
+		[JsonProperty( PropertyName = "Headers" )]
+		public object Headers { get; set; }
+
+		[JsonProperty( PropertyName = "IsSuccessStatusCode" )]
+		public bool IsSuccessStatusCode { get; set; }
+
+		[JsonProperty( PropertyName = "ReasonPhrase" )]
+		public string ReasonPhrase { get; set; }
+
+		[JsonProperty( PropertyName = "RequestMessage" )]
+		public object RequestMessage { get; set; }
+
+		[JsonProperty( PropertyName = "StatusCode" )]
+		public string StatusCode { get; set; }
+
+		[JsonProperty( PropertyName = "Version" )]
+		public string Version { get; set; }
+
+	}
+
+
+	public class RegistryResponseContent
+	{
+		[JsonProperty( PropertyName = "errors" )]
+		public List<string> Errors { get; set; }
+
+		[JsonProperty( PropertyName = "json_schema" )]
+		public List<string> JsonSchema { get; set; }
 
 	}
 }

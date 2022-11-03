@@ -374,17 +374,19 @@ namespace workIT.Factories
 
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-			
+
 			to.Name = from.Name;
+			to.FriendlyName = FormatFriendlyTitle( from.Name );
+
 			to.Description = from.Description;
 
 			to.SubjectWebpage = from.SubjectWebpage;
 			to.CTID = from.CTID;
-            to.EntityStateId = (int)from.EntityStateId;
+			to.EntityStateId = ( int ) from.EntityStateId;
 			// 16-06-15 mp - always include credential type
 			//can be null for a pending record
 			to.CredentialTypeId = ( int ) ( from.CredentialTypeId ?? 0 );
-			if ( to.CredentialTypeId  > 0)
+			if ( to.CredentialTypeId > 0 )
 			{
 				CodeItem ct = CodesManager.Codes_PropertyValue_Get( to.CredentialTypeId );
 				if ( ct != null && ct.Id > 0 )
@@ -393,9 +395,9 @@ namespace workIT.Factories
 					to.CredentialTypeSchema = ct.SchemaName;
 				}
 
-                to.CredentialTypeEnum = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE );
-                to.CredentialTypeEnum.Items.Add( new EnumeratedItem() { Id = to.CredentialTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
-            }
+				to.CredentialTypeEnum = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE );
+				to.CredentialTypeEnum.Items.Add( new EnumeratedItem() { Id = to.CredentialTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+			}
 
 			if ( from.ImageUrl != null && from.ImageUrl.Trim().Length > 0 )
 				to.Image = from.ImageUrl;
@@ -405,25 +407,29 @@ namespace workIT.Factories
 			if ( IsValidDate( from.Created ) )
 				to.Created = ( DateTime ) from.Created;
 
-			to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
-
-			//to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-            to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-            to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-
-            //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-            to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-            to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-
-			to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
-
-			to.Subject = Entity_ReferenceManager.GetAllSubjects( to.RowId );
-
-			to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
 
 			//Added these because they were needed on the detail page - NA 6/1/2017
+			//try to cache this, so don't look up 100+ times for Nocti
 			to.OwningAgentUid = from.OwningAgentUid ?? Guid.Empty;
 			to.OwningOrganization = OrganizationManager.GetForSummary( to.OwningAgentUid );
+
+			//21-06-29 mp - minimize data collected - skipping
+			//to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
+
+			////to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+			//         to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+			//         to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+
+			//         //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+			//         to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+			//         to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+			//to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+
+			//to.Subject = Entity_ReferenceManager.GetAllSubjects( to.RowId );
+
+			//to.Keyword = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+
 
 		}
 

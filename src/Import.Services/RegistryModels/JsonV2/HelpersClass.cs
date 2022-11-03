@@ -5,34 +5,6 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-    public class GraphContainer
-    {
-		
-		public GraphContainer()
-        {
-            Context = "https://credreg.net/ctdlasn/schema/context/json";
-        }
-        [JsonProperty( "@context" )]
-        public string Context { get; set; }
-
-        [JsonProperty( "@id" )]
-        public string CtdlId { get; set; }
-
-        /// <summary>
-        /// Main graph object
-        /// </summary>
-        [JsonProperty( "@graph" )]
-        public List<object> Graph { get; set; } = new List<object>();
-
-        [Newtonsoft.Json.JsonIgnore]
-        [JsonProperty( "@type" )]
-        public string Type { get; set; }
-
-        [Newtonsoft.Json.JsonIgnore]
-        [JsonProperty( "ceterms:ctid" )]
-        public string CTID { get; set; }
-
-    }
 
     /*
 	public class GraphContainer2

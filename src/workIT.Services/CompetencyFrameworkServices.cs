@@ -63,12 +63,12 @@ namespace workIT.Services
 						if ( messages.Count > 0 )
 							status.AddWarningRange( messages );
 					}
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
 				}
 				else
 				{
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -94,6 +94,13 @@ namespace workIT.Services
 			entity = CompetencyFrameworkManager.Get( id );
 			return entity;
 		}
+		//
+
+		//public static string GetCTIDFromID( int id )
+		//{
+		//	return CompetencyFrameworkManager.GetCTIDFromID( id );
+		//}
+		//
 
 		public static List<MPM.CompetencyFrameworkSummary> CompetencyFrameworkSearch( MainSearchInput data, ref int pTotalRows )
 		{
@@ -113,7 +120,7 @@ namespace workIT.Services
 						Id = item.Id,
 						Name = item.Name,
 						Description = item.Description,
-						SourceUrl = item.SourceUrl,
+						Source = item.SourceUrl,
 						CTID = item.CTID,
 						OwningOrganization = item.OwnerOrganizationId == 0 ? null : new Organization() { Id = item.OwnerOrganizationId, Name=item.PrimaryOrganizationName} 
 						//EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
@@ -832,6 +839,7 @@ namespace workIT.Services
 		}
 		//
 
+		/*
 		/// <summary>
 		/// Update totals related to competency frameworks
 		/// </summary>
@@ -844,8 +852,10 @@ namespace workIT.Services
 			try
 			{
 				var total = GetCompetencyFrameworkTermTotal( null );
-				if ( total  > 0 )
-					mgr.UpdateEntityTypes(10, total ,false);
+				if ( total > 0 )
+				{
+					mgr.UpdateEntityTypes( 10, total, false );
+				}
 				else
 				{
 
@@ -964,26 +974,7 @@ namespace workIT.Services
 			return resultData.extra.TotalResults;
 		}
 		//
-		public class AsyncDataSet
-		{
-			public List<AsyncDataItem> Items { get; set; }
-			public bool AllFinished { get { return Items.Where(m => m.InProgress).Count() == 0; } }
-		}
-		//
-
-		public class AsyncDataItem
-		{
-			public AsyncDataItem()
-			{
-				CompetencyCTIDs = new List<string>();
-				ResultItems = new List<string>();
-			}
-			public string FrameworkCTID { get; set; }
-			public List<string> CompetencyCTIDs { get; set; }
-			public List<string> ResultItems { get; set; }
-			public bool InProgress { get; set; }
-		}
-		//
+		*/
 
 		private static List<JObject> DoSimpleQuery(JObject queryData, int skip, int take, string orderBy, bool orderDescending, ref int totalResults, string referrer = null, string clientIP = null)
 		{

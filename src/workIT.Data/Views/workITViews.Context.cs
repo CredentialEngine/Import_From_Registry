@@ -49,8 +49,6 @@ namespace workIT.Data.Views
         public virtual DbSet<Entity_FrameworkItemSummary> Entity_FrameworkItemSummary { get; set; }
         public virtual DbSet<Entity_FrameworkCIPCodeSummary> Entity_FrameworkCIPCodeSummary { get; set; }
         public virtual DbSet<Entity_FrameworkIndustryCodeSummary> Entity_FrameworkIndustryCodeSummary { get; set; }
-        public virtual DbSet<Entity_ReferenceFramework_Summary> Entity_ReferenceFramework_Summary { get; set; }
-        public virtual DbSet<Entity_ReferenceFramework_Totals> Entity_ReferenceFramework_Totals { get; set; }
         public virtual DbSet<SiteTotalsSummary> SiteTotalsSummaries { get; set; }
         public virtual DbSet<CodesProperty_Counts_ByEntity> CodesProperty_Counts_ByEntity { get; set; }
         public virtual DbSet<CodesProperty_Summary> CodesProperty_Summary { get; set; }
@@ -64,5 +62,7 @@ namespace workIT.Data.Views
         public virtual DbSet<Query_IndianaCredentials> Query_IndianaCredentials { get; set; }
         public virtual DbSet<Organization_CombinedConnections> Organization_CombinedConnections { get; set; }
         public virtual DbSet<Organization_Summary> Organization_Summary { get; set; }
+        public virtual DbSet<Entity_ReferenceFramework_Totals> Entity_ReferenceFramework_Totals { get; set; }
+        public virtual DbSet<Entity_ReferenceFramework_Summary> Entity_ReferenceFramework_Summary { get; set; }
     }
 }

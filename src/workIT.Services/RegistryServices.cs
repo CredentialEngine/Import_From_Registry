@@ -16,6 +16,8 @@ namespace workIT.Services
 {
 	public class RegistryServices
 	{
+
+		#region Get methods
 		public static string GetRegistryData( string ctid = "", string uri = "" )
 		{
 			string ctdlType = "";
@@ -68,14 +70,26 @@ namespace workIT.Services
 
 		public static string GetResourceUrl( string ctid, string community = "" )
 		{
+
 			if ( string.IsNullOrWhiteSpace( community ) )
 			{
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			}
 			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
+			if (community != "ce-registry" && UtilityManager.GetAppKeyValue( "usingAssistantForRegistryGets", false ) )
+			{
+				var assistantAPIUrl = ConfigHelper.GetConfigValue( "assistantAPIUrl", "" );
+				//only include the key if the default community is not ce-registry
+				string todaysKey = UtilityManager.GenerateMD5String( DateTime.Now.ToString( "yyyy-MM-dd" ) );
+				string registryUrl = assistantAPIUrl + string.Format("resources/{0}/?community={1}&apiKey={2}", ctid, community, todaysKey );
+				return registryUrl;
+			} else
+            {
+				string registryUrl = string.Format( serviceUri, community, ctid );
+				return registryUrl;
+			}
 
-			string registryUrl = string.Format( serviceUri, community, ctid );
-			return registryUrl;
+			
 		}
 
 		public static string GetGraphUrl( string ctid, string community = "" )
@@ -240,6 +254,9 @@ namespace workIT.Services
 				}
 			}
 		}
+
+		#endregion
+
 	}
 
 	public class RegistryObject

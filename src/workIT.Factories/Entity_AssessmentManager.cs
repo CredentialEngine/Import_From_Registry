@@ -224,7 +224,7 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returnsThisEntity
-		public static List<AssessmentProfile> GetAll( Guid parentUid, int relationshipTypeId = 1 )
+		public static List<AssessmentProfile> GetAll( Guid parentUid, int relationshipTypeId = 1, bool includingCosts = false, bool includingCompetencies = false )
 		{
 			List<AssessmentProfile> list = new List<AssessmentProfile>();
 			AssessmentProfile entity = new AssessmentProfile();
@@ -253,7 +253,7 @@ namespace workIT.Factories
                             if ( item.Assessment != null && item.Assessment.EntityStateId > 1 )
                             {
                                 AssessmentManager.MapFromDB_Basic( item.Assessment, entity,
-                                true );//includingCosts-not sure
+                                true,includingCosts,includingCompetencies );//includingCosts-not sure
                                        //add competencies
                                 AssessmentManager.MapFromDB_Competencies( entity );
                                 list.Add( entity );
@@ -297,7 +297,9 @@ namespace workIT.Factories
 						//to.Credential = from.Credential;
 						entity.Assessment = new AssessmentProfile();
 						AssessmentManager.MapFromDB_Basic( from.Assessment, entity.Assessment,
-								false //includeCosts - propose to use for credential editor
+								false
+								,false//includeCosts - propose to use for credential editor
+								,false//include competencies
 								);
 
 						if ( IsValidDate( from.Created ) )

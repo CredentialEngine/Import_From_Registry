@@ -79,8 +79,6 @@
         <EntityTypeShape EntityType="workITModel.OccupationProfile" Width="1.5" PointX="11.75" PointY="5.75" />
         <EntityTypeShape EntityType="workITModel.Organization" Width="1.5" PointX="12" PointY="77.375" />
         <EntityTypeShape EntityType="workITModel.Pathway" Width="1.5" PointX="3" PointY="58.625" />
-        <EntityTypeShape EntityType="workITModel.Pathway_ComponentCondition" Width="1.5" PointX="11.25" PointY="91.125" />
-        <EntityTypeShape EntityType="workITModel.PathwayComponent" Width="1.5" PointX="9" PointY="80" />
         <EntityTypeShape EntityType="workITModel.PathwaySet" Width="1.5" PointX="11.75" PointY="11.75" />
         <EntityTypeShape EntityType="workITModel.Reference_Framework" Width="1.5" PointX="0.75" PointY="81.375" />
         <EntityTypeShape EntityType="workITModel.Reference_FrameworkItem" Width="1.5" PointX="3" PointY="80.75" />
@@ -99,7 +97,6 @@
         <AssociationConnector Association="workITModel.FK_Entity_AgentRelationship_Codes_CredentialAgentRelationship" />
         <AssociationConnector Association="workITModel.FK_Entity_Codes_EntityType" />
         <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_Codes_PathwayComponentRelationship" />
-        <AssociationConnector Association="workITModel.FK_PathwayComponent_Codes_PathwayComponentType" />
         <AssociationConnector Association="workITModel.FK_Entity_ProcessProfile_Codes_ProcessProfileType" />
         <AssociationConnector Association="workITModel.FK_Codes_TagValue_Codes_TagCategory" />
         <AssociationConnector Association="workITModel.FK_Reference_FrameworkItem_Codes_PropertyCategory" />
@@ -154,7 +151,6 @@
         <AssociationConnector Association="workITModel.FK_EntityTVP_Entity" />
         <AssociationConnector Association="workITModel.FK_Entity_CostProfileItem_Entity_CostProfile" />
         <AssociationConnector Association="workITModel.FK_Entity_HasPathway_Pathway" />
-        <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent" />
         <AssociationConnector Association="workITModel.FK_GeoCoordinate_Entity_JurisdictionProfile" />
         <AssociationConnector Association="workITModel.FK_Entity_LearningOpportunity_LearningOpportunity" />
         <AssociationConnector Association="workITModel.FK_Entity_Organization_Organization" />
@@ -163,7 +159,6 @@
         <AssociationConnector Association="workITModel.FK_EntityTVP_TransferValueProfile" />
         <AssociationConnector Association="workITModel.FK_Entity_VerificationStatus_Entity_VerificationProfile" />
         <AssociationConnector Association="workITModel.FK_Import_Message_Import_Staging" />
-        <AssociationConnector Association="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" />
         <AssociationConnector Association="workITModel.FK_Reference_FrameworkItem_Reference_Framework" />
         <AssociationConnector Association="workITModel.FK_TransferIntermediary_TransferValue_TransferIntermediary" />
         <AssociationConnector Association="workITModel.FK_TransferIntermediary_TransferValue_TransferValueProfile" />
@@ -173,6 +168,30 @@
         <AssociationConnector Association="workITModel.FK_EntityCF_Entity" />
         <EntityTypeShape EntityType="workITModel.Collection_Competency" Width="1.5" PointX="5.25" PointY="112.75" />
         <AssociationConnector Association="workITModel.FK_Collection_Competency_Collection" />
+        <EntityTypeShape EntityType="workITModel.HoldersProfile" Width="1.5" PointX="14.375" PointY="10.75" />
+        <EntityTypeShape EntityType="workITModel.EarningsProfile" Width="1.5" PointX="12" PointY="37.875" />
+        <EntityTypeShape EntityType="workITModel.EmploymentOutcomeProfile" Width="1.5" PointX="12" PointY="50.25" />
+        <EntityTypeShape EntityType="workITModel.Entity_EarningsProfile" Width="1.5" PointX="14.25" PointY="60.75" />
+        <EntityTypeShape EntityType="workITModel.Entity_EmploymentOutcomeProfile" Width="1.5" PointX="14.25" PointY="57.75" />
+        <EntityTypeShape EntityType="workITModel.Entity_HoldersProfile" Width="1.5" PointX="16.625" PointY="41.625" />
+        <AssociationConnector Association="workITModel.FK_Entity_EarningsProfile_EarningsProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_EmploymentOutcomeProfile_EmploymentOutcomeProfile" />
+        <AssociationConnector Association="workITModel.FK_Entity_EarningsProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_EmploymentOutcomeProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_Entity" />
+        <AssociationConnector Association="workITModel.FK_Entity_HoldersProfile_HoldersProfile" />
+        <EntityTypeShape EntityType="workITModel.Counts_SiteTotals" Width="1.5" PointX="0.75" PointY="15.75" />
+        <EntityTypeShape EntityType="workITModel.Counts_EntityMonthlyTotals" Width="1.5" PointX="11.375" PointY="15.75" />
+        <EntityTypeShape EntityType="workITModel.Counts_EntityStatistic" Width="1.5" PointX="3" PointY="45.125" />
+        <AssociationConnector Association="workITModel.FK_Counts_EntityStatistic_Codes_EntityTypes" />
+        <EntityTypeShape EntityType="workITModel.Counts_RegionTotals" Width="1.5" PointX="13.375" PointY="15.75" />
+        <EntityTypeShape EntityType="workITModel.Pathway_ComponentCondition" Width="1.5" PointX="11.25" PointY="101" />
+        <EntityTypeShape EntityType="workITModel.PathwayComponent" Width="1.5" PointX="9" PointY="99.75" />
+        <AssociationConnector Association="workITModel.FK_PathwayComponent_Codes_PathwayComponentType" />
+        <AssociationConnector Association="workITModel.FK_Entity_HasPathwayComponent_PathwayComponent" />
+        <AssociationConnector Association="workITModel.FK_Pathway_ComponentCondition_PathwayComponent" />
+        <EntityTypeShape EntityType="workITModel.Collection_CollectionMember" Width="1.5" PointX="5.25" PointY="166" />
+        <AssociationConnector Association="workITModel.FK_Collection_CollectionMember_Collection" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

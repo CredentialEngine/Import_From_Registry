@@ -48,9 +48,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceasn:hasChild" )]
 		public List<string> HasChild { get; set; } = new List<string>();
 
-		/// <summary>
-		/// An indicator whether or not the pathway component being described is required for successful completion of its parent component
-		/// </summary>
+		///// <summary>
+		///// An indicator whether or not the pathway component being described is required for successful completion of its parent component
+		///// </summary>
 		//[JsonProperty( PropertyName = "ceterms:requiredForParentCompletion" )]
 		//public bool RequiredForParentCompletion { get; set; }
 
@@ -62,7 +62,7 @@ namespace RA.Models.JsonV2
 		public List<ComponentCondition> HasCondition { get; set; }
 
 
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
 		/// <summary>
@@ -112,8 +112,14 @@ namespace RA.Models.JsonV2
 		/// This property indicates a simple or suggested ordering of resources; if a required ordering is intended, use ceterms:prerequisite instead.
 		/// ceterms:ComponentCondition
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:preceeds" )]
-		public List<string> Preceeds { get; set; }
+		[JsonProperty( PropertyName = "ceterms:precedes" )]
+		public List<string> Precedes { get; set; }
+
+		/// <summary>
+		/// Component is preceded by the referenced components
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:precededBy" )]
+		public List<string> PrecededBy { get; set; }
 
 		/// <summary>
 		/// Resource(s) that is required as a prior condition to this resource.
@@ -128,6 +134,13 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:programTerm" )]
 		public LanguageMap ProgramTerm { get; set; }
+
+		/// <summary>
+		/// Indicates the resource for which a pathway component or similar proxy resource is a stand-in.
+		/// URI
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:proxyFor" )]
+		public string ProxyFor { get; set; }
 
 		/// <summary>
 		/// URL to structured data representing the resource.
@@ -204,5 +217,95 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:targetComponent" )]
 		public List<string> TargetComponent { get; set; } = new List<string>();
+
+		/// <summary>
+		/// URI to Concept
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:logicalOperator" )]
+		public string LogicalOperator { get; set; }
+
+		/// <summary>
+		/// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
+		/// ceterms:ComponentCondition
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasCondition" )]
+		public List<ComponentCondition> HasCondition { get; set; }
+
+
+		/// <summary>
+		/// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
+		/// ceterms:ComponentCondition
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasConstraint" )]
+		public List<Constraint> HasConstraint{ get; set; }
+
+	}
+
+	public class Constraint
+	{
+		public Constraint()
+		{
+			Type = "ceterms:Constraint";
+		}
+
+		[JsonProperty( "@type" )]
+		public string Type { get; set; }
+
+		/// <summary>
+		/// Constraint Name
+		/// Optional
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:name" )]
+		public LanguageMap Name { get; set; } = null;
+
+
+		/// <summary>
+		/// Constraint Description 
+		/// Optional
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:description" )]
+		public LanguageMap Description { get; set; }
+
+		/// <summary>
+		/// Type of symbol that denotes an operator in a constraint expression such as "gteq" (greater than or equal to), "eq" (equal to), "lt" (less than), "isAllOf" (is all of), "isAnyOf" (is any of); 
+		/// URI to Concept
+		/// ceterms:Concept 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:comparator" )]
+		public string Comparator { get; set; }
+
+		/// <summary>
+		/// Left hand parameter of a constraint.
+		/// Range: rdf:Property, skos:Concept 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:leftSource" )]
+
+		public List<string> LeftSource { get; set; }
+
+		/// <summary>
+		/// Action performed on the left constraint; select from an existing enumeration of such types.
+		/// URI to Concept
+		/// Range: ceterms:Concept 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:leftAction" )]
+
+		public string LeftAction { get; set; }
+
+		/// <summary>
+		/// Right hand parameter of a constraint.
+		/// Range: rdf:Property, skos:Concept 
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:rightSource" )]
+
+		public List<string> RightSource { get; set; }
+
+		/// <summary>
+		/// Action performed on the right constraint; select from an existing enumeration of such types.
+		/// URI to Concept
+		/// Range: ceterms:Concept
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:rightAction" )]
+
+		public string RightAction { get; set; }
 	}
 }

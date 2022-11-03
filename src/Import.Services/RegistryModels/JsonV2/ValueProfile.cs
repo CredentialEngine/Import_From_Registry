@@ -30,7 +30,7 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// The level of credit associated with the credit awarded or required.
 		/// Concept
-		/// Scheme?
+		/// CoceptScheme - assumes audienceLevel, as no means to provide altenatives
 		/// </summary>
 		[JsonProperty( "ceterms:creditLevelType" )]
 		public List<CredentialAlignmentObject> CreditLevelType { get; set; }

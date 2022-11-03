@@ -38,16 +38,27 @@ namespace workIT.Services.API
 			string labelPlural = "credentials";
 			string key = searchType + "_filters";
 
+
 			FilterResponse filters = new FilterResponse( searchType );
+
 			if ( IsFilterAvailableFromCache( searchType, ref filters ) )
 			{
-				//return filters;
+				return filters;
 			}
+			var filter = new MSR.Filter();
+			filters.Filters = new List<Filter>();
 			try
 			{
+				var credentialTypes = enumServices.GetCredentialType( EnumerationType.MULTI_SELECT, getAll );
+				if ( credentialTypes == null || credentialTypes.Items.Count == 0 )
+				{
+					//just in case
+					getAll = true;
+					credentialTypes = enumServices.GetCredentialType( EnumerationType.MULTI_SELECT, getAll );
+				}
 				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
 				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
-				var credentialTypes = enumServices.GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
+				
 				var credStatusTypes = enumServices.GetCredentialStatusType( workIT.Models.Common.EnumerationType.MULTI_SELECT, getAll );
 				var credAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 18, entityTypeId, getAll );
 				var credLoppDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 21, entityTypeId, getAll );
@@ -55,14 +66,21 @@ namespace workIT.Services.API
 				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
 				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-				//frameworks
-
-
+				//LWIA/address region filter
+				//LWIAs proposed. If to be included, will be first
+				if ( UtilityManager.GetAppKeyValue( "includingIllinoisCredentialLWIAFilters", false ) )
+				{
+					var lwiaFilters = CF.CodesManager.GetAddressRegionsAsEnumeration( 1, "LWIA" );
+					if ( lwiaFilters != null && lwiaFilters.Items.Any() )
+					{
+						filter = ConvertEnumeration( "Illinois LWIA", "lwiaType", lwiaFilters, "Select the LWIA(s)." );
+						filters.Filters.Add( filter );
+					}
+				}
 				/* TODO
 				 * handle history
 				 */
-				var filter = new MSR.Filter();
-				filters.Filters = new List<Filter>();
+				
 				if( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
 
@@ -79,7 +97,7 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Quality Assurance", "qualityAssurance", qaReceived, string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ) );
 					//just in case
 					filter.Label = "Quality Assurance";
-					filter.URI = "filter:Organization";
+					filter.URI = "filter:QAReceived";
 					filter.Items.Add( new MSR.FilterItem()
 					{
 						Label = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
@@ -105,7 +123,7 @@ namespace workIT.Services.API
 				//
 				if ( connections != null && connections.Items.Any() )
 				{
-					filter = ConvertEnumeration( "Credential Connection", "credentialConnection", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
+					filter = ConvertEnumeration( "Connections", "credentialConnection", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
 					filters.Filters.Add( filter );
 				}
 				#endregion
@@ -150,7 +168,7 @@ namespace workIT.Services.API
 				//	URI = APIFilter.FilterItem_TextValue,
 				//	InterfaceType = APIFilter.InterfaceType_Autocomplete
 				//} );
-				filters.Filters.Add( GetSubjectFilters( labelPlural ) );
+				filters.Filters.Add( GetSubjectFilters( labelPlural, "credReport:HasSubjects" ) );
 
 				//======================================
 				#region Industries, occupations, and programs
@@ -277,10 +295,21 @@ namespace workIT.Services.API
 
 			try
 			{
-				var orgServiceTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
 				var orgTypes = enumServices.GetOrganizationType( EnumerationType.MULTI_SELECT, getAll );
-				var orgSectorTypes = enumServices.GetEnumeration( "orgSectorType", EnumerationType.SINGLE_SELECT, getAll );
+				if ( orgTypes == null || orgTypes.Items.Count == 0 )
+				{
+					//just in case
+					getAll = true;
+					orgTypes = enumServices.GetOrganizationType( EnumerationType.MULTI_SELECT, getAll );
+				}
+				var orgServiceTypes = enumServices.GetOrganizationServices( EnumerationType.MULTI_SELECT, getAll );
+				var orgSectorTypes = enumServices.GetEnumeration( "agentSector", EnumerationType.SINGLE_SELECT, getAll );
 				var claimTypes = enumServices.GetEnumeration( "claimType", EnumerationType.SINGLE_SELECT, getAll );
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
+				//
+				var entityTypes = enumServices.GetOrgSubclasses( EnumerationType.SINGLE_SELECT, getAll );
+				//var entityTypes = enumServices.GetOrgSubclasses( Models.Common.EnumerationType.MULTI_SELECT, false );
+
 
 				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
 				var qaPerformed = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll, true );
@@ -289,14 +318,36 @@ namespace workIT.Services.API
 
 				var filter = new MSR.Filter();
 				filters.Filters = new List<Filter>();
+				//LWIA/address region filter
+				//LWIAs proposed. If to be included, will be first
+				if ( UtilityManager.GetAppKeyValue( "includingIllinoisOrganizationLWIAFilters", false ) )
+				{
+					var lwiaFilters = CF.CodesManager.GetAddressRegionsAsEnumeration( 1, "LWIA" );
+					if ( lwiaFilters != null && lwiaFilters.Items.Any() )
+					{
+						filter = ConvertEnumeration( "Illinois LWIA", "lwiaType", lwiaFilters, "Select the LWIA(s)." );
+						filters.Filters.Add( filter );
+					}
+				}
 				if ( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
 				//
+				if ( entityTypes != null && entityTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Organization Classes", "organizationSubtype", entityTypes, "Select the type(s) of Organization Classes." );
+					filters.Filters.Add( filter );
+				}
+				//
 
-
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1)
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
+				//
 				if ( orgTypes != null && orgTypes.Items.Any() )
 				{
-					filter = ConvertEnumeration( "Organization Types", "organizationType", orgTypes, "Select the organization type(s)" );
+					filter = ConvertEnumeration( "Organization Types", "orgType", orgTypes, "Select the organization type(s)" );
 					filters.Filters.Add( filter );
 				}
 				//
@@ -345,7 +396,7 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Quality Assurance", "qualityAssurance", qaReceived, string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ) );
 					//just in case
 					filter.Label = "Quality Assurance";
-					filter.URI = "filter:Organization";
+					filter.URI = "filter:QAReceived";
 					filter.Items.Add( new MSR.FilterItem()
 					{
 						Label = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
@@ -360,7 +411,7 @@ namespace workIT.Services.API
 					var f = new MSR.Filter()
 					{
 						Label = "Quality Assurance Performed",
-						URI = "qualityAssurancePerformed",
+						URI = "filter:QAPerformed",
 						//CategoryId = qaPerformed.Id,
 						Description = "Select one or more types of quality assurance to display organizations that have performed the selected types of assurance.",
 					};
@@ -393,12 +444,20 @@ namespace workIT.Services.API
 
 			try
 			{
-				var asmtMethodTypes = enumServices.GetEnumeration( "assessmentMethodType", EnumerationType.MULTI_SELECT, false, getAll );
-				var asmtUseTypes = enumServices.GetEnumeration( "assessmentUse", EnumerationType.MULTI_SELECT, false, getAll );
 				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				if ( audienceLevelTypes == null || audienceLevelTypes.Items.Count == 0 )
+				{
+					//just in case
+					getAll = true;
+					audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				}
+				var asmtMethodTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, EnumerationType.MULTI_SELECT, false, getAll );
+				var asmtUseTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ASSESSMENT_USE_TYPE, EnumerationType.MULTI_SELECT, false, getAll );
+				
 				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
 				var connections = enumServices.GetAssessmentsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
-
+				//
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
 				//
 				var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
 				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
@@ -406,7 +465,7 @@ namespace workIT.Services.API
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
 
 				//
-				var scoringMethodTypes = enumServices.GetEnumeration( "scoringMethod", EnumerationType.MULTI_SELECT, false, getAll );
+				var scoringMethodTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_Scoring_Method, EnumerationType.MULTI_SELECT, false, getAll );
 				/* TODO
 				 */
 				var filter = new MSR.Filter();
@@ -448,7 +507,7 @@ namespace workIT.Services.API
 				//	URI = APIFilter.FilterItem_TextValue,
 				//	InterfaceType = APIFilter.InterfaceType_Autocomplete
 				//} );
-				filters.Filters.Add( GetSubjectFilters( labelPlural ) );
+				filters.Filters.Add( GetSubjectFilters( labelPlural, "asmtReport:HasSubjects" ) );
 				//
 				if ( connections != null && connections.Items.Any() )
 				{
@@ -478,9 +537,17 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Audience Type", "audiencetype", audienceTypes, "Select the applicable audience types that are the target of assessments. Note that many assessments will not have specific audience types." );
 					filters.Filters.Add( filter );
 				}
-				
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
+				//
 				if ( scoringMethodTypes != null && scoringMethodTypes.Items.Any() )
+				{
 					filter = ConvertEnumeration( "Scoring Method", "scoringMethod", scoringMethodTypes, "Select the type of scoring method(s)." );
+					filters.Filters.Add( filter );
+				}
 
 				//======================================
 				#region Industries, occupations, and programs
@@ -560,7 +627,7 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Quality Assurance", "qualityAssurance", qaReceived, string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ) );
 					//just in case
 					filter.Label = "Quality Assurance";
-					filter.URI = "filter:Organization";
+					filter.URI = "filter:QAReceived";
 					filter.Items.Add( new MSR.FilterItem()
 					{
 						Label = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
@@ -590,37 +657,87 @@ namespace workIT.Services.API
 			return filters;
 		}
 
-		public static FilterResponse GetLearningOppFilters( bool getAll = false )
+		public static FilterResponse GetLearningOppFilters( bool getAll = false, string widgetId = "" )
 		{
 			EnumerationServices enumServices = new EnumerationServices();
 			int entityTypeId = 7;
 			string searchType = "learningopportunity";
 			string label = "learning opportunity";
-			string labelPlural = "learningopportunities";
+			string labelPlural = "learning opportunities";
 			FilterResponse filters = new FilterResponse( searchType );
 			var filter = new MSR.Filter();
 			filters.Filters = new List<Filter>();
 
 			try
 			{
-				//
-				var asmtMethodTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, entityTypeId, getAll );
 				var audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				if ( audienceLevelTypes == null || audienceLevelTypes.Items.Count == 0 )
+				{
+					//just in case
+					getAll = true;
+					audienceLevelTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 4, entityTypeId, getAll );
+				}
+				//TODO - if counts are based on entity typeId, could eventually have a problem where a property was used for a course but not an lopp!
+				var asmtMethodTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, entityTypeId, getAll );
+				
 				var audienceTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 14, entityTypeId, getAll );
 				var connections = enumServices.GetLearningOppsConditionProfileTypes( EnumerationType.MULTI_SELECT, getAll );
 
 				//
 				var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
 				var loppAsmtDeliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, entityTypeId, getAll );
-				var learningMethodTypes = enumServices.GetEnumeration( "learningMethodType", EnumerationType.MULTI_SELECT, false, getAll );
+				//this should use PropertyValue, not SiteTotal
+				//var learningMethodTypes2 = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type, entityTypeId, getAll );
+				var learningMethodTypes = enumServices.GetEnumeration( "learnMethod", EnumerationType.MULTI_SELECT, false );
+				var learningObjectTypes = enumServices.GetLearningObjectType( Models.Common.EnumerationType.MULTI_SELECT, false );
+				
 				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
+
 				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+				//
+				//LWIA/address region filter
+				//LWIAs proposed. If to be included, will be first
+				if ( UtilityManager.GetAppKeyValue( "includingIllinoisLoppLWIAFilters", false ) )
+				{
+					//****HACK **** 
+					if ( UtilityManager.GetAppKeyValue( "proPathWidgetId") == widgetId || UtilityManager.GetAppKeyValue( "proPathWidgetName" ).ToLower() == widgetId.ToLower() )
+					{
+						var lwiaFilters = CF.CodesManager.GetAddressRegionsAsEnumeration( 1, "LWIA" );
+						if ( lwiaFilters != null && lwiaFilters.Items.Any() )
+						{
+							filter = ConvertEnumeration( "Illinois LWIA", "lwiaType", lwiaFilters, "Select the LWIA(s)." );
+							filters.Filters.Add( filter );
+						}
 
+						if ( UtilityManager.GetAppKeyValue( "environment" ) != "production" )
+						{
+							var edrFilters = CF.CodesManager.GetAddressRegionsAsEnumeration( 2, "EDR" );
+							if ( edrFilters != null && edrFilters.Items.Any() )
+							{
+								filter = ConvertEnumeration( "Illinois EDR", "edrType", edrFilters, "Select the EDR(s)." );
+								filters.Filters.Add( filter );
+							}
+						}
+					}
+				}
 				//
 				if ( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-
+				//
+				if ( learningObjectTypes != null && learningObjectTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Learning Types", "learningObjectTypes", learningObjectTypes, "Select the type(s) of Learning Objects." );
+					filters.Filters.Add( filter );
+				}
+				//
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
 				//
 				#region competencies don't have an autocomplete
 				var competencies = new MSR.Filter( "Competencies" )
@@ -645,7 +762,7 @@ namespace workIT.Services.API
 				filters.Filters.Add( competencies );
 				#endregion
 				//
-				filters.Filters.Add( GetSubjectFilters( labelPlural ) );
+				filters.Filters.Add( GetSubjectFilters( labelPlural, "loppReport:HasSubjects" ) );
 				//
 				if ( connections != null && connections.Items.Any() )
 				{
@@ -668,7 +785,7 @@ namespace workIT.Services.API
 				}
 				//
 				if ( audienceLevelTypes != null && audienceLevelTypes.Items.Any() ) { 
-					filter = ConvertEnumeration( "Audience Level", "audienceLevelType", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
+					filter = ConvertEnumeration( "Audience Level Type", "audienceLevelType", audienceLevelTypes, "Select the type of level(s) indicating a point in a progression through an educational or training context." );
 					filters.Filters.Add( filter );
 				}
 				if ( audienceTypes != null && audienceTypes.Items.Any() ) { 
@@ -688,10 +805,14 @@ namespace workIT.Services.API
 				}
 
 				//
-				if ( learningMethodTypes != null && learningMethodTypes.Items.Any() ) { 
+				if ( learningMethodTypes != null && learningMethodTypes.Items.Any() ) 
+				{
+					//does this have to match the value used by the enumServices.Get? "learningMethodType" vs"learnMethod"
+					//the option to hide for widgets is not working. trying "learnMethod". No, try back to learningMethodType (used in SiteWidgetizer)
 					filter = ConvertEnumeration( "Learning Method Types", "learningMethodType", learningMethodTypes, "Select the type(s) of learning method." );
 					filters.Filters.Add( filter );
 				}
+
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "loppReport:HasIndustries" ) );
 
@@ -706,7 +827,7 @@ namespace workIT.Services.API
 				{
 					filter = ConvertEnumeration( "Quality Assurance", "qualityAssurance", qaReceived, string.Format( "Select the type(s) of quality assurance to filter relevant {0}.", labelPlural ) );
 					//just in case
-					filter.URI = "filter:Organization";
+					filter.URI = "filter:QAReceived";
 					filter.Items.Add( new MSR.FilterItem()
 					{
 						Label = string.Format( "Optionally, find and select one or more organizations that perform {0} Quality Assurance.", label ),
@@ -725,7 +846,7 @@ namespace workIT.Services.API
 					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
 					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
 				}
-
+				
 			}
 			catch ( Exception ex )
 			{
@@ -739,13 +860,12 @@ namespace workIT.Services.API
 			EnumerationServices enumServices = new EnumerationServices();
 			int entityTypeId = 8;
 			string searchType = "pathway";
-			string label = "Pathway";
 			string labelPlural = "pathways";
 			FilterResponse filters = new FilterResponse( searchType );
 
 			try
 			{
-
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
 				//
 				var filter = new MSR.Filter();
@@ -754,7 +874,15 @@ namespace workIT.Services.API
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
 
 				//======================================
-				filters.Filters.Add( GetSubjectFilters( labelPlural ) );
+
+				filters.Filters.Add( GetSubjectFilters( labelPlural, "pathwayReport:HasSubjects" ) );
+				//
+
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
 				//
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "pathwayReport:HasIndustries" ) );
@@ -777,6 +905,39 @@ namespace workIT.Services.API
 			}
 			return filters;
 		}
+		//
+		public static FilterResponse GetTransferValueFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 26;
+			string searchType = "transfervalue";
+			string labelPlural = "transfer values";
+			FilterResponse filters = new FilterResponse( searchType );
+
+			try
+			{
+
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+				//
+				var filter = new MSR.Filter();
+				filters.Filters = new List<Filter>();
+				if ( includingHistoryFilters )
+					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+				{
+					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
+
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+		//
 		public static FilterResponse GetNoFilters( string label )
 		{
 			FilterResponse filters = new FilterResponse( label );
@@ -848,7 +1009,8 @@ namespace workIT.Services.API
 			} );
 			filter.Items.Add( new MSR.FilterItem()
 			{
-				Label = string.Format( "Find and select the industries to filter relevant {0}.", labelPlural ),
+				//Label = string.Format( "Find and select the industries to filter relevant {0}. You must enter at least 3 characters. For example text or an industry code such as 541512, or 541.", labelPlural ),
+				Label = string.Format( "Find and select the industries to filter relevant {0}.  Enter the name or code of an industry such as \"Manufacturing\" or \"3325\". ", labelPlural ),
 				URI = "interfaceType:TextValue",
 				InterfaceType = APIFilter.InterfaceType_Autocomplete
 			} );
@@ -872,7 +1034,7 @@ namespace workIT.Services.API
 			} );
 			filter.Items.Add( new MSR.FilterItem()
 			{
-				Label = string.Format( "Find and select the occupations to filter relevant {0}.", labelPlural ),
+				Label = string.Format( "Find and select the occupations to filter relevant {0}. Enter the name or code of an occupation, such as \"welding\" or \"23-2011\"", labelPlural ),
 				URI = "interfaceType:TextValue",
 				InterfaceType = APIFilter.InterfaceType_Autocomplete
 			} );
@@ -896,7 +1058,7 @@ namespace workIT.Services.API
 			} );
 			filter.Items.Add( new MSR.FilterItem()
 			{
-				Label = string.Format( "Find and select the instructional programs to filter relevant {0}.", labelPlural ),
+				Label = string.Format( "Find and select the instructional programs to filter relevant {0}.  Enter the name or code of an instructional program such as \"Computer Programming\" or \"11.0201\". ", labelPlural ),
 				URI = "interfaceType:TextValue",
 				InterfaceType = APIFilter.InterfaceType_Autocomplete
 			} );
@@ -948,7 +1110,7 @@ namespace workIT.Services.API
 
 			return filter;
 		}
-		private static MSR.Filter GetSubjectFilters( string labelPlural)
+		private static MSR.Filter GetSubjectFilters( string labelPlural, string hasAnyURI )
 		{
 
 			var filter = new MSR.Filter( "Subjects" )
@@ -959,8 +1121,14 @@ namespace workIT.Services.API
 			};
 			filter.Items.Add( new MSR.FilterItem()
 			{
-				Description = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
-				URI = APIFilter.FilterItem_TextValue,
+				Label = "Has Subjects",
+				URI = hasAnyURI,
+				InterfaceType = APIFilter.InterfaceType_Checkbox
+			} );
+			filter.Items.Add( new MSR.FilterItem()
+			{
+				Label = string.Format( "Enter a term(s) to show {0} with relevant subjects.", labelPlural ),
+				URI = APIFilter.InterfaceType_Text,
 				InterfaceType = APIFilter.InterfaceType_Autocomplete
 			} );
 
@@ -1049,14 +1217,14 @@ namespace workIT.Services.API
 					cache = ( CachedFilter )HttpRuntime.Cache[ key ];
 					if ( cache.lastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( "===SearchServices.IsFilterAvailableFromCache === Using cached version of FilterQuery, SearchType: {0}.", cache.Item.SearchType ) );
+						LoggingHelper.DoTrace( 7, string.Format( "===SearchServices.IsFilterAvailableFromCache === Using cached version of FilterQuery, SearchType: {0}.", cache.Item.SearchType ) );
 						output = cache.Item;
 						return true;
 					}
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 6, "SearchServices.IsFilterAvailableFromCache. === exception " + ex.Message );
+					LoggingHelper.DoTrace( 5, "SearchServices.IsFilterAvailableFromCache. === exception " + ex.Message );
 				}
 			}
 

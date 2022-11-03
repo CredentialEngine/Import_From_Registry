@@ -49,6 +49,9 @@ namespace workIT.Data.Tables
             this.Entity_ContactPoint = new HashSet<Entity_ContactPoint>();
             this.Entity_TransferValueProfile = new HashSet<Entity_TransferValueProfile>();
             this.Entity_CompetencyFramework = new HashSet<Entity_CompetencyFramework>();
+            this.Entity_EarningsProfile = new HashSet<Entity_EarningsProfile>();
+            this.Entity_EmploymentOutcomeProfile = new HashSet<Entity_EmploymentOutcomeProfile>();
+            this.Entity_HoldersProfile = new HashSet<Entity_HoldersProfile>();
         }
     
         public int Id { get; set; }
@@ -125,5 +128,11 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
     }
 }

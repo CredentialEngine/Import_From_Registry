@@ -29,7 +29,16 @@ namespace workIT.Services
             e.ShowOtherValue = showOtherValue;
             return e;
         }
-		public MC.Enumeration EntityStatisticGetEnumeration( int entityTypeId, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = true )
+        public MC.Enumeration GetEnumeration( int categoryId, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT,
+                bool showOtherValue = false,
+                bool getAll = true )
+        {
+            MC.Enumeration e = CodesManager.GetEnumeration( categoryId, getAll );
+            e.InterfaceType = interfaceType;
+            e.ShowOtherValue = showOtherValue;
+            return e;
+        }
+        public MC.Enumeration EntityStatisticGetEnumeration( int entityTypeId, MC.EnumerationType interfaceType = MC.EnumerationType.MULTI_SELECT, bool getAll = true )
 		{
 			MC.Enumeration e = CodesManager.GetEntityStatisticsAsEnumeration( entityTypeId, getAll );
 			e.InterfaceType = interfaceType;
@@ -98,19 +107,28 @@ namespace workIT.Services
 
             return list;
         }
-        #region credential enumerations
-        public MC.Enumeration GetCredentialType( MC.EnumerationType interfaceType, bool getAll = true )
-        {
 
-            MC.Enumeration e = CodesManager.GetEnumeration( "credentialType", getAll );
-            e.ShowOtherValue = true;
+		public static CodeItem GetEntityRegionTotal( int entityTypeId, int recordId )
+		{
+			var item = CodesManager.GetEntityRegionTotal( entityTypeId, recordId );
+
+			return item;
+		}
+		#region credential enumerations
+		//21-05-13 update to only return one badge type - ensure this doesn't affect the current site
+		//			probably need to make a custom method
+		public MC.Enumeration GetCredentialType( MC.EnumerationType interfaceType, bool getAll = true, bool includingAllBadges = false )
+        {
+			//MC.Enumeration e = CodesManager.GetEnumeration( "credentialType", getAll );
+			MC.Enumeration e = CodesManager.GetCredentialTypes( "credentialType", getAll, includingAllBadges );
+			e.ShowOtherValue = true;
             e.InterfaceType = interfaceType;
             return e;
         }
 		public MC.Enumeration GetCredentialStatusType( MC.EnumerationType interfaceType, bool getAll = true )
 		{
 
-			MC.Enumeration e = CodesManager.GetEnumeration( "credentialStatusType", getAll );
+			MC.Enumeration e = CodesManager.GetEnumeration( "credentialStat", getAll );
 			e.ShowOtherValue = true;
 			e.InterfaceType = interfaceType;
 			return e;
@@ -146,6 +164,22 @@ namespace workIT.Services
 			MC.Enumeration e = CodesManager.GetSiteTotalsAsEnumeration( categoryId, entityTypeId, getAll );
 			e.InterfaceType = interfaceType;
             e.ShowOtherValue = true;
+            return e;
+        }//
+        public MC.Enumeration GetLearningObjectType( MC.EnumerationType interfaceType, bool getAll = true )
+        {
+
+            MC.Enumeration e = CodesManager.GetLearningObjectTypesEnumeration( getAll );
+            e.ShowOtherValue = true;
+            e.InterfaceType = interfaceType;
+            return e;
+        }
+        public MC.Enumeration GetOrgSubclasses( MC.EnumerationType interfaceType, bool getAll = true )
+        {
+
+            MC.Enumeration e = CodesManager.GetOrgSubclasses( getAll );
+            e.ShowOtherValue = true;
+            e.InterfaceType = interfaceType;
             return e;
         }
         //
@@ -259,9 +293,9 @@ namespace workIT.Services
 		//    e.ShowOtherValue = true;
 		//    return e;
 		//}
-		public MC.Enumeration GetCommonPlusQAAgentRoles( MC.EnumerationType interfaceType )
+		public MC.Enumeration GetCommonPlusQAAgentRoles( MC.EnumerationType interfaceType, bool includingPublishedBy = false )
         {
-            MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false );
+            MC.Enumeration e = Entity_AgentRelationshipManager.GetCommonPlusQAAgentRoles( false, includingPublishedBy );
             e.InterfaceType = interfaceType;
             e.ShowOtherValue = true;
             return e;
@@ -300,7 +334,7 @@ namespace workIT.Services
                 bool getAll = true )
         {
 
-            MC.Enumeration e = CodesManager.GetEnumeration( "organizationType", getAll );
+            MC.Enumeration e = CodesManager.GetEnumeration( "orgType", getAll );
             e.ShowOtherValue = true;
             e.InterfaceType = interfaceType;
             return e;

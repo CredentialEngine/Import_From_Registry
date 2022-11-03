@@ -57,11 +57,19 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// Category or classification of this resource.
 		/// Where a more specific property exists, such as ceterms:naics, ceterms:isicV4, ceterms:credentialType, etc., use that property instead of this one.
-		/// URI to a competency
+		/// URI to a concept or blank node
 		/// ceterms:classification
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:classification" )]
-		public List<CredentialAlignmentObject> Classification { get; set; }
+		public List<string> Classification { get; set; }
+		//public List<CredentialAlignmentObject> Classification { get; set; }
+
+		/// <summary>
+		/// Set of alpha-numeric symbols that uniquely identifies an item and supports its discovery and use.
+		/// ceterms:codedNotation
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:codedNotation" )]
+		public string CodedNotation { get; set; }
 
 		/// <summary>
 		/// Comment

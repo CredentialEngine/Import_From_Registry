@@ -1,37 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using workIT.Factories;
+using workIT.Models;
+using workIT.Services;
+using workIT.Utilities;
+
+using BNode = RA.Models.JsonV2.BlankNode;
 using EntityServices = workIT.Services.TransferValueServices;
 using InputEntity = RA.Models.JsonV2.TransferValueProfile;
 using ThisEntity = workIT.Models.Common.TransferValueProfile;
-using BNode = RA.Models.JsonV2.BlankNode;
-
-using workIT.Utilities;
-using workIT.Factories;
-using workIT.Models;
-using MC = workIT.Models.Common;
-using Import.Services;
-using workIT.Services;
-using workIT.Data.Accounts;
-using workIT.Models.Node;
 
 namespace Import.Services
 {
-	public class ImportTransferValue
+    public class ImportTransferValue
 	{
-		int entityTypeId = CodesManager.ENTITY_TYPE_PATHWAY;
+		int entityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE;
 		string thisClassName = "ImportTransferValue";
 		ImportManager importManager = new ImportManager();
 		ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-
+		#region Common Helper Methods
 
 		/// <summary>
 		/// Retrieve an envelop from the registry and do import
@@ -126,7 +120,7 @@ namespace Import.Services
 			List<string> messages = new List<string>();
 			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
 			//store envelope
-			int newImportId = importHelper.Add( item, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, status.Ctid, importSuccessfull, importError, ref messages );
+			int newImportId = importHelper.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
 			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
 			{
 				//add indicator of current recored
@@ -174,12 +168,12 @@ namespace Import.Services
 			//LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCetermsCtid + "_TVP", payload, "", false );
 
 			//just store input for now
-			return Import( payload, envelopeIdentifier, status );
+			return Import( payload, status );
 
-			//return true;
 		} //
+		#endregion
 
-		public bool Import( string payload, string envelopeIdentifier, SaveStatus status )
+		public bool Import( string payload, SaveStatus status )
 		{
 			
 			List<string> messages = new List<string>();
@@ -221,14 +215,14 @@ namespace Import.Services
 			MappingHelperV3 helper = new MappingHelperV3( 3 );
 			helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
-			helper.CurrentEntityName = input.Name.ToString();
+			helper.CurrentEntityName = input.Name != null ? input.Name.ToString() : "DataSetProfile: " + input.CTID;
 
 			string ctid = input.CTID;
 			status.Ctid = ctid;
-			string referencedAtId = input.CtdlId;
+			status.ResourceURL = input.CtdlId;
 			LoggingHelper.DoTrace( 5, "		ctid: " + ctid );
 			LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
-			LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
+			LoggingHelper.DoTrace( 5, "		name: " + helper.CurrentEntityName );
 
 			if ( status.DoingDownloadOnly )
 				return true;
@@ -242,46 +236,57 @@ namespace Import.Services
 			helper.currentBaseObject = output;
 
 			output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+			//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+
 			output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 			output.CTID = input.CTID;
 			//TBD handling of referencing third party publisher
-			if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-			{
-				//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-				var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-				if ( porg != null && porg.Id > 0 )
-				{
-					//TODO - store this in a json blob??????????
-					//this will result in being added to Entity.AgentRelationship
-					output.PublishedBy = new List<Guid>() { porg.RowId };
-				}
-				else
-				{
-					//if publisher not imported yet, all publishee stuff will be orphaned
-					var entityUid = Guid.NewGuid();
-					var statusMsg = "";
-					var resPos = referencedAtId.IndexOf( "/resources/" );
-					var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-					int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
-				}
-			}
-			else
-			{
-				//may need a check for existing published by to ensure not lost
-				if ( output.Id > 0 )
-				{
-					if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-					{
-						var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-						if ( publishedByList != null && publishedByList.Any() )
-						{
-							var pby = publishedByList[ 0 ].ActingAgentUid;
-							output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-						}
-					}
-				}
-			}
-			output.CredentialRegistryId = envelopeIdentifier;
+			helper.MapOrganizationPublishedBy( output, ref status );
+
+			//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
+			//{
+			//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
+			//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
+			//	if ( porg != null && porg.Id > 0 )
+			//	{
+			//		//TODO - store this in a json blob??????????
+			//		output.PublishedByThirdPartyOrganizationId = porg.Id;
+
+			//		//this will result in being added to Entity.AgentRelationship
+			//		output.PublishedBy = new List<Guid>() { porg.RowId };
+			//	}
+			//	else
+			//	{
+			//		//if publisher not imported yet, all publishee stuff will be orphaned
+			//		var entityUid = Guid.NewGuid();
+			//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
+			//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
+			//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
+			//		output.PublishedByThirdPartyOrganizationId = porg.Id;
+
+			//		output.PublishedBy = new List<Guid>() { entityUid };
+			//	}
+			//}
+			//else
+			//{
+			//	//may need a check for existing published by to ensure not lost
+			//	if ( output.Id > 0 )
+			//	{
+			//		if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+			//		{
+			//			var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+			//			if ( publishedByList != null && publishedByList.Any() )
+			//			{
+			//				var pby = publishedByList[0].ActingAgentUid;
+			//				//???
+			//				//output.PublishedByOrganizationId = porg.Id;
+
+			//				output.PublishedBy = new List<Guid>() { publishedByList[0].ActingAgentUid };
+			//			}
+			//		}
+			//	}
+			//}
+			//output.CredentialRegistryId = envelopeIdentifier;
 			output.SubjectWebpage = input.SubjectWebpage;
 			//****owner missing 
 			output.OwnedBy = helper.MapOrganizationReferenceGuids( "TransferValue.OwnedBy", input.OwnedBy, ref status );
@@ -292,7 +297,6 @@ namespace Import.Services
 			}
 
 			//
-			//output.DerivedFromForImport = helper.MapEntityReferenceGuids( "TransferValue.DerivedFrom", input.DerivedFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
 			output.DerivedFromForImport = helper.MapEntityReferences( "TransferValue.DerivedFrom", input.DerivedFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
 			//
 			output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
@@ -312,10 +316,9 @@ namespace Import.Services
 			output.StartDate = input.StartDate;
 			output.EndDate = input.EndDate;
 			//
-			output.LifecycleStatusType = helper.MapCAOToString( input.LifecycleStatusType );
-			//output.LifecycleStatusType = helper.MapCAOToEnumermation( input.LifecycleStatusType );
-			//adding common import pattern
-			//new PathwayManager().Save( ef, ref status, true );
+			//output.LifecycleStatusType = helper.MapCAOToString( input.LifeCycleStatusType );
+			output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+
 
 			//
 
@@ -329,6 +332,9 @@ namespace Import.Services
 			//20-07-29 - getting duplicates - need to properly check for existing
 			//			- actually a common approach is to delete all existing. this suggests NOT creating the pending entities!!
 			//			- could be part of exists check
+			//need to reset both JSON properties
+			output.TransferValueForJson = "";
+			output.TransferValueFromJson = "";
 			output.TransferValueForImport = helper.MapEntityReferenceGuids( "TransferValue.TransferValueFor", input.TransferValueFor, 0, ref status );
 			if ( output.TransferValueForImport != null && output.TransferValueForImport .Count() > 0)
 			{
@@ -375,7 +381,7 @@ namespace Import.Services
 				importSuccessfull = false;
 
 			//if record was added to db, add to/or set EntityResolution as resolved
-			int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+			int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 						ctid, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE,
 						output.RowId,
 						output.Id,

@@ -70,6 +70,7 @@
     <Compile Include="API\DataProfile.cs" />
     <Compile Include="API\DataSetProfile.cs" />
     <Compile Include="API\DataSetTimeFrame.cs" />
+    <Compile Include="API\DetailRequest.cs" />
     <Compile Include="API\DurationProfile.cs" />
     <Compile Include="API\FinancialAssistanceProfile.cs" />
     <Compile Include="API\IdentifierValue.cs" />

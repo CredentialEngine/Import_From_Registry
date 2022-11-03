@@ -44,5 +44,9 @@ namespace workIT.Data.Views
         public int PathwayCount { get; set; }
         public int PathwaySetCount { get; set; }
         public int TransferValueCount { get; set; }
+        public int EntityTypeId { get; set; }
+        public string JsonProperties { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
+        public string LifeCycleStatusType { get; set; }
     }
 }

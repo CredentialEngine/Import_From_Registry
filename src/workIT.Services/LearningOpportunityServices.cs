@@ -8,6 +8,7 @@ using System.Web;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
+using WMA = workIT.Models.API;
 using ElasticHelper = workIT.Services.ElasticServices;
 
 using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
@@ -26,124 +27,127 @@ namespace workIT.Services
 
         public bool Import( ThisEntity entity, ref SaveStatus status )
         {
-			LoggingHelper.DoTrace( 7,  thisClassName + ".Import - entered");
-			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+            LoggingHelper.DoTrace( 7, thisClassName + ".Import - entered" );
+            //do a get, and add to cache before updating
+            if ( entity.Id > 0 )
             {
-				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
-				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-				{
-					if (System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-						GetDetail( entity.Id );
-				}
-				
+                //note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
+                if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+                {
+                    if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+                        GetDetail( entity.Id );
+                }
+
             }
             bool isValid = new EntityMgr().Save( entity, ref status );
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
             {
-				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-					CacheManager.RemoveItemFromCache( "lopp_", entity.Id );
+                if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+                    CacheManager.RemoveItemFromCache( "lopp_", entity.Id );
 
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
-					//update cache
-					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
-					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-					//add owning org to reindex queue
-					
-				}
+                    //update cache
+                    ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+                    //new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+                    //add owning org to reindex queue
+
+                }
                 else
                 {
                     new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, entity.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
                     if ( messages.Count > 0 )
                         status.AddWarningRange( messages );
-                }				
-			}
+                }
+            }
 
             return isValid;
         }
-		static void UpdateCaches( Object entity )
-		{
-			if ( entity.GetType() != typeof( Models.ProfileModels.LearningOpportunityProfile ) )
-				return;
-			var document = ( entity as Models.ProfileModels.LearningOpportunityProfile );
-			EntityCache ec = new EntityCache()
-			{
-				EntityTypeId = 7,
-				EntityType = "LearningOpportunity",
-				EntityStateId = document.EntityStateId,
-				EntityUid = document.RowId,
-				BaseId = document.Id,
-				Description = document.Description,
-				SubjectWebpage = document.SubjectWebpage,
-				CTID = document.CTID,
-				Created = document.Created,
-				LastUpdated = document.LastUpdated,
-				//ImageUrl = document.ImageUrl,
-				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
-				OwningOrgId = document.OrganizationId
-			};
+        static void UpdateCaches( Object entity )
+        {
+            if ( entity.GetType() != typeof( Models.ProfileModels.LearningOpportunityProfile ) )
+                return;
+            var document = ( entity as Models.ProfileModels.LearningOpportunityProfile );
+            //EntityCache ec = new EntityCache()
+            //{
+            //	EntityTypeId = 7,
+            //	EntityType = "LearningOpportunity",
+            //	EntityStateId = document.EntityStateId,
+            //	EntityUid = document.RowId,
+            //	BaseId = document.Id,
+            //	Description = document.Description,
+            //	SubjectWebpage = document.SubjectWebpage,
+            //	CTID = document.CTID,
+            //	Created = document.Created,
+            //	LastUpdated = document.LastUpdated,
+            //	//ImageUrl = document.ImageUrl,
+            //	Name = document.Name,
+            //	OwningAgentUID = document.OwningAgentUid,
+            //	OwningOrgId = document.OrganizationId
+            //};
 
-			var statusMessage = "";
-			new EntityManager().EntityCacheSave( ec, ref statusMessage );
+            //var statusMessage = "";
+            //new EntityManager().EntityCacheSave( ec, ref statusMessage );
 
 
-			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
-			//update Elastic
-			List<string> messages = new List<string>();
+            new CacheManager().PopulateEntityRelatedCaches( document.RowId );
+            //update Elastic
+            List<string> messages = new List<string>();
 
-			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-				ElasticHelper.LearningOpp_UpdateIndex( document.Id );
-			else
-				new SearchPendingReindexManager().Add( 7, document.Id, 1, ref messages );
+            if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+                ElasticHelper.LearningOpp_UpdateIndex( document.Id );
+            else
+                new SearchPendingReindexManager().Add( 7, document.Id, 1, ref messages );
 
-			new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
-		}
-		#endregion
-		#region retrievals
-		public static ThisEntity GetByCtid( string ctid )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-				return entity;
+            new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
+        }
+        #endregion
+        #region retrievals
+        public static ThisEntity GetByCtid( string ctid )
+        {
+            ThisEntity entity = new ThisEntity();
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+                return entity;
 
-			return EntityMgr.GetByCtid( ctid );
-		}
-		public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
-		{
-			ThisEntity entity = new ThisEntity();
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-				return entity;
-			var learningOpportunity = EntityMgr.GetByCtid( ctid );
+            return EntityMgr.GetByCtid( ctid );
+        }
+        public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+        {
+            ThisEntity entity = new ThisEntity();
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+                return entity;
+            var learningOpportunity = EntityMgr.GetByCtid( ctid );
 
-			return GetDetail( learningOpportunity.Id, skippingCache );
-		}
-		public static ThisEntity GetBasic( int id, bool forEditView = false )
+            return GetDetail( learningOpportunity.Id, skippingCache );
+        }
+        public static ThisEntity GetBasic( int id, bool forEditView = false )
         {
             ThisEntity entity = EntityMgr.GetBasic( id );
 
             return entity;
         }
-
-        //public static ThisEntity GetDetail( int id )
-        //{
-        //    ThisEntity entity = EntityMgr.GetForDetail( id );
-        //    return entity;
-
-        //}
-        public static ThisEntity GetDetail( int id, bool skippingCache = false )
+        public static ThisEntity GetDetail( int id, bool skippingCache = false, bool isAPIRequest = false )
+        {
+            WMA.DetailRequest request = new WMA.DetailRequest()
+            {
+                Id = id,
+                SkippingCache = skippingCache,
+                IsAPIRequest = isAPIRequest
+            };
+            return GetDetail( request );
+        }
+        public static ThisEntity GetDetail( WMA.DetailRequest request )
         {
             int cacheMinutes = UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 );
             DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
-            string key = "lopp_" + id.ToString();
+            string key = "lopp_" + request.Id.ToString();
 
-            if ( skippingCache == false
-                && HttpRuntime.Cache[ key ] != null && cacheMinutes > 0 )
+            if ( request.SkippingCache == false
+                && HttpRuntime.Cache[key] != null && cacheMinutes > 0 )
             {
-                var cache = ( CachedLopp )HttpRuntime.Cache[ key ];
+                var cache = ( CachedLopp ) HttpRuntime.Cache[key];
                 try
                 {
                     if ( cache.lastUpdated > maxTime )
@@ -160,20 +164,20 @@ namespace workIT.Services
             }
             else
             {
-                LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".GetDetail === Retrieving full version of Lopp, Id: {0}", id ) );
+                LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".GetDetail === Retrieving full version of Lopp, Id: {0}", request.Id ) );
             }
 
             DateTime start = DateTime.Now;
 
-            ThisEntity entity = EntityMgr.GetForDetail( id );
+            ThisEntity entity = EntityMgr.GetForDetail( request.Id, request.IsAPIRequest );
 
             DateTime end = DateTime.Now;
             int elasped = ( end - start ).Seconds;
-			//Cache the output if more than specific seconds,
-			//NOTE need to be able to force it for imports
-			//&& elasped > 2
-			if ( key.Length > 0 && cacheMinutes > 0 )
-			{
+            //Cache the output if more than specific seconds,
+            //NOTE need to be able to force it for imports
+            //&& elasped > 2
+            if ( key.Length > 0 && cacheMinutes > 0 && elasped > 7 )
+            {
                 var newCache = new CachedLopp()
                 {
                     Item = entity,
@@ -181,7 +185,7 @@ namespace workIT.Services
                 };
                 if ( HttpContext.Current != null )
                 {
-                    if ( HttpContext.Current.Cache[ key ] != null )
+                    if ( HttpContext.Current.Cache[key] != null )
                     {
                         HttpRuntime.Cache.Remove( key );
                         HttpRuntime.Cache.Insert( key, newCache );
@@ -202,28 +206,35 @@ namespace workIT.Services
             }
 
             return entity;
-		}
+        }
 
-		#endregion
+        #endregion
 
 
-		#region Searches
-		//public static List<CodeItem> SearchAsCodeItem( string keyword, int startingPageNbr, int pageSize, ref int totalRows )
-		//{
-		//	List<ThisEntity> list = Search( keyword, startingPageNbr, pageSize, ref totalRows );
-		//	List<CodeItem> codes = new List<CodeItem>();
-		//	foreach ( ThisEntity item in list )
-		//	{
-		//		codes.Add( new CodeItem()
-		//		{
-		//			Id = item.Id,
-		//			Name = item.Name,
-		//			Description = item.Description
-		//		} );
-		//	}
-		//	return codes;
-		//}
-		public static List<object> Autocomplete( string keyword, int maxTerms = 25, int widgetId = 0 )
+        #region Searches
+        public static List<string> Autocomplete( MainSearchInput data, int widgetId = 0 )
+        {
+            string where = "";
+            int totalRows = 0;
+
+
+            if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
+            {
+                return ElasticHelper.LearningOppAutoComplete( data, data.PageSize, ref totalRows );
+            }
+            else
+            {
+                string keywords = ServiceHelper.HandleApostrophes( data.Keywords );
+                if ( keywords.IndexOf( "%" ) == -1 )
+                    keywords = "%" + keywords.Trim() + "%";
+                where = string.Format( " (base.name like '{0}') ", keywords );
+
+                SetKeywordFilter( keywords, true, ref where );
+
+                return EntityMgr.Autocomplete( where, 1, data.PageSize, ref totalRows );
+            }
+        }
+        public static List<string> AutocompleteOld( string keyword, int maxTerms, int widgetId = 0 )
         {
             string where = "";
             int totalRows = 0;
@@ -231,33 +242,21 @@ namespace workIT.Services
             string keywords = ServiceHelper.HandleApostrophes( keyword );
             if ( keywords.IndexOf( "%" ) == -1 )
                 keywords = "%" + keywords.Trim() + "%";
-            where = string.Format( " (base.name like '{0}') ", keywords );
+
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticHelper.LearningOppAutoComplete( keyword, maxTerms, ref totalRows );
+                return ElasticHelper.LearningOppAutoCompleteOld( keyword, maxTerms, ref totalRows );
             }
             else
             {
+                where = string.Format( " (base.name like '{0}') ", keywords );
                 SetKeywordFilter( keyword, true, ref where );
 
                 return EntityMgr.Autocomplete( where, 1, maxTerms, ref totalRows );
             }
         }
-        //public static List<ThisEntity> Search( string keywords, int pageNumber, int pageSize, ref int totalRows )
-        //{
-        //	string pOrderBy = "";
-        //	string filter = "";
-        //	int userId = 0;
-        //	AppUser user = AccountServices.GetCurrentUser();
-        //	if ( user != null && user.Id > 0 )
-        //		userId = user.Id;
 
-        //	SetKeywordFilter( keywords, true, ref filter );
-        //	//SetAuthorizationFilter( user, ref filter );
-
-        //	return EntityMgr.Search( filter, pOrderBy, pageNumber, pageSize, ref totalRows );
-        //}
 
         public static List<ThisEntity> Search( MainSearchInput data, ref int pTotalRows )
         {

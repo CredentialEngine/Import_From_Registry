@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-    public class AssessmentProfile : JsonLDDocument
+    public class AssessmentProfile : BaseResourceDocument
     {
 		[JsonIgnore]
 		public static string classType = "ceterms:AssessmentProfile";
@@ -25,7 +25,6 @@ namespace RA.Models.JsonV2
             ScoringMethodType = new List<CredentialAlignmentObject>();
 
 			Requires = new List<ConditionProfile>();
-            Corequisite = new List<ConditionProfile>();
             Recommends = new List<ConditionProfile>();
             EntryCondition = new List<ConditionProfile>();
 			//CreditUnitType = new CredentialAlignmentObject();
@@ -103,6 +102,11 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
         public string SubjectWebpage { get; set; } //URL
 
+		[JsonProperty( PropertyName = "ceterms:aggregateData" )]
+		public List<AggregateDataProfile> AggregateData { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
 
 		/// <summary>
 		/// Assessment Method Description 
@@ -218,8 +222,15 @@ namespace RA.Models.JsonV2
 		/// Definition:	Alphanumeric Identifier value.
 		/// List of URIs 
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
+
+		/// <summary>
+		/// Is Non-Credit
+		/// Will be null unless true
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:isNonCredit" )]
+		public bool? IsNonCredit { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:isProctored", DefaultValueHandling = DefaultValueHandling.Include )]
 		public bool? IsProctored { get; set; }
@@ -234,6 +245,9 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:corequisite" )]
 		public List<ConditionProfile> Corequisite { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:coPrerequisite" )]
+		public List<ConditionProfile> CoPrerequisite { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:recommends" )]
 		public List<ConditionProfile> Recommends { get; set; }
@@ -347,36 +361,25 @@ namespace RA.Models.JsonV2
 		/// Type of official status of the Assessment; select from an enumeration of such types.
 		/// URI to a concept
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:lifecycleStatusType" )]
-		public CredentialAlignmentObject LifecycleStatusType { get; set; }
+		[JsonProperty( PropertyName = "ceterms:lifeCycleStatusType" )]
+		public CredentialAlignmentObject LifeCycleStatusType { get; set; }
 
 		//frameworks
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; } = new List<CredentialAlignmentObject>();
 
-		//[JsonProperty( PropertyName = "ceterms:alternativeOccupationType" )]
-		//public LanguageMapList AlternativeOccupationType { get; set; } = new LanguageMapList();
-
 		[JsonProperty( PropertyName = "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
-
-		//[JsonProperty( PropertyName = "ceterms:naics" )]
-		//public List<string> Naics { get; set; } = new List<string>();
-
-		//[JsonProperty( PropertyName = "ceterms:alternativeIndustryType" )]
-		//public LanguageMapList AlternativeIndustryType { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
 		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } = new List<CredentialAlignmentObject>();
 		//
-		//[JsonProperty( PropertyName = "ceterms:alternativeInstructionalProgramType" )]
-		//public LanguageMapList AlternativeInstructionalProgramType { get; set; } = new LanguageMapList();
-
-		//
 		[JsonProperty( PropertyName = "ceterms:targetAssessment" )]
 		public List<string> TargetAssessment{ get; set; }
 
-		//
+		/// <summary>
+		/// Learning object or resource that is used as part of an learning activity.
+		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:targetLearningResource" )]
 		public List<string> TargetLearningResource { get; set; }
 		//

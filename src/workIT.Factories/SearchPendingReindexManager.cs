@@ -236,6 +236,60 @@ namespace workIT.Factories
             return isValid;
         }
 
+        public bool UpdateAll( int requestTypeId, ref List<String> messages, List<int> entityTypeIds )
+        {
+            bool isValid = false;
+            int count = 0;
+            if ( requestTypeId < 1 || requestTypeId > 2 )
+                return false;
+            try
+            {
+                //could be a proc
+                using ( var context = new EntityContext() )
+                {
+                    List<DBEntity> results = context.SearchPendingReindex
+                                .Where
+                                (
+                                    s => s.StatusId == 1
+                                && s.IsUpdateOrDeleteTypeId == requestTypeId
+                                && ( entityTypeIds.Contains( s.EntityTypeId ) )
+                                )
+                                .ToList();
+                    if ( results != null && results.Count > 0 )
+                    {
+                        foreach ( var efEntity in results )
+                        {
+                            efEntity.StatusId = 2;
+                            if ( HasStateChanged( context ) )
+                            {
+                                efEntity.LastUpdated = System.DateTime.Now;
+                                count = context.SaveChanges();
+                                //can be zero if no data changed
+                                if ( count >= 0 )
+                                {
+                                    isValid = true;
+                                }
+                                else
+                                {
+                                    //?no info on error
+                                    messages.Add( string.Format( thisClassName + ".Update Failed. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}, RecordId: {1}", efEntity.EntityTypeId, efEntity.RecordId ) );
+                                    //EmailManager.NotifyAdmin( thisClassName + ". ConditionProfile_Update Failed", message );
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".UpdateAll. requestTypeId: {0}", requestTypeId ) );
+            }
+
+
+            return isValid;
+        }
+
         public bool Delete( int Id, ref string statusMessage )
         {
             bool isValid = false;

@@ -24,24 +24,26 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_DataSetProfileManager";
 		public static int RelationshipType_HasPart = 1;
+
 		#region Entity Holders Persistance ===================
 
-		//public bool SaveList( List<int> list, Guid parentUid, ref SaveStatus status )
-		//{
-		//	if ( list == null || list.Count == 0 )
-		//		return true;
-		//	int newId = 0;
+		public bool SaveList( List<int> list, Entity parent, ref SaveStatus status )
+		{
+			if ( list == null || list.Count == 0 )
+				return true;
+			int newId = 0;
 
-		//	bool isAllValid = true;
-		//	foreach ( int item in list )
-		//	{
-		//		newId = Add( parentUid, item, ref status );
-		//		if ( newId == 0 )
-		//			isAllValid = false;
-		//	}
+			bool isAllValid = true;
+			foreach ( int item in list )
+			{
+				newId = Add( parent, item, ref status );
+				if ( newId == 0 )
+					isAllValid = false;
+			}
 
-		//	return isAllValid;
-		//}
+			return isAllValid;
+		}
+
 
 		/// <summary>
 		/// Add an Entity_DataSetProfileManager
@@ -50,7 +52,7 @@ namespace workIT.Factories
 		/// <param name="dataSetProfileId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public int Add( Guid parentUid,
+		public int Add( Entity parent,
 					int dataSetProfileId,
 					ref SaveStatus status )
 		{
@@ -62,10 +64,10 @@ namespace workIT.Factories
 				return 0;
 			}
 
-			Entity parent = EntityManager.GetEntity( parentUid );
+			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
-				status.AddError( "Error - the parent entity was not found." );
+				status.AddError( "Error - the parent entity for Entity.DataSetProfile was not found." );
 				return 0;
 			}
 			using ( var context = new EntityContext() )
@@ -99,13 +101,13 @@ namespace workIT.Factories
 					{
 						//?no info on error
 						status.AddError( thisClassName + "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add an Entity_DataSetProfileManager. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, HoldersId: {2}", parentUid, parent.EntityType, dataSetProfileId );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add an Entity_DataSetProfileManager. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent EntityId: {0}, Type: {1}, dataSetProfileId: {2}", parent.Id, parent.EntityType, dataSetProfileId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
 				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 				{
-					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "Entity_Holders" );
+					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "Entity_dataSetProfile" );
 					status.AddError( "Error - the save was not successful. " + message );
 					LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 
@@ -122,6 +124,7 @@ namespace workIT.Factories
 			return id;
 		}
 
+
 		#endregion
 
 		/// <summary>
@@ -130,7 +133,7 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returnsThisEntity
-		public static List<DataSetProfile> GetAll( Guid parentUid, bool includingParts = true )
+		public static List<DataSetProfile> GetAll( Guid parentUid, bool includingParts = true, bool isAPIRequest = false )
 		{
 			var list = new List<DataSetProfile>();
 			var entity = new DataSetProfile();
@@ -154,7 +157,7 @@ namespace workIT.Factories
 							entity = new DataSetProfile();
 							if ( item.DataSetProfile != null && item.DataSetProfile.EntityStateId > 2 )
 							{
-								DataSetProfileManager.MapFromDB( item.DataSetProfile, entity, includingParts );
+								DataSetProfileManager.MapFromDB( item.DataSetProfile, entity, includingParts, isAPIRequest );
 								list.Add( entity );
 							}
 						}

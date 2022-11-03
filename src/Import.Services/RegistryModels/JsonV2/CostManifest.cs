@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	public class CostManifest : JsonLDDocument
+	public class CostManifest : BaseResourceDocument
 	{
 		[JsonIgnore]
 		public static string classType = "ceterms:CostManifest";

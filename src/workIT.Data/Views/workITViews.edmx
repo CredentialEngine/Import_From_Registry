@@ -14,6 +14,12 @@ warning 6002: The table/view 'credFinder_github.dbo.Activity_Summary' does not h
             <PropertyRef Name="ActivityType" />
             <PropertyRef Name="Activity" />
             <PropertyRef Name="Event" />
+            
+            
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityCTID" />
+            <PropertyRef Name="EntityStateId" />
+            <PropertyRef Name="OrganizationEntityStateId" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="CreatedDate" Type="datetime" Nullable="false" />
@@ -23,12 +29,16 @@ warning 6002: The table/view 'credFinder_github.dbo.Activity_Summary' does not h
           <Property Name="Event" Type="varchar" MaxLength="100" Nullable="false" />
           <Property Name="Comment" Type="nvarchar(max)" />
           <Property Name="TargetUserId" Type="int" />
-          <Property Name="ActionByUserId" Type="int" />
-          <Property Name="ActionByUser" Type="varchar" MaxLength="101" />
+          <Property Name="ActionByUserId" Type="int" Nullable="false" />
+          <Property Name="ActionByUser" Type="varchar" MaxLength="1" Nullable="false" />
           <Property Name="ActivityObjectId" Type="int" />
+          <Property Name="EntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="EntityCTID" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="EntityStateId" Type="int" Nullable="false" />
           <Property Name="ObjectRelatedId" Type="int" />
           <Property Name="OwningOrgId" Type="int" />
-          <Property Name="Organization" Type="varchar" MaxLength="300" />
+          <Property Name="Organization" Type="varchar" MaxLength="500" />
+          <Property Name="OrganizationEntityStateId" Type="int" Nullable="false" />
           <Property Name="RelatedTargetUrl" Type="varchar" MaxLength="500" />
           <Property Name="TargetObjectId" Type="int" />
           <Property Name="SessionId" Type="varchar" MaxLength="50" />
@@ -84,6 +94,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
             <PropertyRef Name="OwningOrganizationCtid" />
             <PropertyRef Name="CTID" />
             
+            <PropertyRef Name="LifeCycleStatusTypeId" />
             <PropertyRef Name="RowId" />
             <PropertyRef Name="RequiresCount" />
             <PropertyRef Name="RecommendsCount" />
@@ -101,7 +112,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
           <Property Name="Name" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="Description" Type="varchar(max)" />
           <Property Name="OrgId" Type="int" Nullable="false" />
-          <Property Name="Organization" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="Organization" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="OwningOrganizationCtid" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="OwningAgentUid" Type="uniqueidentifier" />
           <Property Name="DateEffective" Type="datetime" />
@@ -110,6 +121,8 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
           <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="CredentialRegistryId" Type="nvarchar" MaxLength="50" />
           <Property Name="cerEnvelopeUrl" Type="varchar" MaxLength="1" Nullable="false" />
+          <Property Name="LifeCycleStatusTypeId" Type="int" Nullable="false" />
+          <Property Name="LifeCycleStatusType" Type="varchar" MaxLength="200" />
           <Property Name="IdentificationCode" Type="varchar" MaxLength="50" />
           <Property Name="availableOnlineAt" Type="varchar" MaxLength="600" />
           <Property Name="AvailabilityListing" Type="varchar" MaxLength="600" />
@@ -117,6 +130,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
           <Property Name="ProcessStandards" Type="varchar" MaxLength="600" />
           <Property Name="ScoringMethodExample" Type="varchar" MaxLength="600" />
           <Property Name="ExternalResearch" Type="varchar" MaxLength="500" />
+          <Property Name="IsNonCredit" Type="bit" />
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="RowId" Type="uniqueidentifier" Nullable="false" />
@@ -562,8 +576,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Su
             <PropertyRef Name="EntityUid" />
             <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="CategoryId" />
-            <PropertyRef Name="ReferenceFrameworkId" />
-            <PropertyRef Name="PropertyCategory" />
+            <PropertyRef Name="ReferenceFrameworkItemId" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="EntityId" Type="int" Nullable="false" />
@@ -572,14 +585,17 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Su
           <Property Name="EntityBaseId" Type="int" />
           <Property Name="CategoryId" Type="int" Nullable="false" />
           <Property Name="refCreated" Type="datetime" />
-          <Property Name="PropertyCategory" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="PropertyCategory" Type="varchar" MaxLength="50" />
           <Property Name="SchemaName" Type="varchar" MaxLength="100" />
-          <Property Name="ReferenceFrameworkId" Type="int" Nullable="false" />
+          <Property Name="ReferenceFrameworkItemId" Type="int" Nullable="false" />
           <Property Name="CodeGroup" Type="varchar" MaxLength="5" />
           <Property Name="CodedNotation" Type="varchar" MaxLength="50" />
-          <Property Name="Name" Type="varchar" MaxLength="200" />
+          <Property Name="Name" Type="nvarchar" MaxLength="600" />
           <Property Name="TargetNode" Type="varchar" MaxLength="600" />
-          <Property Name="Description" Type="varchar(max)" />
+          <Property Name="Description" Type="nvarchar(max)" />
+          <Property Name="RelatedTargetNode" Type="varchar(max)" />
+          <Property Name="FrameworkName" Type="nvarchar" MaxLength="600" />
+          <Property Name="Framework" Type="varchar" MaxLength="600" />
         </EntityType>
         <!--Errors Found During Generation:
 warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
@@ -587,14 +603,14 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_To
           <Key>
             <PropertyRef Name="CategoryId" />
             <PropertyRef Name="EntityTypeId" />
-            <PropertyRef Name="ReferenceFrameworkId" />
+            <PropertyRef Name="ReferenceFrameworkItemId" />
           </Key>
           <Property Name="CategoryId" Type="int" Nullable="false" />
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="CodeGroup" Type="varchar" MaxLength="5" />
           <Property Name="CodedNotation" Type="varchar" MaxLength="50" />
-          <Property Name="Name" Type="varchar" MaxLength="200" />
-          <Property Name="ReferenceFrameworkId" Type="int" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="600" />
+          <Property Name="ReferenceFrameworkItemId" Type="int" Nullable="false" />
           <Property Name="TargetNode" Type="varchar" MaxLength="600" />
           <Property Name="Totals" Type="int" />
         </EntityType>
@@ -695,17 +711,18 @@ warning 6002: The table/view 'credFinder_github.dbo.EntityCompetencyFramework_It
           <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="EntityType" Type="varchar" MaxLength="100" />
           <Property Name="EntityBaseId" Type="int" />
-          <Property Name="EntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="EntityName" Type="nvarchar" MaxLength="800" Nullable="false" />
           <Property Name="EntityCompetencyFrameworkItemId" Type="int" Nullable="false" />
-          <Property Name="FrameworkName" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="FrameworkName" Type="varchar(max)" Nullable="false" />
           <Property Name="ExistsInRegistry" Type="bit" />
           <Property Name="FrameworkUri" Type="varchar" MaxLength="500" />
           <Property Name="SourceUrl" Type="varchar" MaxLength="500" />
           <Property Name="FrameworkCtid" Type="varchar" MaxLength="50" />
           <Property Name="EntityCompetencyId" Type="int" Nullable="false" />
-          <Property Name="Competency" Type="nvarchar" MaxLength="600" />
+          <Property Name="Competency" Type="nvarchar(max)" />
           <Property Name="TargetNodeDescription" Type="nvarchar(max)" />
           <Property Name="TargetNode" Type="varchar" MaxLength="600" />
+          <Property Name="TargetNodeCTID" Type="varchar" MaxLength="50" />
           <Property Name="CodedNotation" Type="nvarchar" MaxLength="300" />
           <Property Name="Created" Type="datetime" />
           <Property Name="Weight" Type="decimal" Precision="5" Scale="2" />
@@ -840,6 +857,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ONET_SOC.JobFamily' does not
           </Key>
           <Property Name="JobFamilyId" Type="int" Nullable="false" />
           <Property Name="Description" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="URL" Type="varchar" MaxLength="500" />
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
@@ -933,10 +951,12 @@ warning 6002: The table/view 'credFinder_github.dbo.Organization_Summary' does n
             <PropertyRef Name="Id" />
             <PropertyRef Name="EntityId" />
             <PropertyRef Name="Name" />
+            <PropertyRef Name="EntityTypeId" />
             <PropertyRef Name="RowId" />
             <PropertyRef Name="CTID" />
             <PropertyRef Name="AvailabilityListing" />
             <PropertyRef Name="IsAQAOrganization" />
+            <PropertyRef Name="LifeCycleStatusTypeId" />
             <PropertyRef Name="CredentialCount" />
             <PropertyRef Name="AssessmentCount" />
             <PropertyRef Name="LearningOpportunityCount" />
@@ -947,8 +967,9 @@ warning 6002: The table/view 'credFinder_github.dbo.Organization_Summary' does n
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="EntityId" Type="int" Nullable="false" />
-          <Property Name="Name" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="Description" Type="varchar(max)" />
+          <Property Name="EntityTypeId" Type="int" Nullable="false" />
           <Property Name="EntityStateId" Type="int" />
           <Property Name="Address1" Type="nvarchar" MaxLength="200" />
           <Property Name="Address2" Type="nvarchar" MaxLength="200" />
@@ -968,6 +989,9 @@ warning 6002: The table/view 'credFinder_github.dbo.Organization_Summary' does n
           <Property Name="IsAQAOrganization" Type="int" Nullable="false" />
           <Property Name="Created" Type="datetime" />
           <Property Name="LastUpdated" Type="datetime" />
+          <Property Name="JsonProperties" Type="nvarchar(max)" />
+          <Property Name="LifeCycleStatusTypeId" Type="int" Nullable="false" />
+          <Property Name="LifeCycleStatusType" Type="varchar" MaxLength="200" />
           <Property Name="CredentialCount" Type="int" Nullable="false" />
           <Property Name="AssessmentCount" Type="int" Nullable="false" />
           <Property Name="LearningOpportunityCount" Type="int" Nullable="false" />
@@ -1054,9 +1078,13 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Activity_Summary].[ActionByUserId] AS [ActionByUserId], 
     [Activity_Summary].[ActionByUser] AS [ActionByUser], 
     [Activity_Summary].[ActivityObjectId] AS [ActivityObjectId], 
+    [Activity_Summary].[EntityName] AS [EntityName], 
+    [Activity_Summary].[EntityCTID] AS [EntityCTID], 
+    [Activity_Summary].[EntityStateId] AS [EntityStateId], 
     [Activity_Summary].[ObjectRelatedId] AS [ObjectRelatedId], 
     [Activity_Summary].[OwningOrgId] AS [OwningOrgId], 
     [Activity_Summary].[Organization] AS [Organization], 
+    [Activity_Summary].[OrganizationEntityStateId] AS [OrganizationEntityStateId], 
     [Activity_Summary].[RelatedTargetUrl] AS [RelatedTargetUrl], 
     [Activity_Summary].[TargetObjectId] AS [TargetObjectId], 
     [Activity_Summary].[SessionId] AS [SessionId], 
@@ -1102,6 +1130,8 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Assessment_Summary].[CTID] AS [CTID], 
     [Assessment_Summary].[CredentialRegistryId] AS [CredentialRegistryId], 
     [Assessment_Summary].[cerEnvelopeUrl] AS [cerEnvelopeUrl], 
+    [Assessment_Summary].[LifeCycleStatusTypeId] AS [LifeCycleStatusTypeId], 
+    [Assessment_Summary].[LifeCycleStatusType] AS [LifeCycleStatusType], 
     [Assessment_Summary].[IdentificationCode] AS [IdentificationCode], 
     [Assessment_Summary].[availableOnlineAt] AS [availableOnlineAt], 
     [Assessment_Summary].[AvailabilityListing] AS [AvailabilityListing], 
@@ -1109,6 +1139,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Assessment_Summary].[ProcessStandards] AS [ProcessStandards], 
     [Assessment_Summary].[ScoringMethodExample] AS [ScoringMethodExample], 
     [Assessment_Summary].[ExternalResearch] AS [ExternalResearch], 
+    [Assessment_Summary].[IsNonCredit] AS [IsNonCredit], 
     [Assessment_Summary].[Created] AS [Created], 
     [Assessment_Summary].[LastUpdated] AS [LastUpdated], 
     [Assessment_Summary].[RowId] AS [RowId], 
@@ -1429,12 +1460,15 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Entity_ReferenceFramework_Summary].[refCreated] AS [refCreated], 
     [Entity_ReferenceFramework_Summary].[PropertyCategory] AS [PropertyCategory], 
     [Entity_ReferenceFramework_Summary].[SchemaName] AS [SchemaName], 
-    [Entity_ReferenceFramework_Summary].[ReferenceFrameworkId] AS [ReferenceFrameworkId], 
+    [Entity_ReferenceFramework_Summary].[ReferenceFrameworkItemId] AS [ReferenceFrameworkItemId], 
     [Entity_ReferenceFramework_Summary].[CodeGroup] AS [CodeGroup], 
     [Entity_ReferenceFramework_Summary].[CodedNotation] AS [CodedNotation], 
     [Entity_ReferenceFramework_Summary].[Name] AS [Name], 
     [Entity_ReferenceFramework_Summary].[TargetNode] AS [TargetNode], 
-    [Entity_ReferenceFramework_Summary].[Description] AS [Description]
+    [Entity_ReferenceFramework_Summary].[Description] AS [Description], 
+    [Entity_ReferenceFramework_Summary].[RelatedTargetNode] AS [RelatedTargetNode], 
+    [Entity_ReferenceFramework_Summary].[FrameworkName] AS [FrameworkName], 
+    [Entity_ReferenceFramework_Summary].[Framework] AS [Framework]
     FROM [dbo].[Entity_ReferenceFramework_Summary] AS [Entity_ReferenceFramework_Summary]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="Entity_ReferenceFramework_Totals" EntityType="Self.Entity_ReferenceFramework_Totals" store:Type="Views" store:Schema="dbo">
@@ -1444,7 +1478,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Entity_ReferenceFramework_Totals].[CodeGroup] AS [CodeGroup], 
     [Entity_ReferenceFramework_Totals].[CodedNotation] AS [CodedNotation], 
     [Entity_ReferenceFramework_Totals].[Name] AS [Name], 
-    [Entity_ReferenceFramework_Totals].[ReferenceFrameworkId] AS [ReferenceFrameworkId], 
+    [Entity_ReferenceFramework_Totals].[ReferenceFrameworkItemId] AS [ReferenceFrameworkItemId], 
     [Entity_ReferenceFramework_Totals].[TargetNode] AS [TargetNode], 
     [Entity_ReferenceFramework_Totals].[Totals] AS [Totals]
     FROM [dbo].[Entity_ReferenceFramework_Totals] AS [Entity_ReferenceFramework_Totals]</DefiningQuery>
@@ -1517,6 +1551,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [EntityCompetencyFramework_Items_Summary].[Competency] AS [Competency], 
     [EntityCompetencyFramework_Items_Summary].[TargetNodeDescription] AS [TargetNodeDescription], 
     [EntityCompetencyFramework_Items_Summary].[TargetNode] AS [TargetNode], 
+    [EntityCompetencyFramework_Items_Summary].[TargetNodeCTID] AS [TargetNodeCTID], 
     [EntityCompetencyFramework_Items_Summary].[CodedNotation] AS [CodedNotation], 
     [EntityCompetencyFramework_Items_Summary].[Created] AS [Created], 
     [EntityCompetencyFramework_Items_Summary].[Weight] AS [Weight], 
@@ -1607,6 +1642,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
             <DefiningQuery>SELECT 
     [ONET_SOC_JobFamily].[JobFamilyId] AS [JobFamilyId], 
     [ONET_SOC_JobFamily].[Description] AS [Description], 
+    [ONET_SOC_JobFamily].[URL] AS [URL], 
     [ONET_SOC_JobFamily].[Totals] AS [Totals]
     FROM [dbo].[ONET_SOC.JobFamily] AS [ONET_SOC_JobFamily]</DefiningQuery>
           </EntitySet>
@@ -1680,6 +1716,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Organization_Summary].[EntityId] AS [EntityId], 
     [Organization_Summary].[Name] AS [Name], 
     [Organization_Summary].[Description] AS [Description], 
+    [Organization_Summary].[EntityTypeId] AS [EntityTypeId], 
     [Organization_Summary].[EntityStateId] AS [EntityStateId], 
     [Organization_Summary].[Address1] AS [Address1], 
     [Organization_Summary].[Address2] AS [Address2], 
@@ -1699,6 +1736,9 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Organization_Summary].[IsAQAOrganization] AS [IsAQAOrganization], 
     [Organization_Summary].[Created] AS [Created], 
     [Organization_Summary].[LastUpdated] AS [LastUpdated], 
+    [Organization_Summary].[JsonProperties] AS [JsonProperties], 
+    [Organization_Summary].[LifeCycleStatusTypeId] AS [LifeCycleStatusTypeId], 
+    [Organization_Summary].[LifeCycleStatusType] AS [LifeCycleStatusType], 
     [Organization_Summary].[CredentialCount] AS [CredentialCount], 
     [Organization_Summary].[AssessmentCount] AS [AssessmentCount], 
     [Organization_Summary].[LearningOpportunityCount] AS [LearningOpportunityCount], 
@@ -1819,6 +1859,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="JobFamilyId" Type="Int32" Nullable="false" />
           <Property Name="Description" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="Totals" Type="Int32" />
+          <Property Name="URL" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityContainer Name="workITViews" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Codes_Currency" EntityType="Self.Codes_Currency" />
@@ -1845,8 +1886,6 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySet Name="Entity_FrameworkItemSummary" EntityType="workITViewModels.Entity_FrameworkItemSummary" />
           <EntitySet Name="Entity_FrameworkCIPCodeSummary" EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" />
           <EntitySet Name="Entity_FrameworkIndustryCodeSummary" EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" />
-          <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="workITViewModels.Entity_ReferenceFramework_Summary" />
-          <EntitySet Name="Entity_ReferenceFramework_Totals" EntityType="workITViewModels.Entity_ReferenceFramework_Totals" />
           <EntitySet Name="SiteTotalsSummaries" EntityType="workITViewModels.SiteTotalsSummary" />
           <EntitySet Name="CodesProperty_Counts_ByEntity" EntityType="workITViewModels.CodesProperty_Counts_ByEntity" />
           <EntitySet Name="CodesProperty_Summary" EntityType="workITViewModels.CodesProperty_Summary" />
@@ -1860,6 +1899,8 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySet Name="Query_IndianaCredentials" EntityType="workITViewModels.Query_IndianaCredentials" />
           <EntitySet Name="Organization_CombinedConnections" EntityType="workITViewModels.Organization_CombinedConnections" />
           <EntitySet Name="Organization_Summary" EntityType="workITViewModels.Organization_Summary" />
+          <EntitySet Name="Entity_ReferenceFramework_Totals" EntityType="workITViewModels.Entity_ReferenceFramework_Totals" />
+          <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="workITViewModels.Entity_ReferenceFramework_Summary" />
         </EntityContainer>
         <EntityType Name="CIPCode2010">
           <Key>
@@ -1936,6 +1977,10 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
             <PropertyRef Name="ActivityType" />
             <PropertyRef Name="Activity" />
             <PropertyRef Name="Event" />
+            <PropertyRef Name="EntityName" />
+            <PropertyRef Name="EntityCTID" />
+            <PropertyRef Name="EntityStateId" />
+            <PropertyRef Name="OrganizationEntityStateId" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
           <Property Name="CreatedDate" Type="DateTime" Precision="3" Nullable="false" />
@@ -1944,8 +1989,8 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="Event" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="Comment" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="TargetUserId" Type="Int32" />
-          <Property Name="ActionByUserId" Type="Int32" />
-          <Property Name="ActionByUser" Type="String" MaxLength="101" FixedLength="false" Unicode="false" />
+          <Property Name="ActionByUserId" Type="Int32" Nullable="false" />
+          <Property Name="ActionByUser" Type="String" MaxLength="1" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="ActivityObjectId" Type="Int32" />
           <Property Name="ObjectRelatedId" Type="Int32" />
           <Property Name="RelatedTargetUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
@@ -1956,7 +2001,11 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="IsBot" Type="Boolean" />
           <Property Name="EntityTypeId" Type="Int32" />
           <Property Name="OwningOrgId" Type="Int32" />
-          <Property Name="Organization" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Organization" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityCTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="EntityStateId" Type="Int32" Nullable="false" />
+          <Property Name="OrganizationEntityStateId" Type="Int32" Nullable="false" />
         </EntityType>
         <EntityType Name="EntityProperty_Summary">
           <Key>
@@ -2072,6 +2121,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
             <PropertyRef Name="CredentialsList" />
             <PropertyRef Name="Org_QAAgentAndRoles" />
             <PropertyRef Name="OwningOrganizationCtid" />
+            <PropertyRef Name="LifeCycleStatusTypeId" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
           <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
@@ -2079,7 +2129,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="DateEffective" Type="DateTime" Precision="3" />
           <Property Name="IdentificationCode" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="OrgId" Type="Int32" Nullable="false" />
-          <Property Name="Organization" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="availableOnlineAt" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="CTID" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="CredentialRegistryId" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
@@ -2107,6 +2157,9 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="OwningAgentUid" Type="Guid" />
           <Property Name="OwningOrganizationCtid" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="LifeCycleStatusTypeId" Type="Int32" Nullable="false" />
+          <Property Name="LifeCycleStatusType" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="IsNonCredit" Type="Boolean" />
         </EntityType>
         <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
           <Key>
@@ -2368,47 +2421,6 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
           <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
         </EntityType>
-        <EntityType Name="Entity_ReferenceFramework_Summary">
-          <Key>
-            <PropertyRef Name="Id" />
-            <PropertyRef Name="EntityId" />
-            <PropertyRef Name="CategoryId" />
-            <PropertyRef Name="PropertyCategory" />
-            <PropertyRef Name="ReferenceFrameworkId" />
-            <PropertyRef Name="EntityUid" />
-            <PropertyRef Name="EntityTypeId" />
-          </Key>
-          <Property Name="Id" Type="Int32" Nullable="false" />
-          <Property Name="EntityId" Type="Int32" Nullable="false" />
-          <Property Name="CategoryId" Type="Int32" Nullable="false" />
-          <Property Name="PropertyCategory" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="ReferenceFrameworkId" Type="Int32" Nullable="false" />
-          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
-          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
-          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="EntityUid" Type="Guid" Nullable="false" />
-          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
-          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
-          <Property Name="EntityBaseId" Type="Int32" />
-          <Property Name="refCreated" Type="DateTime" Precision="3" />
-        </EntityType>
-        <EntityType Name="Entity_ReferenceFramework_Totals">
-          <Key>
-            <PropertyRef Name="CategoryId" />
-            <PropertyRef Name="EntityTypeId" />
-            <PropertyRef Name="ReferenceFrameworkId" />
-          </Key>
-          <Property Name="CategoryId" Type="Int32" Nullable="false" />
-          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
-          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
-          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Name" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
-          <Property Name="ReferenceFrameworkId" Type="Int32" Nullable="false" />
-          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="Totals" Type="Int32" />
-        </EntityType>
         <EntityType Name="SiteTotalsSummary">
           <Key>
             <PropertyRef Name="Id" />
@@ -2500,14 +2512,14 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           </Key>
           <Property Name="EntityId" Type="Int32" Nullable="false" />
           <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="EntityName" Type="String" Nullable="false" MaxLength="800" FixedLength="false" Unicode="true" />
           <Property Name="EntityCompetencyFrameworkItemId" Type="Int32" Nullable="false" />
-          <Property Name="FrameworkName" Type="String" MaxLength="500" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="FrameworkName" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="FrameworkUri" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="SourceUrl" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="FrameworkCtid" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="EntityCompetencyId" Type="Int32" Nullable="false" />
-          <Property Name="Competency" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="Competency" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="TargetNodeDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="CodedNotation" Type="String" MaxLength="300" FixedLength="false" Unicode="true" />
@@ -2519,6 +2531,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="ConditionEntityTypeId" Type="Int32" Nullable="false" />
           <Property Name="ConditionEntityBaseId" Type="Int32" Nullable="false" />
           <Property Name="ExistsInRegistry" Type="Boolean" />
+          <Property Name="TargetNodeCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="ExistingRegionCities_list">
           <Key>
@@ -2713,10 +2726,12 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
             <PropertyRef Name="PathwayCount" />
             <PropertyRef Name="PathwaySetCount" />
             <PropertyRef Name="TransferValueCount" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="LifeCycleStatusTypeId" />
           </Key>
           <Property Name="Id" Type="Int32" Nullable="false" />
           <Property Name="EntityId" Type="Int32" Nullable="false" />
-          <Property Name="Name" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="EntityStateId" Type="Int32" />
           <Property Name="Address1" Type="String" MaxLength="200" FixedLength="false" Unicode="true" />
@@ -2744,6 +2759,53 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="PathwayCount" Type="Int32" Nullable="false" />
           <Property Name="PathwaySetCount" Type="Int32" Nullable="false" />
           <Property Name="TransferValueCount" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="JsonProperties" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="LifeCycleStatusTypeId" Type="Int32" Nullable="false" />
+          <Property Name="LifeCycleStatusType" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="Entity_ReferenceFramework_Totals">
+          <Key>
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="ReferenceFrameworkItemId" />
+          </Key>
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="ReferenceFrameworkItemId" Type="Int32" Nullable="false" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="Totals" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Entity_ReferenceFramework_Summary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="EntityTypeId" />
+            <PropertyRef Name="CategoryId" />
+            <PropertyRef Name="ReferenceFrameworkItemId" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityBaseId" Type="Int32" />
+          <Property Name="CategoryId" Type="Int32" Nullable="false" />
+          <Property Name="refCreated" Type="DateTime" Precision="3" />
+          <Property Name="PropertyCategory" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="SchemaName" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="ReferenceFrameworkItemId" Type="Int32" Nullable="false" />
+          <Property Name="CodeGroup" Type="String" MaxLength="5" FixedLength="false" Unicode="false" />
+          <Property Name="CodedNotation" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="TargetNode" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="Description" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="RelatedTargetNode" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="FrameworkName" Type="String" MaxLength="600" FixedLength="false" Unicode="true" />
+          <Property Name="Framework" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
         </EntityType>
       </Schema>
     </edmx:ConceptualModels>
@@ -2807,6 +2869,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="ONET_SOC_JobFamily">
             <EntityTypeMapping TypeName="workITViewModels.ONET_SOC_JobFamily">
               <MappingFragment StoreEntitySet="ONET_SOC_JobFamily">
+                <ScalarProperty Name="URL" ColumnName="URL" />
                 <ScalarProperty Name="JobFamilyId" ColumnName="JobFamilyId" />
                 <ScalarProperty Name="Description" ColumnName="Description" />
                 <ScalarProperty Name="Totals" ColumnName="Totals" />
@@ -2883,6 +2946,10 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="Activity_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Activity_Summary">
               <MappingFragment StoreEntitySet="Activity_Summary">
+                <ScalarProperty Name="OrganizationEntityStateId" ColumnName="OrganizationEntityStateId" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="EntityCTID" ColumnName="EntityCTID" />
+                <ScalarProperty Name="EntityName" ColumnName="EntityName" />
                 <ScalarProperty Name="Organization" ColumnName="Organization" />
                 <ScalarProperty Name="OwningOrgId" ColumnName="OwningOrgId" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
@@ -2982,6 +3049,9 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="Assessment_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Assessment_Summary">
               <MappingFragment StoreEntitySet="Assessment_Summary">
+                <ScalarProperty Name="IsNonCredit" ColumnName="IsNonCredit" />
+                <ScalarProperty Name="LifeCycleStatusType" ColumnName="LifeCycleStatusType" />
+                <ScalarProperty Name="LifeCycleStatusTypeId" ColumnName="LifeCycleStatusTypeId" />
                 <ScalarProperty Name="OwningOrganizationCtid" ColumnName="OwningOrganizationCtid" />
                 <ScalarProperty Name="OwningAgentUid" ColumnName="OwningAgentUid" />
                 <ScalarProperty Name="Org_QAAgentAndRoles" ColumnName="Org_QAAgentAndRoles" />
@@ -3221,41 +3291,6 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-          <EntitySetMapping Name="Entity_ReferenceFramework_Summary">
-            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Summary">
-              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Summary">
-                <ScalarProperty Name="refCreated" ColumnName="refCreated" />
-                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
-                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
-                <ScalarProperty Name="Description" ColumnName="Description" />
-                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
-                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
-                <ScalarProperty Name="Name" ColumnName="Name" />
-                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
-                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
-                <ScalarProperty Name="ReferenceFrameworkId" ColumnName="ReferenceFrameworkId" />
-                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
-                <ScalarProperty Name="PropertyCategory" ColumnName="PropertyCategory" />
-                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
-                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
-                <ScalarProperty Name="Id" ColumnName="Id" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="Entity_ReferenceFramework_Totals">
-            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Totals">
-              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Totals">
-                <ScalarProperty Name="Totals" ColumnName="Totals" />
-                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
-                <ScalarProperty Name="ReferenceFrameworkId" ColumnName="ReferenceFrameworkId" />
-                <ScalarProperty Name="Name" ColumnName="Name" />
-                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
-                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
-                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
-                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
           <EntitySetMapping Name="SiteTotalsSummaries">
             <EntityTypeMapping TypeName="workITViewModels.SiteTotalsSummary">
               <MappingFragment StoreEntitySet="SiteTotalsSummary">
@@ -3330,6 +3365,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="EntityCompetencyFramework_Items_Summary">
             <EntityTypeMapping TypeName="workITViewModels.EntityCompetencyFramework_Items_Summary">
               <MappingFragment StoreEntitySet="EntityCompetencyFramework_Items_Summary">
+                <ScalarProperty Name="TargetNodeCTID" ColumnName="TargetNodeCTID" />
                 <ScalarProperty Name="ExistsInRegistry" ColumnName="ExistsInRegistry" />
                 <ScalarProperty Name="ConditionEntityBaseId" ColumnName="ConditionEntityBaseId" />
                 <ScalarProperty Name="ConditionEntityTypeId" ColumnName="ConditionEntityTypeId" />
@@ -3504,6 +3540,10 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="Organization_Summary">
             <EntityTypeMapping TypeName="workITViewModels.Organization_Summary">
               <MappingFragment StoreEntitySet="Organization_Summary">
+                <ScalarProperty Name="LifeCycleStatusType" ColumnName="LifeCycleStatusType" />
+                <ScalarProperty Name="LifeCycleStatusTypeId" ColumnName="LifeCycleStatusTypeId" />
+                <ScalarProperty Name="JsonProperties" ColumnName="JsonProperties" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="TransferValueCount" ColumnName="TransferValueCount" />
                 <ScalarProperty Name="PathwaySetCount" ColumnName="PathwaySetCount" />
                 <ScalarProperty Name="PathwayCount" ColumnName="PathwayCount" />
@@ -3532,6 +3572,44 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
                 <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
                 <ScalarProperty Name="Description" ColumnName="Description" />
                 <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_ReferenceFramework_Totals">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Totals">
+              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Totals">
+                <ScalarProperty Name="Totals" ColumnName="Totals" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="ReferenceFrameworkItemId" ColumnName="ReferenceFrameworkItemId" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Entity_ReferenceFramework_Summary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_ReferenceFramework_Summary">
+              <MappingFragment StoreEntitySet="Entity_ReferenceFramework_Summary">
+                <ScalarProperty Name="Framework" ColumnName="Framework" />
+                <ScalarProperty Name="FrameworkName" ColumnName="FrameworkName" />
+                <ScalarProperty Name="RelatedTargetNode" ColumnName="RelatedTargetNode" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="TargetNode" ColumnName="TargetNode" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="CodedNotation" ColumnName="CodedNotation" />
+                <ScalarProperty Name="CodeGroup" ColumnName="CodeGroup" />
+                <ScalarProperty Name="ReferenceFrameworkItemId" ColumnName="ReferenceFrameworkItemId" />
+                <ScalarProperty Name="SchemaName" ColumnName="SchemaName" />
+                <ScalarProperty Name="PropertyCategory" ColumnName="PropertyCategory" />
+                <ScalarProperty Name="refCreated" ColumnName="refCreated" />
+                <ScalarProperty Name="CategoryId" ColumnName="CategoryId" />
+                <ScalarProperty Name="EntityBaseId" ColumnName="EntityBaseId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
                 <ScalarProperty Name="EntityId" ColumnName="EntityId" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>

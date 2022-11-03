@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	public class Agent : JsonLDDocument
+	public class Agent : BaseResourceDocument
 	{
 		[JsonIgnore]
 		public static string classType = "ceterms:CredentialOrganization";
@@ -64,6 +64,7 @@ namespace RA.Models.JsonV2
 		/// The type of organization is one of :
 		/// - CredentialOrganization
 		/// - QACredentialOrganization
+		/// - Organization
 		/// </summary>
 
 		[JsonProperty( "@type" )]
@@ -85,10 +86,10 @@ namespace RA.Models.JsonV2
 		/// <summary>
 		/// The status type of this Organization. 
 		/// The default is Active. 
-		/// ConceptScheme: ceterms:StatusCategory
+		/// ConceptScheme: ceterms:LifeCycleStatus
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:lifecycleStatusType" )]
-		public CredentialAlignmentObject LifecycleStatusType { get; set; }
+		[JsonProperty( PropertyName = "ceterms:lifeCycleStatusType" )]
+		public CredentialAlignmentObject LifeCycleStatusType { get; set; }
 		
 		//INs
 		[JsonProperty( PropertyName = "ceterms:accreditedIn" )]
@@ -118,7 +119,7 @@ namespace RA.Models.JsonV2
 		/// Definition:	Alphanumeric Identifier value.
 		/// List of URIs 
 		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:identifierValue" )]
+		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:image" )]
@@ -193,6 +194,11 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:availabilityListing" )]
         public List<string> AvailabilityListing { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:supersededBy" )]
+		public string SupersededBy { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:supersedes" )]
+		public string Supersedes { get; set; } //URL
 
 		/// <summary>
 		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.

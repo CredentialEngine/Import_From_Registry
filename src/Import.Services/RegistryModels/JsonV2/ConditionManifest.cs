@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	public class ConditionManifest : JsonLDDocument
+	public class ConditionManifest : BaseResourceDocument
 	{
 		[JsonIgnore]
 		public static string classType = "ceterms:ConditionManifest";
@@ -19,7 +19,6 @@ namespace RA.Models.JsonV2
             Requires = new List<ConditionProfile>();
             Renewal = new List<ConditionProfile>();
 			Recommends = new List<ConditionProfile>();
-			Corequisite = new List<ConditionProfile>();
 
 		}
 
@@ -62,5 +61,9 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:corequisite" )]
 		public List<ConditionProfile> Corequisite { get; set; }
+
+
+		[JsonProperty( PropertyName = "ceterms:coPrerequisite" )]
+		public List<ConditionProfile> CoPrerequisite { get; set; }
 	}
 }

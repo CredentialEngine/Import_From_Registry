@@ -40,7 +40,7 @@ namespace workIT.Services
 				new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 
                 //TODO - will need to update related elastic indices
-                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
             }
 
 			return isValid;

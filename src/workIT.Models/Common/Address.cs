@@ -10,8 +10,8 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-    [Serializable]
-    public class Address : BaseObject
+	[Serializable]
+	public class Address : BaseObject
 	{
 		public Address()
 		{
@@ -25,15 +25,15 @@ namespace workIT.Models.Common
 		public string StreetAddress { get; set; }
 		[JsonIgnore]
 		public string Address1_Map { get; set; }
-        //public string Address2 { get; set; }
+		//public string Address2 { get; set; }
 		public string PostOfficeBoxNumber { get; set; }
 
 		public string AddressLocality { get; set; }
-        public string City_Map { get; set; }
-       
+		public string City_Map { get; set; }
+
 		public string AddressRegion { get; set; }
 		public bool HasShortRegion { get; set; }
-        public string AddressRegion_Map { get; set; }
+		public string AddressRegion_Map { get; set; }
 		//
 		//public string AddressRegionFull { get; set; }
 		public string SubRegion { get; set; }
@@ -41,7 +41,7 @@ namespace workIT.Models.Common
 		[JsonIgnore]
 		public string Country_Map { get; set; }
 
-        public string PostalCode { get; set; }
+		public string PostalCode { get; set; }
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
 		/// <summary>
@@ -49,13 +49,14 @@ namespace workIT.Models.Common
 		/// Definition:	Means of identifying a resource, typically consisting of an alphanumeric token and a context or scheme from which that token originates.
 		/// 21-11-03 MP - we should move to just using Identifier not Entity_IdentifierValue
 		/// </summary>	
-		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public List<Entity_IdentifierValue> IdentifierOLD { get; set; }
+		public List<IdentifierValue> Identifier { get; set; }
 		public string IdentifierJson { get; set; }
 
 		public bool IsMainAddress { get; set; }
 		[JsonIgnore]
 		public Guid ParentRowId { get; set; }
-		public string DisplayAddress(string separator = ", ")
+		public string DisplayAddress( string separator = ", " )
 		{
 			string address = "";
 			if ( !string.IsNullOrWhiteSpace( StreetAddress ) )
@@ -76,15 +77,15 @@ namespace workIT.Models.Common
 				address += separator + AddressCountry;
 			return address;
 		}
-        public string LooseDisplayAddress( string separator = ", " ) //For easier geocoding
-        {
-            return
-                ( string.IsNullOrWhiteSpace( AddressLocality ) ? "" : AddressLocality + separator ) +
-                ( string.IsNullOrWhiteSpace( AddressRegion ) ? "" : AddressRegion + separator ) +
-                ( string.IsNullOrWhiteSpace( PostalCode ) ? "" : PostalCode + " " ) +
-                ( string.IsNullOrWhiteSpace( AddressCountry ) ? "" : AddressCountry );
-        }
-        public bool HasAddress()
+		public string LooseDisplayAddress( string separator = ", " ) //For easier geocoding
+		{
+			return
+				( string.IsNullOrWhiteSpace( AddressLocality ) ? "" : AddressLocality + separator ) +
+				( string.IsNullOrWhiteSpace( AddressRegion ) ? "" : AddressRegion + separator ) +
+				( string.IsNullOrWhiteSpace( PostalCode ) ? "" : PostalCode + " " ) +
+				( string.IsNullOrWhiteSpace( AddressCountry ) ? "" : AddressCountry );
+		}
+		public bool HasAddress()
 		{
 			bool hasAddress = true;
 
@@ -95,23 +96,23 @@ namespace workIT.Models.Common
 			&& string.IsNullOrWhiteSpace( PostalCode )
 				)
 				hasAddress = false;
-				
+
 			return hasAddress;
 		}
-        public bool HasContactPoints()
-        {
-            bool hasData = true;
+		public bool HasContactPoints()
+		{
+			bool hasData = true;
 
-            if ( ContactPoint == null || ContactPoint.Count == 0 )
-                return false;
+			if ( ContactPoint == null || ContactPoint.Count == 0 )
+				return false;
 
-            return hasData;
-        }
-        /// <summary>
-        /// Note: the GeoCoordinates use the rowId from the parent for the FK. If the parent of the address object can have other regions, then there will be a problem!
-        /// This may lead to the addition of concrete rowIds as needed to a parent with an address.
-        /// </summary>
-        public GeoCoordinates GeoCoordinates { get; set; }
+			return hasData;
+		}
+		/// <summary>
+		/// Note: the GeoCoordinates use the rowId from the parent for the FK. If the parent of the address object can have other regions, then there will be a problem!
+		/// This may lead to the addition of concrete rowIds as needed to a parent with an address.
+		/// </summary>
+		public GeoCoordinates GeoCoordinates { get; set; }
 
 
 		public List<ContactPoint> ContactPoint { get; set; }

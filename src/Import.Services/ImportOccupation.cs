@@ -18,7 +18,7 @@ using ThisEntity = workIT.Models.Common.OccupationProfile;
 
 namespace Import.Services
 {
-	public class ImportOccupations
+	public class ImportOccupation
 	{
 		int entityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
 		string thisClassName = "ImportOccupations";
@@ -254,7 +254,7 @@ namespace Import.Services
 			try
 			{
 				string ctid = input.CTID;
-				string referencedAtId = input.CtdlId;
+				status.ResourceURL = input.CtdlId;
 
 				LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
 				LoggingHelper.DoTrace( 6, "		url: " + input.SubjectWebpage );
@@ -271,11 +271,11 @@ namespace Import.Services
 
 					//set the rowid now, so that can be referenced as needed
 					output.RowId = Guid.NewGuid();
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".Import(). Record was NOT found using CTID: '{0}'", input.CTID ) );
+					LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".Import(). Record was NOT found using CTID: '{0}'", input.CTID ) );
 				}
 				else
 				{
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
+					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
 				}
 				helper.currentBaseObject = output;
 
@@ -284,65 +284,58 @@ namespace Import.Services
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.CTID = input.CTID;
 				//TBD handling of referencing third party publisher
-				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				{
-					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-					var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-					if ( porg != null && porg.Id > 0 )
-					{
-						//TODO - store this in a json blob??????????
-						//this will result in being added to Entity.AgentRelationship
-						output.PublishedBy = new List<Guid>() { porg.RowId };
-					}
-					else
-					{
-						//if publisher not imported yet, all publishee stuff will be orphaned
-						var entityUid = Guid.NewGuid();
-						var statusMsg = "";
-						var resPos = referencedAtId.IndexOf( "/resources/" );
-						var swp = referencedAtId.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref statusMsg );
-					}
-				}
-				else
-				{
-					//may need a check for existing published by to ensure not lost
-					//?????????????
-					if ( output.Id > 0 )
-					{
-						//if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-						//{
-						//	var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-						//	if ( publishedByList != null && publishedByList.Any() )
-						//	{
-						//		var pby = publishedByList[ 0 ].ActingAgentUid;
-						//		output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-						//	}
-						//}
-					}
-				}
+				helper.MapOrganizationPublishedBy( output, ref status );
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
+				//AbilityEmbodied - URI to existing:
+				//		Competency, Job, Occupation. Task, WorkRole
+				output.AbilityEmbodied = input.AbilityEmbodied;
+				//output.AbilitiesIds = helper.MapEntityReferences( input.AbilityEmbodied, 0, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
+				output.AbilityEmbodiedIds = helper.MapEntityReferenceGuids( "Occupation.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+
+				output.CodedNotation = input.CodedNotation;
+
+				//a concept, but unknown concept scheme?
+				//output.Classification = input.Classification;
+				//TODO
+				//output.Classification = helper.MapCAOListToEnumermation( input.Classification );
+				//
+				//
+				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
+				//HasJob
+
+				//HasSpecialization
+
+				//HasWorkRole
+
+				//
 				output.Identifier = helper.MapIdentifierValueListInternal( input.Identifier );
 				if ( output.Identifier != null && output.Identifier.Count() > 0 )
 				{
 					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
 				}
-				//
-				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
-				
-					
+				//Industries
+				output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
 
-				//what to do with these uris?
-				output.AbilityEmbodied = input.AbilityEmbodied;
-				//a concept, but unknown concept scheme?
-				output.Classification = input.Classification;
+				//IsSpecializationOf
+
+				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+				//KnowledgeEmbodied - URI to existing:
+				//		Competency Job Occupation Task WorkRole
 				output.KnowledgeEmbodied = input.KnowledgeEmbodied;
-				output.SkillEmbodied = input.SkillEmbodied;
 
+				//occupations
+				output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
+				//Requires
+				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
 				//SameAs URI - need to chg this to json - 
 				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
+				//SkillEmbodied - URI to existing:
+				//		Competency Job Occupation Task WorkRole
+				output.SkillEmbodied = input.SkillEmbodied;
+
+
 				//
 				output.VersionIdentifier = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
 				if ( output.VersionIdentifier != null && output.VersionIdentifier.Count() > 0 )
@@ -350,11 +343,7 @@ namespace Import.Services
 					output.VersionIdentifierJson = JsonConvert.SerializeObject( output.VersionIdentifier, MappingHelperV3.GetJsonSettings() );
 				}
 
-				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
-				//Industries/occupations
-				output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
-				output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
-
+				
 				//may need to save the occupation and then handle components
 				//or do a create pending for hasDestination and any hasChild (actually already done by MapEntityReferenceGuids)
 
@@ -370,7 +359,7 @@ namespace Import.Services
 				status.DetailPageUrl = string.Format( "~/occupation/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
 				//if record was added to db, add to/or set EntityResolution as resolved
-				int ierId = new ImportManager().Import_EntityResolutionAdd( referencedAtId,
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 						ctid,
 						entityTypeId,
 						output.RowId,

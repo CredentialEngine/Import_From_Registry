@@ -242,7 +242,7 @@ namespace workIT.Services
 			string server = UtilityManager.GetAppKeyValue( "serverName", "" );
 			SiteActivity log = new SiteActivity();
 			if ( sessionId == null || sessionId.Length < 10 )
-				sessionId = HttpContext.Current.Session== null ? "missing" : HttpContext.Current.Session.SessionID;
+				sessionId = HttpContext.Current?.Session== null ? "missing" : HttpContext.Current.Session.SessionID;
 
 			if ( ipAddress == null || ipAddress.Length < 10 )
 				ipAddress = ActivityManager.GetUserIPAddress();
@@ -281,9 +281,10 @@ namespace workIT.Services
         }
         public static List<SiteActivity> SearchToday( string keywords, string pOrderBy, string sortDirection, int pageNumber, int pageSize, ref int pTotalRows )
 		{
-		
+
 			BaseSearchModel parms = new BaseSearchModel()
 			{
+				StartDate = new DateTime( DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day ),
 				Keyword = keywords,
 				PageNumber = pageNumber,
 				PageSize = pageSize
@@ -317,28 +318,28 @@ namespace workIT.Services
 			pTotalRows = parms.TotalRows;
 			return list;
 		}
-		public static List<SiteActivity> SearchAll( BaseSearchModel parms, ref int pTotalRows )
-		{
+		//public static List<SiteActivity> SearchAll( BaseSearchModel parms, ref int pTotalRows )
+		//{
 
-			//probably should validate valid order by - or do in proc
-			if ( string.IsNullOrWhiteSpace( parms.OrderBy ) )
-			{
-				parms.IsDescending = true;
-				parms.OrderBy = "CreatedDate";
-				//pOrderBy = "Created DESC";
-			}
-			else
-			{
-				if ( "id activity event email comment createddate actionbyuser".IndexOf( parms.OrderBy.ToLower() ) == -1 )
-				{
-					parms.OrderBy = "CreatedDate";
-					//pOrderBy = "Created DESC";
-				}
-			}
-			List<SiteActivity> list = ActivityManager.SearchAll( parms );
-			pTotalRows = parms.TotalRows;
-			return list;
-		}
+		//	//probably should validate valid order by - or do in proc
+		//	if ( string.IsNullOrWhiteSpace( parms.OrderBy ) )
+		//	{
+		//		parms.IsDescending = true;
+		//		parms.OrderBy = "CreatedDate";
+		//		//pOrderBy = "Created DESC";
+		//	}
+		//	else
+		//	{
+		//		if ( "id activity event email comment createddate actionbyuser".IndexOf( parms.OrderBy.ToLower() ) == -1 )
+		//		{
+		//			parms.OrderBy = "CreatedDate";
+		//			//pOrderBy = "Created DESC";
+		//		}
+		//	}
+		//	List<SiteActivity> list = ActivityManager.SearchAll( parms );
+		//	pTotalRows = parms.TotalRows;
+		//	return list;
+		//}
 		public static List<SiteActivity> Search( BaseSearchModel parms, ref int pTotalRows )
 		{
 
@@ -385,5 +386,36 @@ namespace workIT.Services
 
 		}
 
+
+		#region Messages
+		public static List<MessageLog> MessageSearch( BaseSearchModel parms, ref int pTotalRows )
+		{
+
+			//probably should validate valid order by - or do in proc
+			if ( string.IsNullOrWhiteSpace( parms.OrderBy ) )
+			{
+				parms.IsDescending = true;
+				parms.OrderBy = "Created desc";
+			}
+			else
+			{
+				if ( "id application activity message description Created actionbyuser".IndexOf( parms.OrderBy.ToLower() ) == -1 )
+				{
+					parms.OrderBy = "Created";
+					if ( parms.IsDescending )
+						parms.OrderBy += " DESC";
+					//pOrderBy = "Created DESC";
+				}
+				else if ( parms.IsDescending && parms.OrderBy.ToLower().IndexOf( "desc" ) == -1 )
+				{
+					parms.OrderBy = parms.OrderBy + " desc";
+				}
+			}
+			var list = MessageManager.Search( parms.Filter, parms.OrderBy, parms.PageNumber, parms.PageSize, ref pTotalRows );
+			//pTotalRows = parms.TotalRows;
+			return list;
+		}
+
+		#endregion
 	}
 }
