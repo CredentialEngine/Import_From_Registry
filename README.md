@@ -12,6 +12,13 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### November 18, 2022 Update for August 30 release
+The after insert trigger for the Entity database had been removed but was still in the credFinderGithub220830.bak file. A script for removing the trigger is included in:
+- **DatabaseUpdates\3. Triggers\22-08-31 DROP TRIGGER trgEntityAfterInsert.sql**
+A new backup of the the github credfinder database was added with the only change being removing the trigger. The presence of the trigger will result in errors when saving Process Profiles and others. 
+If you have already downloaded and imported data, you could just run the delete script. 
+If you are just starting, then you will can just use the new backup file: credFinder_github220830Correction.zip
+
 ### August 30, 2022 Release Update
 Uploaded a new release to the [**/release/2022-08-30 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-08-30) with a new database backup.
 This release includes the option to start fresh with an empty database using the provided backup file or to apply updates to an existing database created from the May 27, 2022 download. There is a Read.me file in the DatabaseUpdates folder with additional guidance. 
