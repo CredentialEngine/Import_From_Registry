@@ -16,8 +16,10 @@ https://visualstudio.microsoft.com/vs/community/
 The after insert trigger for the Entity database had been removed but was still in the credFinderGithub220830.bak file. A script for removing the trigger is included in:
 - **DatabaseUpdates\3. Triggers\22-08-31 DROP TRIGGER trgEntityAfterInsert.sql**
 A new backup of the the github credfinder database was added with the only change being removing the trigger. The presence of the trigger will result in errors when saving Process Profiles and others. 
+
 If you have already downloaded and imported data, you could just run the delete script. 
-If you are just starting, then you will can just use the new backup file: credFinder_github220830Correction.zip
+
+If you are just starting, then you can just use the new backup file: credFinder_github220830Correction.zip
 
 ### August 30, 2022 Release Update
 Uploaded a new release to the [**/release/2022-08-30 folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/2022-08-30) with a new database backup.
