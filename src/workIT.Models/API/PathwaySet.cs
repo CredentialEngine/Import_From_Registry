@@ -17,8 +17,7 @@ namespace workIT.Models.API
 			CTDLTypeLabel = "Pathway Set";
 		}
 
-		public List<Pathway> Pathways { get; set; } = new List<Pathway>();
-		public List<Outline> HasPathways { get; set; } = new List<Outline>();
+		//public List<Pathway> Pathways { get; set; } = new List<Pathway>();
 
 		public WMS.AJAXSettings HasPathway { get; set; }
 

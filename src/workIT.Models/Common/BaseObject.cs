@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,8 +32,9 @@ namespace workIT.Models.Common
 		public Guid RowId { get; set; }
 		/// <summary>
 		/// ParentId will typically be the Entity.Id related to the base class
+		/// SHOULD RENAME THIS
 		/// </summary>
-		public int ParentId { get; set; }
+		public int RelatedEntityId { get; set; }
 		public bool HasCompetencies { get; set; }
 		public bool ChildHasCompetencies { get; set; }
 		public string DateEffective { get; set; }
@@ -68,7 +70,12 @@ namespace workIT.Models.Common
 		public LanguageMap Description_Map { get; set; }
 		public int EntityStateId { get; set; }
 		private int _entityTypeId { get; set; }
-		public int EntityTypeId
+        /// <summary>
+        /// NEED TO SYNC WITH:
+        ///		EntityManager.EntityTypeId 
+        ///		Entity.EntityTypeId 
+        /// </summary>
+        public int EntityTypeId
 		{
 			get { return _entityTypeId; }
 			set
@@ -101,7 +108,13 @@ namespace workIT.Models.Common
 					case 11:
 						EntityType = "ConceptScheme";
 						break;
-					case 19:
+					case 12:
+						EntityType = "ProgressionModel";
+						break;
+                    case 15:
+                        EntityType = "ScheduledOffering";
+                        break;
+                    case 19:
 						EntityType = "ConditionManifest";
 						break;
 					case 20:
@@ -117,16 +130,20 @@ namespace workIT.Models.Common
 					case 26:
 						EntityType = "TransferValue";
 						break;
+					case 27:
+						EntityType = "AggregateDataProfile";
+						break;
 					case 28:
-						EntityType = "EarningsProfile";
+						EntityType = "TransferIntermediary";
 						break;
-					case 29:
-						EntityType = "HoldersProfile";
-						break;
-					case 30:
-						EntityType = "EmploymentOutcomeProfile";
-						break;
-					case 31:
+                    case 29:
+                        EntityType = "Concept";
+                        break;
+                    //
+                    case 30:
+                        EntityType = "ProgressionLevel";
+                        break;
+                    case 31:
 						EntityType = "DataSetProfile";
 						break;
 					case 32:
@@ -147,6 +164,26 @@ namespace workIT.Models.Common
 					case 37:
 						EntityType = "Course";
 						break;
+                    case 38:
+                        EntityType = "SupportService";
+                        break;
+                    case 41:
+                        EntityType = "VerificationServiceProfile";
+                        break;
+                    case 58:
+                        EntityType = "Rubric";
+                        break;
+                    //OBSOLETE
+                    case 55:
+						EntityType = "EarningsProfile";
+						break;
+					case 56:
+						EntityType = "EmploymentOutcomeProfile";
+						break;
+					case 57:
+						EntityType = "HoldersProfile";
+						break;
+					
 					default:
 						EntityType = string.Format( "Unexpected EntityTypeId of {0}", _entityTypeId );
 						break;
@@ -163,28 +200,44 @@ namespace workIT.Models.Common
 			{
 				if ( string.IsNullOrWhiteSpace( CTID ) )
 					return true;
-				else
-					return false;
+                else if( EntityStateId== 2 )
+                    return true;
+                else
+                    return false;
 			}
 		}
 
 
 		public string SubjectWebpage { get; set; }
+
 		#region Owner - these will not be applicable to an org?
 		/// <summary>
 		/// OwningAgentUid
 		///  (Nov2016)
 		/// </summary>
-		public Guid OwningAgentUid { get; set; }
+		public Guid PrimaryAgentUID { get; set; }
 
-		//cannot initialize here, as can lead to a stack overflow
-		public Organization OwningOrganization { get; set; } //= new Organization();
+		/// <summary>
+		/// NOTE: cannot initialize here, as can lead to a stack overflow
+		/// 22-11-22 - may want to start considering as the primary org, where no owner
+		/// </summary>
+		public Organization PrimaryOrganization { get; set; } //= new Organization();
+		//public Organization PrimaryOrganization
+		//{
+		//	get
+		//	{
+		//		if ( OwningOrganization != null && OwningOrganization.Id > 0 )
+		//			return OwningOrganization;
+		//		else
+		//			return null;
+		//	}
+		//}
 		public string OrganizationName
 		{
 			get
 			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Name;
+				if ( PrimaryOrganization != null && PrimaryOrganization.Id > 0 )
+					return PrimaryOrganization.Name;
 				else
 					return "";
 			}
@@ -193,8 +246,8 @@ namespace workIT.Models.Common
 		{
 			get
 			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.FriendlyName;
+				if ( PrimaryOrganization != null && PrimaryOrganization.Id > 0 )
+					return PrimaryOrganization.FriendlyName;
 				else
 					return "";
 			}
@@ -208,26 +261,30 @@ namespace workIT.Models.Common
 		{
 			get
 			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Id;
+				if ( PrimaryOrganization != null && PrimaryOrganization.Id > 0 )
+					return PrimaryOrganization.Id;
 				else
-					return 0;
+					return OrganizationId;
 			}
 		}
+		/// <summary>
+		/// Use separate property for OrganizationId where a PrimaryOrganization has not been established
+		/// </summary>
+        public int OrganizationId { get; set; }
 		public int PrimaryOrganizationId
 		{
 			get
 			{
-				if ( OwningOrganization != null && OwningOrganization.Id > 0 )
-					return OwningOrganization.Id;
-				else if (OrganizationId > 0)
+				if ( PrimaryOrganization != null && PrimaryOrganization.Id > 0 )
+					return PrimaryOrganization.Id;
+				else if ( OrganizationId > 0 )
 					return OrganizationId;
 				else
 					return 0;
 			}
 		}
 		public string PrimaryOrganizationCTID { get; set; }
-		public int OrganizationId { get; set; }
+	
 		//for searches
 		public string PrimaryOrganizationName{ get; set; }
 		public string PrimaryOrganizationFriendlyName { get; set; }
@@ -254,73 +311,73 @@ namespace workIT.Models.Common
 
 	}
 
+    [Serializable]
+    public class CoreObject
+    {
+        //Lets auto-mapping methods check to see if this property should be skipped, which helps ensure critical properties don't get overwritten by mistake
+        public class UpdateAttribute : Attribute
+        {
+            public bool SkipPropertyOnUpdate { get; set; }
+        }
+        public class ExportAttribute : Attribute
+        {
+            public bool IncludePropertyOnExport { get; set; }
+        }
+        //Convenience method to get skippable properties
+        public static List<PropertyInfo> GetSkippableProperties( object data )
+        {
+            var result = new List<PropertyInfo>();
+            foreach ( var property in data.GetType().GetProperties() )
+            {
+                var updateAttribute = ( UpdateAttribute ) property.GetCustomAttribute( typeof( UpdateAttribute ) );
+                if ( updateAttribute != null && updateAttribute.SkipPropertyOnUpdate )
+                {
+                    result.Add( property );
+                }
+            }
+            return result;
+        }
+        public List<PropertyInfo> GetSkippableProperties()
+        {
+            return GetSkippableProperties( this );
+        }
 
-	//
-	[Serializable]
-	public class BaseEmploymentObject : TopLevelObject 
-	{
-		/// <summary>
-		/// URI
-		/// </summary>
-		public string CtdlId { get; set; }
+        //Normal object stuff
+        public CoreObject()
+        {
+            //Probably don't need to initialize anything here as long as BaseObject is still initializing things, since most stuff inherits from that
+        }
 
+        [Update( SkipPropertyOnUpdate = true )]
+        public int Id { get; set; }
 
+        [Update( SkipPropertyOnUpdate = true )]
+        public Guid RowId { get; set; }
 
-		/// <summary>
-		/// AbilityEmbodied
-		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
-		/// ceasn:abilityEmbodied
-		/// </summary>
-		public List<string> AbilityEmbodied { get; set; }
+        public string RowIdString
+        {
+            get
+            {
+                if ( RowId == null && RowId != Guid.Empty )
+                    return RowId.ToString();
+                else
+                    return "";
+            }
+        }
 
-		/// <summary>
-		/// Category or classification of this resource.
-		/// Where a more specific property exists, such as ceterms:naics, ceterms:isicV4, ceterms:credentialType, etc., use that property instead of this one.
-		/// URI to a competency
-		/// ceterms:classification
-		/// </summary>
-		public Enumeration Classification { get; set; }
+        [Update( SkipPropertyOnUpdate = true )]
+        public DateTime Created { get; set; }
 
-		public string CodedNotation { get; set; }
+        [Update( SkipPropertyOnUpdate = true )]
+        public int CreatedById { get; set; }
+        /// <summary>
+        /// Use will vary dependent on the context. 
+        /// Initial use was for Pathways: if any component or condition changes, set true and then update entity lastUpdated.
+        /// </summary>
+        public bool IsDirty { get; set; }
+        public DateTime LastUpdated { get; set; }
+        public int LastUpdatedById { get; set; }
+    }
 
-
-		/// <summary>
-		/// Comment
-		/// Definition:	en-US: Supplemental text provided by the promulgating body that clarifies the nature, scope or use of this competency.
-		/// ceasn:comment
-		/// </summary>
-		public List<string> Comment { get; set; } = new List<string>();
-
-
-		/// <summary>
-		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
-		/// <see cref="http://purl.org/ctdl/terms/identifier"/>
-		/// </summary>
-		public List<IdentifierValue> Identifier { get; set; }
-		public string IdentifierJson { get; set; }
-
-		/// <summary>
-		/// Body of information embodied either directly or indirectly in this resource.
-		/// List of URIs for a competency
-		/// ceasn:knowledgeEmbodied
-		/// </summary>
-		public List<string> KnowledgeEmbodied { get; set; }
-
-
-
-		/// <summary>
-		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
-		/// </summary>
-		public List<string> SkillEmbodied { get; set; }
-
-
-		/// <summary>
-		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
-		/// ceterms:versionIdentifier
-		/// </summary>
-		public List<IdentifierValue> VersionIdentifier { get; set; }
-		public string VersionIdentifierJson { get; set; }
-
-	}
 
 }

@@ -46,7 +46,10 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings TargetCredential { get; set; }
 
 		public WMS.AJAXSettings TargetLearningOpportunity { get; set; }
-		public WMS.AJAXSettings TargetCompetency { get; set; }
+        public WMS.AJAXSettings TargetOccupation { get; set; }
+        public WMS.AJAXSettings TargetJob { get; set; }
+        //
+        public WMS.AJAXSettings TargetCompetency { get; set; }
 		//
 		public decimal? Weight { get; set; }
 		public decimal? YearsOfExperience { get; set; }

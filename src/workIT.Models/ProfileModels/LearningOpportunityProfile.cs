@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models.Common;
 
 namespace workIT.Models.ProfileModels
 {
-    [Serializable] 
+	[Serializable] 
     public class LearningOpportunityProfile : TopLevelObject, IBaseObject
 	{
 		public LearningOpportunityProfile()
@@ -28,7 +28,7 @@ namespace workIT.Models.ProfileModels
 			//LearningCompetencies = new List<TextValueProfile>();
 			Subject = new List<TextValueProfile>();
 			Keyword = new List<TextValueProfile>();
-			Addresses = new List<Address>();
+			AvailableAt = new List<Address>();
 			CommonCosts = new List<CostManifest>();
 			CommonConditions = new List<ConditionManifest>();
 			Requires = new List<ConditionProfile>();
@@ -104,7 +104,7 @@ namespace workIT.Models.ProfileModels
 		//public List<QuantitativeValue> QVCreditValueList { get; set; } = new List<QuantitativeValue>();
 		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
 		public string CreditValueJson { get; set; }
-
+			
 		//[Obsolete]
 		//public string CreditHourType { get; set; }
 		//[Obsolete]
@@ -113,10 +113,11 @@ namespace workIT.Models.ProfileModels
 		public int CreditUnitTypeId { get; set; }
 		public string CreditUnitTypeDescription { get; set; }
 		public decimal CreditUnitValue { get; set; }
-		public decimal CreditUnitMinValue { get; set; }
+		//public decimal CreditUnitMinValue { get; set; }
 
-		public decimal CreditUnitMaxValue { get; set; }
+		//public decimal CreditUnitMaxValue { get; set; }
 		public bool CreditValueIsRange { get; set; }
+		public List<TextValueProfile> DegreeConcentration { get; set; } = new List<TextValueProfile>();
 
 		public List<DurationProfile> EstimatedDuration { get; set; }
 		
@@ -147,7 +148,7 @@ namespace workIT.Models.ProfileModels
 				};
 			}
 			set { Industry = value; }
-		} //Used for publishing
+		} //
 		public List<TextValueProfile> OtherIndustries { get; set; }
 		public Enumeration Occupation { get; set; }
 		public Enumeration OccupationType
@@ -179,6 +180,8 @@ namespace workIT.Models.ProfileModels
 		public CodeItemResult OccupationResults { get; set; } = new CodeItemResult();
 		public CodeItemResult InstructionalProgramClassification { get; set; } = new CodeItemResult();
 
+		public List<CollectionMember> CollectionMembers { get; set; } = new List<CollectionMember>();
+		public int InCollectionCount { get; set; }	= 0;
 		/// <summary>
 		/// Is Non-Credit
 		/// Resource carries or confers no official academic credit towards a program or a credential.
@@ -187,11 +190,11 @@ namespace workIT.Models.ProfileModels
 
 		public List<LearningOpportunityProfile> HasPart { get; set; }
 		public List<LearningOpportunityProfile> IsPartOf { get; set; } = new List<LearningOpportunityProfile>();
-
+		public List<LearningOpportunityProfile> Prerequisite { get; set; }
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; }
 		public List<OrganizationRoleProfile> OwningOrganizationQAReceived { get; set; }
 
-		public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
+		//public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
 
 		/// <summary>
 		/// List of ETPL Credentials where is a member
@@ -201,6 +204,7 @@ namespace workIT.Models.ProfileModels
 
 
 		public List<AssessmentProfile> TargetAssessment { get; set; } 
+		//inverse property not applicable, or is it?
 		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; } 
 		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
 
@@ -212,12 +216,29 @@ namespace workIT.Models.ProfileModels
 		/// COURSE ONLY
 		/// </summary>
 		public string SCED { get; set; }
-		public List<TextValueProfile> Subject { get; set; }
+
+        public List<ScheduledOffering> HasScheduledOffering { get; set; }
+        public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
+
+        public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
+		public string Supersedes { get; set; }
+		public string SupersededBy { get; set; }
 
+		public List<string> WhereReferenced { get; set; }
+		public List<Address> AvailableAt { get; set; }
 
-        public List<string> WhereReferenced { get; set; }
-		public List<Address> Addresses { get; set; }
+		public List<Address> Addresses
+		{
+			get {
+				if ( AvailableAt == null )
+					return null;
+				else
+					return AvailableAt;
+			}
+		}
+		
+
 		public string AvailabilityListing { get; set; }
 
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; }
@@ -227,10 +248,19 @@ namespace workIT.Models.ProfileModels
 		public List<LearningOpportunityProfile> IsPartOfLearningOpp { get; set; } = new List<LearningOpportunityProfile>();
 
 		public int CompetenciesCount { get; set; }
+		public List<CredentialAlignmentObjectProfile> AssessesCompetencies { get; set; }
+
 		public List<CredentialAlignmentObjectProfile> TeachesCompetencies { get; set; }
+
+		/// <summary>
+		/// A prototype to send all frameworks to UI.
+		/// Not implemented.
+		/// </summary>
         public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 
-        public List<CredentialAlignmentObjectFrameworkProfile> TeachesCompetenciesFrameworks { get; set; }
+		public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
+
+		public List<CredentialAlignmentObjectFrameworkProfile> TeachesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 				
 
@@ -256,12 +286,20 @@ namespace workIT.Models.ProfileModels
 		public string FinancialAssistanceJson { get; set; }
 
 		public string ListTitle { get; set; }
+		public Enumeration ScheduleTimingType { get; set; }
+		public Enumeration ScheduleFrequencyType { get; set; }
+		public Enumeration OfferFrequencyType { get; set; }
+		#region import 
+		public List<int> HasOfferingIds { get; set; } = new List<int>();
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
 
-        #region import 
         public List<int> HasPartIds { get; set; }
         public List<int> IsPartOfIds { get; set; }
-		public List<int> TargetPathwayIds { get; set; } = new List<int>();
+		public List<int> PrerequisiteIds { get; set; }
+		public List<int> TargetAssessmentIds { get; set; } = new List<int>();
+		public List<int> TargetLearningOpportunityIds { get; set; } = new List<int>();
 
+		
 		//CostManifestId
 		//hmm, need to create a placeholder CMs
 		public List<int> CostManifestIds { get; set; }
@@ -276,9 +314,11 @@ namespace workIT.Models.ProfileModels
 		public List<Guid> RecognizedBy { get; set; }
 
 		public List<Guid> RegulatedBy { get; set; }
+        public List<Guid> RegisteredBy { get; set; }
+        //
 
-		//INs
-		public List<JurisdictionProfile> AccreditedIn { get; set; }
+        //INs
+        public List<JurisdictionProfile> AccreditedIn { get; set; }
 
 		public List<JurisdictionProfile> ApprovedIn { get; set; }
 
@@ -326,6 +366,13 @@ namespace workIT.Models.ProfileModels
 		public string AggregateDataProfileSummary { get; set; }
 		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
 
+		/// <summary>
+		/// Use alternate name for display
+		/// </summary>
+		public List<string> AlternateName { get; set; }
+		//use for import and detail, so maybe don't need AlternateName. Need for API
+		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
+
 		public int DataSetProfileCount { get; set; }
 		public List<QData.DataSetProfile> ExternalDataSetProfiles { get; set; } = new List<QData.DataSetProfile>();
 
@@ -337,6 +384,7 @@ namespace workIT.Models.ProfileModels
 		/// The resource being referenced must be pursued concurrently with the resource being described.
 		/// </summary>
 		public List<ConditionProfile> Corequisite { get; set; }
+		public List<ConditionProfile> CoPrerequisite { get; set; } = new List<ConditionProfile>();
 
 		/// <summary>
 		/// The prerequisites for entry into the resource being described.
@@ -347,8 +395,14 @@ namespace workIT.Models.ProfileModels
 
 		public List<ConditionProfile> LearningOppConnections { get; set; }
         public CredentialConnectionsResult CredentialsList { get; set; }
-		#endregion
-	}
-	//
+        #endregion
+
+        public JObject ResourceDetail { get; set; }
+
+        #region 
+		public List<string> DataSetProfileCTIDList { get;set; }
+        #endregion
+    }
+    //
 
 }

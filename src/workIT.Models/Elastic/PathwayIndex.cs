@@ -17,12 +17,15 @@ namespace workIT.Models.Elastic
 		//public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
 		//public List<string> Keyword { get; set; } = new List<string>();
 		//public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
-		public string OwnerOrganizationName { get; set; }
-
 		public int OwnerOrganizationId
 		{
-			get { return PrimaryOrganizationId; }
+			get { return base.PrimaryOrganizationId; }
 			set { this.PrimaryOrganizationId = value; }
+		}
+		public string OwnerOrganizationName
+		{
+			get { return base.PrimaryOrganizationName; }
+			set { this.PrimaryOrganizationName = value; }
 		}
 		/// <summary>
 		/// Source will be Entity.SearchIndex
@@ -43,9 +46,12 @@ namespace workIT.Models.Elastic
 		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = null;
 		public bool IsAvailableOnline { get; set; } = false;
 
-		public bool HasOccupations { get; set; }
+        public bool AllowUseOfPathwayDisplay { get; set; }
+        public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
-		public bool HasSubjects { get; set; }
+		public bool HasInstructionalPrograms { get; set; }	
+
+        public bool HasSubjects { get; set; }
 
 		public List<EntityReference> Pathways { get; set; } = null;
 		public bool HasPathwaysCount { get; set; }

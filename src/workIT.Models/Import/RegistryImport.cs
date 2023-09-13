@@ -43,6 +43,8 @@ namespace workIT.Models
         public int Id { get; set; }
         public int EntityTypeId { get; set; }
         public int RecordId { get; set; }
+		//new handle with CTID
+		public string CTID { get; set; }
         public int StatusId { get; set; }
         public int IsUpdateOrDeleteTypeId { get; set; }
         public System.DateTime Created { get; set; }

@@ -41,6 +41,9 @@ namespace workIT.Models
 		public Nullable<int> ActionByUserId { get; set; }
 		public string ActionByUser { get; set; }
 		public Nullable<int> ActivityObjectId { get; set; }
+		//TODO
+		public string ActivityObjectCTID { get; set; }	
+
 		public string EntityName { get; set; }
 		public Nullable<int> ObjectRelatedId { get; set; }
 		public string RelatedImageUrl { get; set; }

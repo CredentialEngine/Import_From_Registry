@@ -20,8 +20,10 @@ namespace workIT.Models.Search
 		public int SkipPages { get; set; }
 		public int PageSize { get; set; }
 		public string SortOrder { get; set; }
-		public WidgetFilter WidgetFilter { get; set; }
-		public string AutocompleteContext { get; set; }
+		public int WidgetId { get; set; }
+        public bool HasCredentialPotentialResults { get; set; }
+        public string AutocompleteContext { get; set; }
+		public bool IsExportMode { get; set; }
 	}
 
 	public class AutoCompleteQuery
@@ -59,15 +61,6 @@ namespace workIT.Models.Search
 	/// </summary>
 	public class AJAXSettings
 	{
-		//[JsonProperty( "@type" )]
-		//public string Type { get; set; } = "AjaxQueryQuery";
-
-		/// <summary>
-		/// Example: credential
-		/// May not be necessary if URL has the necessary info
-		/// </summary>
-		public string SearchType { get; set; }
-
 		public string Label { get; set; }
 		public string URL { get; set; }
 		public string TestURL { get; set; }
@@ -119,10 +112,6 @@ namespace workIT.Models.Search
 	}
 	//
 
-	public class WidgetFilter
-	{
-		public int WidgetId { get; set; }
-	}
 	//
 	public class MainQueryResponse
 	{
@@ -133,5 +122,6 @@ namespace workIT.Models.Search
 		public int TotalResults { get; set; }
 		public List<JObject> Results { get; set; }
 		public JObject Debug { get; set; }
+		public JArray RelatedItems { get; set; }
 	}
 }

@@ -27,11 +27,11 @@ namespace workIT.Models.Common
 			EntityTypeId = 8;
 		}
 		public int PathwayRelationshipTypeId { get; set; }
-
-		public PathwaySet PathwaySet { get; set; } = new PathwaySet();
+        public bool AllowUseOfPathwayDisplay { get; set; }
+       
         //public string ExternalIdenifier { get; set; }
-		//list of all component
-		public List<PathwayComponent> HasPart { get; set; } = new List<PathwayComponent>();
+        //list of all component
+        public List<PathwayComponent> HasPart { get; set; } = new List<PathwayComponent>();
 		public List<PathwayComponent> HasChild { get; set; } = new List<PathwayComponent>();
         public List<PathwayComponent> HasDestinationComponent{ get; set; } = new List<PathwayComponent>();
 		/// <summary>
@@ -40,36 +40,38 @@ namespace workIT.Models.Common
 		/// </summary>
 		public ConceptScheme HasProgressionModel { get; set; } = new ConceptScheme();
 		public string ProgressionModelURI { get; set; }
-		//??
-		public Enumeration OwnerRoles { get; set; } = new Enumeration();
+        public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
+
+        //??
+        public Enumeration OwnerRoles { get; set; } = new Enumeration();
 		//??
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
-		public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
-		public List<Organization> OwnedByOrganization { get; set; } = new List<Organization>();
+        //public List<OrganizationRoleProfile> OwnerOrganizationRoles { get; set; }
+        //public List<Organization> OwnedByOrganization { get; set; } = new List<Organization>();
 
-		public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
+        //public List<Organization> OfferedByOrganization { get; set; } = new List<Organization>();
 
-		public Enumeration IndustryType { get; set; } = new Enumeration();
-		public List<TextValueProfile> AlternativeIndustries { get; set; } = new List<TextValueProfile>();
-
-		public Enumeration OccupationType { get; set; } = new Enumeration();
-		public List<TextValueProfile> AlternativeOccupations { get; set; } = new List<TextValueProfile>();
+        public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+        public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+        public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
 
 
-
-		public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
+        //TODO these should be simplified. Can they just be stored in a JSON blob?
+        public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
 		public List<TextValueProfile> Subject { get; set; } = new List<TextValueProfile>();
-
-		public string Properies { get; set; }
+        
+        public PathwayJSONProperties Properies { get; set; } = new PathwayJSONProperties();
 
 		//fake properties used by detail page
 		public string AvailabilityListing { get; set; }
+        //public PathwaySet PathwaySet { get; set; } = new PathwaySet();
 
-		#region Import
-		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
-		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+        #region Import
+        public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
-		public List<Guid> HasPartList { get; set; } = new List<Guid>();
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+
+        public List<Guid> HasPartList { get; set; } = new List<Guid>();
 		public List<Guid> HasChildList { get; set; } = new List<Guid>();
 		public List<Guid> HasDestinationList { get; set; } = new List<Guid>();
 		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
@@ -78,6 +80,14 @@ namespace workIT.Models.Common
 		#endregion
 	}
 
+	public class PathwayJSONProperties
+	{
+        public bool AllowUseOfPathwayDisplay { get; set; }
+        public List<ReferenceFrameworkItem> InstructionalProgram { get; set; }
+		public List<ReferenceFrameworkItem> IndustryType { get; set; }
+		public List<ReferenceFrameworkItem> OccupationType { get; set; }
+
+	}
 
 	public class Entity_HasPathway
 	{

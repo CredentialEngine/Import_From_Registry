@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace workIT.Models.Common
 {
 	/// <summary>
-	/// why so we have a Place and an Address class
+	/// why do we have a Place and an Address class
 	/// </summary>
     [Serializable]
     public class Place

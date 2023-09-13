@@ -6,23 +6,23 @@ using System.Threading.Tasks;
 
 namespace workIT.Models.Elastic
 {
-	public class CompetencyFrameworkIndex : BaseIndex
+	public class CompetencyFrameworkIndex : BaseIndex, IIndex
 	{
 		public CompetencyFrameworkIndex()
 		{
 
 		}
 
-		public int OwnerOrganizationId
-		{
-			get { return PrimaryOrganizationId; }
-			set { this.PrimaryOrganizationId = value; }
-		}
-		public string OwnerOrganizationName
-		{
-			get { return PrimaryOrganizationName; }
-			set { this.PrimaryOrganizationName = value; }
-		}
+		//public int PrimaryOrganizationId
+		//{
+		//	get { return base.PrimaryOrganizationId; }
+		//	set { this.PrimaryOrganizationId = value; }
+		//}
+		//public string PrimaryOrganizationName
+		//{
+		//	get { return base.PrimaryOrganizationName; }
+		//	set { this.PrimaryOrganizationName = value; }
+		//}
 		public string OwnerOrganizationCTID
 		{
 			get { return PrimaryOrganizationCTID; }
@@ -61,5 +61,15 @@ namespace workIT.Models.Elastic
 
 
 		//extras for IIndex??
+		//place holders required for IIndex
+		//public List<Address> Addresses { get; set; } = null;
+		//public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = null;
+		public bool IsAvailableOnline { get; set; } = false;
+		public string DateEffective { get; set; }
+		public string ExpirationDate { get; set; }
+		public bool HasOccupations { get; set; }
+		public bool HasIndustries { get; set; }
+		public List<string> PremiumValues { get; set; } = new List<string>();
+		public List<IndexSubject> Subjects { get; set; } = new List<IndexSubject>();
 	}
 }

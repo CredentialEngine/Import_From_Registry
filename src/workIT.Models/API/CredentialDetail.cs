@@ -48,6 +48,8 @@ namespace workIT.Models.API
 
 		public string CredentialId { get; set; }
 		public string CodedNotation { get; set; }
+		public List<Outline> Collections { get; set; }
+
 		public List<LabelLink> DegreeConcentration { get; set; }
 		public List<LabelLink> DegreeMajor { get; set; }
 		public List<LabelLink> DegreeMinor { get; set; }
@@ -72,7 +74,9 @@ namespace workIT.Models.API
 
 		//
 		public List<WMA.ConditionManifest> CommonConditions { get; set; }
-		public List<WMA.ConditionProfile> Corequisite { get; set; } = new List<WMA.ConditionProfile>();
+		public List<WMA.ConditionProfile> Corequisite { get; set; } 
+		public List<WMA.ConditionProfile> CoPrerequisite { get; set; }
+
 		public List<WMA.ConditionProfile> Recommends { get; set; }
 		public List<WMA.ConditionProfile> Renewal { get; set; }
 		public List<WMA.ConditionProfile> Requires { get; set; }
@@ -115,7 +119,10 @@ namespace workIT.Models.API
 		public List<Outline> OwnerQAReceived { get; set; } = new List<Outline>();
 		public WMS.AJAXSettings RenewedBy { get; set; }
 		public WMS.AJAXSettings RevokedBy { get; set; }
-		public WMS.AJAXSettings HasTransferValue { get; set; }
+        //not sure of approach 
+        public WMS.AJAXSettings HasSupportService { get; set; }
+
+        public WMS.AJAXSettings HasTransferValue { get; set; }
 		public WMS.AJAXSettings Revocation { get; set; }
 
 		public List<string> SameAs { get; set; }

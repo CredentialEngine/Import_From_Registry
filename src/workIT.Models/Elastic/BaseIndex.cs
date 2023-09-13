@@ -1,18 +1,21 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models.Common;
 
 namespace workIT.Models.Elastic
 {
 
-    public class BaseIndex
+	public class BaseIndex
 	{
 		public int EntityTypeId { get; set; }
 		public string EntityType { get; set; }
+		/// <summary>
+		/// Need EntityId for the common index as the unique Id
+		/// </summary>
+		public int EntityId { get; set; }
 		public int Id { get; set; }
 		public Guid RowId { get; set; }
 		public string CTID { get; set; }
@@ -71,11 +74,18 @@ namespace workIT.Models.Elastic
 		//
 		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
+		public List<string> Collection { get; set; } = new List<string>();
 		//
 		public List<IndexReferenceFramework> Industries { get; set; } = new List<IndexReferenceFramework>();
+		/// <summary>
+		/// Occupations are used with Occupation searches from the filter box
+		/// </summary>
 		public List<IndexReferenceFramework> Occupations { get; set; } = new List<IndexReferenceFramework>();
 		public List<IndexReferenceFramework> InstructionalPrograms { get; set; } = new List<IndexReferenceFramework>();
 		public List<string> Industry { get; set; } = new List<string>();
+		/// <summary>
+		/// Occupation list is used with keyword filters
+		/// </summary>
 		public List<string> Occupation { get; set; } = new List<string>();
 		public List<string> InstructionalProgram { get; set; } = new List<string>();
 		public List<string> QualityAssurancePhrase { get; set; } = new List<string>();
@@ -162,5 +172,14 @@ namespace workIT.Models.Elastic
 		//OR
 		public List<IndexWidgetTag> WidgetTags { get; set; } = new List<IndexWidgetTag>();
 
-	}
+		public List<int> ResourceForCollection { get; set; } = new List<int>();
+		public List<int> ResourceInTransferValue { get; set; } = new List<int>();
+        public List<int> ResourceHasSupportService { get; set; } = new List<int>();
+        
+        /// <summary>
+        /// Hold all detail for a resource. 
+        /// Make sure it is non-indexed
+        /// </summary>
+        public JObject ResourceDetail { get; set; }
+    }
 }

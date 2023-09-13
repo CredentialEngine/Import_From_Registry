@@ -318,6 +318,15 @@ namespace workIT.Models.QData
 		/// qdata:employmentRate
 		/// </summary>
 		public List<QuantitativeValue> EmploymentRate { get; set; } = new List<QuantitativeValue>();
+
+		/// <summary>
+		/// Faculty-to-Student Ratio
+		/// Ratio of the number of teaching faculty to the number of students.
+		/// The expression of the ratio should feature the number of faculty first, followed by the number of students, e.g., "1:10" to mean "one faculty per ten students".
+		/// qdata:facultyToStudentRatio
+		/// </summary>
+		public string FacultyToStudentRatio { get; set; }
+
 		/// <summary>
 		///  Number of credential holders in the final data collection and reporting.
 		/// qdata:holdersInSet

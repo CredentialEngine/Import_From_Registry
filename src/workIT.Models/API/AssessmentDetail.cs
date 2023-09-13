@@ -35,6 +35,7 @@ namespace workIT.Models.API
 		public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
 		public List<LabelLink> DeliveryType { get; set; } = new List<LabelLink>();
 		public string DeliveryTypeDescription { get; set; }
+		public List<string> AlternateName { get; set; }
 
 		public List<LabelLink> AssessmentUseType { get; set; } = new List<LabelLink>();
 		public List<LabelLink> AssessmentMethodType { get; set; } = new List<LabelLink>();
@@ -43,8 +44,9 @@ namespace workIT.Models.API
 		public string AssessmentOutput { get; set; }
 		
 		public LabelLink AssessmentExample { get; set; }
-		//public string AssessmentExampleDescription { get; set; }
-		public List<Address> AvailableAt { get; set; } = new List<Address>();
+        //AssessmentExampleDescription is output with AssessmentExample
+        //public string AssessmentExampleDescription { get; set; }
+        public List<Address> AvailableAt { get; set; } = new List<Address>();
 		public List<string> AvailableOnlineAt { get; set; } = new List<string>();
 
 		public List<string> AvailabilityListing { get; set; }
@@ -61,11 +63,13 @@ namespace workIT.Models.API
 		public string ExternalResearch { get; set; }
 		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
 		public string LearningMethodDescription { get; set; }
-		public LabelLink LifeCycleStatusType { get; set; }
+		//public LabelLink LifeCycleStatusType { get; set; }
 
 		//
 		public List<WMA.ConditionManifest> CommonConditions { get; set; }
-		public List<WMA.ConditionProfile> Corequisite { get; set; } = new List<WMA.ConditionProfile>();
+		public List<WMA.ConditionProfile> Corequisite { get; set; }
+		public List<WMA.ConditionProfile> CoPrerequisite { get; set; }
+
 		public List<WMA.ConditionProfile> EntryCondition { get; set; }
 		public List<WMA.ConditionProfile> Recommends { get; set; }
 		public List<WMA.ConditionProfile> Requires { get; set; }
@@ -77,6 +81,12 @@ namespace workIT.Models.API
 		public List<WMA.ConditionProfile> IsRequiredFor { get; set; }
 		public List<WMA.ConditionProfile> IsRecommendedFor { get; set; }
 		//
+		public List<Outline> Collections { get; set; }
+
+		public List<LabelLink> ScheduleTimingType { get; set; }
+		public List<LabelLink> ScheduleFrequencyType { get; set; } = new List<LabelLink>();
+		public List<LabelLink> OfferFrequencyType { get; set; } = new List<LabelLink>();
+
 		/// <summary>
 		/// Is Non-Credit
 		/// Resource carries or confers no official academic credit towards a program or a credential.
@@ -87,8 +97,10 @@ namespace workIT.Models.API
 		public bool? HasGroupParticipation { get; set; }
 		public bool? IsProctored { get; set; }
 		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
+        //not sure of approach 
+        public WMS.AJAXSettings HasSupportService { get; set; }
 
-		public WMS.AJAXSettings HasTransferValue { get; set; }
+        public WMS.AJAXSettings HasTransferValue { get; set; }
 
 		public List<Outline> QAReceived { get; set; } = new List<Outline>();
 
@@ -114,10 +126,14 @@ namespace workIT.Models.API
 
 
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
-		public WMS.AJAXSettings TargetPathway { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
+        public WMS.AJAXSettings TargetPathway { get; set; }
 		public List<string> TargetLearningResource { get; set; }
 		public List<IdentifierValue> VersionIdentifier { get; set; }
 		public WMS.AJAXSettings AssessesCompetencies { get; set; }
+		public WMS.AJAXSettings RequiresCompetencies { get; set; }
+
 		public List<AggregateDataProfile> AggregateData { get; set; }
 
 		public List<DataSetProfile> ExternalDataSetProfiles { get; set; }

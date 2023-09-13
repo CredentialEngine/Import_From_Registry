@@ -23,6 +23,7 @@ namespace workIT.Models.API
         public string FinderURL { get; set; }
         public System.DateTime LastUpdated { get; set; }
         public bool IsInPublisher { get; set; }
+        public DateTime LastCheckedDate { get; set; }
         //Summary
         public int TotalItems { get; set; }
         //Link Checker Summary 
@@ -32,6 +33,9 @@ namespace workIT.Models.API
         public string Property { get; set; }
         public int URLIssues { get; set; }
         public int URIIssues { get; set; }
+
+        //redirect to reference with orgid
+        public int ReferenceOrgId { get; set; }
 
     }
 }

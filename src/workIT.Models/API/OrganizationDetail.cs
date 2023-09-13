@@ -57,7 +57,7 @@ namespace workIT.Models.API
 		//Note: the industry type link is set up to just to a keyword search. This should probably change
 		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
-		public LabelLink LifeCycleStatusType { get; set; }
+		//public LabelLink LifeCycleStatusType { get; set; }
 
 		//URL
 		public LabelLink MissionAndGoalsStatement { get; set; }
@@ -78,10 +78,7 @@ namespace workIT.Models.API
 		/// URI
 		/// </summary>
 		public LabelLink TransferValueStatement { get; set; }
-		/// <summary>
-		/// Description of the nature of transfer value handled by the organization.
-		/// </summary>
-		//public string TransferValueStatementDescription { get; set; }
+
 
 		//codes
 		public string DUNS { get; set; }

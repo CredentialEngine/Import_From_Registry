@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using workIT.Models.Common;
+
 using MC = workIT.Models.Common;
 using WMS = workIT.Models.Search;
 
@@ -34,24 +36,32 @@ namespace workIT.Models.API
 			CTDLType = "ceterms:Pathway";
 			BroadType = "Pathway";
 		}
-		//public string CTDLTypeLabel { get; set; }
-		public int PathwayRelationshipTypeId { get; set; }
+		/// <summary>
+		/// If true, show link for pathway display, else not
+		/// </summary>
+        public bool AllowUseOfPathwayDisplay { get; set; }
+
+        public int PathwayRelationshipTypeId { get; set; }
 
 		//public PathwaySet PathwaySet { get; set; } = new PathwaySet();
 		////public string ExternalIdenifier { get; set; }
 		////list of all component
 		//would it make sense to just use outline for HasChild and destinationComponent. The details would be found in Meta_HasPart. Although is the latter less accessible from AjaxSettings?
 		public WMS.AJAXSettings HasChild { get; set; }
-		public WMS.AJAXSettings HasDestinationComponent { get; set; } 
-		/// <summary>
-		/// ConceptScheme or a ProgressionModel (TBD)
-		/// URI
-		/// </summary>
-		public ConceptScheme HasProgressionModel { get; set; }
+		public WMS.AJAXSettings HasDestinationComponent { get; set; }
+        //not sure of approach 
+        public WMS.AJAXSettings HasSupportService { get; set; }
+
+        /// <summary>
+        /// ConceptScheme or a ProgressionModel (TBD)
+        /// URI
+        /// </summary>
+        public ConceptScheme HasProgressionModel { get; set; }
 		public string ProgressionModelURI { get; set; }
 		//??
 
 		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
+		public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
 
 		public WMS.AJAXSettings Meta_HasPart { get; set; }
 		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
@@ -61,7 +71,59 @@ namespace workIT.Models.API
 
 
 	}
-	public class PathwayComponent : MC.PathwayComponent
-	{
-	}
+	public class PathwayComponent : BaseAPIType
+    {
+        public PathwayComponent()
+        {
+            EntityTypeId = 24;
+            CTDLTypeLabel = "PathwayComponent";
+            CTDLType = "ceterms:PathwayComponent";
+            BroadType = "PathwayComponent";
+        }
+        //public string BroadType { get; set; }
+        //public string CTDLType { get; set; }
+        //public string CTDLTypeLabel { get; set; }
+
+        /// <summary>
+        /// If true, show link for pathway display, else not
+        /// </summary>
+        public bool AllowUseOfPathwayDisplay { get; set; }
+        public string CodedNotation { get; set; }
+        public List<string> ComponentDesignationList { get; set; } = new List<string>();
+        public string PathwayCTID { get; set; }
+        public string PathwayComponentType { get; set; }
+
+        //      public int? Meta_Id { get; set; }
+        //      public string Meta_FriendlyName { get; set; }
+        //      public int? Meta_StateId { get; set; }
+        //      public string Meta_Language { get; set; } = "en";
+        public WMS.AJAXSettings Pathway { get; set; }
+        //the main pathway page expects this to the registry URL for the pathway
+        public string IsDestinationComponentOf { get; set; }
+
+        //      public string CredentialRegistryURL { get; set; }
+        //      //TBD - replace with a list
+        //      public RegistryData RegistryData { get; set; } = new RegistryData();
+
+        public string ComponentCategory { get; set; }
+        public string CredentialType { get; set; }
+        public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
+        public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
+        public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
+
+        // May just be a resourceSummary?
+        public List<PathwayComponent> PrecededBy { get; set; } = new List<PathwayComponent>();
+
+        /// <summary>
+        /// May just be a resourceSummary?
+        /// </summary>
+        public List<PathwayComponent> Precedes { get; set; } = new List<PathwayComponent>();
+        public string ProgramTerm { get; set; }
+        public WMS.AJAXSettings ProxyFor { get; set; }
+
+        public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
+
+        public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
+
+    }
 }

@@ -12,8 +12,8 @@ namespace workIT.Models.Common
 	/// </summary>
 	public class PathwayComponent : TopLevelObject
 	{
-		//use of constants?
-		public static int PathwayComponentType_Assessment = 1;
+        #region Constants
+        public static int PathwayComponentType_Assessment = 1;
 		public static int PathwayComponentType_Basic = 2;
 		public static int PathwayComponentType_Cocurricular = 3;
 		public static int PathwayComponentType_Competency = 4;
@@ -43,11 +43,14 @@ namespace workIT.Models.Common
 		public static int PathwayComponentRelationship_IsChildOf = 2;
 		public static int PathwayComponentRelationship_HasChild = 3;
 		public static int PathwayComponentRelationship_Precedes = 4;
-		public static int PathwayComponentRelationship_Prerequiste = 5;
+		public static int PathwayComponentRelationship_PrecededBy = 5;
 		public static int PathwayComponentRelationship_TargetComponent = 6;
 		public static int PathwayComponentRelationship_HasPart = 7;
+		[Obsolete]
+		public static int PathwayComponentRelationship_Prerequiste = 8;
+        #endregion
 
-		public enum PathwayComponentTypes
+        public enum PathwayComponentTypes
 		{
 			UNKNOWN = 0,
 			ASSESSMENT = 1,
@@ -128,28 +131,32 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<PathwayComponent> HasChild { get; set; } = new List<PathwayComponent>();
 
-		/// <summary>
-		/// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
-		/// Provide the CTID or the full URI for the target environment. 
-		/// ceterms:ComponentCondition
-		/// </summary>
-		public List<PathwayComponentCondition> HasCondition { get; set; } = new List<PathwayComponentCondition>();
+        /// <summary>
+        /// The referenced resource is higher in some arbitrary hierarchy than this resource.
+        /// Provide the CTID or the full URI for the target environment. 
+        /// ceterms:PathwayComponent
+        /// </summary>
+        public List<PathwayComponent> IsChildOf { get; set; } = new List<PathwayComponent>();
+
+        /// <summary>
+        /// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
+        /// Provide the CTID or the full URI for the target environment. 
+        /// ceterms:ComponentCondition
+        /// </summary>
+        public List<ComponentCondition> HasCondition { get; set; } = new List<ComponentCondition>();
 
 
 		/// <summary>
 		/// Concept in a ProgressionModel concept scheme
+		/// THIS SHOULD BE SINGLE TO MATCH PB
 		/// URI
 		/// </summary>
 		public List<string> HasProgressionLevels { get; set; } = new List<string>();
-		public List<Concept> ProgressionLevels { get; set; } = new List<Concept>();
+        public string HasProgressionLevel { get; set; }
+        public List<ProgressionLevel> ProgressionLevels { get; set; } = new List<ProgressionLevel>();
 		public string HasProgressionLevelDisplay { get; set; }
 		//public Concept ProgressionLevel { get; set; } = new Concept();
-		/// <summary>
-		/// The referenced resource is higher in some arbitrary hierarchy than this resource.
-		/// Provide the CTID or the full URI for the target environment. 
-		/// ceterms:PathwayComponent
-		/// </summary>
-		public List<PathwayComponent> IsChildOf { get; set; } = new List<PathwayComponent>();
+
 
 		/// <summary>
 		/// Identifier
@@ -159,15 +166,16 @@ namespace workIT.Models.Common
 		//or could store this as json
 		public string IdentifierJson { get; set; }
 
-		/// <summary>
-		/// Pathway for which this resource is the goal or destination.
-		/// Like IsTopChildOf
-		/// Provide the CTID or the full URI for the target environment. 
-		/// ceterms:Pathway
-		/// </summary>
-		public List<Pathway> IsDestinationComponentOf { get; set; } = new List<Pathway>();
-		public int IsDestinationComponentOfId { get; set; }
-		public Pathway IsDestinationComponentOfPathway { get; set; } = new Pathway();
+		///// <summary>
+		///// Pathway for which this resource is the goal or destination.
+		///// Like IsTopChildOf
+		///// Provide the CTID or the full URI for the target environment. 
+		///// ceterms:Pathway
+		///// </summary>
+		//public List<Pathway> IsDestinationComponentOf { get; set; } = new List<Pathway>();
+		//public int IsDestinationComponentOfId { get; set; }
+		//public Pathway IsDestinationComponentOfPathway { get; set; } = new Pathway();
+
 		/// <summary>
 		/// This property identifies the Pathways of which it is a part. 
 		/// 
@@ -183,38 +191,49 @@ namespace workIT.Models.Common
 		/// ceterms:CourseComponent only 
 		/// </summary>
 		public List<ValueProfile> CreditValue { get; set; } = new List<ValueProfile>();
+
+        public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+        public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
+
+        /// <summary>
+        /// Points associated with this resource, or points possible.
+        /// Added Entity_QuantitativeValueManager for use
+        /// </summary>
+        public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
+
 		/// <summary>
-		/// Points associated with this resource, or points possible.
-		/// Added Entity_QuantitativeValueManager for use
+		/// Resource that logically comes before this resource.
+		/// ceterms:PathwayComponent
 		/// </summary>
-		public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
-		//public bool PointValueIsRange { get; set; }
-		//public string PointValueJson { get; set; }
+		public List<PathwayComponent> PrecededBy { get; set; } = new List<PathwayComponent>();
 
 		/// <summary>
 		/// Resource that logically comes after this resource.
+		/// Typically don't need both PrecededBy and Precedes, with the former more likely to be used. 
 		/// This property indicates a simple or suggested ordering of resources; if a required ordering is intended, use ceterms:prerequisite instead.
-		/// Provide the CTID or the full URI for the target environment. 
-		/// ceterms:ComponentCondition
+		/// ceterms:PathwayComponent
 		/// </summary>
 		public List<PathwayComponent> Precedes { get; set; } = new List<PathwayComponent>();
 
 		/// <summary>
-		/// Resource(s) required as a prior condition to this resource.
-		/// Provide the CTID or the full URI for the target environment. 
-		/// ceterms:ComponentCondition
+		/// Indicates the resource for which a pathway component or similar proxy resource is a stand-in.
+		/// Mostly replaces SourceData
 		/// </summary>
-		public List<PathwayComponent> Prerequisite { get; set; } = new List<PathwayComponent>();
-
+		public string ProxyFor { get; set; }
 
 		/// <summary>
 		/// URL to structured data representing the resource.
 		/// The preferred data serialization is JSON-LD or some other serialization of RDF.
 		/// TBD - must this be a registry URI. Also if true, can just provide a CTID
+		/// 22-10-20 - mostly obsolete, replaced by ProxyFor
 		/// URL
 		/// </summary>
+		[Obsolete]
 		public string SourceData { get; set; }
-		public TopLevelEntityReference SourceCredential { get; set; } = null;
+
+        public TopLevelEntityReference ProxyForResource { get; set; } = null;
+
+        public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 		public TopLevelEntityReference SourceCompetency { get; set; } = null;
@@ -266,22 +285,30 @@ namespace workIT.Models.Common
 		public List<Guid> HasChildList { get; set; } = new List<Guid>();
 		public List<Guid> HasConditionList { get; set; } = new List<Guid>();
 		public List<Guid> HasIsChildOfList { get; set; } = new List<Guid>();
-		public List<Guid> HasPrerequisiteList { get; set; } = new List<Guid>();
+		public List<Guid> HasPrecededByList { get; set; } = new List<Guid>();
 		public List<Guid> HasPrecedesList { get; set; } = new List<Guid>();
+        //stored in JsonProperties
+        public int RowNumber { get; set; }
+        public int ColumnNumber { get; set; }
+        #endregion
+        public ResourceSummary FinderResource { get; set; }
 
-		#endregion
-	}
+		public Pathway Pathway { get; set; }
+    }
 
 	/// <summary>
 	/// Prototype storing some properties as Json
 	/// </summary>
 	public class PathwayComponentProperties
 	{
-		/// <summary>
-		/// Label identifying the category to further distinguish one component from another as designated by the promulgating body.
-		/// Examples may include "Required", "Core", "General Education", "Elective", etc.
-		/// </summary>
-		public List<string> ComponentDesignationList { get; set; } = new List<string>();
+        public int RowNumber { get; set; }
+        public int ColumnNumber { get; set; }
+
+        /// <summary>
+        /// Label identifying the category to further distinguish one component from another as designated by the promulgating body.
+        /// Examples may include "Required", "Core", "General Education", "Elective", etc.
+        /// </summary>
+        public List<string> ComponentDesignationList { get; set; } = new List<string>();
 
 		/// <summary>
 		/// CreditValue
@@ -298,8 +325,8 @@ namespace workIT.Models.Common
 		/// Added Entity_QuantitativeValueManager for use
 		/// </summary>
 		public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
-
-		public TopLevelEntityReference SourceCredential { get; set; } = null;
+        public TopLevelEntityReference ProxyForResource { get; set; } = null;
+        public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 		public TopLevelEntityReference SourceCompetency { get; set; } = null;

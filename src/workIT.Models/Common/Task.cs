@@ -13,6 +13,32 @@ namespace workIT.Models.Common
 	/// </summary>
 	public class Task : BaseEmploymentObject
 	{
+		/*
+			ceasn:abilityEmbodied
+			ceasn:comment
+			ceasn:hasChild
+			ceasn:isChildOf
+			ceasn:knowledgeEmbodied
+			ceasn:listID
+			ceasn:skillEmbodied
+			ceterms:alternateName
+			ceterms:classification
+			ceterms:codedNotation
+			ceterms:ctid
+			ceterms:description
+			ceterms:environmentalHazardType
+			ceterms:identifier
+			ceterms:isMemberOf
+			ceterms:name
+			ceterms:performanceLevelType
+			ceterms:physicalCapabilityType
+			ceterms:sensoryCapabilityType
+			ceterms:versionIdentifier
+		*/
+		public Task()
+		{
+			EntityTypeId = 33;
+		}
 		/// <summary>
 		///  type
 		/// </summary>

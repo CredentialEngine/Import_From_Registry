@@ -13,7 +13,7 @@ namespace workIT.Models.Elastic
         public LearningOppIndex()
         {
 			EntityTypeId = 7;
-
+			AssessesCompetencies = new List<IndexCompetency>();
 			TeachesCompetencies = new List<IndexCompetency>();
             RequiresCompetencies = new List<IndexCompetency>();
             RelationshipTypes = new List<int>();
@@ -28,9 +28,11 @@ namespace workIT.Models.Elastic
 		//public int EntityStateId { get; set; }
 		public string DateEffective { get; set; }
 
-        //public Guid RowId { get; set; }
-        //public string CTID { get; set; }
-        public List<IndexCompetency> TeachesCompetencies { get; set; }
+		//public Guid RowId { get; set; }
+		//public string CTID { get; set; }
+		public List<IndexCompetency> AssessesCompetencies { get; set; }
+
+		public List<IndexCompetency> TeachesCompetencies { get; set; }
         public List<IndexCompetency> RequiresCompetencies { get; set; }
 		//added to base
 		//TODO - add all of Teaches and Requires to Competencies
@@ -56,12 +58,12 @@ namespace workIT.Models.Elastic
         public string IdentificationCode { get; set; }
 		public int OwnerOrganizationId
 		{
-			get { return PrimaryOrganizationId; }
+			get { return base.PrimaryOrganizationId; }
 			set { this.PrimaryOrganizationId = value; }
 		}
 		public string OwnerOrganizationName
 		{
-			get { return PrimaryOrganizationName; }
+			get { return base.PrimaryOrganizationName; }
 			set { this.PrimaryOrganizationName = value; }
 		}
 		public string OwnerOrganizationCTID

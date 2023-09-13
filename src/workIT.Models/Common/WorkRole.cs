@@ -15,22 +15,70 @@ namespace workIT.Models.Common
 	/// </summary>
 	public class WorkRole : BaseEmploymentObject
 	{
+		/*
+		ceasn:abilityEmbodied
+		ceasn:comment
+		ceasn:knowledgeEmbodied
+		ceasn:skillEmbodied
+		ceterms:alternateName
+		ceterms:classification
+		ceterms:codedNotation
+		ceterms:ctid
+		ceterms:description
+		ceterms:environmentalHazardType		*
+		ceterms:hasTask						*
+		ceterms:identifier
+		ceterms:isMemberOf					*
+		ceterms:name
+		ceterms:performanceLevelType		*
+		ceterms:physicalCapabilityType		*
+		ceterms:sensoryCapabilityType		*
+		ceterms:versionIdentifier
+		*/
+		public WorkRole()
+		{
+			EntityTypeId = 34;
+		}
 		/// <summary>
 		///  type
 		/// </summary>
 		public string Type { get; set; } = "ceterms:WorkRole";
 
+		/// <summary>
+		/// Type of condition in the physical work performance environment that entails risk exposures requiring mitigating processes; select from an existing enumeration of such types.
+		/// </summary>
+		public Enumeration EnvironmentalHazardType { get; set; }
 
 		/// <summary>
 		/// Task related to this resource.
 		/// <see cref="https://credreg.net/ctdl/terms/hasTask"/>
-		/// ceterms:hasSpecialization
 		/// </summary>
 		public List<int> HasTask { get; set; }
 
+		/// <summary>
+		/// Collection to which this resource belongs.
+		/// </summary>
+		public List<int> IsMemberOf { get; set; }
 
-		#region 
+		/// <summary>
+		/// Type of required or expected human performance level; select from an existing enumeration of such types.
+		/// </summary>
+		public Enumeration PerformanceLevelType { get; set; }
+		/// <summary>
+		/// Type of physical activity required or expected in performance; select from an existing enumeration of such types.
+		/// </summary>
+		public Enumeration PhysicalCapabilityType { get; set; }
 
-		#endregion
-	}
+		/// <summary>
+		/// Type of required or expected sensory capability; select from an existing enumeration of such types.
+		/// </summary>
+		public Enumeration SensoryCapabilityType { get; set; }
+
+
+
+        #region Import
+        //public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+
+        #endregion
+    }
 }

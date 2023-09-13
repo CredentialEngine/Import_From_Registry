@@ -15,22 +15,31 @@ namespace workIT.Models.Common
 		public List<Guid> Creator { get; set; } = new List<Guid>();
 		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
+		public List<string> ChangeNote { get; set; } = new List<string>();
+		public List<string> ConceptKeyword { get; set; } = new List<string>();
+		public List<string> PublisherName { get; set; } = new List<string>();
 
 		public string Source { get; set; }
 		public bool IsProgressionModel { get; set; }
 		public string PublicationStatusType { get; set; } = "Published";
-
+		public string Rights { get; set; }
+		public string RightsHolder { get; set; }
 		public int TotalConcepts { get; set; }
 		/// <summary>
 		/// Top Concepts - list of CTIDs
 		/// </summary>
 		public List<Concept> TopConcepts { get; set; } = new List<Concept>();
 
-
+		public string DateCopyrighted { get; set; }
+		public string DateCreated { get; set; }
+		public string DateModified { get; set; }
 		/// <summary>
 		/// Has Concepts - list of all Concepts
 		/// </summary>
 		public List<Concept> HasConcepts { get; set; } = new List<Concept>();
+
+		public List<TextValueProfile> InLanguageCodeList { get; set; } = new List<TextValueProfile>();
+		public string License { get; set; }
 
 		//public bool IsApproved { get; set; }
 
@@ -42,11 +51,12 @@ namespace workIT.Models.Common
 		public List<Pathway> Pathways { get; set; } = new List<Pathway>();
 		public List<string> HasPathway { get; set; } = new List<string>();
 	}
-	public class ConceptSchemeSummary : ConceptScheme
+
+    public class ConceptSchemeSummary : ConceptScheme
 	{
 	}
-
-	public class Concept : BaseObject
+    //ProgressionModel
+    public class Concept : BaseObject
 	{
 		/// <summary>
 		/// CTID - identifier for concept. 
@@ -77,6 +87,7 @@ namespace workIT.Models.Common
 		/// Alternately can provide a language map
 		/// </summary>
 		public LanguageMap Definition_Map { get; set; } = new LanguageMap();
+		public string SubjectWebpage { get; set; }
 
 		public List<string> Notes { get; set; } = new List<string>();
 		public string Note { get; set; } 
@@ -93,5 +104,9 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string dateModified { get; set; }
 
+		public string Properties { get; set; }
+
 	}
+
+
 }

@@ -55,17 +55,44 @@ namespace workIT.Models.ProfileModels
 				&& ( this.MinimumDuration.HasValue || this.MaximumDuration.HasValue );
 			} }
 	}
-	//
+    //
 
-	public class DurationItem
+    public class DurationItem
+    {
+        public string DurationISO8601 { get; set; }
+        public int Years { get; set; }
+        public int Months { get; set; }
+        public int Weeks { get; set; }
+        public int Days { get; set; }
+        public int Hours { get; set; }
+        public int Minutes { get; set; }
+        public bool HasValue { get { return Years + Months + Weeks + Days + Hours + Minutes > 0; } }
+
+        public string Print()
+        {
+            var parts = new List<string>();
+            if (Years > 0) { parts.Add( Years + " year" + (Years == 1 ? "" : "s") ); }
+            if (Months > 0) { parts.Add( Months + " month" + (Months == 1 ? "" : "s") ); }
+            if (Weeks > 0) { parts.Add( Weeks + " week" + (Weeks == 1 ? "" : "s") ); }
+            if (Days > 0) { parts.Add( Days + " day" + (Days == 1 ? "" : "s") ); }
+            if (Hours > 0) { parts.Add( Hours + " hour" + (Hours == 1 ? "" : "s") ); }
+            if (Minutes > 0) { parts.Add( Minutes + " minute" + (Minutes == 1 ? "" : "s") ); }
+
+            if (parts.Count > 0)
+                return string.Join( ", ", parts );
+            else
+                return string.Empty;
+        }
+    }
+    public class DurationItemDecimal
 	{
 		public string DurationISO8601 { get; set; }
-		public int Years { get; set; }
-		public int Months { get; set; }
-		public int Weeks { get; set; }
-		public int Days { get; set; }
-		public int Hours { get; set; }
-		public int Minutes { get; set; }
+		public decimal Years { get; set; }
+		public decimal Months { get; set; }
+		public decimal Weeks { get; set; }
+		public decimal Days { get; set; }
+		public decimal Hours { get; set; }
+		public decimal Minutes { get; set; }
 		public bool HasValue { get { return Years + Months + Weeks + Days + Hours + Minutes > 0; } }
 
 		public string Print()

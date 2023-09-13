@@ -173,7 +173,7 @@ namespace workIT.Models.Common
 
 
 		//public int AlignmentTypeId { get; set; }
-		//public string AlignmentType { get; set; }
+		public string AlignmentType { get; set; }
 
 		//for use with CASS comps, initially
 		//public int CompetencyId { get; set; }

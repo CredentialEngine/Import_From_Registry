@@ -39,7 +39,7 @@ namespace workIT.Models.Common
 		public PathwaySetSummary()
 		{
 			//make sure no issue with initializing here
-			OwningOrganization = new Organization();
+			PrimaryOrganization = new Organization();
 		}
 
 		public int SearchRowNumber { get; set; }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -149,6 +151,7 @@ namespace workIT.Models.Common
 		
 		public CodeItemResult ConnectionsList { get; set; }
 		public CredentialConnectionsResult CredentialsList { get; set; }
+		public int InCollectionCount { get; set; } = 0;
 
 		public List<Address> Addresses { get; set; }
 		public bool IsAQACredential { get; set; }
@@ -159,8 +162,11 @@ namespace workIT.Models.Common
 		public int NumberOfCostProfileItems { get; set; }
 		public List<CostProfile> EstimatedCost { get; set; }
 		public bool HasVerificationType_Badge { get; set; }
-		
-	}
+
+		//public string ResourceDetail { get; set; }
+        public JObject ResourceDetail { get; set; }
+
+    }
 	public class CodeItemResult
 	{
 		public CodeItemResult()

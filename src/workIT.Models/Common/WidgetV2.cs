@@ -16,6 +16,7 @@ namespace workIT.Models.Common
 			AssessmentFilters = new FilterSet();
 			LearningOpportunityFilters = new FilterSet();
 			WidgetColors = new List<ColorPair>();
+			LabelMaps = new List<LabelMap>();
 			InitializeLists( this );
 		}
 
@@ -45,16 +46,22 @@ namespace workIT.Models.Common
 		public FilterSet PathwayFilters { get; set; } = new FilterSet();
 		public FilterSet PathwaySetFilters { get; set; } = new FilterSet();
 		public FilterSet TransferValueFilters { get; set; } = new FilterSet();
+		public FilterSet TransferIntermediaryFilters { get; set; } = new FilterSet();
 		public FilterSet ConceptSchemeFilters { get; set; } = new FilterSet();
+		public FilterSet CollectionFilters { get; set; } = new FilterSet();
 		public List<string> HideGlobalFilters { get; set; }
 
         //Features
         public List<string> SearchFeatures { get; set; }
 		public string CustomCssUrl { get; set; }
 		public List<ColorPair> WidgetColors { get; set; }
-		//
+		/// <summary>
+		/// May need 4 of these? 
+		/// But want at the search section level - in FilterSet or just use: FilterSet.PotentialResult list has values?
+		/// </summary>
 		public bool HasCredentialPotentialResults { get; set; }
 		public bool AllowsCSVExport { get; set; } //Allow export/download of search results to a CSV file
+		public List<LabelMap> LabelMaps { get; set; }
 
 		//Internal classes
 		//Location Set
@@ -93,10 +100,21 @@ namespace workIT.Models.Common
 			//public List<Reference> AccreditedBy { get; set; }
 			//public List<Reference> ApprovedBy { get; set; }
 			//public List<Reference> RegulatedBy { get; set; }
-			public List<Reference> PotentialResults { get; set; } //Used to limit search results to items identified by this list
+			/// <summary>
+			/// Used to limit search results to items identified by this list
+			/// </summary>
+			public List<Reference> PotentialResults { get; set; }
+            /// <summary>
+            /// Not sure if needed here. Full name of HasCredentialPotentialResults really only applies to credentials. At some point we may start doing the same for other resource types. So a more general name may be needed.
+            /// </summary>
+            public bool HasPotentialResults { get; set; }
+            /// <summary>
+            /// Used to limit searches to resources in these collections
+            /// </summary>
+            public List<Reference> CollectionResults { get; set; }
 
-            // Checkbox Searches
-            //public List<string> HideSearches { get; set; }
+			// Checkbox Searches
+			//public List<string> HideSearches { get; set; }
 			//Checkbox Filters
 			public List<string> HideFilters { get; set; }
 			public List<string> HideCredentialTypeFilters { get; set; }
@@ -157,6 +175,17 @@ namespace workIT.Models.Common
 			public string Identifier { get; set; }
 			public bool Selected { get; set; }
 			public List<int> ItemIDs { get; set; }
+		}
+		//
+
+		public class LabelMap
+		{
+			public string CTDLType { get; set; }
+			public string BroadType { get; set; }
+			public string SingleReplace { get; set; }
+			public string PluralReplace { get; set; }
+			public string SingleLabel { get; set; }
+			public string PluralLabel { get; set; }
 		}
 		//
 

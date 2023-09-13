@@ -57,8 +57,8 @@ namespace workIT.Models.ProfileModels
 
 		public int CostProfileId
 		{
-			get { return ParentId; }
-			set { this.ParentId = value; }
+			get { return RelatedEntityId; }
+			set { this.RelatedEntityId = value; }
 		}
 		/// <summary>
 		/// Not persisted, just used for display

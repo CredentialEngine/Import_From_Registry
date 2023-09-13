@@ -41,7 +41,8 @@ namespace workIT.Models.Common
 		public List<ConditionProfile> IsPreparationFor { get; set; }
 		public List<ConditionProfile> EntryCondition { get; set; }
 		public List<ConditionProfile> Corequisite { get; set; }
-		public List<ConditionProfile> Renewal { get; set; }
+        public List<ConditionProfile> CoPrerequisite { get; set; }
+        public List<ConditionProfile> Renewal { get; set; }
 		//public List<ConditionManifestExpanded> CommonConditions { get; set; }
 
 		public static List<ConditionManifestExpanded> ExpandConditionManifestList( List<ConditionManifest> input )
@@ -76,8 +77,9 @@ namespace workIT.Models.Common
 				IsPreparationFor = processed[ ConditionProfile.ConditionProfileTypes.IS_PREPARATION_FOR ],
 				IsAdvancedStandingFor = processed[ ConditionProfile.ConditionProfileTypes.IS_ADVANCED_STANDING_FOR ],
 				EntryCondition = processed[ ConditionProfile.ConditionProfileTypes.ENTRY_CONDITION ],
-				Corequisite = processed[ ConditionProfile.ConditionProfileTypes.COREQUISITE ]
-			};
+				Corequisite = processed[ ConditionProfile.ConditionProfileTypes.COREQUISITE ],
+                CoPrerequisite = processed[ConditionProfile.ConditionProfileTypes.COPREREQUISITE],
+            };
 			return result;
 		}
 	}
@@ -131,6 +133,7 @@ namespace workIT.Models.Common
 		
 		public List<ConditionProfile> EntryCondition { get; set; }
 		public List<ConditionProfile> Corequisite { get; set; }
+		public List<ConditionProfile> CoPrerequisite { get; set; } 
 		public List<ConditionProfile> Renewal { get; set; }
 		
 	}

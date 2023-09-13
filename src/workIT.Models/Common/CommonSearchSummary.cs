@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Newtonsoft.Json.Linq;
+
 namespace workIT.Models.Common
 {
 	public class CommonSearchSummary
@@ -52,9 +54,17 @@ namespace workIT.Models.Common
 		public List<string> Occupation { get; set; } = new List<string>();
 		public List<string> InstructionalProgram { get; set; } = new List<string>();
 
-		public List<string> Keyword { get; set; } = new List<string>();
+        public string DateEffective { get; set; }
+        public string ExpirationDate { get; set; }
+        public List<string> Keyword { get; set; } = new List<string>();
+        public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+        public string LifeCycleStatus { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
+        public List<string> Subjects { get; set; } = new List<string>();
+		//public List<ResourceSummary> AboutResources { get; set; } = new List<ResourceSummary>();
+		public CodeItemResult AboutCredentials { get; set; } = new CodeItemResult();
+		public CodeItemResult AboutLearningOpportunities { get; set; } = new CodeItemResult();
 
-		public List<string> Subjects { get; set; } = new List<string>();
 		//
 		public List<int> ReportFilters { get; set; } = new List<int>();
 		//will need more, for each of the types of list:
@@ -64,8 +74,9 @@ namespace workIT.Models.Common
 		//OR
 		//public List<IndexWidgetTag> WidgetTags { get; set; } = new List<IndexWidgetTag>();
 
-		public int TransferValueForCredentialsCount { get; set; }
 		#region TVP counts
+		public int TransferValueForCredentialsCount { get; set; }
+
 		public int PathwaysCount { get; set; }
 		public int TransferValueFromCredentialsCount { get; set; }
 		public int TransferValueForAssessmentsCount { get; set; }
@@ -73,7 +84,28 @@ namespace workIT.Models.Common
 		public int TransferValueForLoppsCount { get; set; }
 		public int TransferValueFromLoppsCount { get; set; }
 
+		//
+		public int TransferIntermediariesFor { get; set; }
 
-		#endregion
-	}
+        #endregion
+        public List<Address> AvailableAt { get; set; }
+		public CodeItemResult AccommodationTypes { get; set; } = new CodeItemResult();
+
+		public CodeItemResult SupportServiceCategories { get; set; } = new CodeItemResult();
+        public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
+
+        public CodeItemResult OfferFrequencyType { get; set; } = new CodeItemResult();
+        public CodeItemResult ScheduleFrequencyType { get; set; } = new CodeItemResult();
+        public CodeItemResult ScheduleTiming { get; set; } = new CodeItemResult();
+
+        public int CostProfilesCount { get; set; }
+        public int NumberOfCostProfileItems { get; set; }
+        public int CommonCostsCount { get; set; }
+        public int CommonConditionsCount { get; set; }
+        public int FinancialAidCount { get; set; }
+        public int HasSupportServiceCount { get; set; }
+        public int IsPartOfSupportServiceCount { get; set; }
+        public JObject ResourceDetail { get; set; }
+
+    }
 }

@@ -26,7 +26,7 @@ namespace workIT.Models.API
 		public List<string> HasTopChild { get; set; }
 		public List<Competency> Meta_HasPart { get; set; }
 		public WMS.AJAXSettings Creator { get; set; }
-		public WMS.AJAXSettings Publisher { get; set; }
+		//public WMS.AJAXSettings Publisher { get; set; }
 		public WMS.AJAXSettings RightsHolder { get; set; }
 	}
 
@@ -45,7 +45,8 @@ namespace workIT.Models.API
 		//public string CTDLTypeLabel { get; set; }
 
 		public string CredentialRegistryURL { get; set; }
-		public string CTID { get; set; }
+        public string TargetNode { get; set; }
+        public string CTID { get; set; }
 		public string CompetencyLabel { get; set; }
 		public string CompetencyText { get; set; }
 		public string Comment { get; set; }
@@ -53,6 +54,7 @@ namespace workIT.Models.API
 		public string CompetencyCategory { get; set; }
 		public string ListID { get; set; }
 
+		//22-10-27 mp - these seem to be reversed in some frameworks. Was it changed at some time? Only an issue with 3 sandbox frameworks
 		public List<string> HasChild { get; set; } = new List<string>();
 		public List<Competency> Meta_HasChild { get; set; } = new List<Competency>();
 		public bool? Meta_IsReferenced { get; set; }

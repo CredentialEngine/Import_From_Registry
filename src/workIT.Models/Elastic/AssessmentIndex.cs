@@ -23,12 +23,12 @@ namespace workIT.Models.Elastic
 		public int NameIndex { get; set; }
 		public int OwnerOrganizationId
 		{
-			get { return PrimaryOrganizationId; }
+			get { return base.PrimaryOrganizationId; }
 			set { this.PrimaryOrganizationId = value; }
 		}
 		public string OwnerOrganizationName
 		{
-			get { return PrimaryOrganizationName; }
+			get { return base.PrimaryOrganizationName; }
 			set { this.PrimaryOrganizationName = value; }
 		}
 		public string OwnerOrganizationCTID

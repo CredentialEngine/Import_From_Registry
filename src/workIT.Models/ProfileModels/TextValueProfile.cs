@@ -21,8 +21,8 @@ namespace workIT.Models.ProfileModels
 		/// </summary>
 		public int EntityId
 		{
-			get { return this.ParentId; }
-			set { this.ParentId = value; }
+			get { return this.RelatedEntityId; }
+			set { this.RelatedEntityId = value; }
 		}
 
 		/// <summary>

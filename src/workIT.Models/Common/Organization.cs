@@ -85,8 +85,8 @@ namespace workIT.Models.Common
 
 		public int EntityId
 		{
-			get { return this.ParentId; }
-			set { this.ParentId = value; }
+			get { return this.RelatedEntityId; }
+			set { this.RelatedEntityId = value; }
 		}
 		//public string Image { get; set; }
 
@@ -250,20 +250,30 @@ namespace workIT.Models.Common
 		public int TotalCollections { get; set; }
 		public int TotalFrameworks { get; set; }
 		public int TotalConceptSchemes { get; set; }
-		public int RenewsCredentials { get; set; }
+
+        public int TotalJobs { get; set; }
+        public int TotalOccupations { get; set; }
+        public int TotalSupportServices { get; set; }
+        public int TotalTasks { get; set; }
+        public int TotalWorkRoles { get; set; }
+     
+
+        public int RenewsCredentials { get; set; }
 		public int RevokesCredentials { get; set; }
 		public int RegulatesCredentials { get; set; }
 		//
 		public int TotalTransferValueProfiles { get; set; }
-		
+        public int TotalTransferIntermediaries { get; set; }
 
-		public int TotalPathways{ get; set; }
+        public int TotalPathways{ get; set; }
 		public int TotalPathwaySets { get; set; }
 		public int TotalCredentialsPublishedByThirdParty { get; set; }
 		public int TotalOrganizationsPublishedByThirdParty { get; set; }
 		public int TotalAssessmentsPublishedByThirdParty { get; set; }
 		public int TotalLoppsPublishedByThirdParty { get; set; }
-		public List<Credential> CreatedCredentials { get; set; }
+        public int TotalTransferValueProfilesPublishedByThirdParty { get; set; }
+        public int TotalTransferIntermediariesPublishedByThirdParty { get; set; }
+        public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }
         public List<AssessmentProfile> OwnedAssessments { get; set; } = new List<AssessmentProfile>();
         public List<LearningOpportunityProfile> OwnedLearningOpportunities { get; set; } = new List<LearningOpportunityProfile>();
@@ -327,22 +337,10 @@ namespace workIT.Models.Common
 		public string ID_ISICV4 { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:isicv4" )?.TextValue; } }
 		public string ID_NECS { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:ceterms:ncesID" )?.TextValue; } }
 
-		//used in detail page
-		//21-11-23 mp this not in ctdl
-		//public List<IdentifierValue> ID_AlternativeIdentifier
-		//{
-		//	get
-		//	{
-		//		return IdentificationCodes.Where( m => m.CodeSchema == "ceterms:alternativeIdentifier" ).ToList().ConvertAll( m =>
-		//		new IdentifierValue()
-		//		{
-		//			IdentifierType = m.TextTitle,
-		//			IdentifierValueCode = m.TextValue
-		//		} );
-		//	}
-		//}
+        public int ScheduledOfferingCount { get; set; }
+        public List<ScheduledOffering> ScheduledOffering { get; set; }
 
-		public List<TextValueProfile> SocialMediaPages { get; set; } = new List<TextValueProfile>();
+        public List<TextValueProfile> SocialMediaPages { get; set; } = new List<TextValueProfile>();
 
 		public string SupersededBy { get; set; } //URL
 		public string Supersedes { get; set; } //URL
@@ -384,8 +382,12 @@ namespace workIT.Models.Common
 		public List<string> UserAccountRolesForThisOrganization { get; set; }
 		public bool CanCreateWidgets { get; set; }
 
-	}
-	[Serializable]
+        #region IMPORT
+        //public List<string> HasVerificationService { get; set; }
+        public List<int> HasVerificationServiceIds { get; set; }
+        #endregion
+    }
+    [Serializable]
 	public class OrganizationExternalProperties
 	{
 		public List<Address> Addresses { get; set; } = new List<Address>();

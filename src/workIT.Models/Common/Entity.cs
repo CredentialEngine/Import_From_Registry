@@ -45,10 +45,15 @@ namespace workIT.Models.Common
 		public string Description { get; set; }
 		public string SubjectWebpage { get; set; }
 		public string DetailURL { get; set; }
-
+        //TODO - why is rowId being skipped?
 		//public System.Guid RowId { get; set; }
 		private int _entityTypeId { get; set; }
-		public int EntityTypeId
+        /// <summary>
+        /// NEED TO SYNC WITH:
+        ///		EntityManager.EntityTypeId 
+        ///		TopLevelObject.EntityTypeId 
+        /// </summary>
+        public int EntityTypeId
 		{
 			get { return _entityTypeId; }
 			set
@@ -56,74 +61,100 @@ namespace workIT.Models.Common
 				_entityTypeId = value;
 				switch ( _entityTypeId )
 				{
-					case 1:
-						EntityType = "Credential";
-						break;
-					case 2:
-						EntityType = "Organization";
-						break;
-					case 3:
-						EntityType = "Assessment";
-						break;
-					case 7:
-						EntityType = "LearningOpportunity";
-						break;
-					case 8:
-						EntityType = "Pathway";
-						break;
-					case 9:
-						EntityType = "Collection";
-						break;
-					case 10:
-					case 17:
-						EntityType = "CompetencyFramework";
-						break;
-					case 11:
-						EntityType = "ConceptScheme";
-						break;
-					case 19:
-						EntityType = "ConditionManifest";
-						break;
-					case 20:
-						EntityType = "CostManifest";
-						break;
-					case 21:
-						EntityType = "FinancialAssistance";
-						break;
-					case 23:
-						EntityType = "PathwaySet";
-						break;
-					case 24:
-						EntityType = "PathwayComponent";
-						break;
-					case 26:
-						EntityType = "TransferValue";
-						break;
-					case 28:
-						EntityType = "EarningsProfile";
-						break;
-					case 29:
-						EntityType = "HoldersProfile";
-						break;
-					case 30:
-						EntityType = "EmploymentOutcomeProfile";
-						break;
-					case 31:
-						EntityType = "DataSetProfile";
-						break;
-					case 32:
-						EntityType = "JobProfile";
-						break;
-					case 33:
-						EntityType = "TaskProfile";
-						break;
-					case 34:
-						EntityType = "WorkRoleProfile";
-						break;
-					case 35:
-						EntityType = "OccupationProfile";
-						break;
-					default:
+                    case 1:
+                        EntityType = "Credential";
+                        break;
+                    case 2:
+                    case 13:
+                    case 14:
+                        EntityType = "Organization";
+                        break;
+                    case 3:
+                        EntityType = "Assessment";
+                        break;
+                    case 7:
+                        EntityType = "LearningOpportunity";
+                        break;
+                    case 8:
+                        EntityType = "Pathway";
+                        break;
+                    case 9:
+                        EntityType = "Collection";
+                        break;
+                    case 10:
+                        EntityType = "CompetencyFramework";
+                        break;
+                    case 11:
+                        EntityType = "ConceptScheme";
+                        break;
+                    case 12:
+                        EntityType = "ProgressionModel";
+                        break;
+                    case 15:
+                        EntityType = "ScheduledOffering";
+                        break;
+                    case 17:
+                        EntityType = "Competency";
+                        break;
+                    case 19:
+                        EntityType = "ConditionManifest";
+                        break;
+                    case 20:
+                        EntityType = "CostManifest";
+                        break;
+                    case 21:
+                        EntityType = "FinancialAssistance";
+                        break;
+                    case 23:
+                        EntityType = "PathwaySet";
+                        break;
+                    case 24:
+                        EntityType = "PathwayComponent";
+                        break;
+                    case 26:
+                        EntityType = "TransferValue";
+                        break;
+                    case 28:
+                        EntityType = "TransferIntermediary";
+                        break;
+                    case 29:
+                        EntityType = "Concept";
+                        break;
+                    case 30:
+                        EntityType = "ProgressionLevel";
+                        break;
+                    //
+                    case 31:
+                        EntityType = "DataSetProfile";
+                        break;
+                    case 32:
+                        EntityType = "JobProfile";
+                        break;
+                    case 33:
+                        EntityType = "TaskProfile";
+                        break;
+                    case 34:
+                        EntityType = "WorkRoleProfile";
+                        break;
+                    case 35:
+                        EntityType = "Occupation";
+                        break;
+                    case 36:
+                        EntityType = "LearningProgram";
+                        break;
+                    case 37:
+                        EntityType = "Course";
+                        break;
+                    case 38:
+                        EntityType = "SupportService";
+                        break;
+                    case 41:
+                        EntityType = "VerificationServiceProfile";
+                        break;
+                    case 58:
+                        EntityType = "Rubric";
+                        break;
+                    default:
 						EntityType = string.Format( "Unexpected EntityTypeId of {0}", _entityTypeId );
 						break;
 				}
@@ -142,13 +173,18 @@ namespace workIT.Models.Common
 		public int Id { get; set; }
 		public int EntityTypeId { get; set; }
 		public string EntityType { get; set; }
+		public int SubclassEntityTypeId { get; set; }
 		public int EntityStateId { get; set; }
 		public System.Guid EntityUid { get; set; }
 		public int BaseId { get; set; }
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public string CTID { get; set; }
-
+        /// <summary>
+        /// Normally true. Set to false for a resource with a status like deprecated or ceased!
+        /// NOT REALLY USED AS YET
+        /// </summary>
+		public bool IsActive { get; set; } = true;
 		public int OwningOrgId { get; set; }
 		//
 		public int PublishedByOrganizationId { get; set; }
@@ -159,17 +195,18 @@ namespace workIT.Models.Common
 		public string OwningOrgCTID { get; set; }
 		public string SubjectWebpage { get; set; }
 		public string ImageUrl { get; set; }
-		public int parentEntityId { get; set; }
-		public System.Guid parentEntityUid { get; set; }
-		public string parentEntityType { get; set; }
-		public int parentEntityTypeId { get; set; }
+
+		public int ParentEntityId { get; set; }
+		public System.Guid ParentEntityUid { get; set; }
+		public string ParentEntityType { get; set; }
+		public int ParentEntityTypeId { get; set; }
 
 		public System.DateTime Created { get; set; }
 
 		public System.DateTime LastUpdated { get; set; }
 		public System.DateTime CacheDate { get; set; }
 
-
+		public string ResourceDetail { get; set; }
 
 	}
 }

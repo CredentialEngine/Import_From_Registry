@@ -17,7 +17,7 @@ namespace workIT.Models.Common
 		string Description { get; set; }
 		string SubjectWebpage { get; set; }
 
-		Organization OwningOrganization { get; set; }
+		Organization PrimaryOrganization { get; set; }
 
 		int EntityStateId { get; set; }
 

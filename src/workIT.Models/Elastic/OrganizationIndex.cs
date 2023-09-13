@@ -30,7 +30,7 @@ namespace workIT.Models.Elastic
         //public string FriendlyName { get; set; }
         //public int Id { get; set; }
         public int OwnerOrganizationId
-        {
+		{
             get
             {
                 return Id;

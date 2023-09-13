@@ -28,7 +28,8 @@ namespace workIT.Models.ProfileModels
 			TargetAssessment = new List<AssessmentProfile>();
 			TargetLearningOpportunity = new List<LearningOpportunityProfile>();
 			TargetCredential = new List<Credential>();
-
+			TargetOccupation = new List<OccupationProfile>();
+			TargetJob = new List<Job>();
 			//ReferenceUrl = new List<TextValueProfile>();
 			//AssertedByOrgProfileLink = new MN.ProfileLink();
 			//ReferenceUrl = new List<TextValueProfile>();
@@ -56,8 +57,9 @@ namespace workIT.Models.ProfileModels
 			IS_PREPARATION_FOR = 8,
 			PREPARATION_FROM = 9,
 			COREQUISITE = 10,
-			ENTRY_CONDITION = 11
-		}
+			ENTRY_CONDITION = 11,
+            COPREREQUISITE = 12,
+        }
 		public static int CodeIdForType( ConditionProfileTypes type )
 		{
 			try
@@ -167,10 +169,11 @@ namespace workIT.Models.ProfileModels
 		public List<int> TargetCredentialIds { get; set; }
 		public List<int> TargetAssessmentIds { get; set; }
 		public List<int> TargetLearningOpportunityIds { get; set; }
-		#endregion
+        public List<int> TargetOccupationIds { get; set; }
+        #endregion
 
-		#region Prperties for Display
-		public List<CostProfile> EstimatedCosts { get; set; }
+        #region Prperties for Display
+        public List<CostProfile> EstimatedCosts { get; set; }
 		public List<CostProfile> EstimatedCost { get { return EstimatedCosts; } set { EstimatedCosts = value; } } //Alias
 		public List<CostManifest> CommonCosts { get; set; }
 
@@ -190,18 +193,19 @@ namespace workIT.Models.ProfileModels
 
 		public List<AssessmentProfile> TargetAssessment { get; set; }
 		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; }
+        public List<OccupationProfile> TargetOccupation{ get; set; }
+        public List<Job> TargetJob { get; set; }
+        #endregion
 
-		#endregion
 
 
 
+        #region parents properties (HOW USED??)
 
-		#region parents properties (HOW USED??)
-
-		/// <summary>
-		/// If referenced, indicates that the ParentCredential is the parent of the condition
-		/// </summary>
-		public Credential ParentCredential { get; set; }
+        /// <summary>
+        /// If referenced, indicates that the ParentCredential is the parent of the condition
+        /// </summary>
+        public Credential ParentCredential { get; set; }
 
 		/// <summary>
 		/// If referenced, indicates that the ParentAssessment is the parent of the condition

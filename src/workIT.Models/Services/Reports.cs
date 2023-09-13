@@ -10,11 +10,11 @@ namespace workIT.Models.Services.Reports
 	{
 		public Report()
 		{
-			Generated = DateTime.Now;
+			Generated = DateTime.Now.ToString();
 			Rows = new List<T>();
 		}
 
-		public DateTime Generated { get; set; }
+		public string Generated { get; set; }
 		public List<T> Rows { get; set; }
 		public int TotalRows { get; set; }
 	}
@@ -82,6 +82,10 @@ namespace workIT.Models.Services.Reports
 		/// Use "linkCategory:Registry" or "linkCategory:Content"
 		/// </summary>
 		public string LinkType { get; set; }
+		//Date Link checker last ran
+		public string LastChecked { get; set; }
+		//Reference OrgId
+		public int ReferenceOrgId { get; set; }
 	}
 	//
 
@@ -89,6 +93,7 @@ namespace workIT.Models.Services.Reports
 	{
 		public string Description { get; set; }
 		public string SubjectWebPage { get; set; }
+		public string Type { get; set; }//for the reference report publisher, to get the resource name
 	}
 	//
 
@@ -182,7 +187,31 @@ namespace workIT.Models.Services.Reports
 		public string Name { get; set; }
 	}
 	//
+	public class APIRequestValidationResponse
+	{
+		public APIRequestValidationResponse()
+		{
+			Messages = new List<string>();
+		}
 
+		/// True if action was successfull, otherwise false
+		public bool Successful { get; set; }
+		public string RegistryAuthorizationToken { get; set; }
+		public string PublishingOrganization { get; set; }
+		public string PublishingOrganizationRegistryIdentifier { get; set; }
+		public string PublishingOrganizationCTID { get; set; }
+		public bool OwningOrganizationExists { get; set; }
+		public string OwningOrganization { get; set; }
+		public string OwningOrganizationRegistryIdentifier { get; set; }
+		public bool IsSuperPublisher { get; set; }
+		public bool PublisherIsTrustedPartner { get; set; }
+		public bool PublisherCanPublishTheOrganization { get; set; }
+		/// <summary>
+		/// List of error or warning messages
+		/// </summary>
+		public List<string> Messages { get; set; }
+
+	}
 	public class NamedValue<T>
 	{
 		public NamedValue() { }

@@ -64,9 +64,8 @@ namespace workIT.Models.Common
 			DegreeMajor = new List<TextValueProfile>();
 			DegreeMinor = new List<TextValueProfile>();
 
-			OwningOrganization = new Organization();
+			PrimaryOrganization = new Organization();
 			OwnerRoles = new Enumeration();
-			VerificationServiceProfiles = new List<VerificationServiceProfile>();
 
 			//TargetCredential = new List<Credential>();
 			TargetAssessment = new List<AssessmentProfile>();
@@ -92,7 +91,7 @@ namespace workIT.Models.Common
 			VersionIdentifierList = new List<Entity_IdentifierValue>();
 		}
 
-		public DateTime RegistryLastUpdated { get; set; }
+		//public DateTime RegistryLastUpdated { get; set; }
 
 		public CredentialExternalProperties CredentialExternalProperties { get; set; } = new CredentialExternalProperties();
 		//propsal used JsonProperties to store serialized version of CredentialExternalProperties
@@ -109,7 +108,7 @@ namespace workIT.Models.Common
         /// Use alternate name for display
         /// </summary>
 		public List<string> AlternateName { get; set; }
-        //use for import and detail, so maybe don't need AlternateName
+        //use for import and detail, so maybe don't need AlternateName. Need for API
         public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
 		public string LatestVersion { get; set; }
@@ -189,16 +188,11 @@ namespace workIT.Models.Common
 		/// List of ETPL Credentials where is a member
 		/// </summary>
 		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
-		//used by import
-		public List<Guid> HasETPLResourceUids { get; set; } = new List<Guid>();
-		//public List<TopLevelObject> HasETPLAssessments { get; set; } = new List<TopLevelObject>();
-		public List<int> HasETPLAssessmentsIds { get; set; } = new List<int>();
-		//public List<TopLevelObject> HasETPLCredentials{ get; set; } = new List<TopLevelObject>();
-		public List<int> HasETPLCredentialsIds { get; set; } = new List<int>();
-		//public List<TopLevelObject> HasETPLLopps { get; set; } = new List<TopLevelObject>();
-		public List<int> HasETPLLoppsIds { get; set; } = new List<int>();
-		public List<int> TargetPathwayIds { get; set; } = new List<int>();
-		public List<TransferValueProfile> HasTransferValueProfile { get; set; } = new List<TransferValueProfile>();
+
+        public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
+        public List<SupportService> HasSupportService2 { get; set; } = new List<SupportService>();
+
+        public List<TransferValueProfile> HasTransferValueProfile { get; set; } = new List<TransferValueProfile>();
 		// ==================================================================
 
 		/// <summary>
@@ -269,8 +263,9 @@ namespace workIT.Models.Common
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 
-		#region Import Profiles
-		public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; }
+		public List<VerificationServiceProfile> UsesVerificationService { get; set; } = new List<VerificationServiceProfile>();
+        #region Import Profiles
+        public List<CredentialAlignmentObjectProfile> OccupationTypes { get; set; }
 		public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; }
 		public List<string> Naics { get; set; }
 		public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
@@ -314,13 +309,9 @@ namespace workIT.Models.Common
 		//public List<ConditionProfile> AssessmentConnections { get; set; }
 		//public List<ConditionProfile> LearningOppConnections { get; set; }
 
-		#region import 
-		//CostManifestId
-		//hmm, need to create a placeholder CMs - try to use ints
-	
-		public List<int> CostManifestIds { get; set; }
-		public List<int> ConditionManifestIds { get; set; }
-		#endregion
+
+		public List<CollectionMember> CollectionMembers { get; set; } = new List<CollectionMember>();
+
 		#region Output for detail
 		public List<CostManifest> CommonCosts { get; set; }
 		public List<ConditionManifest> CommonConditions { get; set; }
@@ -330,6 +321,8 @@ namespace workIT.Models.Common
 		public List<ConditionProfile> Recommends { get; set; }
 		public List<ConditionProfile> Renewal { get; set; }
 		public List<ConditionProfile> Corequisite { get; set; }
+		public List<ConditionProfile> CoPrerequisite { get; set; } = new List<ConditionProfile>();
+
 
 		//Use the DisambiguateConditionProfiles for the API?
 		//public List<ConditionProfile> PreparationFrom
@@ -369,8 +362,10 @@ namespace workIT.Models.Common
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		//not stored yet
 		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
+		//not stored yet
 		public string IdentifierJSON { get; set; }
 
 		/// <summary>
@@ -378,6 +373,7 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
 		public List<IdentifierValue> VersionIdentifierNew { get; set; }
+		//not stored yet
 		public string VersionIdentifierJSON { get; set; }
 
 		public List<TextValueProfile> Keyword { get; set; }
@@ -472,13 +468,31 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string ProcessStandardsDescription { get; set; }
 
-		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
+		public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; } = new List<VerificationServiceProfile>();
 
+        public bool HasVerificationType_Badge { get; set; }
 
+        #region import 
+        //used by import
+        public List<Guid> HasETPLResourceUids { get; set; } = new List<Guid>();
+        //public List<TopLevelObject> HasETPLAssessments { get; set; } = new List<TopLevelObject>();
+        public List<int> HasETPLAssessmentsIds { get; set; } = new List<int>();
+        //public List<TopLevelObject> HasETPLCredentials{ get; set; } = new List<TopLevelObject>();
+        public List<int> HasETPLCredentialsIds { get; set; } = new List<int>();
+        //public List<TopLevelObject> HasETPLLopps { get; set; } = new List<TopLevelObject>();
+        public List<int> HasETPLLoppsIds { get; set; } = new List<int>();
+        //CostManifestId
+        //hmm, need to create a placeholder CMs - try to use ints
 
-		public bool HasVerificationType_Badge { get; set; }
-	}
-	[Serializable]
+        public List<int> CostManifestIds { get; set; }
+        public List<int> ConditionManifestIds { get; set; }
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+        public List<int> TargetPathwayIds { get; set; } = new List<int>();
+
+        public List<int> VerificationServiceProfileIds { get; set; }
+        #endregion
+    }
+    [Serializable]
 	public class CredentialExternalProperties
 	{
 		public List<Address> Addresses { get; set; } = new List<Address>();

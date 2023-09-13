@@ -37,11 +37,12 @@ namespace workIT.Models.API
 		/// </summary>
 		public string EndDate { get; set; }
 
-
-		/// <summary>
-		/// A suggested or articulated credit- or point-related transfer value.
-		/// </summary>
-		public List<ValueProfile> TransferValue { get; set; } = new List<ValueProfile>();
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
+        /// <summary>
+        /// A suggested or articulated credit- or point-related transfer value.
+        /// </summary>
+        public List<ValueProfile> TransferValue { get; set; } = new List<ValueProfile>();
 		/// <summary>
 		///  Resource that provides the transfer value described by this resource, according to the entity providing this resource.
 		/// </summary>
@@ -50,7 +51,8 @@ namespace workIT.Models.API
 		/// <summary>
 		///  Resource that accepts the transfer value described by this resource, according to the entity providing this resource.
 		/// </summary>
-		public WMS.AJAXSettings TransferValueFor { get; set; } 
+		public WMS.AJAXSettings TransferValueFor { get; set; }
 
+		public WMS.AJAXSettings HasIntermediaryFor { get; set; }
 	}
 }

@@ -16,11 +16,15 @@ namespace workIT.Models.Common
 		/// URI
 		/// </summary>
 		public string IdentifierType { get; set; }
+		//22-08-03 MP - NOTE: IS there existing data with Name? May only have been in Address that uses Entity_IdentifierValue
+		//public string Name { get; set; }
+
 		/// <summary>
 		/// Formal name or acronym of the framework, scheme, type, or other organizing principle of this identifier, such as ISBN or ISSN.
 		/// </summary>
 		public string IdentifierTypeName { get; set; }
-		//public string Name { get; set; }
+
+
 		public string IdentifierValueCode { get; set; }
 	}
 }

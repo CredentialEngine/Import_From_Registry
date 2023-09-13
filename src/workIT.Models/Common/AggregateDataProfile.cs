@@ -79,8 +79,14 @@ namespace workIT.Models.Common
 		/// Number of months usually range between 3 months (one quarter) to ten years.
 		/// </summary>
 		public int PostReceiptMonths { get; set; }
-		//public JurisdictionProfile Region { get; set; }
-
+		//
+		/// <summary>
+		/// Faculty-to-Student Ratio
+		/// Ratio of the number of teaching faculty to the number of students.
+		/// The expression of the ratio should feature the number of faculty first, followed by the number of students, e.g., "1:10" to mean "one faculty per ten students".
+		/// qdata:facultyToStudentRatio
+		/// </summary>
+		public string FacultyToStudentRatio { get; set; }
 		/// <summary>
 		/// Authoritative source of an entity's information.
 		/// URL

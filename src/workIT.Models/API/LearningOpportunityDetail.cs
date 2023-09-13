@@ -29,6 +29,7 @@ namespace workIT.Models.API
 
 		public List<LabelLink> OwnerRoles { get; set; }
 		public List<AggregateDataProfile> AggregateData { get; set; }
+		public List<string> AlternateName { get; set; }
 
 		public List<LabelLink> AudienceLevelType { get; set; }
 		public List<LabelLink> AudienceType { get; set; } = new List<LabelLink>();
@@ -40,8 +41,7 @@ namespace workIT.Models.API
 
 		public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
 
-		public List<Address> AvailableAt { get; set; } = new List<Address>();
-		public List<string> AlternateName { get; set; } = new List<string>();
+		public List<Address> AvailableAt { get; set; } 
 		public List<string> AvailableOnlineAt { get; set; } = new List<string>();
 
 		public List<string> AvailabilityListing { get; set; }
@@ -52,10 +52,16 @@ namespace workIT.Models.API
 		public string CreditUnitTypeDescription { get; set; }
 		public string DateEffective { get; set; }
 		//
-		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; } = new List<FinancialAssistanceProfile>();
+		public List<Outline> Collections { get; set; }
+		//public List<string> Collections { get; set; } = new List<string>();
+		//
+		public List<LabelLink> DegreeConcentration { get; set; }
+		public List<FinancialAssistanceProfile> FinancialAssistance { get; set; }
 		//
 		public List<WMA.ConditionManifest> CommonConditions { get; set; }
-		public List<WMA.ConditionProfile> Corequisite { get; set; } = new List<WMA.ConditionProfile>();
+		public List<WMA.ConditionProfile> Corequisite { get; set; }
+		public List<WMA.ConditionProfile> CoPrerequisite { get; set; }
+
 		public List<WMA.ConditionProfile> EntryCondition { get; set; }
 		public List<WMA.ConditionProfile> Recommends { get; set; }
 		public List<WMA.ConditionProfile> Requires { get; set; }
@@ -68,15 +74,18 @@ namespace workIT.Models.API
 		public List<WMA.ConditionProfile> IsRecommendedFor { get; set; }
 		//
 		public List<WMA.CostManifest> CommonCosts { get; set; }
-		public List<ME.CostProfile> EstimatedCost { get; set; } = new List<ME.CostProfile>();
+		public List<ME.CostProfile> EstimatedCost { get; set; } 
 		public List<WMA.DurationProfile> EstimatedDuration { get; set; }
 		public string ExpirationDate { get; set; }
 
-		public List<IdentifierValue> Identifier { get; set; } = new List<IdentifierValue>();
+		public List<IdentifierValue> Identifier { get; set; } 
 
 
 		public WMS.AJAXSettings HasPart { get; set; }
-		public WMS.AJAXSettings HasTransferValue { get; set; }
+        //not sure of approach 
+        public WMS.AJAXSettings HasSupportService { get; set; }
+
+        public WMS.AJAXSettings HasTransferValue { get; set; }
 		/// <summary>
 		/// Is Non-Credit
 		/// Resource carries or confers no official academic credit towards a program or a credential.
@@ -86,24 +95,37 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings IsPartOf { get; set; }
 		public List<LabelLink> LearningMethodType { get; set; } = new List<LabelLink>();
 		public string LearningMethodDescription { get; set; }
-		public LabelLink LifeCycleStatusType { get; set; }
+		//public LabelLink LifeCycleStatusType { get; set; }
 
+		public List<LabelLink> ScheduleTimingType { get; set; } = new List<LabelLink>();
+		public List<LabelLink> ScheduleFrequencyType { get; set; } = new List<LabelLink>();
+		public List<LabelLink> OfferFrequencyType { get; set; } = new List<LabelLink>();
+
+		public WMS.AJAXSettings Prerequisite { get; set; }
 		public List<Outline> QAReceived { get; set; } = new List<Outline>();
 		public List<Outline> OwnerQAReceived { get; set; } = new List<Outline>();
 
 		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
-		public List<LabelLink> OccupationTypeOld { get; set; } = new List<LabelLink>();
+		//public List<LabelLink> OccupationTypeOld { get; set; } = new List<LabelLink>();
 		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
 
 		public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
+
+
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 		public List<string> SameAs { get; set; }
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
-		public WMS.AJAXSettings TargetAssessment { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
+        public WMS.AJAXSettings TargetAssessment { get; set; }
 		public WMS.AJAXSettings TargetLearningOpportunity { get; set; }
 		public WMS.AJAXSettings TargetPathway { get; set; }
 		public List<string> TargetLearningResource { get; set; }
 		public List<IdentifierValue> VersionIdentifier { get; set; }
+
+		//
+		public WMS.AJAXSettings AssessesCompetencies { get; set; }
+		public WMS.AJAXSettings RequiresCompetencies { get; set; }
 		public WMS.AJAXSettings TeachesCompetencies { get; set; }
 
 		public List<DataSetProfile> ExternalDataSetProfiles { get; set; }

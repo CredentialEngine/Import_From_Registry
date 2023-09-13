@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -27,7 +29,7 @@ namespace workIT.Models.ProfileModels
 			WhereReferenced = new List<string>();
 			Subject = new List<TextValueProfile>();
 			Keyword = new List<TextValueProfile>();
-			Addresses = new List<Address>();
+			AvailableAt = new List<Address>();
 			CommonCosts = new List<CostManifest>();
 			EstimatedCost = new List<CostProfile>();
 			//FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
@@ -155,21 +157,18 @@ namespace workIT.Models.ProfileModels
         //public List<TextValueProfile> ResourceUrl { get; set; } = new List<TextValueProfile>();
 		public string AssessmentExample { get; set; }
 		public string AssessmentExampleDescription { get; set; }
+		public List<CollectionMember> CollectionMembers { get; set; } = new List<CollectionMember>();
+
+		public Enumeration ScheduleTimingType { get; set; }
+		public Enumeration ScheduleFrequencyType { get; set; }
+		public Enumeration OfferFrequencyType { get; set; }
 
 		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
-        public List<TextValueProfile> Keyword { get; set; }
+		public string Supersedes { get; set; }
+		public string SupersededBy { get; set; }
+		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
-
-
-		//used by import, NOT the detail page
-		public List<CredentialAlignmentObjectProfile> AssessesCompetencies { get; set; }
-		public int CompetenciesCount { get; set; }
-		public List<int> TargetPathwayIds { get; set; } = new List<int>();
-		public List<int> TargetAssessmentIds { get; set; } = new List<int>();
-		public List<string> TargetLearningResource { get; set; } = new List<string>();
-
-		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 
         //used by detail page, not the import
         public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
@@ -189,7 +188,7 @@ namespace workIT.Models.ProfileModels
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
 		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
-		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
+		public List<IdentifierValue> IdentifierImport { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
 		public string IdentifierJSON { get; set; }
 
@@ -211,8 +210,18 @@ namespace workIT.Models.ProfileModels
 		/// List of ETPL Credentials where is a member
 		/// </summary>
 		public List<Credential> IsResourceOnETPL { get; set; } = new List<Credential>();
-		public List<Address> Addresses { get; set; }
-		public string AvailabilityListing { get; set; }
+		public List<Address> AvailableAt { get; set; }
+        public List<Address> Addresses
+        {
+            get
+            {
+                if ( AvailableAt == null )
+                    return null;
+                else
+                    return AvailableAt;
+            }
+        }
+        public string AvailabilityListing { get; set; }
 
 		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
 		public string LifeCycleStatus { get; set; }
@@ -258,6 +267,8 @@ namespace workIT.Models.ProfileModels
 		public List<ConditionProfile> Requires { get; set; }
 		public List<ConditionProfile> Recommends { get; set; }
 		public List<ConditionProfile> Corequisite { get; set; }
+		public List<ConditionProfile> CoPrerequisite { get; set; } = new List<ConditionProfile>();
+
 		/// <summary>
 		/// The prerequisites for entry into the resource being described.
 		/// Comment:
@@ -295,6 +306,12 @@ namespace workIT.Models.ProfileModels
 		public int TransferValueCount { get; set; }
 		public int AggregateDataProfileCount { get; set; }
 		public List<AggregateDataProfile> AggregateData { get; set; } = new List<AggregateDataProfile>();
+		/// <summary>
+		/// Use alternate name for display
+		/// </summary>
+		public List<string> AlternateName { get; set; }
+		//use for import and detail, so maybe don't need AlternateName. Need for API
+		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
 		//
 		public int DataSetProfileCount { get; set; }
@@ -396,7 +413,29 @@ namespace workIT.Models.ProfileModels
 
 		public AgentRelationshipResult QualityAssurance { get; set; }
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
+
+        public List<ScheduledOffering> HasScheduledOffering { get; set; }
+        public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
+
+
+        //public string ResourceDetail { get; set; }
+        public JObject ResourceDetail { get; set; }
+
+
+        #region Import 
+        //used by import, NOT the detail page
+        public List<CredentialAlignmentObjectProfile> AssessesCompetencies { get; set; }
+        public int CompetenciesCount { get; set; }
+        public List<int> TargetAssessmentIds { get; set; } = new List<int>();
+        public List<string> TargetLearningResource { get; set; } = new List<string>();
+
+        public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
+        public List<int> HasOfferingIds { get; set; } = new List<int>();
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+        
+
+        #endregion
     }
-	//
+    //
 
 }

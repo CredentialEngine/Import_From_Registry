@@ -16,6 +16,7 @@ namespace workIT.Models.ProfileModels
 		public int EntityId { get; set; }
 		public int CompetencyFrameworkId { get; set; }
 		public int CollectionId { get; set; }
+		public string Alignment { get; set; }
 		public string CodedNotation { get; set; }
 		public string TargetNodeName { get; set; }
 		public string TargetNodeDescription { get; set; }

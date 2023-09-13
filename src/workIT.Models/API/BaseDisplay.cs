@@ -49,6 +49,7 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings OwnedBy { get; set; }
 		public WMS.AJAXSettings OfferedBy { get; set; }
 		public WMS.AJAXSettings OwnedOfferedBy { get; set; }
+		public WMS.AJAXSettings Publisher { get; set; }
 		//public int? OrganizationId { get; set; }
 		//public string OrganizationName { get; set; }
 		//public string OrganizationSubjectWebpage { get; set; }
@@ -108,6 +109,7 @@ namespace workIT.Models.API
 		/// </summary>
 		public List<LabelLink> Tags = new List<LabelLink>();
 		public string Image { get; set; }
+		public object ExtraData { get; set; }
 		public int? Meta_Id { get; set; }
 	}
 	[Serializable]
@@ -136,6 +138,15 @@ namespace workIT.Models.API
 		public int? Total { get; set; } = null;
 
 	}
+	[Serializable]
+	public class CollectionMember
+	{
+		public string Label { get; set; }
+		public string Description { get; set; }
+		public string StartDate { get; set; }
+		public string EndDate { get; set; }
+	}
+
 	[Serializable]
 	public class ProcessProfileGroup
 	{

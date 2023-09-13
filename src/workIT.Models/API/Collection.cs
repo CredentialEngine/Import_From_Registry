@@ -25,6 +25,7 @@ namespace workIT.Models.API
 		/// <summary>
 		/// Category or classification of this resource.
 		/// List of URIs that point to a concept
+		/// NO, the actual concept needs to have been imported and stored appropriately. 
 		/// </summary>
 		public List<string> Classification { get; set; } = new List<string>();
 
@@ -33,17 +34,21 @@ namespace workIT.Models.API
 		public string DateEffective { get; set; }
 		public string ExpirationDate { get; set; }
 		public int HasMemberCount { get; set; }
-		
-		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
+        //not sure of approach 
+        public WMS.AJAXSettings HasSupportService { get; set; }
+        public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 		public string License { get; set; }
-		public LabelLink LifeCycleStatusType { get; set; }
+		//public LabelLink LifeCycleStatusType { get; set; }
 		public List<WMA.ConditionProfile> MembershipCondition { get; set; }
 		//
 		public List<ReferenceFramework> InstructionalProgramType { get; set; } = new List<ReferenceFramework>();
 		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
 		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
-		
-	
+
+		//searches
+		//these could be a list of search LabelLink
+		public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
+
 	}
 
 

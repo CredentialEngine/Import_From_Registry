@@ -153,6 +153,8 @@ namespace workIT.Models.Search
 		/// Only used to pass the Location Set filter from the widget\n
 		/// Do not use this for anything else, as it is a terrible hack
 		/// </summary>
-		public Dictionary<string, object> Values { get; set; }
+		//public Dictionary<string, object> Values { get; set; }
+		public JObject Values { get; set; }
+		//public Common.WidgetV2.LocationSet Values { get; set; }
 	}
 }

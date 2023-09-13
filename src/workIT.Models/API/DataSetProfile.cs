@@ -42,6 +42,7 @@ namespace workIT.Models.API
 		/// Credentialing organization or a third party providing the data.
 		/// </summary>
 		public WMA.Outline DataProvider { get; set; }
+		public WMS.AJAXSettings DataProviderMain { get; set; }
 
 		/// <summary>
 		/// Data Set Time Period

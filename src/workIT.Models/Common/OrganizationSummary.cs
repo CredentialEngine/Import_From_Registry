@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,8 +39,9 @@ namespace workIT.Models.Common
         public TargetAssertionResult QualityAssurancePerformed { get; set; }
         public int QualityAssuranceCombinedTotal { get; set; }
 
+        //public string ResourceDetail { get; set; }
+        public JObject ResourceDetail { get; set; }
 
-
-	}
+    }
 
 }

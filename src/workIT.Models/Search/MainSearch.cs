@@ -20,8 +20,13 @@ namespace workIT.Models.Search
 			Filters = new List<MainSearchFilter>();
 			FiltersV2 = new List<MainSearchFilterV2>();
 			ElasticConfigs = new List<ElasticSearchFilterConfig>();
+			OriginalQuery = new MainQuery();
 		}
+		public MainQuery OriginalQuery { get; set; } //Makes it easier to selectively skip translation for certain things while we make changes
 		public int WidgetId { get; set; }
+		//should generalize collection like id where mutually exclusive?
+		public int CollectionId { get; set; }
+		public int TransferIntermediaryId { get; set; }
 		public bool MustHaveWidget { get; set; }
 		public bool MustNotHaveWidget { get; set; }
 		//TBD - value in passing the widget - or an object with properties significant for search filters
@@ -41,6 +46,7 @@ namespace workIT.Models.Search
 		public List<MainSearchFilterV2> FiltersV2 { get; set; }
 		//yes, need to make this more general
 		//TBD: check if this is used where specific resources are selected for a widget
+		//	YES
 		public bool HasCredentialPotentialResults { get; set; }
 		//TBD - generic version
 		public bool HasPotentialResultsFilter { get; set; }
@@ -99,6 +105,7 @@ namespace workIT.Models.Search
 		public bool Elastic { get; set; }
 		public bool LoggingActivity { get; set; } = true;
 		public string AutocompleteContext { get; set; }
+		public bool IsExportMode { get; set; }
 
 		public int Results { get; set; }
 	}
@@ -116,6 +123,7 @@ namespace workIT.Models.Search
 		public MainSearchFilterV2Types Type { get; set; }
 		public string Name { get; set; }
 		public Dictionary<string, object> Values { get; set; }
+		//used for filters like widget potential results
 		public string CustomJSON { get; set; }
 
 		//Helpers, to make translation between new and old easier
@@ -273,11 +281,22 @@ namespace workIT.Models.Search
 					Id = GetValueOrDefault( "CodeId", 0 ),
 					Name = GetValueOrDefault( "CodeText", "" )
 				};
-				//??
-				//if ( ci.Id == 0 )
-				//{
-				//	ci.Id = GetValueOrDefault( "CodeId", 0 );
-				//}
+				return ci;
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
+		public CodeItem AsEDRText()
+		{
+			try
+			{
+				var ci = new CodeItem()
+				{
+					Id = GetValueOrDefault( "CodeId", 0 ),
+					Name = GetValueOrDefault( "CodeText", "" )
+				};
 				return ci;
 			}
 			catch
@@ -455,6 +474,34 @@ namespace workIT.Models.Search
 				return new CodeItem();
 			}
 		}
+		public CodeItem AsRecordId()
+		{
+			try
+			{
+				return new CodeItem()
+				{
+					Id = GetValueOrDefault( "Id", 0 ),
+				};
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
+		public CodeItem AsRecordIdList()
+		{
+			try
+			{
+				return new CodeItem()
+				{
+					IdsList = GetListOrDefault( "ids" ),
+				};
+			}
+			catch
+			{
+				return new CodeItem();
+			}
+		}
 		public CodeItem AsQapItem()
 		{
 			try
@@ -491,18 +538,7 @@ namespace workIT.Models.Search
 				return new CodeItem();
 			}
 		}
-		//string key
-		//public bool AsBoolean(  )
-		//{
-		//	try
-		//	{
-		//		return GetBoolen( "AnyValue", false );
-		//	}
-		//	catch
-		//	{
-		//		return false;
-		//	}
-		//}
+
 		public Models.Common.BoundingBox AsBoundaries()
 		{
 			try
@@ -561,7 +597,8 @@ namespace workIT.Models.Search
 		public int TotalResults { get; set; }
 		public List<MainSearchResult> Results { get; set; }
 		public JArray RelatedItems { get; set; }
-		public JArray RelatedItemsMap { get; set; }
+        public JArray RelatedItems2 { get; set; }
+        public JArray RelatedItemsMap { get; set; }
 		public JObject Debug { get; set; }
 	}
 	//

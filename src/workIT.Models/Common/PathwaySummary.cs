@@ -12,7 +12,7 @@ namespace workIT.Models.Common
 		public PathwaySummary ()
 		{
 			//make sure no issue with initializing here
-			OwningOrganization = new Organization();
+			PrimaryOrganization = new Organization();
 		}
 		
 		//		public string Name { get; set; }

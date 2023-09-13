@@ -82,6 +82,12 @@ namespace workIT.Models.Helpers.Reports
 		public List<HistoryTotal> OrganizationHistory { get; set; } = new List<HistoryTotal>();
 		public List<HistoryTotal> AssessmentHistory { get; set; } = new List<HistoryTotal>();
 		public List<HistoryTotal> LearningOpportunityHistory { get; set; } = new List<HistoryTotal>();
+		public List<HistoryTotal> PathwayHistory { get; set; } = new List<HistoryTotal>();
+		public List<HistoryTotal> CompetencyFrameworkHistory { get; set; } = new List<HistoryTotal>();
+		public List<HistoryTotal> TransferValueHistory { get; set; } = new List<HistoryTotal>();
+
+
+		#region all of these are not used/obsolete as ActivityManager.SiteTotals_Get is obsolete
 		/// <summary>
 		/// All with status of < 3
 		/// </summary>
@@ -115,7 +121,7 @@ namespace workIT.Models.Helpers.Reports
 		public int TotalOtherCredentials { get; set; }
 		public int TotalCredentialsAtCurrentCtdl { get; set; }
 		public int TotalCredentialsToBeUpdatedToCurrentCtdl { get; set; }
-
+		#endregion
 		public List<CodeItem> MainEntityTotals { get; set; }
 		public List<CodeItem> EntityRegionTotals { get; set; } = new List<CodeItem>();
 		public Enumeration AgentServiceTypes { get; set; }
@@ -154,10 +160,19 @@ namespace workIT.Models.Helpers.Reports
 
 
 
+		public List<Statistic> GetStatisticsByEntityWithMiniumOfTwo( int entityTypeId, string categorySchema, string idPrefix, List<string> tags, bool allowSearchability = true )
+		{
+			var list = PropertiesTotalsByEntity.Where( m => m.EntityTypeId == entityTypeId && m.CategorySchema == categorySchema && m.Totals > 1 ).ToList();
+			var output = list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
+				.ToList();
+			//getting duplicates
+			//output = output.Distinct().ToList();	
 
+			return output;
+		}
 		public List<Statistic> GetStatisticsByEntity( int entityTypeId, string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = true, bool allowSearchability = true )
 		{
-			var list = PropertiesTotalsByEntity.Where( m => m.EntityTypeId == entityTypeId && m.CategorySchema == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
+			var list = PropertiesTotalsByEntity.Where( m => m.EntityTypeId == entityTypeId && m.CategorySchema == categorySchema && m.Totals > ( includeEmpty ? -1 : 0 ) ).Distinct().ToList();
 			return list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
 				.ToList();
 		}
@@ -170,8 +185,10 @@ namespace workIT.Models.Helpers.Reports
 		public List<Statistic> GetStatisticsByEntityRegion( int entityTypeId, string country, string idPrefix, List<string> tags, bool includeEmpty = true, bool allowSearchability = true )
 		{
 			var list = EntityRegionTotals.Where( m => m.EntityTypeId == entityTypeId && m.CodeGroup == country && m.Totals > ( includeEmpty ? -1 : 0 ) ).ToList();
-			return list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
+			var stats = list.ConvertAll( m => new Statistic( m.Name, m.Description, m.Totals, idPrefix + "_" + ( m.SchemaName ?? "" ).Replace( ":", "_" ), tags, m.CategoryId.ToString(), m.Id.ToString(), allowSearchability ) )
 				.ToList();
+
+			return stats;
 		}
 		public List<Statistic> GetHistory( string categorySchema, string idPrefix, List<string> tags, bool includeEmpty = false, bool allowSearchability = true )
 		{
@@ -236,11 +253,9 @@ namespace workIT.Models.Helpers.Reports
 		//}
 	}
 	public class HistoryTotal
-
 	{
 		public HistoryTotal()
 		{
-
 		}
 		public HistoryTotal( string description )
 		{
@@ -253,5 +268,18 @@ namespace workIT.Models.Helpers.Reports
         public int DeletedCount { get; set; }
 		public string Description { get; set; }
 
+	}
+	public class ApiStatisticsSummary
+	{
+		public CommonTotals CommonTotals { get; set; }
+		public List<EntitySummary> EntitySummary { get; set; }
+	}
+
+	public class EntitySummary
+	{
+		public string ReportType { get; set; }
+		public List<Statistic> Statistics { get; set; }
+		//history is in CommonTotals
+		//public List<HistoryTotal> History { get; set; }
 	}
 }

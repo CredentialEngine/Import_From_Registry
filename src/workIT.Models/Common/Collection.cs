@@ -15,6 +15,7 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Category or classification of this resource.
 		/// List of URIs that point to a concept
+		/// NO, the actual concept needs to have been imported and stored appropriately. 
 		/// </summary>
 		public List<string> Classification { get; set; } = new List<string>();
 
@@ -24,10 +25,12 @@ namespace workIT.Models.Common
 		/// Resource in a Collection.
 		/// </summary>
 		public List<string> HasMember { get; set; } = new List<string>();
+        public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
 
-		//The primary language used in or by this resource.
-		//public List<string> InLanguage { get; set; } = new List<string>();
-		public List<TextValueProfile> InLanguageCodeList { get; set; } = new List<TextValueProfile>();
+
+        //The primary language used in or by this resource.
+        //public List<string> InLanguage { get; set; } = new List<string>();
+        public List<TextValueProfile> InLanguageCodeList { get; set; } = new List<TextValueProfile>();
 
 
 		/// <summary>
@@ -70,11 +73,10 @@ namespace workIT.Models.Common
 
 		//public List<string> CollectionType { get; set; } = new List<string>();
 		public Enumeration CollectionType { get; set; } = new Enumeration();
-
 		public string CollectionGraph { get; set; }
 
 		public List<CollectionMember> CollectionMember { get; set; } = new List<CollectionMember>();
-
+		public List<CodeItem> CollectionMemberCounts { get; set; } = new List<CodeItem>();
 		/// <summary>
 		/// Conditions for collection membership
 		/// </summary>
@@ -98,11 +100,12 @@ namespace workIT.Models.Common
 
 		#region Import
 		public List<Guid> HasMemberImport { get; set; } = new List<Guid>();
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
 
-		/// <summary>
-		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
-		/// </summary>
-		public List<CredentialAlignmentObjectProfile> IndustryTypeList { get; set; }
+        /// <summary>
+        /// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
+        /// </summary>
+        public List<CredentialAlignmentObjectProfile> IndustryTypeList { get; set; }
 
 		/// <summary>
 		/// Type of instructional program; select from an existing enumeration of such types.
@@ -121,11 +124,16 @@ namespace workIT.Models.Common
 
 	public class CollectionMember
 	{
+		public int Id { get; set; }
 		/// <summary>
 		/// Default type for a collection member
 		/// </summary>
 		public string Type { get; set; } = "ceterms:CollectionMember";
 
+		public string CollectionName { get; set; }
+		public Enumeration CollectionType { get; set; } = new Enumeration();
+
+		public int CollectionId { get; set; }	
 		/// <summary>
 		/// An identifier for use with blank nodes, to minimize duplicates
 		/// </summary>
@@ -141,10 +149,11 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string Description { get; set; }
 
-		/// <summary>
-		/// Will be FK to [actual entity].RowId or Entity.EntityUID, or Entity.Cache.EntityUID
-		/// </summary>
-		public Guid MemberUID { get; set; }
+		///// <summary>
+		///// Will be FK to [actual entity].RowId or Entity.EntityUID, or Entity.Cache.EntityUID
+		///// NOT USING, using ProxyFor
+		///// </summary>
+		//public Guid MemberUID { get; set; }
 
 		public string StartDate { get; set; }
 
@@ -155,5 +164,13 @@ namespace workIT.Models.Common
 		/// Likely will be the CTID from the import
 		/// </summary>
 		public string ProxyFor { get; set; }
+		//may want to get the entity type immediately
+		public int EntityTypeId { get; set; }
+		public string EntityType { get; set; }
+
+		public Nullable<System.DateTime> Created { get; set; }
+		public Nullable<System.DateTime> LastUpdated { get; set; }
+
+		public Collection Collection { get; set; }
 	}
 }

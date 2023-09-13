@@ -25,7 +25,9 @@ namespace workIT.Models.API
 		////URL
 		//public string SubjectWebpage { get; set; }
 
-		public List<ConditionProfile> Corequisite { get; set; } = new List<ConditionProfile>();
+		public List<ConditionProfile> Corequisite { get; set; }
+		public List<ConditionProfile> CoPrerequisite { get; set; }
+
 		public List<ConditionProfile> EntryCondition { get; set; }
 		public List<ConditionProfile> Recommends { get; set; }
 		public List<ConditionProfile> Renewal { get; set; }

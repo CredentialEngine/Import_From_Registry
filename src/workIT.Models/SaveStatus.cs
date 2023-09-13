@@ -27,10 +27,20 @@ namespace workIT.Models
 		public bool UpdateElasticIndex { get; set; }
 		 
 		public string EnvelopeId { get; set; }
+		/// <summary>
+		/// Helper to send info back to a parent method
+		/// </summary>
+		public int EntityTypeId { get; set; }
 		public string ResourceURL { get; set; }
 		public Guid DocumentRowId { get; set; }
 		public int DocumentId { get; set; }
-		public string DocumentPublishedBy { get; set; }
+        /// <summary>
+        /// CTID of the publishing org
+        /// </summary>
+        public string DocumentPublishedBy { get; set; }
+		/// <summary>
+		/// CTID of the owned by org
+		/// </summary>
 		public string DocumentOwnedBy { get; set; }
 		//
 		public string DetailPageUrl { get; set; }

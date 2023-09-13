@@ -56,6 +56,8 @@ namespace workIT.Models.API
 		/// qdata:employmentDefinition
 		/// </summary>
 		public string EmploymentDefinition { get; set; }
+		public string FacultyToStudentRatio { get; set; }
+		//
 		/// <summary>
 		/// Mechanism by which income is determined; i.e., actual or annualized earnings.
 		/// qdata:incomeDeterminationType

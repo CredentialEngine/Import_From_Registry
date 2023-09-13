@@ -15,8 +15,7 @@ namespace workIT.Models.Elastic
 		string SubjectWebpage { get; set; }
 
 		//string ListTitle { get; set; }
-		int OwnerOrganizationId { get; set; }
-		string OwnerOrganizationName { get; set; }
+		int PrimaryOrganizationId { get; set; }
 		string PrimaryOrganizationName { get; set; }
 		int PublishedByThirdPartyOrganizationId { get; set; }
 		int EntityStateId { get; set; }
@@ -39,10 +38,15 @@ namespace workIT.Models.Elastic
 		//20-10-29 renamed from Classifications
 		List<IndexReferenceFramework> InstructionalPrograms { get; set; }
 		List<string> InstructionalProgram { get; set; }
-		//
+		/// <summary>
+		/// Occupations are used with Occupation searches from the filter box
+		/// </summary>
 		List<IndexReferenceFramework> Occupations { get; set; }
-
+		/// <summary>
+		/// Occupation list is used with keyword filters
+		/// </summary>
 		List<string> Occupation { get; set; }
+
 		//
 		List<Address> Addresses { get; set; }
 		//List<string> Locations { get; set; }
@@ -59,7 +63,21 @@ namespace workIT.Models.Elastic
 		List<string> SubjectAreas { get; set; }
 		List<string> PremiumValues { get; set; }
 		List<int> ReportFilters { get; set; }
+		/// <summary>
+		/// List of widget ids that a resource is part of
+		/// </summary>
 		List<int> ResourceForWidget { get; set; }
-		List<IndexSubject> Subjects { get; set; }
+
+        /// <summary>
+        /// List of Collection Names a resource is part of
+        /// </summary>
+        List<string> Collection { get; set; }
+        /// <summary>
+        /// List of collection ids that a resource is part of
+        /// </summary>
+        List<int> ResourceForCollection { get; set; }
+        List<int> ResourceInTransferValue { get; set; }
+        List<int> ResourceHasSupportService { get; set; }
+        List<IndexSubject> Subjects { get; set; }
 	}
 }

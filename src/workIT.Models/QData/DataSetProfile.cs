@@ -55,18 +55,29 @@ namespace workIT.Models.QData
 		public Organization DataProviderOld { get; set; } = new Organization();
 		public WMA.Outline DataProvider { get; set; }
 		public Guid DataProviderUID { get; set; }
+        //helper
+        public Guid PrimaryAgentUID { get; set; }
 
 		/// <summary>
-		/// Data Set Time Period
-		/// Short- and long-term post-award reporting intervals including start and end dates.
+		/// NOTE: cannot initialize here, as can lead to a stack overflow
 		/// </summary>
-		public List<DataSetTimeFrame> DataSetTimePeriod { get; set; } = new List<DataSetTimeFrame>();
-		public List<string> DataSetTimePeriodList { get; set; } = new List<string>();
+		public Organization PrimaryOrganization { get; set; }
+
+        /// <summary>
+        /// Data Set Time Period
+        /// Short- and long-term post-award reporting intervals including start and end dates.
+        /// </summary>
+        public List<DataSetTimeFrame> DataSetTimePeriod { get; set; } = new List<DataSetTimeFrame>();
+
 		/// <summary>
-		/// Data Suppression Policy
-		/// Description of a data suppression policy for earnings and employment data when cell size is below a certain threshold to ensure an individual's privacy and security.
+		/// The JSON for DataSetTimePeriod
 		/// </summary>
-		public string DataSuppressionPolicy { get; set; }
+		public string DataSetTimePeriodJson { get; set; }
+        /// <summary>
+        /// Data Suppression Policy
+        /// Description of a data suppression policy for earnings and employment data when cell size is below a certain threshold to ensure an individual's privacy and security.
+        /// </summary>
+        public string DataSuppressionPolicy { get; set; }
 
 		/// <summary>
 		/// Distribution File
@@ -90,8 +101,12 @@ namespace workIT.Models.QData
 		#endregion
 
 	}
+	public class DataSetProfileSummary : DataSetProfile
+	{
 
-	public class Entity_DataSetProfile
+	}
+
+    public class Entity_DataSetProfile
 	{
 		public int Id { get; set; }
 		public int EntityId { get; set; }

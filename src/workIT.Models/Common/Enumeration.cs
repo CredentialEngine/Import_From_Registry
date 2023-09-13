@@ -80,6 +80,19 @@ namespace workIT.Models.Common
 			}
 			return id;
 		}
+		public List<string> GetItemsAsList()
+		{
+			var output = new List<string>();
+			EnumeratedItem firstItem = new EnumeratedItem();
+			if ( HasItems() )
+			{
+				foreach ( EnumeratedItem item in Items )
+				{
+					output.Add(item.Name);
+				}
+			}
+			return output;
+		}
 	}
     //
     [Serializable]
@@ -169,5 +182,7 @@ namespace workIT.Models.Common
         public string LanguageMapString { get; set; }
 		public string CodeGroup { get; set; }
 		public int CategoryId { get; set; }
+
+		public string Icon { get; set; }
 	}
 }

@@ -30,6 +30,13 @@ namespace workIT.Models.Common
 		public WidgetFilters WidgetFilters { get; set; } = new WidgetFilters();
         public int CreatedById { get; set; }
         public int LastUpdatedById { get; set; }
+        /// <summary>
+        /// Purpose: set to true if any resources were selected for a credential widget.
+        /// Any of the latter resources will have the widgetId added to the index property: ResourceForWidget.
+        /// The elastic search needs to know if there are any of the latter for the current widget before adding 
+        ///     widgetIdQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.ResourceForWidget ).Terms( query.WidgetId ) );
+        /// If the latter was applied to each widget, there would no results. So we need to know this, and get included from the search UI.
+        /// </summary>
         public bool HasCredentialPotentialResults { get; set; }
 		public bool AllowsCSVExport { get; set; }
 		#region Style related 
@@ -87,6 +94,7 @@ namespace workIT.Models.Common
         public LearningOpportunityFilters LoppFilters { get; set; } = new LearningOpportunityFilters();
         public PathwayFilters PathwayFilters { get; set; } = new PathwayFilters();
         public TransferValueFilters TransferValueFilters { get; set; } = new TransferValueFilters();
+        public TransferIntermediaryFilters TransferIntermediaryFilters { get; set; } = new TransferIntermediaryFilters();
         public ConceptSchemeFilters ConceptSchemeFilters { get; set; } = new ConceptSchemeFilters();
         public SearchFilters SearchFilters { get; set; } = new SearchFilters();
 
@@ -219,6 +227,13 @@ namespace workIT.Models.Common
     }
     [Serializable]
     public class TransferValueFilters
+    {
+        public bool HasPotentialResults { get; set; }
+        public string Keywords { get; set; }
+
+    }
+    [Serializable]
+    public class TransferIntermediaryFilters
     {
         public bool HasPotentialResults { get; set; }
         public string Keywords { get; set; }

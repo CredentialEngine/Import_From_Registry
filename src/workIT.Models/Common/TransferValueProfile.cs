@@ -82,7 +82,8 @@ namespace workIT.Models.Common
 		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
 		public string LifeCycleStatus { get; set; }
 		public int LifeCycleStatusTypeId { get; set; }
-
+		public string SupersededBy { get; set; } //URL
+		public string Supersedes { get; set; } //URL
 		/// <summary>
 		/// A suggested or articulated credit- or point-related transfer value.
 		/// OR COULD STORE AS JSON
@@ -112,11 +113,13 @@ namespace workIT.Models.Common
 		public List<AssessmentProfile> TransferValueForAsmt { get; set; } = new List<AssessmentProfile>();
 		public List<Credential> TransferValueForCredential { get; set; } = new List<Credential>();
 		public List<LearningOpportunityProfile> TransferValueForLopp { get; set; } = new List<LearningOpportunityProfile>();
-		/// <summary>
-		/// The profile graph can be used to store properties like TransferValue, CodedNotation, the dates, and profile lists for TransferValueFrom and For.
-		/// However, at some point we will want to count these so - nevermind
-		/// </summary>
-		//public string ProfileGraph { get; set; }
+
+		public List<TopLevelObject> HasTransferIntermediary { get; set; } = new List<TopLevelObject>();
+		///// <summary>
+		///// The profile graph can be used to store properties like TransferValue, CodedNotation, the dates, and profile lists for TransferValueFrom and For.
+		///// However, at some point we will want to count these so - nevermind
+		///// </summary>
+		////public string ProfileGraph { get; set; }
 
 		#region Import
 		public List<int> DerivedFromForImport { get; set; } 
