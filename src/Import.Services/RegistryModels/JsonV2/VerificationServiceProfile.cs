@@ -28,6 +28,20 @@ namespace RA.Models.JsonV2
         [JsonProperty( "@type" )]
         public string Type { get; set; }
 
+        /// <summary>
+        /// URI
+        /// </summary>
+        [JsonProperty( "@id" )]
+        public string CtdlId { get; set; }
+
+        /// <summary>
+        /// Globally unique Credential Transparency Identifier (CTID) by which the creator, owner or provider of a resource recognizes it in transactions with the external environment (e.g., in verifiable claims involving the resource).
+        /// required
+        /// <see cref="https://credreg.net/ctdl/terms/ctid"/>
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:ctid" )]
+        public string CTID { get; set; }
+
         [JsonProperty( PropertyName = "ceterms:description" )]
         public LanguageMap Description { get; set; }
 

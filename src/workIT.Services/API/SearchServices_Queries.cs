@@ -17,7 +17,7 @@ namespace workIT.Services.API
 		//TODO: Update this to accept a debug JObject
 		public static MainSearchInput TranslateMainQueryToMainSearchInput( MainQuery query, JObject debug = null )
 		{
-			var translated = new MainSearchInput();
+			var translated = new MainSearchInput() { OriginalQuery = query };
 			debug = debug ?? new JObject();
 
 			translated.SearchType = query.SearchType;
@@ -28,8 +28,9 @@ namespace workIT.Services.API
 			translated.SortOrder = TranslateMainQuerySortOrderToMainSearchInputSortOrder( query.SortOrder );
 			translated.FiltersV2 = TranslateMainQueryFiltersToMainSearchInputFilters( query.MainFilters, query.MapFilter, query.SearchType, debug );
 			translated.AutocompleteContext = query.AutocompleteContext;
-
-			//translated.WidgetId = query.WidgetId;
+			translated.HasCredentialPotentialResults= query.HasCredentialPotentialResults;
+			translated.WidgetId = query.WidgetId;
+			translated.IsExportMode = query.IsExportMode;
 			//translated.MustHaveWidget = ? //TBD
 			//translated.MustNotHaveWidget = ? //TBD
 
@@ -66,12 +67,12 @@ namespace workIT.Services.API
 			mainFilters = mainFilters ?? new List<Filter>();
 			var translated = new List<MainSearchFilterV2>();
 			debug = debug ?? new JObject();
-			
+
 			//Expand each MainFilter out into its Filters and merge their data into a list of MainSearchFilterV2
-			foreach( var mainFilter in mainFilters )
+			foreach ( var mainFilter in mainFilters )
 			{
 				//Handle "CUSTOM" filters
-				if( mainFilter.Parameters != null && mainFilter.Parameters.Properties().Count() > 0 )
+				if ( mainFilter.Parameters != null && mainFilter.Parameters.Properties().Count() > 0 )
 				{
 					var translatedItem = new MainSearchFilterV2();
 					translatedItem.Type = MainSearchFilterV2Types.CUSTOM;
@@ -79,55 +80,68 @@ namespace workIT.Services.API
 					switch ( translatedItem.Name )
 					{
 						case "organizationroles": //Seems to be the only custom filter?
-						if( searchType == "competencyframework" )
 						{
-							//Get the data
-							var agentID = int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" );
-							var relationshipIDs = ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList();
-							
-							//Lookup the agent ID
-							var agentCTID = OrganizationServices.GetForSummary( agentID )?.CTID ?? "";
-							if ( string.IsNullOrWhiteSpace( agentCTID ) )
+							if ( searchType == "competencyframework" )
 							{
-								break;
-							}
+								//Get the data
+								var agentID = int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" );
+								var relationshipIDs = ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList();
 
-							//Hack - Assume that 6 and/or 7 represents an owns/offers relationship
-							//Additional Hack - CTDL-ASN doesn't have/use ownedBy or offeredBy, it uses publisher/creator, and those connections are reversed compared to CTDL anyway
-							//So assume that if 6 and/or 7 are present, we want to do a reverse publisher/creator lookup
-							if( relationshipIDs.Contains(6) || relationshipIDs.Contains( 7 ) )
-							{
-								translatedItem.TranslationHelper = new JObject()
+								//Lookup the agent ID
+								var agentCTID = OrganizationServices.GetForSummary( agentID )?.CTID ?? "";
+								if ( string.IsNullOrWhiteSpace( agentCTID ) )
 								{
-									{ "> ceasn:publisher > ceterms:ctid", agentCTID },
-									{ "> ceasn:creator > ceterms:ctid", agentCTID }
-								};
+									break;
+								}
+
+								//Hack - Assume that 6 and/or 7 represents an owns/offers relationship
+								//Additional Hack - CTDL-ASN doesn't have/use ownedBy or offeredBy, it uses publisher/creator, and those connections are reversed compared to CTDL anyway
+								//So assume that if 6 and/or 7 are present, we want to do a reverse publisher/creator lookup
+								if ( relationshipIDs.Contains( 6 ) || relationshipIDs.Contains( 7 ) )
+								{
+									translatedItem.TranslationHelper = new JObject()
+									{
+										{ "> ceasn:publisher > ceterms:ctid", agentCTID },
+										{ "> ceasn:creator > ceterms:ctid", agentCTID }
+									};
+								}
 							}
-						}
-						else
-						{
-							/* Doing this the right way breaks code later on that is expecting it to be done the wrong way
-							translatedItem.Values = new Dictionary<string, object>()
+							else
 							{
-								{ "AgentId", int.Parse( mainFilter.Parameters["aid"]?.ToString() ?? "0" ) },
-								{ "RelationshipId", ( (JArray) mainFilter.Parameters["rid"] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() }
-							};
-							*/
-							//So hack in the wrong conversion behavior to make the code later on work as expected
-							translatedItem.Values = new Dictionary<string, object>();
-							translatedItem.Values.Add( "AgentId", int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" ) );
-							var counter = 0;
-							foreach ( var id in ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() )
-							{
-								translatedItem.Values.Add( "RelationshipId[" + counter + "]", id );
-								counter++;
+								/* Doing this the right way breaks code later on that is expecting it to be done the wrong way
+								translatedItem.Values = new Dictionary<string, object>()
+								{
+									{ "AgentId", int.Parse( mainFilter.Parameters["aid"]?.ToString() ?? "0" ) },
+									{ "RelationshipId", ( (JArray) mainFilter.Parameters["rid"] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() }
+								};
+								*/
+								//So hack in the wrong conversion behavior to make the code later on work as expected
+								translatedItem.Values = new Dictionary<string, object>();
+								translatedItem.Values.Add( "AgentId", int.Parse( mainFilter.Parameters[ "aid" ]?.ToString() ?? "0" ) );
+								var counter = 0;
+								foreach ( var id in ( ( JArray ) mainFilter.Parameters[ "rid" ] ?? new JArray() ).Select( m => int.Parse( m?.ToString() ?? "0" ) ).ToList() )
+								{
+									translatedItem.Values.Add( "RelationshipId[" + counter + "]", id );
+									counter++;
+								}
 							}
 						}
 						break;
-
 						case "potentialresults":
 						{
 							translatedItem.CustomJSON = ( ( JArray ) mainFilter.Parameters[ "ids" ] )?.ToString( Formatting.None );
+							break;
+						}
+						case "collectionresults":
+						{
+							//can't use if there can be both potential and collection results, doesn't seem likely!!
+							translatedItem.CustomJSON = ( ( JArray ) mainFilter.Parameters[ "ids" ] )?.ToString( Formatting.None );
+							break;
+						}
+						case "partofcollection":
+						{
+							translatedItem.Values = new Dictionary<string, object>();
+							translatedItem.Values.Add( "Id", int.Parse( mainFilter.Parameters[ "id" ]?.ToString() ?? "0" ) );
 						}
 						break;
 
@@ -143,7 +157,7 @@ namespace workIT.Services.API
 					//Hacky duct tape Badge behavior
 					if ( mainFilter.Items.Any( m => m.URI == "ceterms:Badge" ) )
 					{
-						var filters = ConvertEnumeration( "Credential Type", "credentialType", new EnumerationServices().GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, true, true  ) );
+						var filters = ConvertEnumeration( "Credential Type", "credentialType", new EnumerationServices().GetCredentialType( workIT.Models.Common.EnumerationType.MULTI_SELECT, true, true ) );
 						mainFilter.Items.Add( filters.Items.FirstOrDefault( m => m.URI == "ceterms:DigitalBadge" ) );
 						mainFilter.Items.Add( filters.Items.FirstOrDefault( m => m.URI == "ceterms:OpenBadge" ) );
 					}
@@ -162,7 +176,7 @@ namespace workIT.Services.API
 								{
 									Name = "LOCATIONSET",
 									Type = MainSearchFilterV2Types.CODE,
-									Values = filterItem.Values
+									Values = filterItem.Values.ToObject<Dictionary<string, object>>()
 								} );
 
 								translated.Add( new MainSearchFilterV2()
@@ -221,7 +235,7 @@ namespace workIT.Services.API
 				}
 			}
 
-			if( mapFilter != null )
+			if ( mapFilter != null )
 			{
 				var translatedMapFilter = new MainSearchFilterV2()
 				{
@@ -249,7 +263,7 @@ namespace workIT.Services.API
 				}
 				//Otherwise, create a box with a roughly 50 mile radius (0.75 degrees = 51.75 miles) from the center point
 				//Once the interface has a drop-down box for selecting the radius, this will need to be adjusted
-				else if( mapFilter.BBoxCenterLatitude != 0 && mapFilter.BBoxCenterLongitude != 0 )
+				else if ( mapFilter.BBoxCenterLatitude != 0 && mapFilter.BBoxCenterLongitude != 0 )
 				{
 					translatedMapFilter.Values = new Dictionary<string, object>()
 					{
@@ -274,7 +288,7 @@ namespace workIT.Services.API
 		{
 			var result = new Dictionary<string, object>();
 
-			foreach( var property in input.Properties() )
+			foreach ( var property in input.Properties() )
 			{
 				result.Add( property.Name, TranslateJTokenToObject( property.Value ) );
 			}
@@ -285,7 +299,7 @@ namespace workIT.Services.API
 		{
 			object result = null;
 
-			if( value.Type == JTokenType.Array )
+			if ( value.Type == JTokenType.Array )
 			{
 				var holder = new List<object>();
 				foreach ( var item in ( JArray ) value )
@@ -294,9 +308,9 @@ namespace workIT.Services.API
 				}
 				result = holder;
 			}
-			else if( value.Type == JTokenType.Object )
+			else if ( value.Type == JTokenType.Object )
 			{
-				result = TranslateJObjectToDictionaryStringObject( (JObject) value );
+				result = TranslateJObjectToDictionaryStringObject( ( JObject ) value );
 			}
 			else
 			{
@@ -320,7 +334,8 @@ namespace workIT.Services.API
 			translated.PageSize = query.PageSize;
 			translated.SortOrder = TranslateMainSearchInputSortOrderToMainQuerySortOrder( query.SortOrder );
 			translated.MainFilters = TranslateMainSearchInputFiltersToMainQueryFilters( query.FiltersV2, query.SearchType );
-			//translated.WidgetId = query.WidgetId;
+			translated.WidgetId = query.WidgetId;
+			translated.IsExportMode = query.IsExportMode;
 			translated.MapFilter = TranslateMainSearchMapFilterToMainQueryMapFilter( query.FiltersV2, query.SearchType );
 			translated.AutocompleteContext = query.AutocompleteContext;
 
@@ -346,11 +361,11 @@ namespace workIT.Services.API
 		{
 			var translated = new List<Filter>();
 
-			foreach( var filter in mainFilters.Where( m => m.Type != MainSearchFilterV2Types.MAP ).ToList() )
+			foreach ( var filter in mainFilters.Where( m => m.Type != MainSearchFilterV2Types.MAP ).ToList() )
 			{
 				var filterURI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name, searchType );
 				var matchingFilter = translated.FirstOrDefault( m => m.URI == filterURI );
-				if( matchingFilter == null )
+				if ( matchingFilter == null )
 				{
 					matchingFilter = new Filter()
 					{
@@ -364,7 +379,7 @@ namespace workIT.Services.API
 					translated.Add( matchingFilter );
 				}
 
-				if( filter.Type == MainSearchFilterV2Types.CUSTOM )
+				if ( filter.Type == MainSearchFilterV2Types.CUSTOM )
 				{
 					matchingFilter.URI = TranslateMainSearchInputFilterNameToMainQueryFilterURI( filter.Name, searchType );
 					matchingFilter.Parameters = JObject.FromObject( filter.Values );
@@ -379,12 +394,14 @@ namespace workIT.Services.API
 						default: item.Type = "filterItem:CheckBox"; break;
 					}
 
-					try { 
-						item.URI = 
+					try
+					{
+						item.URI =
 							filter.Values.ContainsKey( "SchemaName" ) ? filter.Values[ "SchemaName" ].ToString() : //Most filters use this
 							filter.Values.ContainsKey( "PropertyName" ) ? "originalFilterItemName:" + filter.Values[ "PropertyName" ].ToString() : //Date Range filters use this
 							"TBD"; //Unknown
-					} catch { }
+					}
+					catch { }
 					try { item.Text = filter.Values.ContainsKey( "TextValue" ) ? filter.Values[ "TextValue" ].ToString() : null; } catch { }
 					try { item.Id = filter.Values.ContainsKey( "CodeId" ) ? int.Parse( filter.Values[ "CodeId" ].ToString() ) : 0; } catch { }
 
@@ -403,7 +420,7 @@ namespace workIT.Services.API
 		public static MapFilter TranslateMainSearchMapFilterToMainQueryMapFilter( List<MainSearchFilterV2> mainFilters, string searchType )
 		{
 			var mapFilter = mainFilters.FirstOrDefault( m => m.Type == MainSearchFilterV2Types.MAP );
-			if( mapFilter != null )
+			if ( mapFilter != null )
 			{
 				try
 				{
@@ -415,7 +432,7 @@ namespace workIT.Services.API
 					map.BBoxCenterLatitude = ( map.BBoxNorth + map.BBoxSouth ) / 2;
 					map.BBoxCenterLongitude = ( map.BBoxEast + map.BBoxWest ) / 2;
 					//Average out the vertical and horizontal radii and multiply by 69 to convert degrees to miles
-					map.RadiusMiles = (int) Math.Ceiling( ( ( Math.Abs( map.BBoxNorth - map.BBoxCenterLatitude ) + Math.Abs( map.BBoxEast - map.BBoxCenterLongitude ) ) / 2 ) * 69 );
+					map.RadiusMiles = ( int ) Math.Ceiling( ( ( Math.Abs( map.BBoxNorth - map.BBoxCenterLatitude ) + Math.Abs( map.BBoxEast - map.BBoxCenterLongitude ) ) / 2 ) * 69 );
 					return map;
 				}
 				catch { }

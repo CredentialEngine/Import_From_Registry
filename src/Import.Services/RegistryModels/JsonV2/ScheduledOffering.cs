@@ -60,8 +60,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:estimatedDuration" )]
 		public List<DurationProfile> EstimatedDuration { get; set; }
 
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
 
-		[JsonProperty( PropertyName = "ceterms:offeredBy" )]
+        public List<string> HasSupportService { get; set; }
+        [JsonProperty( PropertyName = "ceterms:offeredBy" )]
 		public List<string> OfferedBy { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:offerFrequencyType" )]

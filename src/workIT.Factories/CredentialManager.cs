@@ -18,22 +18,23 @@ using workIT.Utilities;
 
 using Views = workIT.Data.Views;
 
-//using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
-using ThisEntity = workIT.Models.Common.Credential;
-using DBEntity = workIT.Data.Tables.Credential;
+using ThisResource = workIT.Models.Common.Credential;
+using DBResource = workIT.Data.Tables.Credential;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 using workIT.Models.Elastic;
-//using System.Data.Entity.Core.Metadata.Edm;
 using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworkItemManager;
-//using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworksManager;
 
 namespace workIT.Factories
 {
 	public class CredentialManager : BaseFactory
 	{
 		static string thisClassName = "Factories.CredentialManager";
-		EntityManager entityMgr = new EntityManager();
+        static string EntityType = "Credential";
+        static int EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL;
+        static string Entity_Label = "Assessment Credential";
+
+        EntityManager entityMgr = new EntityManager();
 		#region Credential - presistance =======================
 
 		/// <summary>
@@ -42,7 +43,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			LoggingHelper.DoTrace( 7, string.Format( "CredentialManager.Save Entered. Name: {0}, CTID: {1}", entity.Name, entity.CTID ) );
 			bool isValid = true;
@@ -66,7 +67,7 @@ namespace workIT.Factories
 
 					using ( var context = new EntityContext() )
 					{
-						DBEntity efEntity = context.Credential
+						DBResource efEntity = context.Credential
 								.FirstOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
@@ -89,16 +90,19 @@ namespace workIT.Factories
 									Activity = "Import",
 									Event = "Reactivate",
 									Comment = string.Format( "Credential had been marked as deleted, and was reactivated by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+									ActivityObjectCTID = efEntity.CTID,
 									ActivityObjectId = entity.Id
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
 
-							if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
-								efEntity.EntityStateId = 3;
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
 
-							//need to do the date check here, or may not be updated
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
+
+                            //need to do the date check here, or may not be updated
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -137,8 +141,8 @@ namespace workIT.Factories
 								}
 							}
 							
-							if ( entity.OrganizationId == 0 && entity.OwningOrganization != null )
-								entity.OrganizationId = entity.OwningOrganization.Id;
+							if ( entity.OrganizationId == 0 && entity.PrimaryOrganization != null )
+								entity.OrganizationId = entity.PrimaryOrganization.Id;
 							//FLAW - we want the entity_cache to reflect last update of any part of a resource
 							//		- technically the cache date could tell us that - if it could not be updated when refreshing the whole cache!!
 							entity.LastUpdated = lastUpdated;
@@ -165,7 +169,8 @@ namespace workIT.Factories
 							ActivityType = "Credential",
 							Activity = "Import",
 							Event = "Update",
-							Comment = string.Format( "Credential was updated by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+							Comment = $"Credential was updated by the import. Name: {entity.Name}, SWP: {entity.SubjectWebpage}, CTID: {entity.CTID}",
+							ActivityObjectCTID = entity.CTID,
 							ActivityObjectId = entity.Id
 						};
 						new ActivityManager().SiteActivityAdd( sa );
@@ -212,7 +217,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		private int Add( CM.Credential entity, ref SaveStatus status )
+		private int Add( ThisResource entity, ref SaveStatus status )
 		{
 			EM.Credential efEntity = new EM.Credential();
 			using ( var context = new EntityContext() )
@@ -250,8 +255,8 @@ namespace workIT.Factories
 						entity.Created = ( DateTime )efEntity.Created;
 						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
 						entity.Id = efEntity.Id;
-						if ( entity.OrganizationId == 0 && entity.OwningOrganization != null )
-							entity.OrganizationId = entity.OwningOrganization.Id;
+						if ( entity.OrganizationId == 0 && entity.PrimaryOrganization != null )
+							entity.OrganizationId = entity.PrimaryOrganization.Id;
 						UpdateEntityCache( entity, ref status );
 						//add log entry
 						SiteActivity sa = new SiteActivity()
@@ -259,7 +264,8 @@ namespace workIT.Factories
 							ActivityType = "Credential",
 							Activity = "Import",
 							Event = "Add",
-							Comment = string.Format( "Full Credential was added by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
+							Comment = $"Full Credential was added by the import. Name: {entity.Name}, SWP: {entity.SubjectWebpage}, CTID: {entity.CTID}",
+							ActivityObjectCTID = entity.CTID,
 							ActivityObjectId = entity.Id
 						};
 						new ActivityManager().SiteActivityAdd( sa );
@@ -281,7 +287,7 @@ namespace workIT.Factories
 					//noticed some duplicate credentials have been created. Have the same ctid, and created dates
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "Credential" );
 
-					status.AddError( thisClassName + string.Format( ".Add(). Error - the add was not successful. DbEntityValidationException. ", entity.Name, entity.OwningAgentUid ) + message );
+					status.AddError( thisClassName + string.Format( ".Add(). Error - the add was not successful. DbEntityValidationException. ", entity.Name, entity.PrimaryAgentUID ) + message );
 					LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Add(), Name: {0}, CTID: {1}, OwningAgentUid: {2}", efEntity.Name, efEntity.CTID, efEntity.OwningAgentUid ) );
 				}
 				catch ( Exception ex )
@@ -300,9 +306,9 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
+		public int AddBaseReference( ThisResource entity, ref SaveStatus status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -318,7 +324,7 @@ namespace workIT.Factories
 
 					//only add DB required properties
 					//NOTE - an entity will be created via trigger
-					efEntity.EntityStateId = 2;
+					efEntity.EntityStateId = entity.EntityStateId = 2;
 					efEntity.Name = entity.Name;
 					efEntity.Description = entity.Description;
 					efEntity.SubjectWebpage = entity.SubjectWebpage;
@@ -373,7 +379,7 @@ namespace workIT.Factories
 				//noticed some duplicate credentials have been created. Have the same ctid, and created dates
 				string message = HandleDBValidationError( dbex, thisClassName + ".AddBaseReference() ", "Credential" );
 
-				status.AddError( thisClassName + string.Format( ".Add(). Error - the add was not successful. DbEntityValidationException. ", entity.Name, entity.OwningAgentUid ) + message );
+				status.AddError( thisClassName + string.Format( ".Add(). Error - the add was not successful. DbEntityValidationException. ", entity.Name, entity.PrimaryAgentUID ) + message );
 				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".AddBaseReference(), Name: {0}, CTID: {1}, OwningAgentUid: {2}", efEntity.Name, efEntity.CTID, efEntity.OwningAgentUid ) );
 			}
 			catch ( Exception ex )
@@ -387,7 +393,7 @@ namespace workIT.Factories
 		}
 		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string statusMessage )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -398,7 +404,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetMinimumByCtid( ctid );
+					ThisResource entity = GetMinimumByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -411,8 +417,10 @@ namespace workIT.Factories
 					//watch that Ctid can be  updated if not provided now!!
 					efEntity.CTID = ctid;
 					efEntity.SubjectWebpage = registryAtId;
-
-					efEntity.Created = System.DateTime.Now;
+                    //set to active 
+                    var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_ACTIVE );
+                    efEntity.CredentialStatusTypeId = defStatus.Id;
+                    efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 
 					context.Credential.Add( efEntity );
@@ -425,6 +433,7 @@ namespace workIT.Factories
 							Activity = "Import",
 							Event = "Add Pending Credential",
 							Comment = string.Format( "Pending Credential was added by the import. ctid: {0}, registryAtId: {1}", ctid, registryAtId ),
+							ActivityObjectCTID = efEntity.CTID,
 							ActivityObjectId = efEntity.Id
 						};
 						new ActivityManager().SiteActivityAdd( sa );
@@ -459,7 +468,7 @@ namespace workIT.Factories
 			return 0;
 		}
 
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
@@ -475,20 +484,27 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				ImageUrl = document.Image,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId,
 				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
 			};
-			var statusMessage = "";
+            //check non-active or just deprecated
+            //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_ACTIVE );
+            var deprecatedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_DEPRECATED );
+            if ( document.CredentialStatusTypeId > 0 && document.CredentialStatusTypeId == deprecatedStatus.Id )
+            {
+                ec.IsActive = false;
+            }
+            var statusMessage = "";
 			if (new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0)
 			{
 				status.AddError( thisClassName + string.Format(".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage) );
 			}
 		}
 
-		public int UpdateBaseReferenceCredentialType( ThisEntity entity, ref SaveStatus status )
+		public int UpdateBaseReferenceCredentialType( ThisResource entity, ref SaveStatus status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -568,7 +584,7 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity efEntity = context.Credential
+					DBResource efEntity = context.Credential
 							.SingleOrDefault( s => s.Id == credentialId );
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -618,7 +634,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		//	private bool Update( CM.Credential entity, ref string statusMessage )
+		//	private bool Update( ThisResource entity, ref string statusMessage )
 		//	{
 		//		bool isValid = false;
 		//		int count = 0;
@@ -702,7 +718,7 @@ namespace workIT.Factories
 		//		return isValid;
 		//}
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 
 			status.HasSectionErrors = false;
@@ -798,7 +814,7 @@ namespace workIT.Factories
 		}
 
 
-		public bool UpdateParts( ThisEntity entity, bool isAdd, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, bool isAdd, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 
@@ -859,11 +875,14 @@ namespace workIT.Factories
 				UpdateAssertedIns( entity, ref status );
 				//outcomes
 				HandleOutcomeProfiles( entity, relatedEntity, ref status );
-			}
+                //
+                var ehssMgr = new Entity_HasSupportServiceManager();
+                ehssMgr.Update( entity.HasSupportServiceIds, relatedEntity, ref status );
+            }
 
 			return isAllValid;
 		}
-		public void AddProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public void AddProfiles( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 
 
@@ -885,9 +904,9 @@ namespace workIT.Factories
 			{
 				//Identifiers - do delete for first one and then assign
 				//VersionIdentifier (do delete in SaveList)
-				new Entity_IdentifierValueManager().SaveList( entity.VersionIdentifierList, entity.RowId, Entity_IdentifierValueManager.CREDENTIAL_VersionIdentifier, ref status, true );
+				new Entity_IdentifierValueManager().SaveList( entity.VersionIdentifierList, entity.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier, ref status, true );
 				//skip delete - all the more reason to just store the json
-				new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier, ref status, false );
+				new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier, ref status, false );
 			}
 			catch ( Exception ex )
 			{
@@ -924,6 +943,7 @@ namespace workIT.Factories
 				emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
 				emanager.SaveList( entity.Renewal, Entity_ConditionProfileManager.ConnectionProfileType_Renewal, entity.RowId, ref status );
 				emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
+				emanager.SaveList( entity.CoPrerequisite, Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite, entity.RowId, ref status );
 
 				//Connections
 				emanager.SaveList( entity.IsAdvancedStandingFor, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor, entity.RowId, ref status, 2 );
@@ -977,17 +997,23 @@ namespace workIT.Factories
 				{
 					ecm.SaveHasPartList( entity.HasPartIds, relatedEntity.EntityUid, ref status );
 				}
-				//21-07-22 mparsons - TargetPathway should be an inverse relationship and not published with a credential
-				//					- so OBSOLETE?
-				var epm = new Entity_PathwayManager();
-				epm.SavePartList( entity.TargetPathwayIds, relatedEntity.EntityUid, ref status, CodesManager.RELATIONSHIP_TYPE_IS_PART_OF );
+
 
 				//isPartOf - have to watch for duplicates here (where the other side added a hasPart
 				if ( entity.IsPartOfIds != null && entity.IsPartOfIds.Count > 0 )
 				{
 					ecm.SaveIsPartOfList( entity.IsPartOfIds, entity.Id, ref status );
 				}
-			}
+
+                //21-07-22 mparsons - TargetPathway should be an inverse relationship and not published with a credential
+                //					- so OBSOLETE?
+                var epm = new Entity_PathwayManager();
+                epm.SavePartList( entity.TargetPathwayIds, relatedEntity.EntityUid, ref status, CodesManager.RELATIONSHIP_TYPE_IS_PART_OF );
+
+                //VSP
+                var euvspm = new Entity_UsesVerificationServiceManager();
+                euvspm.SaveList( entity.TargetPathwayIds, relatedEntity, ref status );
+            }
 			catch ( Exception ex )
 			{
 				LoggingHelper.DoTrace( 1, thisClassName + ".UpdateParts(). Exception while processing credential parts. " + ex.Message );
@@ -1039,7 +1065,14 @@ namespace workIT.Factories
 
 		}
 
-		public bool HandleETPL( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		/// <summary>
+		/// for a QA credential - HasETPLResource
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="relatedEntity"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool HandleETPL( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			try
@@ -1059,7 +1092,7 @@ namespace workIT.Factories
 			//
 			return status.WasSectionValid;
 		}
-		public bool HandleOutcomeProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool HandleOutcomeProfiles( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -1083,7 +1116,7 @@ namespace workIT.Factories
 
 			return status.WasSectionValid;
 		}
-		public bool AddProperties( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool AddProperties( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 
@@ -1102,7 +1135,7 @@ namespace workIT.Factories
 				//TODO - remove this once CredentialStatusTypeId is fully implemented. 
 				//if ( mgr.AddProperties( entity.CredentialStatusType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, false, ref status ) == false )
 				//	isAllValid = false;
-
+				//TODO - there can be errors as assessment delivery type uses assessmentDeliveryType:InPerson to allow separate counts from lopp (deliveryType:InPerson)
 				if ( mgr.AddProperties( entity.AssessmentDeliveryType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE, false, ref status ) == false )
 					isAllValid = false;
 				if ( mgr.AddProperties( entity.LearningDeliveryType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, ref status ) == false )
@@ -1118,7 +1151,7 @@ namespace workIT.Factories
 			//
 			return isAllValid;
 		}
-		public bool UpdateReferences( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool UpdateReferences( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_ReferenceManager erm = new Entity_ReferenceManager();
@@ -1184,7 +1217,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool UpdateAssertedBys( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateAssertedBys( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
@@ -1211,7 +1244,7 @@ namespace workIT.Factories
 		} //
 
 
-		public void UpdateAssertedIns( ThisEntity entity, ref SaveStatus status )
+		public void UpdateAssertedIns( ThisResource entity, ref SaveStatus status )
 		{
 
 			Entity_JurisdictionProfileManager mgr = new Entity_JurisdictionProfileManager();
@@ -1271,6 +1304,7 @@ namespace workIT.Factories
 
 				if ( efEntity != null && efEntity.Id > 0 )
 				{
+					var rowId = efEntity.RowId;
 					statusMessage = string.Format( "Credential: {0}, Id:{1}", efEntity.Name, efEntity.Id );
 					if ( IsValidGuid( efEntity.OwningAgentUid ) )
 					{
@@ -1292,7 +1326,9 @@ namespace workIT.Factories
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 						//also check for any relationships
 						new Entity_AgentRelationshipManager().ReindexAgentForDeletedArtifact( orgUid );
-					}
+						//delete cache
+                        new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
+                    }
 					else
 						statusMessage = "Error - delete failed, but no message was provided.";
 				}
@@ -1328,7 +1364,7 @@ namespace workIT.Factories
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.Credential
+					DBResource efEntity = context.Credential
 								.FirstOrDefault( s =>  s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
@@ -1385,14 +1421,15 @@ namespace workIT.Factories
 								ActivityType = "Credential",
 								Activity = "Import",
 								Event = "Delete",
-								Comment = msg
+								Comment = msg,
+								ActivityObjectCTID = efEntity.CTID,
 								//ActivityObjectId = id //although could be good as a reference for db lookup
 							} );
 							isValid = true;
 							//add pending request 
 							List<String> messages = new List<string>();
 							//delete cache
-							new EntityManager().EntityCacheDelete( 1, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CREDENTIAL, efEntity.Id, ref messages );
 							//mark owning org for updates
@@ -1409,13 +1446,13 @@ namespace workIT.Factories
 					}
 					else
 					{
-						statusMessage = thisClassName + ".Delete() Warning No action taken, as the record was not found.";
+						statusMessage = thisClassName + $".Delete({ctid}) Warning No action taken, as the record was not found.";
 						isValid = false;
 					}
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Delete(envelopeId)" );
+					LoggingHelper.LogError( ex, thisClassName + ".Delete(ctid)" );
 					statusMessage = FormatExceptions( ex );
 					isValid = false;
 					if ( statusMessage.ToLower().IndexOf( "the delete statement conflicted with the reference constraint" ) > -1 )
@@ -1431,12 +1468,12 @@ namespace workIT.Factories
 		#region credential - retrieval ===================
 		//get absolute minimum, typically to get the id for a full get by Id
 		//allows pending and even deleted, where could be a reactivate
-		public static ThisEntity GetMinimumByCtid( string ctid )
+		public static ThisResource GetMinimumByCtid( string ctid )
 		{
-			ThisEntity output = new ThisEntity();
+			ThisResource output = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity input = context.Credential
+				DBResource input = context.Credential
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 				if ( input != null && input.Id > 0 )
@@ -1455,11 +1492,11 @@ namespace workIT.Factories
 					//get this for use by import and preserving published by
 					if ( IsGuidValid( input.OwningAgentUid ) )
 					{
-						output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-						output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+						output.PrimaryAgentUID = ( Guid )input.OwningAgentUid;
+						output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
 
 						//get roles
-						MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+						MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 						output.OwnerRoles = orp.AgentRole;
 					}
 					output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 1, output.Id, output.OwningOrganizationId );
@@ -1469,13 +1506,13 @@ namespace workIT.Factories
 
 			return output;
 		}
-		//public static ThisEntity GetBySubjectWebpage( string swp )
+		//public static ThisResource GetBySubjectWebpage( string swp )
 		//{
-		//	ThisEntity entity = new ThisEntity();
+		//	ThisResource entity = new ThisResource();
 		//	using ( var context = new EntityContext() )
 		//	{
 		//		context.Configuration.LazyLoadingEnabled = false;
-		//		DBEntity from = context.Credential
+		//		DBResource from = context.Credential
 		//				.FirstOrDefault( s => s.SubjectWebpage.ToLower() == swp.ToLower() );
 
 		//		if ( from != null && from.Id > 0 )
@@ -1495,9 +1532,9 @@ namespace workIT.Factories
 		//	}
 		//	return entity;
 		//}
-		public static ThisEntity GetByName_SubjectWebpage( string name, string swp )
+		public static ThisResource GetByName_SubjectWebpage( string name, string swp )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			CredentialRequest cr = new CredentialRequest();
 			//getting all, as update will follow
 			cr.IsDetailRequest();
@@ -1550,16 +1587,16 @@ namespace workIT.Factories
 						{
 							if (from.EntityStateId == 3)
 							{
-								//could log warning conditions to activity log, and then report out at end of an import?
-								amgr.SiteActivityAdd(new SiteActivity()
-								{
-									ActivityType = "System",
-									Activity = "Import",
-									Event = "Credential Reference Check",
-									Comment = string.Format("Credential get by name/swp. Found addtional full Credential for name: {0}, swp: {1}. First org: {2} ({3})", name, swp, entity.Name, entity.Id)
-								});
+                                //could log warning conditions to activity log, and then report out at end of an import?
+                                amgr.SiteActivityAdd( new SiteActivity()
+                                {
+                                    ActivityType = "System",
+                                    Activity = "Import",
+                                    Event = $"{EntityType} Reference Check",
+                                    Comment = $"{Entity_Label} Get by Name and subject webpage. Found additional full {EntityType} for name: {name}, swp: {swp}. First {EntityType}: {entity.Name} ({entity.Id})"
+                                } );
 
-							}
+                            }
 							MapFromDB(from, entity, cr);
 							break;
 						}
@@ -1571,7 +1608,7 @@ namespace workIT.Factories
 			//using ( var context = new EntityContext() )
 			//{
 			//	context.Configuration.LazyLoadingEnabled = false;
-			//	DBEntity from = context.Credential
+			//	DBResource from = context.Credential
 			//			.FirstOrDefault( s => s.Name.ToLower() == name.ToLower() && s.SubjectWebpage == swp );
 
 			//	if ( from != null && from.Id > 0 )
@@ -1592,9 +1629,9 @@ namespace workIT.Factories
 			//}
 
 		}
-		public static CM.Credential GetForCompare( int id, CredentialRequest cr )
+		public static ThisResource GetForCompare( int id, CredentialRequest cr )
 		{
-			CM.Credential entity = new CM.Credential();
+			ThisResource entity = new ThisResource();
 			if ( id < 1 )
 				return entity;
 			using ( var context = new EntityContext() )
@@ -1618,20 +1655,18 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="id"></param>
 		/// <returns></returns>
-		public static CM.Credential GetBasic( int id )
+		public static ThisResource GetBasic( int id )
 		{
 
-			CM.Credential entity = new CM.Credential();
-			CredentialRequest cr = new CredentialRequest();
+			ThisResource entity = new ThisResource();
+			var cr = new CredentialRequest();
 			cr.IsForProfileLinks = true;
 			if ( id < 1 )
 				return entity;
 
 			using ( var context = new EntityContext() )
 			{
-				//if ( cr.IsForProfileLinks )
-				//	context.Configuration.LazyLoadingEnabled = false;
-				EM.Credential item = context.Credential
+                DBResource item = context.Credential
 							.SingleOrDefault( s => s.Id == id
 								);
 
@@ -1648,7 +1683,7 @@ namespace workIT.Factories
 		public static string GetCredentialType( int id )
 		{
 
-			CM.Credential entity = new CM.Credential();
+			ThisResource entity = new ThisResource();
 			CredentialRequest cr = new CredentialRequest();
 			cr.IsForProfileLinks = true;
 			if ( id < 1 )
@@ -1684,10 +1719,10 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="id"></param>
 		/// <returns></returns>
-		public static CM.Credential GetBasic( Guid id )
+		public static ThisResource GetBasic( Guid id )
 		{
 
-			CM.Credential entity = new CM.Credential();
+			ThisResource entity = new ThisResource();
 			CredentialRequest cr = new CredentialRequest();
 			cr.IsForProfileLinks = true;
 			if ( !IsGuidValid( id ) )
@@ -1712,22 +1747,20 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		public static CM.Credential GetForDetail( int id )
+		public static ThisResource GetForDetail( int id )
 		{
 			CredentialRequest cr = new CredentialRequest();
 			cr.IsDetailRequest();
 			return GetForDetail( id, cr );
 		}
 
-		public static CM.Credential GetForDetail( int id, CredentialRequest cr )
+		public static ThisResource GetForDetail( int id, CredentialRequest cr )
 		{
-			CM.Credential entity = new CM.Credential();
+			ThisResource entity = new ThisResource();
 
 			using ( var context = new EntityContext() )
 			{
-
-				//context.Configuration.LazyLoadingEnabled = false;
-				EM.Credential item = context.Credential
+                DBResource item = context.Credential
 							.SingleOrDefault( s => s.Id == id );
 				try
 				{
@@ -1743,10 +1776,8 @@ namespace workIT.Factories
 						}
 
 						MapFromDB( item, entity, cr );
-						//get summary for some totals
-						//EM.Credential_SummaryCache cache = GetSummary( item.Id );
-						//if ( cache != null && cache.BadgeClaimsCount > 0 )
-						if ( HasBadgeClaims( item.Id ) )
+						//TODO - we may have this info from entity.UsesVerificationProfile now
+						if ( HasBadgeClaims( item.RowId ) )
 							entity.HasVerificationType_Badge = true;
 					}
 				}
@@ -1760,71 +1791,104 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static bool HasBadgeClaims( int credentialId )
-		{
-
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					var claims = ( from a in context.Entity_VerificationProfile
-								   join c in context.Entity on a.RowId equals c.EntityUid
-								   join d in context.Entity_Credential on c.Id equals d.EntityId
-								   join e in context.Entity_Property on c.Id equals e.EntityId
-								   join f in context.Codes_PropertyValue on e.PropertyValueId equals f.Id
-								   where f.SchemaName == "claimType:BadgeClaim"
-								   && d.CredentialId == credentialId
-								   select d )
-									.ToList();
-
-
-					if ( claims != null && claims.Count() > 0 )
-					{
-						return true;
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".HasBadgeClaims" );
-			}
-			return false;
-		}//
-		/// <summary>
-		/// Get summary view of a credential
-		/// Useful for accessing counts
-		/// </summary>
-		/// <param name="id"></param>
-		/// <returns></returns>
-		// [Obsolete]
-		//private static EM.Credential_SummaryCache GetSummary( int id )
+		//public static bool HasBadgeClaimsOLD( int credentialId )
 		//{
 
-		//    EM.Credential_SummaryCache item = new EM.Credential_SummaryCache();
-		//    try
-		//    {
-		//        using ( var context = new EntityContext() )
-		//        {
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			var claims = ( from a in context.Entity_VerificationProfile
+		//						   join c in context.Entity on a.RowId equals c.EntityUid
+		//						   join d in context.Entity_Credential on c.Id equals d.EntityId
+		//						   join e in context.Entity_Property on c.Id equals e.EntityId
+		//						   join f in context.Codes_PropertyValue on e.PropertyValueId equals f.Id
+		//						   where f.SchemaName == "claimType:BadgeClaim"
+		//						   && d.CredentialId == credentialId
+		//						   select d )
+		//							.ToList();
 
-		//            item = context.Credential_SummaryCache
-		//                        .SingleOrDefault( s => s.CredentialId == id );
 
-		//            if ( item != null && item.CredentialId > 0 )
-		//            {
+		//			if ( claims != null && claims.Count() > 0 )
+		//			{
+		//				return true;
+		//			}
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.LogError( ex, thisClassName + ".HasBadgeClaims" );
+		//	}
+		//	return false;
+		//}//
+        public static bool HasBadgeClaims( Guid credentialUID )
+        {
 
-		//            }
-		//        }
-		//    }
-		//    catch ( Exception ex )
-		//    {
-		//        LoggingHelper.LogError( ex, thisClassName + string.Format( ".GetSummary(), Id: {0}", id ) );                
-		//    }
-		//    return item;
-		//}
-		public static List<Credential> GetPending()
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    var claims = ( from a		in context.Entity_UsesVerificationService
+                                   join c		in context.Entity on a.EntityId equals c.Id
+
+                                   join d		in context.VerificationServiceProfile on a.VerificationServiceId equals d.Id
+                                   join vspE	in context.Entity on d.RowId equals vspE.EntityUid
+                                   join e		in context.Entity_Property on vspE.Id equals e.EntityId
+
+                                   join f		in context.Codes_PropertyValue on e.PropertyValueId equals f.Id
+                                   where f.SchemaName == "claimType:BadgeClaim"
+                                   && c.EntityUid == credentialUID
+                                   select d )
+                                    .ToList();
+
+
+                    if ( claims != null && claims.Count() > 0 )
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".HasBadgeClaims" );
+            }
+            return false;
+        }//
+        /// <summary>
+        /// Get summary view of a credential
+        /// Useful for accessing counts
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        // [Obsolete]
+        //private static EM.Credential_SummaryCache GetSummary( int id )
+        //{
+
+        //    EM.Credential_SummaryCache item = new EM.Credential_SummaryCache();
+        //    try
+        //    {
+        //        using ( var context = new EntityContext() )
+        //        {
+
+        //            item = context.Credential_SummaryCache
+        //                        .SingleOrDefault( s => s.CredentialId == id );
+
+        //            if ( item != null && item.CredentialId > 0 )
+        //            {
+
+        //            }
+        //        }
+        //    }
+        //    catch ( Exception ex )
+        //    {
+        //        LoggingHelper.LogError( ex, thisClassName + string.Format( ".GetSummary(), Id: {0}", id ) );                
+        //    }
+        //    return item;
+        //}
+        public static List<Credential> GetPending()
 		{
-			List<ThisEntity> output = new List<ThisEntity>();
-			ThisEntity entity = new ThisEntity();
+			List<ThisResource> output = new List<ThisResource>();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 
@@ -1838,7 +1902,7 @@ namespace workIT.Factories
 					foreach ( var item in list )
 					{
 						//there is very little data in a pending record
-						entity = new ThisEntity();
+						entity = new ThisResource();
 						entity.Id = item.Id;
 						entity.CTID = item.CTID;
 						entity.SubjectWebpage = item.SubjectWebpage;
@@ -1854,8 +1918,8 @@ namespace workIT.Factories
 		}
 		//public static List<Credential> GetAllForOwningOrg( Guid ownedByUid )
 		//{
-		//	List<ThisEntity> output = new List<ThisEntity>();
-		//	ThisEntity entity = new ThisEntity();
+		//	List<ThisResource> output = new List<ThisResource>();
+		//	ThisResource entity = new ThisResource();
 		//	CredentialRequest cr = new CredentialRequest();
 		//	cr.IsForProfileLinks = true;
 		//	using ( var context = new EntityContext() )
@@ -1872,7 +1936,7 @@ namespace workIT.Factories
 		//			foreach ( var item in list )
 		//			{
 		//				//there is very little data in a pending record
-		//				entity = new ThisEntity();
+		//				entity = new ThisResource();
 		//				MapFromDB( item, entity, cr );
 		//				output.Add( entity );
 		//			}
@@ -1974,6 +2038,7 @@ namespace workIT.Factories
             CM.CredentialSummary item = new CM.CredentialSummary();
             List<CM.CredentialSummary> list = new List<CM.CredentialSummary>();
             var result = new DataTable();
+            LoggingHelper.DoTrace( 6, $"CredentialManager_Search - Page: {pageNumber}. filter\r\n " + pFilter );
 
             bool includingHasPartIsPartWithConnections = UtilityManager.GetAppKeyValue( "includeHasPartIsPartWithConnections", false );
 
@@ -2019,8 +2084,8 @@ namespace workIT.Factories
 						if ( !existanceSearch )
 						{
 							item = new CM.CredentialSummary();
-							item.Name = "EXCEPTION ENCOUNTERED";
-							item.Description = ex.Message;
+                            item.Name = "EXCEPTION ENCOUNTERED - " + ex.Message;
+                            item.Description = ex.Message;
 							item.CredentialTypeSchema = "error";
 							list.Add( item );
 						}
@@ -2030,14 +2095,15 @@ namespace workIT.Factories
                 }
 
                 //Used for costs. Only need to get these once. See below. - NA 5/12/2017
-                var currencies = CodesManager.GetCurrencies();
-                var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
+                //var currencies = CodesManager.GetCurrencies();
+                //var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
 				if ( existanceSearch )
 				{
 					//just return total rows
 					return list;
 				}
 				int lastId = 0;
+				int cntr = 0;
 				foreach ( DataRow dr in result.Rows )
                 {
 					try
@@ -2046,9 +2112,12 @@ namespace workIT.Factories
 						item = new CM.CredentialSummary();
 						item.Id = GetRowColumn( dr, "Id", 0 );
 						lastId = item.Id;
+                        cntr++;
+                        if ( cntr % 200 == 0 )
+                            LoggingHelper.DoTrace( 2, string.Format( " Page: {0} - loading record: {1}", pageNumber, cntr ) );
 
-						//item.Name = GetRowColumn( dr, "Name", "missing" );
-						item.Name = dr[ "Name" ].ToString();
+                        //item.Name = GetRowColumn( dr, "Name", "missing" );
+                        item.Name = dr[ "Name" ].ToString();
 						item.FriendlyName = FormatFriendlyTitle( item.Name );
 						item.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
 
@@ -2224,7 +2293,7 @@ namespace workIT.Factories
 						list.Add( item );
 					}catch(Exception ex)
 					{
-						LoggingHelper.DoTrace( 1, "Credential.Search." + ex.Message );
+						LoggingHelper.DoTrace( 1, $"Credential.Search. Last Id: {item.Id}" + ex.Message );
 					}
 					finally
 					{
@@ -2317,7 +2386,7 @@ namespace workIT.Factories
 		/// <param name="from"></param>
 		/// <param name="to"></param>
 		/// <param name="cr"></param>
-		public static void MapFromDB( EM.Credential input, CM.Credential output, CredentialRequest cr )
+		public static void MapFromDB( EM.Credential input, ThisResource output, CredentialRequest cr )
 		{
 			var duration = new TimeSpan();
 			DateTime allStarted = DateTime.Now;
@@ -2387,22 +2456,23 @@ namespace workIT.Factories
 			var hasPrimaryOrg = false;	
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
-				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid, false );
-				output.OwningOrgDisplay = output.OwningOrganization.Name;
+				output.PrimaryAgentUID = ( Guid )input.OwningAgentUid;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID, false );
+				output.OwningOrgDisplay = output.PrimaryOrganization.Name;
 				hasPrimaryOrg = true;
 				//get roles for owning org
 				//will anything be missed that may be published with the org?
-				MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				MPM.OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 				output.OwnerRoles = orp.AgentRole;
 			} else
 			{
 				//need to elevate the offered by and 'tag' as such
 			}
+            output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
 
 
             //
-           
+
 
             output.AudienceLevelType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
             output.AudienceType = EntityPropertyManager.FillEnumeration( output.RowId,CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
@@ -2429,7 +2499,7 @@ namespace workIT.Factories
 				output.LastUpdated = ( DateTime )input.LastUpdated;
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
-			//21-07-06 - lastUpdatd is set to the envelope lastUpdated date. The latter should be the visible last updated date.
+			//21-07-06 - lastUpdated is set to the envelope lastUpdated date. The latter should be the visible last updated date.
 			//if ( relatedEntity != null && relatedEntity.Id > 0 )
 				output.EntityLastUpdated = output.LastUpdated;	// relatedEntity.LastUpdated;
 
@@ -2445,9 +2515,7 @@ namespace workIT.Factories
 			//will need output do convert before switching these
 			//AlternateName is used by API
 			output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
-            //if ( !string.IsNullOrWhiteSpace( input.AlternateName ) && output.AlternateName.Count == 0 )
-            //    output.AlternateName.Add( input.AlternateName );
-            output.AlternateNames = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+            //output.AlternateNames = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
 
             output.CredentialId = input.CredentialId;
             //output.CodedNotation = input.CodedNotation;
@@ -2474,7 +2542,7 @@ namespace workIT.Factories
 			output.Supersedes = input.Supersedes;
 			output.SupersededBy = input.SupersededBy;
 
-			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier );
+			output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier );
 			output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //  = 76;
 
 
@@ -2508,6 +2576,7 @@ namespace workIT.Factories
 					//how to store first party and third party?
 					//compare these before committing to new version
 					//TODO - how to control only getting non-QA from EAR
+					//23-07-10 - this will only get roles with the owner as the asserter
 					output.OrganizationRole = orgRoleManager.GetAllCombinedForTarget( 1, output.Id, output.OwningOrganizationId );
 					/*
 					var roles = orgRoleManager.GetCombinedRoles( 1, output.RowId, output.OwningOrganizationId );
@@ -2524,7 +2593,11 @@ namespace workIT.Factories
 					}
 					*/
 				}
-				if ( cr.IsForAPIRequest && !string.IsNullOrWhiteSpace( output.CTID ) && output.EntityStateId == 3 && output.OwningOrganizationId > 0 )
+                //23-07-10 trying this. Can then filter out QA, or owns/offers OR use the latter as needed 
+                output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
+
+
+                if ( cr.IsForAPIRequest && !string.IsNullOrWhiteSpace( output.CTID ) && output.EntityStateId == 3 && output.OwningOrganizationId > 0 )
 				{
 					//new - get owner QA now. only if particular context
 					//actually don't want this as is slow. Break up into parts
@@ -2555,9 +2628,9 @@ namespace workIT.Factories
 							var exists = item.AgentRole.Items.Where( x => x.Id == 7 ).ToList();
 							if (exists != null && exists.Any())
 							{
-								output.OwningAgentUid = item.ActingAgentUid;
-								output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
-								output.OwningOrgDisplay = output.OwningOrganization.Name;
+								output.PrimaryAgentUID = item.ActingAgentUid;
+								output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
+								output.OwningOrgDisplay = output.PrimaryOrganization.Name;
 								//??
 								//output.OwnerRoles = item.AgentRole;
 								//output.OrganizationRole.Add( new MPM.OrganizationRoleProfile()
@@ -2585,7 +2658,7 @@ namespace workIT.Factories
                 //**TODO VersionIdentifier - need output change output a list of IdentifierValue
                 //output.VersionIdentifier = input.Version;
                 //assumes only one identifier type per class
-                output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.CREDENTIAL_VersionIdentifier );
+                output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
 
                 if ( cr.IncludingEstimatedCosts )
                 {
@@ -2607,8 +2680,10 @@ namespace workIT.Factories
                     }
                     //End edits - NA 3/17/2017
                 }
+				//TODO - should all nested services be returned? Probably true, as is the intent of the nesting. But should also be able to indicate the hierarchy
+				//also should probably be include the accommodations and service types. Or add tags to the TopLevelObject
+                output.HasSupportService = Entity_HasSupportServiceManager.GetAllSummary( relatedEntity );
 
-            
 
                 //just in case
                 if ( output.EstimatedCosts == null )
@@ -2639,8 +2714,8 @@ namespace workIT.Factories
 
 					//Old
 					output.Occupation = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-					//output.Industry = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-					//output.InstructionalProgramType = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+					output.Industry = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					output.InstructionalProgramType = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
 
 					output.NavyRating = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAVY_RATING );
 				}
@@ -2721,11 +2796,20 @@ namespace workIT.Factories
 								else if ( ec.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
 								{
 									//so should these be kept separate? Need a means to not show if already referenced thru an AggregateDataProfile
-									var dsp = DataSetProfileManager.Get( ( int )ec.Entity.EntityBaseId, true, cr.IsForAPIRequest );
-									if ( dsp != null && dsp.Id > 0 )
-										output.ExternalDataSetProfiles.Add( dsp );
+                                    var dsp = DataSetProfileManager.Get( ( int ) ec.Entity.EntityBaseId, true, cr.IsForAPIRequest );
+                                    if ( dsp != null && dsp.Id > 0 && dsp.EntityStateId == 3 )
+                                    {
+                                        //need to exclude if already part of the aggregateProfile data. 
+                                        var exists = output.AggregateData.Where( s =>
+                                                    s.RelevantDataSet.Exists( z =>
+                                                        z.CTID == dsp.CTID ) ).ToList();
+                                        //actually ProPath has lots of dups
+                                        //23-02-10 mp - uncommented the following if to exclude dsps that are in an adp. 
+                                        if ( exists == null || exists.Count == 0 )
+                                            output.ExternalDataSetProfiles.Add( dsp );
+                                    }
 
-								}
+                                }
 								else if ( ec.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
 								{
 									//so should these be kept separate?
@@ -2741,7 +2825,7 @@ namespace workIT.Factories
 									if ( pc != null && pc.Id > 0 )
 									{
 										var pathway = PathwayManager.GetByCtid( pc.PathwayCTID );
-										if ( pathway != null && pathway.Id > 0 )
+										if ( pathway != null && pathway.Id > 0 && pathway.EntityStateId > 2 )
 											output.TargetPathway.Add( pathway );
 									}
 
@@ -2757,6 +2841,11 @@ namespace workIT.Factories
 						started = DateTime.Now;
 						//
 					}
+					//TODO prototype use of Entity.HasResource
+					//var r = Entity_HasResourceManager.GetAllEntityType( relatedEntity, 1 );
+
+					//
+					output.CollectionMembers = CollectionMemberManager.GetMemberOfCollections( output.CTID );
 					//split out for API
 					//DisambiguateConditionProfiles actually returns a split object, so why call 6 times
 					var splitConnections = ConditionManifestExpanded.DisambiguateConditionProfiles( output.CredentialConnections );
@@ -2845,9 +2934,12 @@ namespace workIT.Factories
 					output.CommonConditions = Entity_CommonConditionManager.GetAll(output.RowId);
                     output.CommonCosts = Entity_CommonCostManager.GetAll(output.RowId);
 					//add target pathways here
-					output.TargetPathway = Entity_PathwayManager.GetAll( output.RowId );
-					//
-					duration = DateTime.Now.Subtract( started );
+					//23-08-28 ah wiping out code from under Entity_Credential
+					//output.TargetPathway = Entity_PathwayManager.GetAll( output.RowId );
+                    //
+                    output.UsesVerificationService = Entity_UsesVerificationServiceManager.GetAll( relatedEntity );
+                    //
+                    duration = DateTime.Now.Subtract( started );
 					if ( duration.TotalSeconds > 1 )
 					{
 						LoggingHelper.DoTrace( 7, string.Format( "         Map Duration: {0:N2} seconds common conditions, cost, and target pathway for {1}", duration.TotalSeconds, input.Name ) );
@@ -2991,7 +3083,7 @@ namespace workIT.Factories
                 output.StatusMessage = FormatExceptions(ex);
             }
         } //
-		private static void AddCredentialReference( int credentialId, ThisEntity to )
+		private static void AddCredentialReference( int credentialId, ThisResource to )
 		{
 			Credential exists = to.IsPartOfCredential.FirstOrDefault( s => s.Id == credentialId );
 			//hmm  would be useful to know how connected for display purposes.
@@ -2999,7 +3091,7 @@ namespace workIT.Factories
 				to.IsPartOfCredential.Add( CredentialManager.GetBasic( credentialId ) );
 		}
 
-		public static void MapToDB( CM.Credential input, EM.Credential output )
+		public static void MapToDB( ThisResource input, EM.Credential output )
         {
             output.Id = input.Id;
             if ( output.Id < 1 )
@@ -3030,10 +3122,10 @@ namespace workIT.Factories
 			output.ISICV4 = GetData( input.ISICV4 );
 
 			//handle old version setting output zero
-			if ( IsGuidValid( input.OwningAgentUid ) )
+			if ( IsGuidValid( input.PrimaryAgentUID ) )
             {
 				//check change of owner
-                if ( output.Id > 0 && output.OwningAgentUid != input.OwningAgentUid )
+                if ( output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID )
                 {
                     if ( IsGuidValid( output.OwningAgentUid ) )
                     {
@@ -3042,9 +3134,9 @@ namespace workIT.Factories
                         new Entity_AgentRelationshipManager().Delete( output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage );
                     }
                 }
-                output.OwningAgentUid = input.OwningAgentUid;
+                output.OwningAgentUid = input.PrimaryAgentUID;
                 //get for use to add to elastic pending
-                input.OwningOrganization = OrganizationManager.GetForSummary( input.OwningAgentUid );
+                input.PrimaryOrganization = OrganizationManager.GetForSummary( input.PrimaryAgentUID );
                 
             }
             else

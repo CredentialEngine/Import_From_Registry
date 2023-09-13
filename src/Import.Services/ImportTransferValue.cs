@@ -292,7 +292,7 @@ namespace Import.Services
 			output.OwnedBy = helper.MapOrganizationReferenceGuids( "TransferValue.OwnedBy", input.OwnedBy, ref status );
 			if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 			{
-				output.OwningAgentUid = output.OwnedBy[ 0 ];
+				output.PrimaryAgentUID = output.OwnedBy[ 0 ];
 				helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 			}
 
@@ -319,7 +319,18 @@ namespace Import.Services
 			//output.LifecycleStatusType = helper.MapCAOToString( input.LifeCycleStatusType );
 			output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
 
-
+			output.SupersededBy = input.SupersededBy ?? "";
+			output.Supersedes = input.Supersedes ?? "";
+			if ( output.SupersededBy.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				//????
+				output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); //ResolutionServices.ExtractCtid( output.SupersededBy.Trim() );
+			}
+			if ( output.Supersedes.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				//????
+				output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); //ResolutionServices.ExtractCtid( output.Supersedes.Trim() );
+			}
 			//
 
 			output.TransferValue = helper.HandleValueProfileList( input.TransferValue, "TransferValueProfile.TransferValue" );

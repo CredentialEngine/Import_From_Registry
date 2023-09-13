@@ -14,11 +14,11 @@ using RJ = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
 using InputGraph = RA.Models.JsonV2.GraphContainer;
 using InputCompetency = RA.Models.JsonV2.Competency;
-using InputEntity = RA.Models.JsonV2.Collection;
+using InputResource = RA.Models.JsonV2.Collection;
 using InputCollectionMember = RA.Models.JsonV2.CollectionMember;
 
-using EntityServices = workIT.Services.CollectionServices;
-using ThisEntity = workIT.Models.Common.Collection;
+using ResourceServices = workIT.Services.CollectionServices;
+using ThisResource = workIT.Models.Common.Collection;
 
 using OutputCollectionMember = workIT.Models.Common.CollectionMember;
 using ImportCompetency = workIT.Models.ProfileModels.Competency;
@@ -31,12 +31,13 @@ namespace Import.Services
 {
 	public class ImportCollections
 	{
-		int entityTypeId = CodesManager.ENTITY_TYPE_COLLECTION;
+		int thisEntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION;
 		string thisClassName = "ImportCollections";
-		string CurrentCollection = "";
+        string resourceType = "Collection";
+        string CurrentCollection = "";
 		ImportManager importManager = new ImportManager();
 		InputGraph input = new InputGraph();
-		ThisEntity output = new ThisEntity();
+        ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 		#region Common Helper Methods
 		/// <summary>
@@ -57,7 +58,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
+            ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -98,7 +99,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
+            ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -200,11 +201,11 @@ namespace Import.Services
 		{
 			LoggingHelper.DoTrace( 7, "ImportCollections - entered." );
 			List<string> messages = new List<string>();
-			MappingHelperV3 helper = new MappingHelperV3( 10 );
+			MappingHelperV3 helper = new MappingHelperV3( thisEntityTypeId );
 			bool importSuccessfull = true;
 			DateTime started = DateTime.Now;
-			InputEntity input = new InputEntity();
-			EntityServices mgr = new EntityServices();
+			InputResource input = new InputResource();
+            ResourceServices mgr = new ResourceServices();
 			InputCompetency comp = new InputCompetency();
 			var mainEntity = new Dictionary<string, object>();
 			//
@@ -222,6 +223,7 @@ namespace Import.Services
 			var glist = JsonConvert.SerializeObject( graphList );
 			var bnodes = new List<BNode>();
 			int cntr = 0;
+			//probably should consider possibility of mixed node types
 			int nodeCount = 0;
 			foreach ( var item in graphList )
 			{
@@ -231,7 +233,7 @@ namespace Import.Services
 				RegistryObject mro = new RegistryObject( main );
 				if ( mro.CtdlType == "ceterms:Collection" || mro.CtdlType == "Collection" )
 				{
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -427,7 +429,7 @@ namespace Import.Services
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "Collection.OwnedBy", input.OwnedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[0];
+					output.PrimaryAgentUID = output.OwnedBy[0];
 					helper.CurrentOwningAgentUid = output.OwnedBy[0];
 				}
 				else
@@ -448,7 +450,7 @@ namespace Import.Services
 				output.DateEffective = input.DateEffective;
 				output.ExpirationDate = input.ExpirationDate;
 				//TBD - pending fix for issue from CaSS
-				//output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 				output.License = input.License;
 				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
 				output.MembershipCondition = helper.FormatConditionProfile( input.MembershipCondition, ref status );
@@ -475,13 +477,14 @@ namespace Import.Services
 				else if ( collectionMembers.Count == input.HasMember?.Count )
 				{
 					//just collectionMembers, can skip hasMember
-					//dangerous?
+					//dangerous? 
 				}
 				else
 				{
 					//could be thousands of members of an ETPL
 					//may want the CTIDs here and store in collection member
 					//should not be blank nodes, but could have a mix of hasMember and collection member. What about mixed collections?
+					//23-03-14 MP - note that com???
 					output.HasMemberImport = helper.MapEntityReferenceGuids( "Collection.HasMember", input.HasMember, 0, ref status );
 					if ( output.HasMemberImport?.Count > 0 )
 					{
@@ -494,8 +497,9 @@ namespace Import.Services
 								output.EntityTypeId = cacheItem.EntityTypeId;
 								var cmbr = new OutputCollectionMember()
 								{
+									Name = cacheItem.Name,
 									ProxyFor = cacheItem.CTID,
-									//EntityTypeId = cacheItem.EntityTypeId,
+									EntityTypeId = cacheItem.EntityTypeId,
 								};
 								output.CollectionMember.Add( cmbr );
 							} else
@@ -524,9 +528,9 @@ namespace Import.Services
 						//check if it exists
 						if (output.Id > 0)
                         {
-							//var cmbrExists = CollectionMemberManager.Get( output.Id, cmbr.ProxyFor );
-							//if ( cmbrExists != null && cmbrExists.Id > 0)
-							//	cmbr.Id = cmbrExists.Id;
+							var cmbrExists = CollectionMemberManager.Get( output.Id, cmbr.ProxyFor );
+							if ( cmbrExists != null && cmbrExists.Id > 0)
+								cmbr.Id = cmbrExists.Id;
                         }
 						output.CollectionMember.Add( cmbr );
                     }
@@ -545,7 +549,7 @@ namespace Import.Services
 				bool doingUpdate = true;
 				if ( output.Id == 0 )
 				{
-					ThisEntity entity = new ThisEntity();
+                    ThisResource entity = new ThisResource();
 					if ( ctid == null )
 					{
 						//NOT POSSIBLE
@@ -555,7 +559,7 @@ namespace Import.Services
 					}
 					else
 					{
-						entity = EntityServices.GetByCtid( ctid );
+						entity = ResourceServices.GetByCtid( ctid );
 						if ( entity != null && entity.Id > 0 )
 						{
 							output.Id = entity.Id;
@@ -607,10 +611,10 @@ namespace Import.Services
 			return importSuccessfull;
 		}
 		//Import full competency data
-		public void ImportCompetencies( ThisEntity framework, List<InputCompetency> input, MappingHelperV3 helper, ref SaveStatus status )
+		public void ImportCompetencies(ThisResource resource, List<InputCompetency> input, MappingHelperV3 helper, ref SaveStatus status )
 		{
 			//Format the competency data for all of the competencies
-			framework.ImportCompetencies = new List<ImportCompetency>();
+			resource.ImportCompetencies = new List<ImportCompetency>();
 			var competency = new ImportCompetency();
 			try
 			{
@@ -620,9 +624,9 @@ namespace Import.Services
 					competency.CompetencyDetailJson = JsonConvert.SerializeObject( item, MappingHelperV3.GetJsonSettings() );
 					competency.CtdlId = item.CtdlId;
 					competency.CTID = item.CTID;
-					competency.CompetencyText = helper.HandleLanguageMap( item.competencyText, framework, "competencyText" );
-					competency.CompetencyLabel = helper.HandleLanguageMap( item.competencyLabel, framework, "CompetencyLabel" );
-					competency.CompetencyCategory = helper.HandleLanguageMap( item.competencyCategory, framework, "CompetencyCategory" );
+					competency.CompetencyText = helper.HandleLanguageMap( item.competencyText, resource, "competencyText" );
+					competency.CompetencyLabel = helper.HandleLanguageMap( item.competencyLabel, resource, "CompetencyLabel" );
+					competency.CompetencyCategory = helper.HandleLanguageMap( item.competencyCategory, resource, "CompetencyCategory" );
 					if ( !string.IsNullOrWhiteSpace( item.dateCreated ) )
 						competency.Created = DateTime.Parse( item.dateCreated );
 					if ( !string.IsNullOrEmpty( item.isTopChildOf ) )
@@ -635,7 +639,7 @@ namespace Import.Services
 						competency.DateModified = DateTime.Parse( item.dateModified );
 					//competency.LastUpdated = helper.MapDate( item.dateModified, "dateModified", ref status );
 
-					framework.ImportCompetencies.Add( competency );
+					resource.ImportCompetencies.Add( competency );
 				}
 			}
 			catch ( Exception ex )
@@ -646,10 +650,10 @@ namespace Import.Services
 		}
 
 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetByCtid( ctid );
+			entity = ResourceServices.GetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

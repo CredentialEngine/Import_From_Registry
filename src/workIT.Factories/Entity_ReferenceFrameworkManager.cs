@@ -45,6 +45,9 @@ namespace workIT.Factories
 
 			bool isAllValid = true;
 			CredentialAlignmentObjectProfile item = new CredentialAlignmentObjectProfile();
+			//get naics framework - why
+			var naicsFramework = Reference_FrameworkManager.GetByName( Reference_FrameworkManager.NAICS_Framework );
+
 			foreach ( string naics in list )
 			{
 				item = new CredentialAlignmentObjectProfile();
@@ -53,6 +56,8 @@ namespace workIT.Factories
 				if ( record != null && record.Id > 0 )
 				{
 					item.Id = record.Id;
+					item.Framework = record.URL.Substring( 0, record.URL.IndexOf( "?" ) );
+					item.FrameworkName = naicsFramework.Name;
 					item.TargetNodeName = record.Title;
 					item.CodedNotation = record.Code;
 					item.TargetNode = record.URL;
@@ -131,7 +136,6 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates )
 		{
-
 			var rfm = new Reference_FrameworkItemManager();
 
 			DBEntity efEntity = new DBEntity();
@@ -146,7 +150,7 @@ namespace workIT.Factories
 					//	status.AddWarning( "Warning: the selected code already exists!" );
 					//	return 0;
 					//}
-
+			
 					var rfi = new ReferenceFrameworkItem()
 					{
 						CategoryId = categoryId,
@@ -158,15 +162,15 @@ namespace workIT.Factories
 						FrameworkName = entity.FrameworkName,
 					};
 					//add or update, returns rfm.Id if OK
-					if ( !rfm.Save( rfi, ref status ) )
+					if (!rfm.Save( rfi, ref status ))
 					{
 						return 0;
 					}
 					//check if a duplicate
 					if ( Exists( parentEntityId, rfi.Id ) )
 					{
-						if ( warningOnDuplicates )
-							status.AddWarning( string.Format( "Warning - Duplicate encountered for categoryId: {0}, entityId: {1}, Name: {2}, FrameworkReferenceItemId: {3}", categoryId, parentEntityId, entity.TargetNodeName, rfi.Id ) );
+						if (warningOnDuplicates)
+							status.AddWarning( string.Format( "Warning - Duplicate encountered for categoryId: {0}, entityId: {1}, Name: {2}, FrameworkReferenceItemId: {3}", categoryId, parentEntityId, entity.TargetNodeName, rfi.Id) );
 						return 0;
 					}
 					//save
@@ -223,7 +227,7 @@ namespace workIT.Factories
 			}
 			return false;
 		}//
-		public static List<ThisEntity> GetAll( Guid parentUid, bool getMinimumOnly = false )
+		public static List<ThisEntity> GetAll( Guid parentUid,  bool getMinimumOnly = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
@@ -270,17 +274,17 @@ namespace workIT.Factories
 		/// <param name="messages"></param>
 		/// <returns></returns>
 		public bool DeleteAll( Entity parent, ref SaveStatus status )
-		{
-			bool isValid = true;
-			//Entity parent = EntityManager.GetEntity( parentUid );
-			if ( parent == null || parent.Id == 0 )
-			{
-				status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
-				return false;
-			}
+        {
+            bool isValid = true;
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                status.AddError( thisClassName + ". Error - the provided target parent entity was not provided." );
+                return false;
+            }
 
 			using ( var context = new EntityContext() )
-			{
+            {
 				var results = context.Entity_ReferenceFramework
 							.Where( s => s.EntityId == parent.Id )
 							.OrderBy( s => s.CategoryId )
@@ -313,9 +317,9 @@ namespace workIT.Factories
 					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. ParentType: {0}, baseId: {1}, DbUpdateConcurrencyException: {2}", parent.EntityType, parent.EntityBaseId, msg ) );
 				}
 
-			}
+            }
 
-			return isValid;
-		}
-	}
+            return isValid;
+        }
+    }
 }

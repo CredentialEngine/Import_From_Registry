@@ -128,13 +128,16 @@ namespace RA.Models.JsonV2
 		public LanguageMap Rights { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:rightsHolder" )]
-		public string RightsHolder { get; set; }
+		public List<string> RightsHolder { get; set; }
 
 
 		[JsonProperty( PropertyName = "ceasn:source" )]
-		public object Source { get; set; }
+        //public object Source { get; set; }
+        public List<string> Source { get; set; }
 
-	}
+        [JsonProperty( PropertyName = "ceterms:supersededBy" )]
+        public string SupersededBy { get; set; } //URL
+    }
 
 	/// <summary>
 	/// Concept
@@ -340,12 +343,12 @@ namespace RA.Models.JsonV2
 		/// Actually this context is a formed, but plain graph with URIs.
 		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:rightsHolder" )]
-		public string RightsHolder { get; set; }
-		//public OrganizationReference RightsHolder { get; set; } = new OrganizationReference();
+		public List<string> RightsHolder { get; set; }
+        //public string RightsHolder { get; set; } 
 
 
-		[JsonProperty( PropertyName = "ceasn:source" )]
-		public string Source { get; set; }
+        [JsonProperty( PropertyName = "ceasn:source" )]
+		public List<string> Source { get; set; }
 
 	}
 

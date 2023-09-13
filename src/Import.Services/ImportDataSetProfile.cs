@@ -274,6 +274,7 @@ namespace Import.Services
 		public bool DoesEntityExist( string ctid, ref ThisEntity entity, ref SaveStatus status )
 		{
 			bool exists = false;
+			//currently only looks for the full resource, and not EntityStateId >=1
 			entity = EntityServices.HandlingExistingEntity( ctid, ref status );
 			if ( entity != null && entity.Id > 0 )
 			{

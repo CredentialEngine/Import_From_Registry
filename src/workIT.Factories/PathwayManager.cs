@@ -18,7 +18,7 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
-
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -66,11 +66,13 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
-							//assume and validate, that if we get here we have a full record
-							if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
-								efEntity.EntityStateId = 3;
+                            //assume and validate, that if we get here we have a full record
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
 
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
+
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -179,7 +181,7 @@ namespace workIT.Factories
 						efEntity.RowId = entity.RowId;
 					else
 						efEntity.RowId = Guid.NewGuid();
-					efEntity.EntityStateId = 3;
+					efEntity.EntityStateId = entity.EntityStateId = 3;
 					if ( IsValidDate( status.EnvelopeCreatedDate ) )
 					{
 						efEntity.Created = status.LocalCreatedDate;
@@ -331,7 +333,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
@@ -352,7 +354,7 @@ namespace workIT.Factories
 			{
 				status.AddWarning( "An Pathway Description must be entered" );
 			}
-			if ( !IsValidGuid( profile.OwningAgentUid ) )
+			if ( !IsValidGuid( profile.PrimaryAgentUID ) )
 			{
 				status.AddWarning( "An owning organization must be selected" );
 			}
@@ -417,7 +419,7 @@ namespace workIT.Factories
 								ActivityObjectId = efEntity.Id
 							} );
 							//delete cache
-							new EntityManager().EntityCacheDelete( 8, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 
 							isValid = true;
 							//add pending request 
@@ -486,7 +488,8 @@ namespace workIT.Factories
 				isAllValid = false;
 			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.IndustryTypes, ref status ) == false )
 				isAllValid = false;
-
+			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+				isAllValid = false;
 			//
 			Entity_ReferenceManager erm = new Entity_ReferenceManager();
 			erm.DeleteAll( relatedEntity, ref status );
@@ -496,7 +499,11 @@ namespace workIT.Factories
 			if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_PATHWAY, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
 				isAllValid = false;
 
-			return isAllValid;
+            //
+            var ehssMgr = new Entity_HasSupportServiceManager();
+            ehssMgr.Update( entity.HasSupportServiceIds, relatedEntity, ref status );
+
+            return isAllValid;
 		}
 
 		#endregion
@@ -504,7 +511,7 @@ namespace workIT.Factories
 
 
 		#region == Retrieval =======================
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisEntity GetByCtid( string ctid, bool includingComponents = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			using ( var context = new EntityContext() )
@@ -514,14 +521,7 @@ namespace workIT.Factories
 
 				if ( from != null && from.Id > 0 )
 				{
-					entity.RowId = from.RowId;
-					entity.Id = from.Id;
-					entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
-					entity.Name = from.Name;
-					entity.Description = from.Description;
-					entity.SubjectWebpage = from.SubjectWebpage;
-					entity.CTID = from.CTID;
-					entity.CredentialRegistryId = from.CredentialRegistryId;
+                    MapFromDB_Basic( from, entity, includingComponents );
 				}
 			}
 
@@ -575,7 +575,7 @@ namespace workIT.Factories
 			}
 			return entity;
 		}
-		public static ThisEntity GetBasic( int id )
+		public static ThisEntity GetBasic( int id, bool includingComponents = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			using ( var context = new EntityContext() )
@@ -585,13 +585,13 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB_Basic( item, entity, false );
+					MapFromDB_Basic( item, entity, includingComponents );
 				}
 			}
 
 			return entity;
 		}
-		public static ThisEntity GetBasic( Guid guid )
+		public static ThisEntity GetBasic( Guid guid, bool includingComponents = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			//Guid guid = new Guid( id );
@@ -602,7 +602,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB_Basic( item, entity, false );
+					MapFromDB_Basic( item, entity, includingComponents );
 				}
 			}
 
@@ -729,6 +729,22 @@ namespace workIT.Factories
 
 			return entity;
 		}
+		//
+
+		public static string GetCTIDFromID( int id )
+		{
+			using ( var context = new EntityContext() )
+			{
+				var item = context.Pathway.FirstOrDefault( s => s.Id == id );
+				if ( item != null && item.Id > 0 )
+				{
+					return item.CTID;
+				}
+			}
+
+			return null;
+		}
+		//
 
 
 		public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
@@ -900,7 +916,7 @@ namespace workIT.Factories
 
 
 					if ( orgId > 0 )
-						item.OwningOrganization = new Organization() { Id = orgId, Name = org };
+						item.PrimaryOrganization = new Organization() { Id = orgId, Name = org };
 
 					item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
 					item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
@@ -925,14 +941,16 @@ namespace workIT.Factories
 				output.CredentialRegistryId = input.CredentialRegistryId;
 
 			output.Id = input.Id;
+			//don't do here, do in caller
+			//output.EntityStateId= input.EntityStateId;
 			output.Name = GetData( input.Name );
 			output.Description = GetData( input.Description );
 			output.SubjectWebpage = GetUrlData( input.SubjectWebpage );
 			output.HasProgressionModel = input.ProgressionModelURI;
 
-			if ( IsGuidValid( input.OwningAgentUid ) )
+			if ( IsGuidValid( input.PrimaryAgentUID ) )
 			{
-				if ( output.Id > 0 && output.OwningAgentUid != input.OwningAgentUid )
+				if ( output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID )
 				{
 					if ( IsGuidValid( output.OwningAgentUid ) )
 					{
@@ -941,9 +959,9 @@ namespace workIT.Factories
 						new Entity_AgentRelationshipManager().Delete( output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage );
 					}
 				}
-				output.OwningAgentUid = input.OwningAgentUid;
+				output.OwningAgentUid = input.PrimaryAgentUID;
 				//get for use to add to elastic pending
-				input.OwningOrganization = OrganizationManager.GetForSummary( input.OwningAgentUid );
+				input.PrimaryOrganization = OrganizationManager.GetForSummary( input.PrimaryAgentUID );
 				//input.OwningOrganizationId = org.Id;
 			}
 			else
@@ -951,19 +969,9 @@ namespace workIT.Factories
 				//always have output have an owner
 				//output.OwningAgentUid = null;
 			}
-
-			//if ( input.InLanguageId > 0 )
-			//	output.InLanguageId = input.InLanguageId;
-			//else if ( !string.IsNullOrWhiteSpace( input.InLanguage ) )
-			//{
-			//	output.InLanguageId = CodesManager.GetLanguageId( input.InLanguage );
-			//}
-			//else
-
-
-			//======================================================================
-
-		}
+            //======================================================================
+            output.Properties = JsonConvert.SerializeObject( input.Properies );
+        }
 
 		public static void MapFromDB( DBEntity input, ThisEntity output, bool includingComponents, bool includingExtra = true)
 		{
@@ -984,18 +992,18 @@ namespace workIT.Factories
 					output.OccupationTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
 					output.IndustryTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					output.InstructionalProgramTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+                    //output.OccupationType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+                    ////TODO - why are these not using Reference_FrameworkItemManager
+                    //output.AlternativeOccupations = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-					//output.OccupationType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-					////TODO - why are these not using Reference_FrameworkItemManager
-					//output.AlternativeOccupations = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+                    //output.IndustryType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+                    //output.AlternativeIndustries = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
-					//output.IndustryType = Reference_FrameworkItemManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-					//output.AlternativeIndustries = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-
-				}
-				catch ( Exception ex )
+                }
+                catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB_B(), Name: {0} ({1})", output.Name, output.Id ) );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB(), Name: {0} ({1})", output.Name, output.Id ) );
 					output.StatusMessage = FormatExceptions( ex );
 				}
 			}
@@ -1015,11 +1023,11 @@ namespace workIT.Factories
 			output.CTID = input.CTID;
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
-				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
-				output.OrganizationId = output.OwningOrganization.Id;
+				output.PrimaryAgentUID = ( Guid )input.OwningAgentUid;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
+				output.OrganizationId = output.PrimaryOrganization.Id;
 				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 				output.OwnerRoles = orp.AgentRole;
 			}
 			//
@@ -1030,24 +1038,33 @@ namespace workIT.Factories
 				output.Created = ( DateTime )input.Created;
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = ( DateTime )input.LastUpdated;
+            //
+            //Json
+            if ( !string.IsNullOrWhiteSpace( input.Properties ) )
+            {
+                var pcp = JsonConvert.DeserializeObject<PathwayJSONProperties>( input.Properties );
+                if ( pcp != null )
+                {
+                    output.AllowUseOfPathwayDisplay = pcp.AllowUseOfPathwayDisplay;
+                }
+            }
 
 
-
-			if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
+            //unlikely
+            if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
 			{
 				output.IsReferenceVersion = true;
 				return;
 			}
-			//=====
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
-
+			//============================
 			//components
 			if ( includingComponents )
 			{
-				//
-				output.ProgressionModelURI = input.HasProgressionModel;
+                var relatedEntity = EntityManager.GetEntity( output.RowId, false );
+                if (relatedEntity != null && relatedEntity.Id > 0)
+                    output.EntityLastUpdated = relatedEntity.LastUpdated;
+                //
+                output.ProgressionModelURI = input.HasProgressionModel;
 				if ( !string.IsNullOrWhiteSpace( output.ProgressionModelURI ) && includingComponents )
 				{
 					//ensure this is not called always from ProgressionModel/CS or will get a stack overflow
@@ -1063,7 +1080,7 @@ namespace workIT.Factories
 				//one less that parts???
 				//var parts1 = PathwayComponentManager.GetAllForPathway( to.CTID, PathwayComponentManager.componentActionOfDeep );
 				//and
-				var parts = Entity_PathwayComponentManager.GetAll( output.RowId, PathwayComponentManager.componentActionOfDeep );
+				var parts = Entity_PathwayComponentManager.GetAll( output.RowId, PathwayComponentManager.ComponentActionOfDeep );
 				//may want to split out here, do in context
 
 				foreach ( var item in parts )
@@ -1086,14 +1103,21 @@ namespace workIT.Factories
 					}
 				}
 
+                output.HasSupportService = Entity_HasSupportServiceManager.GetAllSummary( relatedEntity );
 
-
-			}
-		} //
-
+            } else
+			{
+                //TBD - maybe want to get the dest component for reference?
+                var parts = Entity_PathwayComponentManager.GetDestinationComponent( output.RowId, PathwayComponentManager.ComponentActionOfSummary );
+                foreach (var item in parts)
+                {
+                    if (item.ComponentRelationshipTypeId == PathwayComponent.PathwayComponentRelationship_HasDestinationComponent)
+                        output.HasDestinationComponent.Add( item );                
+                }
+            }
+        } //
 
 		#endregion
-
 
 	}
 }

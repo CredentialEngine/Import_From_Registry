@@ -590,6 +590,7 @@ namespace workIT.Factories
 					count = context.SaveChanges();
 					if ( count > 0 )
 					{
+						//this resource will need to be reindexed! ==> done in caller
 						return true;
 					}
 					else

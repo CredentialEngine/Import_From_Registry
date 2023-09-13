@@ -48,127 +48,59 @@ namespace ImportHelpers
             return status;
 		}
 		//
-		/*
-		public SaveStatus ImportCredential( string envelopeId, bool handlingPendingRecords = false)
+		public SaveStatus ImportByURL( string resourceUrl, bool handlingPendingRecords = false )
 		{
-			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import credential by envelopeId: {0}", envelopeId ) );
-			Import.Services.ImportCredential mgr = new Import.Services.ImportCredential();
-			mgr.ImportByEnvelopeId( envelopeId, status );
-			//new RegistryServices().ImportPending();
-			if ( handlingPendingRecords )
-				new ImportCredential().ImportPendingRecords();
+			//, bool doPendingTask = false 
+			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by resourceUrl: {0}", resourceUrl ) );
+			var mgr = new ImportHelperServices();
+			//TODO - update to check for alternate community if not found with the default community
+			if ( mgr.ImportByURL( resourceUrl, status ) )
+			{
+				if ( handlingPendingRecords )
+					new RegistryServices().ImportPending();
 
-			return status;
-		}
-		public SaveStatus ImportCredentialByCtid( string ctid, bool handlingPendingRecords = false )
-		{
-			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import credential by ctid: {0}", ctid ) );
-			Import.Services.ImportCredential mgr = new Import.Services.ImportCredential();
-			mgr.ImportByCtid( ctid, status );
-			//new RegistryServices().ImportPending();
-			if (handlingPendingRecords)
-				new ImportCredential().ImportPendingRecords();
-			return status;
-		}
-		public SaveStatus ImportOrganization( string envelopeId )
-		{
-			Import.Services.ImportOrganization mgr = new Import.Services.ImportOrganization();
-			mgr.RequestImportByEnvelopeId( envelopeId, status );
-			//new RegistryServices().ImportPending();
+				//ElasticServices.UpdateElastic();
+			}
 
-			return status;
-		}
-		public SaveStatus ImportOrganizationByCtid( string ctid )
-		{
-			Import.Services.ImportOrganization mgr = new Import.Services.ImportOrganization();
-			mgr.RequestImportByCtid( ctid, status );
-			//new RegistryServices().ImportPending();
-
-			return status;
-		}
-		public SaveStatus ImportAssessment( string envelopeId )
-		{
-			Import.Services.ImportAssessment mgr = new Import.Services.ImportAssessment();
-			mgr.ImportByEnvelopeId( envelopeId, status );
-			//new RegistryServices().ImportPending();
-
-			return status;
-		}
-		public SaveStatus ImportAssessmentByCtid( string ctid )
-		{
-			Import.Services.ImportAssessment mgr = new Import.Services.ImportAssessment();
-			mgr.ImportByCtid( ctid, status );
-			//new RegistryServices().ImportPending();
-			return status;
-		}
-		public SaveStatus ImportLearningOpportunty( string envelopeId, bool handlingPendingRecords = false )
-		{
-			Import.Services.ImportLearningOpportunties mgr = new Import.Services.ImportLearningOpportunties();
-			mgr.ImportByEnvelopeId( envelopeId, status );
-			//new RegistryServices().ImportPending();
-			if ( handlingPendingRecords )
-				new ImportLearningOpportunties().ImportPendingRecords();
-			return status;
-		}
-		public SaveStatus ImportLearningOpportuntyByCtid( string ctid, bool handlingPendingRecords = false )
-		{
-			Import.Services.ImportLearningOpportunties mgr = new Import.Services.ImportLearningOpportunties();
-			mgr.ImportByCtid( ctid, status );
-			//new RegistryServices().ImportPending();
-			if ( handlingPendingRecords )
-				new ImportLearningOpportunties().ImportPendingRecords();
-			return status;
-		}
-
-		//
-		public SaveStatus ImportCompetencyFramework( string ctid, string envelopeId, bool handlingPendingRecords = false )
-		{
-			if ( !string.IsNullOrWhiteSpace( ctid ) )
-				new Import.Services.ImportCompetencyFramesworks().ImportByCtid( ctid, status );
-			else if ( !string.IsNullOrWhiteSpace( envelopeId ) )
-				new Import.Services.ImportCompetencyFramesworks().ImportByEnvelopeId( envelopeId, status );
-
-			//if ( handlingPendingRecords )
-			//	new ImportLearningOpportunties().ImportPendingRecords();
 			return status;
 		}
 		//
-		public SaveStatus ImportPathway( string ctid, string envelopeId, bool handlingPendingRecords = false )
+		public SaveStatus PurgeByCtid( string ctid, bool deleteOnlyNoPurge = false )
 		{
-			if ( !string.IsNullOrWhiteSpace( ctid ) )
-				new Import.Services.ImportPathways().ImportByCtid( ctid, status );
-			else if ( !string.IsNullOrWhiteSpace( envelopeId ) )
-				new Import.Services.ImportPathways().ImportByEnvelopeId( envelopeId, status );
+			//, bool doPendingTask = false 
+			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to purge entity by ctid: {0}", ctid ) );
+			var mgr = new ImportHelperServices();
+			SaveStatus status2 = new SaveStatus();
+			//TODO - how to handle community
+			if ( mgr.PurgeByCtid( ctid, status2, deleteOnlyNoPurge ) )
+			{
+				//allow the import to handle elastic- any issues with this?
+				//ElasticServices.UpdateElastic();
+			} else
+			{
+                //may want to delete record and from elastic regardless?
+            }
 
-			//if ( handlingPendingRecords )
-			//	new ImportLearningOpportunties().ImportPendingRecords();
-			return status;
+
+            return status2;
 		}
 		//
-		public SaveStatus ImportPathwaySet( string ctid, string envelopeId, bool handlingPendingRecords = false )
+		public SaveStatus SetOrganizationToCeased( string ctid )
 		{
-			if ( !string.IsNullOrWhiteSpace( ctid ) )
-				new Import.Services.ImportPathwaySets().ImportByCtid( ctid, status );
-			else if ( !string.IsNullOrWhiteSpace( envelopeId ) )
-				new Import.Services.ImportPathwaySets().ImportByEnvelopeId( envelopeId, status );
+			//, bool doPendingTask = false 
+			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to SetOrganizationToCeased: {0}", ctid ) );
+			var mgr = new ImportHelperServices();
+			SaveStatus status2 = new SaveStatus();
+			//TODO - how to handle community
+			if ( mgr.SetOrganizationToCeased( ctid, status2 ) )
+			{
+				//allow the import to handle elastic- any issues with this?
+				//ElasticServices.UpdateElastic();
+			}
+			//may want to delete record and from elastic regardless
 
-			//if ( handlingPendingRecords )
-			//	new ImportLearningOpportunties().ImportPendingRecords();
-			return status;
+			return status2;
 		}
 		//
-		public SaveStatus ImportTransferValue( string ctid, string envelopeId, bool handlingPendingRecords = false )
-		{
-			if ( !string.IsNullOrWhiteSpace( ctid ) )
-				new Import.Services.ImportTransferValue().ImportByCtid( ctid, status );
-			else if ( !string.IsNullOrWhiteSpace( envelopeId ) )
-				new Import.Services.ImportTransferValue().ImportByEnvelopeId( envelopeId, status );
-
-			//if ( handlingPendingRecords )
-			//	new ImportLearningOpportunties().ImportPendingRecords();
-			return status;
-		}
-
-		*/
 	}
 }

@@ -24,6 +24,9 @@ namespace workIT.Factories
 	public class Reference_FrameworkManager : BaseFactory
 	{
 		static string thisClassName = "Reference_FrameworkManager";
+		public static string NAICS_Framework = "North American Industry Classification System";
+		public static string ONET_Framework = "Standard Occupational Classification";
+		public static string CIPS_Framework = "Classification of Instructional Programs";
 
 		#region Persistance ===================
 
@@ -183,9 +186,13 @@ namespace workIT.Factories
 			frameworkName = frameworkName.ToLower();
 			//check for SOC alternatives
 			//https://www.onetcenter.org/taxonomy.html
-			if (framework.ToLower() == "https://www.onetonline.org" )
+			if (framework.ToLower().IndexOf( "www.onetonline.org" ) > 0 )
             {
 				framework = "https://www.onetcenter.org/taxonomy.html";
+			} else if ( framework.ToLower().IndexOf( "www.census.gov/eos/www/naics") > 0
+				|| framework.ToLower().IndexOf( "www.census.gov/eos/www/naics" ) > 0 )
+			{
+				framework = "https://www.census.gov/naics";
 			}
 			using ( var context = new EntityContext() )
 			{
@@ -239,6 +246,30 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl" );
+			}
+			return entity;
+		}//
+		public static ThisEntity GetByName( string frameworkName )
+		{
+			ThisEntity entity = new ThisEntity();
+			if ( string.IsNullOrWhiteSpace( frameworkName ) )
+				return entity;
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+					DBEntity item = context.Reference_Framework
+							.FirstOrDefault( s => s.FrameworkName.ToLower() == frameworkName.ToLower() );
+
+					if ( item != null && item.Id > 0 )
+					{
+						MapFromDB( item, entity );
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetByName" );
 			}
 			return entity;
 		}//
@@ -341,7 +372,11 @@ namespace workIT.Factories
 			to.FrameworkName = from.Name;
 			to.CategoryId = from.CategoryId;
 			to.Framework = ( from.Framework ?? "" );
-
+			//if do this, then later ones will not match. Needs to be part of the exists check
+			if ( to.Framework.IndexOf( "www.census.gov/eos/www/naics/" ) > 0 )
+			{
+				to.Framework = to.Framework.Replace( "www.census.gov/eos/www/naics/", "www.census.gov/naics" );
+			}
 			to.Description = from.Description;
 
 		} //

@@ -54,8 +54,8 @@ namespace RA.Models.JsonV2
 		//public List<string> Instrument { get; set; }
 
 
-		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
-		public List<JurisdictionProfile> Jurisdiction { get; set; }
+		//[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
+		//public List<JurisdictionProfile> Jurisdiction { get; set; }
 
 		///// <summary>
 		///// Object

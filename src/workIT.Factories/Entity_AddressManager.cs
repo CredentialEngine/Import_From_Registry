@@ -134,7 +134,7 @@ namespace workIT.Factories
 							//should only be one
 							efEntity = exists[ 0 ];
 							entity.Id = efEntity.Id;
-							entity.ParentId = parent.Id;
+							entity.RelatedEntityId = parent.Id;
 							entity.RowId = efEntity.RowId;
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							efEntity.LastUpdated = updateDate;
@@ -164,7 +164,7 @@ namespace workIT.Factories
 						else
 						{
 							efEntity.EntityId = parent.Id;
-							entity.ParentId = parent.Id;
+							entity.RelatedEntityId = parent.Id;
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							//could just have contact points without address
 							if ( entity.HasAddress() )
@@ -180,7 +180,7 @@ namespace workIT.Factories
 
 								//update profile record so doesn't get deleted
 								entity.Id = efEntity.Id;
-								entity.ParentId = parent.Id;
+								entity.RelatedEntityId = parent.Id;
 								entity.RowId = efEntity.RowId;
 								if ( count == 0 )
 								{
@@ -214,7 +214,7 @@ namespace workIT.Factories
 					}
 					else
 					{
-						entity.ParentId = parent.Id;
+						entity.RelatedEntityId = parent.Id;
 
 						efEntity = context.Entity_Address.SingleOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
@@ -247,7 +247,7 @@ namespace workIT.Factories
 							//make these new methods
 							efEntity = new DBEntity();
 							efEntity.EntityId = parent.Id;
-							entity.ParentId = parent.Id;
+							entity.RelatedEntityId = parent.Id;
 							MapToDB( entity, efEntity, ref resetIsPrimaryFlag, doingGeoCoding );
 							//could just have contact points without address
 							if ( entity.HasAddress() )
@@ -263,7 +263,7 @@ namespace workIT.Factories
 
 								//update profile record so doesn't get deleted
 								entity.Id = efEntity.Id;
-								entity.ParentId = parent.Id;
+								entity.RelatedEntityId = parent.Id;
 								entity.RowId = efEntity.RowId;
 								if ( count == 0 )
 								{
@@ -531,7 +531,7 @@ namespace workIT.Factories
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
-			output.ParentId = input.EntityId;
+			output.RelatedEntityId = input.EntityId;
 			if ( input.Entity != null )
 				output.ParentRowId = input.Entity.EntityUid;
 
@@ -554,8 +554,14 @@ namespace workIT.Factories
 			//
 			output.IdentifierJson = input.IdentifierJson;
 
-			//if ( !string.IsNullOrWhiteSpace( output.IdentifierJson ) )
-			//	output.Identifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( input.IdentifierJson );
+			if ( !string.IsNullOrWhiteSpace( output.IdentifierJson ) )
+			{
+				output.IdentifierOLD = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( input.IdentifierJson );
+				if ( output.IdentifierOLD  != null && output.IdentifierOLD .Any())
+                {
+
+                }
+			}
 
 
 			//output.ContactPoint = Entity_ContactPointManager.GetAll( output.RowId );
@@ -613,7 +619,11 @@ namespace workIT.Factories
 			output.Region = input.AddressRegion ?? "";
 			output.SubRegion = input.SubRegion ?? "";
 
-			output.Country = input.AddressCountry;
+			output.Country = input.AddressCountry ?? "";
+			if ( output.Country.ToLower() == "us" || output.Country.ToLower() == "usa"  || output.Country.ToLower() == "u.s.a." || output.Country.ToLower() == "u.s." )
+			{
+				output.Country = "United States";
+			}
 			//likely provided
 			output.Latitude = input.Latitude;
 			output.Longitude = input.Longitude;
@@ -631,10 +641,14 @@ namespace workIT.Factories
 				  )
 				{
 					//20-12-05 mp - as this could be 20+ seconds input import, consider deferring output end of cycle
-					if ( UtilityManager.GetAppKeyValue( "envType" ) != "development" )
+					if ( UtilityManager.GetAppKeyValue( "environment" ) != "development" )
 					{
 						if ( doingGeoCodingCheck )
 							UpdateGeo( input, output );
+						else
+                        {
+							//add parent for reindex
+                        }
 					}
 				}
 			}
@@ -654,13 +668,30 @@ namespace workIT.Factories
 			//	output.Longitude = 0;
 			//}
 		}
+
+		/// <summary>
+		/// Check all addresses missing lat/lng and geocode
+		/// NEW: need to reindex the parent resource
+		/// </summary>
+		/// <param name="messages"></param>
+		/// <param name="maxRecords"></param>
+		/// <returns></returns>
 		public List<ThisEntity> ResolveMissingGeodata( ref string messages, int maxRecords = 300 )
 		{
 			int addressesFixed = 0;
 			int addressRemaining = 0;
 			return ResolveMissingGeodata( ref messages, ref addressesFixed, ref addressRemaining, maxRecords );
 		}
-        public List<ThisEntity> ResolveMissingGeodata( ref string messages, ref int addressesFixed, ref int addressRemaining, int maxRecords = 300 )
+		/// <summary>
+		/// Check all addresses missing lat/lng and geocode
+		/// NEW: need to reindex the parent resource
+		/// </summary>
+		/// <param name="message"></param>
+		/// <param name="addressesFixed"></param>
+		/// <param name="addressRemaining"></param>
+		/// <param name="maxRecords"></param>
+		/// <returns></returns>
+		public List<ThisEntity> ResolveMissingGeodata( ref string message, ref int addressesFixed, ref int addressRemaining, int maxRecords = 300 )
         {
             ThisEntity entity = new ThisEntity();
             List<ThisEntity> list = new List<ThisEntity>();
@@ -683,7 +714,6 @@ namespace workIT.Factories
                             || ( s.Longitude == null || s.Longitude == 0.0 ) )
                             .OrderBy( s => s.Address1 ).ThenBy( s => s.City ).ThenBy( s => s.PostalCode ).ThenBy( s => s.Region )
                             .ToList();
-					//.ThenBy( s => s.Address2 )
 					if ( results != null && results.Count > 0 )
 					{
 						foreach ( EM.Entity_Address efEntity in results )
@@ -715,13 +745,14 @@ namespace workIT.Factories
 								efEntity.Latitude = prevLat;
 								efEntity.Longitude = prevLng;
 								updatedViaCopy = true;
-
 							}
 							else
 							{
 								//save prev region now, in case it gets expanded, although successive ones will not be expanded!
 								prevRegion = efEntity.Region ?? "";
+								//TODO - may want to get the related Entity.Id and type to allow a reindex request
 								MapFromDB( efEntity, entity );
+								//the geocode method will be called from this method
 								MapToDB( entity, efEntity, ref resetIsPrimaryFlag, true );
 							}
 							//
@@ -737,6 +768,16 @@ namespace workIT.Factories
 								addressesFixed++;
 								prevLat = ( double )( efEntity.Latitude ?? 0.0 );
 								prevLng = ( double )( efEntity.Longitude ?? 0.0 );
+
+								//add parent to pending reindex
+								if (efEntity.Entity != null && efEntity.Entity.Id > 0)
+                                {
+									var messages = new List<string>();
+									new SearchPendingReindexManager().Add( efEntity.Entity.EntityTypeId, (int)efEntity.Entity.EntityBaseId, 1, ref messages );
+								} else
+                                {
+									//add a note if Entity not found
+                                }
 							}
 							else
 							{
@@ -750,7 +791,7 @@ namespace workIT.Factories
 							prevPostalCode = efEntity.PostalCode ?? "";
 							if ( maxRecords > 0 && cntr > maxRecords )
 							{
-								messages = string.Format( "Early completion. Processed {0} of {1} candidate records.", cntr, results.Count );
+								message = string.Format( "Early completion. Processed {0} of {1} candidate records.", cntr, results.Count );
 								addressRemaining = results.Count() - cntr;
 
 								break;
@@ -759,14 +800,14 @@ namespace workIT.Factories
 							//could try 1/2 a second
 							//or sleep after every 'n' records
 							if ( cntr % 10 == 0 )
-								System.Threading.Thread.Sleep( 500 );
+								System.Threading.Thread.Sleep( 400 );
 						}
 
 					}
 					else
 					{
-						messages = thisClassName + ".ResolveMissingGeodata - No records were found to normalize. ";
-						LoggingHelper.DoTrace( 5, messages );
+						message = thisClassName + ".ResolveMissingGeodata - No records were found to normalize. ";
+						LoggingHelper.DoTrace( 5, message );
 						return list;
 					}
 				}
@@ -776,7 +817,7 @@ namespace workIT.Factories
                 LoggingHelper.LogError( ex, thisClassName + ".ResolveMissingGeodata" );
             }
 
-            messages += string.Join( "<br/>", messageList.ToArray() );
+            message += string.Join( "<br/>", messageList.ToArray() );
 
             return list;
         }//
@@ -819,7 +860,7 @@ namespace workIT.Factories
 							//risky?
 							if ( item.Country != null ) 
 							{
-								if ( "usa u.s.a. united states of america".IndexOf( item.Country.ToLower() ) == 0 )
+								if ( "usa us u.s.a. united states of america".IndexOf( item.Country.ToLower() ) == 0 )
 									existsIsUSA = true;
 							}
 

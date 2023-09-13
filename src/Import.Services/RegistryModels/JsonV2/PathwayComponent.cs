@@ -4,11 +4,12 @@ using Newtonsoft.Json;
 
 namespace RA.Models.JsonV2
 {
-	/// <summary>
-	/// History
-	/// 21-01-06 remove CodedNotation
-	/// </summary>
-	public class PathwayComponent
+    /// <summary>
+    /// History
+    /// 21-01-06 remove CodedNotation
+    /// 23-04-30 Add CodedNotation for competencyComponent only
+    /// </summary>
+    public class PathwayComponent
 	{
 		public PathwayComponent() { }
 
@@ -24,11 +25,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string CTID { get; set; }
 
-		//[JsonProperty( PropertyName = "ceasn:codedNotation" )]
-		//public string CodedNotation { get; set; }
+        //23-05-26 banished
+        //[JsonProperty( PropertyName = "ceasn:codedNotation" )]
+        //public string CodedNotation { get; set; }
 
-		//
-		[JsonProperty( PropertyName = "ceterms:componentCategory" )]
+        //
+        [JsonProperty( PropertyName = "ceterms:componentCategory" )]
 		public LanguageMap ComponentCategory { get; set; }
 
 		//ceterms:componentDesignation
@@ -144,6 +146,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:proxyFor" )]
 		public string ProxyFor { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:proxyForList" )]
+		public List<string> ProxyForList { get; set; }
+
 		/// <summary>
 		/// URL to structured data representing the resource.
 		/// The preferred data serialization is JSON-LD or some other serialization of RDF.
@@ -233,12 +238,16 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasCondition" )]
 		public List<ComponentCondition> HasCondition { get; set; }
 
-
-		/// <summary>
-		/// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
-		/// ceterms:ComponentCondition
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:hasConstraint" )]
+        /// <summary>
+        /// Number of hasConstraint objects that must be fulfilled in order to satisfy the ComponentCondition.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:requiredConstraints" )]
+        public int RequiredConstraints { get; set; }
+        /// <summary>
+        /// Resource(s) that describes what must be done to complete a PathwayComponent, or part thereof, as determined by the issuer of the Pathway.
+        /// ceterms:ComponentCondition
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasConstraint" )]
 		public List<Constraint> HasConstraint{ get; set; }
 
 

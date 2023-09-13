@@ -1,6 +1,13 @@
 use credFinder
 GO
 
+use sandbox_credFinder
+go
+
+--use staging_credFinder
+--go
+
+
 /****** Object:  StoredProcedure [dbo].[Competencies_search]    Script Date: 10/6/2017 4:08:13 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -21,7 +28,7 @@ set @SortOrder = 'base.Competency'
 
 set @Filter = '  (AlignmentType in (''Assesses'', ''Teaches'') ) AND  (credentialId =1  ) '
 
-set @Filter = ' (credentialId = 52  )'
+set @Filter = ' (credentialId = 13013  )'
 
 --set @Filter = ' (SourceEntityTypeId = 3 AND [SourceId] = 17 )'
 
@@ -41,7 +48,7 @@ set statistics time off
 
 
 /* =============================================
-Description:      Competencies search
+Description:      Competencies search - Credential related only!!
 Options:
 
   @StartPageIndex - starting page number. 
@@ -52,6 +59,9 @@ custom pager
 Modifications
 16-09-02 mparsons - new
 
+22-11-18 mparsons - is this obsolete? A hold over from the publisher implmentation?
+				- Referenced in CompetencyFrameworkManager.Search
+				- Used in TagSet micro searches
 */
 
 Alter PROCEDURE [dbo].[Competencies_search]
@@ -93,8 +103,8 @@ IF @StartPageIndex < 1        SET @StartPageIndex = 1
 CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
       Id int,
-      Title             varchar(500),
-	  Source             varchar(500),
+      Title             varchar(2000),
+	  Source             varchar(5000),
 )
 
 -- =================================

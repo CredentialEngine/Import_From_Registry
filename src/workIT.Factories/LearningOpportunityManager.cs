@@ -19,6 +19,7 @@ using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 using Newtonsoft.Json;
 using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworkItemManager;
+using Nest;
 //using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworksManager;
 
 namespace workIT.Factories
@@ -27,7 +28,9 @@ namespace workIT.Factories
     {
         static string thisClassName = "LearningOpportunityManager";
 		static string EntityType = "LearningOpportunity";
-		EntityManager entityMgr = new EntityManager();
+		static int EntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+        static string Entity_Label = "Learning Opportunity";
+        EntityManager entityMgr = new EntityManager();
         #region LearningOpportunity - persistance ==================
         /// <summary>
         /// Update a LearningOpportunity
@@ -76,11 +79,13 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
-							//assume and validate, that if we get here we have a full record
-							if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
-								efEntity.EntityStateId = 3;
+                            //assume and validate, that if we get here we have a full record
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
 
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
+
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -176,10 +181,10 @@ namespace workIT.Factories
         /// <summary>
         /// add a LearningOpportunity
         /// </summary>
-        /// <param name="entity"></param>
+        /// <param name="resource"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        private int Add( ThisEntity entity, ref SaveStatus status )
+        private int Add( ThisEntity resource, ref SaveStatus status )
         {
 			LoggingHelper.DoTrace( 7, thisClassName + ".Add - entered" );
 
@@ -189,10 +194,10 @@ namespace workIT.Factories
                 try
                 {
 
-                    MapToDB( entity, efEntity );
-                    efEntity.EntityStateId = 3;
-                    if ( IsValidGuid( entity.RowId ) )
-                        efEntity.RowId = entity.RowId;
+                    MapToDB( resource, efEntity );
+					efEntity.EntityStateId = resource.EntityStateId = 3;
+					if ( IsValidGuid( resource.RowId ) )
+                        efEntity.RowId = resource.RowId;
                     else
                         efEntity.RowId = Guid.NewGuid();
 					if ( IsValidDate( status.EnvelopeCreatedDate ) )
@@ -213,34 +218,34 @@ namespace workIT.Factories
                     if ( count > 0 )
                     {
 						//
-						entity.RowId = efEntity.RowId;
-						entity.Created = ( DateTime )efEntity.Created;
-						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
-						entity.Id = efEntity.Id;
-						UpdateEntityCache( entity, ref status );
+						resource.RowId = efEntity.RowId;
+						resource.Created = ( DateTime )efEntity.Created;
+						resource.LastUpdated = ( DateTime )efEntity.LastUpdated;
+						resource.Id = efEntity.Id;
+						UpdateEntityCache( resource, ref status );
 						//add log entry
 						SiteActivity sa = new SiteActivity()
                         {
-                            ActivityType = entity.LearningEntityType,
+                            ActivityType = resource.LearningEntityType,
                             Activity = "Import",
                             Event = "Add",
-                            Comment = string.Format( "Full LearningOpportunity was added by the import. Name: {0}, SWP: {1}", entity.Name, entity.SubjectWebpage ),
-                            ActivityObjectId = entity.Id
+                            Comment = string.Format( "Full {2} was added by the import. Name: {0}, SWP: {1}", resource.Name, resource.SubjectWebpage, resource.LearningEntityType ),
+                            ActivityObjectId = resource.Id
                         };
                         new ActivityManager().SiteActivityAdd( sa );
 
 
-                        if ( UpdateParts( entity, ref status ) == false )
+                        if ( UpdateParts( resource, ref status ) == false )
                         {
 
                         }
 
-                        return entity.Id;
+                        return resource.Id;
                     }
                     else
                     {
                         //?no info on error
-                        string message = thisClassName + string.Format( ". Add Failed", "Attempted to add a Learning Opportunity. The process appeared to not work, but was not an exception, so we have no message, or no clue. LearningOpportunity: {0}, CTID: {1}", entity.Name, entity.CTID );
+                        string message = thisClassName + string.Format( ". Add Failed", "Attempted to add a Learning Opportunity. The process appeared to not work, but was not an exception, so we have no message, or no clue. LearningOpportunity: {0}, CTID: {1}", resource.Name, resource.CTID );
                         status.AddError( thisClassName + ". Error - the add was not successful. " + message );
                         EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
                     }
@@ -248,7 +253,7 @@ namespace workIT.Factories
                 catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
                 {
 
-                    string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", entity.Name );
+                    string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", resource.Name );
                     status.AddError( thisClassName + " - Error - the save was not successful. " + message );
                     LoggingHelper.LogError( message, true );
 
@@ -262,7 +267,7 @@ namespace workIT.Factories
                 }
             }
 
-            return entity.Id;
+            return resource.Id;
         }
         public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
         {
@@ -285,7 +290,7 @@ namespace workIT.Factories
 					//NOTE - an input will be created via trigger
 					//20-08-27 mp - using full MapToDB to handle any additions that appear in the future
 					MapToDB( entity, efEntity );
-					efEntity.EntityStateId = 2;
+					efEntity.EntityStateId = entity.EntityStateId = 2;
 					//set to active 
 					var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 					efEntity.LifeCycleStatusTypeId = defStatus.Id;
@@ -362,7 +367,7 @@ namespace workIT.Factories
             return 0;
         }
 
-        public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
+        public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status, int entityTypeId= 7 )
         {
             DBEntity efEntity = new DBEntity();
             try
@@ -383,8 +388,8 @@ namespace workIT.Factories
                     //NOTE - an entity will be created via trigger
                     efEntity.Name = "Placeholder until full document is downloaded";
                     efEntity.Description = "Placeholder until full document is downloaded";
-					//default to 7
-					efEntity.EntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+					//default to 7, and can be overridden in the update (validate)
+					efEntity.EntityTypeId = entityTypeId;
 					efEntity.EntityStateId = 1;
                     efEntity.RowId = entityUid;
                     //watch that Ctid can be  updated if not provided now!!
@@ -442,9 +447,11 @@ namespace workIT.Factories
 			EntityCache ec = new EntityCache()
 			{
 				EntityTypeId = 7, //document.LearningEntityTypeId,
-				EntityType = document.LearningEntityType, // "LearningOpportunity",
+				//SubclassEntityTypeId = document.LearningEntityTypeId,
+				//22-11-13 mp - back to always lopp as can be a problem with searches. Don't know why the sandbox had this (vs with a space)
+				EntityType = EntityType, // document.LearningEntityType, // "LearningOpportunity",
 				EntityStateId = document.EntityStateId,
-				EntityUid = document.RowId,
+                EntityUid = document.RowId,
 				BaseId = document.Id,
 				Description = document.Description,
 				SubjectWebpage = document.SubjectWebpage,
@@ -453,10 +460,16 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+            //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+            var ceasedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+            if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
+            {
+                ec.IsActive = false;
+            }
+            var statusMessage = "";
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -474,7 +487,7 @@ namespace workIT.Factories
             {
                 //status.AddWarning( "A Learning Opportunity Description must be entered" );
             }
-            if ( !IsValidGuid( profile.OwningAgentUid ) )
+            if ( !IsValidGuid( profile.PrimaryAgentUID ) )
             {
                 //status.AddWarning( "An owning organization is missing" );
             }
@@ -610,7 +623,7 @@ namespace workIT.Factories
 								ActivityObjectId = efEntity.Id
 							} );
 							//delete cache
-							new EntityManager().EntityCacheDelete( 7, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 
 							//add pending request 
 							List<String> messages = new List<string>();
@@ -648,7 +661,7 @@ namespace workIT.Factories
         #region LearningOpportunity properties ===================
         public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
         {
-			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateParts - entered" );
+			LoggingHelper.DoTrace( appMethodEntryTraceLevel, thisClassName + ".UpdateParts - entered" );
 
 			bool isAllValid = true;
             Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -706,10 +719,12 @@ namespace workIT.Factories
 
             Entity_ReferenceManager erm = new Entity_ReferenceManager();
             erm.DeleteAll( relatedEntity, ref status );
-            //if ( erm.Add( entity.OtherInstructionalProgramCategory, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_CIP, false ) == false )
-            //isAllValid = false;            
+			//if ( erm.Add( entity.OtherInstructionalProgramCategory, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_CIP, false ) == false )
+			//isAllValid = false;            
+			if ( erm.Add( entity.DegreeConcentration, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION, false ) == false )
+				isAllValid = false;
 
-            if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
+			if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
                 isAllValid = false;
 
             if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
@@ -720,29 +735,88 @@ namespace workIT.Factories
 			//
 			erm.Add( entity.SameAs, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SAME_AS, true );
 
-			AddProfiles( entity, relatedEntity, ref status );
-            //foreach ( var hasPart in entity.HasPart )
-            //    AddProfiles( hasPart, ref status );
-            if ( entity.HasPartIds != null && entity.HasPartIds.Count > 0 )
-            {
-                Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
-                elm.DeleteAll( relatedEntity, ref status );
+			if ( erm.Add( entity.AlternateNames, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME, false ) == false )
+				isAllValid = false;
 
+			AddProfiles( entity, relatedEntity, ref status );
+			//==================	HasPartIds	=============================
+			//delete all regardless
+			Entity_LearningOpportunityManager elm = new Entity_LearningOpportunityManager();
+			elm.DeleteAll( relatedEntity, ref status );
+			if ( entity.HasPartIds != null && entity.HasPartIds.Count > 0 )
+            {             
                 foreach ( var hasPartId in entity.HasPartIds )
                 {
-                    LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId, entity.Id, entity.RowId.ToString() ) );
+                    LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.RelatedEntityId, entity.Id, entity.RowId.ToString() ) );
                     elm.Add( entity.RowId, hasPartId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
                 }
             }
-            foreach ( var isPart in entity.IsPartOf )
-                if( isPart.ParentId == 0)
-                    LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId, entity.Id, entity.RowId.ToString() ) );
 
+			//why is there a separate IsPartOf??????????. Should there be handling of IsPartIds
+			foreach ( var isPart in entity.IsPartOf )
+                if( isPart.RelatedEntityId == 0)
+                    LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.RelatedEntityId, entity.Id, entity.RowId.ToString() ) );
+
+			if ( entity.IsPartOfIds != null && entity.IsPartOfIds.Count > 0 )
+			{
+				//elm = new Entity_LearningOpportunityManager();
+				//elm.DeleteAll( relatedEntity, ref status );
+
+				foreach ( var partId in entity.IsPartOfIds )
+				{
+					elm.Add( entity.RowId, partId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, true, ref status );
+				}
+			}
+			//??	TargetLearningOpportunityIds
+			//if using Entity_LearningOpportunityManager, will need a specific relationship type
+			if ( entity.TargetLearningOpportunityIds != null && entity.TargetLearningOpportunityIds.Count > 0 )
+			{
+				foreach ( var item in entity.TargetLearningOpportunityIds )
+				{
+					elm.Add( entity.RowId, item, BaseFactory.RELATIONSHIP_TYPE_TARGET_LOPP, true, ref status );
+				}
+			}
+
+
+			var ehssMgr = new Entity_HasSupportServiceManager();
+            ehssMgr.Update( entity.HasSupportServiceIds, relatedEntity, ref status );
+
+            //==================================
+            if ( entity.PrerequisiteIds != null && entity.PrerequisiteIds.Count > 0 )
+			{
+				//elm = new Entity_LearningOpportunityManager();
+				//elm.DeleteAll( relatedEntity, ref status );
+
+				foreach ( var prereqId in entity.PrerequisiteIds )
+				{
+					elm.Add( entity.RowId, prereqId, BaseFactory.RELATIONSHIP_TYPE_HAS_PREREQUISITE, true, ref status );
+				}
+			}
+
+            //==================================
+            if ( entity.TargetAssessmentIds != null && entity.TargetAssessmentIds.Count > 0 )
+            {
+                Entity_AssessmentManager eam = new Entity_AssessmentManager();
+                eam.DeleteAll( relatedEntity, ref status );
+
+                foreach ( var item in entity.TargetAssessmentIds )
+                {
+                    eam.Add( entity.RowId, item, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, true, ref status );
+                }
+            }
+            //
+            var ehasOffering = new Entity_HasOfferingManager();
+            //destructive? delete all, then add?
+            ehasOffering.DeleteAll( relatedEntity, ref status );
+            if ( entity.HasOfferingIds != null && entity.HasOfferingIds.Count > 0 )
+            {
+                ehasOffering.SaveList( entity.HasOfferingIds, relatedEntity, ref status );
+            }
             UpdateAssertedBys( entity, ref status );
 
             UpdateAssertedIns( entity, ref status );
 
-			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateParts - exited" );
+			LoggingHelper.DoTrace( appMethodExitTraceLevel, thisClassName + ".UpdateParts - exited" );
 
 			return isAllValid;
         }
@@ -774,9 +848,19 @@ namespace workIT.Factories
 
 				if ( mgr.AddProperties( entity.AudienceType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, ref status ) == false )
 					isAllValid = false;
-				//TODO - remove after completing direct assignments
-				if ( mgr.AddProperties( entity.LifeCycleStatusType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status ) == false )
+
+				if ( mgr.AddProperties( entity.ScheduleFrequencyType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_SCHEDULE_FREQUENCY, false, ref status ) == false )
 					isAllValid = false;
+
+				if ( mgr.AddProperties( entity.ScheduleTimingType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_SCHEDULE_TIMING, false, ref status ) == false )
+					isAllValid = false;
+
+				if ( mgr.AddProperties( entity.OfferFrequencyType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_OFFER_FREQUENCY, false, ref status ) == false )
+					isAllValid = false;
+
+				//TODO - remove after completing direct assignments
+				//if ( mgr.AddProperties( entity.LifeCycleStatusType, entity.RowId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status ) == false )
+				//	isAllValid = false;
 			} catch (Exception ex)
 			{
 				LoggingHelper.DoTrace( 1, string.Format( "**EXCEPTION** LearningOpportunityManager.UpdateProperties. Name: {0}, Id: {1}, Message: {2}.", entity.Name, entity.Id, ex.Message ) );
@@ -818,7 +902,9 @@ namespace workIT.Factories
                 emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
                 emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
                 emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
-                emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
+				emanager.SaveList( entity.CoPrerequisite, Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite, entity.RowId, ref status );
+
+				emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
 
                 //Connections
                 emanager.SaveList( entity.IsAdvancedStandingFor, Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor, entity.RowId, ref status, 4 );
@@ -844,10 +930,14 @@ namespace workIT.Factories
 
 				//competencies
 				Entity_CompetencyManager ecm = new Entity_CompetencyManager();
-				ecm.SaveList( entity.TeachesCompetencies, entity.RowId, ref status ); 			
+				//23-01-08 mp - do delete from entity to handle multiple types
+				ecm.DeleteAll( relatedEntity, ref status );
+				ecm.SaveList( "Teaches", entity.TeachesCompetencies, entity.RowId, ref status );
+				//22-11-30 - now will need to distinguish assesses versus teaches
+				ecm.SaveList( "Assesses", entity.AssessesCompetencies, entity.RowId, ref status );
 
 				//addresses
-				new Entity_AddressManager().SaveList( entity.Addresses, entity.RowId, ref status );
+				new Entity_AddressManager().SaveList( entity.AvailableAt, entity.RowId, ref status );
 
 				//JurisdictionProfile 
 				Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
@@ -868,7 +958,12 @@ namespace workIT.Factories
 			var adpm = new Entity_AggregateDataProfileManager();
 			if ( adpm.SaveList( entity.AggregateData, relatedEntity, ref status ) == false )
 				status.HasSectionErrors = true;
+            //reactivate any related dataSetProfiles
+            //not necessary done after e.adp processing
+            //if ( entity.DataSetProfileCTIDList!= null && entity.DataSetProfileCTIDList.Count > 0 )
+            //{
 
+            //}
 			LoggingHelper.DoTrace( 7, thisClassName + ".AddProfiles - exited." );
 
 		}
@@ -895,8 +990,11 @@ namespace workIT.Factories
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RecognizedBy, entity.RecognizedBy, ref status );
             mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RegulatedBy, entity.RegulatedBy, ref status );
-			//
-			mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+            //RegisteredBy
+            mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_RegisteredBy, entity.RegisteredBy, ref status );
+
+
+            mgr.SaveList( parent.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 			LoggingHelper.DoTrace( 7, thisClassName + ".UpdateAssertedBys - exited." );
 
 			return isAllValid;
@@ -940,12 +1038,17 @@ namespace workIT.Factories
             else
                 return 0;
         }
-
+        /// <summary>
+        /// Get a minimum record by CTID
+        /// </summary>
+        /// <param name="ctid"></param>
+        /// <returns></returns>
         public static ThisEntity GetByCtid( string ctid )
         {
             ThisEntity entity = new ThisEntity();
             using ( var context = new EntityContext() )
             {
+                context.Configuration.LazyLoadingEnabled = false;
                 DBEntity from = context.LearningOpportunity
                         .FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
@@ -955,6 +1058,7 @@ namespace workIT.Factories
                     entity.Id = from.Id;
                     entity.EntityStateId = ( int )( from.EntityStateId ?? 1 );
                     entity.Name = from.Name;
+					entity.LearningEntityTypeId = from.EntityTypeId;
                     entity.Description = from.Description;
                     entity.SubjectWebpage = from.SubjectWebpage;
                     entity.CTID = from.CTID;
@@ -988,6 +1092,12 @@ namespace workIT.Factories
             }
             return entity;
         }
+		/// <summary>
+		/// Used to with blank node references
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="swp"></param>
+		/// <returns></returns>
 		public static ThisEntity GetByName_SubjectWebpage(string name, string swp)
 		{
 			ThisEntity entity = new ThisEntity();
@@ -1016,7 +1126,10 @@ namespace workIT.Factories
 				int cntr = 0;
 
 				ActivityManager amgr = new ActivityManager();
-				foreach (var from in list)
+				var includingProperties = true;
+                var includingProfiles = true;
+
+                foreach (var from in list)
 				{
 					cntr++;
 					//any way to check further?
@@ -1035,24 +1148,24 @@ namespace workIT.Factories
 
 							}
 							//
-							MapFromDB(from, entity, true, true, true);
+							MapFromDB(from, entity, includingProperties, includingProfiles, false);
 						}
 						else
 						{
 							if (from.EntityStateId == 3)
 							{
-								//could log warning conditions to activity log, and then report out at end of an import?
-								amgr.SiteActivityAdd(new SiteActivity()
-								{
-									ActivityType = "System",
-									Activity = "Import",
-									Event = "Organization Reference Check",
-									Comment = string.Format("Org get by name/swp. Found addtional full org for name: {0}, swp: {1}. First org: {2} ({3})", name, swp, entity.Name, entity.Id)
-								});
+                                //could log warning conditions to activity log, and then report out at end of an import?
+                                amgr.SiteActivityAdd( new SiteActivity()
+                                {
+                                    ActivityType = "System",
+                                    Activity = "Import",
+                                    Event = $"{EntityType} Reference Check",
+                                    Comment = $"{Entity_Label} Get by Name and subject webpage. Found additional full {EntityType} for name: {name}, swp: {swp}. First {EntityType}: {entity.Name} ({entity.Id})"
+                                } );
 
-							}
-							MapFromDB(from, entity, true, true, true);
-							break;
+                            }
+                            MapFromDB( from, entity, includingProperties, includingProfiles, false );
+                            break;
 						}
 					}
 				}
@@ -1084,9 +1197,10 @@ namespace workIT.Factories
 			//}
 			//return entity;
 		}
-		public static ThisEntity GetForDetail( int id, bool isAPIRequest = false )
+		public static ThisEntity GetForDetail( int id, bool isAPIRequest = false, bool formattingFullVersion = true )
         {
             ThisEntity entity = new ThisEntity();
+            var includingProperties = true;
             bool includingProfiles = true;
 
             using ( var context = new EntityContext() )
@@ -1106,11 +1220,7 @@ namespace workIT.Factories
 						return entity;
 					}
 					//21-07-12 mp - determine if there is a difference between detail and API now
-					MapFromDB( item, entity,
-                        true, //includingProperties
-                        includingProfiles,
-                        true,
-						isAPIRequest );
+					MapFromDB( item, entity, includingProperties, includingProfiles, isAPIRequest, formattingFullVersion );
                 }
             }
 
@@ -1219,196 +1329,7 @@ namespace workIT.Factories
 
             return entity;
         }
-        public static void MapFromDB_Basic( DBEntity input, ThisEntity output )
-        {
-            output.Id = input.Id;
-            output.RowId = input.RowId;
-			output.CTID = input.CTID;
-			output.EntityStateId = ( int )( input.EntityStateId ?? 1 );
-			//TBD - watch this doesn't get changed somewhere
-			//*********** need to update the trigger that creates the Entity ********************
-			output.LearningEntityTypeId = input.EntityTypeId;
-			if ( output.LearningEntityTypeId > 0 )
-			{
-				CodeItem ct = CodesManager.Codes_EntityType_Get( output.LearningEntityTypeId );
-				if ( ct != null && ct.Id > 0 )
-				{
-					output.LearningEntityType = ct.Title;
-					output.LearningEntityTypeLabel = MapLearningEntityTypeLabel( output.LearningEntityTypeId );
-					output.LearningTypeSchema = ct.SchemaName;
-				} else
-				{
-					output.LearningEntityType = "Learning Opportunity";
-					output.LearningEntityTypeLabel = "Learning Opportunity";
-					output.LearningTypeSchema = "ceterms:LearningOpportunityProfile";
-				}
-			}
 
-			output.Name = input.Name;
-			output.FriendlyName = FormatFriendlyTitle( input.Name );
-			output.Description = input.Description;
-            output.SubjectWebpage = input.SubjectWebpage;
-
-			if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
-				output.IsReferenceVersion = true;
-			//
-			bool havePrimaryOrg = false;
-			var orgRoleManager = new OrganizationRoleManager();
-			if ( IsGuidValid( input.OwningAgentUid ) )
-            {
-                output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
-				havePrimaryOrg = true;
-
-				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
-				output.OwnerRoles = orp.AgentRole;
-				//
-				if ( output.OwningOrganizationId > 0 && !string.IsNullOrWhiteSpace( output.CTID ) && output.EntityStateId == 3 )
-				{
-					//new - get owner QA now. only if particular context
-					//actually don't want this as is slow. Break up into parts
-					//var ownersQAReceived = Entity_AssertionManager.GetAllCombinedForTarget( 2, output.OwningOrganization.Id, output.OwningOrganization.Id );
-					//output.OwningOrganizationQAReceived = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
-					//var orgFirstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
-					//if ( orgFirstPartyAssertions != null && orgFirstPartyAssertions.Any() )
-					//	output.OwningOrganizationQAReceived.AddRange( orgFirstPartyAssertions );
-					output.OwningOrganizationQAReceived = orgRoleManager.GetAllCombinedForTarget( 2, output.OwningOrganizationId, output.OwningOrganizationId, true );
-				}
-			}
-			if ( output.OwningOrganizationId > 0 )
-			{
-				//OLD
-				//output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
-				//NEW
-				output.OrganizationRole = orgRoleManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
-				//output.OrganizationRole = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 7, output.RowId, output.OwningOrganizationId );
-				//var firstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 7, output.RowId, output.OwningOrganizationId, false );
-				//if ( firstPartyAssertions != null && firstPartyAssertions.Any() )
-				//	output.OrganizationRole.AddRange( firstPartyAssertions );
-			}
-			if ( output.EntityStateId == 2 )
-			{
-				//not sure how this is possible?
-				if ( ( output.OrganizationRole == null || !output.OrganizationRole.Any() )
-					&& output.OwningOrganizationId > 0 )
-				{
-					output.OrganizationRole.Add( new OrganizationRoleProfile()
-					{
-						ActingAgentUid = output.OwningAgentUid,
-						ActingAgent = new Organization()
-						{
-							Id = output.OwningOrganizationId,
-							RowId = output.OwningAgentUid,
-							Name = output.OwningOrganization.Name,
-							SubjectWebpage = output.OwningOrganization.SubjectWebpage
-						},
-						AgentRole = new Enumeration()
-						{
-							Items = new List<EnumeratedItem>() { new EnumeratedItem()
-						{
-							Name="Owned By"
-						} }
-						}
-					} );
-				}
-			}
-
-			//TBD
-			if ( !havePrimaryOrg )
-			{
-				//temp set owning org to first offered by?
-				if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-				{
-					int cntr = 0;
-					foreach ( var item in output.OrganizationRole )
-					{
-						var exists = item.AgentRole.Items.Where( x => x.Id == 7 ).ToList();
-						if ( exists != null && exists.Any() )
-						{
-							//may not want to set the owningAgent?
-							//output.OwningAgentUid = item.ActingAgentUid;
-							output.OwningOrganization = OrganizationManager.GetForSummary( item.ActingAgentUid );
-							output.OwnerRoles = item.AgentRole;
-							break;
-						}
-						cntr++;
-					}
-				}
-			}
-			//
-			//22-07-10 - LifeCycleStatusTypeId is now on the credential directly
-			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
-			if ( output.LifeCycleStatusTypeId > 0 )
-			{
-				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
-				if ( ct != null && ct.Id > 0 )
-				{
-					output.LifeCycleStatus = ct.Title;
-				}
-				//retain example using an Enumeration for by other related tableS??? - old detail page?
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE );
-				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
-			}
-			else
-			{
-				//OLD
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
-				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
-				{
-					
-				}
-			}
-			
-			output.AvailabilityListing = input.AvailabilityListing;
-			output.AvailableOnlineAt = input.AvailableOnlineAt;
-			//only true should be published. Ensure the save only saves True
-			if ( input.IsNonCredit != null && input.IsNonCredit == true )
-				output.IsNonCredit = input.IsNonCredit;
-			else
-				output.IsNonCredit = null;
-			if ( IsValidDate( input.Created ) )
-				output.Created = ( DateTime )input.Created;
-
-			if ( IsValidDate( input.LastUpdated ) )
-				output.LastUpdated = ( DateTime )input.LastUpdated;
-			//now more for references 
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
-
-		}
-		public static string MapLearningEntityType( int learningEntityTypeId )
-		{
-			var learningEntityType = "";
-			switch ( learningEntityTypeId )
-			{
-				case 7:
-					return "LearningOpportunityProfile";
-				case 36:
-					return "LearningProgram";
-				case 37:
-					return "Course";
-
-			}
-			return learningEntityType;
-		}
-		public static string MapLearningEntityTypeLabel( int learningEntityTypeId )
-		{
-			var learningEntityType = "";
-			switch ( learningEntityTypeId )
-			{
-				case 7:
-					return "Learning Opportunity";
-				case 36:
-					return "Learning Program";
-				case 37:
-					return "Course";
-
-			}
-			return learningEntityType;
-		}
 		public static List<string> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
         {
             bool autocomplete = true;
@@ -1436,10 +1357,10 @@ namespace workIT.Factories
             }
             return results;
         }
-        public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows )
+        public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
         {
             List<string> competencyList = new List<string>();
-            return Search( pFilter, pOrderBy, pageNumber, pageSize, ref pTotalRows, ref competencyList );
+            return Search( pFilter, pOrderBy, pageNumber, pageSize, ref pTotalRows, ref competencyList, autocomplete );
         }
         public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize,
             ref int pTotalRows,
@@ -1453,7 +1374,8 @@ namespace workIT.Factories
             string temp = "";
             string org = "";
             int orgId = 0;
-
+            int cntr = 0;
+            pTotalRows = 0;
             using ( SqlConnection c = new SqlConnection( connectionString ) )
             {
                 c.Open();
@@ -1490,78 +1412,94 @@ namespace workIT.Factories
                         pTotalRows = 0;
                     }
                 }
-
-                foreach ( DataRow dr in result.Rows )
+                try
                 {
-                    item = new ThisEntity();
-                    item.Id = GetRowColumn( dr, "Id", 0 );
-                    item.Name = GetRowColumn( dr, "Name", "missing" );
-                    item.FriendlyName = FormatFriendlyTitle( item.Name );
-
-                    //for autocomplete, only need name
-                    if ( autocomplete )
-                    {
-                        list.Add( item );
-                        continue;
-                    }
-                    item.Description = GetRowColumn( dr, "Description", "" );
-
-                    string rowId = GetRowColumn( dr, "RowId" );
-                    item.RowId = new Guid( rowId );
-
-                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-                    item.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
-
-                    item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
-
-                    item.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
-
-                    org = GetRowPossibleColumn( dr, "Organization", "" );
-                    orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
-                    if ( orgId > 0 )
-                    {
-                        item.OwningOrganization = new Organization() { Id = orgId, Name = org };
-                    }
-					item.ListTitle = item.Name + " (" + item.OrganizationName + ")";
-					//
-					temp = GetRowColumn( dr, "DateEffective", "" );
-                    if ( IsValidDate( temp ) )
-                        item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
-                    else
-                        item.DateEffective = "";
-
-                    item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
-                    item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
-
-                    item.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
-                    item.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
-                    item.RequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
-                    item.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
-                    item.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
-                    item.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
-                    item.PreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
-                    item.PreparationFromCount = GetRowPossibleColumn( dr, "isPreparationFromCount", 0 );
-                    item.QualityAssurance = Fill_AgentRelationship( dr, "QualityAssurance", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true );
                     
-                    //addressess
-                    int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
-                    if ( addressess > 0 )
+                    foreach ( DataRow dr in result.Rows )
                     {
-                        item.Addresses = Entity_AddressManager.GetAll( item.RowId );
-                    }
-                    //competencies. either arbitrarily get all, or if filters exist, only return matching ones
-                    item.CompetenciesCount = GetRowPossibleColumn( dr, "Competencies", 0 );
-                    if ( item.CompetenciesCount > 0 )
-                    {
-                        //handled in search services
-                        //FillCompetencies( item, ref competencyList );
-                    }
+                        cntr++;
+                        item = new ThisEntity();
+                        item.Id = GetRowColumn( dr, "Id", 0 );
+                        item.Name = GetRowColumn( dr, "Name", "missing" );
+                        item.FriendlyName = FormatFriendlyTitle( item.Name );
+                        item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+                        item.EntityStateId = GetRowColumn( dr, "EntityStateId", 3 );
+                        item.Description = GetRowColumn( dr, "Description", "" );
 
-                    list.Add( item );
+                        string rowId = GetRowColumn( dr, "RowId" );
+                        if ( IsValidGuid( rowId ) )
+                        {
+                            item.RowId = new Guid( rowId );
+                        }
+                        item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+                        item.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
+
+                        //if autocomplete, skip
+                        if ( autocomplete )
+                        {
+                            list.Add( item );
+                            continue;
+                        }
+                        item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+
+                        item.CodedNotation = GetRowColumn( dr, "IdentificationCode", "" );
+
+                        org = GetRowPossibleColumn( dr, "Organization", "" );
+                        orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
+                        if ( orgId > 0 )
+                        {
+                            item.PrimaryOrganization = new Organization() { Id = orgId, Name = org };
+                        }
+                        item.ListTitle = item.Name + " (" + item.OrganizationName + ")";
+                        //
+                        temp = GetRowColumn( dr, "DateEffective", "" );
+                        if ( IsValidDate( temp ) )
+                            item.DateEffective = DateTime.Parse( temp ).ToString( "yyyy-MM-dd" );
+                        else
+                            item.DateEffective = "";
+
+                        item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
+                        item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
+
+                        item.RequiresCount = GetRowColumn( dr, "RequiresCount", 0 );
+                        item.RecommendsCount = GetRowColumn( dr, "RecommendsCount", 0 );
+                        item.RequiredForCount = GetRowColumn( dr, "IsRequiredForCount", 0 );
+                        item.IsRecommendedForCount = GetRowColumn( dr, "IsRecommendedForCount", 0 );
+                        item.IsAdvancedStandingForCount = GetRowColumn( dr, "IsAdvancedStandingForCount", 0 );
+                        item.AdvancedStandingFromCount = GetRowColumn( dr, "AdvancedStandingFromCount", 0 );
+                        item.PreparationForCount = GetRowColumn( dr, "IsPreparationForCount", 0 );
+                        item.PreparationFromCount = GetRowPossibleColumn( dr, "isPreparationFromCount", 0 );
+                        item.QualityAssurance = Fill_AgentRelationship( dr, "QualityAssurance", CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, false, false, true );
+
+                        //addressess
+                        int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
+                        if ( addressess > 0 )
+                        {
+                            item.AvailableAt = Entity_AddressManager.GetAll( item.RowId );
+                        }
+                        //competencies. either arbitrarily get all, or if filters exist, only return matching ones
+                        item.CompetenciesCount = GetRowPossibleColumn( dr, "Competencies", 0 );
+                        if ( item.CompetenciesCount > 0 )
+                        {
+                            //handled in search services
+                            //FillCompetencies( item, ref competencyList );
+                        }
+
+                        list.Add( item );
+                    }
                 }
 
-                return list;
+                catch ( Exception ex )
+                {
+                    var msg = FormatExceptions( ex );
+                    LoggingHelper.DoTrace( 2, string.Format( thisClassName + ".Search. Last Row: {0}, LoppId: {1} Exception: \r\n{2}", cntr, item.Id, msg ) );
+                }
+                finally
+                {
+
+                    LoggingHelper.DoTrace( 2, string.Format( thisClassName + ".Search - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+                }
+            return list;
 
             }
         } //
@@ -1581,13 +1519,14 @@ namespace workIT.Factories
                 output.CredentialRegistryId = input.CredentialRegistryId;
             output.Id = input.Id;
             output.Name = GetData( input.Name );
+			//what to do if learning entity type changed?
 			output.EntityTypeId = input.LearningEntityTypeId > 0 ? input.LearningEntityTypeId : 7;
 
 			output.Description = GetData( input.Description );
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
-			if ( IsGuidValid( input.OwningAgentUid ) )
+			if ( IsGuidValid( input.PrimaryAgentUID ) )
             {
-                if ( output.Id > 0 && output.OwningAgentUid != input.OwningAgentUid )
+                if ( output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID )
                 {
                     if ( IsGuidValid( output.OwningAgentUid ) )
                     {
@@ -1596,9 +1535,9 @@ namespace workIT.Factories
                         new Entity_AgentRelationshipManager().Delete( output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage );
                     }
                 }
-                output.OwningAgentUid = input.OwningAgentUid;
+                output.OwningAgentUid = input.PrimaryAgentUID;
                 //get for use to add to elastic pending
-                input.OwningOrganization = OrganizationManager.GetForSummary( input.OwningAgentUid );
+                input.PrimaryOrganization = OrganizationManager.GetForSummary( input.PrimaryAgentUID );
 
             }
             else
@@ -1628,8 +1567,10 @@ namespace workIT.Factories
 			}
 			else
 				output.TargetLearningResource = null;
-			//
-			if ( IsValidDate( input.DateEffective ) )
+            //
+            output.SupersededBy = input.SupersededBy;
+            output.Supersedes = input.Supersedes;
+            if ( IsValidDate( input.DateEffective ) )
                 output.DateEffective = DateTime.Parse( input.DateEffective );
             else
                 output.DateEffective = null;
@@ -1657,10 +1598,10 @@ namespace workIT.Factories
 			//=========================================================
 			//21-03-23 - now using ValueProfile
 
-
 			//***actually may have to fill out credit units etc?
+			if ( input.CreditValueJson == "[]" )
+				input.CreditValueJson = null;
 			output.CreditValue = string.IsNullOrWhiteSpace( input.CreditValueJson ) ? null : input.CreditValueJson;
-
 
 			if ( IsValidDate( input.LastUpdated ) )
                 output.LastUpdated = input.LastUpdated;
@@ -1669,16 +1610,16 @@ namespace workIT.Factories
 		public static void MapFromDB( DBEntity input, ThisEntity output,
 				bool includingProperties = false,
 				bool includingProfiles = true,
-				bool includeWhereUsed = true,
-				bool isAPIRequest = false )
+				bool isAPIRequest = false,
+                bool formattingFullVersion = true )
 		{
 
 			//TODO add a tomap basic, and handle for lists
-			MapFromDB_Basic( input, output );
+			MapFromDB_Basic( input, output, formattingFullVersion );
 			//duplicate?
 			//var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 
-			output.Addresses = Entity_AddressManager.GetAll( output.RowId );
+			output.AvailableAt = Entity_AddressManager.GetAll( output.RowId );
 
 			output.CodedNotation = input.IdentificationCode;
 			output.SCED = input.SCED;
@@ -1696,6 +1637,8 @@ namespace workIT.Factories
 
 			try
 			{
+				output.DegreeConcentration = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
+
 				output.EstimatedDuration = DurationProfileManager.GetAll( output.RowId );
 				//=========================================================
 				//21-03-23 - now using ValueProfile
@@ -1728,9 +1671,11 @@ namespace workIT.Factories
 				if (includingProperties)
 				{
 					//teaches
-					MapFromDB_Competencies( output );
+                    if ( formattingFullVersion )
+					    MapFromDB_Competencies( output );
 
 					//20-10-05 - get as much as possible for a reference esp for TVP case
+                    //23-02-15 mp - TODO consider one call to the db and then assign?
 					output.AudienceType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE );
 					output.AudienceLevelType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 
@@ -1738,12 +1683,26 @@ namespace workIT.Factories
 					output.LearningMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Learning_Method_Type );
 					output.AssessmentMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type );
 
-					output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+					output.ScheduleTimingType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SCHEDULE_TIMING );
 
-					output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+					output.ScheduleFrequencyType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SCHEDULE_FREQUENCY );
 
-					output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //  = 76;
+					output.OfferFrequencyType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_OFFER_FREQUENCY );
 
+					//23-02-15 mp - TODO consider one call to the db and then assign?
+					var allReferences = Entity_ReferenceManager.GetAll( output.RowId );
+                    if ( allReferences != null && allReferences.Any()) 
+                    {
+                        output.Keyword = allReferences.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD ).OrderBy( s => s.TextValue ).ToList();
+                        output.Subject = allReferences.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_SUBJECT ).OrderBy( s => s.TextValue ).ToList();
+                        output.SameAs = allReferences.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_SAME_AS ).OrderBy( s => s.TextValue ).ToList();
+                        output.InLanguageCodeList = allReferences.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_LANGUAGE ).OrderBy( s => s.TextValue ).ToList();
+                    }
+                    //               output.Keyword = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD );
+                    //output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+                    //output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); 
+                    output.SupersededBy = input.SupersededBy;
+                    output.Supersedes = input.Supersedes;
 				}
 
 				//put outside, just in case
@@ -1752,6 +1711,7 @@ namespace workIT.Factories
 
 				if ( includingProfiles )
 				{
+                    if ( formattingFullVersion )
 					output.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
 
 					//
@@ -1759,7 +1719,8 @@ namespace workIT.Factories
 					output.EstimatedCost = CostProfileManager.GetAll( output.RowId );
 					output.FinancialAssistance = Entity_FinancialAssistanceProfileManager.GetAll( output.RowId, false );
 
-					output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
+                    if ( formattingFullVersion )
+					    output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
 					
 					//Include cost types output fix other null errors - NA 3/31/2017
 					var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
@@ -1772,12 +1733,15 @@ namespace workIT.Factories
 							costItem.DirectCostType.Items.Add( costTypes.Items.FirstOrDefault( m => m.CodeId == costItem.CostTypeId ) );
 						}
 					}
-
+					//check if this returns the dsp data. if not should be ignored. 
 					output.AggregateData = Entity_AggregateDataProfileManager.GetAll( output.RowId, true, isAPIRequest );
 
-				}
+                    output.HasScheduledOffering = Entity_HasOfferingManager.GetAll( output.RowId );
 
-			}
+
+                }
+
+            }
 			catch(Exception ex)
 			{
 				LoggingHelper.LogError( ex, thisClassName + string.Format("MapfromDB(). Section 1. Name: {0}, Id: {1}, CTID: {2}", output.Name, output.Id, output.CTID), true );
@@ -1790,60 +1754,69 @@ namespace workIT.Factories
 			try
 			{
 
-				//assumes only one identifier type per class
-				//20-12-01 now two types - will need a property designatiion, or store as json
-				output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
+                if ( formattingFullVersion )
+                {
+                    //assumes only one identifier type per class
+                    //20-12-01 now two types - will need a property designatiion, or store as json
+                    output.VersionIdentifierList = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
 
-				output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier );
-
-				output.InLanguageCodeList = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_LANGUAGE );
-
+                    output.Identifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier );
+                }
 				//properties
 				output.WhereReferenced = new List<string>();
 				if ( includingProfiles )
 				{
 					//get condition profiles
 					List<ConditionProfile> list = new List<ConditionProfile>();
+                    if ( formattingFullVersion )
+                    {
+                        //will need this for compare
+                        list = Entity_ConditionProfileManager.GetAll( output.RowId, false );
+                        if ( list != null && list.Count > 0 )
+                        {
+                            foreach ( ConditionProfile item in list )
+                            {
+                                if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_LearningOpportunity )
+                                {
+                                    output.LearningOppConnections.Add( item );
+                                }
+                                else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
+                                    output.Requires.Add( item );
+                                else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Recommendation )
+                                    output.Recommends.Add( item );
+                                else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Corequisite )
+                                    output.Corequisite.Add( item );
+                                else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite )
+                                    output.CoPrerequisite.Add( item );
+                                else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition )
+                                    output.EntryCondition.Add( item );
+                                else
+                                {
+                                    EmailManager.NotifyAdmin( "Unexpected Condition Profile for learning opportunity", string.Format( "LearningOppId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
 
-					list = Entity_ConditionProfileManager.GetAll( output.RowId, false );
-					if ( list != null && list.Count > 0 )
-					{
-						foreach ( ConditionProfile item in list )
-						{
-							if ( item.ConditionSubTypeId == Entity_ConditionProfileManager.ConditionSubType_LearningOpportunity )
-							{
-								output.LearningOppConnections.Add( item );
-							}
-							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
-								output.Requires.Add( item );
-							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Recommendation )
-								output.Recommends.Add( item );
-							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Corequisite )
-								output.Corequisite.Add( item );
-							else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition )
-								output.EntryCondition.Add( item );
-							else
-							{
-								EmailManager.NotifyAdmin( "Unexpected Condition Profile for learning opportunity", string.Format( "LearningOppId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
+                                    //add output required, for dev only?
+                                    if ( IsDevEnv() )
+                                    {
+                                        item.ProfileName = ( item.ProfileName ?? "" ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
+                                        output.Requires.Add( item );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    //
+                    output.TargetAssessment = Entity_AssessmentManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, true, true );
+                    foreach ( AssessmentProfile ap in output.TargetAssessment )
+                    {
+                        if ( ap.HasCompetencies || ap.ChildHasCompetencies )
+                        {
+                            output.ChildHasCompetencies = true;
+                            break;
+                        }
+                    }
+                    //
 
-								//add output required, for dev only?
-								if ( IsDevEnv() )
-								{
-									item.ProfileName = ( item.ProfileName ?? "" ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
-									output.Requires.Add( item );
-								}
-							}
-						}
-					}
-					
-					//
-					//16-09-02 mp - always get for now
-					//really only needed for detail view
-					//===> need a means output determine request is input microsearch, so only minimal is returned!
-					//if ( includeWhereUsed )
-					//{
-
-					if ( input.Entity_LearningOpportunity != null && input.Entity_LearningOpportunity.Count > 0 )
+                    if ( input.Entity_LearningOpportunity != null && input.Entity_LearningOpportunity.Count > 0 )
 					{
 						//the Entity_LearningOpportunity could be for a parent lopp, or a condition profile
 						foreach ( EM.Entity_LearningOpportunity item in input.Entity_LearningOpportunity )
@@ -1859,16 +1832,35 @@ namespace workIT.Factories
 							if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
 							{
 								//only if downloaded
+								//Hmm this can be hasPart, isPartOf, or targetLopp?
+								//hasPart is retrieved separately, so should be ignored here or later
 								var lo = GetAs_IsPartOf( item.Entity.EntityUid );
 								if ( lo.EntityStateId > 1 )
-									output.IsPartOf.Add( lo );
+								{
+									if ( item.RelationshipTypeId == BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF )
+									{
+										output.IsPartOf.Add( lo );
+									}
+									else if ( item.RelationshipTypeId == BaseFactory.RELATIONSHIP_TYPE_HAS_PART )
+									{
+										//ignore for now
+									}
+									if ( item.RelationshipTypeId == BaseFactory.RELATIONSHIP_TYPE_TARGET_LOPP )
+									{
+										//where to put this. not clear if will be used
+										output.TargetLearningOpportunity.Add( lo );
+									} else
+									{
+										output.IsPartOf.Add( lo );
+									}
+								}
 							}//or better as ENTITY_TYPE_CONDITION_PROFILE
 							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONNECTION_PROFILE )
 							{
 								//21-09-07 mp - may need to pass in the connections so duplicate checks can be done generically.
 								ConditionProfile cp = CondProfileMgr.GetAs_IsPartOf( item.Entity.EntityUid, output.Name, output.LearningOppConnections );
 								//first check if the parent (ex credential) is already in a condition profile - with inverse relationship type
-								if (isAPIRequest) //skip if not API context-actually may not be needed at all.
+								if ( isAPIRequest ) //skip if not API context-actually may not be needed at all.
 									output.IsPartOfConditionProfile.Add( cp );
 								//now done in GetAs_IsPartOf
 								//output.LearningOppConnections.Add( cp );
@@ -1907,16 +1899,25 @@ namespace workIT.Factories
 							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
 							{
 								//so should these be kept separate?
-								var dsp = DataSetProfileManager.Get( ( int )item.Entity.EntityBaseId, true, isAPIRequest );
-								if ( dsp != null && dsp.Id > 0 )
-									output.ExternalDataSetProfiles.Add( dsp );
+								var dsp = DataSetProfileManager.Get( ( int ) item.Entity.EntityBaseId, true, isAPIRequest );
+								if ( dsp != null && dsp.Id > 0 && dsp.EntityStateId == 3 )
+                                {
+									//need to exclude if already part of the aggregateProfile data. 
+									var exists = output.AggregateData.Where( s =>
+												s.RelevantDataSet.Exists(z => 
+													z.CTID == dsp.CTID)).ToList();
+									//actually ProPath has lots of dups
+									//23-02-10 mp - uncommented the following if to exclude dsps that are in an adp. 
+									if (exists == null || exists.Count == 0)
+										output.ExternalDataSetProfiles.Add( dsp );
+								}
 
 							}
 							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
 							{
 								//so should these be kept separate?
 								//get minimum
-								var tvp = TransferValueProfileManager.Get( ( int )item.Entity.EntityBaseId, false );
+								var tvp = TransferValueProfileManager.Get( ( int ) item.Entity.EntityBaseId, false );
 								if ( tvp != null && tvp.Id > 0 )
 									output.HasTransferValueProfile.Add( tvp );
 
@@ -1924,11 +1925,11 @@ namespace workIT.Factories
 							else if ( item.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
 							{
 								//need to get the pathway
-								var pc = PathwayComponentManager.Get( ( int )item.Entity.EntityBaseId, 1 );
+								var pc = PathwayComponentManager.Get( ( int ) item.Entity.EntityBaseId, 1 );
 								if ( pc != null && pc.Id > 0 )
 								{
 									var pathway = PathwayManager.GetByCtid( pc.PathwayCTID );
-									if ( pathway != null && pathway.Id > 0 )
+									if ( pathway != null && pathway.Id > 0 && pathway.EntityStateId > 2 )
 										output.TargetPathway.Add( pathway );
 								}
 
@@ -1936,44 +1937,65 @@ namespace workIT.Factories
 						}
 					}
 
+                    //
+                    if ( formattingFullVersion )
+                    {
+                        output.CollectionMembers = CollectionMemberManager.GetMemberOfCollections( output.CTID );
+                        if ( output.CollectionMembers != null && output.CollectionMembers.Count > 0 )
+                        {
+                            //not sure what we will do yet
+                            foreach ( var item in output.CollectionMembers )
+                            {
 
-					//
-					//DisambiguateConditionProfiles actually returns a split object, so why call 6 times
-					var splitConnections = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections );
-					output.AdvancedStandingFrom = splitConnections.AdvancedStandingFrom;
-					output.IsAdvancedStandingFor = splitConnections.IsAdvancedStandingFor;
-					output.IsRequiredFor = splitConnections.IsRequiredFor;
-					output.IsRecommendedFor = splitConnections.IsRecommendedFor;
-					output.IsPreparationFor = splitConnections.IsPreparationFor;
-					output.PreparationFrom = splitConnections.PreparationFrom;
+                            }
+                        }
+                    }
+                    //
+                    if ( formattingFullVersion )
+                    {
+                        //DisambiguateConditionProfiles actually returns a split object, so why call 6 times
+                        var splitConnections = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections );
+                        output.AdvancedStandingFrom = splitConnections.AdvancedStandingFrom;
+                        output.IsAdvancedStandingFor = splitConnections.IsAdvancedStandingFor;
+                        output.IsRequiredFor = splitConnections.IsRequiredFor;
+                        output.IsRecommendedFor = splitConnections.IsRecommendedFor;
+                        output.IsPreparationFor = splitConnections.IsPreparationFor;
+                        output.PreparationFrom = splitConnections.PreparationFrom;
+                    }
 
-						//output.AdvancedStandingFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).AdvancedStandingFrom;
-						//output.IsAdvancedStandingFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsAdvancedStandingFor;
-						//output.IsRequiredFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRequiredFor;
-						//output.IsRecommendedFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsRecommendedFor;
-						//output.IsPreparationFor = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).IsPreparationFor;
-						//output.PreparationFrom = ConditionManifestExpanded.DisambiguateConditionProfiles( output.LearningOppConnections ).PreparationFrom;
 				
 					//TODO
 					output.CommonConditions = Entity_CommonConditionManager.GetAll( output.RowId );
 					output.CommonCosts = Entity_CommonCostManager.GetAll( output.RowId );
 
-					//new
-					output.OccupationTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-					output.IndustryTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-					output.InstructionalProgramTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
+                    //can we get all and then split
+                    var rfi = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId );
+                    if (rfi != null && rfi.Any()) 
+                    {
+                        output.OccupationTypes = rfi.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_SOC ).ToList();
+                        output.IndustryTypes = rfi.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_NAICS ).ToList();
+                        output.InstructionalProgramTypes = rfi.Where( r => r.CategoryId == CodesManager.PROPERTY_CATEGORY_CIP ).ToList();
+                    }
+     //               output.OccupationTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+					//output.IndustryTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+					//output.InstructionalProgramTypes = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
 
-					//OLD
-					//output.Occupation = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );		
-					//output.Industry = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-					//output.InstructionalProgramType = ReferenceFrameworkItemsManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_CIP);
-					//21-07-22 mparsons - TargetPathway is a list of pathways were this record exists anywhere in the pathway
-					//						NO- lopp don't publish has pathay, the relationship comes from the pathway component.
-					//output.TargetPathway = Entity_PathwayManager.GetAll( output.RowId );
+                    //OLD
+                    //output.Occupation = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );		
+                    //output.Industry = ReferenceFrameworkItemsManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+                    //output.InstructionalProgramType = ReferenceFrameworkItemsManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_CIP);
+                    //21-07-22 mparsons - TargetPathway is a list of pathways were this record exists anywhere in the pathway
+                    //						NO- lopp don't publish has pathay, the relationship comes from the pathway component.
+                    //output.TargetPathway = Entity_PathwayManager.GetAll( output.RowId );
 
-					output.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, 3 );
-					bool forProfilesList = false;
-					MapFromDB_HasPart( output, forProfilesList );
+                    if ( formattingFullVersion )
+                    {
+                        output.JurisdictionAssertions = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, 3 );
+                        bool forProfilesList = false;
+                        MapFromDB_HasPart( output, forProfilesList );
+
+                        MapFromDB_PreRequisite( output, forProfilesList );
+                    }
 				}
 
 			}
@@ -1985,9 +2007,220 @@ namespace workIT.Factories
 
 
 		}
-		public static void MapFromDB_HasPart( ThisEntity to, bool forProfilesList)
+
+        public static void MapFromDB_Basic( DBEntity input, ThisEntity output, bool formattingFullVersion = true )
         {
-            to.HasPart = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, forProfilesList );
+            output.Id = input.Id;
+            output.RowId = input.RowId;
+            output.CTID = input.CTID;
+            output.EntityStateId = ( int ) ( input.EntityStateId ?? 1 );
+            //TBD - watch this doesn't get changed somewhere
+            //*********** need to update the trigger that creates the Entity ********************
+            output.LearningEntityTypeId = input.EntityTypeId;
+            if ( output.LearningEntityTypeId > 0 )
+            {
+                CodeItem ct = CodesManager.Codes_EntityType_Get( output.LearningEntityTypeId );
+                if ( ct != null && ct.Id > 0 )
+                {
+                    output.LearningEntityType = ct.Title;
+                    output.LearningEntityTypeLabel = MapLearningEntityTypeLabel( output.LearningEntityTypeId );
+                    output.LearningTypeSchema = ct.SchemaName;
+                }
+                else
+                {
+                    output.LearningEntityType = "Learning Opportunity";
+                    output.LearningEntityTypeLabel = "Learning Opportunity";
+                    output.LearningTypeSchema = "ceterms:LearningOpportunityProfile";
+                }
+            }
+
+            output.Name = input.Name;
+            output.FriendlyName = FormatFriendlyTitle( input.Name );
+            output.Description = input.Description;
+            output.SubjectWebpage = input.SubjectWebpage;
+
+            if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
+                output.IsReferenceVersion = true;
+            //
+            bool havePrimaryOrg = false;
+            var orgRoleManager = new OrganizationRoleManager();
+            if ( IsGuidValid( input.OwningAgentUid ) )
+            {
+                output.PrimaryAgentUID = ( Guid ) input.OwningAgentUid;
+                output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
+                havePrimaryOrg = true;
+
+                //get roles for the primary agent on this record
+                OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
+                output.OwnerRoles = orp.AgentRole;
+                //
+                if ( output.OwningOrganizationId > 0 && !string.IsNullOrWhiteSpace( output.CTID ) && output.EntityStateId == 3 )
+                {
+                    //new - get owner QA now. only if particular context
+                    if ( formattingFullVersion )
+                    {
+                        //actually don't want this as is slow. Break up into parts
+                        //var ownersQAReceived = Entity_AssertionManager.GetAllCombinedForTarget( 2, output.OwningOrganization.Id, output.OwningOrganization.Id );
+                        //output.OwningOrganizationQAReceived = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
+                        //var orgFirstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 2, output.OwningOrganization.RowId, output.OwningOrganization.Id, true );
+                        //if ( orgFirstPartyAssertions != null && orgFirstPartyAssertions.Any() )
+                        //	output.OwningOrganizationQAReceived.AddRange( orgFirstPartyAssertions );
+                        output.OwningOrganizationQAReceived = orgRoleManager.GetAllCombinedForTarget( 2, output.OwningOrganizationId, output.OwningOrganizationId, true );
+                    }
+                }
+            }
+            if ( output.OwningOrganizationId > 0 )
+            {
+                //OLD
+                //output.OrganizationRole = Entity_AssertionManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
+                //NEW
+                //  these are still assertions by the owning org????
+                output.OrganizationRole = orgRoleManager.GetAllCombinedForTarget( 7, output.Id, output.OwningOrganizationId );
+                //output.OrganizationRole = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( 7, output.RowId, output.OwningOrganizationId );
+                //var firstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( 7, output.RowId, output.OwningOrganizationId, false );
+                //if ( firstPartyAssertions != null && firstPartyAssertions.Any() )
+                //	output.OrganizationRole.AddRange( firstPartyAssertions );
+            }
+
+            output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
+
+            if ( output.EntityStateId == 2 )
+            {
+                //not sure how this is possible?
+                if ( ( output.OrganizationRole == null || !output.OrganizationRole.Any() )
+                    && output.OwningOrganizationId > 0 )
+                {
+                    output.OrganizationRole.Add( new OrganizationRoleProfile()
+                    {
+                        ActingAgentUid = output.PrimaryAgentUID,
+                        ActingAgent = new Organization()
+                        {
+                            Id = output.OwningOrganizationId,
+                            RowId = output.PrimaryAgentUID,
+                            Name = output.PrimaryOrganization.Name,
+                            SubjectWebpage = output.PrimaryOrganization.SubjectWebpage
+                        },
+                        AgentRole = new Enumeration()
+                        {
+                            Items = new List<EnumeratedItem>() { new EnumeratedItem()
+                        {
+                            Name="Owned By"
+                        } }
+                        }
+                    } );
+                }
+            }
+
+            //TBD
+            if ( !havePrimaryOrg )
+            {
+                //temp set owning org to first offered by?
+                //==> if no primaryOrg, then OrganizationRole is not being set!
+                if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+                {
+                    int cntr = 0;
+                    foreach ( var item in output.OrganizationRole )
+                    {
+                        var exists = item.AgentRole.Items.Where( x => x.Id == 7 ).ToList();
+                        if ( exists != null && exists.Any() )
+                        {
+                            //may not want to set the owningAgent?
+                            //output.OwningAgentUid = item.ActingAgentUid;
+                            output.PrimaryOrganization = OrganizationManager.GetForSummary( item.ActingAgentUid );
+                            output.OwnerRoles = item.AgentRole;
+                            break;
+                        }
+                        cntr++;
+                    }
+                }
+            }
+            //
+            //22-07-10 - LifeCycleStatusTypeId is now on the credential directly
+            output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+            if ( output.LifeCycleStatusTypeId > 0 )
+            {
+                CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
+                if ( ct != null && ct.Id > 0 )
+                {
+                    output.LifeCycleStatus = ct.Title;
+                }
+                //retain example using an Enumeration for by other related tableS??? - old detail page?
+                output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+                output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+            }
+            else
+            {
+                //OLD
+                output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+                EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+                if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+                {
+
+                }
+            }
+
+            output.AvailabilityListing = input.AvailabilityListing;
+            output.AvailableOnlineAt = input.AvailableOnlineAt;
+            //will need output do convert before switching these
+            //AlternateName is used by API
+            output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+            //output.AlternateNames = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+
+            //only true should be published. Ensure the save only saves True
+            if ( input.IsNonCredit != null && input.IsNonCredit == true )
+                output.IsNonCredit = input.IsNonCredit;
+            else
+                output.IsNonCredit = null;
+            if ( IsValidDate( input.Created ) )
+                output.Created = ( DateTime ) input.Created;
+
+            if ( IsValidDate( input.LastUpdated ) )
+                output.LastUpdated = ( DateTime ) input.LastUpdated;
+            //now more for references 
+            //23-04-20 HMMM, why was this removed? Performance issue? See CredentialManager.
+            //23-07-07 MP - added back
+            var relatedEntity = EntityManager.GetEntity( output.RowId, false );
+            if ( relatedEntity != null && relatedEntity.Id > 0 )
+                output.EntityLastUpdated = relatedEntity.LastUpdated;
+            //output.EntityLastUpdated = output.LastUpdated;  // relatedEntity.LastUpdated;
+
+            output.HasSupportService = Entity_HasSupportServiceManager.GetAllSummary( relatedEntity );
+
+
+        }
+        public static string MapLearningEntityType( int learningEntityTypeId )
+        {
+            var learningEntityType = "";
+            switch ( learningEntityTypeId )
+            {
+                case 7:
+                    return "LearningOpportunityProfile";
+                case 36:
+                    return "LearningProgram";
+                case 37:
+                    return "Course";
+
+            }
+            return learningEntityType;
+        }
+        public static string MapLearningEntityTypeLabel( int learningEntityTypeId )
+        {
+            var learningEntityType = "";
+            switch ( learningEntityTypeId )
+            {
+                case 7:
+                    return "Learning Opportunity";
+                case 36:
+                    return "Learning Program";
+                case 37:
+                    return "Course";
+
+            }
+            return learningEntityType;
+        }
+        public static void MapFromDB_HasPart( ThisEntity to, bool forProfilesList)
+        {
+            to.HasPart = Entity_LearningOpportunityManager.TargetResource_GetAll( to.RowId, forProfilesList, false, CodesManager.RELATIONSHIP_TYPE_HAS_PART );
 			if( to.HasPart != null && to.HasPart.Any())
 				foreach ( ThisEntity e in to.HasPart )
 				{
@@ -1998,7 +2231,20 @@ namespace workIT.Factories
 					}
 				}
         }
-        public static void MapFromDB_Competencies( ThisEntity to )
+		public static void MapFromDB_PreRequisite( ThisEntity to, bool forProfilesList )
+		{
+			to.Prerequisite = Entity_LearningOpportunityManager.TargetResource_GetAll( to.RowId, forProfilesList, false, CodesManager.RELATIONSHIP_TYPE_HAS_PREREQUISITE );
+			if ( to.Prerequisite != null && to.Prerequisite.Any() )
+				foreach ( ThisEntity e in to.Prerequisite )
+				{
+					if ( e.HasCompetencies || e.ChildHasCompetencies )
+					{
+						to.ChildHasCompetencies = true;
+						break;
+					}
+				}
+		}
+		public static void MapFromDB_Competencies( ThisEntity output )
 		{
             var frameworksList = new Dictionary<string, RegistryImport>();
             //not sure if this one is used anymore!!!!!!!!!!!!!!!!!!
@@ -2009,18 +2255,31 @@ namespace workIT.Factories
 			//if ( to.TeachesCompetencies.Count > 0 )
 			//	to.HasCompetencies = true;
 
-			to.TeachesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework(to.RowId, ref frameworksList);
-            if ( to.TeachesCompetenciesFrameworks.Count > 0 )
+			output.TeachesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework(output.RowId, "Teaches", ref frameworksList);
+            if ( output.TeachesCompetenciesFrameworks.Count > 0 )
             {
-                to.HasCompetencies = true;
-                to.FrameworkPayloads = frameworksList;
+                output.HasCompetencies = true;
+                output.FrameworkPayloads = frameworksList;
             }
 
-            //these should be under a condition profile???
-            to.RequiresCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
-			//to.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( to.RowId );
-			//if ( to.RequiresCompetenciesFrameworks.Count > 0 )
-			//	to.HasCompetencies = true;
+			output.AssessesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, "Assesses", ref frameworksList );
+			if ( output.AssessesCompetenciesFrameworks.Count > 0 )
+			{
+				output.HasCompetencies = true;
+				//should be OK. Latter method appends to frameworksList
+				output.FrameworkPayloads = frameworksList;
+			}
+
+			//these should be under a condition profile???
+			//should never get results???
+			output.RequiresCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
+   //         output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, "Requires", ref frameworksList );
+   //         if ( output.RequiresCompetenciesFrameworks.Count > 0 )
+			//{
+			//	output.HasCompetencies = true;
+			//	//should be OK. Latter method appends to frameworksList
+			//	output.FrameworkPayloads = frameworksList;
+			//}
 		}
 		private static void AddCredentialReference( int credentialId, ThisEntity to )
 		{
@@ -2030,40 +2289,6 @@ namespace workIT.Factories
 				to.IsPartOfCredential.Add( CredentialManager.GetBasic( credentialId ) );
 		}
 
-        /// <summary>
-        /// Fill actual competencies for entity
-        /// </summary>
-        /// <param name="item"></param>
-        /// <param name="competencyList">Contains any competencies from filters</param>
-        //private static void FillCompetencies(ThisEntity item, ref List<string> competencyList)
-        //{
-        //    item.TeachesCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
-        //    var frameworksList = new Dictionary<string, RegistryImport>();
-        //    //return;
-        //    //TODO - not using frameworks, the latter would have flattened items to CredentialAlignmentObjectProfile, which we do have
-        //    if ( competencyList.Count == 0 )
-        //        item.TeachesCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework(item.RowId, ref frameworksList);
-        //    else
-        //    {
-
-        //        List<CredentialAlignmentObjectFrameworkProfile> all = Entity_CompetencyManager.GetAllAs_CAOFramework(item.RowId, ref frameworksList);
-        //        foreach ( CredentialAlignmentObjectFrameworkProfile next in all )
-        //        {
-        //            //just do desc for now
-        //            string orig = ( next.Description ?? "" );
-        //            foreach ( string filter in competencyList )
-        //            {
-        //                //not ideal, as would be an exact match
-        //                orig = orig.Replace(filter, string.Format("<span class='highlight'>{0}<\\span>", filter));
-        //            }
-        //            if ( orig != ( next.Description ?? "" ) )
-        //            {
-        //                next.Description = orig;
-        //                item.TeachesCompetenciesFrameworks.Add(next);
-        //            }
-        //        }
-        //    }
-        //}
         #endregion
     }
 }

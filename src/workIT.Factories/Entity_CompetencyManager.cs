@@ -12,7 +12,7 @@ using workIT.Utilities;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 using DBEntity = workIT.Data.Tables.Entity_Competency;
-using ThisEntity = workIT.Models.ProfileModels.Entity_Competency;
+using ThisResource = workIT.Models.ProfileModels.Entity_Competency;
 using Views = workIT.Data.Views;
 
 using EM = workIT.Data.Tables;
@@ -23,13 +23,13 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_CompetencyManager";
 		#region Persistance ===================
-		//public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
+		//public bool SaveList( List<ThisResource> list, Guid parentUid, ref SaveStatus status )
 		//{
 		//	if ( list == null || list.Count == 0 )
 		//		return true;
 
 		//	bool isAllValid = true;
-		//	foreach ( ThisEntity item in list )
+		//	foreach ( ThisResource item in list )
 		//	{
 		//		Save( item, parentUid, ref status );
 		//	}
@@ -37,7 +37,11 @@ namespace workIT.Factories
 		//	return isAllValid;
 		//}
 
-		public bool SaveList( List<CredentialAlignmentObjectProfile> list, Guid parentUid, ref SaveStatus status )
+		//public bool SaveList( List<CredentialAlignmentObjectProfile> list, Guid parentUid, ref SaveStatus status )
+		//{
+		//	return SaveList("whatDefault", list, parentUid, ref status );
+		//}
+		public bool SaveList( string alignmentType, List<CredentialAlignmentObjectProfile> list, Guid parentUid, ref SaveStatus status )
 		{
             if ( !IsValidGuid( parentUid ) )
             {
@@ -48,24 +52,27 @@ namespace workIT.Factories
             Entity parent = EntityManager.GetEntity( parentUid );
             if ( parent == null || parent.Id == 0 )
             {
-                status.AddError( "Error - the parent entity was not found." );
+                status.AddError( $"Error - the parent entity was not found ({parentUid})." );
                 return false;
             }
 			//consider how to avoid this step
-            DeleteAll( parent, ref status );
+			//23-01-06 mp - now more of an issue where an lopp could have both assesses and teaches. So have to delete by alignment
+			//				OR the delete needs to be done from the caller!
+            //DeleteAll( parent, ref status );
 
             if ( list == null || list.Count == 0 )
 				return true;
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			bool isAllValid = true;
 
 			//Note the list could include multiple frameworks
 			// OR COLLECTIONS**************
 			foreach ( CredentialAlignmentObjectProfile item in list )
 			{
-				entity = new ThisEntity();
-				MapToAlignmentObject( item, entity );
-				Save( entity, parent, ref status );
+				entity = new ThisResource();
+				MapToAlignmentObject( item, entity, alignmentType );
+				
+				Save( entity, alignmentType, parent, ref status );
 			}
 
 			return isAllValid;
@@ -78,9 +85,7 @@ namespace workIT.Factories
 		/// <param name="parentUid"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity,
-                Entity parent,
-				ref SaveStatus status )
+		public bool Save( ThisResource entity, string alignmentType, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -98,7 +103,8 @@ namespace workIT.Factories
 				{
 					//check if already exists
 					//TODO - will need to add alignment type
-					ThisEntity item = Get( parent.Id, entity.TargetNodeName );
+					//23-01-08 mp - also cannot just rely on targetNodeName (can an lopp assess and teach the same competency?). Need to include framework
+					ThisResource item = Get( parent.Id, alignmentType, entity.TargetNodeName );
 					if ( entity != null && entity.Id > 0 )
 					{
 						//status.AddWarning( thisClassName + string.Format( "Save(). Error: the selected competency {0} already exists!", entity.TargetNodeName ) );
@@ -119,7 +125,7 @@ namespace workIT.Factories
 					//
 					efEntity.FrameworkName = entity.FrameworkName;
 					efEntity.FrameworkUrl = entity.Framework;
-
+					efEntity.Alignment = entity.Alignment;
 					efEntity.TargetNodeName = entity.TargetNodeName;
 					efEntity.TargetNodeDescription = entity.TargetNodeDescription;
 					efEntity.TargetNode = entity.TargetNode;
@@ -164,7 +170,8 @@ namespace workIT.Factories
 
 						efEntity.FrameworkName = entity.FrameworkName;
 						efEntity.FrameworkUrl = entity.Framework;
-
+						//could check if matches previous alignment
+						efEntity.Alignment = entity.Alignment;
 
 						efEntity.TargetNodeName = entity.TargetNodeName;
 						efEntity.TargetNodeDescription = entity.TargetNodeDescription;
@@ -223,7 +230,7 @@ namespace workIT.Factories
 			}
             return isValid;
         }
-        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+        public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -239,15 +246,20 @@ namespace workIT.Factories
 			return status.WasSectionValid;
 		}
 
-		#endregion
-		#region  retrieval ==================
+        #endregion
+        #region  retrieval ==================
 
-		/// <summary>
-		/// Get all records for the parent
-		/// Uses the parent Guid to retrieve the related ThisEntity, then uses the EntityId to retrieve the child objects.
-		/// </summary>
-		/// <param name="parentUid"></param>
-		public static List<CredentialAlignmentObjectItem> GetAll( int entityTypeId, int entityBaseId, int maxRecords = 0)
+
+        /// <summary>
+        /// Get all records for the parent,
+		/// TODO - should this also use an alignmentType parameter?
+		///		 - this method is called by a search based on tags method
+        /// </summary>
+        /// <param name="entityTypeId"></param>
+        /// <param name="entityBaseId"></param>
+        /// <param name="maxRecords"></param>
+        /// <returns></returns>
+        public static List<CredentialAlignmentObjectItem> GetAll( int entityTypeId, int entityBaseId, int maxRecords = 0)
 		{
 			CredentialAlignmentObjectItem entity = new CredentialAlignmentObjectItem();
 			List<CredentialAlignmentObjectItem> list = new List<CredentialAlignmentObjectItem>();
@@ -301,6 +313,7 @@ namespace workIT.Factories
 			if ( to.TargetNodeDescription == to.TargetNodeName )
 				to.TargetNodeDescription = "";
 
+			to.AlignmentType = from.Alignment;
 			to.TargetNode = from.TargetNode;
 			to.TargetNodeCTID = from.TargetNodeCTID;
 			to.CodedNotation = from.CodedNotation;
@@ -323,119 +336,14 @@ namespace workIT.Factories
 
 		}       //
 
-		///// <summary>
-		///// May be workaround, may be permanent, getting combined
-		///// </summary>
-		///// <param name="parentUid"></param>
-		///// <param name="alignmentType"></param>
-		///// <returns></returns>
-		//public static List<CredentialAlignmentObjectProfile> GetAllAs_CredentialAlignmentObjectProfile( Guid parentUid, ref Dictionary<string, RegistryImport> frameworksList )
-		//{
-		//	CredentialAlignmentObjectProfile entity = new CredentialAlignmentObjectProfile();
-		//	List<CredentialAlignmentObjectProfile> list = new List<CredentialAlignmentObjectProfile>();
-		//	//var frameworksList = new Dictionary<string, RegistryImport>();
-		//	string prevFramework = "";
-		//	Entity parent = EntityManager.GetEntity( parentUid );
-		//	if ( parent == null || parent.Id == 0 )
-		//	{
-		//		return list;
-		//	}
-		//	try
-		//	{
-		//		using ( var context = new ViewContext() )
-		//		{
-		//			/*
-		//			List<DBEntity> results = context.Entity_Competency
-		//					.Where( s => s.EntityId == parent.Id
-		//					)
-		//					.OrderBy( s => s.CompetencyFramework )
-		//					.ThenBy( s => s.TargetNodeName )
-		//					.ToList();
-		//			if ( results != null && results.Count > 0 )
-		//			{
-		//				foreach ( DBEntity item in results )
-		//				{
-		//					entity = new CredentialAlignmentObjectProfile();
-		//					MapFromDB( item, entity );
-		//					list.Add( entity );
-		//				}
-		//			}
-		//			*/
-		//			List<Views.EntityCompetencyFramework_Items_Summary> results = context.EntityCompetencyFramework_Items_Summary
-		//					.Where( s => s.EntityId == parent.Id
-		//					)
-		//					.OrderBy( s => s.FrameworkName )
-		//					.ThenBy( s => s.Competency )
-		//					.ToList();
-		//			if ( results != null && results.Count > 0 )
-		//			{
-		//				foreach ( var item in results )
-		//				{
-		//					entity = new CredentialAlignmentObjectProfile();
-		//					MapFromDB( item, entity );
-		//					if ( prevFramework != entity.FrameworkName )
-		//					{
-		//						if ( !string.IsNullOrWhiteSpace( entity.FrameworkCtid ) )
-		//						{
-		//							//var fw = new Dictionary<string, RegistryImport>();
-		//							RegistryImport ri = ImportManager.GetByCtid( entity.FrameworkCtid );
-		//							if ( frameworksList.ContainsKey( entity.FrameworkName ) == false )
-		//								frameworksList.Add( entity.FrameworkName, ri );
-		//						}
-		//						prevFramework = entity.FrameworkName;
-		//					}
-
-		//					list.Add( entity );
-		//				}
-		//			}
-		//		}
-		//	}
-		//	catch ( Exception ex )
-		//	{
-		//		LoggingHelper.LogError( ex, thisClassName + ".GetAllAs_CredentialAlignmentObjectProfile" );
-		//	}
-		//	return list;
-		//}//
-		/*
-		public static void MapFromDB( Views.EntityCompetencyFramework_Items_Summary from, CredentialAlignmentObjectProfile to )
-		{
-			to.Id = from.EntityCompetencyId;
-			to.ParentId = from.EntityId;
-			//to.CompetencyFrameworkId = from.CompetencyFrameworkId ?? 0;
-			to.FrameworkName = from.FrameworkName;
-			//add url?? to Entity for now?
-			//don't populate if for registry
-			//18-06-28 mparsons - aim to make FrameworkUrl obsolete!
-			//                  - SourceUrl should be populated
-			//if ( from.FrameworkUrl.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") == -1 )
-			//{
-			//    to.FrameworkUrl = from.FrameworkUrl;
-			//}
-			//else if ( !string.IsNullOrWhiteSpace(from.SourceUrl) )
-			//    to.FrameworkUrl = from.SourceUrl;            
-			//
-			to.Framework = from.SourceUrl;
-			to.FrameworkUri = from.FrameworkUri;
-			to.FrameworkCtid = from.FrameworkCtid;
-
-			//
-			to.TargetNode = from.TargetNode;
-			to.TargetNodeDescription = from.TargetNodeDescription;
-			to.TargetNodeName = from.Competency;
-			to.Weight = ( from.Weight ?? 0M );
-			to.CodedNotation = from.CodedNotation;
-
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime )from.Created;
-
-		}
-		*/
+		
 		/// <summary>
 		/// Need to fake this out, until enlightenment occurs
+		/// re: alignment type. The calling context will handle for condition profile and asmt
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returns>
-		public static List<CredentialAlignmentObjectFrameworkProfile> GetAllAs_CAOFramework( Guid parentUid, ref Dictionary<string, RegistryImport> frameworksList)
+		public static List<CredentialAlignmentObjectFrameworkProfile> GetAllAs_CAOFramework( Guid parentUid, string alignmentType, ref Dictionary<string, RegistryImport> frameworksList)
 		{
 			/*
 			 * ConditionProfile
@@ -443,10 +351,17 @@ namespace workIT.Factories
 			 *		= > Entity.Competency using ec.EntityId = cpEntity.Id
 			 */
 			//21-07-13 - entity is initialized here and assigned values thru the loop
-			CredentialAlignmentObjectFrameworkProfile entity = new CredentialAlignmentObjectFrameworkProfile();
+			CredentialAlignmentObjectFrameworkProfile entity = new CredentialAlignmentObjectFrameworkProfile()
+			{
+				FrameworkName = "",
+				Framework = "",
+                IsAnonymousFramework = true,	//valid default?
+                Items = new List<CredentialAlignmentObjectItem>()
+			};
 			List<CredentialAlignmentObjectFrameworkProfile> list = new List<CredentialAlignmentObjectFrameworkProfile>();
 			//var frameworksList = new Dictionary<string, RegistryImport>();
-			string viewerUrl = UtilityManager.GetAppKeyValue( "cassResourceViewerUrl" );
+			string viewerUrl = ""; //UtilityManager.GetAppKeyValue( "cassResourceViewerUrl" );
+			//obsolete, copied from publisher
 			bool hidingFrameworksNotPublished = UtilityManager.GetAppKeyValue( "hideFrameworksNotPublished", false );
 			CredentialAlignmentObjectItem caoItem = new CredentialAlignmentObjectItem();
 			//get Entity for conditionProfile (RowId -> entity.EntityUID
@@ -461,32 +376,33 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					List<DBEntity> results = context.Entity_Competency
-							.Where( s => s.EntityId == parent.Id )
+							.Where( s => s.EntityId == parent.Id && (s.Alignment == alignmentType || s.Alignment == null) )
 							.OrderBy( s => s.FrameworkName )
 							.ThenBy( s => s.TargetNodeName )
 							.ToList();
 					if ( results != null && results.Count > 0 )
 					{
 						string prevName = "";
+						//this will currently include blank frameworks
 						var frameworks = results.Select( s => s.FrameworkName ).Distinct().ToList();
-						//var h2 = results.Select( s => s.FrameworkName ).Where( s => s.Length > 0).Distinct().ToList().Count();
+						var sortedList = results.OrderByDescending(s => s.FrameworkName).ThenBy(s => s.Created).ToList();
 						//var hasFrameworks = results.Select( s => s.FrameworkName.Length > 0 ).Distinct().ToList().Count();
 
 						var hasFrameworkName = results.Select( s => s.FrameworkName ).Where( s => s.Length > 0 ).Distinct().ToList().Count();
 						int cntr = 0;
-						foreach ( DBEntity item in results )
+						foreach ( DBEntity item in sortedList )
 						{
 							cntr++;
 							//TODO - handle where no framework found
 							//		- also a mix of with and without
-							if ( cntr == 1 &&( hasFrameworkName == 0 || string.IsNullOrWhiteSpace( item.FrameworkName ) ) )
-							{
-								//entity.FrameworkName = "none (temp)";
-								entity.IsAnonymousFramework = true;
-							}
-							if (prevName != item.FrameworkName)
-							{
-								if ( !string.IsNullOrWhiteSpace( prevName ) || entity.IsAnonymousFramework )
+							//if ( cntr == 1 &&( hasFrameworkName == 0 || string.IsNullOrWhiteSpace( item.FrameworkName ) ) )
+							//{
+							//	//here we are assuming all comps are in the same framework
+							//	entity.IsAnonymousFramework = true;
+							//}
+							if ( (prevName != item.FrameworkName) )
+                            {
+								if ( cntr > 1 && (!string.IsNullOrWhiteSpace( prevName ) || entity.IsAnonymousFramework ))
 								{
 									//actually try handling in detail page - not working
 
@@ -502,10 +418,13 @@ namespace workIT.Factories
 
 								entity = new CredentialAlignmentObjectFrameworkProfile();
 								//default, and then override as needed
-								entity.Framework = item.FrameworkUrl;
+								entity.Framework = item.FrameworkUrl ?? "";
 								entity.FrameworkName = item.FrameworkName;
-
-								if ( item.CompetencyFramework != null && item.CompetencyFramework.Id > 0 )
+                                if ( string.IsNullOrWhiteSpace( item.FrameworkName ) ) 
+                                {
+                                    entity.IsAnonymousFramework = true;
+                                }
+                                if ( item.CompetencyFramework != null && item.CompetencyFramework.Id > 0 )
                                 {									
                                     entity.FrameworkName = item.CompetencyFramework.Name;
 									entity.FrameworkCtid = item.CompetencyFramework.CTID;
@@ -541,9 +460,12 @@ namespace workIT.Factories
                                     if ( !string.IsNullOrWhiteSpace(item.CompetencyFramework.CTID) )
                                     {
 										//SLOW!!! - added index
-										//why are we doing this?
+										//
+										//why are we doing this?????????????????????
+										//	from import_staging????
 										//the payload is now on the competencyFramework record, at least in some fashion in CompetencyFrameworkGraph
 										entity.RegistryImport = ImportManager.GetByCtid(item.CompetencyFramework.CTID);
+
                                         if ( !string.IsNullOrWhiteSpace(entity.RegistryImport.Payload) 
                                             && frameworksList.ContainsKey(entity.FrameworkName) == false)
                                             frameworksList.Add(entity.FrameworkName, entity.RegistryImport);
@@ -580,8 +502,11 @@ namespace workIT.Factories
 								else
 								{
 									//this should not happen - should log this
-                                    entity.FrameworkName = item.FrameworkName;
-                                    entity.Framework = item.FrameworkUrl ?? "";
+									//already populated
+									//NO - can have anonymous frameworks. what to do for different orders?
+									//		- maybe should sort by framework to have anonymous together?
+                                    //entity.FrameworkName = item.FrameworkName;
+                                    //entity.Framework = item.FrameworkUrl ?? "";
                                     //should we populate frameworkUri as well?
                                     //entity.FrameworkUri = item.FrameworkUrl ?? "";
                                 }
@@ -622,62 +547,25 @@ namespace workIT.Factories
 			return list;
 		}//
 
-		//public static List<CredentialAlignmentObjectItem> GetAllAsAlignmentObjects( Guid parentUid, string alignmentType )
-		//{
-		//	//ThisEntity entity = new ThisEntity();
-		//	List<CredentialAlignmentObjectItem> list = new List<CredentialAlignmentObjectItem>();
-		//	CredentialAlignmentObjectItem entity = new CredentialAlignmentObjectItem();
 
-		//	Entity parent = EntityManager.GetEntity( parentUid );
-		//	if ( parent == null || parent.Id == 0 )
-		//	{
-		//		return list;
-		//	}
-		//	try
-		//	{
-		//		using ( var context = new EntityContext() )
-		//		{
-		//			List<DBEntity> results = context.Entity_Competency
-		//					.Where( s => s.EntityId == parent.Id
-		//					)
-		//					.OrderBy( s => s.EducationFramework_Competency.CompetencyFramework.Name )
-		//					.ThenBy( s => s.EducationFramework_Competency.Name )
-		//					.ToList();
-		//			//&& ( alignmentType == "" || s.AlignmentType == alignmentType ) 
-		//			if ( results != null && results.Count > 0 )
-		//			{
-		//				foreach ( DBEntity item in results )
-		//				{
-		//					entity = new CredentialAlignmentObjectItem();
-		//					ToMapAsAlignmentObjects( item, entity );
-		//					list.Add( entity );
-		//				}
-		//			}
-		//		}
-		//	}
-		//	catch ( Exception ex )
-		//	{
-		//		LoggingHelper.LogError( ex, thisClassName + ".GetAllAsAlignmentObjects" );
-		//	}
-		//	return list;
-		//}//
-
-		/// <summary>
-		/// Get a competency record
-		/// </summary>
-		/// <param name="profileId"></param>
-		/// <returns></returns>
-		//public static ThisEntity Get( int profileId )
+		///// <summary>
+		///// Get entity to determine if one exists for the entity and alignment type
+		///// </summary>
+		///// <param name="entityId"></param>
+		///// <param name="targetNodeName"></param>
+		///// <returns></returns>
+		//public static ThisResource Get( int entityId, string targetNodeName )
 		//{
-		//	ThisEntity entity = new ThisEntity();
-		//	if ( profileId == 0 )
+		//	ThisResource entity = new ThisResource();
+		//	if ( string.IsNullOrWhiteSpace(targetNodeName ))
 		//		return entity;
 		//	try
 		//	{
 		//		using ( var context = new EntityContext() )
 		//		{
 		//			DBEntity item = context.Entity_Competency
-		//					.SingleOrDefault( s => s.Id == profileId );
+		//					.FirstOrDefault( s => s.EntityId == entityId 
+		//					&& s.TargetNodeName == targetNodeName );
 
 		//			if ( item != null && item.Id > 0 )
 		//			{
@@ -691,24 +579,18 @@ namespace workIT.Factories
 		//	}
 		//	return entity;
 		//}//
-
-		/// <summary>
-		/// Get entity to determine if one exists for the entity and alignment type
-		/// </summary>
-		/// <param name="entityId"></param>
-		/// <param name="targetNodeName"></param>
-		/// <returns></returns>
-		public static ThisEntity Get( int entityId, string targetNodeName )
+		public static ThisResource Get( int entityId, string alignmentType, string targetNodeName )
 		{
-			ThisEntity entity = new ThisEntity();
-			if ( string.IsNullOrWhiteSpace(targetNodeName ))
+			ThisResource entity = new ThisResource();
+			if ( string.IsNullOrWhiteSpace( targetNodeName ) )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
 					DBEntity item = context.Entity_Competency
-							.FirstOrDefault( s => s.EntityId == entityId 
+							.FirstOrDefault( s => s.EntityId == entityId
+							&& s.Alignment.ToLower()== alignmentType.ToLower()
 							&& s.TargetNodeName == targetNodeName );
 
 					if ( item != null && item.Id > 0 )
@@ -723,8 +605,7 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-
-		public static void MapFromDB( DBEntity from, ThisEntity to )
+		public static void MapFromDB( DBEntity from, ThisResource to )
 		{
 			to.Id = from.Id;
 			to.EntityId = from.EntityId;
@@ -737,7 +618,7 @@ namespace workIT.Factories
 
 			to.TargetNode = from.TargetNode;
 			to.TargetNodeCTID = from.TargetNodeCTID;
-
+			to.Alignment = from.Alignment;
 			to.CodedNotation = from.CodedNotation;
 			to.Weight = from.Weight ?? 0;
 
@@ -755,7 +636,7 @@ namespace workIT.Factories
 		public static void MapFromDB( DBEntity from, CredentialAlignmentObjectItem to )
 		{
 			to.Id = from.Id;
-			to.ParentId = from.EntityId;
+			to.RelatedEntityId = from.EntityId;
 
 			to.TargetNode = from.TargetNode;
 			to.TargetNodeCTID = from.TargetNodeCTID;
@@ -772,7 +653,7 @@ namespace workIT.Factories
 				to.Created = ( DateTime ) from.Created;
 
 		}
-		public static void MapToAlignmentObject( CredentialAlignmentObjectProfile input, ThisEntity output )
+		public static void MapToAlignmentObject( CredentialAlignmentObjectProfile input, ThisResource output, string alignmentType )
 		{
 
 			if ( IsValidDate( input.Created ) )
@@ -785,16 +666,16 @@ namespace workIT.Factories
             if (!string.IsNullOrWhiteSpace(input.Framework))
 			    output.Framework = input.Framework;
             else
-                output.Framework = input.Framework;
+                output.Framework = "";
             //todo - latter has value, lookup frameworkId
 			//ISSUE - CAN BE A FRAMEWORK OR A COLLECTION
 			if (input.FrameworkIsACollection)
             {
 				output.CollectionId = new CollectionManager().Lookup_OR_Add( output.Framework, output.FrameworkName );
 			}
-			else 
+			else //TODO - is absense of a framework handled?
 				output.CompetencyFrameworkId = new CompetencyFrameworkManager().Lookup_OR_Add( output.Framework, output.FrameworkName );
-
+			output.Alignment = alignmentType;
 			output.TargetNode = input.TargetNode;
 			output.TargetNodeCTID = input.TargetNodeCTID;
 			output.TargetNodeDescription = input.TargetNodeDescription;

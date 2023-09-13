@@ -494,7 +494,7 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-			to.ParentId = (int)from.EntityId;
+			to.RelatedEntityId = (int)from.EntityId;
 
 			//these will probably no lonber be necessary
 			to.ParentTypeId = from.Entity.EntityTypeId;
@@ -588,7 +588,7 @@ namespace workIT.Factories
 			{
 				return 0;
 			}
-			entity.ParentId = jpId;
+			entity.RelatedEntityId = jpId;
 			EM.GeoCoordinate efEntity = new EM.GeoCoordinate();
 			MC.GeoCoordinates existing = new MC.GeoCoordinates();
 			List<String> messages = new List<string>();
@@ -598,7 +598,7 @@ namespace workIT.Factories
 			if ( IsInteger( geoNamesId ) )
 				entity.GeoNamesId = Int32.Parse( geoNamesId );
 
-			if ( GeoCoordinates_Exists( entity.ParentId, entity.GeoNamesId, entity.IsException ) )
+			if ( GeoCoordinates_Exists( entity.RelatedEntityId, entity.GeoNamesId, entity.IsException ) )
 			{
 				//status.AddWarning( "Error this Region has aleady been selected.");
 				return 0;
@@ -919,7 +919,7 @@ namespace workIT.Factories
 		private static void MapToDB( MC.GeoCoordinates from, EM.GeoCoordinate to )
 		{
 			to.Id = from.Id;
-			to.JurisdictionId = from.ParentId;
+			to.JurisdictionId = from.RelatedEntityId;
 
 			to.Name = from.Name;
 			to.IsException = from.IsException;
@@ -943,7 +943,7 @@ namespace workIT.Factories
 		private static void MapFromDB( EM.GeoCoordinate from, MC.GeoCoordinates to )
 		{
 			to.Id = from.Id;
-			to.ParentId = (int)from.JurisdictionId;
+			to.RelatedEntityId = (int)from.JurisdictionId;
 			to.GeoNamesId = from.GeoNamesId != null ? ( int ) from.GeoNamesId : 0;
 
 			to.Name = from.Name;

@@ -7,25 +7,28 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
-using ThisEntityMgr = workIT.Factories.TransferValueProfileManager;
+using ResourceManager = workIT.Factories.TransferValueProfileManager;
 using MP = workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.TransferValueProfile;
+using ThisResource = workIT.Models.Common.TransferValueProfile;
 
 namespace workIT.Services
 {
 	public class TransferValueServices
 	{
-		string thisClassName = "TransferValueServices";
-		ActivityServices activityMgr = new ActivityServices();
+		static string thisClassName = "TransferValueServices";
+		static string ThisEntityType = "TransferValue";
+        static int ThisEntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE;
+
+        ActivityServices activityMgr = new ActivityServices();
 		public List<string> messages = new List<string>();
 
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource entity, ref SaveStatus status )
 		{
 
-			bool isValid = new ThisEntityMgr().Save( entity, ref status );
+			bool isValid = new ResourceManager().Save( entity, ref status );
 			List<string> messages = new List<string>();
 			if ( entity.Id > 0 )
 			{
@@ -37,11 +40,11 @@ namespace workIT.Services
 					//update Elastic
 					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
 					{
-						//ElasticHelper.TransferValueProfile_UpdateIndex( entity.Id );
+						ElasticHelper.General_UpdateIndexForTVP( entity.Id );
 					}
 					else
 					{
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, entity.Id, 1, ref messages );
+						new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
 						if ( messages.Count > 0 )
 							status.AddWarningRange( messages );
 					}
@@ -50,7 +53,7 @@ namespace workIT.Services
 				}
 				else
 				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, entity.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
 					if ( entity.OwningOrganizationId  > 0)
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 					//
@@ -91,11 +94,11 @@ namespace workIT.Services
 		/// <param name="ctid"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public static MP.TransferValueProfile HandlingExistingEntity( string ctid, ref SaveStatus status )
+		public static ThisResource HandlingExistingEntity( string ctid, ref SaveStatus status )
 		{
-			MP.TransferValueProfile entity = new MP.TransferValueProfile();
+			ThisResource entity = new ThisResource();
 			//warning- 
-			entity = TransferValueProfileManager.GetByCtid( ctid );
+			entity = ResourceManager.GetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 			{
 				Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -121,25 +124,48 @@ namespace workIT.Services
 		}
 		#endregion
 
-		public static MP.TransferValueProfile GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			MP.TransferValueProfile entity = new MP.TransferValueProfile();
-			entity = TransferValueProfileManager.GetByCtid( ctid );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.GetByCtid( ctid );
 			return entity;
 		}
 
-		public static MP.TransferValueProfile Get( int id )
+		public static ThisResource Get( int id )
 		{
-			MP.TransferValueProfile entity = new MP.TransferValueProfile();
-			entity = TransferValueProfileManager.Get( id );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.Get( id );
 			return entity;
 		}
-		public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
+
+        public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
+        {
+
+            string where = "";
+            int totalRows = 0;
+
+            if ( UtilityManager.GetAppKeyValue( "usingElasticSupportServiceSearch", false ) )
+            {
+                var keywords = query.Keywords;
+                return ElasticHelper.GeneralAutoComplete( ThisEntityTypeId, ThisEntityType, query, maxTerms, ref totalRows );
+            }
+            else
+            {
+                string keywords = ServiceHelper.HandleApostrophes( query.Keywords );
+                if ( keywords.IndexOf( "%" ) == -1 )
+                    keywords = "%" + keywords.Trim() + "%";
+                where = string.Format( " (base.name like '{0}') ", keywords );
+
+                SetKeywordFilter( keywords, true, ref where );
+                return ResourceManager.Autocomplete( where, 1, maxTerms, ref totalRows );
+            }
+        }
+        public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticTransferValueSearch", false ) )
 			{
-				//var results = ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, data, ref pTotalRows );
-				return ElasticHelper.GeneralSearch( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, "TransferValue", data, ref pTotalRows );
+				//var results = ElasticHelper.GeneralSearch( ThisEntityTypeId, data, ref pTotalRows );
+				return ElasticHelper.GeneralSearch( ThisEntityTypeId, ThisEntityType, data, ref pTotalRows );
 			}
 			else
 			{
@@ -155,16 +181,16 @@ namespace workIT.Services
 						SubjectWebpage = item.SubjectWebpage,
 						PrimaryOrganizationName = item.PrimaryOrganizationName,
 						CTID = item.CTID,
-						EntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE,
-						EntityType = "TransferValueProfile"
-					} );
+						EntityTypeId = ThisEntityTypeId,
+						EntityType = ThisEntityType
+                    } );
 				}
 				return results;
 			}
 
 		}//
 
-		public static List<ThisEntity> DoSearch( MainSearchInput data, ref int totalRows )
+		public static List<ThisResource> DoSearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";
 
@@ -174,17 +200,17 @@ namespace workIT.Services
 			//SearchServices.HandleCustomFilters( data, 61, ref where );
 
 			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref where );
+			//SearchServices.SetSubjectsFilter( data, ThisEntityTypeId, ref where );
 
 			//SetPropertiesFilter( data, ref where );
 			SearchServices.SetRolesFilter( data, ref where );
 			SearchServices.SetBoundariesFilter( data, ref where );
 
-			LoggingHelper.DoTrace( 5, "TransferValueServices.Search(). Filter: " + where );
-			return ThisEntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			LoggingHelper.DoTrace( 5, $"{thisClassName}.Search(). Filter: " + where );
+			return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 		}
 
-		public static List<ThisEntity> DoTransferIntermediarySearch( MainSearchInput data, ref int totalRows )
+		public static List<ThisResource> DoTransferIntermediarySearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";
 
@@ -194,17 +220,17 @@ namespace workIT.Services
 			//SearchServices.HandleCustomFilters( data, 61, ref where );
 
 			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref where );
+			//SearchServices.SetSubjectsFilter( data, ThisEntityTypeId, ref where );
 
 			//SetPropertiesFilter( data, ref where );
 			SearchServices.SetRolesFilter( data, ref where );
 			SearchServices.SetBoundariesFilter( data, ref where );
 
 			LoggingHelper.DoTrace( 5, "TransferValueServices.DoTransferIntermediarySearch(). Filter: " + where );
-			return ThisEntityMgr.DoTransferIntermediarySearch( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			return ResourceManager.DoTransferIntermediarySearch( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 		}
 
-		public static List<ThisEntity> GetTVPOwnedByOrg( int orgId, int maxRecords )
+		public static List<ThisResource> GetTVPOwnedByOrg( int orgId, int maxRecords )
 		{
 			string where = "";
 			int totalRows = 0;
@@ -217,16 +243,16 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "TransferValueServices.GetTVPOwnedByOrg(). Filter: " + where );
-			return ThisEntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRecords, ref totalRows );
 		}
 		//
 		//Get tvp for entity
-		public static List<ThisEntity> GetEntityHasTVP( string searchType, int recordId, int maxRecords )
+		public static List<ThisResource> GetEntityHasTVP( string searchType, int recordId, int maxRecords )
 		{
 			string where = "";
 			int totalRows = 0;
 			if ( recordId == 0 || string.IsNullOrWhiteSpace( searchType ))
-				return new List<ThisEntity>();
+				return new List<ThisResource>();
 
 			//only target full entities
 			switch (searchType.ToLower())
@@ -243,7 +269,7 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "TransferValueServices.GetEntityHasTVP(). Filter: " + where );
-			return ThisEntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRecords, ref totalRows );
 		}
 		//
 		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
@@ -271,11 +297,7 @@ namespace workIT.Services
 				text = " ( CTID = 'ce-{0}' ) ";
 				isCustomSearch = true;
 			}
-			else if ( keywords.ToLower() == "[hascredentialregistryid]" )
-			{
-				text = " ( len(Isnull(CredentialRegistryId,'') ) = 36 ) ";
-				isCustomSearch = true;
-			}
+
 
 			string AND = "";
 			if ( where.Length > 0 )

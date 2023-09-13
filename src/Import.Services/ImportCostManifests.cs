@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.CostManifestServices;
-using InputEntity = RA.Models.Json.CostManifest;
+//using InputEntity = RA.Models.Json.CostManifest;
 
 using InputEntityV3 = RA.Models.JsonV2.CostManifest;
 using BNodeV3 = RA.Models.JsonV2.BlankNode;
@@ -28,7 +28,7 @@ namespace Import.Services
 		ImportManager importManager = new ImportManager();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-		InputEntity input = new InputEntity();
+		//InputEntity input = new InputEntity();
 		ThisEntity output = new ThisEntity();
 
 		#region custom imports
@@ -265,8 +265,8 @@ namespace Import.Services
            //output.CredentialRegistryId = envelopeIdentifier;
             output.CostDetails = input.CostDetails;
 
-            output.OwningAgentUid = helper.MapOrganizationReferencesToGuid( "CostManifest.OwningAgentUid", input.CostManifestOf, ref status );
-			helper.CurrentOwningAgentUid = output.OwningAgentUid;
+            output.PrimaryAgentUID = helper.MapOrganizationReferencesToGuid( "CostManifest.OwningAgentUid", input.CostManifestOf, ref status );
+			helper.CurrentOwningAgentUid = output.PrimaryAgentUID;
 			//
 			output.StartDate = helper.MapDate( input.StartDate, "StartDate", ref status );
             output.EndDate = helper.MapDate( input.EndDate, "StartDate", ref status );

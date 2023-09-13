@@ -222,14 +222,16 @@ namespace Import.Services
 			{
 				cntr++;
 				//note older frameworks will not be in the priority order
-				var main = item.ToString();
-				if ( cntr == 1 || main.IndexOf( "ceasn:CompetencyFramework" ) > -1 )
+				var resource = item.ToString();
+                var resourceOutline = RegistryServices.GetGraphMainResource( resource );
+
+                if ( resourceOutline.Type ==  "ceasn:CompetencyFramework")
 				{
 					//HACK
 					
-					if ( main.IndexOf( "ceasn:CompetencyFramework" ) > -1 )
+					if ( resource.IndexOf( "ceasn:CompetencyFramework" ) > -1 )
 					{
-						input = JsonConvert.DeserializeObject<InputEntity>( main );
+						input = JsonConvert.DeserializeObject<InputEntity>( resource );
 					}					
 				}
 				else
@@ -240,15 +242,14 @@ namespace Import.Services
 					//competencies.Add( comp );
 
 					//should just have competencies, but should check for bnodes
-					var child = item.ToString();
-					if ( child.IndexOf( "_:" ) > -1 )
+					if ( resourceOutline.CtdlId.IndexOf( "_:" ) > -1 )
 					{
-						bnodes.Add( JsonConvert.DeserializeObject<BNode>( child ) );
+						bnodes.Add( JsonConvert.DeserializeObject<BNode>( resource ) );
 						//ceasn:Competency
 					}
-					else if ( child.IndexOf( "ceasn:Competency" ) > -1 )
+					else if ( resourceOutline.Type == "ceasn:Competency" )
 					{
-						competencies.Add( JsonConvert.DeserializeObject<InputCompetency>( child ) );
+						competencies.Add( JsonConvert.DeserializeObject<InputCompetency>( resource ) );
 					}
 					else
 					{
@@ -356,45 +357,7 @@ namespace Import.Services
 
 				//TBD handling of referencing third party publisher
 				helper.MapOrganizationPublishedBy( ef, ref status );
-				//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				//{
-				//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-				//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-				//	if ( porg != null && porg.Id > 0 )
-				//	{
-				//		//TODO - store this in a json blob??????????
-				//		ef.PublishedByThirdPartyOrganizationId = porg.Id;
-				//		//this will result in being added to Entity.AgentRelationship
-				//		ef.PublishedBy = new List<Guid>() { porg.RowId };
-				//	}
-				//	else
-				//	{
-				//		//if publisher not imported yet, all publishee stuff will be orphaned
-				//		var entityUid = Guid.NewGuid();
-				//		var statusMsg = "";
-				//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
-				//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-				//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
-				//		ef.PublishedByThirdPartyOrganizationId = porg.Id;
-				//		ef.PublishedBy = new List<Guid>() { entityUid };
-				//	}
-				//}
-				//else
-				//{
-				//	//may need a check for existing published by to ensure not lost
-				//	if ( ef.Id > 0 )
-				//	{
-				//		//if ( ef.OrganizationRole != null && ef.OrganizationRole.Any() )
-				//		//{
-				//		//	var publishedByList = ef.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-				//		//	if ( publishedByList != null && publishedByList.Any() )
-				//		//	{
-				//		//		var pby = publishedByList[ 0 ].ActingAgentUid;
-				//		//		ef.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-				//		//	}
-				//		//}
-				//	}
-				//}
+				
 				//ef.CredentialRegistryId = envelopeIdentifier;
 				//additions
 				//ef.ind
@@ -475,19 +438,22 @@ namespace Import.Services
 
 
 				//
-				if ( ef.TotalCompetencies == input.hasTopChild.Count() )
+				if ( input.hasTopChild != null )
 				{
-					//flat list - use for simple display
-				}
-				else
-				{
-					foreach ( var item in input.hasTopChild )
+					if ( ef.TotalCompetencies == input.hasTopChild.Count() )
 					{
+						//flat list - use for simple display
+					}
+					else
+					{
+						foreach ( var item in input.hasTopChild )
+						{
 
+						}
 					}
 				}
-
 				//adding using common import pattern
+				//status.Messages = new List<StatusMessage>();
 				new CompetencyFrameworkServices().Import( ef, ref status );
 
 				status.DocumentId = ef.Id;

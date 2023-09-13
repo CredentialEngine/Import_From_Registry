@@ -7,6 +7,7 @@ using System.Web;
 
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Models.ProfileModels;
 using WMA = workIT.Models.API;
 using ME = workIT.Models.Elastic;
 using workIT.Models.Search;
@@ -66,7 +67,7 @@ namespace workIT.Services.API
 				//for now don't include the mapping in the elapsed
 				int elasped = ( end - start ).Seconds;
 				outputEntity = MapToAPI( output, request );
-				if (elasped > 5 && !skippingCache )
+				if ( elasped > 5 && !skippingCache )
 					CacheEntity( outputEntity );
 				return outputEntity;
 			}
@@ -104,16 +105,16 @@ namespace workIT.Services.API
 
 			string key = "organizationbyapi_" + id.ToString();
 
-			if ( request.AllowCaching && cacheMinutes > 0 
-				&& HttpRuntime.Cache[ key ] != null)
+			if ( request.AllowCaching && cacheMinutes > 0
+				&& HttpRuntime.Cache[key] != null )
 			{
 				var cache = new CachedEntity();
 				try
 				{
-					cache = ( CachedEntity )HttpRuntime.Cache[ key ];
+					cache = ( CachedEntity ) HttpRuntime.Cache[key];
 					if ( cache.LastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
+						LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
 						output = cache.Item;
 						return true;
 					}
@@ -146,13 +147,13 @@ namespace workIT.Services.API
 					};
 					if ( HttpContext.Current != null )
 					{
-						if ( HttpContext.Current.Cache[ key ] != null )
+						if ( HttpContext.Current.Cache[key] != null )
 						{
 							HttpRuntime.Cache.Remove( key );
 							HttpRuntime.Cache.Insert( key, newCache );
 
 							LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".CacheEntity $$$ Updating cached version of record, Id: {0}, {1}", entity.Meta_Id, entity.Name ) );
-							if (HttpRuntime.Cache[ key ] != null)
+							if ( HttpRuntime.Cache[key] != null )
 							{
 
 							}
@@ -170,7 +171,7 @@ namespace workIT.Services.API
 					LoggingHelper.DoTrace( 6, thisClassName + ".CacheEntity. Updating Cache === exception " + ex.Message );
 				}
 			}
-			
+
 		}
 		private static WMA.OrganizationDetail MapToAPI( Organization input, OrganizationManager.OrganizationRequest request )
 		{
@@ -203,7 +204,7 @@ namespace workIT.Services.API
 			//	output.CTDLType = "ceterms:CredentialOrganization";
 			//	output.CTDLTypeLabel = "Credential Organization";
 			//}
-			
+
 			//output.CTDLType = record.AgentDomainType;
 			output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( input.AgentSectorType, "organization" );
 			output.AgentType = ServiceHelper.MapPropertyLabelLinks( input.AgentType, "organization" );
@@ -231,7 +232,7 @@ namespace workIT.Services.API
 			output.FoundingDate = input.FoundingDate;
 			output.Meta_FriendlyName = input.FriendlyName;
 			//identifiers
-			output.Identifier = ServiceHelper.MapIdentifierValue(input.Identifier);
+			output.Identifier = ServiceHelper.MapIdentifierValue( input.Identifier );
 			output.DUNS = input.ID_DUNS;
 			output.FEIN = input.ID_FEIN;
 			output.IPEDSID = input.ID_IPEDSID;
@@ -243,7 +244,7 @@ namespace workIT.Services.API
 			output.Image = input.Image;
 			output.IndustryType = ServiceHelper.MapReferenceFramework( input.IndustryTypes, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
 			//
-			//output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole_Recipient, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By" );
+			output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole_Recipient, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By" );
 			//output.IndustryType = ServiceHelper.MapReferenceFrameworkLabelLink( input.IndustryType, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
 			//output.IsReferenceVersion = record.IsReferenceVersion;
 			//
@@ -281,41 +282,55 @@ namespace workIT.Services.API
 				//output.CredentialsSearch = ServiceHelper.MapEntitySearchLink( org.Id, org.Name, org.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential" );
 
 				//output.Connections.Add( output.CredentialsSearch );
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalCredentials, "Owns/Offers {0} Credential(s)", "credential", ref links );
 			}
 			if ( input.TotalLopps > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalLopps, "Owns/Offers {0} Learning Opportunity(ies)", "learningopportunity", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalLopps, "Owns/Offers {0} Learning Opportunity(ies)", "learningopportunity", ref links );
 			}
 			if ( input.TotalAssessments > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalAssessments, "Owns/Offers {0} Assesment(s)", "assessment", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalAssessments, "Owns/Offers {0} Assesment(s)", "assessment", ref links );
 
 			if ( input.TotalPathwaySets > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalPathwaySets, "Owns {0} Pathway Set(s)", "pathwayset", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalPathwaySets, "Owns {0} Pathway Set(s)", "pathwayset", ref links );
 			}
 			if ( input.TotalPathways > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalPathways, "Owns {0} Pathway(s)", "pathway", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalPathways, "Owns {0} Pathway(s)", "pathway", ref links );
 			}
 			if ( input.TotalTransferValueProfiles > 0 )
 			{
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles(s)", "transfervalue", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles(s)", "transfervalue", ref links );
 			}
 
 			if ( input.TotalFrameworks > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links, "6,7", output.CTID );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links, "6,7", output.CTID );
 
 			if ( input.TotalConceptSchemes > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalConceptSchemes, "Owns {0} Concept Scheme(s)", "conceptscheme", ref links );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalConceptSchemes, "Owns {0} Concept Scheme(s)", "conceptscheme", ref links );
 
+			//23-01-27 mp - removed output.CTID 
 			if ( input.TotalCollections > 0 )
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalCollections, "Owns {0} Collection(s)", "collection", ref links, "6,7", output.CTID );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalCollections, "Owns {0} Collection(s)", "collection", ref links, "6,7" );
+            //
+            if ( input.TotalJobs > 0 )
+                ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalJobs, "Offers {0} Job(s)", "job", ref links, "6,7" );
+            if ( input.TotalOccupations > 0 )
+                ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalOccupations, "Offers {0} Occupation(s)", "occupation", ref links, "6,7" );
+
+            if ( input.TotalSupportServices > 0 )
+                ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalSupportServices, "Offers {0} Support Service(s)", "supportservice", ref links, "6,7" );
+
+
+            ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles", "transfervalue", ref links, "6,7" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferIntermediaries, "Owns {0} Transfer Intermediaries", "transferintermediary", ref links, "6,7" );
 			//hmm do these use entity.agentrelationship?
+			//30 but should be 6?
 			//for now, disable any link
 			if ( input.DataSetProfileCount > 0 )
 			{
-				//ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.DataSetProfileCount, "Has Outcome Profile(s)", "datasetprofile", ref links, "31", output.CTID );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.DataSetProfileCount, "Provides {0} Outcome Data)", "outcomedata", ref links, "6,7" );
 			}
 			//21-03-10 combining revokes and renews
 			//	- technically should not add together.
@@ -329,7 +344,7 @@ namespace workIT.Services.API
 					//what? Use total and allow for inconsistency? Otherwise the source count will to distinguish the unique credentials
 					total = input.RenewsCredentials > input.RevokesCredentials ? input.RenewsCredentials : input.RevokesCredentials;
 				}
-				ServiceHelper.MapEntitySearchLink( input.Id, input.Name, total, "Renews/Revokes {0} Credential(s)", "credential", ref links, "11, 13" );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, total, "Renews/Revokes {0} Credential(s)", "credential", ref links, "11, 13" );
 			}
 			//if ( org.RegulatesCredentials > 0 )
 			//	ServiceHelper.MapEntitySearchLink( org.Id, org.Name, org.RegulatesCredentials, "Regulates {0} Credential(s)", "credential", ref links, "12" );
@@ -337,10 +352,13 @@ namespace workIT.Services.API
 			//	ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.RenewsCredentials, "Renews {0} Credential(s)", "credential", ref links, "13" );
 
 			//add third party publishers
-			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalCredentialsPublishedByThirdParty, "Published {0} Credentials", "credential", ref links, "30" );
-			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalOrganizationsPublishedByThirdParty, "Published {0} Organizations", "organization", ref links, "30" );
-			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalAssessmentsPublishedByThirdParty, "Published {0} Assessments", "assessment", ref links, "30" );
-			ServiceHelper.MapEntitySearchLink( input.Id, input.Name, input.TotalLoppsPublishedByThirdParty, "Published {0} Learning Opportunities", "learningopportunity", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalCredentialsPublishedByThirdParty, "Published {0} Credentials", "credential", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalOrganizationsPublishedByThirdParty, "Published {0} Organizations", "organization", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalAssessmentsPublishedByThirdParty, "Published {0} Assessments", "assessment", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalLoppsPublishedByThirdParty, "Published {0} Learning Opportunities", "learningopportunity", ref links, "30" );
+
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfilesPublishedByThirdParty, "Published {0} Transfer Value Profiles", "transfervalue", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferIntermediariesPublishedByThirdParty, "Published {0} Transfer Intermediaries", "transferintermediary", ref links, "30" );
 			//
 			if ( links.Any() )
 				output.Connections = links;
@@ -369,8 +387,8 @@ namespace workIT.Services.API
 			output.ParentOrganization = ServiceHelper.MapOrganizationRoleProfileToAJAX( input.Id, input.ParentOrganizations, "Has Parent Organization" );
 			if ( input.ParentOrganization != null && input.ParentOrganization.Any() )
 			{
-				var parents = ServiceHelper.MapOrganizationRoleProfileToOutline( input.ParentOrganizations,Entity_AgentRelationshipManager.ROLE_TYPE_PARENT_ORG );
-				if (parents != null && parents.Any())
+				var parents = ServiceHelper.MapOrganizationRoleProfileToOutline( input.ParentOrganizations, Entity_AgentRelationshipManager.ROLE_TYPE_PARENT_ORG );
+				if ( parents != null && parents.Any() )
 				{
 					//just return one for now
 					//output.ParentOrganizationOutline = parents[ 0 ];
@@ -408,7 +426,7 @@ namespace workIT.Services.API
 					if ( string.IsNullOrEmpty( item.ActingAgent.CTID ) )
 						orp.URL = item.ActingAgent.SubjectWebpage;
 					else
-						orp.URL = ServiceHelper.reactFinderSiteURL + string.Format( "organization/{0}", input.Id );
+						orp.URL = ServiceHelper.credentialFinderMainSite + string.Format( "organization/{0}", input.Id );
 					bool isPublishedByRole = false;
 					if ( item.AgentRole != null && item.AgentRole.Items.Any() )
 					{
@@ -472,7 +490,7 @@ namespace workIT.Services.API
 						Label = string.Format( "Has {0} Cost Manifest(s)", org.HasCostManifest.Count() ),
 						Total = manifests.Count()
 					};
-					List<object> obj = manifests.Select( f => ( object )f ).ToList();
+					List<object> obj = manifests.Select( f => ( object ) f ).ToList();
 					output.HasCostManifest.Values = obj;
 				}
 				else
@@ -480,13 +498,13 @@ namespace workIT.Services.API
 					var url = string.Format( "detail/costManifest/{0}/", org.Id.ToString() );
 					output.HasCostManifest = new AJAXSettings()
 					{
-						Label = string.Format("Has {0} Cost Manifest(s)", org.HasCostManifest.Count()),
+						Label = string.Format( "Has {0} Cost Manifest(s)", org.HasCostManifest.Count() ),
 						Total = org.HasCostManifest.Count(),
-						//changed from reactFinderSiteURL to finderApiSiteURL
+						//
 						URL = ServiceHelper.finderApiSiteURL + url,
 						TestURL = ServiceHelper.finderApiSiteURL + url
 					};
-				}				
+				}
 			}
 
 			if ( org.HasConditionManifest != null && org.HasConditionManifest.Any() )
@@ -500,7 +518,7 @@ namespace workIT.Services.API
 						Label = string.Format( "Has {0} Condition Manifest(s)", org.HasConditionManifest.Count() ),
 						Total = manifests.Count()
 					};
-					List<object> obj = manifests.Select( f => ( object )f ).ToList();
+					List<object> obj = manifests.Select( f => ( object ) f ).ToList();
 					output.HasConditionManifest.Values = obj;
 				}
 				else
@@ -510,7 +528,7 @@ namespace workIT.Services.API
 					{
 						Label = string.Format( "Has {0} Condition Manifest(s)", org.HasConditionManifest.Count() ),
 						Total = org.HasConditionManifest.Count(),
-						//changed from reactFinderSiteURL to finderApiSiteURL
+						//
 						URL = ServiceHelper.finderApiSiteURL + url,
 						TestURL = ServiceHelper.finderApiSiteURL + url
 					};
@@ -632,7 +650,7 @@ namespace workIT.Services.API
 						Label = item.Name,
 						Description = "",
 						Total = item.Totals,
-						//changed from reactFinderSiteURL to finderApiSiteURL
+						//
 						URL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 						TestURL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 					};
@@ -641,7 +659,7 @@ namespace workIT.Services.API
 					{
 						Id = input.RowId.ToString(),
 						ProcessTypeId = item.Id,
-						//EndPoint = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
+						
 					};
 					//will not be currently used - just URL
 					ajax.QueryData = qd;
@@ -651,12 +669,7 @@ namespace workIT.Services.API
 					 * processProfileTypeId: item.Id?
 					 * 
 					 */
-					//var filter = ( new WMA.LabelLink()
-					//{
-					//	Label = item.Name,
-					//	Count = item.Totals,
-					//	URL = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
-					//} );
+					
 					//alternate - populate the individual properties or return a list?
 					var processType = item.Name.Replace( " ", "" );
 					switch ( processType )
@@ -724,7 +737,7 @@ namespace workIT.Services.API
 		private static void MapVerificationServiceProfile( Organization org, ref WMA.OrganizationDetail output, OrganizationManager.OrganizationRequest request )
 		{
 
-			if (request.IncludingVerificationProfiles)
+			if ( request.IncludingVerificationProfiles )
 			{
 				if ( org.VerificationServiceProfiles == null || !org.VerificationServiceProfiles.Any() )
 					return;
@@ -741,11 +754,14 @@ namespace workIT.Services.API
 						VerificationMethodDescription = item.VerificationMethodDescription
 					};
 
-					vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory, "Verification Directory" );
-					vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService, "Verification Service" );
+					//TODO - handle list at some point
+					if ( item.VerificationDirectory != null && item.VerificationDirectory.Any() )
+						vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory[0], "Verification Directory" );
+					if ( item.VerificationService != null && item.VerificationDirectory.Any() )
+						vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService[0], "Verification Service" );
 
 					//do we just need to provide a label for HolderMustAuthorize?
-					vsp.HolderMustAuthorizeLabel = item.HolderMustAuthorize == null ? "" : ( bool )item.HolderMustAuthorize ? "The holder of the credential must authorize this service." : "This service does not require authorization.";
+					vsp.HolderMustAuthorizeLabel = item.HolderMustAuthorize == null ? "" : ( bool ) item.HolderMustAuthorize ? "The holder of the credential must authorize this service." : "This service does not require authorization.";
 
 					if ( item.Jurisdiction != null && item.Jurisdiction.Any() )
 					{
@@ -775,7 +791,7 @@ namespace workIT.Services.API
 						var ab = ServiceHelper.MapToOutline( item.OfferedByAgent, searchType );
 						vsp.OfferedBy = ServiceHelper.MapOutlineToAJAX( ab, "Offered by {0} Organization(s)" );
 					}
-					vsp.VerifiedClaimType = ServiceHelper.MapPropertyLabelLinks( item.ClaimType, "organization", false );
+					vsp.VerifiedClaimType = ServiceHelper.MapPropertyLabelLinks( item.VerifiedClaimType, "organization", false );
 					if ( item.TargetCredential != null && item.TargetCredential.Any() )
 					{
 						vsp.TargetCredential = ServiceHelper.MapCredentialToAJAXSettings( item.TargetCredential, "Has {0} Target Credential(s)" );
@@ -789,7 +805,7 @@ namespace workIT.Services.API
 					}
 
 					hasVerificationServiceTemp.Add( vsp );
-					
+
 				}
 				output.HasVerificationService = new AJAXSettings()
 				{
@@ -797,11 +813,12 @@ namespace workIT.Services.API
 					Label = string.Format( "Has {0} Verification Service(s)", hasVerificationServiceTemp.Count() ),
 					Total = hasVerificationServiceTemp.Count()
 				};
-				List<object> obj = hasVerificationServiceTemp.Select( f => ( object )f ).ToList();
+				List<object> obj = hasVerificationServiceTemp.Select( f => ( object ) f ).ToList();
 				output.HasVerificationService.Values = obj;
 				//hasVerificationServiceTemp = null;
 
-			} else if (org.VerificationServiceProfileCount > 0)
+			}
+			else if ( org.VerificationServiceProfileCount > 0 )
 			{
 				var url = string.Format( "detail/VerificationService/{0}", org.RowId.ToString() );
 				output.HasVerificationService = new AJAXSettings();
@@ -809,7 +826,7 @@ namespace workIT.Services.API
 				{
 					Label = string.Format( "Has {0} Verification Service(s)", org.VerificationServiceProfileCount ),
 					Total = org.VerificationServiceProfileCount,
-					//changed from reactFinderSiteURL to finderApiSiteURL
+					//
 					URL = ServiceHelper.finderApiSiteURL + url,
 					TestURL = ServiceHelper.finderApiSiteURL + url
 				};
@@ -817,22 +834,16 @@ namespace workIT.Services.API
 				//var qd = new ProcessProfileAjax()
 				//{
 				//	Id = org.RowId.ToString(),
-				//	//EndPoint = ServiceHelper.reactFinderSiteURL + url + item.Id.ToString()
+				//	
 				//};
 				//ajax.QueryData = qd;
-				output.HasVerificationService = ajax ;
-				//var filter = ( new WMA.LabelLink()
-				//{
-				//	Label = "Has Verification Service",
-				//	Count = org.VerificationServiceProfileCount,
-				//	URL = ServiceHelper.reactFinderSiteURL + url 
-				//} );
-				//output.HasVerificationServiceSummary.Add( filter );
-			
+				output.HasVerificationService = ajax;
+		
+
 				//return;
 			}
 
-			
+
 
 		}
 		/// <summary>
@@ -844,10 +855,19 @@ namespace workIT.Services.API
 		{
 			var output = new List<WMA.VerificationServiceProfile>();
 			//make a common method - then can pass parent to use for details
-			var plist = Entity_VerificationProfileManager.GetAll( parentUid );
+			var plist = VerificationServiceProfileManager.GetAll( parentUid );
+
+   //         if ( UtilityManager.GetAppKeyValue( "usingNewHasVerificationService", false ) )
+			//{
+			//	plist = VerificationServiceProfileManager.GetAll( parentUid );
+			//}
+			//else
+			//{
+			//	plist = Entity_VerificationProfileManager.GetAll( parentUid );
+			//}
 			if ( plist != null && plist.Any() )
-			{
-				foreach ( var item in plist )
+			{	
+                foreach ( var item in plist )
 				{
 					WMA.VerificationServiceProfile vsp = new WMA.VerificationServiceProfile()
 					{
@@ -855,15 +875,16 @@ namespace workIT.Services.API
 						Description = item.Description,
 						HolderMustAuthorize = item.HolderMustAuthorize,
 						SubjectWebpage = item.SubjectWebpage,
-						//VerificationDirectory = item.VerificationDirectory,
 						VerificationMethodDescription = item.VerificationMethodDescription,
-						//VerificationService = item.VerificationService
 					};
 
-					vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory, "Verification Directory" );
-					vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService, "Verification Service" );
+                    //TODO - handle list at some point
+                    if ( item.VerificationDirectory != null && item.VerificationDirectory.Any() )
+                        vsp.VerificationDirectory = ServiceHelper.MapPropertyLabelLink( item.VerificationDirectory[0], "Verification Directory" );
+                    if ( item.VerificationService != null && item.VerificationDirectory.Any() )
+                        vsp.VerificationService = ServiceHelper.MapPropertyLabelLink( item.VerificationService[0], "Verification Service" );
 
-					if ( item.Jurisdiction != null && item.Jurisdiction.Any() )
+                    if ( item.Jurisdiction != null && item.Jurisdiction.Any() )
 					{
 						vsp.Jurisdiction = ServiceHelper.MapJurisdiction( item.Jurisdiction );
 					}
@@ -889,7 +910,7 @@ namespace workIT.Services.API
 						vsp.OfferedBy = ServiceHelper.MapOutlineToAJAX( ab, "Offered by {0} Organization(s)" );
 					}
 
-					vsp.VerifiedClaimType = ServiceHelper.MapPropertyLabelLinks( item.ClaimType, searchType, false );
+					vsp.VerifiedClaimType = ServiceHelper.MapPropertyLabelLinks( item.VerifiedClaimType, searchType, false );
 					if ( item.TargetCredential != null && item.TargetCredential.Any() )
 					{
 						vsp.TargetCredential = ServiceHelper.MapCredentialToAJAXSettings( item.TargetCredential, "Has {0} Target Credential(s)" );
@@ -904,14 +925,14 @@ namespace workIT.Services.API
 
 					output.Add( vsp );
 				}
+				
 			}
 			return output;
 		}
 
-
-		#endregion
-	}
-	public class CachedApiEntity
+        #endregion
+    }
+    public class CachedApiEntity
 	{
 		public CachedApiEntity()
 		{

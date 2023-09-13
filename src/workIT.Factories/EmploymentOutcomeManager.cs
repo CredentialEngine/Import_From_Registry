@@ -101,7 +101,6 @@ namespace workIT.Factories
 
 							if ( efEntity.EntityStateId == 0 )
 							{
-								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "EmploymentOutcomeProfile/{0}", efEntity.Id );
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "EmploymentOutcomeProfile",

@@ -97,8 +97,12 @@ namespace workIT.Services
 		}
 
 
-        #region addresses
-        public static void HandleAddressGeoCoding()
+		#region addresses
+		/// <summary>
+		/// Handle addresses missing lat/lng
+		///  NEW: may need to reindex the parent resource (should be handled if from import)
+		/// </summary>
+		public static void HandleAddressGeoCoding()
 		{
 			//should we do all?
 			int maxRecords = 0;
@@ -106,14 +110,14 @@ namespace workIT.Services
 			DateTime started = DateTime.Now;
 			string report = "";
 			string messages = "";
-			var list = new Entity_AddressManager().ResolveMissingGeodata( ref messages, maxRecords );
+			var failedList = new Entity_AddressManager().ResolveMissingGeodata( ref messages, maxRecords );
 
 			var saveDuration = DateTime.Now.Subtract( started );
 			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".NormalizeAddresses - Completed - seconds: {0}", saveDuration.Seconds ) );
 			if ( !string.IsNullOrWhiteSpace( messages ) )
 				report = string.Format( "<p>Normalize Addresses. Duration: {0} seconds <br/>", saveDuration.Seconds ) + messages + "</p>";
 
-			foreach ( var address in list )
+			foreach ( var address in failedList )
 			{
 				string msg = string.Format( " - Unable to resolve address: Id: {0}, address1: {1}, city: {2}, region: {3}, postalCode: {4}, country: {5} ", address.Id, address.StreetAddress, address.AddressLocality, address.AddressRegion, address.PostalCode, address.AddressCountry );
 				LoggingHelper.DoTrace( 2, msg );
@@ -143,11 +147,11 @@ namespace workIT.Services
 			DateTime started = DateTime.Now;
 			
 			string messages = "";
-			List<Address> list = new Entity_AddressManager().ResolveMissingGeodata( ref messages, ref addressesFixed, ref addressRemaining, maxRecords );
+			var failedList = new Entity_AddressManager().ResolveMissingGeodata( ref messages, ref addressesFixed, ref addressRemaining, maxRecords );
 
 			var saveDuration = DateTime.Now.Subtract( started );
 			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".NormalizeAddressesExternal - Completed - seconds: {0}", saveDuration.Seconds ) );
-			int addressesNotFixed = list.Count();
+			int addressesNotFixed = failedList.Count();
 			message = string.Format( "Normalize Addresses. Duration: {0} seconds, Addresses Fixed: {1}, Not Fixed: {2} Remaining: {3}", saveDuration.Seconds, addressesFixed, addressesNotFixed, addressRemaining ) ;
 			
 			//where called externally, don't need details, just count. Could be used in a loop.

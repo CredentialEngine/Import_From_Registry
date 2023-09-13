@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisEntity = workIT.Models.ProfileModels.VerificationServiceProfile;
+using ThisResource = workIT.Models.ProfileModels.VerificationServiceProfile;
 using DBEntity = workIT.Data.Tables.Entity_VerificationProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
@@ -22,7 +22,7 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_VerificationProfileManager";
 		#region Entity Persistance ===================
-		public bool SaveList( List<ThisEntity> list, Guid parentUid, ref SaveStatus status )
+		public bool SaveList( List<ThisResource> list, Guid parentUid, ref SaveStatus status )
 		{
             Entity parent = EntityManager.GetEntity( parentUid );
             if ( parent == null || parent.Id == 0 )
@@ -37,7 +37,7 @@ namespace workIT.Factories
 				return true;
 
 			bool isAllValid = true;
-			foreach ( ThisEntity item in list )
+			foreach ( ThisResource item in list )
 			{
 				Save( item, parent, ref status );
 			}
@@ -52,7 +52,7 @@ namespace workIT.Factories
 		 /// <param name="userId"></param>
 		 /// <param name="messages"></param>
 		 /// <returns></returns>
-		public bool Save( ThisEntity entity, Entity parent, ref SaveStatus status )
+		private bool Save( ThisResource entity, Entity parent, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -90,7 +90,7 @@ namespace workIT.Factories
 						count = context.SaveChanges();
 						//update profile record so doesn't get deleted
 						entity.Id = efEntity.Id;
-						entity.ParentId = parent.Id;
+						entity.RelatedEntityId = parent.Id;
 						entity.RowId = efEntity.RowId;
 						if ( count == 0 )
 						{
@@ -107,7 +107,7 @@ namespace workIT.Factories
 					}
 					else
 					{
-						entity.ParentId = parent.Id;
+						entity.RelatedEntityId = parent.Id;
 
 						efEntity = context.Entity_VerificationProfile.SingleOrDefault( s => s.Id == entity.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
@@ -131,7 +131,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					string message = FormatExceptions( ex);
-					status.AddError( "Error - the save was not successful. " + message );
+					status.AddError( $"Error - the save for Entity.VerificationService for Parent: {parent.EntityBaseName} ({parent.EntityBaseId}) was not successful. " + message );
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId) );
 				}
 
@@ -140,7 +140,7 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		private bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -153,7 +153,7 @@ namespace workIT.Factories
 			//first clear all properties
 			mgr.DeleteAll( relatedEntity, ref status );
 			//
-			if ( mgr.AddProperties( entity.ClaimType, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE, false, ref status ) == false )
+			if ( mgr.AddProperties( entity.VerifiedClaimType, entity.RowId, CodesManager.ENTITY_TYPE_PROCESS_PROFILE, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE, false, ref status ) == false )
 				isAllValid = false;
 
 			//CostProfile
@@ -253,7 +253,7 @@ namespace workIT.Factories
             return isValid;
         }
 
-        public bool ValidateProfile( ThisEntity profile, ref bool isEmpty, ref SaveStatus status )
+        public bool ValidateProfile( ThisResource profile, ref bool isEmpty, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -261,21 +261,14 @@ namespace workIT.Factories
 
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
 			{
-				status.AddWarning( "A profile description must be entered" );
+				status.AddWarning( "A verification service profile description must be entered." );
 			}
 			
 			if ( !IsUrlValid( profile.SubjectWebpage, ref commonStatusMessage ) )
 			{
-				status.AddWarning( "The Subject Webpage Url is invalid. " + commonStatusMessage );
+				status.AddWarning( "The verification service profile Subject Webpage Url is invalid. " + commonStatusMessage );
 			}
-			if ( !IsUrlValid( profile.VerificationService, ref commonStatusMessage ) )
-			{
-				status.AddWarning( "The Verification Service Url is invalid. " + commonStatusMessage );
-			}
-			if ( !IsUrlValid( profile.VerificationDirectory, ref commonStatusMessage ) )
-			{
-				status.AddWarning( "The Verification Directory Url is invalid. " + commonStatusMessage );
-			}
+
 
 			return status.WasSectionValid;
 		}
@@ -288,10 +281,10 @@ namespace workIT.Factories
 		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
 		/// </summary>
 		/// <param name="parentUid"></param>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool includingItems = true )
+		public static List<ThisResource> GetAll( Guid parentUid, bool includingItems = true )
 		{
-			ThisEntity entity = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
+			ThisResource entity = new ThisResource();
+			List<ThisResource> list = new List<ThisResource>();
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -311,7 +304,7 @@ namespace workIT.Factories
 					{
 						foreach ( DBEntity item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 							MapFromDB( item, entity, includingItems );
 
 
@@ -353,129 +346,135 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
+				LoggingHelper.LogError( ex, thisClassName + ".GetAllTotal" );
 			}
 			return 0;
 		}//
 
-		public static ThisEntity Get( int profileId )
-		{
-			ThisEntity entity = new ThisEntity();
+		//public static ThisResource Get( int profileId )
+		//{
+		//	ThisResource entity = new ThisResource();
 
-			try
-			{
-				using ( var context = new EntityContext() )
-				{
-					DBEntity item = context.Entity_VerificationProfile
-							.SingleOrDefault( s => s.Id == profileId );
+		//	try
+		//	{
+		//		using ( var context = new EntityContext() )
+		//		{
+		//			DBEntity item = context.Entity_VerificationProfile
+		//					.SingleOrDefault( s => s.Id == profileId );
 
-					if ( item != null && item.Id > 0 )
-					{
-						MapFromDB( item, entity, true );
-					}
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".Get" );
-			}
-			return entity;
-		}//
+		//			if ( item != null && item.Id > 0 )
+		//			{
+		//				MapFromDB( item, entity, true );
+		//			}
+		//		}
+		//	}
+		//	catch ( Exception ex )
+		//	{
+		//		LoggingHelper.LogError( ex, thisClassName + ".Get" );
+		//	}
+		//	return entity;
+		//}//
 
         
 
-        public static void MapToDB( ThisEntity from, DBEntity to )
+        public static void MapToDB( ThisResource input, DBEntity output )
 		{
-			//want to ensure fields from create are not wiped
-			if ( to.Id == 0 )
+			//want output ensure fields from create are not wiped
+			if ( output.Id == 0 )
 			{
 
 			}
-			to.Id = from.Id;
-			to.Description = from.Description;
-			to.HolderMustAuthorize = from.HolderMustAuthorize;
+			output.Id = input.Id;
+			output.Description = input.Description;
+            if ( IsValidDate( input.DateEffective ) )
+                output.DateEffective = DateTime.Parse( input.DateEffective );
+            else
+                output.DateEffective = null;
+            output.HolderMustAuthorize = input.HolderMustAuthorize;
 
-			to.SubjectWebpage = GetUrlData( from.SubjectWebpage );
+			output.SubjectWebpage = GetUrlData( input.SubjectWebpage );
 
-			to.VerificationService = from.VerificationService;
-			to.VerificationDirectory = from.VerificationDirectory;
-			to.VerificationMethodDescription = from.VerificationMethodDescription;
-
-			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = DateTime.Parse( from.DateEffective );
-			else
-				to.DateEffective = null;
+			output.VerificationService = GetListAsDelimitedString(input.VerificationService, "|");
+			output.VerificationDirectory = GetListAsDelimitedString( input.VerificationDirectory, "|");
+			output.VerificationMethodDescription = input.VerificationMethodDescription;
 			
-			if ( IsGuidValid( from.OfferedByAgentUid ) )
+			if ( IsGuidValid( input.OfferedByAgentUid ) )
 			{
-				to.OfferedByAgentUid = from.OfferedByAgentUid;
+				output.OfferedByAgentUid = input.OfferedByAgentUid;
 			}
 			else
 			{
-				to.OfferedByAgentUid = null;
+				output.OfferedByAgentUid = null;
 			}
 
 		}
-		public static void MapFromDB( DBEntity from, ThisEntity to, 
+		public static void MapFromDB( DBEntity input, ThisResource output, 
 				bool includingItems
 			)
 		{
-            //TODO - add option for get during import to get less data
-			to.Id = from.Id;
-			to.RowId = from.RowId;
+            //TODO - add option for get during import output get less data
+			output.Id = input.Id;
+			output.RowId = input.RowId;
 
-			to.Description = ( from.Description ?? "" );
-			//ProfileName is for display purposes
-			to.ProfileName = to.Description.Length < 80 ? to.Description : to.Description.Substring(0, 79) + " ...";
-
-			if ( from.HolderMustAuthorize != null )
-				to.HolderMustAuthorize = ( bool ) from.HolderMustAuthorize;
+			output.Description = ( input.Description ?? "" );
+            if ( IsValidDate( input.DateEffective ) )
+                output.DateEffective = (( DateTime) input.DateEffective ).ToString("yyyy-MM-dd");
+            else
+                output.DateEffective = null;
+            if ( input.HolderMustAuthorize != null )
+				output.HolderMustAuthorize = ( bool ) input.HolderMustAuthorize;
 			
-			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
-			else
-				to.DateEffective = "";
 
-			to.SubjectWebpage = from.SubjectWebpage;
-			to.VerificationService = from.VerificationService;
-			to.VerificationDirectory = from.VerificationDirectory;
-			to.VerificationMethodDescription = from.VerificationMethodDescription;
+
+			output.SubjectWebpage = input.SubjectWebpage;
+            //output.VerificationDirectoryOLD = input.VerificationDirectory;
+            //output.VerificationServiceOLD = input.VerificationService;
+            if ( !string.IsNullOrWhiteSpace( input.VerificationDirectory ) )
+            {
+                output.VerificationDirectory = SplitDelimitedStringToList( input.VerificationDirectory, '|' );
+            }
+            output.VerificationMethodDescription = input.VerificationMethodDescription;
+            if ( !string.IsNullOrWhiteSpace( input.VerificationService ) )
+            {
+                output.VerificationService = SplitDelimitedStringToList( input.VerificationDirectory, '|' );
+            }
+            output.VerificationMethodDescription = input.VerificationMethodDescription;
 			
-			if ( IsGuidValid( from.OfferedByAgentUid ) )
+			if ( IsGuidValid( input.OfferedByAgentUid ) )
 			{
-				to.OfferedByAgentUid = ( Guid ) from.OfferedByAgentUid;
-				to.OfferedByAgent = OrganizationManager.GetBasics( to.OfferedByAgentUid );
+				output.OfferedByAgentUid = ( Guid ) input.OfferedByAgentUid;
+				output.OfferedByAgent = OrganizationManager.GetBasics( output.OfferedByAgentUid );
 			}
 
 			if ( includingItems )
 			{
-				//TODO 170803- need to chg to a list
+				//TODO 170803- need output chg output a list
 				//only get if:
 				//edit - get profile list
 				//detail - get basic
 				bool isForDetailPageCredential = true;
 				//make sure this is minimum data
-				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForDetailPageCredential );
+				output.TargetCredential = Entity_CredentialManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForDetailPageCredential );
 
-				to.EstimatedCost = CostProfileManager.GetAll( to.RowId );
+				output.EstimatedCost = CostProfileManager.GetAll( output.RowId );
 
-				to.ClaimType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
+				output.VerifiedClaimType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CLAIM_TYPE );
 
-				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE );
+				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE );
 
-				to.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
-				to.OfferedIn = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
+				//output.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );
+				output.OfferedIn = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_OFFERREDIN );
 
-				//to.VerificationStatus = Entity_VerificationStatusManager.GetAll( to.Id );
+				//output.VerificationStatus = Entity_VerificationStatusManager.GetAll( output.Id );
 			}
 
 
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime ) from.Created;
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime ) input.Created;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime ) input.LastUpdated;
 		}
-		static string SetEntitySummary( ThisEntity to )
+		static string SetEntitySummary( ThisResource to )
 		{
 			string summary = "Verification Profile ";
 			if ( !string.IsNullOrWhiteSpace( to.Description ) )

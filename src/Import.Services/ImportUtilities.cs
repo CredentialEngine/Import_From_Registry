@@ -19,7 +19,21 @@ namespace Import.Services
 			List<string> messages = new List<string>();
 
 			bool isValid = true;
-			DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+            {
+				statusMessage = "Error: The Delete Request CTID is required.";
+            }
+            if (string.IsNullOrWhiteSpace( ctdlType ) )
+			{
+				var resource = EntityManager.EntityCacheGetByCTID( ctid );
+				if ( resource != null && resource.Id > 0 )
+				{
+					ctdlType = resource.EntityType;
+				}
+			}
+			ctdlType = ctdlType.Replace( "ceterms:", "" );
+
+            DisplayMessages( string.Format( "{0}. Deleting {1} by ctid: {2} ", cntr, ctdlType, ctid ) );
 
 			switch ( ctdlType.ToLower() )
 			{
@@ -58,7 +72,8 @@ namespace Import.Services
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "competencyframework": //CompetencyFramework
-					if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
+                case "ceasn:competencyframework ": 
+                    if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "conceptscheme":
@@ -76,7 +91,7 @@ namespace Import.Services
 					break;
 				//
 				case "pathway":
-					if ( !new PathwayManager().Delete( ctid, ref statusMessage ) )
+                    if ( !new PathwayManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "pathwayset":
@@ -84,6 +99,7 @@ namespace Import.Services
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
 				case "transfervalueprofile":
+				case "transfervalue":
 					if ( !new TransferValueProfileManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
@@ -107,7 +123,15 @@ namespace Import.Services
 					if ( !new WorkRoleManager().Delete( ctid, ref statusMessage ) )
 						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
-				default:
+                case "scheduledoffering":
+                    if ( !new ScheduledOfferingManager().Delete( ctid, ref messages ) )
+                        DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                    break;
+                case "supportservice":
+                    if ( !new SupportServiceManager().Delete( ctid, ref messages ) )
+                        DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                    break;
+                default:
 					//default to credential
 					//DisplayMessages( string.Format( "{0}. Deleting Credential ({1}) by ctid: {2} ", cntr, ctdlType, ctid ) );
 					if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )

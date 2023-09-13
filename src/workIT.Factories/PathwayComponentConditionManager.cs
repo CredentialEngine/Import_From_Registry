@@ -10,13 +10,14 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.Common.PathwayComponentCondition;
+using ThisEntity = workIT.Models.Common.ComponentCondition;
 using DBEntity = workIT.Data.Tables.Pathway_ComponentCondition;
 using EntityContext = workIT.Data.Tables.workITEntities;
 
 
 namespace workIT.Factories
 {
+	[Obsolete]
 	public class PathwayComponentConditionManager : BaseFactory
 	{
 		static string thisClassName = "PathwayComponentConditionManager";
@@ -336,56 +337,6 @@ namespace workIT.Factories
 			to.RequiredNumber = from.RequiredNumber;
 
 
-		}
-
-		public static List<Dictionary<string, object>> GetAllForExport_DictionaryList( string owningOrgUid, bool includingConditionProfile = true )
-		{
-			//
-			var result = new List<Dictionary<string, object>>();
-			var table = GetAllForExport_DataTable( owningOrgUid, includingConditionProfile );
-
-			foreach ( DataRow dr in table.Rows )
-			{
-				var rowData = new Dictionary<string, object>();
-				for ( var i = 0; i < dr.ItemArray.Count(); i++ )
-				{
-					rowData[ table.Columns[ i ].ColumnName ] = dr.ItemArray[ i ];
-				}
-				result.Add( rowData );
-			}
-			return result;
-		}
-		//
-		public static DataTable GetAllForExport_DataTable( string owningOrgUid, bool includingConditionProfile )
-		{
-			var result = new DataTable();
-			string connectionString = DBConnectionRO();
-			//
-			using ( SqlConnection c = new SqlConnection( connectionString ) )
-			{
-				c.Open();
-				using ( SqlCommand command = new SqlCommand( "[Pathway_ComponentConditions_Export]", c ) )
-				{
-					command.CommandType = CommandType.StoredProcedure;
-					command.Parameters.Add( new SqlParameter( "@OwningOrgUid", owningOrgUid ) );
-
-					try
-					{
-						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
-						{
-							adapter.SelectCommand = command;
-							adapter.Fill( result );
-						}
-
-					}
-					catch ( Exception ex )
-					{
-						var message = FormatExceptions( ex );
-						LoggingHelper.LogError( ex, thisClassName + string.Format( ".GetAllForExport_DataTable() - Execute proc, Message: {0} \r\n owningOrgUid: {1} ", message, owningOrgUid ) );
-					}
-				}
-			}
-			return result;
 		}
 
 		#endregion

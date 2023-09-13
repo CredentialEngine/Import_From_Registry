@@ -40,9 +40,9 @@ namespace workIT.Factories
 		{
 			bool isValid = true;
 			//will not have a parent Guid
-			Guid parentUid = entity.OwningAgentUid;
+			Guid parentUid = entity.PrimaryAgentUID;
 
-			if ( !IsValidGuid( entity.OwningAgentUid ) )
+			if ( !IsValidGuid( entity.PrimaryAgentUID ) )
 			{
 				status.AddError( "Error: the parent identifier was not provided." );
 				return false;
@@ -96,7 +96,7 @@ namespace workIT.Factories
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
 						efEntity.OrganizationId = parentOrgId;
-						efEntity.EntityStateId = 3;
+						efEntity.EntityStateId = entity.EntityStateId = 3;
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 						{
 							efEntity.Created = status.LocalCreatedDate;
@@ -175,9 +175,11 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-							//assume and validate, that if we get here we have a full record
-							if ( (efEntity.EntityStateId ?? 1) == 1 )
-								efEntity.EntityStateId = 3;
+                            //assume and validate, that if we get here we have a full record
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
+
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
                             //if started as a placeholder, may not have the org
                             efEntity.OrganizationId = parentOrgId;
 
@@ -328,7 +330,7 @@ namespace workIT.Factories
 				Created = document.Created,
 				LastUpdated = document.LastUpdated,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			string statusMessage = "";
@@ -439,7 +441,7 @@ namespace workIT.Factories
                             } );
                             isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_COST_MANIFEST, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 						}
 						List<String> messages = new List<string>();
 						//mark owning org for updates 
@@ -741,7 +743,7 @@ namespace workIT.Factories
 							to.RowId = from.CostManifest.RowId;
 							to.Description = from.CostManifest.Description;
 							to.OrganizationId = ( int ) from.Entity.EntityBaseId;
-							to.OwningAgentUid = from.Entity.EntityUid;
+							to.PrimaryAgentUID = from.Entity.EntityUid;
 							to.Name = from.CostManifest.Name;
 
 							list.Add( to );
@@ -877,9 +879,9 @@ namespace workIT.Factories
 
 			if ( to.OrganizationId > 0 )
 			{
-				to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
-				if ( to.OwningOrganization != null && to.OwningOrganization.Id > 0 )
-					to.OwningAgentUid = to.OwningOrganization.RowId;
+				to.PrimaryOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
+				if ( to.PrimaryOrganization != null && to.PrimaryOrganization.Id > 0 )
+					to.PrimaryAgentUID = to.PrimaryOrganization.RowId;
 			}
 
 			to.Name = from.Name;

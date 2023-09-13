@@ -82,42 +82,42 @@ namespace workIT.Factories
 
 
 			string connectionString = MainConnection();
-			try
-			{
+			//try
+			//{
 				//TODO - make obsolete
-				using ( SqlConnection c = new SqlConnection( connectionString ) )
-				{
-					//progressively make this obsolete
-					if ( e.EntityTypeId != 1 )
-					{
-						using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
-						{
-							c.Open();
-							command.CommandType = CommandType.StoredProcedure;
-							command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-							command.CommandTimeout = 300;
-							command.ExecuteNonQuery();
-							command.Dispose();
-							c.Close();
-						}
-					}
-					//21-02-05 - is this still useful?
-					//using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
-					//{
-					//	c.Open();
-					//	command.CommandType = CommandType.StoredProcedure;
-					//	command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
-					//	command.CommandTimeout = 300;
-					//	command.ExecuteNonQuery();
-					//	command.Dispose();
-					//	c.Close();
+			//	using ( SqlConnection c = new SqlConnection( connectionString ) )
+			//	{
+			//		//progressively make this obsolete
+			//		if ( e.EntityTypeId != 1 )
+			//		{
+			//			using ( SqlCommand command = new SqlCommand( "[Entity_Cache_Populate]", c ) )
+			//			{
+			//				c.Open();
+			//				command.CommandType = CommandType.StoredProcedure;
+			//				command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+			//				command.CommandTimeout = 300;
+			//				command.ExecuteNonQuery();
+			//				command.Dispose();
+			//				c.Close();
+			//			}
+			//		}
+			//		//21-02-05 - is this still useful?
+			//		//using ( SqlCommand command = new SqlCommand( "[Populate_Entity_SearchIndex]", c ) )
+			//		//{
+			//		//	c.Open();
+			//		//	command.CommandType = CommandType.StoredProcedure;
+			//		//	command.Parameters.Add( new SqlParameter( "@EntityId", e.Id ) );
+			//		//	command.CommandTimeout = 300;
+			//		//	command.ExecuteNonQuery();
+			//		//	command.Dispose();
+			//		//	c.Close();
 
-					//}
-				}
-			}catch (Exception ex)
-			{
-				LoggingHelper.LogError( ex, "CacheManager.PopulateEntityRelatedCaches (Entity_Cache_Populate)" );
-			}
+			//		//}
+			//	}
+			//}catch (Exception ex)
+			//{
+			//	LoggingHelper.LogError( ex, "CacheManager.PopulateEntityRelatedCaches (Entity_Cache_Populate)" );
+			//}
 
 			try
 			{
@@ -127,7 +127,7 @@ namespace workIT.Factories
 					{
 						c.Open();
 
-						//using ( SqlCommand command = new SqlCommand( "[Credential.SummaryCache]", c ) )
+						//Credential.SummaryCache is used by the Credential.ElasticSearch and Credential_Summary
 						using ( SqlCommand command = new SqlCommand( "[Populate_Credential_SummaryCache]", c ) )
 						{
 							command.CommandType = CommandType.StoredProcedure;
@@ -140,10 +140,12 @@ namespace workIT.Factories
 						}
 					}
 
+					// Populate competencies for a credential.
+					// Referenced in CompetencyFrameworkManager.Search
+					//		Used in TagSet micro searches
 					using ( SqlConnection c = new SqlConnection( connectionString ) )
 					{
 						c.Open();
-
 						using ( SqlCommand command = new SqlCommand( "[Populate_Competencies_cache]", c ) )
 						{
 							command.CommandType = CommandType.StoredProcedure;
@@ -257,7 +259,7 @@ namespace workIT.Factories
 				{
 					if ( cache.lastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.IsCredentialAvailableFromCache === Using cached version of Credential, Id: {0}, {1}, key: {2}", cache.Item.Id, cache.Item.Name, key ) );
+						LoggingHelper.DoTrace( 8, string.Format( "===CacheManager.IsCredentialAvailableFromCache === Using cached version of Credential, Id: {0}, {1}, key: {2}", cache.Item.Id, cache.Item.Name, key ) );
 
 						//check if user can update the object
 						//or move these checks to the manager
@@ -297,12 +299,12 @@ namespace workIT.Factories
 						HttpRuntime.Cache.Remove( key );
 						HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 
-						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddCredentialToCache $$$ Updating cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
+						LoggingHelper.DoTrace( 8, string.Format( "===CacheManager.AddCredentialToCache $$$ Updating cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
 
 					}
 					else
 					{
-						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.AddCredentialToCache ****** Inserting new cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
+						LoggingHelper.DoTrace( 8, string.Format( "===CacheManager.AddCredentialToCache ****** Inserting new cached version of credential, Id: {0}, {1}, key: {2}", entity.Id, entity.Name, key ) );
 
 						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddHours( cacheMinutes ), TimeSpan.Zero );
 					}

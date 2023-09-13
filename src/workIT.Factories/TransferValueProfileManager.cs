@@ -15,7 +15,7 @@ using workIT.Utilities;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 using DBEntity = workIT.Data.Tables.TransferValueProfile;
-using ThisEntity = workIT.Models.Common.TransferValueProfile;
+using ThisResource = workIT.Models.Common.TransferValueProfile;
 
 using Views = workIT.Data.Views;
 
@@ -37,7 +37,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -58,6 +58,7 @@ namespace workIT.Factories
 						//add
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
+						efEntity.EntityStateId = entity.EntityStateId = 3;
 
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 						{
@@ -117,7 +118,8 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            efEntity.EntityStateId = entity.EntityStateId = 3;
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -163,7 +165,7 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
@@ -334,7 +336,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					ThisResource entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -381,7 +383,6 @@ namespace workIT.Factories
 					status.AddError( thisClassName + " Error - the save was not successful, but no message provided. " );
 				}
 			}
-
 			catch ( Exception ex )
 			{
 				string message = FormatExceptions( ex );
@@ -392,7 +393,7 @@ namespace workIT.Factories
 			return 0;
 		}
 
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
@@ -408,41 +409,20 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+            //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+            var ceasedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+            if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
+            {
+                ec.IsActive = false;
+            }
+            var statusMessage = "";
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
-		}
-		/// <summary>
-		/// Delete a framework - only if no remaining references!!
-		/// MAY NOT expose initially
-		/// </summary>
-		/// <param name="recordId"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public bool Delete( int recordId, ref string statusMessage )
-		{
-			bool isOK = true;
-			using ( var context = new EntityContext() )
-			{
-				DBEntity p = context.TransferValueProfile.FirstOrDefault( s => s.Id == recordId );
-				if ( p != null && p.Id > 0 )
-				{
-					context.TransferValueProfile.Remove( p );
-					int count = context.SaveChanges();
-				}
-				else
-				{
-					statusMessage = string.Format( "The record was not found: {0}", recordId );
-					isOK = false;
-				}
-			}
-			return isOK;
-
 		}
 
 		/// <summary>
@@ -460,6 +440,8 @@ namespace workIT.Factories
 				statusMessage = thisClassName + ".Delete() Error - a valid CTID must be provided";
 				return false;
 			}
+			int orgId = 0;
+			Guid orgUid = new Guid();
 			using ( var context = new EntityContext() )
 			{
 				try
@@ -472,7 +454,12 @@ namespace workIT.Factories
 					{
 						//TODO - may need a check for existing alignments
 						Guid rowId = efEntity.RowId;
-						var orgUid = efEntity.OwningAgentUid;
+						if ( IsValidGuid( efEntity.OwningAgentUid ) )
+						{
+							Organization org = OrganizationManager.GetBasics( ( Guid ) efEntity.OwningAgentUid );
+							orgId = org.Id;
+							orgUid = org.RowId;
+						}
 						//need to remove from Entity.
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " TransferValueProfile. Id: {0}, Name: {1}, Ctid: {2}", efEntity.Id, efEntity.Name, efEntity.CTID );
@@ -494,22 +481,14 @@ namespace workIT.Factories
 							} );
 							isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, efEntity.Id, ref statusMessage );
-						}
-						if ( orgUid != null )
-						{
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
+
+							//add pending request 
 							List<String> messages = new List<string>();
-							//mark owning org for updates 
-							//	- nothing yet from frameworks
-							var org = OrganizationManager.GetBasics( (Guid)orgUid );
-							if ( org != null && org.Id > 0 )
-							{
-								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, org.Id, 1, ref messages );
-							}
-							else
-							{
-								//issue with org ctid not found
-							}
+							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, efEntity.Id, ref messages );
+
+							//mark owning org for updates (actually should be covered by ReindexAgentForDeletedArtifact
+							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
 						}
 					}
 					else
@@ -530,7 +509,7 @@ namespace workIT.Factories
 			}
 			return isValid;
 		}
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -571,9 +550,9 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
-		public static ThisEntity Get( int profileId, bool gettingAll = true )
+		public static ThisResource Get( int profileId, bool gettingAll = true )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( profileId == 0 )
 				return entity;
 			try
@@ -604,9 +583,9 @@ namespace workIT.Factories
 		}//
 
 
-		public static ThisEntity GetByUrl( string SubjectWebpage )
+		public static ThisResource GetByUrl( string SubjectWebpage )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( SubjectWebpage ) )
 				return entity;
 			try
@@ -632,9 +611,9 @@ namespace workIT.Factories
 			return entity;
 		}//
 
-		public static ThisEntity GetByCtid( string ctid, bool gettingAll = false )
+		public static ThisResource GetByCtid( string ctid, bool gettingAll = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			try
@@ -729,7 +708,7 @@ namespace workIT.Factories
 
 			try
 			{
-				list = Entity_LearningOpportunityManager.LearningOpps_GetAll( parent.EntityUid, true, false,0 );
+				list = Entity_LearningOpportunityManager.TargetResource_GetAll( parent.EntityUid, true, false,0 );
 			}
 			catch ( Exception ex )
 			{
@@ -737,7 +716,7 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 			//want to ensure fields from create are not wiped
 			//to.Id = from.Id;
@@ -749,7 +728,7 @@ namespace workIT.Factories
 			output.CTID = input.CTID;
 			output.SubjectWebpage = input.SubjectWebpage ?? "";
 			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
-			output.OwningAgentUid = input.OwningAgentUid;
+			output.OwningAgentUid = input.PrimaryAgentUID;
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
 			//need to handle a partial date
 			if ( !string.IsNullOrWhiteSpace( input.StartDate ) )
@@ -774,13 +753,15 @@ namespace workIT.Factories
 			else
 				output.EndDate = null;
 
+            //
+            output.SupersededBy = input.SupersededBy;
+            output.Supersedes = input.Supersedes;
 
+            //output.LifecycleStatusType = string.IsNullOrWhiteSpace( input.LifecycleStatusType) ? "lifecycle:Active" : input.LifecycleStatusType;
+            //output.CodedNotation = input.CodedNotation;
 
-			//output.LifecycleStatusType = string.IsNullOrWhiteSpace( input.LifecycleStatusType) ? "lifecycle:Active" : input.LifecycleStatusType;
-			//output.CodedNotation = input.CodedNotation;
-
-			//just store the json
-			output.IdentifierJson = input.IdentifierJson;
+            //just store the json
+            output.IdentifierJson = input.IdentifierJson;
 			output.TransferValueJson = input.TransferValueJson;
 			output.TransferValueFromJson = input.TransferValueFromJson;
 			output.TransferValueForJson = input.TransferValueForJson;
@@ -803,7 +784,7 @@ namespace workIT.Factories
 			return json;
 		} //
 
-		public static void MapFromDB( DBEntity input, ThisEntity output, bool gettingAll = true )
+		public static void MapFromDB( DBEntity input, ThisResource output, bool gettingAll = true )
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
@@ -820,11 +801,11 @@ namespace workIT.Factories
 				output.LastUpdated = ( DateTime )input.LastUpdated;
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
-				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+				output.PrimaryAgentUID = ( Guid )input.OwningAgentUid;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
 
 				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 				output.OwnerRoles = orp.AgentRole;
 			}
 			//
@@ -850,7 +831,7 @@ namespace workIT.Factories
 					output.LifeCycleStatus = ct.Title;
 				}
 				//retain example using an Enumeration for by other related tableS??? - old detail page?
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE );
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
 				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
 			}
 			else
@@ -863,9 +844,12 @@ namespace workIT.Factories
 
 				}
 			}
-			//output.CodedNotation = input.CodedNotation;
-			//20-12-16 changed to a string as partial dates are possible
-			if ( !string.IsNullOrWhiteSpace( input.StartDate ) )
+            //
+            output.SupersededBy = input.SupersededBy;
+            output.Supersedes = input.Supersedes;
+            //output.CodedNotation = input.CodedNotation;
+            //20-12-16 changed to a string as partial dates are possible
+            if ( !string.IsNullOrWhiteSpace( input.StartDate ) )
 				output.StartDate = input.StartDate;
 			else
 				output.StartDate = "";
@@ -951,8 +935,9 @@ namespace workIT.Factories
 						output.TransferValueForCredential.Add( cred );
 				}
 			}
-
-
+			//check for presence in transfer intermediaries
+			//
+			output.HasTransferIntermediary = TransferIntermediaryTransferValueManager.GetAllTransferIntermediariesForTVP( output.Id );
 			//this should be a summary level, not the full TVP
 			output.DerivedFrom = Entity_TransferValueProfileManager.GetAll( output.RowId );
 
@@ -972,43 +957,70 @@ namespace workIT.Factories
 
 		}
 
-		#endregion
+        #endregion
 
-		//public static int Count_ForOwningOrg( string orgCtid )
-		//{
-		//	int totalRecords = 0;
-		//	if ( string.IsNullOrWhiteSpace( orgCtid ) || orgCtid.Trim().Length != 39 )
-		//		return totalRecords;
+        //public static int Count_ForOwningOrg( string orgCtid )
+        //{
+        //	int totalRecords = 0;
+        //	if ( string.IsNullOrWhiteSpace( orgCtid ) || orgCtid.Trim().Length != 39 )
+        //		return totalRecords;
 
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		var query = ( from entity in context.TransferValueProfile
-		//					  join org in context.Organization on entity.OrganizationCTID equals org.CTID
-		//					  where entity.OrganizationCTID.ToLower() == orgCtid.ToLower()
-		//						   && org.EntityStateId > 1 && entity.EntityStateId == 3
-		//					  select new
-		//					  {
-		//						  entity.CTID
-		//					  } );
-		//		//until ed frameworks is cleaned up, need to prevent dups != 39
-		//		var results = query.Select( s => s.CTID ).Distinct()
-		//			.ToList();
+        //	using ( var context = new EntityContext() )
+        //	{
+        //		var query = ( from entity in context.TransferValueProfile
+        //					  join org in context.Organization on entity.OrganizationCTID equals org.CTID
+        //					  where entity.OrganizationCTID.ToLower() == orgCtid.ToLower()
+        //						   && org.EntityStateId > 1 && entity.EntityStateId == 3
+        //					  select new
+        //					  {
+        //						  entity.CTID
+        //					  } );
+        //		//until ed frameworks is cleaned up, need to prevent dups != 39
+        //		var results = query.Select( s => s.CTID ).Distinct()
+        //			.ToList();
 
-		//		if ( results != null && results.Count > 0 )
-		//		{
-		//			totalRecords = results.Count();
+        //		if ( results != null && results.Count > 0 )
+        //		{
+        //			totalRecords = results.Count();
 
-		//		}
-		//	}
+        //		}
+        //	}
 
-		//	return totalRecords;
-		//}
+        //	return totalRecords;
+        //}
 
-		public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows )
+        public static List<string> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
+        {
+            bool autocomplete = true;
+            var results = new List<string>();
+            //
+            List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+            bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
+            string prevName = "";
+            foreach ( var item in list )
+            {
+                //note excluding duplicates may have an impact on selected max terms
+                if ( string.IsNullOrWhiteSpace( item.OrganizationName ) || !appendingOrgNameToAutocomplete )
+                {
+                    if ( item.Name.ToLower() != prevName )
+                        results.Add( item.Name );
+                }
+                else
+                {
+                    results.Add( item.Name + " ('" + item.OrganizationName + "')" );
+                }
+
+                prevName = item.Name.ToLower();
+            }
+            return results;
+        }
+
+
+        public static List<ThisResource> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new ThisEntity();
-			var list = new List<ThisEntity>();
+			var item = new ThisResource();
+			var list = new List<ThisResource>();
 			var result = new DataTable();
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -1050,11 +1062,17 @@ namespace workIT.Factories
 
 				foreach ( DataRow dr in result.Rows )
 				{
-					item = new ThisEntity();
+					item = new ThisResource();
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.CTID = GetRowColumn( dr, "CTID", "" );
 					item.Name = GetRowColumn( dr, "Name", "???" );
-					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+                    //for autocomplete, only need name
+                    if ( autocomplete )
+                    {
+                        list.Add( item );
+                        continue;
+                    }
+                    item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
 					item.Description = GetRowColumn( dr, "Description", "" );
 					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
 					//item.CodedNotation = GetRowColumn( dr, "CodedNotation", "" );
@@ -1087,11 +1105,11 @@ namespace workIT.Factories
 		/// <param name="pageSize"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> DoTransferIntermediarySearch( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows )
+		public static List<ThisResource> DoTransferIntermediarySearch( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new ThisEntity();
-			var list = new List<ThisEntity>();
+			var item = new ThisResource();
+			var list = new List<ThisResource>();
 			var result = new DataTable();
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -1133,7 +1151,7 @@ namespace workIT.Factories
 
 				foreach ( DataRow dr in result.Rows )
 				{
-					item = new ThisEntity();
+					item = new ThisResource();
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.CTID = GetRowColumn( dr, "CTID", "" );
 					item.Name = GetRowColumn( dr, "Name", "???" );

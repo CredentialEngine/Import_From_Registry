@@ -8,14 +8,13 @@ using Newtonsoft.Json;
 
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
+using MPM=workIT.Models.ProfileModels;
 using workIT.Utilities;
 //using workIT.Models.Helpers.Cass;
 using ApiFramework = workIT.Models.API.CompetencyFramework;
-using DBEntity = workIT.Data.Tables.CompetencyFramework_Competency;
+using DBResource = workIT.Data.Tables.CompetencyFramework_Competency;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ThisEntity = workIT.Models.ProfileModels.Competency;
-using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
+using ThisResource = workIT.Models.ProfileModels.Competency;
 
 
 namespace workIT.Factories
@@ -23,10 +22,11 @@ namespace workIT.Factories
 	public class CompetencyFrameworkCompetencyManager : BaseFactory
 	{
 		static string thisClassName = "CompetencyFrameworkCompetencyManager";
+        string EntityType = "Competency";
+        int EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY;
+        #region Persistance ===================
 
-		#region Persistance ===================
-
-		public bool SaveList( int competencyFrameworkId, List<ThisEntity> list, ref SaveStatus status )
+        public bool SaveList( MPM.CompetencyFramework competencyFramework, List<ThisResource> list, ref SaveStatus status )
 		{
 			//will need to do a delete all or take the approach for entity address:
 			//- read
@@ -43,12 +43,12 @@ namespace workIT.Factories
 
 			foreach (var entity in list)
 			{
-				entity.FrameworkId = competencyFrameworkId;
-				Save( entity, updateDate, ref status );
+				entity.FrameworkId = competencyFramework.Id;
+				Save( competencyFramework, entity, updateDate, ref status );
 			}
 
 			//delete any records with last updated less than updateDate
-			DeleteAll( competencyFrameworkId, ref status, updateDate );
+			DeleteAll( competencyFramework.Id, ref status, updateDate );
 			return isAllValid;
 		}
 
@@ -58,12 +58,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, DateTime updateDate, ref SaveStatus status )
+		public bool Save( MPM.CompetencyFramework competencyFramework, ThisResource entity, DateTime updateDate, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
 
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -77,7 +77,7 @@ namespace workIT.Factories
 					if ( entity.Id == 0 )
 					{
 						//add
-						efEntity = new DBEntity();
+						efEntity = new DBResource();
 						MapToDB( entity, efEntity );
 
 						if ( IsValidDate( entity.Created ) )
@@ -109,8 +109,12 @@ namespace workIT.Factories
 						}
 						else
 						{
-							//
-						}
+                            entity.RowId = efEntity.RowId;
+                            entity.Created = ( DateTime ) efEntity.Created;
+                            entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
+                            entity.Id = efEntity.Id;
+                            UpdateEntityCache( competencyFramework, entity, ref status );
+                        }
 					}
 					else
 					{
@@ -144,8 +148,12 @@ namespace workIT.Factories
 								//	efEntity.LastUpdated = DateTime.Now;
 
 								count = context.SaveChanges();
-								
-							}
+                                entity.LastUpdated = updateDate;
+                                UpdateEntityCache( competencyFramework, entity, ref status );
+                            }
+						} else
+						{
+							//what
 						}
 					}
 				}
@@ -158,7 +166,38 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool DeleteAll( int competencyFrameworkId, ref SaveStatus status, DateTime? lastUpdated = null )
+        public void UpdateEntityCache( MPM.CompetencyFramework parent, ThisResource document, ref SaveStatus status )
+        {
+            EntityCache ec = new EntityCache()
+            {
+                EntityTypeId = EntityTypeId,
+                EntityType = EntityType,
+                EntityStateId = 3,
+                EntityUid = document.RowId,
+                ParentEntityType = "CompetencyFramework",
+                ParentEntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
+                ParentEntityId = parent.RelatedEntityId,
+                ParentEntityUid = parent.RowId,
+
+                BaseId = document.Id,
+                Description = "Framework Competency",
+                //a list
+                //SubjectWebpage = document.SubjectWebpage,
+                CTID = document.CTID,
+                Created = ( DateTime ) document.Created,
+                LastUpdated = ( DateTime ) document.LastUpdated,
+                Name = document.CompetencyText,
+                OwningAgentUID = parent.PrimaryAgentUID,
+
+            };
+
+            var statusMessage = "";
+            if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+            {
+                status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.CompetencyText, document.Id, statusMessage ) );
+            }
+        }
+        public bool DeleteAll( int competencyFrameworkId, ref SaveStatus status, DateTime? lastUpdated = null )
 		{
 			bool isValid = true;
 			//Entity parent = EntityManager.GetEntity( parentUid );
@@ -249,7 +288,7 @@ namespace workIT.Factories
 		}
 
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -265,9 +304,9 @@ namespace workIT.Factories
 		#endregion
 		#region  retrieval ==================
 
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			try
@@ -275,7 +314,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					//lookup by frameworkUri, or SourceUrl
-					DBEntity item = context.CompetencyFramework_Competency
+					DBResource item = context.CompetencyFramework_Competency
 							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 					if ( item != null && item.Id > 0 )
@@ -290,16 +329,16 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static ThisEntity Get( int profileId )
+		public static ThisResource Get( int profileId )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( profileId == 0 )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.CompetencyFramework_Competency
+					DBResource item = context.CompetencyFramework_Competency
 							.SingleOrDefault( s => s.Id == profileId );
 
 					if ( item != null && item.Id > 0 )
@@ -314,7 +353,7 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBResource output )
 		{
 			//want to ensure fields from create are not wiped
 			if ( output.Id == 0 )
@@ -340,7 +379,7 @@ namespace workIT.Factories
 			}
 		} //
 
-		public static void MapFromDB( DBEntity input, ThisEntity output )
+		public static void MapFromDB( DBResource input, ThisResource output )
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
@@ -355,7 +394,7 @@ namespace workIT.Factories
 			if ( !string.IsNullOrEmpty( output.CompetencyDetailJson ) )
 			{
 				//details
-				output.CompetencyDetail = JsonConvert.DeserializeObject<CompetencyDetail>( output.CompetencyDetailJson );
+				output.CompetencyDetail = JsonConvert.DeserializeObject<MPM.CompetencyDetail>( output.CompetencyDetailJson );
 			}
 
 			if ( input.Created != null )

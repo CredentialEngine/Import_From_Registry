@@ -14,16 +14,31 @@ using EntityContext = workIT.Data.Tables.workITEntities;
 using DBEntity = workIT.Data.Tables.Entity_HasPathwayComponent;
 using ThisEntity = workIT.Models.Common.Entity_HasPathwayComponent;
 using System.Web.UI;
+using Nest;
 
 namespace workIT.Factories
 {
 	public class Entity_PathwayComponentManager : BaseFactory
 	{
-
-		/// <summary>
-		/// if true, return an error message if the HasPathwayComponent is already associated with the parent
-		/// </summary>
-		private bool ReturningErrorOnDuplicate { get; set; }
+        #region Relationships 
+        /*
+		Id	Title						InverseTitle
+		1	Has Destination Component	Is Destination Component Of
+		2	Is Child Of					Has Child
+		3	Has Child					Is Child Of
+		4	Precedes					Preceded By
+		5	Preceded					By	Precedes
+		6	Target Component			Is Target Component Of
+		7	Has Part					Is Part Of
+		*/
+        public static int Relationship_IsDestinationComponent = 1;
+        public static int Relationship_IsChildOf = 2;
+        public static int Relationship_HasChild = 3;
+        #endregion
+        /// <summary>
+        /// if true, return an error message if the HasPathwayComponent is already associated with the parent
+        /// </summary>
+        private bool ReturningErrorOnDuplicate { get; set; }
 		public Entity_PathwayComponentManager()
 		{
 			ReturningErrorOnDuplicate = false;
@@ -35,7 +50,7 @@ namespace workIT.Factories
 		static string thisClassName = "Entity_PathwayComponentManager";
 
 		/// <summary>
-		/// 
+		/// Get all target components for a condition
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <param name="componentRelationshipTypeId"></param>
@@ -80,14 +95,13 @@ namespace workIT.Factories
 			return list;
 		}
 
-
-		/// <summary>
-		/// Get all components for the provided entity
-		/// The returned entities are just the base
-		/// </summary>
-		/// <param name="parentUid"></param>
-		/// <returns></returns>
-		public static List<PathwayComponent> GetAll( Guid parentUid, int childComponentsAction = 1 )
+        /// <summary>
+        /// Get all components for the provided entity
+        /// The returned entities are just the base
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returns>
+        public static List<PathwayComponent> GetAll( Guid parentUid, int childComponentsAction = 1 )
 		{
 			List<PathwayComponent> list = new List<PathwayComponent>();
 			PathwayComponent entity = new PathwayComponent();
@@ -110,7 +124,7 @@ namespace workIT.Factories
 					List<DBEntity> results = context.Entity_HasPathwayComponent
 							.Where( s => s.EntityId == parent.Id )
 							.OrderBy( s => s.Created )
-							//.OrderBy( s => s.ComponentRelationshipTypeId )
+							.OrderBy( s => s.ComponentRelationshipTypeId )		//????
 							.ThenBy( s => s.PathwayComponent.Name )
 							.ToList();
 
@@ -140,14 +154,53 @@ namespace workIT.Factories
 			return list;
 		}
 
-		/// <summary>
-		/// Get list of particular relationships, like hasChild
-		/// May just want the component since getting a particulary relationship
-		/// </summary>
-		/// <param name="parentEntityId"></param>
-		/// <param name="pathwayComponentId"></param>
-		/// <returns></returns>
-		public static List<ThisEntity> GetAll( int parentEntityId, int componentRelationshipTypeId, int childComponentsAction = 1 )
+        public static List<PathwayComponent> GetDestinationComponent( Guid parentUid, int childComponentsAction = 1 )
+        {
+            List<PathwayComponent> list = new List<PathwayComponent>();
+            PathwayComponent entity = new PathwayComponent();
+
+            Entity parent = EntityManager.GetEntity( parentUid );
+
+            try
+            {
+                using (var context = new EntityContext())
+                {
+                    //should only be one. 
+                    List<DBEntity> results = context.Entity_HasPathwayComponent
+                            .Where( s => s.EntityId == parent.Id && s.ComponentRelationshipTypeId == Relationship_IsDestinationComponent )
+                            .OrderBy( s => s.Created )
+                            .ThenBy( s => s.PathwayComponent.Name ) //not sure
+                            .ToList();
+
+                    if (results != null && results.Count > 0)
+                    {
+                        foreach (DBEntity item in results)
+                        {
+                            //actually the relationship type is not applicable in the component
+                            entity = new PathwayComponent() { ComponentRelationshipTypeId = item.ComponentRelationshipTypeId };
+                            //not sure if we will have variances in what is returned
+                            PathwayComponentManager.MapFromDB( item.PathwayComponent, entity, childComponentsAction );
+                            list.Add( entity );
+                        }
+                    }
+                    return list;
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".Entity_PathwayComponent_GetAll" );
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Get list of particular relationships, like hasChild
+        /// May just want the component since getting a particulary relationship
+        /// </summary>
+        /// <param name="parentEntityId"></param>
+        /// <param name="pathwayComponentId"></param>
+        /// <returns></returns>
+        public static List<ThisEntity> GetAll( int parentEntityId, int componentRelationshipTypeId, int childComponentsAction = 1 )
 		{
 			var entity = new ThisEntity();
 			var list = new List<ThisEntity>();
@@ -437,10 +490,11 @@ namespace workIT.Factories
 		}
 		public bool Replace( Guid parentUid, int componentRelationshipTypeId, List<PathwayComponent> profiles, ref SaveStatus status )
 		{
-			if ( profiles == null || !profiles.Any() )
-			{
-				return true;
-			}
+			//23-04-28 mp - need to remove existing not in the current import
+			//if ( profiles == null || !profiles.Any() )
+			//{
+   //             return true;
+			//}
 			status.HasSectionErrors = false;
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
@@ -457,8 +511,15 @@ namespace workIT.Factories
 				{
 					if ( profiles == null || !profiles.Any() )
 					{
-						//no action, this is used initially by bulk upload
-					}
+                        //check for existing that should be removed
+                        var existing = context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id && s.ComponentRelationshipTypeId == componentRelationshipTypeId ).ToList();
+						if ( existing != null && existing.Any() )
+							foreach ( var item in existing )
+							{
+								context.Entity_HasPathwayComponent.Remove( item );
+								context.SaveChanges();
+							}
+                    }
 					else
 					{
 						var existing = context.Entity_HasPathwayComponent.Where( s => s.EntityId == parent.Id && s.ComponentRelationshipTypeId == componentRelationshipTypeId );

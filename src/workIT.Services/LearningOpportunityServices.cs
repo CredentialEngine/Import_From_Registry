@@ -1,22 +1,26 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Web;
 
-using workIT.Models;
-using workIT.Models.Common;
-using workIT.Models.Search;
-using WMA = workIT.Models.API;
-using ElasticHelper = workIT.Services.ElasticServices;
-
-using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
-using ThisSearcvhEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
-using EntityMgr = workIT.Factories.LearningOpportunityManager;
-using workIT.Utilities;
 using workIT.Factories;
-using System.Threading;
+using workIT.Models;
+using workIT.Models.Elastic;
+using workIT.Models.Search;
+using workIT.Utilities;
+
+using ElasticHelper = workIT.Services.ElasticServices;
+using EntityMgr = workIT.Factories.LearningOpportunityManager;
+using ThisResource = workIT.Models.ProfileModels.LearningOpportunityProfile;
+using WMA = workIT.Models.API;
+//using System.Web.UI.WebControls;
+//using Nest;
+//using static workIT.Models.Search.ThirdPartyApiModels.GoogleGeocoding;
+//using Nest;
 
 namespace workIT.Services
 {
@@ -25,39 +29,47 @@ namespace workIT.Services
         static string thisClassName = "LearningOpportunityServices";
         #region import
 
-        public bool Import( ThisEntity entity, ref SaveStatus status )
+        public bool Import( ThisResource resource, ref SaveStatus status )
         {
             LoggingHelper.DoTrace( 7, thisClassName + ".Import - entered" );
             //do a get, and add to cache before updating
-            if ( entity.Id > 0 )
+            if ( resource.Id > 0 )
             {
                 //note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
                 if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
                 {
                     if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-                        GetDetail( entity.Id );
+                        GetDetail( resource.Id );
                 }
-
+                string key = "lopp_" + resource.Id.ToString();
+                ServiceHelper.ClearCacheEntity( key );
             }
-            bool isValid = new EntityMgr().Save( entity, ref status );
+            bool isValid = new EntityMgr().Save( resource, ref status );
             List<string> messages = new List<string>();
-            if ( entity.Id > 0 )
+            if ( resource.Id > 0 )
             {
                 if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-                    CacheManager.RemoveItemFromCache( "lopp_", entity.Id );
+                    CacheManager.RemoveItemFromCache( "lopp_", resource.Id );
+
+                //TBD where to save this? Could be directly on resource, or a separate table
+                //have to take into account properties dependent on external changes
+                if ( UtilityManager.GetAppKeyValue( "usingNewLoppElasticProcess", false ) )
+                {
+                    var lopp = API.LearningOpportunityServices.GetDetailForElastic( resource.Id, true );
+                }
 
                 if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
                     //update cache
-                    ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+                    ThreadPool.QueueUserWorkItem( UpdateCaches, resource );
                     //new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
                     //add owning org to reindex queue
 
                 }
                 else
                 {
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, entity.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+                    new SearchPendingReindexManager().Add( resource.LearningEntityTypeId, resource.Id, 1, ref messages );
+                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
                     if ( messages.Count > 0 )
                         status.AddWarningRange( messages );
                 }
@@ -105,30 +117,30 @@ namespace workIT.Services
         }
         #endregion
         #region retrievals
-        public static ThisEntity GetByCtid( string ctid )
+        public static ThisResource GetByCtid( string ctid )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
 
             return EntityMgr.GetByCtid( ctid );
         }
-        public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+        public static ThisResource GetDetailByCtid( string ctid, bool skippingCache = false )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
             var learningOpportunity = EntityMgr.GetByCtid( ctid );
 
             return GetDetail( learningOpportunity.Id, skippingCache );
         }
-        public static ThisEntity GetBasic( int id, bool forEditView = false )
+        public static ThisResource GetBasic( int id, bool forEditView = false )
         {
-            ThisEntity entity = EntityMgr.GetBasic( id );
+            ThisResource entity = EntityMgr.GetBasic( id );
 
             return entity;
         }
-        public static ThisEntity GetDetail( int id, bool skippingCache = false, bool isAPIRequest = false )
+        public static ThisResource GetDetail( int id, bool skippingCache = false, bool isAPIRequest = false )
         {
             WMA.DetailRequest request = new WMA.DetailRequest()
             {
@@ -138,7 +150,17 @@ namespace workIT.Services
             };
             return GetDetail( request );
         }
-        public static ThisEntity GetDetail( WMA.DetailRequest request )
+        public static ThisResource GetDetailForElastic( int id, bool isAPIRequest = false )
+        {
+            WMA.DetailRequest request = new WMA.DetailRequest()
+            {
+                Id = id,
+                SkippingCache = true,
+                IsAPIRequest = isAPIRequest
+            };
+            return GetDetail( request );
+        }
+        public static ThisResource GetDetail( WMA.DetailRequest request )
         {
             int cacheMinutes = UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 );
             DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
@@ -169,7 +191,7 @@ namespace workIT.Services
 
             DateTime start = DateTime.Now;
 
-            ThisEntity entity = EntityMgr.GetForDetail( request.Id, request.IsAPIRequest );
+            ThisResource entity = EntityMgr.GetForDetail( request.Id, request.IsAPIRequest );
 
             DateTime end = DateTime.Now;
             int elasped = ( end - start ).Seconds;
@@ -212,7 +234,7 @@ namespace workIT.Services
 
 
         #region Searches
-        public static List<string> Autocomplete( MainSearchInput data, int widgetId = 0 )
+        public List<string> Autocomplete( MainSearchInput data, int widgetId = 0 )
         {
             string where = "";
             int totalRows = 0;
@@ -220,7 +242,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticHelper.LearningOppAutoComplete( data, data.PageSize, ref totalRows );
+                return new ElasticHelper().LearningOppAutoComplete( data, data.PageSize, ref totalRows );
             }
             else
             {
@@ -234,7 +256,7 @@ namespace workIT.Services
                 return EntityMgr.Autocomplete( where, 1, data.PageSize, ref totalRows );
             }
         }
-        public static List<string> AutocompleteOld( string keyword, int maxTerms, int widgetId = 0 )
+        public List<string> AutocompleteOld( string keyword, int maxTerms, int widgetId = 0 )
         {
             string where = "";
             int totalRows = 0;
@@ -246,7 +268,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticHelper.LearningOppAutoCompleteOld( keyword, maxTerms, ref totalRows );
+                return new ElasticHelper().LearningOppAutoCompleteOld( keyword, maxTerms, ref totalRows );
             }
             else
             {
@@ -258,20 +280,20 @@ namespace workIT.Services
         }
 
 
-        public static List<ThisEntity> Search( MainSearchInput data, ref int pTotalRows )
+        public List<ThisResource> Search( MainSearchInput data, ref int pTotalRows, string searchType = "learningopportunity" )
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticLearningOppSearch", false ) )
             {
-                return ElasticHelper.LearningOppSearch( data, ref pTotalRows );
+                return new ElasticHelper().LearningOppSearch( data, ref pTotalRows );
             }
             else
             {
-                return DoSearch( data, ref pTotalRows );
+                return DoSearch( data, ref pTotalRows, searchType );
             }
 
         }
 
-        public static List<ThisEntity> DoSearch( MainSearchInput data, ref int totalRows )
+        private List<ThisResource> DoSearch( MainSearchInput data, ref int totalRows, string searchType = "learningopportunity" )
         {
             string where = "";
             List<string> competencies = new List<string>();
@@ -450,8 +472,86 @@ namespace workIT.Services
         }
         #endregion
 
+        #region Elastic related
+        /// <summary>
+        /// temp for testing new approach for using detial data
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="pageNumber"></param>
+        /// <param name="totalRows"></param>
+        /// <returns></returns>
+        public List<LearningOppIndex> LearningOpp_SearchForElastic( string filter, int pageSize, int pageNumber, ref int totalRows )
+        {
+            DateTime started = DateTime.Now;
+
+            var list = ElasticManager.LearningOpp_SearchForElastic( filter, pageSize, pageNumber, ref totalRows );
+            DateTime searchProcCompleted = DateTime.Now;
+            var emgrDuration = searchProcCompleted.Subtract( started ).TotalSeconds;
+            //this is displayed in elastic manager
+            //LoggingHelper.DoTrace( 2, string.Format( thisClassName + ".LearningOpp_SearchForElastic - Call to elasticManager: page #{0}, took {1} seconds", pageNumber, emgrDuration ) );
+
+            //reset for just this step
+            var detailStarted = DateTime.Now;
+            var cntr = 0;
+            var currentId = 0;
+            try
+            {
+
+                foreach ( var index in list )
+                {
+                    cntr++;
+                    currentId = index.Id;
+                    if ( cntr % 100 == 0 )
+                        LoggingHelper.DoTrace( 2, string.Format( "      .... LearningOpp_SearchForElastic processing record: {0}", cntr ) );
+
+
+                    //==========================
+                    //TBD. just time initially if there are outcomes?
+
+                    DateTime getDetailStarted = DateTime.Now;
+                    //actually an alternate may be to populate from factory and then call API mapping method
+                    var lopp = API.LearningOpportunityServices.GetDetailForElastic( index.Id, true );
+                    DateTime getDetailCompleted = DateTime.Now;
+                    var getDuration = getDetailCompleted.Subtract( getDetailStarted ).TotalSeconds;
+                    
+                    LoggingHelper.DoTrace( 7, string.Format( "LearningOpp_SearchForElastic - Page: {0}, #{1} Retrieved API Detail '{2}' record, in {3} seconds", pageNumber, cntr, currentId, getDuration ) );
+                    //try to remove null properties before saving?
+                    //var lopp2 = JsonConvert.SerializeObject( lopp, JsonHelper.GetJsonSettings( false ) );
+                    //var lopp3= JsonConvert.DeserializeObject<ThisResource>( lopp2 );
+                    //actually can we then just the string version here?
+                    //      NO
+                    //index.ResourceDetail = JObject.FromObject( lopp3 );
+                    index.ResourceDetail = JObject.FromObject( lopp );
+
+                   // index.ResourceDetail3 = JObject.FromObject( lopp ).ToString( Formatting.None );
+
+                    //index.ResourceDetail2 = lopp;
+
+                }
+            }
+            catch ( Exception ex )
+            {
+                var msg = BaseFactory.FormatExceptions( ex );
+                LoggingHelper.DoTrace( 2, string.Format( "LearningOpp_SearchForElastic. Last Row: {0}, LoppId: {1} Exception: \r\n{2}", cntr, currentId, msg ) );
+            }
+            finally
+            {
+                DateTime completed = DateTime.Now;
+                //
+                var detailDuration = completed.Subtract( detailStarted ).TotalSeconds;
+                var totalLoaded = (pageNumber -1 ) * pageSize + cntr;
+                var totalDuration = completed.Subtract( started ).TotalSeconds;
+                LoggingHelper.DoTrace( 2, $"LearningOpp_SearchForElastic - Page: {pageNumber}. Processed {cntr} records. Loaded: {totalLoaded} out of {totalRows}. Total duration: {totalDuration} seconds, emanagerDuration: {emgrDuration}, detailDuration: {detailDuration}" );
+            }
+            return list;
+        }
+
+        #endregion
 
     }
+
+
     public class CachedLopp
     {
         public CachedLopp()
@@ -459,7 +559,7 @@ namespace workIT.Services
             lastUpdated = DateTime.Now;
         }
         public DateTime lastUpdated { get; set; }
-        public ThisEntity Item { get; set; }
+        public ThisResource Item { get; set; }
 
     }
 }

@@ -100,7 +100,7 @@ namespace workIT.Factories
 					count = context.SaveChanges();
 					//update profile record so doesn't get deleted
 					entity.Id = efEntity.Id;
-					entity.ParentId = parent.Id;
+					entity.RelatedEntityId = parent.Id;
 					entity.RowId = efEntity.RowId;
 					if ( count == 0 )
 					{
@@ -113,7 +113,7 @@ namespace workIT.Factories
 				}
 				else
 				{
-					entity.ParentId = parent.Id;
+					entity.RelatedEntityId = parent.Id;
 
 					efEntity = context.Entity_ContactPoint.SingleOrDefault( s => s.Id == entity.Id );
 					if ( efEntity != null && efEntity.Id > 0 )
@@ -271,12 +271,13 @@ namespace workIT.Factories
 
 			if ( profile.PhoneNumbers.Count > 0 ||
 				profile.Emails.Count > 0 ||
+				profile.FaxNumber.Count > 0 ||
 				profile.SocialMediaPages.Count > 0 )
 			{
 				hasContent = true;
 			}
 			if ( !hasContent )
-				status.AddWarning( "A contact point must have at least one phone, email, or URL" );
+				status.AddWarning( "A contact point must have at least one phone, fax, email, or SocialMedia" );
 
 			
 			return status.WasSectionValid;
@@ -378,7 +379,7 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-			to.ParentId = from.ParentEntityId;
+			to.RelatedEntityId = from.ParentEntityId;
 			if ( from.Entity != null )
 				to.ParentRowId = from.Entity.EntityUid;
 			to.ProfileName = from.Name;

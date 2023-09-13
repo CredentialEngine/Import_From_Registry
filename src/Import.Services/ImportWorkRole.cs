@@ -8,10 +8,13 @@ using Newtonsoft.Json.Linq;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Services;
+
 using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.WorkRoleServices;
+using ResourceServices = workIT.Services.WorkRoleServices;
+using APIResourceServices = workIT.Services.API.WorkRoleServices;
 using InputEntity = RA.Models.JsonV2.WorkRole;
 using JInput = RA.Models.JsonV2;
 using ThisEntity = workIT.Models.Common.WorkRole;
@@ -22,7 +25,9 @@ namespace Import.Services
 	{
 		int entityTypeId = CodesManager.ENTITY_TYPE_WORKROLE_PROFILE;
 		string thisClassName = "ImportWorkRoles";
-		ImportManager importManager = new ImportManager();
+		string resourceType = "WorkRole";
+
+        ImportManager importManager = new ImportManager();
 		ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
@@ -44,7 +49,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -85,7 +90,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -184,7 +189,7 @@ namespace Import.Services
 				Y		ceterms:codedNotation
 				Y		ceterms:ctid
 				Y		ceterms:description
-				ceterms:HasTask			
+				Y		ceterms:HasTask			
 				Y		ceterms:identifier
 				Y		ceterms:name
 				Y		ceterms:versionIdentifier
@@ -193,7 +198,7 @@ namespace Import.Services
 			LoggingHelper.DoTrace( 6, "ImportWorkRoles - entered." );
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
 			InputEntity input = new InputEntity();
 			var mainEntity = new Dictionary<string, object>();
@@ -274,8 +279,19 @@ namespace Import.Services
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.CTID = input.CTID;
-				//TBD handling of referencing third party publisher
-				helper.MapOrganizationPublishedBy( output, ref status );
+                //NOTE: there is no asserting org for occupation, etc. It doesn't make sense. Add the data publisher as the primary
+                if ( BaseFactory.IsValidCtid( status.DocumentOwnedBy ) )
+                {
+                    output.PrimaryOrganization = OrganizationServices.GetSummaryByCtid( status.DocumentOwnedBy );
+                    if ( output.PrimaryOrganization != null && output.PrimaryOrganization.Id > 0 )
+                        output.PrimaryAgentUID = output.PrimaryOrganization.RowId;
+                }
+                else
+                {
+                    //always should be here
+                }
+                //TBD handling of referencing third party publisher
+                helper.MapOrganizationPublishedBy( output, ref status );
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
@@ -290,9 +306,16 @@ namespace Import.Services
 				output.CodedNotation = input.CodedNotation;
 				//
 				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
-				//
-				//HasTask
-				if ( input.HasTask != null && input.HasTask.Count > 0 )
+				if ( output.Comment != null && output.Comment.Count() > 0 )
+				{
+					output.CommentJson = JsonConvert.SerializeObject( output.Comment, MappingHelperV3.GetJsonSettings() );
+				}
+                //
+
+                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+                    output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
+                //HasTask
+                if ( input.HasTask != null && input.HasTask.Count > 0 )
 					output.HasTask = helper.MapEntityReferences( "WorkRole.HasTask", input.HasTask, CodesManager.ENTITY_TYPE_TASK_PROFILE, ref status );
 
 				//
@@ -327,8 +350,21 @@ namespace Import.Services
 
 				//adding common import pattern
 				importSuccessfull = mgr.Import( output, ref status );
-				//
-				status.DocumentId = output.Id;
+                if ( importSuccessfull )
+                {
+                    //var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
+                    //if ( resource != null && resource.Meta_Id > 0 )
+                    //{
+                    //    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+                    //    var statusMsg = "";
+                    //    if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                    //    {
+                    //        status.AddError( statusMsg );
+                    //    }
+                    //}
+                }
+                //
+                status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/WorkRole/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
 				//if record was added to db, add to/or set EntityResolution as resolved
@@ -361,7 +397,7 @@ namespace Import.Services
 		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetByCtid( ctid );
+			entity = ResourceServices.GetMinimumByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

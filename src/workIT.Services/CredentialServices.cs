@@ -44,7 +44,9 @@ namespace workIT.Services
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
 						GetDetail( entity.Id );
 				}
-			}
+                string key = "credentialapi_" + entity.Id.ToString();
+                ServiceHelper.ClearCacheEntity( key );
+            }
 			bool isValid = new EntityMgr().Save( entity, ref status );
 			List<string> messages = new List<string>();
 
@@ -140,7 +142,7 @@ namespace workIT.Services
 		/// <param name="keyword"></param>
 		/// <param name="maxTerms"></param>
 		/// <returns></returns>
-		public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
+		public List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
 		{
 			int userId = 0;
 			string where = " base.EntityStateId = 3 ";
@@ -152,7 +154,7 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialAutocomplete", false ) )
 			{
-				return ElasticHelper.CredentialAutoComplete( query, maxTerms, ref pTotalRows );
+				return new ElasticHelper().CredentialAutoComplete( query, maxTerms, ref pTotalRows );
 			}
 			else
 			{
@@ -181,7 +183,7 @@ namespace workIT.Services
 			}
 		}
 	
-		public static List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
+		public List<string> AutocompleteCompetencies( string keyword, int maxTerms = 25 )
 		{
 			int userId = 0;
 			string where = "";
@@ -207,7 +209,7 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
 			{
-				return ElasticHelper.Credential_Search( data, ref pTotalRows );
+				return new ElasticHelper().Credential_Search( data, ref pTotalRows );
 			}
 			else
 			{
@@ -221,7 +223,7 @@ namespace workIT.Services
 		/// <param name="data"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<ThisSearchEntity> DoSearch( MainSearchInput data, ref int pTotalRows )
+		private static List<ThisSearchEntity> DoSearch( MainSearchInput data, ref int pTotalRows )
 		{
 			string where = "";
 			DateTime start = DateTime.Now;

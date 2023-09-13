@@ -39,6 +39,12 @@ namespace CTI.Import
 		/// </summary>
 		public string PublishingOrganizationCTID = "";
 
+
+		/// <summary>
+		/// Adhoc list of CTIDs to download
+		/// </summary>
+		public string ResourceCTIDList = "";
+
 		public List<string> ImportSummary = new List<string>();
 
 		public bool DoingDownloadOnly = false;
@@ -424,16 +430,14 @@ namespace CTI.Import
 		}
 
 
-		//public bool ProcessEnvelope( ReadEnvelope item, int cntr, bool doingDownloadOnly = false )
-		//{
-		//	if ( item == null || item.DecodedResource == null )
-		//		return false;
 
-		//	string payload = item.DecodedResource.ToString();
-		//	var registryEntityType = RegistryServices.GetResourceType( payload, true);
+		public bool ProcessEnvelope( ReadEnvelope item, string registryEntityType, int cntr, bool doingDownloadOnly = false )
+		{
+			int entityTypeId = MappingHelperV3.GetEntityTypeId( item.EnvelopeCtdlType );
 
-		//	return ProcessEnvelope( item, registryEntityType, 0, cntr, doingDownloadOnly );
-		//}
+			return ProcessEnvelope( item, registryEntityType, entityTypeId, cntr, DoingDownloadOnly );
+		}
+
 
 
 		public bool ProcessEnvelope( ReadEnvelope item, string registryEntityType, int entityTypeId, int cntr, bool doingDownloadOnly = false )
@@ -499,6 +503,12 @@ namespace CTI.Import
 			//string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCtid + "_" + ctdlType, payload, "", false );
 			//
+			if ( UtilityManager.GetAppKeyValue( "savingEnvelopeToFileSystem", false ) )
+			{
+				string envelope = item.ToString();
+				LoggingHelper.WriteLogFile( 1, $"{item.EnvelopeCtid}_{ctdlType}_envelope", envelope, "", false );
+			}
+			//
 			try
 			{
 				switch ( entityTypeId )
@@ -525,6 +535,8 @@ namespace CTI.Import
 
 						break;
 					case 2:
+					case 13:
+					case 14:
 						//importSuccessfull = orgImportMgr.ProcessEnvelope( item, status );
 						if ( ctdlType.IndexOf( "Organization" ) > -1 )
 						{
@@ -597,7 +609,8 @@ namespace CTI.Import
 
 						break;
 						//what about competency??? ==> use 17. don't have competency only imports, but should have a concrete entry for competencies
-					case 11:    //concept scheme. what about progression model?
+					case 11:    //concept scheme
+					case 12:    //progression model
 						importSuccessfull = new ImportConceptSchemes().ProcessEnvelope( item, status );
 						return true;
 
@@ -615,8 +628,6 @@ namespace CTI.Import
 						break;
 					case 28:
 						importSuccessfull = transIntermediaryImportMgr.ProcessEnvelope( item, status );
-						//DisplayMessages( string.Format( "{0}. TransferIntermediary ({1}) are not handled at this time. ", cntr, entityTypeId ) );
-
 						break;
 					case 31:
 						importSuccessfull = new ImportDataSetProfile().ProcessEnvelope( item, status );
@@ -625,9 +636,9 @@ namespace CTI.Import
 						importSuccessfull = new ImportJob().ProcessEnvelope( item, status );
 						break;
 					case 33:
-						DisplayMessages( string.Format( "{0}. TaskProfiles ({1}) are not handled at this time. ", cntr, entityTypeId ) );
+						//DisplayMessages( string.Format( "{0}. TaskProfiles ({1}) are not handled at this time. ", cntr, entityTypeId ) );
 
-						//importSuccessfull = new ImportTask().ProcessEnvelope( item, status );
+						importSuccessfull = new ImportTask().ProcessEnvelope( item, status );
 						break;
 					case 34:
 						importSuccessfull = new ImportWorkRole().ProcessEnvelope( item, status );

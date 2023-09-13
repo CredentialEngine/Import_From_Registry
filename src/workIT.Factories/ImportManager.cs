@@ -16,6 +16,7 @@ using ImportMessage = workIT.Data.Tables.Import_Message;
 
 using workIT.Utilities;
 using EM = workIT.Data.Tables;
+using Elasticsearch.Net;
 
 namespace workIT.Factories
 {
@@ -215,14 +216,16 @@ namespace workIT.Factories
 
 					foreach ( StatusMessage msg in entity.Messages)
 					{
-						efEntity = new ImportMessage();
-						efEntity.ParentId = parentId;
-						if ( !string.IsNullOrWhiteSpace( msg.Message ) )
-							efEntity.Message = msg.Message.Substring( 0, (msg.Message.Length < 500 ? msg.Message.Length - 1 : 500) );
-						efEntity.Severity = msg.IsWarning ? 1 : 2;
-						efEntity.Created = System.DateTime.Now;
+                        efEntity = new ImportMessage
+                        {
+                            ParentId = parentId,
+                            Severity = msg.IsWarning ? 1 : 2,
+                            Created = System.DateTime.Now
+                        };
+                        if ( !string.IsNullOrWhiteSpace( msg.Message ) )
+                            efEntity.Message = msg.Message.Substring( 0, ( msg.Message.Length < 500 ? (msg.Message.Length - 1) : 500 ) );
 
-						context.Import_Message.Add( efEntity );
+                        context.Import_Message.Add( efEntity );
 						int count = context.SaveChanges();
 						if ( count < 1 )
 						{
@@ -519,8 +522,19 @@ namespace workIT.Factories
                         {
                             
                         }
-						//check - if entity exists. If not, then probably deleted, and so should remove this record
-						var e = EntityManager.GetEntity( (Guid)entity.EntityUid, false );
+                        //check - if entity exists. If not, then probably deleted, and so should remove this record
+						//	check entityCache for delete
+                        var ec = EntityManager.EntityCacheGetByCTID( entity.ReferencedCtid);
+						if (ec != null && !string.IsNullOrWhiteSpace(ec.CTID) && ec.EntityStateId == 0 )
+						{
+							//not sure now. For ADP: adp gets deleted, the related dsp has entityStateId set to 0 - this will not be reflected in entity.cache. Should it? Results in an inconsistency
+							//	as well, if it is present and entityStateId=0, 
+                            string statusMessage = "";
+                            Delete_Import_EntityResolution( entity.Id, ref statusMessage );
+
+                            return new EM.Import_EntityResolution();
+                        }
+                        var e = EntityManager.GetEntity( (Guid)entity.EntityUid, false );
 						if (e == null || e.Id == 0)
 						{
 							//21-04-30 - not sure we should be deleting these????
@@ -538,7 +552,12 @@ namespace workIT.Factories
 							}
 						}
 					}
-				}
+				} 
+				//else 
+				//{
+				//	//perhaps in some cases do a registry look up?
+					//	at least want to get the type. however the resource may not have been published. mostly an issue when testing locally and don't have all of the resources that may be referenced. 
+				//}
 			}
 			catch ( Exception ex )
 			{
@@ -563,8 +582,16 @@ namespace workIT.Factories
 
 					if ( entity != null && entity.Id > 0 )
 					{
-						//check - if entity exists. If not, then probably deleted, and so should remove this record
-						var e = EntityManager.GetEntity( ( Guid )entity.EntityUid, false );
+                        var ec = EntityManager.EntityCacheGetByCTID( entity.ReferencedCtid );
+                        if ( ec != null && !string.IsNullOrWhiteSpace( ec.CTID ) && ec.EntityStateId == 0 )
+                        {
+                            string statusMessage = "";
+                            Delete_Import_EntityResolution( entity.Id, ref statusMessage );
+
+                            return new EM.Import_EntityResolution();
+                        }
+                        //check - if entity exists. If not, then probably deleted, and so should remove this record
+                        var e = EntityManager.GetEntity( ( Guid )entity.EntityUid, false );
 						if ( e == null || e.Id == 0 )
 						{
 							string statusMessage = "";
@@ -615,7 +642,7 @@ namespace workIT.Factories
 					efEntity.PublisherCTID = entity.PublisherCTID;
 					efEntity.DataOwnerCTID = entity.DataOwnerCTID;
 					efEntity.WasChanged = true;
-					efEntity.Environment = UtilityManager.GetAppKeyValue( "envType" );
+					efEntity.Environment = UtilityManager.GetAppKeyValue( "environment" );
 					efEntity.PublishMethodURI = "Unknown-Added to queue";//required field, setting arbitrarily. Max 50char
 
 					context.Import_PendingRequest.Add( efEntity );
@@ -716,8 +743,10 @@ namespace workIT.Factories
 
 							prevCTID = entity.EntityCtid.ToLower();
 						}
-					}
-				}
+                        list = list.OrderBy( s => s.PublishingEntityType ).ThenBy( c => c.Created ).ToList();
+
+                    }
+                }
 			}
 			catch ( Exception ex )
 			{
@@ -771,14 +800,15 @@ namespace workIT.Factories
 							entity = new WM.Import_PendingRequest
 							{
 								Id = item.Id,
+								Created = item.Created,
 								EnvelopeId = item.EnvelopeId,
 								Environment = item.Environment,
 								EntityName = item.EntityName,
-								EntityCtid = item.EntityCtid,
+								EntityCtid = item.EntityCtid?.ToLower(),
 								PublishMethodURI = item.PublishMethodURI,
 								PublishingEntityType = item.PublishingEntityType, 
-								PublisherCTID = item.PublisherCTID,
-								DataOwnerCTID= item.DataOwnerCTID,								
+								PublisherCTID = item.PublisherCTID?.ToLower(),
+								DataOwnerCTID= item.DataOwnerCTID?.ToLower(),								
 							};
 							if ( item.EnvelopeLastUpdated != null )
 								entity.EnvelopeLastUpdated = ( DateTime )item.EnvelopeLastUpdated;
@@ -789,6 +819,7 @@ namespace workIT.Factories
 
 							prevCTID = entity.EntityCtid.ToLower();
 						}
+						list = list.OrderBy( s => s.PublishingEntityType ).ThenBy( c => c.Created).ToList();
 					}
 				}
 			}

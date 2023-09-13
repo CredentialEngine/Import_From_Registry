@@ -95,17 +95,21 @@
     <Compile Include="OrganizationServices.cs" />
     <Compile Include="PathwayServices.cs" />
     <Compile Include="ProfileServices.cs" />
+    <Compile Include="ProgressionModelServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueryFilters.cs" />
     <Compile Include="RegistryServices.cs" />
     <Compile Include="RegistryServicesV2.cs" />
     <Compile Include="ReportServices.cs" />
+    <Compile Include="ScheduledOfferingServices.cs" />
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
+    <Compile Include="SupportServiceServices.cs" />
     <Compile Include="TaskServices.cs" />
     <Compile Include="ThirdPartyApiServices.cs" />
     <Compile Include="TransferIntermediaryServices.cs" />
     <Compile Include="TransferValueServices.cs" />
+    <Compile Include="VerificationServiceProfileServices.cs" />
     <Compile Include="WidgetServices.cs" />
     <Compile Include="WorkRoleServices.cs" />
   </ItemGroup>
@@ -131,7 +135,7 @@
       <Version>7.11.1</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>13.0.1</Version>
+      <Version>13.0.3</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

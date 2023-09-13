@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Web;
 
@@ -24,7 +25,7 @@ namespace workIT.Utilities
         /// <param name="message">Additional message regarding the exception</param>
         public static void LogError( Exception ex, string message, string subject = "" )
         {
-			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
 			if (string.IsNullOrWhiteSpace( subject ) )
             {
 				subject = application + " Exception encountered";
@@ -41,7 +42,7 @@ namespace workIT.Utilities
 		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
 		public static void LogError( Exception ex, string activity, string summary, bool notifyAdmin, string subject = "" )
 		{
-			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
 			if ( string.IsNullOrWhiteSpace( subject ) )
 			{
 				subject = application + " Exception encountered";
@@ -74,7 +75,7 @@ namespace workIT.Utilities
 
 		public static void LogError( string activity, string summary, string message, string details, bool notifyAdmin = false )
 		{
-			var application = UtilityManager.GetAppKeyValue( "application", "Credential Finder" );
+			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
 
 			if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
 			{
@@ -114,9 +115,10 @@ namespace workIT.Utilities
 		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
 		public static void LogError( Exception ex, string message, bool notifyAdmin, string subject = "Credential Finder Exception encountered" )
         {
+			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
 
-            //string userId = "";
-            string sessionId = "unknown";
+			//string userId = "";
+			string sessionId = "unknown";
             string remoteIP = "unknown";
             string path = "unknown";
             string queryString = "unknown";
@@ -164,51 +166,59 @@ namespace workIT.Utilities
 			}
             catch
             {
-                //eat any additional exception
+				//eat any additional exception
             }
-
+			string errMsg = message;
+			
             try
             {
-                string errMsg = message +
-                    "\r\nType: " + ex.GetType().ToString() + ";" + 
-                    "\r\nSession Id - " + sessionId + "____IP - " + remoteIP +
-                    "\r\rReferrer: " + lRefererPage + ";" +
-                    "\r\nException: " + ex.Message.ToString() + ";" + 
-                    "\r\nStack Trace: " + ex.StackTrace.ToString() +
+                var exMsg = FormatExceptions( ex );
+				errMsg +=
+					"\r\nType: " + ex.GetType().ToString() + ";" +
+					"\r\nSession Id - " + sessionId + "____IP - " + remoteIP +
+					"\r\rReferrer: " + lRefererPage + " ";
+				errMsg +=
+					"\r\nException: " + exMsg + " ";
+                errMsg +=
+                    "\r\nStack Trace: " + ex.StackTrace?.ToString() +
                     "\r\nServer\\Template: " + path +
                     "\r\nUrl: " + url;
 
-				if ( ex.InnerException != null && ex.InnerException.Message != null )
-				{
-					errMsg += "\r\n****Inner exception: " + ex.InnerException.Message;
 
-					if ( ex.InnerException.InnerException != null && ex.InnerException.InnerException.Message != null )
-						errMsg += "\r\n@@@@@@Inner-Inner exception: " + ex.InnerException.InnerException.Message;
-				}
 
-                if ( parmsString.Length > 0 )
-                    errMsg += "\r\nParameters: " + parmsString;
+                //if ( parmsString.Length > 0 )
+                //    errMsg += "\r\nParameters: " + parmsString;
 
-				if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
-				{
-					var messageLog = new ThisEntity()
-					{
-						Activity = message,
-						Message = ex.Message,
-						Description = errMsg
-					};
-					AddMessage( messageLog );
-					//also log to file system without notify
-					LoggingHelper.LogError( errMsg, false, subject );
-				}
-				else 
-					LoggingHelper.LogError( errMsg, notifyAdmin, subject );
+
             }
             catch
             {
                 //eat any additional exception
             }
 
+            try
+            {
+
+                if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
+                {
+                    var messageLog = new ThisEntity()
+                    {
+                        Application = application,
+                        Activity = message,
+                        Message = ex.Message,
+                        Description = errMsg
+                    };
+                    AddMessage( messageLog );
+                    //also log to file system without notify
+                    LoggingHelper.LogError( errMsg, false, subject );
+                }
+                else
+                    LoggingHelper.LogError( errMsg, notifyAdmin, subject );
+            }
+            catch
+            {
+                //eat any additional exception
+            }
         } //
 
 
@@ -393,7 +403,11 @@ namespace workIT.Utilities
 				if ( ex.InnerException.InnerException != null )
 				{
 					message += "; \r\nInnerException2: " + ex.InnerException.InnerException.Message;
-				}
+                    if ( ex.InnerException.InnerException.InnerException != null )
+                    {
+                        message += "; \r\nInnerException3: " + ex.InnerException.InnerException.InnerException.Message;
+                    }
+                }
 			}
 
 			return message;

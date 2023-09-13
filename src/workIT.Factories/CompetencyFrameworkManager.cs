@@ -11,9 +11,9 @@ using workIT.Models.Common;
 using workIT.Utilities;
 //using workIT.Models.Helpers.Cass;
 using ApiFramework = workIT.Models.API.CompetencyFramework;
-using DBEntity = workIT.Data.Tables.CompetencyFramework;
+using DBResource = workIT.Data.Tables.CompetencyFramework;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ThisEntity = workIT.Models.ProfileModels.CompetencyFramework;
+using ThisResource = workIT.Models.ProfileModels.CompetencyFramework;
 using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
 
 namespace workIT.Factories
@@ -31,13 +31,13 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save(ThisEntity entity,
+		public bool Save(ThisResource entity,
 				ref SaveStatus status, bool addingActivity = false)
 		{
 			bool isValid = true;
 			int count = 0;
 			DateTime lastUpdated = System.DateTime.Now;
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -51,7 +51,7 @@ namespace workIT.Factories
 					if ( entity.Id == 0 )
 					{
 						//add
-						efEntity = new DBEntity();
+						efEntity = new DBResource();
 						MapToDB( entity, efEntity );
 
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
@@ -97,9 +97,8 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
+							entity.EntityStateId = 3;
 							UpdateEntityCache( entity, ref status );
-							//update competencies
-							new CompetencyFrameworkCompetencyManager().SaveList( entity.Id, entity.ImportCompetencies, ref status );
 
 							if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
@@ -114,9 +113,11 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-
-							//need to do the date check here, or may not be updated
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            if ( efEntity.EntityStateId != 2 )
+                                efEntity.EntityStateId = 3;
+                            entity.EntityStateId = efEntity.EntityStateId;
+                            //need to do the date check here, or may not be updated
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -151,8 +152,7 @@ namespace workIT.Factories
 
 							entity.LastUpdated = lastUpdated;
 							UpdateEntityCache( entity, ref status );
-							//update competencies regardless
-							new CompetencyFrameworkCompetencyManager().SaveList( entity.Id, entity.ImportCompetencies, ref status );
+
 							if ( !UpdateParts( entity, ref status ) )
 								isValid = false;
 						}
@@ -168,7 +168,7 @@ namespace workIT.Factories
 		}
 		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref string status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				//var pathwayCTIDTemp = "ce-abcb5fe0-8fde-4f06-9d70-860cd5bdc763";
@@ -180,7 +180,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					ThisResource entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -217,7 +217,7 @@ namespace workIT.Factories
 			}
 			return 0;
 		}
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			var ec = new EntityCache()
 			{
@@ -233,7 +233,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				ImageUrl = document.Image,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId,
 				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
 			};
@@ -244,7 +244,7 @@ namespace workIT.Factories
 			}
 		}
 
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -253,12 +253,15 @@ namespace workIT.Factories
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
 			}
+			entity.RelatedEntityId= relatedEntity.Id;
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
 
 			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 
+            //update competencies regardless
+            new CompetencyFrameworkCompetencyManager().SaveList( entity, entity.ImportCompetencies, ref status );
 
-			return isAllValid;
+            return isAllValid;
 		}
 
 		/// <summary>
@@ -273,7 +276,7 @@ namespace workIT.Factories
 			bool isOK = true;
 			using ( var context = new EntityContext() )
 			{
-				DBEntity p = context.CompetencyFramework.FirstOrDefault( s => s.Id == recordId );
+				DBResource p = context.CompetencyFramework.FirstOrDefault( s => s.Id == recordId );
 				if ( p != null && p.Id > 0 )
 				{
 					context.CompetencyFramework.Remove( p );
@@ -338,7 +341,7 @@ namespace workIT.Factories
 							} );
 							isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, efEntity.Id, ref messages );
@@ -389,7 +392,7 @@ namespace workIT.Factories
 			}
 			return isValid;
 		}
-		public bool ValidateProfile(ThisEntity profile, ref SaveStatus status)
+		public bool ValidateProfile(ThisResource profile, ref SaveStatus status)
 		{
 			status.HasSectionErrors = false;
 
@@ -412,16 +415,16 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
-		public static ThisEntity Get(int profileId)
+		public static ThisResource Get(int profileId)
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( profileId == 0 )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.CompetencyFramework
+					DBResource item = context.CompetencyFramework
 							.SingleOrDefault( s => s.Id == profileId );
 
 					if ( item != null && item.Id > 0 )
@@ -444,7 +447,7 @@ namespace workIT.Factories
 				return 0;
 
 			//*** no data for frameworkURL, just frameworkUri or sourceUrl
-			ThisEntity entity = GetByUrl( frameworkUri );
+			ThisResource entity = GetByUrl( frameworkUri );
 			if ( entity != null && entity.Id > 0 )
 				return entity.Id;
 			//skip if no name
@@ -465,9 +468,9 @@ namespace workIT.Factories
 			return frameworkId;
 		}//
 
-		public static ThisEntity GetByUrl(string frameworkUri)
+		public static ThisResource GetByUrl(string frameworkUri)
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( frameworkUri ) )
 				return entity;
 			try
@@ -475,7 +478,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					//lookup by frameworkUri, or SourceUrl
-					DBEntity item = context.CompetencyFramework
+					DBResource item = context.CompetencyFramework
 							.FirstOrDefault( s => 
 								( s.FrameworkUri != null && s.FrameworkUri.ToLower() == frameworkUri.ToLower())
 							||	(s.SourceUrl != null && s.SourceUrl.ToLower() == frameworkUri.ToLower())
@@ -494,9 +497,9 @@ namespace workIT.Factories
 			return entity;
 		}//
 
-		public static ThisEntity GetByCtid(string ctid)
+		public static ThisResource GetByCtid(string ctid)
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			try
@@ -504,7 +507,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					//lookup by frameworkUri, or SourceUrl
-					DBEntity item = context.CompetencyFramework
+					DBResource item = context.CompetencyFramework
 							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 					if ( item != null && item.Id > 0 )
@@ -518,8 +521,40 @@ namespace workIT.Factories
 				LoggingHelper.LogError( ex, thisClassName + ".GetByUrl" );
 			}
 			return entity;
-		}//
-		public static void MapToDB(ThisEntity from, DBEntity to)
+		}
+		//
+
+		public static string GetCTIDFromID( int id )
+		{
+			using ( var context = new EntityContext() )
+			{
+				var item = context.CompetencyFramework.FirstOrDefault( s => s.Id == id );
+				if ( item != null && item.Id > 0 )
+				{
+					return item.CTID;
+				}
+			}
+
+			return null;
+		}
+		//
+
+		public static string GetCompetencyCTIDFromCompetencyID( int id )
+		{
+			using(var context = new EntityContext() )
+			{
+				var item = context.CompetencyFramework_Competency.FirstOrDefault( s => s.Id == id );
+				if( item != null && item.Id > 0 )
+				{
+					return item.CTID;
+				}
+			}
+
+			return null;
+		}
+		//
+
+		public static void MapToDB(ThisResource from, DBResource to)
 		{
 			//want to ensure fields from create are not wiped
 			//to.Id = from.Id;
@@ -592,7 +627,7 @@ namespace workIT.Factories
 
 		} //
 
-		public static void MapFromDB(DBEntity from, ThisEntity to)
+		public static void MapFromDB(DBResource from, ThisResource to)
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -625,7 +660,7 @@ namespace workIT.Factories
 			{
 				if ( !string.IsNullOrWhiteSpace( to.APIFramework ) )
 				{
-					//ApiFramework
+					//Obolete (no longer populated: 22-05-11)
 					to.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( to.APIFramework );
 				}
 			} catch (Exception ex)

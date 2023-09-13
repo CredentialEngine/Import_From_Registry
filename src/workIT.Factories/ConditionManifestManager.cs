@@ -44,7 +44,7 @@ namespace workIT.Factories
 			//will not have a parent Guid - should be the entity.OwningAgentUid
 			//Guid parentUid = entity.OwningAgentUid;
 
-			if ( !IsValidGuid( entity.OwningAgentUid ) )
+			if ( !IsValidGuid( entity.PrimaryAgentUID ) )
 			{
 				status.AddError( "Error: the parent identifier was not provided." );
 				return false;
@@ -56,7 +56,7 @@ namespace workIT.Factories
 			int parentOrgId = 0;
 
 			Guid condtionManifestParentUid = new Guid();
-			Entity parent = EntityManager.GetEntity( entity.OwningAgentUid );
+			Entity parent = EntityManager.GetEntity( entity.PrimaryAgentUID );
 			if ( parent == null || parent.Id == 0 )
 			{
 				status.AddError( "Error - the entity for the parent organization was not found." );
@@ -93,7 +93,7 @@ namespace workIT.Factories
 						MapToDB( entity, efEntity );
 						
 						efEntity.OrganizationId = parentOrgId;
-						efEntity.EntityStateId = 3;
+						efEntity.EntityStateId = entity.EntityStateId = 3;
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 							efEntity.Created = status.LocalCreatedDate;
 						else
@@ -169,11 +169,13 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-							//assume and validate, that if we get here we have a full record
-							if ( (efEntity.EntityStateId ?? 1) == 1 )
-								efEntity.EntityStateId = 3;
-							//if started as a placeholder, may not have the org
-							efEntity.OrganizationId = parentOrgId;
+                            //assume and validate, that if we get here we have a full record
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
+
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
+                            //if started as a placeholder, may not have the org
+                            efEntity.OrganizationId = parentOrgId;
 							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
@@ -261,7 +263,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
@@ -288,6 +290,8 @@ namespace workIT.Factories
             emanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
 			emanager.SaveList( entity.Recommends, Entity_ConditionProfileManager.ConnectionProfileType_Recommendation, entity.RowId, ref status );
 			emanager.SaveList( entity.Corequisite, Entity_ConditionProfileManager.ConnectionProfileType_Corequisite, entity.RowId, ref status );
+			emanager.SaveList( entity.CoPrerequisite, Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite, entity.RowId, ref status );
+
 			emanager.SaveList( entity.EntryCondition, Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition, entity.RowId, ref status );
 			emanager.SaveList( entity.Renewal, Entity_ConditionProfileManager.ConnectionProfileType_Renewal, entity.RowId, ref status );
 
@@ -449,7 +453,7 @@ namespace workIT.Factories
                             } );
                             isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 						}
 						List<String> messages = new List<string>();
 						//mark owning org for updates 
@@ -492,7 +496,7 @@ namespace workIT.Factories
 			}
 
 			//not sure if this will be selected, or by context
-			if ( !IsValidGuid( profile.OwningAgentUid ) )
+			if ( !IsValidGuid( profile.PrimaryAgentUID ) )
 			{
 				status.AddError( "An owning organization must be selected" );
 			}
@@ -665,7 +669,7 @@ namespace workIT.Factories
 								to.RowId = from.ConditionManifest.RowId;
 
 								to.OrganizationId = ( int )from.Entity.EntityBaseId;
-								to.OwningAgentUid = from.Entity.EntityUid;
+								to.PrimaryAgentUID = from.Entity.EntityUid;
 								//
 								to.Name = from.ConditionManifest.Name;
 							}
@@ -768,7 +772,7 @@ namespace workIT.Factories
 							to.RowId = from.ConditionManifest.RowId;
 							to.Description = from.ConditionManifest.Description;
 							to.OrganizationId = ( int ) from.Entity.EntityBaseId;
-							to.OwningAgentUid = from.Entity.EntityUid;
+							to.PrimaryAgentUID = from.Entity.EntityUid;
 							to.Name = from.ConditionManifest.Name;
 							
 							list.Add( to );
@@ -886,40 +890,40 @@ namespace workIT.Factories
 			
 
 		}
-		public static void MapFromDB( DBEntity from, ThisEntity to )
+		public static void MapFromDB( DBEntity input, ThisEntity output )
 		{
-			to.Id = from.Id;
-			to.RowId = from.RowId;
-			to.EntityStateId = ( int ) ( from.EntityStateId ?? 1 );
+			output.Id = input.Id;
+			output.RowId = input.RowId;
+			output.EntityStateId = ( int ) ( input.EntityStateId ?? 1 );
 
-			to.OrganizationId = (int) (from.OrganizationId ?? 0);
+			output.OrganizationId = (int) (input.OrganizationId ?? 0);
 
-			if ( to.OrganizationId > 0 )
+			if ( output.OrganizationId > 0 )
 			{
-				to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
-				if ( to.OwningOrganization != null && to.OwningOrganization.Id > 0 )
-					to.OwningAgentUid = to.OwningOrganization.RowId;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.OrganizationId );
+				if ( output.PrimaryOrganization != null && output.PrimaryOrganization.Id > 0 )
+					output.PrimaryAgentUID = output.PrimaryOrganization.RowId;
 			}
 
-			to.Name = from.Name;
-			to.FriendlyName = FormatFriendlyTitle( from.Name );
+			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			to.Description = from.Description == null ? "" : from.Description;
+			output.Description = input.Description == null ? "" : input.Description;
 			
-			to.CTID = from.CTID;
-			to.CredentialRegistryId = from.CredentialRegistryId;
+			output.CTID = input.CTID;
+			output.CredentialRegistryId = input.CredentialRegistryId;
 
-			to.SubjectWebpage = from.SubjectWebpage;
+			output.SubjectWebpage = input.SubjectWebpage;
 			
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime ) from.Created;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime ) input.Created;
 		
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime ) input.LastUpdated;
 			//=====
-			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				to.EntityLastUpdated = relatedEntity.LastUpdated;
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 			//get common conditions
 			//TODO - determine what to return for edit vs non-edit states
 			//if ( forEditView )
@@ -928,28 +932,30 @@ namespace workIT.Factories
 			//	to.CommonConditions = Entity_CommonConditionManager.GetAll( to.RowId, forEditView );
 
 			//get entry conditions
-			List<ConditionProfile> list = Entity_ConditionProfileManager.GetAll( to.RowId, true );
+			List<ConditionProfile> list = Entity_ConditionProfileManager.GetAll( output.RowId, true );
 
 			//??actions
 			if ( list != null && list.Count > 0 )
 			{
 				foreach ( ConditionProfile item in list )
 				{
-					to.ConditionProfiles.Add(item);
+					output.ConditionProfiles.Add(item);
 
 					if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
-						to.Requires.Add( item );
+						output.Requires.Add( item );
 					else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Recommendation )
-						to.Recommends.Add( item );
+						output.Recommends.Add( item );
 					else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition )
-						to.EntryCondition.Add( item );
+						output.EntryCondition.Add( item );
 					else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Corequisite )
-						to.Corequisite.Add( item );
+						output.Corequisite.Add( item );
+					else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite )
+						output.CoPrerequisite.Add( item );
 					else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Renewal )
-						to.Renewal.Add( item );
+						output.Renewal.Add( item );
 					else
 					{
-						EmailManager.NotifyAdmin( "Unexpected Condition Profile for Condition Manifest", string.Format( "conditionManifestId: {0}, ConditionProfileTypeId: {1}", to.Id, item.ConnectionProfileTypeId ) );
+						EmailManager.NotifyAdmin( "Unexpected Condition Profile for Condition Manifest", string.Format( "conditionManifestId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
 					}
 				}
 				//LoggingHelper.DoTrace( 5, "Unexpected Condition Profiles found for Condition Manifest. " + string.Format( "conditionManifestId: {0}, Count: {1}", to.Id, list.Count ) );

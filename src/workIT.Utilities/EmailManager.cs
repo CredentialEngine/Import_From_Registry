@@ -60,7 +60,9 @@ namespace workIT.Utilities
 			MailMessage email = new MailMessage();
 			try
 			{
-				
+				if (string.IsNullOrWhiteSpace(fromEmail))
+					fromEmail =  UtilityManager.GetAppKeyValue( "contactUsMailFrom", "mparsons@credentialengine.org" );
+
 				email.From = new MailAddress( fromEmail );
 				if ( toEmail != null )
 				{
@@ -170,6 +172,14 @@ namespace workIT.Utilities
 
 
 				email.From = maFrom;
+				//check for overrides on the to email 
+				if ( UtilityManager.GetAppKeyValue( "usingTempOverrideEmail", false )  )
+				{
+					if ( toEmail.ToLower().IndexOf( "credentialengine.org" ) < 0 )
+					{
+						toEmail = UtilityManager.GetAppKeyValue( "systemAdminEmail", "mparsons@credentialengine.org" );
+					}
+				}
 				//use the add format to handle multiple email addresses - not sure what delimiters are allowed
 				toEmail = toEmail.Replace( ";", "," );
 				//email.To.Add( toEmail );
@@ -228,7 +238,7 @@ namespace workIT.Utilities
 				
 				email.IsBodyHtml = true;
 				//email.BodyFormat = MailFormat.Html;
-				if ( UtilityManager.GetAppKeyValue( "sendEmailFlag", "false" ) == "TRUE" )
+				if ( UtilityManager.GetAppKeyValue( "sendEmailFlag", true )  )
 				{
 					DoSendEmail( email);
 				}
@@ -288,7 +298,7 @@ namespace workIT.Utilities
 
 		private static void SendEmailViaApi( MailMessage emailMsg )
 		{
-			string emailServiceUri = UtilityManager.GetAppKeyValue( "SendEmailService" );
+			string emailServiceUri = UtilityManager.GetAppKeyValue( "SendEmailWebService" );
 			if ( string.IsNullOrWhiteSpace( emailServiceUri ) )
 			{
 				//no service api
@@ -586,7 +596,7 @@ namespace workIT.Utilities
 				{
 					//The trace was a just in case, if the send fails, a LogError call will be made anyway. Set to a high level so not shown in prod
 					LoggingHelper.DoTrace( 11, "EmailManager.NotifyAdmin: - Admin email was requested:\r\nSubject:" + subject + "\r\nMessage:" + message );
-					if ( UtilityManager.GetAppKeyValue( "sendEmailFlag", "false" ) == "TRUE" )
+					if ( UtilityManager.GetAppKeyValue( "sendEmailFlag", true )  )
 					{
 						DoSendEmail( email );
 					}

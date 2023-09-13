@@ -197,11 +197,27 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( PropertyName = "qdata:relatedEmployment" )]
 		public List<QuantitativeValue> RelatedEmployment { get; set; }
 
-		/// <summary>
-		/// Category of subject excluded from the data.
-		/// Feb,2021 change type to QuantitativeValue
-		/// </summary>
-		[JsonProperty( PropertyName = "qdata:subjectExcluded" )]
+        /// <summary>
+        /// Type of subject included or excluded from the data set.
+        /// skos:Concept
+        /// ConceptScheme: qdata:SubjectCategory
+        /// <see href="https://credreg.net/qdata/terms/SubjectCategory"/>
+        /// </summary>
+        [JsonProperty( PropertyName = "qdata:subjectType" )]
+        public CredentialAlignmentObject SubjectType { get; set; }
+
+        /// <summary>
+        /// Quantitative values and percentages for a subject category (SubjectType) in the data set.
+        /// </summary>
+        [JsonProperty( PropertyName = "qdata:subjectValue" )]
+        public List<QuantitativeValue> SubjectValue { get; set; }
+
+
+        /// <summary>
+        /// Category of subject excluded from the data.
+        /// Feb,2021 change type to QuantitativeValue
+        /// </summary>
+        [JsonProperty( PropertyName = "qdata:subjectExcluded" )]
 		public List<QuantitativeValue> SubjectExcluded { get; set; }
 
 		//deprecated Feb/2021

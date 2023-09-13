@@ -296,8 +296,11 @@ namespace workIT.Services.API
 				else
                 {
 					//need alternative for a collection
-					result.EntityLastUpdated = Attempt( () => DateTime.Parse( framework["ceasn:dateModified"].ToString() ), DateTime.MinValue );
-					
+					//var dateModified = framework["ceasn:dateModified"]??"";
+					if ( framework["ceasn:dateModified"] != null )
+					{
+						result.EntityLastUpdated = Attempt( () => DateTime.Parse( framework["ceasn:dateModified"]?.ToString() ), DateTime.MinValue );
+					}
 					//Organization properties
 					debugStep = "Organization Properties";
 					result.Creator = GetOrganizationAJAXSummaryFromDatabase( "Creator", JArrayToStringList( ( JArray ) framework["ceasn:creator"] ) );
@@ -418,11 +421,26 @@ namespace workIT.Services.API
 
 			foreach( var item in source )
 			{
-				var itemURI = string.IsNullOrWhiteSpace( item.TargetNode ) ? "_:" + Guid.NewGuid().ToString() : item.TargetNode;
+				//TODO - should we null non registry URIs?
+				//23-06-06 mp - No. Need to show these
+				var itemURI = "_:" + Guid.NewGuid().ToString();
+				var targetNode = "";
+				if ( !string.IsNullOrWhiteSpace( item.TargetNode ) )
+				{
+                    if ( URItoCTID(item.TargetNode) != null )
+                        itemURI = item.TargetNode;
+					else
+					{
+						targetNode = item.TargetNode;
+					}
+                }
+                //var itemURI = string.IsNullOrWhiteSpace( item.TargetNode ) ? "_:" + Guid.NewGuid().ToString() : item.TargetNode;
 				result.Add( new Competency()
 				{
+					//a url may not be a registry url, and can be a blank node id
 					CredentialRegistryURL = itemURI,
 					CTID = itemURI.IndexOf( "_:" ) == 0 ? null : URItoCTID( item.TargetNode ),
+					TargetNode = targetNode,
 					CompetencyLabel = string.IsNullOrWhiteSpace( item.TargetNodeDescription ) ? null : item.TargetNodeName, //If the description field was not populated, then the name is the competencyText
 					CompetencyText = string.IsNullOrWhiteSpace( item.TargetNodeDescription ) ? item.TargetNodeName : item.TargetNodeDescription, //If the description field was not populated, use the name
 					CodedNotation = item.CodedNotation
@@ -450,15 +468,22 @@ namespace workIT.Services.API
 
 			try
 			{
+				var frameworkName = "Miscellaneous Competencies";
+				if (source != null && !string.IsNullOrWhiteSpace(source.FrameworkName ) )
+					frameworkName= source.FrameworkName;
+
 				//If the competencies aren't from a framework (ie CredentialAlignmentObject only), just convert them
 				debugItem.Add( "Raw Payload", source.RegistryImport?.Payload );
 				if ( string.IsNullOrWhiteSpace( source.RegistryImport?.Payload ) )
 				{
 					var convertedCompetencies = ConvertCredentialAlignmentObjectProfileListToFinderAPICompetencyList( source.Items );
 					convertedCompetencies.ForEach( m => m.Meta_IsReferenced = true );
+					//why is this always miscellaneous?
+					//UI attempts to use registry to get comps, will fail if misc.
+					//do we skip hasTopChild if not in registry
 					var convertedFramework = new CompetencyFramework()
 					{
-						Name = "Miscellaneous Competencies",
+						Name = frameworkName,
 						HasTopChild = convertedCompetencies.Select( m => m.CredentialRegistryURL ).ToList(),
 						Meta_HasPart = convertedCompetencies,
 					};
@@ -594,10 +619,14 @@ namespace workIT.Services.API
 		{
 			return source == null ? null : source.Select( m => m.ToString() ).ToList();
 		}
-
+		/// <summary>
+		/// extract a CTID from a uri if present
+		/// </summary>
+		/// <param name="uri"></param>
+		/// <returns></returns>
 		private static string URItoCTID( string uri )
 		{
-			return string.IsNullOrWhiteSpace( uri ) ? null : "ce-" + uri.Split( new string[] { "/ce-" }, StringSplitOptions.RemoveEmptyEntries ).LastOrDefault();
+			return string.IsNullOrWhiteSpace( uri ) ? null : uri.IndexOf("/ce-") == -1 ? null : "ce-" + uri.Split( new string[] { "/ce-" }, StringSplitOptions.RemoveEmptyEntries ).LastOrDefault();
 		}
 		//
 

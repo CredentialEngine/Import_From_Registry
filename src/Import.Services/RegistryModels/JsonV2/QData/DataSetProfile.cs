@@ -101,25 +101,26 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( PropertyName = "qdata:distributionFile" )]
 		public List<string> DistributionFile { get; set; }
 
-		///// <summary>
-		///// Relevant Data Set For
-		///// Data set for the entity being referenced.
-		///// REQUIRED when dataSetProfile published separately.
-		///// Inverse property	- point back to the parent
-		///// 21-02-19 mparsons	Removing these from range: HoldersProfile, EarningsProfile, EmploymentOutlook
-		/////						- adding credential, assessment, and lopp
-		///// 21-05-10 mparsons	- effectively obsolete outside of HoldersProfile, EarningsProfile, EmploymentOutlook and the latter are moving to be obsolete
-		///// </summary>
-		//[Obsolete]
-		//[JsonProperty( PropertyName = "qdata:relevantDataSetFor" )]
-		//public List<string> RelevantDataSetFor { get; set; }
+        /// <summary>
+        /// Relevant Data Set For
+        /// Data set for the entity being referenced.
+        /// REQUIRED when dataSetProfile published separately.
+        /// Inverse property	- point back to the parent
+        /// 21-02-19 mparsons	Removing these from range: HoldersProfile, EarningsProfile, EmploymentOutlook
+        ///						- adding credential, assessment, and lopp
+        /// 21-05-10 mparsons	- effectively obsolete outside of HoldersProfile, EarningsProfile, EmploymentOutlook and the latter are moving to be obsolete
+        /// 23-02-14 mparsons - however, for old data, it may still be present
+        /// </summary>
+        [Obsolete]
+        [JsonProperty( PropertyName = "qdata:relevantDataSetFor" )]
+        public List<string> RelevantDataSetFor { get; set; }
 
-		/// <summary>
-		/// Subject matter of the resource.
-		/// Means to point to a credential (etc.) where data is published by a third party.
-		/// CTID/URI
-		/// </summary>
-		[JsonProperty( PropertyName = "schema:about" )]
+        /// <summary>
+        /// Subject matter of the resource.
+        /// Means to point to a credential (etc.) where data is published by a third party.
+        /// CTID/URI
+        /// </summary>
+        [JsonProperty( PropertyName = "schema:about" )]
 		public List<string> About { get; set; } 
 
 		/// <summary>

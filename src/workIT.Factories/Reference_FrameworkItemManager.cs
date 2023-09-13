@@ -410,8 +410,46 @@ namespace workIT.Factories
 				return entity;
 			}
 		}
+        public static List<CredentialAlignmentObjectProfile> FillCredentialAlignmentObject( Guid parentUid  )
+        {
+            var output = new List<CredentialAlignmentObjectProfile>();
+            var entity = new CredentialAlignmentObjectProfile();
+            if ( parentUid == null )
+                return output;
 
-		public static List<CredentialAlignmentObjectProfile> FillCredentialAlignmentObject( Guid parentUid, int categoryId )
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    var results = context.Entity_ReferenceFramework
+                        .Where( s => s.Entity.EntityUid == parentUid)
+                        .OrderBy( s => s.Reference_FrameworkItem.Name )
+                        .ToList();
+
+                    if ( results != null && results.Count > 0 )
+                    {
+                        foreach ( var item in results )
+                        {
+                            if ( item.Reference_FrameworkItem != null )
+                            {
+                                entity = new CredentialAlignmentObjectProfile();
+                                MapFromDB( item.Reference_FrameworkItem, entity );
+                                output.Add( entity );
+                            }
+                        }
+                    }
+
+                    return output;
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".FillCredentialAlignmentObject" );
+                return output;
+            }
+        }
+
+        public static List<CredentialAlignmentObjectProfile> FillCredentialAlignmentObject( Guid parentUid, int categoryId )
 		{
 			var output = new List<CredentialAlignmentObjectProfile>();
 			var entity = new CredentialAlignmentObjectProfile();
@@ -521,6 +559,13 @@ namespace workIT.Factories
 			}
 			to.Description = from.Description;
 			to.TargetNode = from.TargetNode ?? "";
+			if ( to.TargetNode.IndexOf( "www.census.gov/cgi-bin/sssd/naics/naicsrch" ) > 0)
+            {
+				//to.TargetNode = to.TargetNode.Replace( "https://www.census.gov/cgi-bin/sssd/naics/naicsrch?code=", "https://www.census.gov/naics/?input=" );
+				to.TargetNode = "https://www.census.gov/naics/?input=" ;
+
+				to.TargetNode += string.Format( "{0}&year=2022&details={0}", to.CodedNotation);
+			}
 			if ( from.ReferenceFrameworkId > 0 )
 				to.ReferenceFrameworkId = from.ReferenceFrameworkId;
 			else

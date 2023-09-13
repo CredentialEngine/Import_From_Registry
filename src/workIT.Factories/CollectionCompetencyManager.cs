@@ -12,10 +12,9 @@ using workIT.Models.ProfileModels;
 using workIT.Utilities;
 //using workIT.Models.Helpers.Cass;
 using ApiFramework = workIT.Models.API.Collection;
-using DBEntity = workIT.Data.Tables.Collection_Competency;
+using DBResource = workIT.Data.Tables.Collection_Competency;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ThisEntity = workIT.Models.ProfileModels.Competency;
-using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
+using ThisResource = workIT.Models.ProfileModels.Competency;
 
 
 namespace workIT.Factories
@@ -23,10 +22,12 @@ namespace workIT.Factories
 	public class CollectionCompetencyManager : BaseFactory
 	{
 		static string thisClassName = "CollectionCompetencyManager";
+        string EntityType = "Competency";
+        int EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY; 
 
-		#region Persistance ===================
+        #region Persistance ===================
 
-		public bool SaveList( int CollectionId, List<ThisEntity> list, ref SaveStatus status )
+        public bool SaveList( Collection collection, List<ThisResource> list, ref SaveStatus status )
 		{
 			//will need to do a delete all or take the approach for entity address:
 			//- read
@@ -41,14 +42,14 @@ namespace workIT.Factories
 			}
 			bool isAllValid = true;
 
-			foreach ( var entity in list )
+			foreach ( var item in list )
 			{
-				entity.FrameworkId = CollectionId;
-				Save( entity, updateDate, ref status );
+				item.FrameworkId = collection.Id;
+				Save( collection, item, updateDate, ref status );
 			}
 
 			//delete any records with last updated less than updateDate
-			DeleteAll( CollectionId, ref status, updateDate );
+			DeleteAll( collection.Id, ref status, updateDate );
 			return isAllValid;
 		}
 
@@ -58,12 +59,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, DateTime updateDate, ref SaveStatus status )
+		public bool Save( Collection collection, ThisResource entity, DateTime updateDate, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
 
-			DBEntity efEntity = new DBEntity();
+            DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -77,7 +78,7 @@ namespace workIT.Factories
 					if ( entity.Id == 0 )
 					{
 						//add
-						efEntity = new DBEntity();
+						efEntity = new DBResource();
 						MapToDB( entity, efEntity );
 
 						if ( IsValidDate( entity.Created ) )
@@ -109,8 +110,12 @@ namespace workIT.Factories
 						}
 						else
 						{
-							//
-						}
+                            entity.RowId = efEntity.RowId;
+                            entity.Created = ( DateTime ) efEntity.Created;
+                            entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
+                            entity.Id = efEntity.Id;
+                            UpdateEntityCache( collection, entity, ref status );
+                        }
 					}
 					else
 					{
@@ -138,14 +143,10 @@ namespace workIT.Factories
 							//has changed?
 							if ( HasStateChanged( context ) )
 							{
-								//if ( IsValidDate( status.EnvelopeUpdatedDate ) )
-								//	efEntity.LastUpdated = status.LocalUpdatedDate;
-								//else
-								//	efEntity.LastUpdated = DateTime.Now;
-
 								count = context.SaveChanges();
-
-							}
+                                entity.LastUpdated = updateDate;
+                                UpdateEntityCache( collection, entity, ref status );
+                            }
 						}
 					}
 				}
@@ -157,8 +158,37 @@ namespace workIT.Factories
 
 			return isValid;
 		}
+        public void UpdateEntityCache( Collection parent, ThisResource document, ref SaveStatus status )
+        {
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = EntityTypeId,
+				EntityType = EntityType,
+				EntityStateId = 3,
+				EntityUid = document.RowId,
+				ParentEntityType = "Collection",
+				ParentEntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION,
+				ParentEntityId= parent.RelatedEntityId,
+				ParentEntityUid = parent.RowId,
+                BaseId = document.Id,
+                Description = "Collection Competency",
+                //a list
+                //SubjectWebpage = document.SubjectWebpage,
+                CTID = document.CTID,
+                Created =(DateTime) document.Created,
+                LastUpdated = ( DateTime ) document.LastUpdated,
+                Name = document.CompetencyText,
+                OwningAgentUID = parent.PrimaryAgentUID,
 
-		public bool DeleteAll( int CollectionId, ref SaveStatus status, DateTime? lastUpdated = null )
+            };
+
+            var statusMessage = "";
+            if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+            {
+                status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.CompetencyText, document.Id, statusMessage ) );
+            }
+        }
+        public bool DeleteAll( int CollectionId, ref SaveStatus status, DateTime? lastUpdated = null )
 		{
 			bool isValid = true;
 			//Entity parent = EntityManager.GetEntity( parentUid );
@@ -199,7 +229,7 @@ namespace workIT.Factories
 		}
 		//
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -212,20 +242,86 @@ namespace workIT.Factories
 			return status.WasSectionValid;
 		}
 
-		#endregion
-		#region  retrieval ==================
+        #endregion
+        #region  retrieval ==================
+        public static List<ThisResource> GetAll( int collectionId )
+        {
+            var output = new List<ThisResource>();
+            ThisResource entity = new ThisResource();
 
-		public static ThisEntity GetByCtid( string ctid )
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    //
+                    var list = context.Collection_Competency
+                            .Where( s => s.CollectionId == collectionId ).ToList();
+                    foreach ( var item in list )
+                    {
+                        entity = new ThisResource();
+                        if ( item != null && item.Id > 0 )
+                        {
+                            MapFromDB( item, entity );
+                            output.Add( entity );
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".GetAll( int collectionId)" );
+            }
+            return output;
+        }//
+        public static CodeItem GetCompetencyTypeTotal( int collectionId )
+        {
+            var codeItem = new CodeItem();
+
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    //make sure indexed
+                    var query = from cm in context.Collection_Competency
+                                where ( cm.CollectionId == collectionId )
+                                group new { cm } by new { cm.CollectionId }
+                                    into cmgrp
+                                select new { CollectionId = cmgrp.Key.CollectionId, EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY, EntityType = "Competency", Count = cmgrp.Count() };
+
+                    var result = query.OrderBy( m => m.CollectionId ).ThenBy( m => m.EntityType ).ToList();
+
+                    if ( result != null && result.Count() > 0 )
+                    {
+                        foreach ( var item in result )
+                        {
+                            codeItem = new CodeItem()
+                            {
+                                EntityType = item.EntityType,
+                                EntityTypeId = item.EntityTypeId,
+                                Totals = item.Count
+                            };
+							break;
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".GetCompetencyTypeTotal( int collectionId)" );
+            }
+            return codeItem;
+        }//
+        public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					//lookup by frameworkUri, or SourceUrl
-					DBEntity item = context.Collection_Competency
+                    //lookup by frameworkUri, or SourceUrl
+                    DBResource item = context.Collection_Competency
 							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 					if ( item != null && item.Id > 0 )
@@ -240,7 +336,40 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static void MapToDB( ThisEntity input, DBEntity output )
+
+		/// <summary>
+		/// Retrieve by collectionId and ProxyFor
+		/// **assuming for now there can not be duplicates**
+		/// </summary>
+		/// <param name="collectionId"></param>
+		/// <param name="ctid"></param>
+		/// <returns></returns>
+		public static ThisResource Get( int collectionId, string ctid )
+		{
+			ThisResource entity = new ThisResource();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+				return entity;
+			try
+			{
+				using ( var context = new EntityContext() )
+				{
+                    //
+                    DBResource item = context.Collection_Competency
+							.FirstOrDefault( s => s.CollectionId == collectionId && s.CTID.ToLower() == ctid.ToLower() );
+
+					if ( item != null && item.Id > 0 )
+					{
+						MapFromDB( item, entity );
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".GetByCtid" );
+			}
+			return entity;
+		}//
+		public static void MapToDB( ThisResource input, DBResource output )
 		{
 			//want to ensure fields from create are not wiped
 			if ( output.Id == 0 )
@@ -266,7 +395,7 @@ namespace workIT.Factories
 			}
 		} //
 
-		public static void MapFromDB( DBEntity input, ThisEntity output )
+		public static void MapFromDB(DBResource input, ThisResource output )
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;

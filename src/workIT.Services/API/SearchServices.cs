@@ -169,7 +169,11 @@ namespace workIT.Services.API
 				//	InterfaceType = APIFilter.InterfaceType_Autocomplete
 				//} );
 				filters.Filters.Add( GetSubjectFilters( labelPlural, "credReport:HasSubjects" ) );
-
+				//check for any collections with creds. 
+				//first check if there are any. This will be important initially. 
+				if ( CollectionMemberManager.HasAnyForEntityType( 1 ) )
+					filters.Filters.Add( GetInCollectionFilters( labelPlural, "credReport:IsPartOfCollection" ) );
+				//
 				//======================================
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "credReport:HasIndustries" ) );
@@ -248,7 +252,7 @@ namespace workIT.Services.API
 				}
 				if ( credLoppDeliveryTypes != null && credLoppDeliveryTypes.Items.Any() )
 				{
-					filter = ConvertEnumeration( "Learning Delivery Type", "learningDeliveryType", credLoppDeliveryTypes, "Select the type of Learning Opportunity delivery method(s)." );
+					filter = ConvertEnumeration( "Delivery Method Types", "learningDeliveryType", credLoppDeliveryTypes, "Select the type of Learning Opportunity delivery method(s)." );
 					filters.Filters.Add( filter );
 				}
 
@@ -389,7 +393,10 @@ namespace workIT.Services.API
 					filters.Filters.Add( filter );
 				}
 				//
-
+				//check for any collections with orgs
+				if ( CollectionMemberManager.HasAnyForEntityType( 2 ) )
+					filters.Filters.Add( GetInCollectionFilters( labelPlural, "orgfReport:IsPartOfCollection" ) );
+				//
 				//
 				if ( qaReceived != null && qaReceived.Items.Any() )
 				{
@@ -548,7 +555,11 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Scoring Method", "scoringMethod", scoringMethodTypes, "Select the type of scoring method(s)." );
 					filters.Filters.Add( filter );
 				}
-
+				//check for any collections with asmts.
+				//first check if there are any. This will be important initially. 
+				if ( CollectionMemberManager.HasAnyForEntityType( 3 ) )
+					filters.Filters.Add( GetInCollectionFilters( labelPlural, "asmtReport:IsPartOfCollection" ) );
+				//
 				//======================================
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "asmtReport:HasIndustries" ) );
@@ -697,6 +708,7 @@ namespace workIT.Services.API
 
 				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
 				//
 				//LWIA/address region filter
 				//LWIAs proposed. If to be included, will be first
@@ -795,7 +807,7 @@ namespace workIT.Services.API
 
 				//
 				if ( deliveryTypes != null && deliveryTypes.Items.Any() ) { 
-					filter = ConvertEnumeration( "Learning Delivery Type", "learningDeliveryType", deliveryTypes, "Select the type(s) of delivery method(s)." );
+					filter = ConvertEnumeration( "Delivery Method Types", "learningDeliveryType", deliveryTypes, "Select the type(s) of delivery method(s)." );
 					filters.Filters.Add( filter );
 				}
 
@@ -812,7 +824,11 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Learning Method Types", "learningMethodType", learningMethodTypes, "Select the type(s) of learning method." );
 					filters.Filters.Add( filter );
 				}
-
+				//check for any collections with lopps. use Occupation as a model
+				//first check if there are any. This will be important initially. 
+				if ( CollectionMemberManager.HasAnyForEntityType( 7 ) )
+					filters.Filters.Add( GetInCollectionFilters( labelPlural, "loppReport:IsPartOfCollection" ) );
+				//
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "loppReport:HasIndustries" ) );
 
@@ -916,13 +932,19 @@ namespace workIT.Services.API
 
 			try
 			{
-
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
 				//
 				var filter = new MSR.Filter();
 				filters.Filters = new List<Filter>();
 				if ( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+				//
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
 				//
 				if ( otherFilters != null && otherFilters.Items.Any() )
 				{
@@ -938,6 +960,240 @@ namespace workIT.Services.API
 			return filters;
 		}
 		//
+		public static FilterResponse GetCollectionFilters( bool getAll = false, string widgetId = "" )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = 9;
+			string searchType = "collection";
+			string labelPlural = "collections";
+			FilterResponse filters = new FilterResponse( searchType );
+
+			try
+			{
+				//
+				var collectionTypes = enumServices.GetEnumeration( "collectionCategory", EnumerationType.MULTI_SELECT, false );
+				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
+
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+				//
+				var filter = new MSR.Filter();
+				filters.Filters = new List<Filter>();
+				if ( includingHistoryFilters )
+					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+				//
+				if ( collectionTypes != null && collectionTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Collection Types", "collectionTypes", collectionTypes, "Select the type(s) of Collection." );
+					filters.Filters.Add( filter );
+				}
+				//
+				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+				{
+					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+					filters.Filters.Add( filter );
+				}
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+				{
+					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
+
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetCollectionFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
+        //
+        public static FilterResponse GetSupportServiceFilters( bool getAll = false )
+        {
+            EnumerationServices enumServices = new EnumerationServices();
+            int entityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
+            string searchType = "SupportService";
+            string label = "Support Service";
+            string labelPlural = "Support Services";
+            FilterResponse filters = new FilterResponse( searchType );
+
+            try
+            {
+                var accommodationTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ACCOMMODATION, EnumerationType.MULTI_SELECT, false, getAll );
+                var supportSrvcTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY, EnumerationType.MULTI_SELECT, false, getAll );
+                //
+                var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
+                //do we need a custom 
+                var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
+                var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
+                var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+                /* TODO
+				 */
+                var filter = new MSR.Filter();
+                filters.Filters = new List<Filter>();
+                //
+                if ( includingHistoryFilters )
+                    filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+
+
+                if ( accommodationTypes != null && accommodationTypes.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Accommodation Type", "accommodationType", accommodationTypes, "Select the type(s) accommodation." );
+                    filters.Filters.Add( filter );
+                }
+                if ( supportSrvcTypes != null && supportSrvcTypes.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Support Service Category", "supportServiceCategory", supportSrvcTypes, "Select the type(s) of support service." );
+                    filters.Filters.Add( filter );
+                }
+                if ( deliveryTypes != null && deliveryTypes.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Delivery Type", "deliverytype", deliveryTypes, "Select the type(s) of delivery method." );
+                    filters.Filters.Add( filter );
+                }
+                if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
+                {
+                    filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
+                    filters.Filters.Add( filter );
+                }
+                //
+                //======================================
+                #region Industries, occupations, and programs
+                filters.Filters.Add( GetOccupationFilters( labelPlural, "asmtReport:HasOccupations" ) );
+                #endregion
+                //
+
+                //
+                if ( languages != null && languages.Items.Count > 0 )
+                {
+                    //filter = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
+                    filters.Filters.Add( GetLanguageFilters( labelPlural, languages ) );
+                }
+
+                //
+                if ( otherFilters != null && otherFilters.Items.Any() )
+                {
+                    //filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+                    filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters, true ) );
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.DoTrace( 1, string.Format( "GetSupportServiceFilters. {0}", ex.Message ) );
+            }
+            return filters;
+        }
+        //
+        public static FilterResponse GetScheduledOfferingFilters( bool getAll = false )
+        {
+            EnumerationServices enumServices = new EnumerationServices();
+            int entityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
+            string searchType = "ScheduledOffering";
+            string label = "Scheduled Offering";
+            string labelPlural = "Scheduled Offerings";
+            FilterResponse filters = new FilterResponse( searchType );
+
+            try
+            {
+                var offerFrequencyType = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_OFFER_FREQUENCY, EnumerationType.MULTI_SELECT, false, getAll );
+                //will need to ensure stored separately 
+                var scheduleFrequencyType = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SCHEDULE_FREQUENCY, EnumerationType.MULTI_SELECT, false, getAll );
+                var scheduleTiming = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SCHEDULE_TIMING, EnumerationType.MULTI_SELECT, false, getAll );
+                //
+
+                var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+                /* TODO
+				 */
+                var filter = new MSR.Filter();
+                filters.Filters = new List<Filter>();
+                //
+                if ( includingHistoryFilters )
+                    filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+
+
+                if ( offerFrequencyType != null && offerFrequencyType.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Offer Frequency Type", "offerFrequencyType", offerFrequencyType, "Select the type(s) of offer frequency." );
+                    filters.Filters.Add( filter );
+                }
+                if ( scheduleTiming != null && scheduleTiming.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Schedule Timing", "scheduleTiming", scheduleTiming, "Select the type(s) of schedule timing." );
+                    filters.Filters.Add( filter );
+                }
+                if ( scheduleFrequencyType != null && scheduleFrequencyType.Items.Any() )
+                {
+                    filter = ConvertEnumeration( "Schedule Frequency Type", "scheduleFrequencyType", scheduleFrequencyType, "Select the type(s) of schedule frequency." );
+                    filters.Filters.Add( filter );
+                }
+   
+                //
+                //======================================
+
+                //
+                if ( otherFilters != null && otherFilters.Items.Any() )
+                {
+                    //filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+                    filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters, true ) );
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.DoTrace( 1, string.Format( "GetSupportServiceFilters. {0}", ex.Message ) );
+            }
+            return filters;
+        }
+		//GetOutcomeDataFilters
+		public static FilterResponse GetOutcomeDataFilters( bool getAll = false )
+		{
+			EnumerationServices enumServices = new EnumerationServices();
+			int entityTypeId = CodesManager.ENTITY_TYPE_DATASET_PROFILE;
+			string searchType = "Outcome Data";
+			string label = "Outcome Data";
+			string labelPlural = "Outcome Data";
+			FilterResponse filters = new FilterResponse( searchType );
+
+			try
+			{
+				var offerFrequencyType = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_OFFER_FREQUENCY, EnumerationType.MULTI_SELECT, false, getAll );
+				//will need to ensure stored separately 
+
+				//
+
+				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
+
+				/* TODO
+				 */
+				var filter = new MSR.Filter();
+				filters.Filters = new List<Filter>();
+				//
+				if ( includingHistoryFilters )
+					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+
+
+				if ( offerFrequencyType != null && offerFrequencyType.Items.Any() )
+				{
+					filter = ConvertEnumeration( "Offer Frequency Type", "offerFrequencyType", offerFrequencyType, "Select the type(s) of offer frequency." );
+					filters.Filters.Add( filter );
+				}
+
+
+				//======================================
+
+				//
+				if ( otherFilters != null && otherFilters.Items.Any() )
+				{
+					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
+					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters, true ) );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "GetSupportServiceFilters. {0}", ex.Message ) );
+			}
+			return filters;
+		}
 		public static FilterResponse GetNoFilters( string label )
 		{
 			FilterResponse filters = new FilterResponse( label );
@@ -990,6 +1246,31 @@ namespace workIT.Services.API
 				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
 			}
 			return filters;
+		}
+		private static MSR.Filter GetInCollectionFilters( string labelPlural, string hasAnyURI )
+		{
+
+			var filter = new MSR.Filter()
+			{
+				Id = CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY,
+				Label = "Collections",
+				URI = "filter:CollectionType",
+				Description = string.Format( "Select 'Has Collections' to search for {0} that are part of any collections.", labelPlural ),
+			};
+			filter.Items.Add( new MSR.FilterItem()
+			{
+				Label = "In Collection(s)",
+				URI = hasAnyURI,
+				InterfaceType = APIFilter.InterfaceType_Checkbox
+			} );
+			filter.Items.Add( new MSR.FilterItem()
+			{
+				Label = string.Format( "Find and select the collections to filter relevant {0}. Enter the name of a collection, such as \"ETPL\" or \"Illinois\"", labelPlural ),
+				URI = "interfaceType:TextValue",
+				InterfaceType = APIFilter.InterfaceType_Autocomplete
+			} );
+
+			return filter;
 		}
 
 		private static MSR.Filter GetIndustryFilters( string labelPlural, string hasAnyURI )

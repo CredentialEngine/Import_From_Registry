@@ -35,7 +35,10 @@ namespace workIT.Factories
 		public static int ConnectionProfileType_Corequisite = 10;
 		public static int ConnectionProfileType_EntryCondition = 11;
 
-		public static int ConditionSubType_Basic = 1;
+		public static int ConnectionProfileType_CoPrerequisite = 15;
+        public static int ConnectionProfileType_SupportServiceCondition = 16;
+
+        public static int ConditionSubType_Basic = 1;
 		public static int ConditionSubType_CredentialConnection = 2;
 		public static int ConditionSubType_Assessment = 3;
 		public static int ConditionSubType_LearningOpportunity = 4;
@@ -124,7 +127,7 @@ namespace workIT.Factories
 		{
 			bool isValid = true;
 			
-			entity.ParentId = parent.Id;
+			entity.RelatedEntityId = parent.Id;
 
 			int profileTypeId = 0;
 			
@@ -155,7 +158,7 @@ namespace workIT.Factories
 						if ( p != null && p.Id > 0 )
 						{
 							entity.RowId = p.RowId;
-							entity.ParentId = p.EntityId;
+							entity.RelatedEntityId = p.EntityId;
 							MapToDB( entity, p );
 
 							if ( HasStateChanged( context ) )
@@ -186,14 +189,14 @@ namespace workIT.Factories
 			}
 			catch ( DbEntityValidationException dbex )
 			{
-				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Save()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
+				string message = HandleDBValidationError( dbex, thisClassName + ".Save()", string.Format( "EntityId: {0} , ConnectionProfileTypeId: {1}  ", entity.RelatedEntityId, entity.ConnectionProfileTypeId ) );
 				status.AddWarning( message );
-				LoggingHelper.LogError( dbex, thisClassName, $".Save()-DbEntityValidationException, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})" );
+				LoggingHelper.LogError( dbex, thisClassName + $".Save()-DbEntityValidationException, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})" );
 				return isValid;
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName, $"Save(), EntityId: {entity.ParentId}" );
+				LoggingHelper.LogError( ex, thisClassName + $".Save(), EntityId: {entity.RelatedEntityId}" );
 				return isValid;
 			}
 			return isValid;
@@ -217,7 +220,7 @@ namespace workIT.Factories
 				{
 					MapToDB( entity, efEntity );
 
-					efEntity.EntityId = entity.ParentId;
+					efEntity.EntityId = entity.RelatedEntityId;
 					if ( IsValidGuid( entity.RowId ) )
 						efEntity.RowId = entity.RowId;
 					else
@@ -240,7 +243,7 @@ namespace workIT.Factories
 						doingUpdateParts = false;
 						//?no info on error
 						status.AddWarning( "Error - the profile was not saved. " );
-						string message = string.Format( "{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, ConnectionProfileTypeId: {2}", thisClassName, entity.ParentId, entity.ConnectionProfileTypeId );
+						string message = string.Format( "{0}.Add() Failed", "Attempted to add a ConditionProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. ConditionProfile. EntityId: {1}, ConnectionProfileTypeId: {2}", thisClassName, entity.RelatedEntityId, entity.ConnectionProfileTypeId );
 						EmailManager.NotifyAdmin( thisClassName + ".Add() Failed", message );
 					}
 				}
@@ -252,13 +255,13 @@ namespace workIT.Factories
 			}
 			catch (System.Data.Entity.Validation.DbEntityValidationException dbex)
 			{
-				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.ParentId, entity.ConnectionProfileTypeId ) );
+				string message = HandleDBValidationError( dbex, "Entity_ConditionProfileManager.Add()", string.Format( "EntityId: 0 , ConnectionProfileTypeId: {1}  ", entity.RelatedEntityId, entity.ConnectionProfileTypeId ) );
 				status.AddWarning( message );
 					
 			}
 			catch (Exception ex)
 			{
-				LoggingHelper.LogError(ex, thisClassName + string.Format(".Add(), EntityId: {0}", entity.ParentId));
+				LoggingHelper.LogError(ex, thisClassName + string.Format(".Add(), EntityId: {0}", entity.RelatedEntityId));
 			}
 			
 
@@ -586,7 +589,7 @@ namespace workIT.Factories
 
 					foreach ( int id in entity.TargetLearningOpportunityIds )
 					{
-						LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.ParentId, id, entity.RowId.ToString() ) );
+						LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.RelatedEntityId, id, entity.RowId.ToString() ) );
 						//20-12-28 assuming adds here. OK - method checks for existing
 						newId = elm.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
 					}
@@ -598,19 +601,38 @@ namespace workIT.Factories
 				status.AddError( ex.Message );
 
 			}
+            //occ
 
+            try
+            {
+                var occMgr = new Entity_OccupationManager();
+                occMgr.DeleteAll( relatedEntity, ref status );
+                if ( entity.TargetOccupationIds != null && entity.TargetOccupationIds.Count > 0 )
+                {
 
-			try
+                    foreach ( int id in entity.TargetOccupationIds )
+                    {
+                        LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.RelatedEntityId, id, entity.RowId.ToString() ) );
+                        //20-12-28 assuming adds here. OK - method checks for existing
+                        newId = occMgr.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetOccupationIds. " + ex.Message );
+                status.AddError( ex.Message );
+            }
+
+            try
 			{
 				if ( entity.TargetCompetencies != null && entity.TargetCompetencies.Count > 0 )
 				{
-					Entity_CompetencyManager em = new Entity_CompetencyManager();
-					//deleteall is done in SaveList
-					em.SaveList( entity.TargetCompetencies, entity.RowId, ref status );
-					//foreach ( int id in entity.TargetCompetencies )
-					//{
-					//	newId = ecm.Add( entity.RowId, id, true, ref status );
-					//}
+					Entity_CompetencyManager ecm = new Entity_CompetencyManager();
+					//23-01-08 mp - do delete from entity to handle multiple types
+					ecm.DeleteAll( relatedEntity, ref status );
+					ecm.SaveList("Requires", entity.TargetCompetencies, entity.RowId, ref status );
+
 				}
 			}
 			catch ( Exception ex )
@@ -953,7 +975,7 @@ namespace workIT.Factories
 					{
 						foreach ( DBEntity item in results )
 						{
-							list.AddRange( Entity_LearningOpportunityManager.LearningOpps_GetAll( item.RowId, true ) );
+							list.AddRange( Entity_LearningOpportunityManager.TargetResource_GetAll( item.RowId, true ) );
 						}
 					}
 				}
@@ -1135,7 +1157,7 @@ namespace workIT.Factories
 					}
 				}
 
-				output.EntityId = input.ParentId;
+				output.EntityId = input.RelatedEntityId;
 			} else
 			{
 				if ( input.ConnectionProfileTypeId > 0 )
@@ -1171,6 +1193,10 @@ namespace workIT.Factories
 			output.Description = GetData( input.Description );
 			output.SubmissionOfDescription = GetData( input.SubmissionOfDescription );
 
+			//if ( input.AssertedByAgent != null && input.AssertedByAgent .Count > 0)
+   //         {
+			//	//just handling one
+   //         }
 			if ( input.AssertedByAgentUid == null || input.AssertedByAgentUid.ToString() == DEFAULT_GUID )
 			{
 				output.AgentUid = null;//			
@@ -1294,7 +1320,7 @@ namespace workIT.Factories
 			output.SubmissionOfDescription = input.SubmissionOfDescription;
 			//output.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( output.RowId, "requires" );
 			var frameworksList = new Dictionary<string, RegistryImport>();
-            output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, ref frameworksList);
+            output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, "Requires", ref frameworksList);
             if ( output.RequiresCompetenciesFrameworks.Count > 0 )
             {
                 output.HasCompetencies = true;
@@ -1331,7 +1357,7 @@ namespace workIT.Factories
 					}
 				}	
 
-				output.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( output.RowId, false, isForCredentialDetails );
+				output.TargetLearningOpportunity = Entity_LearningOpportunityManager.TargetResource_GetAll( output.RowId, false, isForCredentialDetails );
 				foreach (LearningOpportunityProfile e in output.TargetLearningOpportunity)
 				{
 					if (e.HasCompetencies || e.ChildHasCompetencies)
@@ -1340,9 +1366,13 @@ namespace workIT.Factories
 						break;
 					}
 				}
-				
-			}
-		}
+
+                output.TargetOccupation = Entity_OccupationManager.TargetResource_GetAll( output.RowId, false );
+
+                //output.TargetJob = Entity_JobManager.TargetResource_GetAll( output.RowId, false );
+
+            }
+        }
 		
 		public static void MapFromDB_Basics( DBEntity from, ThisEntity to, bool isForCredentialDetails )
 		{
@@ -1355,7 +1385,7 @@ namespace workIT.Factories
 			if ( IsValidDate( from.LastUpdated ) )
 				to.LastUpdated = ( DateTime ) from.LastUpdated;
 
-			to.ParentId = from.EntityId;
+			to.RelatedEntityId = from.EntityId;
 			if ( IsGuidValid( from.AgentUid ) )
 			{
 				to.AssertedByAgentUid = ( Guid ) from.AgentUid;
@@ -1363,19 +1393,20 @@ namespace workIT.Factories
 			else
 			{
 				//attempt to get from parent?
-				if ( from.Entity != null  )
-				{
-					if ( from.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
-					{
-						Credential cred = CredentialManager.GetBasic( from.Entity.EntityUid );
-						to.AssertedByAgentUid = cred.OwningAgentUid;
-					}
-					//else if ( from.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONDITION_PROFILE )
-					//{
-					//	MN.ProfileLink cp = GetProfileLink( from.Entity.EntityUid );
-					//	to.AssertedByAgentUid = cp.OwningAgentUid;
-					//}
-				}
+				//22-08-30 - NO, only show what was published
+				//if ( from.Entity != null  )
+				//{
+				//	if ( from.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+				//	{
+				//		Credential cred = CredentialManager.GetBasic( from.Entity.EntityUid );
+				//		to.AssertedByAgentUid = cred.OwningAgentUid;
+				//	}
+				//	//else if ( from.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CONDITION_PROFILE )
+				//	//{
+				//	//	MN.ProfileLink cp = GetProfileLink( from.Entity.EntityUid );
+				//	//	to.AssertedByAgentUid = cp.OwningAgentUid;
+				//	//}
+				//}
 			}
 			if ( IsGuidValid( to.AssertedByAgentUid ) )
 			{
@@ -1461,52 +1492,59 @@ namespace workIT.Factories
 
 		public int GetConditionTypeId( string conditionType )
 		{
-			int profileTypeId = 0;
+			int conditionTypeId = 0;
 			switch ( conditionType.ToLower() )
 			{
 				case "requires":
-					profileTypeId = ConnectionProfileType_Requirement;
+					conditionTypeId = ConnectionProfileType_Requirement;
 					break;
 			
 				case "recommends":
-					profileTypeId = ConnectionProfileType_Recommendation;
+					conditionTypeId = ConnectionProfileType_Recommendation;
 					break;
 
 				case "isrequiredfor":
-					profileTypeId = ConnectionProfileType_NextIsRequiredFor;
+					conditionTypeId = ConnectionProfileType_NextIsRequiredFor;
 					break;
 
 				case "isrecommendedfor":
-					profileTypeId = ConnectionProfileType_NextIsRecommendedFor;
+					conditionTypeId = ConnectionProfileType_NextIsRecommendedFor;
 					break;
 
 				case "renewal":
-					profileTypeId = ConnectionProfileType_Renewal;
+					conditionTypeId = ConnectionProfileType_Renewal;
 					break;
 				case "advancedstandingfor":
-					profileTypeId = ConnectionProfileType_AdvancedStandingFor;
+					conditionTypeId = ConnectionProfileType_AdvancedStandingFor;
 					break;
 				case "advancedstandingfrom":
-					profileTypeId = ConnectionProfileType_AdvancedStandingFrom;
+					conditionTypeId = ConnectionProfileType_AdvancedStandingFrom;
 					break;
 				case "ispreparationfor":
-					profileTypeId = ConnectionProfileType_PreparationFor;
+					conditionTypeId = ConnectionProfileType_PreparationFor;
 					break;
 				case "preparationfrom":
-					profileTypeId = ConnectionProfileType_PreparationFrom;
+					conditionTypeId = ConnectionProfileType_PreparationFrom;
 					break;
 				case "corequisite":
-					profileTypeId = Entity_ConditionProfileManager.ConnectionProfileType_Corequisite;
+					conditionTypeId = Entity_ConditionProfileManager.ConnectionProfileType_Corequisite;
 					break;
 				case "entrycondition":
-					profileTypeId = Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition;
+					conditionTypeId = Entity_ConditionProfileManager.ConnectionProfileType_EntryCondition;
 					break;
-				//
-				default:
-					profileTypeId = 1;
+				case "coprerequisite":
+					conditionTypeId = Entity_ConditionProfileManager.ConnectionProfileType_CoPrerequisite;
+					break;
+                case "supportservicecondition":
+                case "supportservice":
+                    conditionTypeId = ConnectionProfileType_SupportServiceCondition;
+                    break;
+                //
+                default:
+					conditionTypeId = 1;
 					break;
 			}
-			return profileTypeId;
+			return conditionTypeId;
 		} //
 		public static string GetConditionType(int conditionTypeId)
 		{
@@ -1547,8 +1585,14 @@ namespace workIT.Factories
 				case 11:
 					ctype = "Entry Condition";
 					break;
-				//CredentialConnections
-				default:
+				case 15:
+					ctype = "CoPrerequisite";
+					break;
+                case 16:
+                    ctype = "Support Service Condition";
+                    break;
+                //CredentialConnections
+                default:
 					conditionTypeId = 0;
 					break;
 			}
@@ -1663,6 +1707,10 @@ namespace workIT.Factories
 								else if ( entity.ConnectionProfileTypeId == ConnectionProfileType_Corequisite )
 								{
 									to.Corequisite.Add( entity );
+								}
+								else if ( entity.ConnectionProfileTypeId == ConnectionProfileType_CoPrerequisite )
+								{
+									to.CoPrerequisite.Add( entity );
 								}
 								else
 								{

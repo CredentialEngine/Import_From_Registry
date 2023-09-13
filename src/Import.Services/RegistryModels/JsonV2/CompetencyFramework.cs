@@ -54,8 +54,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:alignTo" )]
 		public List<string> alignTo { get; set; } 
 
-		[JsonProperty( "ceasn:altIdentifier" )]
-		public List<string> altIdentifier { get; set; }
+		//[JsonProperty( "ceasn:altIdentifier" )]
+		//public List<string> altIdentifier { get; set; }
 
 		[JsonProperty( "ceasn:author" )]
 		public string author { get; set; }
@@ -102,11 +102,13 @@ namespace RA.Models.JsonV2
 		public string dateValidUntil { get; set; }
 
 		//single per https://github.com/CredentialEngine/CompetencyFrameworks/issues/66
+		//23-03-22 back to a list
 		[JsonProperty( "ceasn:derivedFrom" )]
-		public string derivedFrom { get; set; }
+        //public object derivedFrom { get; set; }
+        public List<string> derivedFrom { get; set; }
 
-		//???language map??
-		[JsonProperty( "ceasn:description" )]
+        //???language map??
+        [JsonProperty( "ceasn:description" )]
 		public LanguageMap description { get; set; }
 
 		[JsonProperty( "ceasn:educationLevelType" )]
@@ -156,7 +158,7 @@ namespace RA.Models.JsonV2
 		//public List<string> rights { get; set; } 
 
 		[JsonProperty( "ceasn:rightsHolder" )]
-		public string rightsHolder { get; set; }
+		public object rightsHolder { get; set; }
 
 		[JsonProperty( "ceasn:source" )]
 		public List<string> source { get; set; } 
@@ -171,7 +173,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; }
 		[JsonProperty( PropertyName = "ceterms:instructionalProgramType" )]
-		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; } 
+		public List<CredentialAlignmentObject> InstructionalProgramType { get; set; }
 
 
 		//*** Helper properties where publishing input is a graph. These will not be published
@@ -179,17 +181,17 @@ namespace RA.Models.JsonV2
 		/// CIP List is a helper when publishing from a graph. It will not be published
 		/// </summary>
 		[JsonProperty( "cipList" )]
-		public List<string> CIPList { get; set; }
+		public List<string> CIPList { get; set; } = null;
 		/// <summary>
 		/// SOC List is a helper when publishing from a graph. It will not be published
 		/// </summary>
 		[JsonProperty( "socList" )]
-		public List<string> SOCList { get; set; }
+		public List<string> SOCList { get; set; } = null;
 
-		/// NAICS List is a helper when publishing from a graph. It will not be published
-		[JsonProperty( "naicsList" )]
-		public List<string> NaicsList { get; set; }
-	}
+        /// NAICS List is a helper when publishing from a graph. It will not be published
+        [JsonProperty( "naicsList" )]
+		public List<string> NaicsList { get; set; } = null;
+    }
 
 	public class CompetencyFrameworkPlain
 	{
@@ -249,12 +251,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:dateValidUntil" )]
 		public string dateValidUntil { get; set; }
 
-		//single per https://github.com/CredentialEngine/CompetencyFrameworks/issues/66
-		[JsonProperty( "ceasn:derivedFrom" )]
-		public string derivedFrom { get; set; }
+        //single per https://github.com/CredentialEngine/CompetencyFrameworks/issues/66
+        //23-03-22 back to a list
+        [JsonProperty( "ceasn:derivedFrom" )]
+        public List<string> derivedFrom { get; set; }
 
-		//???language map??
-		[JsonProperty( "ceasn:description" )]
+        //???language map??
+        [JsonProperty( "ceasn:description" )]
 		public string description { get; set; }
 
 		[JsonProperty( "ceasn:educationLevelType" )]
@@ -305,7 +308,7 @@ namespace RA.Models.JsonV2
 		//public List<string> rights { get; set; } = new List<string>();
 
 		[JsonProperty( "ceasn:rightsHolder" )]
-		public string rightsHolder { get; set; }
+		public List<string> rightsHolder { get; set; }
 
 		[JsonProperty( "ceasn:source" )]
 		public List<string> source { get; set; } = new List<string>();

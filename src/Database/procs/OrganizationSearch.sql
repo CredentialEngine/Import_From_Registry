@@ -1,5 +1,16 @@
-use credFinder
+USE [credFinder]
 GO
+
+
+
+--use credfinder_prod
+--go	
+
+--USE staging_credFinder
+--GO
+
+use sandbox_credFinder
+go
 
 /****** Object:  StoredProcedure [dbo].[OrganizationSearch]    Script Date: 8/16/2017 9:26:12 AM ******/
 SET ANSI_NULLS ON
@@ -37,6 +48,7 @@ DECLARE @StartPageIndex int, @PageSize int, @TotalRows int
 
 set @SortOrder = ''
 set @SortOrder = 'base.Name'
+set @SortOrder = 'alpha'
 -- blind search 
 set @Filter = ' ( base.Id in (SELECT  OrgId FROM [Organization.Member] where UserId = 2) ) '
 set @Filter = ' (OrgTypeId in (1,6)) '
@@ -58,11 +70,11 @@ set @Filter = '  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummar
 
 set @Filter = ' ( base.Id in (SELECT b.EntityBaseId FROM [dbo].[Entity.ConditionManifest] a inner join entity b on a.EntityId = b.Id  ) )  '
 
-set @Filter = ' ( Name = ''American Welding Society'' ) '
-
-set @Filter = ''
-set @StartPageIndex = 1
-set @PageSize = 55
+set @Filter = '  ( base.EntityStateId = 3 ) AND ( base.CTID in (Select distinct CTID from [Entity_Cache]  where EntityTypeId=2 AND  IsNull(ResourceDetail,'''') = '''' ) )'
+	
+--set @Filter = ''
+set @StartPageIndex = 4
+set @PageSize = 100
 --set statistics time on       
 EXECUTE @RC = [OrganizationSearch]
      @Filter,@SortOrder  ,@StartPageIndex  ,@PageSize,  @TotalRows OUTPUT
@@ -136,7 +148,7 @@ IF @StartPageIndex < 1        SET @StartPageIndex = 1
 CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
       Id int,
-      Title             varchar(200)
+      Title             varchar(500)
 )
 
 -- =================================
@@ -185,6 +197,8 @@ SET ROWCOUNT @PageSize
 SELECT        
 	RowNumber, 
 	base.id, 
+	base.CTID,
+	base.EntityStateId,
 	base.Name, 
 	base.Description, base.SubjectWebpage,
 	--base.MainPhoneNumber, 
@@ -194,7 +208,6 @@ SELECT
 	base.Created, 
 	base.LastUpdated,  
 	base.RowId, base.ImageURL
-	,base.CTID
 	,base.CredentialRegistryId
 	,base.CredentialCount
 	,base.IsAQAOrganization
@@ -208,16 +221,12 @@ SELECT
 ,isnull(actorRolesCsv.OfferedBy,'') As OfferedByList
 ,isnull(actorRolesCsv.AsmtsOwnedBy,'') As AsmtsOwnedByList
 ,isnull(actorRolesCsv.LoppsOwnedBy,'') As LoppsOwnedByList
+,isnull(actorRolesCsv.CompetencyFrameworksOwnedBy,'') As FrameworksOwnedByList
 
 ,isnull(recipRolesCsv.AccreditedBy,'') As AccreditedByList
 ,isnull(recipRolesCsv.ApprovedBy,'') As ApprovedByList
 
 -- ======================================================
-	-- For ElasticSearch
-	-- Depends on Entity.SearchIndex, so the latter must be up to date!
-	--, STUFF((SELECT '|' + ISNULL(NULLIF(a.TextValue, ''), NULL) AS [text()] FROM [dbo].[Entity] e INNER JOIN [dbo].[Entity.SearchIndex] a ON a.EntityId = e.Id where base.RowId = e.EntityUid AND e.EntityTypeId = 2 FOR XML Path('')), 1,1,'') TextValues
-
-	--, STUFF((SELECT '|' + ISNULL(NULLIF(a.CodedNotation, ''), NULL) AS [text()] FROM [dbo].[Entity] e INNER JOIN [dbo].[Entity.SearchIndex] a ON a.EntityId = e.Id where base.RowId = e.EntityUid AND e.EntityTypeId = 2 FOR XML Path('')), 1,1,'') CodedNotation
 
 	--, STUFF((SELECT '|' + ISNULL(NULLIF(CAST(eps.PropertyValueId AS NVARCHAR(MAX)), ''), NULL) AS [text()] FROM [dbo].[EntityProperty_Summary] eps where eps.EntityTypeId = 2 AND eps.EntityBaseId = base.Id FOR XML Path('')), 1,1,'') PropertyValues
  

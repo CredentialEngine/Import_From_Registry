@@ -41,8 +41,32 @@ namespace workIT.Factories
                 return 0;
 
             ThisEntity entity = new ThisEntity() { EntityTypeId = entityTypeId, RecordId = recordId, IsUpdateOrDeleteTypeId = actionTypeId, StatusId = 1 };
-            return Add( entity, ref messages );
-            
+            return Add( entity, ref messages );            
+        }
+        /// <summary>
+        /// New: adding handling via CTID.
+        /// Start with lookup, and later full ....
+        /// </summary>
+        /// <param name="entityTypeId"></param>
+        /// <param name="ctid"></param>
+        /// <param name="actionTypeId"></param>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public int Add( string ctid, int actionTypeId, ref List<String> messages )
+        {
+            if ( string.IsNullOrWhiteSpace(ctid ))
+                return 0;
+            var record = EntityManager.EntityCacheGetByCTID( ctid );
+            if ( record != null )
+            {
+                ThisEntity entity = new ThisEntity() { EntityTypeId = record.EntityTypeId, RecordId = record.BaseId, IsUpdateOrDeleteTypeId = actionTypeId, StatusId = 1 };
+                return Add( entity, ref messages );
+            }
+            else
+            {
+                //probably need a message
+                return 0;
+            }
         }
         public int AddDeleteRequest( int entityTypeId, int recordId, ref List<String> messages )
         {
@@ -51,7 +75,6 @@ namespace workIT.Factories
 
             ThisEntity entity = new ThisEntity() { EntityTypeId = entityTypeId, RecordId = recordId, IsUpdateOrDeleteTypeId = Reindex_Delete_Request, StatusId = 1 };
             return Add( entity, ref messages );
-
         }
         /// <summary>
         /// SearchPendingReindexes Add
@@ -363,9 +386,9 @@ namespace workIT.Factories
                     }
                 }
             }
-
             return list;
         }
+    
         public static List<ThisEntity> GetAllPendingReindex( ref List<String> messages, int entityTypeId = 0 )
         {
             List<ThisEntity> list = new List<ThisEntity>();

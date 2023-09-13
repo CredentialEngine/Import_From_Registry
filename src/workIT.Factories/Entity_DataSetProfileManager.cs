@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.QData;
-using ThisEntity = workIT.Models.QData.Entity_DataSetProfile;
+using ThisResource = workIT.Models.QData.Entity_DataSetProfile;
 using DBEntity = workIT.Data.Tables.Entity_DataSetProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
@@ -24,10 +24,16 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_DataSetProfileManager";
 		public static int RelationshipType_HasPart = 1;
+        #region Entity_DataSetProfile Persistance ===================
 
-		#region Entity Holders Persistance ===================
-
-		public bool SaveList( List<int> list, Entity parent, ref SaveStatus status )
+        /// <summary>
+        /// Save list of datasetProfile ids under Entity.DataSetProfile
+        /// </summary>
+        /// <param name="list"></param>
+        /// <param name="parent"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public bool SaveList( List<int> list, Entity parent, ref SaveStatus status )
 		{
 			if ( list == null || list.Count == 0 )
 				return true;
@@ -43,7 +49,6 @@ namespace workIT.Factories
 
 			return isAllValid;
 		}
-
 
 		/// <summary>
 		/// Add an Entity_DataSetProfileManager
@@ -87,13 +92,16 @@ namespace workIT.Factories
 					efEntity.EntityId = parent.Id;
 					efEntity.DataSetProfileId = dataSetProfileId;
 					efEntity.Created = System.DateTime.Now;
-
+					//bleep: on import a dsp is found, and id is stored in relevantDSPs. then on delete of the adp, the dsp is also deleted, so at this point the dspId is invalid
+					//Feb 2023. OK now. Changed the e.ADP trigger to do a virtual delete. have to reactivate the dsp
 					context.Entity_DataSetProfile.Add( efEntity );
 
 					// submit the change to database
 					count = context.SaveChanges();
 					if ( count > 0 )
 					{
+						//activate the DSP just in case
+						new DataSetProfileManager().ReActivate( dataSetProfileId, ref status );
 						id = efEntity.Id;
 						return efEntity.Id;
 					}
@@ -124,16 +132,15 @@ namespace workIT.Factories
 			return id;
 		}
 
-
 		#endregion
 
 		/// <summary>
-		/// Get all HoldersProfile for the provided entity
+		/// Get all dataSetProfileProfile for the provided entity
 		/// The returned entities are just the base
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returnsThisEntity
-		public static List<DataSetProfile> GetAll( Guid parentUid, bool includingParts = true, bool isAPIRequest = false )
+		public static List<DataSetProfile> GetAll( Guid parentUid, bool includingParts = true , bool isAPIRequest = false)
 		{
 			var list = new List<DataSetProfile>();
 			var entity = new DataSetProfile();
@@ -171,42 +178,7 @@ namespace workIT.Factories
 			}
 			return list;
 		}
-		//unlikely to use
-		//public static ThisEntity Get( int parentId, int dataSetProfileId )
-		//{
-		//	ThisEntity entity = new ThisEntity();
-		//	if ( parentId < 1 || dataSetProfileId < 1 )
-		//	{
-		//		return entity;
-		//	}
-		//	try
-		//	{
-		//		using ( var context = new EntityContext() )
-		//		{
-		//			EM.Entity_DataSetProfile from = context.Entity_DataSetProfile
-		//					.SingleOrDefault( s => s.DataSetProfileId == dataSetProfileId && s.EntityId == parentId );
 
-		//			if ( from != null && from.Id > 0 )
-		//			{
-		//				entity.Id = from.Id;
-		//				entity.DataSetProfileId = from.DataSetProfileId;
-		//				entity.EntityId = from.EntityId;
-		//				entity.HoldersProfile = new HoldersProfile();
-		//				HoldersProfileManager.MapFromDB( from.HoldersProfile, entity.HoldersProfile,
-		//						false //don't include parts?
-		//						);
-
-		//				if ( IsValidDate( from.Created ) )
-		//					entity.Created = ( DateTime )from.Created;
-		//			}
-		//		}
-		//	}
-		//	catch ( Exception ex )
-		//	{
-		//		LoggingHelper.LogError( ex, thisClassName + ".Get" );
-		//	}
-		//	return entity;
-		//}//
 
 
 	}

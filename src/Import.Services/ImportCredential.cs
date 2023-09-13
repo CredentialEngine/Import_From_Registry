@@ -9,19 +9,21 @@ using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.CredentialServices;
-using InputEntity = RA.Models.Json.Credential;
+//using InputEntity = RA.Models.Json.Credential;
 
 //input document from registry
 using InputEntityV3 = RA.Models.JsonV2.Credential;
 using JsonInput = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
 //target local storage class
-using ThisEntity = workIT.Models.Common.Credential;
+using ThisResource = workIT.Models.Common.Credential;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Services;
+using FAPI = workIT.Services.API;
+using workIT.Data.Tables;
 
 namespace Import.Services
 {
@@ -29,10 +31,10 @@ namespace Import.Services
 	{
 		ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        InputEntity input = new InputEntity();
-		ThisEntity output = new ThisEntity();
-
-		int thisEntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL;
+        //InputEntity input = new InputEntity();
+		ThisResource output = new ThisResource();
+        string resourceType = "Credential";
+        int thisEntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL;
 		string thisClassName = "ImportCredential";
 
 		/// <summary>
@@ -42,10 +44,10 @@ namespace Import.Services
 		{
 
 			SaveStatus status = new SaveStatus();
-			List<Credential> list = CredentialManager.GetPending();
+			List<ThisResource> list = CredentialManager.GetPending();
 			LoggingHelper.DoTrace( 1, string.Format( thisClassName + " - ImportPendingRecords(). Processing {0} records =================", list.Count()) );
 
-			foreach ( Credential item in list )
+			foreach ( var item in list )
 			{
 				status = new SaveStatus();
 				//SWP contains the resource url
@@ -254,7 +256,7 @@ namespace Import.Services
             }
 
             
-            MappingHelperV3 helper = new MappingHelperV3(1);
+            MappingHelperV3 helper = new MappingHelperV3( thisEntityTypeId );
             helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
@@ -337,7 +339,7 @@ namespace Import.Services
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "Credential.OwnedBy", input.OwnedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[ 0 ];
+					output.PrimaryAgentUID = output.OwnedBy[ 0 ];
 					helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 				}
 				else
@@ -348,12 +350,12 @@ namespace Import.Services
 						status.AddWarning( "document doesn't have an owning or offering organization." );
 					} else
 					{
-						output.OwningAgentUid = output.OfferedBy[ 0 ];
+						output.PrimaryAgentUID = output.OfferedBy[ 0 ];
 						helper.CurrentOwningAgentUid = output.OfferedBy[ 0 ];
 					}
 				}
 				//
-				var org = OrganizationManager.GetBasics( output.OwningAgentUid );
+				var org = OrganizationManager.GetBasics( output.PrimaryAgentUID );
 				if ( org != null && org.Id > 0 )
 					owningOrganizationCTID = org.CTID;
 				//proposal, only in credentials for now
@@ -392,6 +394,7 @@ namespace Import.Services
 				output.VersionIdentifierNew = helper.MapIdentifierValueList2( input.VersionIdentifier );
 				if ( output.VersionIdentifierNew != null && output.VersionIdentifierNew.Count() > 0 )
 				{
+					//nothing is being done with this yet
 					output.VersionIdentifierJSON = JsonConvert.SerializeObject( output.VersionIdentifierNew, MappingHelperV3.GetJsonSettings() );
 				}
 				//
@@ -463,15 +466,29 @@ namespace Import.Services
                 output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
 				//output.Industries.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeIndustryType ) );
 				//naics
-				output.Naics = input.Naics;
+				//should check for duplicates in Naics, IndustryTypes, then remove from Naics
+				//
+				if ( input.Naics != null )
+				{
+					if ( output.IndustryTypes != null )
+					{
+						foreach ( var item in input.Naics )
+						{
+							var exists = output.IndustryTypes.FirstOrDefault( i => i.CodedNotation == item );
+							if ( exists == null || string.IsNullOrWhiteSpace( exists.CodedNotation ) )
+								output.Naics.Add( item );
+						}
+					} else
+						output.Naics = input.Naics;
+				}
 
 				output.InstructionalProgramTypes = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );
 				//output.InstructionalProgramTypes.AddRange( helper.AppendLanguageMapListToCAOProfileList( input.AlternativeInstructionalProgramType ) );
 				//
 				//will want a custom method to lookup the rating
-				NavyServices nsrvs = new NavyServices();
-				output.NavyRating = NavyServices.MapRatingsListToEnumermation( input.HasRating );
-				output.NavyRatingType.AddRange( nsrvs.MapCAOListToCAOProfileList( input.HasRating, ref messages ) );
+				//NavyServices nsrvs = new NavyServices();
+				//output.NavyRating = NavyServices.MapRatingsListToEnumermation( input.HasRating );
+				//output.NavyRatingType.AddRange( nsrvs.MapCAOListToCAOProfileList( input.HasRating, ref messages ) );
 				//
 
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
@@ -497,8 +514,8 @@ namespace Import.Services
 				output.EstimatedCost = helper.FormatCosts( input.EstimatedCost, ref status );
 
                 //EstimatedDuration
-                output.EstimatedDuration = helper.FormatDuration( input.EstimatedDuration, ref status );
-                output.RenewalFrequency = helper.FormatDurationItem( input.RenewalFrequency );
+                output.EstimatedDuration = helper.FormatDuration( $"{resourceType}.EstimatedDuration", input.EstimatedDuration, ref status );
+                output.RenewalFrequency = helper.FormatDurationItem( $"{resourceType}.RenewalFrequency", input.RenewalFrequency, ref status );
                
                 //conditions
 				if ( legacyInput != null && legacyInput.Requires != null )
@@ -511,8 +528,13 @@ namespace Import.Services
 				output.Recommends = helper.FormatConditionProfile( input.Recommends, ref status );
                 output.Renewal = helper.FormatConditionProfile( input.Renewal, ref status );
                 output.Corequisite = helper.FormatConditionProfile( input.Corequisite, ref status );
-                output.Revocation = helper.FormatRevocationProfile( input.Revocation, ref status );
+				output.CoPrerequisite = helper.FormatConditionProfile( input.CoPrerequisite, ref status );
 
+
+				output.Revocation = helper.FormatRevocationProfile( input.Revocation, ref status );
+
+                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+                    output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
                 //connections
                 output.AdvancedStandingFrom = helper.FormatConditionProfile( input.AdvancedStandingFrom, ref status );
                 output.IsAdvancedStandingFor = helper.FormatConditionProfile( input.IsAdvancedStandingFor, ref status );
@@ -574,47 +596,57 @@ namespace Import.Services
                 output.RevocationProcess = helper.FormatProcessProfile( input.RevocationProcess, ref status );
 				//SameAs URI
 				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
-				//FinancialAssistance
-				output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
+                //should probably be splitting here, not later?
+                //output.UsesVerificationService = input.UsesVerificationService;
+				//these have to exist, should be able to just extract the ctid and do a lookup
+                output.VerificationServiceProfileIds = helper.MapVerificationServiceReferences( input.UsesVerificationService, "UsesVerificationService", output.CTID, ref status );
+
+                //FinancialAssistance
+                output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 				if ( output.FinancialAssistance != null && output.FinancialAssistance.Any() )
 					output.FinancialAssistanceJson = JsonConvert.SerializeObject( output.FinancialAssistance, MappingHelperV3.GetJsonSettings() );
-				//
-				if ( input.AggregateData != null && input.AggregateData.Any() )
-				{
-					output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status );
-				}
-				//TODO
-				//these would be a list of URIs that should reference the earningsProfiles list
-				//21-02-22 mparsons - these may start having data - but will be an embedded object
-				if ( input.EarningsList != null && input.EarningsList.Any() )
-				{
-					output.Earnings = helper.FormatEarningsProfile( input.EarningsList, outcomesDTO, bnodes, ref status );
-				}
-				else
-				{
-					output.Earnings = helper.FormatEarningsProfile( earningsProfiles, outcomesDTO, bnodes, ref status );
-				}
-				//input.Holders is now (soon) an enbedded list of holdersProfiles
-				//if the xxxList properties have data, then should be the new way - otherwise want to ignore Holders as will likely have type errors.
-				if ( input.HoldersList != null && input.HoldersList.Any() )
-				{
-					output.Holders = helper.FormatHoldersProfile( output.CTID, input.HoldersList, outcomesDTO, bnodes, ref status );
-				}
-				else
-				{
-					output.Holders = helper.FormatHoldersProfile( output.CTID, holdersProfiles, outcomesDTO, bnodes, ref status );
-				}
-				//
-				if ( input.EmploymentOutcomeList != null && input.EmploymentOutcomeList.Any() )
-				{
-					output.EmploymentOutcome = helper.FormatEmploymentOutcomeProfile( input.EmploymentOutcomeList, outcomesDTO, bnodes, ref status );
-				}
-				else
-				{
-					output.EmploymentOutcome = helper.FormatEmploymentOutcomeProfile( employmentOutcomeProfiles, outcomesDTO, bnodes, ref status );
-				}
-				//
-				output.Addresses = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
+                //
+                bool hasDataSetProfiles = false;
+                List<string> ctidList = new List<string>();
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+                if ( ctidList != null && ctidList.Any() )
+                {
+                    //especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
+                    hasDataSetProfiles = true;
+
+                }
+                //TODO
+                //these would be a list of URIs that should reference the earningsProfiles list
+                //21-02-22 mparsons - these may start having data - but will be an embedded object
+                //if ( input.EarningsList != null && input.EarningsList.Any() )
+                //{
+                //	output.Earnings = helper.FormatEarningsProfile( input.EarningsList, outcomesDTO, bnodes, ref status );
+                //}
+                //else
+                //{
+                //	output.Earnings = helper.FormatEarningsProfile( earningsProfiles, outcomesDTO, bnodes, ref status );
+                //}
+                ////input.Holders is now (soon) an enbedded list of holdersProfiles
+                ////if the xxxList properties have data, then should be the new way - otherwise want to ignore Holders as will likely have type errors.
+                //if ( input.HoldersList != null && input.HoldersList.Any() )
+                //{
+                //	output.Holders = helper.FormatHoldersProfile( output.CTID, input.HoldersList, outcomesDTO, bnodes, ref status );
+                //}
+                //else
+                //{
+                //	output.Holders = helper.FormatHoldersProfile( output.CTID, holdersProfiles, outcomesDTO, bnodes, ref status );
+                //}
+                ////
+                //if ( input.EmploymentOutcomeList != null && input.EmploymentOutcomeList.Any() )
+                //{
+                //	output.EmploymentOutcome = helper.FormatEmploymentOutcomeProfile( input.EmploymentOutcomeList, outcomesDTO, bnodes, ref status );
+                //}
+                //else
+                //{
+                //	output.EmploymentOutcome = helper.FormatEmploymentOutcomeProfile( employmentOutcomeProfiles, outcomesDTO, bnodes, ref status );
+                //}
+                //
+                output.Addresses = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
 				if ( output.Addresses != null && output.Addresses.Any() )
 				{
 					//ISSUE - WE ARE SAVING HERE THE REGION GETS NORMALIZED!
@@ -662,7 +694,7 @@ namespace Import.Services
                 //just in case check if entity added since start
                 if ( output.Id == 0 )
                 {
-                    ThisEntity entity = EntityServices.GetMinimumByCtid( ctid );
+                    ThisResource entity = EntityServices.GetMinimumByCtid( ctid );
                     if ( entity != null && entity.Id > 0 )
                     {
 						//in this case, should start over
@@ -671,10 +703,29 @@ namespace Import.Services
                     }
                 }
 				//================= save the data ========================================
-				if(UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true))
+				if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
+				{
 					importSuccessfull = mgr.Import( output, ref status );
+                    //start storing the finder api ready version
+                    var resource = FAPI.CredentialServices.GetDetailForAPI( output.Id, true );
+                    //var resourceDetail2 = JObject.FromObject( resource );
+					//or 
+					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-				
+                    var statusMsg = "";
+					var eManager = new EntityManager();
+
+                    if (eManager.EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0)
+					{
+						status.AddError( statusMsg );
+					}
+                    //realistically, don't have to do this every time
+                    //TODO: should now do in JSON so don't need the stored proc. OR see what can be derived from resourceDetail
+                    if (eManager.EntityCacheUpdateCredentialAgentRelationships( output.CTID, ref statusMsg ) == false )
+                    {
+                        status.AddError( statusMsg );
+                    }
+                }
 				saveDuration = DateTime.Now.Subtract( saveStarted );
 				if ( saveDuration.TotalSeconds > 5 )
 					LoggingHelper.DoTrace( 6, string.Format( "         WARNING SAVE Duration: {0:N2} seconds ", saveDuration.TotalSeconds ) );
@@ -708,8 +759,13 @@ namespace Import.Services
 				if ( UtilityManager.GetAppKeyValue( "writingToDownloadResourceDatabase", false ) )
 				{
 					var resource = "";
-					resource = JsonConvert.SerializeObject( output, JsonHelper.GetJsonSettings() );
+					//start storing the finder api ready version
+					var cred = FAPI.CredentialServices.GetDetailForAPI( output.Id );
+					var resourceDetail = JObject.FromObject( cred );
+                    resource = JsonConvert.SerializeObject( output, JsonHelper.GetJsonSettings(false) );
+					//do we store the JObject, or just object?
 					//resource = output.ToString();
+					//may want a generic top level type (credential) as well as actual type (ceterms:Certificate)
 					var request = new CredentialRegistryResource()
 					{
 						EntityType = "Credential",
@@ -724,6 +780,7 @@ namespace Import.Services
 						Created = status.EnvelopeCreatedDate,
 						LastUpdated = status.EnvelopeUpdatedDate
 					};
+					//does this do a replace? YES
 					new ExternalServices().DownloadSave( request, ref messages );
 				}
 				//
@@ -755,7 +812,8 @@ namespace Import.Services
 		}
 
 
-		public List<int> ExtractEntityIds( List<TopLevelObject> list, int entityTypeId)
+
+        public List<int> ExtractEntityIds( List<TopLevelObject> list, int entityTypeId)
 		{
 			var output = new List<int>();
 			var results = list.Where( s => s.EntityTypeId == entityTypeId ).ToList();
@@ -767,7 +825,7 @@ namespace Import.Services
 			return output;
 		}
 
-        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+        public bool DoesEntityExist( string ctid, ref ThisResource entity )
         {
             bool exists = false;
             entity = EntityServices.GetMinimumByCtid( ctid );

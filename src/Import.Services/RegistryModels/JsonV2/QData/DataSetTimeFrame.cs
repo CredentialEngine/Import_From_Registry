@@ -21,11 +21,11 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( "@type" )]
 		public string Type { get; set; } = "qdata:DataSetTimeFrame";
 
-		/// <summary>
-		/// Id for this blank node
-		/// </summary>
-		[JsonProperty( "@id" )]
-		public string CtdlId { get; set; }
+		///// <summary>
+		///// Id for this blank node
+		///// </summary>
+		//[JsonProperty( "@id" )]
+		//public string CtdlId { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:name" )]
 		public LanguageMap Name { get; set; }
@@ -42,13 +42,13 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
 		public LanguageMapList AlternateName { get; set; } 
 
-		/// <summary>
-		/// Attributes of the data set.
-		/// URI to blank node
-		/// qdata:DataProfile
-		/// </summary>
-		[JsonProperty( PropertyName = "qdata:dataAttributesBNList" )]
-		public List<string> DataAttributesBNList { get; set; }
+		///// <summary>
+		///// Attributes of the data set.
+		///// URI to blank node
+		///// qdata:DataProfile
+		///// </summary>
+		//[JsonProperty( PropertyName = "qdata:dataAttributesBNList" )]
+		//public List<string> DataAttributesBNList { get; set; }
 
 		[JsonProperty( PropertyName = "qdata:dataAttributes" )]
 		public List<DataProfile> DataAttributes { get; set; }

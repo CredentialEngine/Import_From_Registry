@@ -1,6 +1,13 @@
 use credFinder
 GO
 
+
+--use sandbox_credFinder
+--go
+--use staging_credFinder
+--go
+
+
 /****** Object:  StoredProcedure [dbo].[CostProfileItems_search]    Script Date: 10/6/2017 5:31:33 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -23,8 +30,8 @@ set @SortOrder = ''
 
 set @Filter = ' ( condProfParentEntityTypeId = 1 and condProfParentEntityBaseId =1141)'
 
-set @condProfParentEntityTypeId = 1 
-set @condProfParentEntityBaseId = 1141
+set @condProfParentEntityTypeId = 3 
+set @condProfParentEntityBaseId = 900
 set @Filter = ''
 set @StartPageIndex = 1
 set @PageSize = 15
@@ -51,10 +58,11 @@ custom pager
   ------------------------------------------------------
 Modifications
 17-06-20 mparsons - new
-
+22-05-05 mparsons - as this search is really only to list the costs for a single resource, changed the sort to be by entityTypeId, baseId, and price.
+					- A TBD is where costs for a credential could come from related asmts, or lopps.
 */
 
-CREATE PROCEDURE [dbo].[CostProfileItems_search]
+Alter PROCEDURE [dbo].[CostProfileItems_search]
 		@condProfParentEntityTypeId	int
     ,@condProfParentEntityBaseId int
 		,@Filter					varchar(5000)
@@ -95,7 +103,7 @@ IF @StartPageIndex < 1        SET @StartPageIndex = 1
 -- =================================
 CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
-      Id int,
+      CostProfileId int,
       Title             varchar(500)
 )
 
@@ -111,7 +119,9 @@ set @Filter = ' ( condProfParentEntityTypeId = ' + convert(varchar, @condProfPar
 
   print '@Filter len: '  +  convert(varchar,len(@Filter))
   set @SQL = 'SELECT  base.Entity_CostProfileId, base.CostProfileName 
+  --,condProfParentEntityTypeId, condProfParentEntityBaseId
         from [CostProfile_SummaryForSearch] base   
+--		where condProfParentEntityTypeId= 3
 				'
         + @Filter
         
@@ -124,7 +134,7 @@ set @Filter = ' ( condProfParentEntityTypeId = ' + convert(varchar, @condProfPar
   print '@SQL len: '  +  convert(varchar,len(@SQL))
   print @SQL
 
-  INSERT INTO #tempWorkTable (Id, Title)
+  INSERT INTO #tempWorkTable (CostProfileId, Title)
   exec (@SQL)
   --print 'rows: ' + convert(varchar, @@ROWCOUNT)
   SELECT @TotalRows = @@ROWCOUNT
@@ -153,32 +163,34 @@ SELECT    distinct
 	RowNumber 
 	,base.Entity_CostProfileId
 
-			,[EntityBaseId]
-      ,[EntityTypeId]
-      ,[EntityType]
-      ,[EntityId]
-      ,[ParentName]
-      ,[OwningAgentUid]
-			,[condProfParentEntityTypeId]
-      ,[condProfParentEntityBaseId]
+	,[EntityBaseId]
+	,[EntityTypeId]
+	,[EntityType]
+	,[EntityId]
+	,[ParentName]
+	,[OwningAgentUid]
+	,[condProfParentEntityTypeId]
+	,[condProfParentEntityBaseId]
 
-      ,[CostProfileName]
-      ,[CostProfileRowId]
-      ,[CostDescription]
-			,Currency, base.CurrencySymbol
-      ,b.CostTypeId, c.Title as CostType
-			,b.Price
+	,[CostProfileName]
+	,[CostProfileRowId]
+	,[CostDescription]
+	,Currency, base.CurrencySymbol
+	,b.CostTypeId, c.Title as CostType
+	,b.Price
 From #tempWorkTable work
-	Inner join [CostProfile_SummaryForSearch] base on work.Id = base.Entity_CostProfileId
-
-	inner join [Entity.CostProfileItem] b on work.Id = b.CostProfileId
-	inner join [Codes.PropertyValue] c		on b.CostTypeId = c.Id
+	Inner join [CostProfile_SummaryForSearch] base	on work.CostProfileId = base.Entity_CostProfileId
+	Left join [Entity.CostProfileItem] b			on work.CostProfileId = b.CostProfileId
+	Left join [Codes.PropertyValue] c				on b.CostTypeId = c.Id
 
 
 WHERE RowNumber > @first_id
 and base.condProfParentEntityTypeId= @condProfParentEntityTypeId
 and base.condProfParentEntityBaseId= @condProfParentEntityBaseId
-order by RowNumber 
+
+--this is always specific, so change to order by price
+order by base.EntityTypeId, base.EntityBaseId,  b.Price 
+--RowNumber 
 --,b.CostTypeId
 go
 grant execute on CostProfileItems_search to public

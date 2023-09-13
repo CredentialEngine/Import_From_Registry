@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.LearningOpportunityServices;
-using InputEntity = RA.Models.Json.LearningOpportunityProfile;
+//using InputEntity = RA.Models.Json.LearningOpportunityProfile;
 
 using InputEntityV3 = RA.Models.JsonV2.LearningOpportunityProfile;
 using JsonInput = RA.Models.JsonV2;
@@ -17,16 +17,17 @@ using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.ProfileModels;
-
+using FAPI = workIT.Services.API;
 namespace Import.Services
 {
     public class ImportLearningOpportunties
     {
-        int entityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+        int thisEntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
         string thisClassName = "ImportLearningOpportunties";
+        string resourceType = "LearningOpportunity";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        InputEntity input = new InputEntity();
+        //InputEntity input = new InputEntity();
         ThisEntity output = new ThisEntity();
 
         #region custom imports
@@ -217,7 +218,7 @@ namespace Import.Services
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
             EntityServices mgr = new EntityServices();
-            MappingHelperV3 helper = new MappingHelperV3(7);
+            MappingHelperV3 helper = new MappingHelperV3( thisEntityTypeId );
           
             helper.entityBlankNodes = bnodes;
             helper.CurrentEntityCTID = input.CTID;
@@ -241,29 +242,6 @@ namespace Import.Services
 					//set the rowid now, so that can be referenced as needed
 					output.RowId = Guid.NewGuid();
 					LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".ImportV3(). Record was NOT found using CTID: '{0}'", input.CTID ) );
-
-					switch ( learningOppClass.ToLower() )
-					{
-						case "learningopportunity":
-						case "learningopportunityprofile":
-							output.LearningEntityType = "LearningOpportunity";
-							output.LearningEntityTypeId = 7;
-							break;
-						case "learningprogram":
-							output.LearningEntityType = "LearningProgram";
-							output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_PROGRAM;
-							break;
-						case "course":
-							output.LearningEntityType = "Course";
-							output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_COURSE;
-							break;
-						default:
-							messages.Add( string.Format( "CTID: {0}. Invalid value for Learning Type: '{1}. Valid values are: LearningOpportunity/LearningOpportunityProfile, LearningProgram or Course", ctid, learningOppClass ) );
-							output.LearningEntityType = "LearningOpportunity";
-							output.LearningEntityTypeId = 7;
-							break;
-					}
-					output.EntityTypeId = output.LearningEntityTypeId;
 				}
 				else
 				{
@@ -271,8 +249,33 @@ namespace Import.Services
 				}
 				helper.currentBaseObject = output;
 
-				//start with language and may use with language maps
-				output.InLanguageCodeList = helper.MapInLanguageToTextValueProfile( input.InLanguage, "LearningOpportunity.InLanguage. CTID: " + ctid );
+                //moved this code from just an add, to handle changes to the type
+                switch ( learningOppClass.ToLower() )
+                {
+                    case "learningopportunity":
+                    case "learningopportunityprofile":
+                        output.LearningEntityType = "LearningOpportunity";
+                        output.LearningEntityTypeId = 7;
+                        break;
+                    case "learningprogram":
+                        output.LearningEntityType = "LearningProgram";
+                        output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_PROGRAM;
+                        break;
+                    case "course":
+                        output.LearningEntityType = "Course";
+                        output.LearningEntityTypeId = CodesManager.ENTITY_TYPE_COURSE;
+                        break;
+                    default:
+                        messages.Add( string.Format( "CTID: {0}. Invalid value for Learning Type: '{1}. Valid values are: LearningOpportunity/LearningOpportunityProfile, LearningProgram or Course", ctid, learningOppClass ) );
+                        output.LearningEntityType = "LearningOpportunity";
+                        output.LearningEntityTypeId = 7;
+                        break;
+                }
+                output.EntityTypeId = output.LearningEntityTypeId;
+
+
+                //start with language and may use with language maps
+                output.InLanguageCodeList = helper.MapInLanguageToTextValueProfile( input.InLanguage, "LearningOpportunity.InLanguage. CTID: " + ctid );
 
 				//foreach ( var l in input.InLanguage )
 				//{
@@ -354,7 +357,7 @@ namespace Import.Services
 				output.OfferedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.OfferedBy", input.OfferedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[ 0 ];
+					output.PrimaryAgentUID = output.OwnedBy[ 0 ];
 					helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 				}
 				else
@@ -366,24 +369,27 @@ namespace Import.Services
 					}
 					else
 					{
-						output.OwningAgentUid = output.OfferedBy[ 0 ];
+						output.PrimaryAgentUID = output.OfferedBy[ 0 ];
 						helper.CurrentOwningAgentUid = output.OfferedBy[ 0 ];
 					}
 				}
-				output.AccreditedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.AccreditedBy", input.AccreditedBy, ref status );
-				output.ApprovedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.ApprovedBy", input.ApprovedBy, ref status );
-				output.RecognizedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.RecognizedBy", input.RecognizedBy, ref status );
-				output.RegulatedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.RegulatedBy", input.RegulatedBy, ref status );
-
-				output.DateEffective = input.DateEffective;
+				output.AccreditedBy = helper.MapOrganizationReferenceGuids( $"{resourceType}.AccreditedBy", input.AccreditedBy, ref status );
+				output.ApprovedBy = helper.MapOrganizationReferenceGuids( $"{resourceType}.ApprovedBy", input.ApprovedBy, ref status );
+				output.RecognizedBy = helper.MapOrganizationReferenceGuids( $"{resourceType}.RecognizedBy", input.RecognizedBy, ref status );
+				output.RegulatedBy = helper.MapOrganizationReferenceGuids( $"{resourceType}.RegulatedBy", input.RegulatedBy, ref status );
+                //RegisteredBy
+                output.RegisteredBy = helper.MapOrganizationReferenceGuids( $"{resourceType}.RegisteredBy", input.RegisteredBy, ref status );
+                output.DateEffective = input.DateEffective;
 				output.ExpirationDate = input.ExpirationDate;
 
 				output.SubjectWebpage = input.SubjectWebpage;
 
+
+
 				output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
 				output.AvailableOnlineAt = helper.MapListToString( input.AvailableOnlineAt );
 				output.DeliveryType = helper.MapCAOListToEnumermation( input.DeliveryType );
-				output.DeliveryTypeDescription = helper.HandleLanguageMap( input.DeliveryTypeDescription, output, "DeliveryTypeDescription" );
+				output.DeliveryTypeDescription = helper.HandleLanguageMap( input.DeliveryTypeDescription, output, $"{resourceType}.DeliveryTypeDescription" );
 				//AudienceType
 				output.AudienceType = helper.MapCAOListToEnumermation( input.AudienceType );
 				//CAO
@@ -408,14 +414,14 @@ namespace Import.Services
 				//handle QuantitativeValue
 				//output.CreditValue = helper.HandleQuantitiveValue( input.CreditValue, "LearningOpportunity.CreditValue" );
 				//output.QVCreditValueList = helper.HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue" );
-				output.CreditValue = helper.HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
+				output.CreditValue = helper.HandleValueProfileList( input.CreditValue, $"{resourceType}.CreditValue" );
 				output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
 				//output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValueList, MappingHelperV3.GetJsonSettings() );
 				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
 				//	output.CreditValue = output.CreditValueList[ 0 ];
 				//
 				//note can still have CreditUnitTypeDescription by itself. What to do if both?
-				output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, "LearningOpportunity.CreditUnitTypeDescription" );
+				output.CreditUnitTypeDescription = helper.HandleLanguageMap( input.CreditUnitTypeDescription, output, $"{resourceType}.CreditUnitTypeDescription" );
 
 
 				//only true should be published. Ensure the save only saves True
@@ -452,6 +458,16 @@ namespace Import.Services
 
 				output.LearningMethodType = helper.MapCAOListToEnumermation( input.LearningMethodType );
 				output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+				output.SupersededBy = input.SupersededBy ?? "";
+				output.Supersedes = input.Supersedes ?? "";
+				if ( output.SupersededBy.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+				{
+					output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); 
+				}
+				if ( output.Supersedes.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+				{
+					output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); 
+				}
 				//
 				output.AssessmentMethodType = helper.MapCAOListToEnumermation( input.AssessmentMethodType );
 
@@ -459,13 +475,40 @@ namespace Import.Services
 				//
 				output.LearningMethodDescription = helper.HandleLanguageMap( input.LearningMethodDescription, output, "LearningMethodDescription" );
 
+				output.ScheduleTimingType = helper.MapCAOListToEnumermation( input.ScheduleTimingType );
+				output.ScheduleFrequencyType = helper.MapCAOListToEnumermation( input.ScheduleFrequencyType );
+				output.OfferFrequencyType = helper.MapCAOListToEnumermation( input.OfferFrequencyType );
+
 				//output.VerificationMethodDescription = helper.HandleLanguageMap( input.VerificationMethodDescription, output, "VerificationMethodDescription" );
 				//financial assitance
 				output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 				if ( output.FinancialAssistance != null && output.FinancialAssistance.Any() )
 					output.FinancialAssistanceJson = JsonConvert.SerializeObject( output.FinancialAssistance, MappingHelperV3.GetJsonSettings() );
-				//
-				output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status );
+				//TODO - are we handling prior dsps not in this import?
+				//23-02-12 currently
+				//		- we are doing a check for dsp and as needed adding pending
+				//		- but in the entity.adpManager, all eadps are deleted, and so would the datasetprofile which means the eadp.ReleventDatasetIds will be wrong (no longer exist)
+				//		So:
+				//		-
+				//		- 
+				bool hasDataSetProfiles = false;
+                List<string> ctidList = new List<string>();
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+				if ( ctidList != null && ctidList.Any() )
+				{
+					//especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
+					hasDataSetProfiles = true;
+					output.DataSetProfileCTIDList = ctidList;
+					output.DataSetProfileCount= ctidList.Count;
+					//also what to do with current process that does a virtual delete on delete of the e.adp?
+					//No adp
+					//- if there is no adp in this run, then the latter is good (will need a process for orphan dsps!)
+					//Have adp
+					//- if there is an adp and the related dsp didn't change, then it will not be imported
+					//			==> plug this hole
+					//- any included dsp links have to be valid. 
+					//	- after completing lopp or just adp, reactivate all dsps in this list
+                }
 				//
 				output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
 
@@ -481,31 +524,52 @@ namespace Import.Services
 
 				output.IsRequiredFor = helper.FormatConditionProfile( input.IsRequiredFor, ref status );
 				output.IsRecommendedFor = helper.FormatConditionProfile( input.IsRecommendedFor, ref status );
-
+				//
+				output.DegreeConcentration = helper.MapCAOListToTextValueProfile( input.DegreeConcentration, CodesManager.PROPERTY_CATEGORY_DEGREE_CONCENTRATION );
 				//EstimatedDuration
-				output.EstimatedDuration = helper.FormatDuration( input.EstimatedDuration, ref status );
+				//TODO - need to convert to handle decimals. First step, truncate 
+				output.EstimatedDuration = helper.FormatDuration( $"{resourceType}.EstimatedDuration", input.EstimatedDuration, ref status );
 
 				//conditions ======================================
 				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
 				output.Recommends = helper.FormatConditionProfile( input.Recommends, ref status );
 				output.EntryCondition = helper.FormatConditionProfile( input.EntryCondition, ref status );
 				output.Corequisite = helper.FormatConditionProfile( input.Corequisite, ref status );
+				output.CoPrerequisite = helper.FormatConditionProfile( input.CoPrerequisite, ref status );
+
 				//
 				//SameAs URI
 				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
 
 				output.SCED = input.SCED;
-
+				//
+				if ( input.TargetAssessment != null && input.TargetAssessment.Count > 0 )
+					output.TargetAssessmentIds = helper.MapEntityReferences( $"{resourceType}.TargetAssessment", input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
+				//this is an inverse property and would not be published like this
+				//if ( input.TargetLearningOpportunity != null && input.TargetLearningOpportunity.Count > 0 )
+				//	output.TargetLearningOppIds = helper.MapEntityReferences( "LearningOpportunity.TargetLearningOpportunity", input.TargetLearningOpportunity, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 				//
 				//21-04-13 mp - TargetLearningResource will be URLs not registry resources
 				if ( input.TargetLearningResource != null && input.TargetLearningResource.Count > 0 )
 				{
 					output.TargetLearningResource = input.TargetLearningResource;
-					//output.TargetLearningOpportunityIds = helper.MapEntityReferences( "Assessment.TargetLearningOpportunity", input.TargetLearningResource, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
+					
 				}
-				//
-				if ( input.TargetPathway != null && input.TargetPathway.Count > 0 )
-					output.TargetPathwayIds = helper.MapEntityReferences( "LearningOpportunity.TargetPathway", input.TargetPathway, CodesManager.ENTITY_TYPE_PATHWAY, ref status );
+				//not sure if this will be used, or purely an inverse relationship
+				output.TargetLearningOpportunityIds = helper.MapEntityReferences( $"{resourceType}.TargetLearningOpportunity", input.TargetLearningResource, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
+
+				//this is an inverse property and would not be published with this resource
+				//if ( input.TargetPathway != null && input.TargetPathway.Count > 0 )
+				//	output.TargetPathwayIds = helper.MapEntityReferences( "LearningOpportunity.TargetPathway", input.TargetPathway, CodesManager.ENTITY_TYPE_PATHWAY, ref status );
+
+				//assesses compentencies
+				output.AssessesCompetencies = helper.MapCAOListToCAOProfileList( input.Assesses, true );
+				//if ( output.AssessesCompetencies.Count() == 0 && UtilityManager.GetAppKeyValue( "skipAsmtImportIfNoCompetencies", false ) )
+				//{
+				//	//skip
+				//	LoggingHelper.DoTrace( 2, string.Format( "		***Skipping Lopp# {0}, {1} as it has no competencies and this is a special run.", output.Id, output.Name ) );
+				//	return true;
+				//}
 				//teaches compentencies
 				output.TeachesCompetencies = helper.MapCAOListToCAOProfileList( input.Teaches, true );
 				if ( output.TeachesCompetencies.Count() == 0 && UtilityManager.GetAppKeyValue( "skipLoppImportIfNoCompetencies", false ) )
@@ -514,7 +578,14 @@ namespace Import.Services
 					LoggingHelper.DoTrace( 2, string.Format( "		***Skipping lopp# {0}, {1} as it has no competencies and this is a special run.", output.Id, output.Name ) );
 					return true;
 				}
-				//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+                //
+                if ( input.HasOffering != null && input.HasOffering.Count > 0 )
+                    output.HasOfferingIds = helper.MapEntityReferences( $"{resourceType}.HasOffering", input.HasOffering, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING, ref status );
+
+                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+                    output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
+
+                output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 				//common conditions
 				output.ConditionManifestIds = helper.MapEntityReferences( input.CommonConditions, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
@@ -522,7 +593,7 @@ namespace Import.Services
 				output.CostManifestIds = helper.MapEntityReferences( input.CommonCosts, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
 				//ADDRESSES
-				output.Addresses = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
+				output.AvailableAt = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
 
 				//INs
 				output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
@@ -532,7 +603,7 @@ namespace Import.Services
 				output.RegulatedIn = helper.MapToJurisdiction( input.RegulatedIn, ref status );
 				//TODO - do we need to specify Course here?
 				//output.LearningEntityTypeId, The prereq must be a course, so use LearningEntityTypeId
-				//output.PrerequisiteIds = helper.MapEntityReferences( input.Prerequisite, output.LearningEntityTypeId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
+				output.PrerequisiteIds = helper.MapEntityReferences( input.Prerequisite, output.LearningEntityTypeId, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 
 				//we don't know the actual type of the part, so stay generic
 				output.HasPartIds = helper.MapEntityReferences( input.HasPart, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
@@ -557,9 +628,32 @@ namespace Import.Services
 						output.RowId = entity.RowId;
 					}
 				}
-				importSuccessfull = mgr.Import( output, ref status );
-				//
-				saveDuration = DateTime.Now.Subtract( saveStarted );
+				
+                //================= save the data ========================================
+                if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
+                {
+                    importSuccessfull = mgr.Import( output, ref status );
+                    //start storing the finder api ready version
+                    var resource = FAPI.LearningOpportunityServices.GetDetailForElastic( output.Id, true );
+                    //var resourceDetail2 = JObject.FromObject( resource );
+                    //or 
+                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+
+                    var statusMsg = "";
+                    var eManager = new EntityManager();
+
+                    if ( eManager.EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                    {
+                        status.AddError( statusMsg );
+                    }
+                    //realistically, don't have to do this every time
+                    if ( eManager.EntityCacheUpdateLoppAgentRelationships( output.CTID, ref statusMsg ) == false )
+                    {
+                        status.AddError( statusMsg );
+                    }
+                }
+                //
+                saveDuration = DateTime.Now.Subtract( saveStarted );
 				if ( saveDuration.TotalSeconds > 5 )
 					LoggingHelper.DoTrace( 6, string.Format( "         WARNING SAVE Duration: {0:N2} seconds ", saveDuration.TotalSeconds ) );
 				//

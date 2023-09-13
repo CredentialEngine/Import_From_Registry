@@ -14,6 +14,7 @@ using workIT.Utilities;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Models.ProfileModels;
 using workIT.Models.Elastic;
 
 namespace workIT.Factories
@@ -28,21 +29,31 @@ namespace workIT.Factories
 		protected static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
 		public string commonStatusMessage = "";
 
-		//Has Part is the default, and should be used when parent can only have one credential relationship
-		public static int RELATIONSHIP_TYPE_HAS_PART		= 1;
-		public static int RELATIONSHIP_TYPE_IS_PART_OF		= 2;
-		public static int RELATIONSHIP_TYPE_IsETPLResource	= 3;
+		//Has Part is the default, and should be used when parent can only have one relationship
+		//relationships used for TargetCredential: Entity.Credential, TargetLearningOpportunity: Entity.LearningOpp, TargetAssessment: Entity.Assessment, and TargetCompetency: Entity.Competency (actually not used for this)
+		//23-02-01 mp - HasPart is not the same as Target...
+		public static int RELATIONSHIP_TYPE_HAS_PART = 1;
+		public static int RELATIONSHIP_TYPE_IS_TARGET = 1;
+		public static int RELATIONSHIP_TYPE_IS_PART_OF = 2;
+		public static int RELATIONSHIP_TYPE_IsETPLResource = 3;
 		//ex. resource for TargetPathway - or may need an additional type here. 
-		public static int RELATIONSHIP_TYPE_TARGET_RESOURCE = 4;
+		public static int RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE = 4;
+		public static int RELATIONSHIP_TYPE_HAS_PREREQUISITE = 5;
+		public static int RELATIONSHIP_TYPE_TARGET_LOPP = 6;		//TargetLearningResource
 
 		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
 		public static string oldCredentialFinderSite = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
 		public static string finderApiSiteURL = UtilityManager.GetAppKeyValue( "finderApiSiteURL" );
-
-		public static bool IsDevEnv()
+        //default specialTrace to high. Code can be called to lower it
+        public static int specialTrace = UtilityManager.GetAppKeyValue( "appSpecialTraceLevel", 9 );
+        public static int appMethodEntryTraceLevel = UtilityManager.GetAppKeyValue( "appMethodEntryTraceLevel", 7 );
+        public static int appMethodExitTraceLevel = UtilityManager.GetAppKeyValue( "appMethodExitTraceLevel", 8 );
+        public static int appSectionDurationTraceLevel = UtilityManager.GetAppKeyValue( "appSectionDurationTraceLevel", 8 );
+        //
+        public static bool IsDevEnv()
 		{
 
-			if ( UtilityManager.GetAppKeyValue( "envType", "no" ) == "development" )
+			if ( UtilityManager.GetAppKeyValue( "environment", "no" ) == "development" )
 				return true;
 			else
 				return false;
@@ -50,7 +61,7 @@ namespace workIT.Factories
 		public static bool IsProduction()
 		{
 
-			if ( UtilityManager.GetAppKeyValue( "envType", "development" ) == "production" )
+			if ( UtilityManager.GetAppKeyValue( "environment", "development" ) == "production" )
 				return true;
 			else
 				return false;
@@ -101,13 +112,11 @@ namespace workIT.Factories
 			string conn = WebConfigurationManager.ConnectionStrings[ "MainConnection" ].ConnectionString;
 			return conn;
 		}
-		#endregion
+        #endregion
 
-		#region Assignments
+        #region Assignments
 
-
-
-		public decimal Assign( decimal input, decimal currentValue, bool doesEntityExist )
+        public static decimal Assign( decimal input, decimal currentValue, bool doesEntityExist )
 		{
 			decimal value = 0;
 			if ( doesEntityExist )
@@ -122,16 +131,16 @@ namespace workIT.Factories
 			return value;
 		}
 
-		/// <summary>
-		/// Assign an integer
-		/// NOTE: currently doesn't allow negatives
-		/// ALSO: assumes a previous check for required status
-		/// </summary>
-		/// <param name="input"></param>
-		/// <param name="currentValue"></param>
-		/// <param name="doesEntityExist"></param>
-		/// <returns></returns>
-		public int Assign( int input, int currentValue, bool doesEntityExist )
+        /// <summary>
+        /// Assign an integer
+        /// NOTE: currently doesn't allow negatives
+        /// ALSO: assumes a previous check for required status
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="currentValue"></param>
+        /// <param name="doesEntityExist"></param>
+        /// <returns></returns>
+        public static int Assign( int input, int currentValue, bool doesEntityExist )
 		{
 			int value = 0;
 			if ( doesEntityExist )
@@ -148,7 +157,30 @@ namespace workIT.Factories
 			return value;
 		}
 
-		protected static CodeItemResult Fill_CodeItemResults( DataRow dr, string fieldName, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
+		public static List<string> SplitDelimitedStringToList(string input, char delimiter)
+		{
+			if ( string.IsNullOrWhiteSpace(input ))
+				return null;
+			var output = new List<string>();
+            var list = input.Split( delimiter );
+            foreach ( string item in list )
+            {
+                if ( string.IsNullOrWhiteSpace( item ))
+					output.Add( item.TrimEnd() );
+            }
+
+            return output;
+        }
+
+        public static string GetListAsDelimitedString( List<string> input, string delimiter )
+        {
+			if ( input == null || !input.Any())
+				return null;
+			var output = string.Join( delimiter, input.ToArray()) ;
+
+            return output;
+        }
+        protected static CodeItemResult Fill_CodeItemResults( DataRow dr, string fieldName, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
 		{
 			string list = GetRowPossibleColumn( dr, fieldName, "" );
 			//string list = dr[ fieldName ].ToString();
@@ -635,7 +667,52 @@ namespace workIT.Factories
 			return item;
 		}
 
+		#region fill id~resourceName list 
+		protected static CredentialConnectionsResult Fill_ResourceKeyValueResult( DataRow dr, string fieldName, int categoryId )
+		{
+			string list = dr[ fieldName ].ToString();
+			return Fill_ResourceKeyValueResult( list, categoryId );
+		}
 
+		protected static CredentialConnectionsResult Fill_ResourceKeyValueResult( string list, int categoryId )
+		{
+			CredentialConnectionsResult result = new CredentialConnectionsResult() { CategoryId = categoryId };
+			CredentialConnectionItem item = new CredentialConnectionItem();
+			int id = 0;
+
+			if ( !string.IsNullOrWhiteSpace( list ) )
+			{
+				var codeGroup = list.Split( '|' );
+				foreach ( string codeSet in codeGroup )
+				{
+					var codes = codeSet.Split( '~' );
+					item = new CredentialConnectionItem();
+
+					id = 0;
+					Int32.TryParse( codes[ 0 ].Trim(), out id );
+					item.ConnectionId = id;
+					if ( codes.Length > 1 )
+						item.Connection = codes[ 1 ].Trim();
+					if ( codes.Length > 2 )
+						Int32.TryParse( codes[ 2 ].Trim(), out id );
+					item.CredentialId = id;
+					if ( codes.Length > 3 )
+						item.Credential = codes[ 3 ].Trim();
+					//if ( codes.Length > 4 )
+					//    if ( !string.IsNullOrEmpty( codes[4] ) )
+					//        item.Credential = string.Format( "{0} [{1}]", item.Credential, codes[4] );
+					if ( codes.Length > 4 )
+						Int32.TryParse( codes[ 4 ].Trim(), out id );
+					item.CredentialOwningOrgId = id;
+					if ( codes.Length > 5 )
+						item.CredentialOwningOrg = codes[ 5 ].Trim();
+					result.Results.Add( item );
+				}
+			}
+
+			return result;
+		}
+		#endregion
 		public static TargetAssertionResult Fill_TargetQaAssertion( List<QualityAssurancePerformed> list, int categoryId, string entityType = "" )
 		{
 			TargetAssertionResult item = new TargetAssertionResult() { CategoryId = categoryId };
@@ -668,10 +745,25 @@ namespace workIT.Factories
 
 			return item;
 		}
-		#endregion
+        #endregion
 
-		#region column retrieval handling not found names
-		public static string GetRowColumn( DataRow row, string column, string defaultValue = "" )
+        //
+        public static List<string> MapTextValueProfileToString( List<TextValueProfile> input )
+        {
+            var output = new List<string>();
+            if ( input == null || input.Count == 0 )
+                return output; //or null
+            foreach ( var item in input )
+            {
+                //confirm that subject and keyword use TextValue
+                output.Add( item.TextValue );
+            }
+
+            return output;
+        }
+
+        #region column retrieval handling not found names
+        public static string GetRowColumn( DataRow row, string column, string defaultValue = "" )
 		{
 			string colValue = "";
 
@@ -736,9 +828,9 @@ namespace workIT.Factories
 		public static int GetRowColumn( DataRow row, string column, int defaultValue )
 		{
 			int colValue = 0;
-			var value = row[ column ]?.ToString();
-			if ( !string.IsNullOrEmpty( value ) )
-				colValue = Int32.Parse( value );
+			//var value = row[ column ]?.ToString();
+			//if ( !string.IsNullOrEmpty( value ) )
+			//	colValue = Int32.Parse( value );
             //SKIPPING try /catcvh now, for performance
             try
             {
@@ -1438,14 +1530,56 @@ namespace workIT.Factories
 			return false;
 		}
 
-		#endregion
+        #endregion
+        public static bool IsValidCtid( string ctid )
+        {
+            List<string> messages = new List<string>();
 
-		/// <summary>
-		/// Extract the ctid from a properly formatted registry URI
-		/// </summary>
-		/// <param name="registryURL"></param>
-		/// <returns></returns>
-		public static string ExtractCtid( string registryURL )
+            return IsValidCtid( ctid, ref messages );
+        }
+        public static bool IsValidCtid( string ctid, ref List<string> messages, bool isRequired = false, bool skippingErrorMessages = true )
+        {
+            bool isValid = true;
+
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+            {
+                if ( isRequired )
+                {
+                    messages.Add( "Error - A valid CTID property must be entered." );
+                }
+                return false;
+            }
+
+            ctid = ctid.ToLower().Trim();
+            if ( ctid.Length != 39 )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - Invalid CTID format. The proper format is ce-UUID. ex. ce-84365aea-57a5-4b5a-8c1c-eae95d7a8c9b" );
+                return false;
+            }
+
+            if ( !ctid.StartsWith( "ce-" ) )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - The CTID property must begin with ce-" );
+                return false;
+            }
+            //now we have the proper length and format, the remainder must be a valid guid
+            if ( !IsValidGuid( ctid.Substring( 3, 36 ) ) )
+            {
+                if ( !skippingErrorMessages )
+                    messages.Add( "Error - Invalid CTID format. The proper format is ce-UUID. ex. ce-84365aea-57a5-4b5a-8c1c-eae95d7a8c9b" );
+                return false;
+            }
+
+            return isValid;
+        }
+        /// <summary>
+        /// Extract the ctid from a properly formatted registry URI
+        /// </summary>
+        /// <param name="registryURL"></param>
+        /// <returns></returns>
+        public static string ExtractCtid( string registryURL )
 		{
 			string ctid = "";
 			if ( string.IsNullOrWhiteSpace( registryURL ) )
@@ -1491,7 +1625,20 @@ namespace workIT.Factories
 
 			return ctid;
 		}
-		public static string FormatLongLabel( string text, int maxLength = 75 )
+        public static int ExtractIdFromURL( string input )
+        {
+            if ( string.IsNullOrWhiteSpace( input ) )
+                return 0;
+			int identifier = 0;
+            var list = input.Split( '/' );
+			if ( list != null && list.Any())
+			{
+				var id = list[list.Length - 1];
+				int.TryParse( id, out identifier );
+			}
+			return identifier;
+        }
+        public static string FormatLongLabel( string text, int maxLength = 75 )
 		{
 			if ( string.IsNullOrWhiteSpace( text ) )
 				return "";
@@ -1661,7 +1808,7 @@ namespace workIT.Factories
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) )
 			{
-				var env = UtilityManager.GetAppKeyValue( "envType" );
+				var env = UtilityManager.GetAppKeyValue( "environment" );
 				//not sure of this
 				if ( env != "production" && keyword.IndexOf( "*" ) == -1 )
 				{

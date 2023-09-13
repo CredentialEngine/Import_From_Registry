@@ -1,5 +1,10 @@
 use credFinder
 GO
+use sandbox_credFinder
+go
+
+--use staging_credFinder
+--go
 
 /****** Object:  StoredProcedure [dbo].[Assessment_Search]    Script Date: 8/16/2017 9:26:00 AM ******/
 SET ANSI_NULLS ON
@@ -60,7 +65,9 @@ set @Filter = ' ( base.Id in (SELECT distinct c.Id FROM [dbo].[Entity.Competency
 
 	set @Filter = '  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join Assessment c on b.EntityUid = c.RowId where [CategoryId] = 23 and ([CodeGroup] in ('''')  OR ([CodeId] in ('''') ) ) ) )  '
 
-set @Filter = ''
+set @Filter = '  ( base.EntityStateId = 3 ) AND ( base.CTID in (Select distinct CTID from [Entity_Cache]  where EntityTypeId=3 AND  IsNull(ResourceDetail,'''') = '''' ) )'
+	
+--set @Filter = ''
 
 set @StartPageIndex = 1
 set @PageSize = 100
@@ -138,8 +145,8 @@ IF @StartPageIndex < 1        SET @StartPageIndex = 1
 CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
       Id int,
-      Title             varchar(200)
-			,OwningOrganization varchar(300)
+      Title             varchar(500)
+			,OwningOrganization varchar(500)
 )
 
 -- =================================
@@ -193,6 +200,8 @@ SET ROWCOUNT @PageSize
 SELECT        
 	RowNumber, 
 	base.id, 
+	base.CTID,
+	base.EntityStateId,
 	base.Name, 
 	isnull(base.Description,'') As Description,
 
@@ -228,7 +237,7 @@ SELECT
 
 	--,isnull(costs.totalCost,0) As TotalCost
 	,ea.Nbr as AvailableAddresses
-	,base.CTID
+
 	,base.CredentialRegistryId
 	--,isnull(comps.Nbr,0) as Competencies
 	,0 as Competencies

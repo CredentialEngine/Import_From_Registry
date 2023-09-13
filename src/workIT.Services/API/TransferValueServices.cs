@@ -43,11 +43,11 @@ namespace workIT.Services.API
 			};
 			if ( input.OwningOrganizationId > 0 )
 			{
-				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.OwningOrganization.FriendlyName );
+				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.PrimaryOrganization.FriendlyName );
 			}
 			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
 
-			var orgOutline = ServiceHelper.MapToOutline( input.OwningOrganization, "organization" );
+			var orgOutline = ServiceHelper.MapToOutline( input.PrimaryOrganization, "organization" );
 			//var work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
 			output.OwnedBy = ServiceHelper.MapOutlineToAJAX( orgOutline, "Owning Organization" );
 			output.EntityLastUpdated = input.EntityLastUpdated;
@@ -120,15 +120,15 @@ namespace workIT.Services.API
 			output.TransferValueFrom = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Transfer Value From" );
 			//
 			work = new List<WMA.Outline>();
-			//if ( input.HasTransferIntermediary?.Count > 0 )
-			//{
-			//	foreach ( var target in input.HasTransferIntermediary )
-			//	{
-			//		if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
-			//			work.Add( ServiceHelper.MapToOutline( target, target.EntityType ) );
-			//	}
-			//	output.HasIntermediaryFor = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Intermediary For" );
-			//}
+			if ( input.HasTransferIntermediary?.Count > 0 )
+			{
+				foreach ( var target in input.HasTransferIntermediary )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						work.Add( ServiceHelper.MapToOutline( target, target.EntityType ) );
+				}
+				output.HasIntermediaryFor = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Intermediary For" );
+			}
 			//
 			if ( input.DevelopmentProcess.Any() )
 			{
@@ -146,7 +146,10 @@ namespace workIT.Services.API
 			output.DerivedFrom = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Derived From" );
 			//
 			output.InLanguage = null;
-			return output;
+            //
+            output.SupersededBy = input.SupersededBy;
+            output.Supersedes = input.Supersedes;
+            return output;
 		}
 	}
 }

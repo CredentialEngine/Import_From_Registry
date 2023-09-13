@@ -10,6 +10,10 @@ using System.Web;
 using System.Runtime.Caching;
 using System.Net.Http;
 using System.Web.Configuration;
+//using System.CodeDom;
+using System.Linq;
+
+using workIT.Models.Common;
 
 namespace workIT.Utilities
 {
@@ -28,7 +32,66 @@ namespace workIT.Utilities
             //
         }
 
+        //Auto-convert one class to another based on matching properties by name and type
+        public static T SimpleMap<T>( object input ) where T : new()
+        {
+            if ( input == null )
+            {
+                return default( T );
+            }
 
+            var result = new T();
+            SimpleUpdate( input, result, true );
+
+            return result;
+        }
+        //Auto-map properties whose name and type matches
+        //Useful for converting between database models and project models
+        public static void SimpleUpdate( object source, object destination, bool allowOverwritingSkippableValues = false )
+        {
+            if ( source == null || destination == null )
+            {
+                return;
+            }
+
+            //Get the properties, and any skippable properties
+            var sourceProperties = source.GetType().GetProperties();
+            var destinationProperties = destination.GetType().GetProperties();
+            var skippableSourceProperties = CoreObject.GetSkippableProperties( source );
+
+            //Do the mapping
+            foreach ( var prop in destinationProperties )
+            {
+                try
+                {
+                    //Find the matching source property
+                    var match = sourceProperties.FirstOrDefault( m => m.Name.ToLower() == prop.Name.ToLower() );
+                    if ( match != null )
+                    {
+                        //If we aren't allowing skippable values (e.g. Id, RowId, Created, etc.) to be overwritten on update, and
+                        //if the source property has an UpdateAttribute with a SkipPropertyOnUpdateValue of "true", skip the property
+                        if ( !allowOverwritingSkippableValues && skippableSourceProperties.Contains( match ) )
+                        {
+                            continue;
+                        }
+
+                        //Attempt to map embedded objects if they can't be directly mapped...
+                        if ( prop.PropertyType.IsClass && prop.PropertyType != match.PropertyType )
+                        {
+                            var item = match.GetValue( source );
+                            var holder = prop.GetValue( destination );
+                            SimpleUpdate( item, holder );
+                        }
+                        //Otherwise, attempt to map property directly
+                        else
+                        {
+                            prop.SetValue( destination, match.GetValue( source, null ), null );
+                        }
+                    }
+                }
+                catch ( Exception ex ) { }
+            }
+        }
         #region === Application Keys Methods ===
 
         /// <summary>
@@ -53,10 +116,25 @@ namespace workIT.Utilities
             {
                 appValue = System.Configuration.ConfigurationManager.AppSettings[ keyName ];
                 if ( appValue == null )
-                    appValue = defaultValue;
+                {
+                    //HACK - had changed to use environment, but this affects any partners that had already downloaded the import program
+                    if ( keyName == "environment" )
+                    {
+                        keyName = "envType";
+                        appValue = System.Configuration.ConfigurationManager.AppSettings[keyName];
+                    }
+                
+                    if ( appValue == null )
+                        appValue = defaultValue;
+                }
             }
             catch
             {
+                //HACK - had changed to use environment, but this affects any partners that had already downloaded the import program
+                if ( keyName == "environment" )
+                {
+                    return GetAppKeyValue( "envType", "" );
+                }
                 appValue = defaultValue;
 				if ( HasMessageBeenPreviouslySent( keyName ) == false )
 					LoggingHelper.LogError( string.Format( "@@@@ Error on appKey: {0},  using default of: {1}", keyName, defaultValue ) );
@@ -327,7 +405,7 @@ namespace workIT.Utilities
                 if ( HttpContext.Current != null )
                 {
                     uriScheme = HttpContext.Current.Request.Url.Scheme;
-                    var environment = System.Configuration.ConfigurationManager.AppSettings["envType"]; //Use port number only on localhost because https redirecting to a port on production screws this up
+                    var environment = System.Configuration.ConfigurationManager.AppSettings["environment"]; //Use port number only on localhost because https redirecting to a port on production screws this up
                     var host = environment == "development" ? HttpContext.Current.Request.Url.Authority : HttpContext.Current.Request.Url.Host;
                     return uriScheme + "://" +
                             ( host + "/" + HttpContext.Current.Request.ApplicationPath + path.Replace( "~/", "/" ) )
@@ -584,7 +662,7 @@ namespace workIT.Utilities
 
 			return value;
 		}//
-        public static string ExtractDelimitedValue( string sourceString, string beginDelimiter = "(", string endDelimiter = ")" )
+        public static string ExtractDelimitedValue( string sourceString, string beginDelimiter = "(", string endDelimiter = ")")
         {
             int pos = sourceString.IndexOf( beginDelimiter );
 

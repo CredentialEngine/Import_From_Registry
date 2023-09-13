@@ -7,12 +7,12 @@ using System.Linq;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Utilities;
-using DBEntity = workIT.Data.Tables.ConceptScheme;
+using DBResource = workIT.Data.Tables.ConceptScheme;
 
 using EntityContext = workIT.Data.Tables.workITEntities;
 using EM = workIT.Data.Tables;
-using ThisEntity = workIT.Models.Common.ConceptScheme;
-using ThisEntityItem = workIT.Models.Common.CredentialAlignmentObjectItem;
+using ThisResource = workIT.Models.Common.ConceptScheme;
+using ThisResourceItem = workIT.Models.Common.CredentialAlignmentObjectItem;
 
 
 namespace workIT.Factories
@@ -29,13 +29,13 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity,
+		public bool Save( ThisResource entity,
 				ref SaveStatus status, bool addingActivity = false )
 		{
 			bool isValid = true;
 			int count = 0;
 			DateTime lastUpdated = System.DateTime.Now;
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -49,7 +49,7 @@ namespace workIT.Factories
 					if ( entity.Id == 0 )
 					{
 						//add
-						efEntity = new DBEntity();
+						efEntity = new DBResource();
 						entity.EntityStateId = 3;
 						MapToDB( entity, efEntity );
 
@@ -77,13 +77,12 @@ namespace workIT.Factories
 						if ( count == 0 )
 						{
 							status.AddWarning( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.Name ) ? "no description" : entity.Name ) );
-
-							entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
-							UpdateEntityCache( entity, ref status );
 						}
 						else
 						{
-							if ( addingActivity )
+                            entity.LastUpdated = (DateTime) efEntity.LastUpdated;
+                            UpdateEntityCache( entity, ref status );
+                            if ( addingActivity )
 							{
 								//add log entry
 								SiteActivity sa = new SiteActivity()
@@ -111,8 +110,11 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
+                            if ( efEntity.EntityStateId != 2 )
+                                efEntity.EntityStateId = 3;
+                            entity.EntityStateId = efEntity.EntityStateId;
 
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -140,6 +142,7 @@ namespace workIT.Factories
 										Activity = "Import",
 										Event = "Update",
 										Comment = string.Format( "Updated ConceptScheme found by the import. Name: {0}, URI: {1}", entity.Name, entity.Source ),
+										ActivityObjectCTID = efEntity.CTID,
 										ActivityObjectId = entity.Id
 									};
 									new ActivityManager().SiteActivityAdd( sa );
@@ -162,12 +165,13 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			var ec = new EntityCache()
 			{
-				EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME,
-				EntityType = "ConceptScheme",
+				//issue here is what EntityTypeId is on the related Entity. answer: the PM entity type is not stored!!!!
+				EntityTypeId = document.EntityTypeId,
+				EntityType = document.EntityTypeId== CodesManager.ENTITY_TYPE_PROGRESSION_MODEL ? "ProgressionModel" : "ConceptScheme",
 				EntityStateId = document.EntityStateId,
 				EntityUid = document.RowId,
 				BaseId = document.Id,
@@ -178,7 +182,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				ImageUrl = document.Image,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId,
 				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
 			};
@@ -189,7 +193,7 @@ namespace workIT.Factories
 			}
 		}
 
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
@@ -211,7 +215,7 @@ namespace workIT.Factories
 		/// <param name="userId"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool HandleConceptsSimple( ThisEntity entity, ref SaveStatus status )
+		public bool HandleConceptsSimple( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			//first phase: delete all or do a replace
@@ -311,7 +315,7 @@ namespace workIT.Factories
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.ConceptScheme
+					DBResource efEntity = context.ConceptScheme
 								.FirstOrDefault( s => s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
@@ -339,11 +343,12 @@ namespace workIT.Factories
 								Activity = "Import",
 								Event = "Delete",
 								Comment = msg,
+								ActivityObjectCTID = efEntity.CTID,
 								ActivityObjectId = efEntity.Id
 							} );
 							isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, efEntity.Id, ref messages );
@@ -381,7 +386,7 @@ namespace workIT.Factories
 		}
 
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -399,15 +404,15 @@ namespace workIT.Factories
 		#endregion
 
 		#region == Retrieval =======================
-		public static ThisEntity GetByCtid( string ctid, bool includingComponents = true )
+		public static ThisResource GetByCtid( string ctid, bool includingComponents = true )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			ctid = ctid.ToLower();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity item = context.ConceptScheme
+				DBResource item = context.ConceptScheme
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid );
 				if ( item != null && item.Id > 0 )
 				{
@@ -417,14 +422,29 @@ namespace workIT.Factories
 
 			return entity;
 		}
+		//
 
-
-		public static ThisEntity Get( int id, bool includingComponents = true )
+		public static string GetCTIDFromID( int id )
 		{
-			ThisEntity entity = new ThisEntity();
 			using ( var context = new EntityContext() )
 			{
-				DBEntity item = context.ConceptScheme
+				var item = context.ConceptScheme.FirstOrDefault( s => s.Id == id );
+				if( item != null && item.Id > 0 )
+				{
+					return item.CTID;
+				}
+			}
+
+			return null;
+		}
+		//
+
+		public static ThisResource Get( int id, bool includingComponents = true )
+		{
+			ThisResource entity = new ThisResource();
+			using ( var context = new EntityContext() )
+			{
+				DBResource item = context.ConceptScheme
 						.FirstOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
@@ -436,7 +456,7 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		public static void MapToDB( ThisEntity from, DBEntity to )
+		public static void MapToDB( ThisResource from, DBResource to )
 		{
 
 			//want to ensure fields from create are not wiped
@@ -450,9 +470,17 @@ namespace workIT.Factories
 			//to.RowId = from.RowId;
 			to.OrgId = from.OrganizationId;
 			to.Name = from.Name;
+			if ( from.EntityTypeId > 0 )
+				to.EntityTypeId = from.EntityTypeId;
+			else
+				to.EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
+
 			to.EntityStateId = from.EntityStateId;
 			to.Description = from.Description;
-			to.IsProgressionModel = from.IsProgressionModel;
+			if ( to.EntityTypeId == CodesManager.ENTITY_TYPE_PROGRESSION_MODEL )
+				to.IsProgressionModel = true;
+			else
+				to.IsProgressionModel = false;
 			to.CTID = from.CTID;
 			//make sure not overwritten
 			if ( !string.IsNullOrWhiteSpace( from.CredentialRegistryId ) )
@@ -470,7 +498,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity from, ThisEntity to, bool includingComponents = true )
+		public static void MapFromDB( DBResource from, ThisResource to, bool includingComponents = true )
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -478,8 +506,16 @@ namespace workIT.Factories
 			to.OrganizationId = from.OrgId;
 			to.Name = from.Name;
 			to.FriendlyName = FormatFriendlyTitle( from.Name );
-
 			to.Description = from.Description;
+			if ( from.EntityTypeId > 0 )
+				to.EntityTypeId = from.EntityTypeId;
+			else
+				to.EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
+
+			if ( to.EntityTypeId == CodesManager.ENTITY_TYPE_PROGRESSION_MODEL )
+				to.IsProgressionModel = true;
+			else
+				to.IsProgressionModel = false;
 
 			to.IsProgressionModel = from.IsProgressionModel == null ? false : (bool)from.IsProgressionModel;
 			to.CTID = from.CTID.ToLower();
@@ -489,9 +525,9 @@ namespace workIT.Factories
 			to.CredentialRegistryId = from.CredentialRegistryId;
 			if ( to.OrganizationId > 0 )
 			{
-				to.OwningOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
+				to.PrimaryOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
 
-				to.OwningAgentUid = to.OwningOrganization.RowId;
+				to.PrimaryAgentUID = to.PrimaryOrganization.RowId;
 				//get roles- not sure. Can have own and offer
 				//OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( to.RowId, to.OwningAgentUid );
 				//to.OwnerRoles = orp.AgentRole;
@@ -521,6 +557,7 @@ namespace workIT.Factories
 						CTID = item.CTID,
 						PrefLabel = item.PrefLabel,
 						Definition = item.Definition,
+						//SubjectWebpage = item.SubjectWebpage,
 						IsTopConcept = item.IsTopConcept ?? false
 					} );
 				}
@@ -602,7 +639,7 @@ namespace workIT.Factories
 					item.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID" );
 					if ( item.OrganizationId > 0 )
 					{
-						item.OwningOrganization = new Organization() { Id = item.OrganizationId, Name = organizationName, CTID = item.PrimaryOrganizationCTID };
+						item.PrimaryOrganization = new Organization() { Id = item.OrganizationId, Name = organizationName, CTID = item.PrimaryOrganizationCTID };
 					}
 					item.Name = GetRowColumn( dr, "Name", "???" ); 
 					item.FriendlyName = FormatFriendlyTitle( item.Name );
@@ -675,6 +712,8 @@ namespace workIT.Factories
 			to.RowId = from.RowId;
 			to.PrefLabel = from.PrefLabel;
 			to.CTID = from.CTID.ToLower();
+			//TBD
+			//to.SubjectWebpage = from.SubjectWebpage;
 			to.Definition = from.Definition;
 			to.Note = from.Note;
 			to.IsTopConcept = from.IsTopConcept ?? true;

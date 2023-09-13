@@ -72,12 +72,15 @@
     <Compile Include="ImportCredential.cs" />
     <Compile Include="ImportPathways.cs" />
     <Compile Include="ImportPathwaySets.cs" />
+    <Compile Include="ImportProgressionModel.cs" />
     <Compile Include="ImportScheduledOffering.cs" />
     <Compile Include="ImportServiceHelpers.cs" />
+    <Compile Include="ImportSupportService.cs" />
     <Compile Include="ImportTask.cs" />
     <Compile Include="ImportTransferIntermediary.cs" />
     <Compile Include="ImportTransferValue.cs" />
     <Compile Include="ImportUtilities.cs" />
+    <Compile Include="ImportVerificationService.cs" />
     <Compile Include="ImportWorkRole.cs" />
     <Compile Include="MappingHelperV3.cs" />
     <Compile Include="NavyServices.cs" />
@@ -89,10 +92,11 @@
     <Compile Include="RegistryModels\JsonV2\AssessmentBlankNode.cs" />
     <Compile Include="RegistryModels\JsonV2\AssessmentProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\BlankNode.cs" />
+    <Compile Include="RegistryModels\JsonV2\ceasn\ConceptScheme.cs" />
+    <Compile Include="RegistryModels\JsonV2\ceasn\ProgressionModel.cs" />
     <Compile Include="RegistryModels\JsonV2\Collection.cs" />
     <Compile Include="RegistryModels\JsonV2\Competency.cs" />
     <Compile Include="RegistryModels\JsonV2\CompetencyFramework.cs" />
-    <Compile Include="RegistryModels\JsonV2\ConceptScheme.cs" />
     <Compile Include="RegistryModels\JsonV2\ConditionManifest.cs" />
     <Compile Include="RegistryModels\JsonV2\ConditionProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\ConditionProfileOLD.cs" />
@@ -135,6 +139,7 @@
     <Compile Include="RegistryModels\JsonV2\QuantitativeValue.cs" />
     <Compile Include="RegistryModels\JsonV2\Rubric.cs" />
     <Compile Include="RegistryModels\JsonV2\ScheduledOffering.cs" />
+    <Compile Include="RegistryModels\JsonV2\SupportService.cs" />
     <Compile Include="RegistryModels\JsonV2\Task.cs" />
     <Compile Include="RegistryModels\JsonV2\TransferIntermediary.cs" />
     <Compile Include="RegistryModels\JsonV2\TransferValueProfile.cs" />
@@ -142,28 +147,6 @@
     <Compile Include="RegistryModels\JsonV2\VerificationServiceProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\WorkforceDemandAction.cs" />
     <Compile Include="RegistryModels\JsonV2\WorkRole.cs" />
-    <Compile Include="RegistryModels\Json\Agent.cs" />
-    <Compile Include="RegistryModels\Json\AssessmentProfile.cs" />
-    <Compile Include="RegistryModels\Json\Competency.cs" />
-    <Compile Include="RegistryModels\Json\CompetencyFramework.cs" />
-    <Compile Include="RegistryModels\Json\ConditionManifest.cs" />
-    <Compile Include="RegistryModels\Json\ConditionProfile.cs" />
-    <Compile Include="RegistryModels\Json\ContactPoint.cs" />
-    <Compile Include="RegistryModels\Json\CostManifest.cs" />
-    <Compile Include="RegistryModels\Json\CostProfile.cs" />
-    <Compile Include="RegistryModels\Json\Credential.cs" />
-    <Compile Include="RegistryModels\Json\CredentialAlignmentObject.cs" />
-    <Compile Include="RegistryModels\Json\DurationProfile.cs" />
-    <Compile Include="RegistryModels\Json\FinancialAlignmentObject.cs" />
-    <Compile Include="RegistryModels\Json\HelpersClass.cs" />
-    <Compile Include="RegistryModels\Json\JsonLDDocument.cs" />
-    <Compile Include="RegistryModels\Json\JurisdictionProfile.cs" />
-    <Compile Include="RegistryModels\Json\LearningOpportunityProfile.cs" />
-    <Compile Include="RegistryModels\Json\OrganizationBase.cs" />
-    <Compile Include="RegistryModels\Json\Place.cs" />
-    <Compile Include="RegistryModels\Json\ProcessProfile.cs" />
-    <Compile Include="RegistryModels\Json\VerificationServiceProfile.cs" />
-    <Compile Include="RegistryModels\Navy\Json\Rating.cs" />
     <Compile Include="RegistryModels\RegistryAssistantResponse.cs" />
     <Compile Include="RegistryServices.cs" />
     <Compile Include="ResolutionServices.cs" />
@@ -195,7 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>13.0.1</Version>
+      <Version>13.0.3</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

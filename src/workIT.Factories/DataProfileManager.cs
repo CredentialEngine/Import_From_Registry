@@ -12,7 +12,7 @@ using workIT.Models.QData;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.QData.DataProfile;
+using ThisResource = workIT.Models.QData.DataProfile;
 using DBEntity = workIT.Data.Tables.DataProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
@@ -29,7 +29,7 @@ namespace workIT.Factories
 
 		#region DataProfile - persistance ==================
 
-		public bool SaveList( List<ThisEntity> input, int dataSetTimeFrameId, ref SaveStatus status )
+		public bool SaveList( List<ThisResource> input, int dataSetTimeFrameId, ref SaveStatus status )
 		{
 			bool allIsValid = true;
 			int dataProfileId = 0;
@@ -93,12 +93,14 @@ namespace workIT.Factories
 
 			return allIsValid;
 		}
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
-			try
-			{
+            status.HasSectionErrors = false;
+
+            try
+            {
 				using ( var context = new EntityContext() )
 				{
 					if ( ValidateProfile( entity, ref status ) == false )
@@ -162,7 +164,7 @@ namespace workIT.Factories
 					{
 						//add
 						int newId = Add( entity, ref status );
-						if ( newId == 0 || status.HasErrors )
+						if ( newId == 0 || status.HasSectionErrors )
 							isValid = false;
 						//status.Messages = new List<StatusMessage>();
 						//status.HasErrors = false;
@@ -192,10 +194,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		private int Add( ThisEntity entity, ref SaveStatus status )
+		private int Add( ThisResource entity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
-			using ( var context = new EntityContext() )
+            status.HasSectionErrors = false;
+
+            using ( var context = new EntityContext() )
 			{
 				try
 				{
@@ -264,7 +268,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 
@@ -274,7 +278,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
@@ -332,9 +336,9 @@ namespace workIT.Factories
 
 		#region == Retrieval =======================
 
-		//public static ThisEntity GetBasic( int id )
+		//public static ThisResource GetBasic( int id )
 		//{
-		//	ThisEntity entity = new ThisEntity();
+		//	ThisResource entity = new ThisResource();
 		//	using ( var context = new EntityContext() )
 		//	{
 		//		DBEntity item = context.DataProfile
@@ -353,10 +357,10 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="dataSetProfileId"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( int dataSetTimeFrameId )
+		public static List<ThisResource> GetAll( int dataSetTimeFrameId )
 		{
-			var list = new List<ThisEntity>();
-			ThisEntity entity = new ThisEntity();
+			var list = new List<ThisResource>();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				var results = context.DataProfile
@@ -368,7 +372,7 @@ namespace workIT.Factories
 				{
 					foreach ( var item in results )
 					{
-						entity = new ThisEntity();
+						entity = new ThisResource();
 						MapFromDB( item, entity, true );
 						list.Add( entity );
 					}
@@ -378,9 +382,9 @@ namespace workIT.Factories
 		}
 
 		//
-		public static ThisEntity GetBasic( int id )
+		public static ThisResource GetBasic( int id )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.DataProfile
@@ -395,7 +399,7 @@ namespace workIT.Factories
 			return entity;
 		}
 		//
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -414,7 +418,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity input, ThisEntity output,
+		public static void MapFromDB( DBEntity input, ThisResource output,
 				bool includingParts )
 		{
 
@@ -438,7 +442,10 @@ namespace workIT.Factories
 				output.DataProfileAttributesJson = input.DataProfileAttributesJson;
 
 				output.DataProfileAttributeSummary = JsonConvert.DeserializeObject<DataProfileJson>( input.DataProfileAttributeSummaryJson );
-				output.DataProfileAttributes = JsonConvert.DeserializeObject<DataProfileAttributes>( input.DataProfileAttributesJson );
+				if ( !string.IsNullOrWhiteSpace( input.DataProfileAttributesJson ) )
+					output.DataProfileAttributes = JsonConvert.DeserializeObject<DataProfileAttributes>( input.DataProfileAttributesJson );
+				else
+					output.DataProfileAttributes = new DataProfileAttributes();
 			}
 		} //
 

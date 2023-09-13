@@ -105,17 +105,17 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					//update profile record so doesn't get deleted
 					entity.Id = efEntity.Id;
-					entity.ParentId = parent.Id;
+					entity.RelatedEntityId = parent.Id;
 					entity.RowId = efEntity.RowId;
 					if ( count == 0 )
 					{
 						status.AddError( string.Format( " Unable to add Profile: {0} ", string.IsNullOrWhiteSpace( entity.ProfileName ) ? "no description" : entity.ProfileName ) );
 					}
-					
+					UpdateParts( entity, ref status );
 				}
 				else
 				{
-					entity.ParentId = parent.Id;
+					entity.RelatedEntityId = parent.Id;
 
 					efEntity = context.Entity_RevocationProfile.SingleOrDefault( s => s.Id == entity.Id );
 					if ( efEntity != null && efEntity.Id > 0 )
@@ -131,15 +131,33 @@ namespace workIT.Factories
 
 							int count = context.SaveChanges();
 						}
-					
+						UpdateParts( entity, ref status );
 					}
 				}
 			}
 
 			return isValid;
 		}
-	
-        public bool DeleteAll( Entity parent, ref SaveStatus status )
+		private bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		{
+			bool isAllValid = true;
+			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			{
+				status.AddError( "Error - the related Entity was not found." );
+				return false;
+			}
+
+			//
+			//JurisdictionProfile 
+			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+			//do deletes 
+			jpm.DeleteAll( relatedEntity, ref status );
+			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			//
+			return isAllValid;
+		}
+		public bool DeleteAll( Entity parent, ref SaveStatus status )
         {
             bool isValid = true;
             //Entity parent = EntityManager.GetEntity( parentUid );
@@ -312,7 +330,7 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-			to.ParentId = from.EntityId;
+			to.RelatedEntityId = from.EntityId;
 
 			to.Description = from.Description;
 
@@ -340,7 +358,7 @@ namespace workIT.Factories
 
 			if ( includingItems )
 			{
-				to.CredentialProfiled = Entity_CredentialManager.GetAll( to.RowId );
+				to.CredentialProfiled = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 				//
 				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId );
 				to.Region = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT );

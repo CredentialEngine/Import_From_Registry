@@ -14,6 +14,9 @@ using LinkCheckerServices;
 using Views = workIT.Data.Views;
 using ViewContext = workIT.Data.Views.workITViews;
 using workIT.Utilities;
+using System.Net.Http;
+using System.Web.Script.Serialization;
+using System.Net.Http.Headers;
 
 namespace workIT.Factories
 {
@@ -1545,32 +1548,32 @@ namespace workIT.Factories
         #endregion
 
         #region LinkChecker
-        public static List<QuerySummary> LinkcheckerSearch(Query request )
+        public static List<QuerySummary> LinkcheckerSearch( Query request )
         {
             var output = new List<QuerySummary>();
             var entity = new QuerySummary();
             var filterType = "";
             int pTotalRow = 0;
-             request.OrderBy= "PublisherName,OrganizationName,EntityName";
+            request.OrderBy = "PublisherName,OrganizationName,EntityName";
 
-			//Determine which type of report to run
-			var organizationCTIDs = request.GetFilterValues( "filter:OrganizationCTID", new List<string>() );
-			if ( organizationCTIDs?.Count() > 0 )
+            //Determine which type of report to run
+            var organizationCTIDs = request.GetFilterValues( "filter:OrganizationCTID", new List<string>() );
+            if ( organizationCTIDs?.Count() > 0 )
             {
                 if ( IsForPublishingRecipients( request ) )
                 {
                     //filterType = "(  PublisherCTID='" + organizationCTID + "' )";
-					filterType = "( PublisherCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
+                    filterType = "( PublisherCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
                 }
                 else
                 {
                     //filterType = "(  OrganizationCTID='" + organizationCTID + "' )";
-					filterType = "( OrganizationCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
-				}
+                    filterType = "( OrganizationCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
+                }
             }
 
             //Handle the skip consistent with the linkchecker
-            request.Skip =( request.Skip ) / 100 +1;
+            request.Skip = ( request.Skip ) / 100 + 1;
 
             //Handle EntityType
             var entityTypeId = request.GetFilterValue( "filter:ResourceType" )?.ToLower();
@@ -1580,11 +1583,19 @@ namespace workIT.Factories
                 filterType = filterType == "" ? "( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + " )" : filterType + "AND ( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + ")";
             }
             //Handle LinkType
-            var linkType= request.GetFilterValue( "filter:LinkType" )?.ToLower();
+            var linkType = request.GetFilterValue( "filter:LinkType" )?.ToLower();
             if ( !string.IsNullOrWhiteSpace( linkType ) && linkType != "any" )
             {
-                int type = linkType == "registry" ? 1 : 0;
-                filterType = filterType == "" ? "( IsRegistryUrl =" + type + ")" : filterType+"AND ( IsRegistryUrl =" + type + ")";
+                if ( linkType == "reference" )
+                {
+                    filterType = filterType == "" ? "(Property LIKE '%-reference resource%' AND IsInPublisher LIKE 'true')" : filterType + "AND (Property LIKE '%-reference resource%'AND IsInPublisher LIKE 'true')";
+                }
+                else
+                {
+                    int type = linkType == "registry" ? 1 : 0;
+                    filterType = filterType == "" ? "( IsRegistryUrl =" + type + ")" : filterType + "AND ( IsRegistryUrl =" + type + ")";
+                }
+
             }
 
             //Handle Name Filter
@@ -1601,8 +1612,14 @@ namespace workIT.Factories
                 filterType = filterType == "" ? "( statusSummary LIKE '%" + statusType + "%' )" : filterType + "AND ( statusSummary LIKE '%" + statusType + "%' )";
             }
             var results = LinkCheckerServices.LinkCheckerServices.Search( filterType, request.OrderBy, request.Skip, request.Take, ref pTotalRow );
-          
+
             request.TotalRows = pTotalRow;
+            if ( linkType == "reference" )
+            {
+                var result = results.Where( i => i.IsInPublisher == true ).ToList();
+                request.TotalRows = result.Count;
+                results = result;
+            }
             if ( results != null && results.Count > 0 )
             {
                 foreach ( var item in results )
@@ -1616,15 +1633,17 @@ namespace workIT.Factories
                         Name = item.EntityName,
                         EntityCTID = item.EntityCTID,
                         EntityType = item.EntityType,
-                        EntitySubType = char.ToUpper(item.EntityType[0] )+item.EntityType.Substring( 1 ),
+                        EntitySubType = char.ToUpper( item.EntityType[0] ) + item.EntityType.Substring( 1 ),
                         Id = item.Id,
                         FinderURL = item.FinderUrl,
                         LastUpdated = ( DateTime ) item.EntityLastUpdated,
-                        BadURL=item.URL,
-                        Status=item.Status+"("+item.StatusCode+")",
-                        LinkType= item.IsRegistryUrl==true? "Registry": "Content",
-                        Property=item.Property,
-                        IsInPublisher= item.IsInPublisher
+                        BadURL = item.URL,
+                        Status = item.Status + "(" + item.StatusCode + ")",
+                        LinkType = item.IsRegistryUrl == true ? "Registry" : "Content",
+                        Property = item.Property,
+                        IsInPublisher = item.IsInPublisher,
+                        LastCheckedDate = ( DateTime ) item.LastCheckDate,
+                        ReferenceOrgId = linkType == "reference" ? GetReferenceOrgId( item.Property ) : 0,
                     };
                     output.Add( entity );
                 }
@@ -1710,6 +1729,10 @@ namespace workIT.Factories
                 }
             }
             return output;
+        }
+        public static string DeleteBrokenWebpageLink( string[] CTIDs )
+        {
+            return LinkCheckerServices.LinkCheckerServices.DeleteExistingRecord( CTIDs );
         }
         #endregion
 
@@ -2076,10 +2099,210 @@ namespace workIT.Factories
             }
             return output;
         }
-       
+
+        #endregion
+
+        #region References
+        public static List<QuerySummary> References( Query request )
+        {
+            var output = new List<QuerySummary>();
+            var entity = new QuerySummary();
+            try
+            {
+                var fromtype = request.GetFilterValue( "filter:FromType" );
+                if ( !string.IsNullOrWhiteSpace( fromtype ) )
+                {
+                    using ( var context = new ViewContext() )
+                    {
+                        if ( fromtype == "Publisher" )
+                        {
+
+                            //Start the query
+                            var query = context.Reports_ReferencesPublisher.Where( s => s.Name != null );
+                            //Handle Keywords Name filter
+                            var nameText = request.GetFilterValue( "filter:NameText" )?.ToLower();
+                            if ( !string.IsNullOrWhiteSpace( nameText ) )
+                            {
+                                query = query.Where( s => s.Name.ToLower().Contains( nameText ) );
+                            }
+
+                            //handle entity type
+                            //handle entity type
+                            var entityTypeID = request.GetFilterIntValue( "filter:ResourceType" );
+                            var entityTypeText = request.GetFilterValue( "filter:ResourceType" );
+                            if ( entityTypeID > 0 )
+                            {
+                                query = query.Where( s => s.EntityTypeId == entityTypeID );
+                            }
+                            else if ( !string.IsNullOrWhiteSpace( entityTypeText ) )
+                            {
+                                query = query.Where( s => s.EntityType == entityTypeText );
+                            }
+
+                            //Get total
+                            request.TotalRows = query.Count();
+
+                            var results = query.OrderBy( s => s.Name ).Skip( request.Skip ).Take( request.Take ).ToList();
+                            if ( results != null && results.Count > 0 )
+                            {
+                                foreach ( var item in results )
+                                {
+                                    entity = new QuerySummary()
+                                    {
+                                        Name = item.Name,
+                                        EntityCTID = item.Id.ToString(),
+                                        Description = item.Description,
+                                        SubjectWebpage = item.URL,
+                                        EntityType = item.EntityType.Replace( " ", string.Empty ),
+                                        EntitySubType = item.EntityType.Contains( "Organization" ) ? "Organization" : item.EntityType.Replace( " ", string.Empty ),
+                                        LastUpdated = ( DateTime ) item.LastUpdated,
+                                        Status="Publisher"
+                                    };
+                                    output.Add( entity );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var query = context.Reports_ReferencesFinder.Where( s => s.Name != null );
+                            //Handle Keywords Name filter
+                            var nameText = request.GetFilterValue( "filter:NameText" )?.ToLower();
+                            if ( !string.IsNullOrWhiteSpace( nameText ) )
+                            {
+                                query = query.Where( s => s.Name.ToLower().Contains( nameText ) );
+                            }
+
+                            //handle entity type
+                            var entityTypeID = request.GetFilterIntValue( "filter:ResourceType" );
+                            var entityTypeText = request.GetFilterValue( "filter:ResourceType" );
+                            if ( entityTypeID > 0 )
+                            {
+                                query = query.Where( s => s.EntityTypeId == entityTypeID );
+                            }
+                            else if ( !string.IsNullOrWhiteSpace( entityTypeText ) )
+                            {
+                                query = query.Where( s => s.EntityType == entityTypeText );
+                            }
+
+                            //Get total
+                            request.TotalRows = query.Count();
+
+                            var results = query.OrderBy( s => s.Name ).Skip( request.Skip ).Take( request.Take ).ToList();
+                            if ( results != null && results.Count > 0 )
+                            {
+                                foreach ( var item in results )
+                                {
+                                    entity = new QuerySummary()
+                                    {
+                                        Name = item.Name,
+                                        EntityCTID = item.Id.ToString(),
+                                        Description = item.Description,
+                                        SubjectWebpage = item.SubjectWebpage,
+                                        EntityType = item.EntityType.Replace( " ", string.Empty ),
+                                        LastUpdated = ( DateTime ) item.LastUpdated,
+                                        Status="Finder"
+                                    };
+                                    output.Add( entity );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                var msg = FormatExceptions( ex );
+                LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ReferencesQuery. " + msg ) );
+                output.Add( new QuerySummary()
+                {
+                    Publisher = "Error encountered",
+                    Organization = ex.Message,
+                    Name = msg
+                } );
+            }
+            return output;
+        }
+
         #endregion
 
 
+        public static APIRequestValidationResponse ValidateAPIkey( string publisherApikey,string dataOwnerCTID,ref List<string> messages )
+        {
+            string publishMethodURI = "reporting:GeneralServices";
+            string thisClassName = "ServicesController";
+            string entityType = "";
+            APIRequestValidationResponse response = new APIRequestValidationResponse();
+            //not sure if can cache, give some thought though
+            string key = "validationKey_" + publisherApikey + "_" + dataOwnerCTID + "_" + publishMethodURI;
+
+            int cacheMinutes = 1440;
+            DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+            string environment = UtilityManager.GetAppKeyValue( "environment" );
+
+
+            //get Org
+            var password = UtilityManager.GetAppKeyValue( "CEAccountSystemStaticPassword", "" );
+            var url = UtilityManager.GetAppKeyValue( "ceAccountValidateRegistryRequest" );
+            var accountsApiUrl = string.Format( url, dataOwnerCTID, publishMethodURI, password, entityType );
+            try
+            {
+                using ( var client = new HttpClient() )
+                {
+                    client.DefaultRequestHeaders.
+                        Accept.Add( new MediaTypeWithQualityHeaderValue( "application/json" ) );
+                    client.DefaultRequestHeaders.Add( "Authorization", "ApiToken " + publisherApikey );
+
+                    if ( environment == "development" || environment == "sandbox" )
+                    {
+                        client.Timeout = new TimeSpan( 0, 30, 0 );
+                    }
+
+                    var rawData = client.PostAsync( accountsApiUrl, null ).Result.Content.ReadAsStringAsync().Result;
+                    if ( rawData == null || rawData.IndexOf( "The resource cannot be found" ) > 0 )
+                    {
+                        messages.Add( "Error: unexpected response in ValidatePublishingRequest. The endpoint returned null." );
+                        return response;
+                    }
+                    response = new JavaScriptSerializer().Deserialize<APIRequestValidationResponse>( rawData );
+
+                    if ( response != null && response.Successful )
+                    {
+                        //note this method doesn't determine validity, just returns the results. The caller will make that detemination
+                        if ( response.PublisherIsTrustedPartner )
+                        {
+                            LoggingHelper.DoTrace( 5, "SupportServices.ValidatePublishingRequest() Found a trusted partner: " + response.PublishingOrganization );
+                        }
+                    }
+                    else
+                    {
+                        messages.Add( "Error: Request to validate this publishing transaction failed, see the following message(s)." );
+
+                        if ( response.Messages != null && response.Messages.Count() > 0 )
+                        {
+                            messages.AddRange( response.Messages );
+                        }
+                        else
+                        {
+                            messages.Add( "Error: unable to validate the publishing transaction for the provided publisher and data owner." );
+                            if ( !string.IsNullOrWhiteSpace( rawData ) )
+                                messages.Add( rawData );
+                        }
+
+                        LoggingHelper.DoTrace( 5, string.Format( thisClassName + ".ValidatePublishingRequest FAILED. request key: {0}", key ) );
+                        return response;
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".ValidatePublishingRequest: " + key );
+                string message = LoggingHelper.FormatExceptions( ex );
+                messages.Add( message );
+                return response;
+            }
+
+            return response;
+        }  //
 
         #region Helpers
         //Determine which type of report to run (this value comes from the _ReportsCoreV1.cshtml file at the moment, but that could be loaded from elsewhere)
@@ -2088,7 +2311,23 @@ namespace workIT.Factories
 			var reportType = request.GetFilterValue( "filter:ReportType", "ForMyOrganization" );
 			return reportType == "ForMyPublishingRecipients";
 		}
-      
+
+        public static int GetReferenceOrgId( string property )
+        {
+            int Id = 0;
+            var split = "Name: ";
+            var referencename = property.Substring( property.IndexOf( split ) + split.Length );
+            using ( var context = new ViewContext() )
+            {
+                var result = context.Reports_ReferencesPublisher.Where( s => s.Name.Contains( referencename ) && s.EntityTypeId == 2 ).FirstOrDefault();
+                if ( result != null )
+                {
+                    Id = result.Id;
+                }
+            }
+            return Id;
+        }
+
         #endregion
 
         #region  Work.Query - mostly for adhoc queries

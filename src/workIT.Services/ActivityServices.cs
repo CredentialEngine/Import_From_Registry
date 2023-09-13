@@ -61,14 +61,17 @@ namespace workIT.Services
 		/// Add site activity
 		/// </summary>
 		/// <param name="log"></param>
-		public void AddActivity( SiteActivity log )
+		public void AddActivity( SiteActivity log, bool includingIPAddress = true  )
 		{
 
 			if ( log.SessionId == null || log.SessionId.Length < 10 )
 				log.SessionId = ActivityManager.GetCurrentSessionId();
 
-			if ( log.IPAddress == null || log.IPAddress.Length < 10 )
-				log.IPAddress = ActivityManager.GetUserIPAddress();
+			if ( includingIPAddress )
+			{
+				if ( log.IPAddress == null || log.IPAddress.Length < 10 )
+					log.IPAddress = ActivityManager.GetUserIPAddress();
+			}
 
 			try
 			{

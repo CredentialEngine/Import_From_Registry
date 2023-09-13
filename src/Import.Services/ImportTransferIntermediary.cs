@@ -260,10 +260,10 @@ namespace Import.Services
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "TransferIntermediary.OwnedBy", input.OwnedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[0];
+					output.PrimaryAgentUID = output.OwnedBy[0];
 					helper.CurrentOwningAgentUid = output.OwnedBy[0];
 				}
-				//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+				output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 				output.CodedNotation = input.CodedNotation;
 				//CreditValue
@@ -274,6 +274,7 @@ namespace Import.Services
 				}
 				//IntermediaryFor
 				output.IntermediaryForJson = "";
+				output.IntermediaryFor = new List<workIT.Models.Common.TopLevelObject>();
 				//this needs to provide the entitytypeid = 26
 				output.IntermediaryForImport = helper.MapEntityReferenceGuids( "TransferIntermediary.IntermediaryFor", input.IntermediaryFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
 
@@ -299,9 +300,12 @@ namespace Import.Services
 				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
 
 				//Subject - really need to get away from the textValueProfile
-				output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-				//
-				importSuccessfull = new TransferIntermediaryServices().Import( output, ref status );
+				//	just store the list on the base table
+				output.SubjectTVP = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+                output.Subject = helper.MapCAOListToList( input.Subject );
+                //
+                //
+                importSuccessfull = new TransferIntermediaryServices().Import( output, ref status );
 				//
 				status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/TransferIntermediary/{0}", output.Id );

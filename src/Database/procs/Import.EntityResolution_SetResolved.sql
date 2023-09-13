@@ -1,6 +1,13 @@
 USE [credFinder]
 GO
 
+--use staging_credFinder
+--go
+
+--use sandbox_credFinder
+--go
+
+
 /****** Object:  StoredProcedure [dbo].[Import.EntityResolution_SetResolved]    Script Date: 6/21/2018 3:58:41 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -73,7 +80,27 @@ UPDATE [dbo].[Import.EntityResolution]
   inner join [CostManifest] b on a.EntityBaseId = b.id 
   where a.ReferencedEntityTypeId = 20  and b.EntityStateId = 3
   and a.[IsResolved] = 0
-
+--
+UPDATE [dbo].[Import.EntityResolution]
+   SET [IsResolved] = 1
+  FROM [dbo].[Import.EntityResolution] a
+  inner join CompetencyFramework b on a.EntityBaseId = b.id 
+  where a.ReferencedEntityTypeId = 10  and b.EntityStateId = 3
+  and a.[IsResolved] = 0
+--
+UPDATE [dbo].[Import.EntityResolution]
+   SET [IsResolved] = 1
+  FROM [dbo].[Import.EntityResolution] a
+  inner join Pathway b on a.EntityBaseId = b.id 
+  where a.ReferencedEntityTypeId = 8  and b.EntityStateId = 3
+  and a.[IsResolved] = 0
+--
+UPDATE [dbo].[Import.EntityResolution]
+   SET [IsResolved] = 1
+  FROM [dbo].[Import.EntityResolution] a
+  inner join TransferValueProfile b on a.EntityBaseId = b.id 
+  where a.ReferencedEntityTypeId = 26  and b.EntityStateId = 3
+  and a.[IsResolved] = 0
 GO
 
 grant execute on [Import.EntityResolution_SetResolved] to public

@@ -89,12 +89,14 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string CTID { get; set; }
 
-		/// <summary>
-		/// AbilityEmbodied
-		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
-		/// ceasn:abilityEmbodied
-		/// </summary>
-		[JsonProperty( PropertyName = "ceasn:abilityEmbodied" )]
+        /// <summary>
+        /// AbilityEmbodied
+        /// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
+        /// CTID/URI to any of:
+        /// ceasn:Competency ceterms:Job ceterms:Occupation ceterms:Task ceterms:WorkRole
+        /// ceasn:abilityEmbodied
+        /// </summary>
+        [JsonProperty( PropertyName = "ceasn:abilityEmbodied" )]
 		public List<string> AbilityEmbodied { get; set; }
 
 		/// <summary>
@@ -105,7 +107,6 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:classification" )]
 		public List<string> Classification { get; set; }
-		//public List<CredentialAlignmentObject> Classification { get; set; }
 
 		/// <summary>
 		/// Set of alpha-numeric symbols that uniquely identifies an item and supports its discovery and use.

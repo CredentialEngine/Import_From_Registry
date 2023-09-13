@@ -21,7 +21,7 @@ namespace CTI.Import
 	{
 		static string thisClassName = "Program";
 		public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
-		public static string envType = UtilityManager.GetAppKeyValue( "envType" );
+		public static string envType = UtilityManager.GetAppKeyValue( "environment" );
 		//
 
 		static void Main( string[] args )
@@ -77,6 +77,18 @@ namespace CTI.Import
 			string importResults = "";
 			int recordsDeleted = 0;
 			
+			var credentialRegistryUrl = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+			LoggingHelper.DoTrace( 1, string.Format("********* DOING IMPORT FROM {0} *********", credentialRegistryUrl) );
+
+			string connectionString =BaseFactory.DBConnectionRO();
+			if ( !string.IsNullOrWhiteSpace( credentialRegistryUrl ) )
+            {
+				var parts = credentialRegistryUrl.Split( ';' );
+				var db = parts.FirstOrDefault( s => s.Contains("database"));
+				if ( db != null )
+					LoggingHelper.DoTrace( 1, string.Format( "********* TARGET DATABASE {0} *********", db ) );
+			}
+
 			//typically will want this as registry server is UTC (+6 hours from central)
 			bool usingUTC_ForTime = UtilityManager.GetAppKeyValue( "usingUTC_ForTime", true );
 			
@@ -247,14 +259,17 @@ namespace CTI.Import
 			//establish common filters
 			//NEW - filter sets
 			var filterSets = UtilityManager.GetAppKeyValue( "filterSets" );
-			//if you always only want to download documents for a particular organization, provide the CTID for 'owningOrganizationCTID' in the app.config.
+			//if you always only want to download documents for a particular set of organizations, provide the CTIDs for 'owningOrganizationCTID' in the app.config.
 			registryImport.OwningOrganizationCTID = UtilityManager.GetAppKeyValue( "owningOrganizationCTID" );
 
 			//if you want to download documents published by a third party publisher, provide the CTID for 'publishingOrganizationCTID' in the app.config. 
 			//NOTE: where the publisher and the owner are the same, there is no need to provide both the owning and publishing org filters, just pick one.
 			registryImport.PublishingOrganizationCTID = UtilityManager.GetAppKeyValue( "publishingOrganizationCTID" );
+			//
+			registryImport.ResourceCTIDList = UtilityManager.GetAppKeyValue( "resourcesCTIDList" );
+
 			var hasCustomRun = false;
-			if ( registryImport.PublishingOrganizationCTID?.Length > 0 || registryImport.OwningOrganizationCTID?.Length > 0 )
+			if ( registryImport.PublishingOrganizationCTID.Length > 0 || registryImport.OwningOrganizationCTID.Length > 0 || registryImport.ResourceCTIDList.Length > 0 )
 			{
 				hasCustomRun = true;
 			}
@@ -280,7 +295,9 @@ namespace CTI.Import
 			//	- for generic processing, if no filter set, treat the default publisher and owner filters like filters and add to filter set
 			PublisherRelatedImport( registryImport, registryImport.PublishingOrganizationCTID, resourceTypeList );
 
-			DataOwnerRelatedImport( registryImport, registryImport.OwningOrganizationCTID, resourceTypeList );			
+			DataOwnerRelatedImport( registryImport, registryImport.OwningOrganizationCTID, resourceTypeList );
+			//
+			AdhocResourceListImport( registryImport, registryImport.ResourceCTIDList );
 
 			#endregion
 			//take approach that if either the publisher or owner was provided, then the general method should be skipped.
@@ -326,23 +343,23 @@ namespace CTI.Import
 			{
 				if ( registryImport.RecordsImported > 0 || recordsDeleted > 0 )
 				{
+					//2023 - need to update addresses first (geocode) or elastic will be off
+					if ( UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) == false && UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) == false )
+					{
+						ProfileServices.HandleAddressGeoCoding();
+					}
 					//update elastic if not included - probably will always delay elastic, due to multiple possible updates
 					//may want to move this to services for use by other process, including adhoc imports
 					if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
 					{
 						//update elastic if a elasticSearchUrl exists
-						if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
+						if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" && UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 ) > 0 )
 						{
 							LoggingHelper.DoTrace( 1, string.Format( "===  *****************  UpdateElastic  ***************** " ) );
 							ElasticHelper.UpdateElastic( false, true );
 						}
 					}
-					if ( !UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) )
-					{
-						//have check in case want to skip geocoding sometimes
-						if ( !UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) )
-							ProfileServices.HandleAddressGeoCoding();
-					}
+
 
 					//send email to accounts admin
 					//harder to do here to the adhoc options
@@ -531,9 +548,11 @@ namespace CTI.Import
 				//process
 				//TBD
 				int eTypeId = 0;
+				int cntr = 0;
 				foreach ( var item in importList )
 				{
-					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent selecged recources for DataOwner Org: {0}  ***************** ", item ) );
+					cntr++;
+					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent selected recources for DataOwner Org: {0}  ***************** ", item ) );
 					registryImport.OwningOrganizationCTID = item;
 					foreach ( var resourceType in resourceTypeList )
 					{
@@ -546,6 +565,53 @@ namespace CTI.Import
 				registryImport.OwningOrganizationCTID = "";
 			}
 		}
+		//
+
+		public static void AdhocResourceListImport( RegistryImport registryImport, string resourceList )
+		{
+			var importList = new List<string>();
+			var currentTotal = registryImport.RecordsImported;
+			if ( resourceList == null || resourceList.Trim().Length == 0 )
+				return;
+
+			if ( resourceList.IndexOf( "," ) > 0 )
+			{
+				//get list
+				var requestlist = resourceList.Split( ',' );
+				foreach ( var item in requestlist )
+				{
+					if ( !string.IsNullOrWhiteSpace( item ) )
+						importList.Add( item.Trim() );
+				}
+			}
+			else
+			{
+				importList.Add( resourceList );
+			}
+			//process
+			string statusMessage = "";
+			string ctdlType = "";
+			string community = "";
+			int cntr = 0;
+			foreach ( var item in importList )
+			{
+				cntr++;
+				LoggingHelper.DoTrace( 1, string.Format( "{0}.  *****************  Downloading CTID: {1}  ***************** ", cntr, item ) );
+				
+				//get the envelope
+				var envelope = RegistryServices.GetEnvelopeByCtid( item, ref statusMessage, ref ctdlType, community );
+				var entityTypeId = MappingHelperV3.GetEntityTypeId( envelope.EnvelopeCtdlType );
+				var registryEntityType = ctdlType;
+				registryImport.ProcessEnvelope( envelope, registryEntityType, cntr, false );
+			}
+			//may want summaries for each filter set?
+			LoggingHelper.DoTrace( 1, string.Format( "Completed Adhoc resource download request. Resources:{0}", cntr ) );
+			//clear source - THIS WILL AFFECT STOPPING
+			registryImport.ResourceCTIDList = "";
+			
+		}
+
+
 		public static List<string> GetRequestedResourceTypes()
 		{
 			var resourceTypeList = new List<string>();

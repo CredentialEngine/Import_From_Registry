@@ -89,28 +89,28 @@ namespace workIT.Utilities
             }
         }
 
-        public static JsonSerializerSettings GetJsonSettings()
+        public static JsonSerializerSettings GetJsonSettings( bool doingFormating = true )
         {
             var settings = new JsonSerializerSettings()
             {
                 NullValueHandling = NullValueHandling.Ignore,
                 DefaultValueHandling = DefaultValueHandling.Ignore,
                 ContractResolver = new EmptyNullResolver(),
-                Formatting = Formatting.Indented,
+                Formatting = doingFormating ? Formatting.Indented : Formatting.None,
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore
             };
 
             return settings;
         }
-		public static JsonSerializerSettings GetJsonSettingsAll()
+		public static JsonSerializerSettings GetJsonSettingsAll( bool doingFormating = true )
 		{
 			var settings = new JsonSerializerSettings()
 			{
 				NullValueHandling = NullValueHandling.Ignore,
 				DefaultValueHandling = DefaultValueHandling.Include,
 				ContractResolver = new EmptyNullResolver(),
-				Formatting = Formatting.Indented,
-				ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+				Formatting = doingFormating ? Formatting.Indented : Formatting.None,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
 			};
 
 			return settings;

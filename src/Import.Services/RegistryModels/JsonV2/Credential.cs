@@ -182,12 +182,18 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasPart" )]
 		public List<string> HasPart { get; set; }
 
-		/// <summary>
-		/// HasRating
-		/// Rating related to this resource.
-		/// URI to a Rating
-		/// </summary>
-		[JsonProperty( PropertyName = "navy:hasRating" )]
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
+
+        /// <summary>
+        /// HasRating
+        /// Rating related to this resource.
+        /// URI to a Rating
+        /// </summary>
+        [JsonProperty( PropertyName = "navy:hasRating" )]
 		public List<string> HasRating { get; set; }
 
 
@@ -270,19 +276,28 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:sameAs" )]
 		public List<string> SameAs { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:subject" )]
+
+        [JsonProperty( PropertyName = "ceterms:subject" )]
 		public List<CredentialAlignmentObject> Subject { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
         public string SubjectWebpage { get; set; }
 
-		// <summary>
-		// NOTE: the TargetPathway is an inverse property for a credential. That is, it will not be published with the credential, and is instead derived via a PathwayComponent
-		// </summary>
-		//[JsonProperty( PropertyName = "ceterms:targetPathway" )]
-		//public List<string> TargetPathway { get; set; }
+        // <summary>
+        // NOTE: the TargetPathway is an inverse property for a credential. That is, it will not be published with the credential, and is instead derived via a PathwayComponent
+        // </summary>
+        //[JsonProperty( PropertyName = "ceterms:targetPathway" )]
+        //public List<string> TargetPathway { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
+        /// <summary>
+        /// Uses Verification Service
+        /// Reference to a service that is used to verify this Credential.
+        /// Range: ceterms:VerificationServiceProfile
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:usesVerificationService" )]
+        public List<string> UsesVerificationService { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
         public List<IdentifierValue> VersionIdentifier { get; set; }
 
 		#region Versions
@@ -454,38 +469,59 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:revokedIn" )]
 		public List<JurisdictionProfile> RevokedIn { get; set; }
 
-		#endregion
+        #endregion
+
+        /// <summary>
+        /// Pathway in which this resource is a potential component.
+        /// This is an inverse property and would not be published with this resource
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:targetPathway" )]
+        public List<string> TargetPathway { get; set; }
+
+        //*** Helper properties where publishing input is a graph. These will not be published
+        /// <summary>
+        /// CIP List is a helper when publishing from a graph. It will not be published
+        /// </summary>
+        [JsonProperty( "cipList" )]
+        public List<string> CIPList { get; set; } = null;
+        /// <summary>
+        /// SOC List is a helper when publishing from a graph. It will not be published
+        /// </summary>
+        [JsonProperty( "socList" )]
+        public List<string> SOCList { get; set; } = null;
+
+        /// NAICS List is a helper when publishing from a graph. It will not be published
+        [JsonProperty( "naicsList" )]
+        public List<string> NaicsList { get; set; } = null;
+        #region OBSOLETE: Holder, earnings, EmploymentOutcome
 
 
-		#region OBSOLETE: Holder, earnings, EmploymentOutcome
+        //      //TODO - this may change to URIs
+        //      //		- in this case, the earningProfile should have a credential reference like
+        //      [JsonProperty( PropertyName = "ceterms:earningsList" )]
+        //public List<EarningsProfile> EarningsList { get; set; }
+
+        //[JsonProperty( PropertyName = "ceterms:earnings" )]
+        //public List<string> Earnings { get; set; }
+
+        ////TODO - this may change to URIs
+        ////		- in this case, the employmentOutcomeProfile should have a credential reference like employmentOutcomeProfileFor
+        //[JsonProperty( PropertyName = "ceterms:employmentOutcomeList" )]
+        //public List<EmploymentOutcomeProfile> EmploymentOutcomeList { get; set; }
+
+        //[JsonProperty( PropertyName = "ceterms:employmentOutcome" )]
+        //public List<string> EmploymentOutcome { get; set; }
 
 
-		//TODO - this may change to URIs
-		//		- in this case, the earningProfile should have a credential reference like
-		[JsonProperty( PropertyName = "ceterms:earningsList" )]
-		public List<EarningsProfile> EarningsList { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:holdersList" )]
+        //public List<HoldersProfile> HoldersList { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:earnings" )]
-		public List<string> Earnings { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:holders" )]
+        //public List<string> Holders { get; set; }
 
-		//TODO - this may change to URIs
-		//		- in this case, the employmentOutcomeProfile should have a credential reference like employmentOutcomeProfileFor
-		[JsonProperty( PropertyName = "ceterms:employmentOutcomeList" )]
-		public List<EmploymentOutcomeProfile> EmploymentOutcomeList { get; set; }
+        #endregion
 
-		[JsonProperty( PropertyName = "ceterms:employmentOutcome" )]
-		public List<string> EmploymentOutcome { get; set; }
-
-
-		[JsonProperty( PropertyName = "ceterms:holdersList" )]
-		public List<HoldersProfile> HoldersList { get; set; }
-
-		[JsonProperty( PropertyName = "ceterms:holders" )]
-		public List<string> Holders { get; set; }
-
-		#endregion
-
-	}
+    }
 
 	public class RevocationProfile
     {
@@ -515,5 +551,6 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:revocationCriteriaDescription" )]
         public LanguageMap RevocationCriteriaDescription { get; set; }
 
-	}
+
+    }
 }

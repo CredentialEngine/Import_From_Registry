@@ -361,7 +361,7 @@ namespace workIT.Factories
 
                     orp = new OrganizationAssertion();
                     orp.Id = 0;
-                    orp.ParentId = agentEntity.EntityBaseId;
+                    orp.ParentEntityId = agentEntity.EntityBaseId;
 
 
                     orp.AgentAssertion = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
@@ -442,7 +442,7 @@ namespace workIT.Factories
 
                         orp = new OrganizationAssertion();
                         orp.Id = 0;
-                        orp.ParentId = agentEntity.EntityBaseId;
+                        orp.ParentEntityId = agentEntity.EntityBaseId;
 
 
                         orp.AgentAssertion = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
@@ -528,7 +528,7 @@ namespace workIT.Factories
 			{
 				//first check how long this step takes
 				DateTime start = DateTime.Now;
-				LoggingHelper.DoTrace( 7, "FillCountsForOrganizationQAPerformed start" );
+				LoggingHelper.DoTrace( 8, "FillCountsForOrganizationQAPerformed start" );
 				//List<Views.Organization_CombinedQAPerformed> agentRoles = context.Organization_CombinedQAPerformed
 				//	.Where( s => s.OrgUid == org.RowId
 				//		 && s.IsQARole == true
@@ -574,7 +574,7 @@ namespace workIT.Factories
 							};
 				DateTime end = DateTime.Now;
 				var elasped = end.Subtract( start ).TotalSeconds;
-				LoggingHelper.DoTrace( 7, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
+				LoggingHelper.DoTrace( 8, string.Format( "FillCountsForOrganizationQAPerformed retrieve seconds: {0}", elasped ) );
 
 				var results = query.Distinct().ToList();
 				if ( results != null && results.Count() > 0 )
@@ -589,7 +589,7 @@ namespace workIT.Factories
 
 					DateTime listEnd = DateTime.Now;
 					elasped = listEnd.Subtract( end ).TotalSeconds;
-					LoggingHelper.DoTrace( 7, string.Format( "FillCountsForOrganizationQAPerformed loaded list seconds: {0}", elasped ) );
+					LoggingHelper.DoTrace( 8, string.Format( "FillCountsForOrganizationQAPerformed loaded list seconds: {0}", elasped ) );
 				}
 			}
 
@@ -606,7 +606,7 @@ namespace workIT.Factories
 		//          string prevRoleSource = "";
 		//          int prevRoleTypeId = 0;
 		//          Entity agentEntity = EntityManager.GetEntity( agentUid );
-		//	if ( UtilityManager.GetAppKeyValue( "envType" ) == "production" )
+		//	if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" )
 		//	{
 		//		//show all for now in production
 		//		//maxRecords = 0;
@@ -787,7 +787,7 @@ namespace workIT.Factories
 			//|| owningOrgId == 0
 			if ( targetEntityTypeId == 0 || recordId == 0  )
 				return list;
-			LoggingHelper.DoTrace( 7, string.Format(  "@@@@@ Entity_AssertionManager.GetAllCombinedForTarget targetEntityTypeId:{0}, recordId:{1}, owningOrgId: {2}", targetEntityTypeId, recordId, owningOrgId ) );
+			LoggingHelper.DoTrace( 8, string.Format(  "@@@@@ Entity_AssertionManager.GetAllCombinedForTarget targetEntityTypeId:{0}, recordId:{1}, owningOrgId: {2}", targetEntityTypeId, recordId, owningOrgId ) );
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
@@ -834,7 +834,7 @@ namespace workIT.Factories
 							orp = new OrganizationRoleProfile
 							{
 								Id = 0,
-								ParentId = entity.OrgId,
+								RelatedEntityId = entity.OrgId,
 								ParentTypeId = 2,
 								ProfileSummary = entity.Organization,
 
@@ -1040,7 +1040,7 @@ namespace workIT.Factories
 							orp = new OrganizationRoleProfile
 							{
 								Id = 0,
-								ParentId = entity.OrgId,
+								RelatedEntityId = entity.OrgId,
 								ParentTypeId = 2,
 								ProfileSummary = entity.OrganizationName,
 								AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE ),
@@ -1152,7 +1152,7 @@ namespace workIT.Factories
 			//|| owningOrgId == 0
 			if ( targetEntityTypeId == 0 || targetEntityUid == null || !BaseFactory.IsGuidValid( targetEntityUid ) )
 				return list;
-			LoggingHelper.DoTrace( 7, string.Format( "@@@@@ Entity_AssertionManager.GetAllFirstPartyQAAssertionsForTarget targetEntityTypeId:{0}, targetEntityUid:{1}, owningOrgId: {2}", targetEntityTypeId, targetEntityUid, owningOrgId ) );
+			LoggingHelper.DoTrace( 8, string.Format( "@@@@@ Entity_AssertionManager.GetAllFirstPartyQAAssertionsForTarget targetEntityTypeId:{0}, targetEntityUid:{1}, owningOrgId: {2}", targetEntityTypeId, targetEntityUid, owningOrgId ) );
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
@@ -1221,7 +1221,7 @@ namespace workIT.Factories
 							orp = new OrganizationRoleProfile
 							{
 								Id = 0,
-								ParentId = entity.OrgId,
+								RelatedEntityId = entity.OrgId,
 								ParentTypeId = 2,
 								ProfileSummary = entity.OrganizationName,
 

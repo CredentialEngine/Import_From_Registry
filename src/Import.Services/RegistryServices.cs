@@ -35,10 +35,26 @@ namespace Import.Services
 
 		#region Registry search
 
+		/// <summary>
+		/// Do a registry search
+		/// </summary>
+		/// <param name="resourceType"></param>
+		/// <param name="startingDate"></param>
+		/// <param name="endingDate"></param>
+		/// <param name="pageNbr"></param>
+		/// <param name="pageSize"></param>
+		/// <param name="pTotalRows"></param>
+		/// <param name="statusMessage"></param>
+		/// <param name="community"></param>
+		/// <param name="owningOrganizationCTID"></param>
+		/// <param name="publishingOrganizationCTID"></param>
+		/// <param name="sortOrder"></param>
+		/// <returns></returns>
 		public static List<ReadEnvelope> Search( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string owningOrganizationCTID = "", string publishingOrganizationCTID = "", string sortOrder = "asc" )
 		{
-
-			string document = "";
+            //other
+            //	metadata_only - true: Whether omit envelopes’ payloads
+            string document = "";
 			string filter = "";
 			//includes the question mark
 			string serviceUri = GetRegistrySearchUrl( community );
@@ -206,7 +222,7 @@ namespace Import.Services
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			}
 			//
-			if ( UtilityManager.GetAppKeyValue( "usingAssistantRegistrySearch", false ) )
+			if ( UtilityManager.GetAppKeyValue( "usingAssistantRegistrySearch", true ) )
 			{
 				string serviceUri = UtilityManager.GetAppKeyValue( "assistantCredentialRegistrySearch" );
 				if ( !string.IsNullOrWhiteSpace( community ) )
@@ -872,8 +888,16 @@ namespace Import.Services
 						//retry?
 						statusMessage = "retry";
 					}
-					LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl: " + resourceUrl );
-					statusMessage = exc.Message;
+					else if ( msg.IndexOf( "The underlying connection was closed" ) > 0 )
+					{
+						//retry?
+						statusMessage = "The underlying connection was closed: An unexpected error occurred on a send.";
+					}
+					else
+					{
+						LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl: " + resourceUrl );
+						statusMessage = exc.Message;
+					}
 				}
 			}
 			return payload;
@@ -1146,9 +1170,25 @@ namespace Import.Services
 		#region Purge methods
 		public bool PurgeRequest( string CTID, ref string dataOwnerCtid, ref string entityType, ref string message, string community = "" )
 		{
+			//needs owner
 			var entity = EntityManager.EntityCacheGetByCTID( CTID );
-
-			var CTIDList = new List<string>() { CTID };
+			if (entity == null || entity.Id == 0)
+			{
+				message = "Error: a valid CTID must be provided for this function. ";
+				return false;
+            }
+            if ( string.IsNullOrWhiteSpace( entity.OwningOrgCTID ))
+            {
+                //hmm this could mean the owner has been deleted?
+                //	unlikely outside of the sandbox. Should be able to use CE? or some override parameter.
+                entity.OwningOrgCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
+				//may want to log this or return a warning?
+				//message = $"Error: An owning organization is not associated with the CTID ({CTID}) in the Entity.Cache table. The purge request needs to included the correct owner.";
+				//return false;
+            }
+			entityType = entity.EntityType;
+			dataOwnerCtid = entity.OwningOrgCTID;
+            var CTIDList = new List<string>() { CTID };
 			return PurgeRequest( CTIDList, entity.OwningOrgCTID, entity.EntityType, ref message, community );
 		}
 
@@ -1161,11 +1201,14 @@ namespace Import.Services
 			{
 				//serviceUri = "https://localhost:44312/";
 			}
+            if ( entityType.ToLower() == "course" || entityType.ToLower() == "learningprogram" )
+                entityType = "learningopportunity";
+            else if ( entityType.ToLower() == "credentialorganization" || entityType.ToLower() == "qacredentialorganization" )
+                entityType = "organization";
 
-
-			//might use one delete endpoint, as adding code to handle this.
-			//check if the single endpoint is viable to simplify
-			string endpointUrl = serviceUri + "admin/purge";
+            //might use one delete endpoint, as adding code to handle this.
+            //check if the single endpoint is viable to simplify
+            string endpointUrl = serviceUri + "admin/purge";
 
 			//RAResponse response = new RAResponse();
 			string credentialEngineCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
@@ -1277,11 +1320,27 @@ namespace Import.Services
 		#endregion
 
 		#region Delete methods
-		public bool DeleteRequest( string CTID, ref string message, string community = "" )
+		public bool DeleteRequest( string CTID, ref string message, ref string entityType, string community = "" )
 		{
-			var entity = EntityManager.EntityCacheGetByCTID( CTID );
+            //needs owner
+            var entity = EntityManager.EntityCacheGetByCTID( CTID );
+            if ( entity == null || entity.Id == 0 )
+            {
+                message = "Error: a valid CTID must be provided for this function. ";
+                return false;
+            }
+            if ( string.IsNullOrWhiteSpace( entity.OwningOrgCTID ) )
+            {
+                //hmm this could mean the owner has been deleted?
+                //	unlikely outside of the sandbox. Should be able to use CE? or some override parameter.
+                entity.OwningOrgCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
+                //may want to log this or return a warning?
+                //message = $"Error: An owning organization is not associated with the CTID ({CTID}) in the Entity.Cache table. The purge request needs to included the correct owner.";
+                //return false;
+            }
+            entityType = entity.EntityType;
 
-			var CTIDList = new List<string>() { CTID };
+            var CTIDList = new List<string>() { CTID };
 			return DeleteRequest( CTIDList, entity.OwningOrgCTID, entity.EntityType, ref message, community );
 		}
 
@@ -1296,10 +1355,11 @@ namespace Import.Services
 			}
 			if ( entityType.ToLower() == "course" || entityType.ToLower() == "learningprogram" )
 				entityType = "learningopportunity";
-
-			//might use one delete endpoint, as adding code to handle this.
-			//check if the single endpoint is viable to simplify
-			string endpointUrl = serviceUri + entityType + "/Delete";
+			else if ( entityType.ToLower() == "credentialorganization" || entityType.ToLower() == "qacredentialorganization" )
+                entityType = "organization";
+            //might use one delete endpoint, as adding code to handle this.
+            //check if the single endpoint is viable to simplify
+            string endpointUrl = serviceUri + entityType + "/Delete";
 
 			//RAResponse response = new RAResponse();
 			string credentialEngineCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
@@ -1506,9 +1566,9 @@ namespace Import.Services
     {
         public RegistryObject( string payload )
         {
-            if ( !string.IsNullOrWhiteSpace( payload ) )
-            {
-                dictionary = RegistryServices.JsonToDictionary( payload );
+			if ( !string.IsNullOrWhiteSpace( payload ) )
+			{
+				dictionary = RegistryServices.JsonToDictionary( payload );
 				//handle envelope
 				if ( payload.IndexOf( "decoded_resource" ) > 0 )
 				{
@@ -1534,13 +1594,27 @@ namespace Import.Services
 						//Name = BaseObject.Name.ToString();
 						Name = RegistryServices.GetFirstItemValue( BaseObject.Name );
 					}
-					else if ( CtdlType == "ceasn:CompetencyFramework" )
+					else if ( CtdlType == "ceasn:CompetencyFramework" || CtdlType == "asn:ProgressionModel" || CtdlType == "skos:ConceptScheme" )
 					{
-						if ( BaseObject.CompetencyFrameworkName != null )
+						if ( BaseObject.CeasnName != null )
 						{
 							//Name = BaseObject.Name.ToString();
-							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyFrameworkName );
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CeasnName );
 							//Name = ( BaseObject.CompetencyFrameworkName ?? "" ).ToString();
+						}
+					}
+					else if ( CtdlType == "skos:Concept" || CtdlType == "asn:ProgressionLevel" )
+					{
+						if ( BaseObject.PrefLabel != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.PrefLabel );
+						}
+					}
+					else if ( CtdlType == "ceasn:Competency" )
+					{
+						if ( BaseObject.CompetencyText != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyText );
 						}
 					}
 					else
@@ -1588,16 +1662,16 @@ namespace Import.Services
 							}
 						}
 					}
-					else if ( CtdlType == "ceasn:CompetencyFramework" )
+					else if ( CtdlType == "ceasn:CompetencyFramework" || CtdlType == "asn:ProgressionModel" || CtdlType == "skos:ConceptScheme" )
 					{
-						if ( BaseObject.CompetencyFrameworkName is LanguageMap )
+						if ( BaseObject.CeasnName is LanguageMap )
 						{
-							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyFrameworkName );
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CeasnName );
 
 						}
 						else
 						{
-							Name = BaseObject.CompetencyFrameworkName.ToString();
+							Name = BaseObject.CeasnName.ToString();
 							if ( Name.IndexOf( "{" ) > -1 && Name.IndexOf( ":" ) > 1 )
 							{
 								int pos = Name.IndexOf( "\"", Name.IndexOf( ":" ) );
@@ -1607,6 +1681,20 @@ namespace Import.Services
 									Name = Name.Substring( pos + 1, endpos - ( pos + 1 ) );
 								}
 							}
+						}
+					}
+					else if ( CtdlType == "skos:Concept" || CtdlType == "asn:ProgressionLevel" )
+					{
+						if ( BaseObject.PrefLabel != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.PrefLabel );
+						}
+					}
+					else if ( CtdlType == "ceasn:Competency" )
+					{
+						if ( BaseObject.CompetencyText != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyText );
 						}
 					}
 					else
@@ -1629,13 +1717,36 @@ namespace Import.Services
 					{
 						//Name = BaseObject.Name.ToString();
 						Name = RegistryServices.GetFirstItemValue( BaseObject.Name );
+						Description = RegistryServices.GetFirstItemValue( BaseObject.Description );
+
 					}
-					else if ( CtdlType == "ceasn:CompetencyFramework" )
+					else if ( CtdlType == "ceasn:CompetencyFramework" || CtdlType == "asn:ProgressionModel" || CtdlType == "skos:ConceptScheme" )
 					{
-						if ( BaseObject.CompetencyFrameworkName != null )
+						if ( BaseObject.CeasnName != null )
 						{
-							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyFrameworkName );
-							//Name = ( BaseObject.CompetencyFrameworkName ?? "" ).ToString();
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CeasnName );
+						}
+						if ( BaseObject.CeasnDescription != null )
+						{
+							Description = RegistryServices.GetFirstItemValue( BaseObject.CeasnDescription );
+						}
+					}
+					else if ( CtdlType == "skos:Concept" || CtdlType == "asn:ProgressionLevel" )
+					{
+						if ( BaseObject.PrefLabel != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.PrefLabel );
+						}
+						if ( BaseObject.Definition != null )
+						{
+							Description = RegistryServices.GetFirstItemValue( BaseObject.Definition );
+						}
+					}
+					else if ( CtdlType == "ceasn:Competency" )
+					{
+						if ( BaseObject.CompetencyText != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyText );
 						}
 					}
 					else
@@ -1649,6 +1760,8 @@ namespace Import.Services
 					CtdlType = CtdlType.Replace( "ceterms:", "" );
 					CtdlType = CtdlType.Replace( "ceasn:", "" );
 					CtdlType = CtdlType.Replace( "asn:", "" );
+					CtdlType = CtdlType.Replace( "skos:", "" );
+
 				}
 			}
         }
@@ -1662,7 +1775,8 @@ namespace Import.Services
         public string CtdlId { get; set; } = "";
         public string CTID { get; set; } = "";
         public string Name { get; set;  }
-    }
+		public string Description { get; set; } = "";
+	}
 
     public class RegistryBaseObject
     {
@@ -1685,10 +1799,18 @@ namespace Import.Services
 		public LanguageMap Description { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:name" )]
-		public LanguageMap CompetencyFrameworkName { get; set; }
+		public LanguageMap CeasnName { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:description" )]
-		public LanguageMap FrameworkDescription { get; set; }
+		public LanguageMap CeasnDescription { get; set; }
+
+		[JsonProperty( PropertyName = "skos:prefLabel" )]
+		public LanguageMap PrefLabel { get; set; }
+		[JsonProperty( PropertyName = "skos:definition" )]
+		public LanguageMap Definition { get; set; }
+
+		[JsonProperty( PropertyName = "ceasn:CompetencyText" )]
+		public LanguageMap CompetencyText { get; set; }
 
 		//22-02-12 mp - this will now be a problem with Collection having a list of SWP
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]

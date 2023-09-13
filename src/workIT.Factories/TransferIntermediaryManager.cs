@@ -59,6 +59,7 @@ namespace workIT.Factories
 						//add
 						efEntity = new DBEntity();
 						MapToDB( entity, efEntity );
+						efEntity.EntityStateId = entity.EntityStateId = 3;
 
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 						{
@@ -92,6 +93,7 @@ namespace workIT.Factories
 							entity.Created = efEntity.Created.Value;
 							entity.LastUpdated = efEntity.LastUpdated.Value;
 							entity.Id = efEntity.Id;
+							entity.EntityStateId = 3;
 							UpdateEntityCache( entity, ref status );
 
 							//add log entry
@@ -118,7 +120,8 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            efEntity.EntityStateId = entity.EntityStateId = 3;
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -182,12 +185,8 @@ namespace workIT.Factories
 			//consider storing the class properties as Json!
 
 			//
-			foreach ( var item in entity.IntermediaryFor )
-			{
-				//save in TransferIntermediary.TransferValue
+			new TransferIntermediaryTransferValueManager().SaveList( entity.Id, entity.IntermediaryFor, ref status );
 
-
-			}
 			//
 			var ecpmanager = new Entity_ConditionProfileManager();
 			//ecpmanager.DeleteAll( relatedEntity, ref status );
@@ -195,9 +194,15 @@ namespace workIT.Factories
 			//
 			Entity_ReferenceManager erm = new Entity_ReferenceManager();
 			erm.DeleteAll( relatedEntity, ref status );
-			if ( erm.Add( entity.Subject, entity.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
-				isAllValid = false;
-			return isAllValid;
+			//23-04-08 mp - saving subject on table as list
+			//if ( erm.Add( entity.SubjectTVP, entity.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
+			//	isAllValid = false;
+
+            if ( erm.Add( entity.AlternateNames, entity.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME, false ) == false )
+                isAllValid = false;
+
+
+            return isAllValid;
 		}
 
 
@@ -207,7 +212,7 @@ namespace workIT.Factories
 			{
 				EntityTypeId = EntitTypeId,
 				EntityType = EntityType,
-				EntityStateId = document.EntityStateId,
+				EntityStateId = 3,
 				EntityUid = document.RowId,
 				BaseId = document.Id,
 				Description = document.Description,
@@ -216,7 +221,7 @@ namespace workIT.Factories
 				Created = document.Created,
 				LastUpdated = document.LastUpdated,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
@@ -224,33 +229,6 @@ namespace workIT.Factories
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
-		}
-		/// <summary>
-		/// Delete 
-		/// DOES NOT MEAN TO DELETE ALL TVPs though
-		/// </summary>
-		/// <param name="recordId"></param>
-		/// <param name="statusMessage"></param>
-		/// <returns></returns>
-		public bool Delete( int recordId, ref string statusMessage )
-		{
-			bool isOK = true;
-			using ( var context = new EntityContext() )
-			{
-				DBEntity p = context.TransferIntermediary.FirstOrDefault( s => s.Id == recordId );
-				if ( p != null && p.Id > 0 )
-				{
-					context.TransferIntermediary.Remove( p );
-					int count = context.SaveChanges();
-				}
-				else
-				{
-					statusMessage = string.Format( "The record was not found: {0}", recordId );
-					isOK = false;
-				}
-			}
-			return isOK;
-
 		}
 
 		/// <summary>
@@ -301,7 +279,7 @@ namespace workIT.Factories
 							} );
 							isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 						}
 						if ( orgUid != null )
 						{
@@ -518,7 +496,7 @@ namespace workIT.Factories
 
 			try
 			{
-				list = Entity_LearningOpportunityManager.LearningOpps_GetAll( parent.EntityUid, true, false, 0 );
+				list = Entity_LearningOpportunityManager.TargetResource_GetAll( parent.EntityUid, true, false, 0 );
 			}
 			catch ( Exception ex )
 			{
@@ -538,15 +516,15 @@ namespace workIT.Factories
 			output.CTID = input.CTID;
 			output.SubjectWebpage = input.SubjectWebpage ?? "";
 			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
-			output.OwningAgentUid = input.OwningAgentUid;
+			output.OwningAgentUid = input.PrimaryAgentUID;
 			//
 			output.CodedNotation = input.CodedNotation;
 			output.CreditValueJson = input.CreditValueJson;
 			output.IntermediaryForJson = input.IntermediaryForJson;
-			//
+            //
+            output.Subject = GetListAsDelimitedString( input.Subject, "|" );
 
-
-		} //
+        } //
 		  //we don't have to store the complete object, such as assessment, lopp, etc.
 		public static string TransferIntermediaryActionToJson( List<TopLevelObject> input )
 		{
@@ -573,11 +551,11 @@ namespace workIT.Factories
 				output.LastUpdated = ( DateTime ) input.LastUpdated;
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
-				output.OwningAgentUid = ( Guid ) input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+				output.PrimaryAgentUID = ( Guid ) input.OwningAgentUid;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
 
 				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 				output.OwnerRoles = orp.AgentRole;
 			}
 			//
@@ -589,8 +567,9 @@ namespace workIT.Factories
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
 				output.EntityLastUpdated = relatedEntity.LastUpdated;
 
-			//
-			output.CodedNotation = input.CodedNotation;
+            //
+            output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+            output.CodedNotation = input.CodedNotation;
 			output.SubjectWebpage = input.SubjectWebpage;
 			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
 
@@ -600,13 +579,27 @@ namespace workIT.Factories
 				output.CreditValue = JsonConvert.DeserializeObject<List<ValueProfile>>( output.CreditValueJson );
 			//get json and expand
 			output.IntermediaryForJson = input.IntermediaryForJson;
+			if (!string.IsNullOrWhiteSpace(output.IntermediaryForJson))
+            {
+				output.IntermediaryFor = JsonConvert.DeserializeObject<List<TopLevelObject>>( output.IntermediaryForJson );
+				if ( output.IntermediaryFor != null && output.IntermediaryFor.Any() )
+				{
+					//any action? Really only need the 
+					foreach ( var item in output.IntermediaryFor )
+					{
 
-			//
-			output.Subject = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );		
+					}
+					//request to sort by organization
+					output.IntermediaryFor = output.IntermediaryFor.OrderBy( s => s.OrganizationName ).ThenBy( s => s.Name ).ToList();
+				}
+			}
+            //
 
+            //output.SubjectTVP = Entity_ReferenceManager.GetAll( output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 
+            output.Subject = SplitDelimitedStringToList( input.Subject, '|' );
 
-			if ( !gettingAll )
+            if ( !gettingAll )
 				return;
 
 			//get condition profiles
@@ -631,9 +624,32 @@ namespace workIT.Factories
 				}
 			}
 			//
+			var frameworksList = new Dictionary<string, RegistryImport>();
+			//this should already exist in the condition profile. It won't be found for the t.i. rowId
+			output.RequiresCompetenciesFrameworks = Entity_CompetencyManager.GetAllAs_CAOFramework( output.RowId, "Requires", ref frameworksList );
+			if ( output.RequiresCompetenciesFrameworks.Count > 0 )
+			{
+				output.HasCompetencies = true;
+			}
+			else
+			{
+				if (output.Requires != null && output.Requires.Any() )
+				{
+					foreach (var item in output.Requires)
+					{
+                        var requiresFrameworks = output.Requires.Select( s => s.RequiresCompetenciesFrameworks[0] ).ToList();
+						if ( requiresFrameworks != null && requiresFrameworks.Any() )
+						{
+							output.RequiresCompetenciesFrameworks.AddRange( requiresFrameworks );
+                            output.HasCompetencies = true;
+                        }
 
+                    }
+				}
+                //output.RequiresCompetenciesFrameworks = output.Requires.Select( s => s.RequiresCompetenciesFrameworks[0] ).ToList();
+			}
 
-		}
+        }
 
 		#endregion
 

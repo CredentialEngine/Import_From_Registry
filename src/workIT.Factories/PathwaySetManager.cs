@@ -60,6 +60,7 @@ namespace workIT.Factories
 							efEntity.RowId = entity.RowId = Guid.NewGuid();
 						else
 							efEntity.RowId = entity.RowId;
+						efEntity.EntityStateId = entity.EntityStateId = 3;
 
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 						{
@@ -122,8 +123,12 @@ namespace workIT.Factories
 							{
 								efEntity.LastUpdated = status.LocalUpdatedDate;
 							}
-							//has changed?
-							if ( HasStateChanged( context ) )
+                            if ( ( efEntity.EntityStateId ?? 1 ) != 2 )
+                                efEntity.EntityStateId = 3;
+
+                            entity.EntityStateId = ( int ) efEntity.EntityStateId;
+                            //has changed?
+                            if ( HasStateChanged( context ) )
 							{
 								if ( IsValidDate( status.EnvelopeUpdatedDate ) )
 									efEntity.LastUpdated = status.LocalUpdatedDate;
@@ -198,7 +203,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
@@ -294,7 +299,7 @@ namespace workIT.Factories
 								ActivityObjectId = efEntity.Id
 							} );
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_PATHWAY_SET, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 							isValid = true;
 							//add pending request 
 							List<String> messages = new List<string>();
@@ -371,7 +376,7 @@ namespace workIT.Factories
 			{
 				status.AddError( "Error: A PathwaySet Name is required." );
 			}
-			if ( !IsGuidValid( profile.OwningAgentUid ) )
+			if ( !IsGuidValid( profile.PrimaryAgentUID ) )
 			{
 				//first determine if this is populated in edit mode
 				status.AddError( "An owning organization must be provided." );
@@ -574,7 +579,7 @@ namespace workIT.Factories
 						item.PrimaryOrganizationCTID = GetRowPossibleColumn( dr, "OrganizationCTID" );
 						if ( owningOrganizationId > 0 )
 						{
-							item.OwningOrganization = new Organization()
+							item.PrimaryOrganization = new Organization()
 							{
 								Id = owningOrganizationId,
 								Name = owningOrganizationName,
@@ -584,7 +589,7 @@ namespace workIT.Factories
 						var agentUid = GetRowColumn( dr, "OwningAgentUid" );
 						if ( Guid.TryParse( agentUid, out Guid aUid ) )
 						{
-							item.OwningOrganization.RowId = aUid;
+							item.PrimaryOrganization.RowId = aUid;
 						}
 						//for autocomplete, only need name
 						if ( autocomplete )
@@ -691,11 +696,11 @@ namespace workIT.Factories
 
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
-				output.OwningAgentUid = ( Guid )input.OwningAgentUid;
-				output.OwningOrganization = OrganizationManager.GetForSummary( output.OwningAgentUid );
+				output.PrimaryAgentUID = ( Guid )input.OwningAgentUid;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.PrimaryAgentUID );
 
 				//get roles
-				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.OwningAgentUid );
+				OrganizationRoleProfile orp = Entity_AgentRelationshipManager.AgentEntityRole_GetAsEnumerationFromCSV( output.RowId, output.PrimaryAgentUID );
 				output.OwnerRoles = orp.AgentRole;
 			}
 			//
@@ -740,8 +745,8 @@ namespace workIT.Factories
 			to.Description = from.Description;
 			to.SubjectWebpage = from.SubjectWebpage;
 
-			if ( from.OwningAgentUid != null )
-				to.OwningAgentUid = ( Guid )from.OwningAgentUid;
+			if ( from.PrimaryAgentUID != null )
+				to.OwningAgentUid = ( Guid )from.PrimaryAgentUID;
 
 
 

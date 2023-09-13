@@ -1,6 +1,9 @@
 USE credFinder
 GO
 
+use sandbox_credFinder
+go
+
 /****** Object:  StoredProcedure [dbo].[Credentials_Export]    Script Date: 5/21/2018 1:01:56 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -10,8 +13,7 @@ GO
 
 
 /*
-USE [credFinder_github]
-GO
+
 
 exec [Credentials_Export] 'dab7aeae-d843-4c46-a013-9cbdc8e1cc44'
 
@@ -29,22 +31,25 @@ exec [Credentials_Export] '07B4A948-2305-440D-AC16-9FA8084A53C5'
 
 
 -- local ===============================================
-select * from organization where name like 'sap s%'
-exec [Credentials_Export] '9585BB31-61AE-4E79-BD12-91681DAB7D0D'
+
+--Credential Engine Sandbox Administration
+select * from organization where name like 'Credential Engine%'
+-- ce-8DDBF031-BAD6-4B19-B726-066D5F71AD01
+exec [Credentials_Export] 'C8D7E881-FF03-489F-A6C7-2F1673B4646D'
+
 -- microsoft: 
 select * from organization where name = 'microsoft'
-exec [Credentials_Export] '8F1A526B-3E18-4A4E-829F-05B85197772C'
+exec [Credentials_Export] '4D07FBE3-13B4-4A84-80F4-FB63CE78C23D'
 
 -- noct: 
 select * from organization where name like '%nocti%'
-exec [Credentials_Export] '8F1A526B-3E18-4A4E-829F-05B85197772C'
+exec [Credentials_Export] '6EC5F5B9-542D-4073-8C03-A2B9B49286A8'
 
 
 
---Credential Engine Sandbox Administration
--- ce-8DDBF031-BAD6-4B19-B726-066D5F71AD01
-select * from organization where name like '%capella%'
-exec [Credentials_Export] '4BD23ECF-7B6E-4D31-B366-857A16EEA6FF'
+
+select * from organization where name like '%hutch%'
+exec [Credentials_Export] '5C501AA2-FFFB-412D-93D3-27BA4D58EFE7'
 
 
 */

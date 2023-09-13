@@ -55,7 +55,7 @@ namespace workIT.Services
 					//update cache - not applicable yet
 					//update Elastic
 					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-						ElasticHelper.General_UpdateIndexForTVP( entity.Id );
+						ElasticHelper.General_UpdateIndexForCollection( entity.Id );
 					else
 					{
 						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COLLECTION, entity.Id, 1, ref messages );
@@ -95,12 +95,25 @@ namespace workIT.Services
 		}
 		//
 
-		//public static string GetCTIDFromID( int id )
-		//{
-		//	return CollectionManager.GetCTIDFromID( id );
-		//}
+		public static string GetCTIDFromID( int id )
+		{
+			return CollectionManager.GetCTIDFromID( id );
+		}
 		//
 
+		public static string GetCompetencyCTIDFromCompetencyID( int id )
+		{
+			return CollectionManager.GetCompetencyCTIDFromCompetencyID( id );
+		}
+		//
+
+		public static List<TopLevelObject> GetCollectionsForEntity( int recordId, string entityType)
+		{
+			var output = CollectionMemberManager.GetMemberOfCollections( entityType, recordId );
+
+			return output;
+		}
+		//
 		public static List<CommonSearchSummary> CollectionSearch( MainSearchInput data, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCollectionSearch", true ) )
@@ -122,7 +135,7 @@ namespace workIT.Services
 						SubjectWebpage = item.SubjectWebpage, //?.Count > 0 ? item.SubjectWebpage[0] : "",
 						PrimaryOrganizationName = item.PrimaryOrganizationName,
 						PrimaryOrganizationFriendlyName = BaseFactory.FormatFriendlyTitle( item.PrimaryOrganizationName),
-						PrimaryOrganizationId = item.PrimaryOrganizationId,
+						PrimaryOrganizationId = item.OwningOrganizationId,
 						CTID = item.CTID,
 						ResultNumber = item.ResultNumber,
 						Created = item.Created,

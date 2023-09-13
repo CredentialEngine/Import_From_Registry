@@ -16,11 +16,12 @@ namespace Import.Services
 
 		public static Guid ResolveEntityByRegistryAtIdToGuid( string property, string referencedAtId, int entityTypeId, ref SaveStatus status, ref bool isResolved, string parentCTID = "" )
 		{
-			Guid entityUid = new Guid();
+			//why is this defaulting to a new Guid? It can result in a not found later!!!
+			Guid entityUid = Guid.Empty;
 			string ctid = "";
 			int newEntityId = 0;
 			if ( string.IsNullOrWhiteSpace( referencedAtId ) )
-				return entityUid;
+				return Guid.Empty;
 
 			List<string> messages = new List<string>();
 			//test direct, and fall back to by ctid??
@@ -54,6 +55,14 @@ namespace Import.Services
 						{
 							isResolved = item.IsResolved != null ? ( bool ) item.IsResolved : false;
 							return ( Guid ) item.EntityUid;
+						} else
+						{
+							var ec = EntityManager.EntityCacheGetByCTID( ctid );
+							if (ec != null && ec.Id > 0)
+							{
+								entityUid = ec.EntityUid;
+								return entityUid;
+                            }
 						}
 					}
 				}
@@ -70,7 +79,16 @@ namespace Import.Services
 						isResolved = item2.IsResolved != null ? ( bool ) item2.IsResolved : false;
 						return ( Guid ) item2.EntityUid;
 					}
-				}
+                    else
+                    {
+                        var ec = EntityManager.EntityCacheGetByCTID( ctid );
+                        if ( ec != null && ec.Id > 0 )
+                        {
+                            entityUid = ec.EntityUid;
+                            return entityUid;
+                        }
+                    }
+                }
 
 			}
 			//add an import entry
@@ -106,7 +124,7 @@ namespace Import.Services
 				|| entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_PROGRAM
 				|| entityTypeId == CodesManager.ENTITY_TYPE_COURSE )
 			{
-				//newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
+				newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -223,7 +241,7 @@ namespace Import.Services
 				//should probably ensure a registry url
 				ctid = ExtractCtid( referencedAtId.Trim() );
 				LoggingHelper.DoTrace( 7, string.Format( "ResolutionServices.ResolveEntityByRegistryAtId: EntityTypeId: {0}, referencedAtId: {1} ", entityTypeId, referencedAtId ) );
-
+				//need to handle virtual deletes
 				EM.Import_EntityResolution item = ImportManager.Import_EntityResolution_GetById( referencedAtId );
 
 				if ( item != null && item.Id > 0 && (item.EntityBaseId ?? 0) > 0 )
@@ -236,7 +254,7 @@ namespace Import.Services
 				}
 				else
 				{
-					LoggingHelper.DoTrace( 6, string.Format( "ResolutionServices. **FAILED** ResolveEntityByRegistryAtId: EntityTypeId: {0}, target.CtdlId: {1}. Trying with CTID: {2}", entityTypeId, referencedAtId, ctid ) );
+					LoggingHelper.DoTrace( 6, string.Format( "ResolutionServices. **NOT FOUND** ResolveEntityByRegistryAtId: EntityTypeId: {0}, target.CtdlId: {1}. Trying with CTID: {2}", entityTypeId, referencedAtId, ctid ) );
 					if ( IsCtidValid( ctid, ref messages ) )
 					{
 						item = ImportManager.Import_EntityResolution_GetByCtid( ctid );
@@ -271,6 +289,7 @@ namespace Import.Services
 			//add an import entry - need to do the base first
 			ImportManager importManager = new ImportManager();
 			
+			//TODO - can the add pending be made more generic by using entity_cache or a single table?
 			string statusMsg = "";
 			if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
 			{
@@ -298,7 +317,7 @@ namespace Import.Services
 				|| entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_PROGRAM 
 				|| entityTypeId == CodesManager.ENTITY_TYPE_COURSE )
 			{
-			//	newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
+				newEntityId = new LearningOpportunityManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, entityTypeId );
 				if ( newEntityId == 0 )
 				{
 					//need to log, and reset 
@@ -342,6 +361,7 @@ namespace Import.Services
 			}
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
 			{
+				//this was not likely. With addition of referencing external components, may be significant
 				newEntityId = new PathwayComponentManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status, parentCTID );
 				if ( newEntityId == 0 )
 				{
@@ -375,7 +395,40 @@ namespace Import.Services
 					entityUid = new Guid();
 				}
 			}
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_SUPPORT_SERVICE )
+            {
+                //this can happen where one SS references other SS via hasSupportService
+                newEntityId = new SupportServiceManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
+                if ( newEntityId == 0 )
+                {
+                    status.AddError( statusMsg );
+                    //need to know what property would need to be fixed - really shouldn't happen
+                    entityUid = new Guid();
+                }
+            }
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+            {
+                newEntityId = new OccupationManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
+                if ( newEntityId == 0 )
+                {
+                    //need to log, and reset 
+                    status.AddError( statusMsg );
+                    //need to know what property would need to be fixed - really shouldn't happen
+                    entityUid = new Guid();
+                }
+            }
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE )
+            {
+                newEntityId = new TaskManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
+                if ( newEntityId == 0 )
+                {
+                    //need to log, and reset 
+                    status.AddError( statusMsg );
+                    //need to know what property would need to be fixed - really shouldn't happen
+                    entityUid = new Guid();
+                }
+            }
+            else if ( entityTypeId == CodesManager.ENTITY_TYPE_DATASET_PROFILE )
 			{
 				//actually should not happen - confirm the tvp must exist or will be rejected by API
 				newEntityId = new DataSetProfileManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
@@ -472,17 +525,29 @@ namespace Import.Services
 			//add an import entry
 			ImportManager importManager = new ImportManager();
 			entityUid = Guid.NewGuid();
-			
-			string statusMsg = "";
-			int orgId = new OrganizationManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
-			if ( orgId  == 0)
+			int orgId = 0;
+            string statusMsg = "";
+            var entity = OrganizationManager.GetSummaryByCtid( ctid, true );
+			if ( entity != null && entity.Id > 0 )
 			{
-				//need to log, and reset 
-				status.AddError( statusMsg );
+                entityUid = entity.RowId;
+				orgId= entity.Id;
+			} else
+			{
+                orgId = new OrganizationManager().AddPendingRecord( entityUid, ctid, referencedAtId, ref status );
+
+            }
+
+            if ( orgId  == 0)
+			{
+                statusMsg = status.GetErrorsAsString();
+                //need to log, and reset 
+                status.AddError( statusMsg );
 				//need to know what property would need to be fixed - really shouldn't happen
 				entityUid = new Guid();
 			} else
 			{
+				//wrong. When found, the entityUid is not the one from the org record
 				int id = importManager.Import_EntityResolutionAdd( referencedAtId,
 						ctid,
 						CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION,

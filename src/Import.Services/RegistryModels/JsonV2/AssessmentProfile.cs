@@ -217,12 +217,25 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:hasGroupParticipation", DefaultValueHandling = DefaultValueHandling.Include )]
         public bool? HasGroupParticipation { get; set; }
 
-		/// <summary>
-		/// Identifier
-		/// Definition:	Alphanumeric Identifier value.
-		/// List of URIs 
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:identifier" )]
+        /// <summary>
+        /// Offering of a Learning Opportunity or Assessment with a schedule associated with a specified location or modality.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasOffering" )]
+        //public List<ScheduledOffering> HasOffering { get; set; }
+        public List<string> HasOffering { get; set; }
+
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
+
+        /// <summary>
+        /// Identifier
+        /// Definition:	Alphanumeric Identifier value.
+        /// List of URIs 
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
 		/// <summary>
@@ -382,13 +395,26 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:targetLearningResource" )]
 		public List<string> TargetLearningResource { get; set; }
-		//
-		[JsonProperty( PropertyName = "ceterms:targetPathway" )]
-		public List<string> TargetPathway { get; set; }
+        //
+        /// <summary>
+        /// Pathway in which this resource is a potential component.
+        /// This is an inverse property and would not be published with this resource
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:targetPathway" )]
+        public List<string> TargetPathway { get; set; }
 
 
-		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
+        [JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
 		public List<IdentifierValue> VersionIdentifier { get; set; }
-	}
+
+        [JsonProperty( PropertyName = "ceterms:offerFrequencyType" )]
+        public List<CredentialAlignmentObject> OfferFrequencyType { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:scheduleFrequencyType" )]
+        public List<CredentialAlignmentObject> ScheduleFrequencyType { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:scheduleTimingType" )]
+        public List<CredentialAlignmentObject> ScheduleTimingType { get; set; }
+    }
 }
 

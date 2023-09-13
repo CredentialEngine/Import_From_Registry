@@ -228,12 +228,12 @@ namespace workIT.Factories
 			{
 				if ( HttpContext.Current != null )
 				{
-					if ( HttpContext.Current.Session != null )
+					if ( HttpContext.Current.Session != null && HttpContext.Current.Session[ sessionKey ] != null )
 					{
 						string lastAction = HttpContext.Current.Session[ sessionKey ].ToString();
 						if ( lastAction.ToLower() == actionComment.ToLower() )
 						{
-							LoggingHelper.DoTrace( 7, "ActivityServices. Duplicate action: " + actionComment );
+							LoggingHelper.DoTrace( 8, "ActivityServices. Duplicate action: " + actionComment );
 							return true;
 						}
 					}
@@ -352,32 +352,34 @@ namespace workIT.Factories
         #endregion
 
         //
-
+		[Obsolete]
         public static CommonTotals SiteTotals_Get()
         {
             CommonTotals entity = new CommonTotals();
             using (var context = new ViewContext())
             {
 				//21-01-05 mparsons - note that the view (SiteTotalsSummaries) states to no longer use it!!!!
+				//					- not updated since 2018 seems to be have been copied from publisher and not updated
 				Views.SiteTotalsSummary item = context.SiteTotalsSummaries
                         .SingleOrDefault(s => s.Id == 1);
 
                 if (item != null && item.Id > 0)
                 {
-                    entity.TotalOrganizations = GetField(item.TotalOrgs);
-                    entity.TotalPartnerOrganizations = GetField(item.TotalDirectOrgs);
-                    entity.TotalOtherOrganizations = entity.TotalOrganizations - entity.TotalPartnerOrganizations;
-                    entity.TotalQAOrganizations = GetField(item.TotalQAOrgs);
+                    //entity.TotalOrganizations = GetField(item.TotalOrgs);
+                    //entity.TotalPartnerOrganizations = GetField(item.TotalDirectOrgs);
+                    //entity.TotalOtherOrganizations = entity.TotalOrganizations - entity.TotalPartnerOrganizations;
+                    //entity.TotalQAOrganizations = GetField(item.TotalQAOrgs);
 
-                    entity.TotalEnteredCredentials = GetField(item.TotalEnteredCredentials);
-                    entity.TotalPartnerCredentials = GetField(item.TotalPartnerCredentials);
-                    entity.TotalPendingCredentials = GetField(item.TotalPendingCredentials);
-                    entity.TotalDirectCredentials = GetField(item.TotalDirectCredentials);
-                    entity.TotalOtherOrganizations = entity.TotalPartnerCredentials - entity.TotalDirectCredentials;
+                    //entity.TotalEnteredCredentials = GetField(item.TotalEnteredCredentials);
+                    //entity.TotalPartnerCredentials = GetField(item.TotalPartnerCredentials);
+                    //entity.TotalPendingCredentials = GetField(item.TotalPendingCredentials);
+                    //entity.TotalDirectCredentials = GetField(item.TotalDirectCredentials);
+					//what is objective here? Was referencing TotalOtherOrganizations again
+					//entity.TotalOtherOrganizations = entity.TotalPartnerCredentials - entity.TotalDirectCredentials;
 
 
-                    entity.TotalCredentialsAtCurrentCtdl = GetField(item.TotalCredentialsAtCurrentCtdl);
-                    entity.TotalCredentialsToBeUpdatedToCurrentCtdl = GetField(item.TotalCredentialsToBeUpdatedToCurrentCtdl);
+                    //entity.TotalCredentialsAtCurrentCtdl = GetField(item.TotalCredentialsAtCurrentCtdl);
+                    //entity.TotalCredentialsToBeUpdatedToCurrentCtdl = GetField(item.TotalCredentialsToBeUpdatedToCurrentCtdl);
                 }
             }
 
@@ -468,8 +470,8 @@ namespace workIT.Factories
                         query = query.OrderByDescending( p => p.Activity );
                     else if ( parms.OrderBy == "Event" )
                         query = query.OrderByDescending( p => p.Event );
-                    else if ( parms.OrderBy == "ActionByUser" )
-                        query = query.OrderByDescending( p => p.ActionByUser );
+                    //else if ( parms.OrderBy == "ActionByUser" )
+                    //    query = query.OrderByDescending( p => p.ActionByUser );
                     else
                         query = query.OrderByDescending( p => p.CreatedDate );
                 }
@@ -481,8 +483,8 @@ namespace workIT.Factories
                         query = query.OrderBy( p => p.Activity );
                     else if ( parms.OrderBy == "Event" )
                         query = query.OrderBy( p => p.Event );
-                    else if ( parms.OrderBy == "ActionByUser" )
-                        query = query.OrderBy( p => p.ActionByUser );
+                    //else if ( parms.OrderBy == "ActionByUser" )
+                        //query = query.OrderBy( p => p.ActionByUser );
 
                     else
                         query = query.OrderBy( p => p.CreatedDate );
@@ -500,7 +502,7 @@ namespace workIT.Factories
                         entity.Event = item.Event;
                         entity.Comment = item.Comment;
                         entity.Created = ( DateTime )item.CreatedDate;
-                        entity.ActionByUser = item.ActionByUser;
+                        //entity.ActionByUser = item.ActionByUser;
                         entity.Referrer = entity.Referrer;
                         list.Add( entity );
                     }
@@ -575,15 +577,17 @@ namespace workIT.Factories
                     item.Activity = GetRowColumn( dr, "Activity", "" );
                     item.Event = GetRowColumn( dr, "Event", "" );
                     item.Comment = GetRowColumn( dr, "Comment", "" );
-                    item.ActionByUser = GetRowColumn( dr, "ActionByUser", "" );
-                    item.ActionByUserId = GetRowColumn( dr, "ActionByUserId", 0 );
+                    //item.ActionByUser = GetRowColumn( dr, "ActionByUser", "" );
+                    //item.ActionByUserId = GetRowColumn( dr, "ActionByUserId", 0 );
                     item.Referrer = GetRowColumn( dr, "Referrer", "" );
                     item.ActivityObjectId = GetRowColumn( dr, "ActivityObjectId", 0 );
-                    item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
+					item.EntityName = GetRowColumn( dr, "EntityName", "" );
+					item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
                     item.SessionId = GetRowColumn( dr, "SessionId", "" );
                     item.IsBot = GetRowColumn( dr, "IsBot", false );
-					//item.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 0 );
-					//item.OwningOrgId = GetRowColumn( dr, "OwningOrgId", 0 );
+					item.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 0 );
+					item.EntityStateId = GetRowColumn( dr, "EntityStateId", 0 );
+					item.OwningOrgId = GetRowColumn( dr, "OwningOrgId", 0 );
 					item.Organization = GetRowColumn( dr, "Organization", "" );
 					//N/A
 					//item.ParentObject = GetRowColumn( dr, "ParentObject", "" );

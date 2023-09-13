@@ -48,8 +48,11 @@ namespace Import.Services
 		[JsonProperty( PropertyName = "resource_public_key" )]
 		public string ResourcePublicKey { get; set; }
 
+        //TBD
+        [JsonProperty( PropertyName = "last_verified_on" )]
+        public string LastVerifiedDate { get; set; }
 
-		[JsonProperty( PropertyName = "owned_by" )]
+        [JsonProperty( PropertyName = "owned_by" )]
 		public string documentOwnedBy { get; set; }
 
 		[JsonProperty( PropertyName = "published_by" )]
@@ -91,7 +94,11 @@ namespace Import.Services
 
 		[JsonProperty( PropertyName = "secondary_publisher_id" )]
 		public string SecondaryPublisherId { get; set; }
-	}
+
+        [JsonProperty( PropertyName = "resource_publish_type" )]
+        public string ResourcePublishType { get; set; }
+        //
+    }
 	public class NodeHeader
 	{
 		[JsonProperty( PropertyName = "resource_digest" )]

@@ -18,13 +18,15 @@ namespace workIT.Utilities
 
 		public static string GetGoogleMapsApiKey()
 		{
-			return Utilities.ConfigHelper.GetApiKey( "GoogleMapsApiKey", "" );
+			//return Utilities.ConfigHelper.GetApiKey( "GoogleMapsApiKey", "" );
+			return UtilityManager.GetAppKeyValue( "GoogleMapsApiKey", "" );
 		}
 		//
 
 		public static string GetGoogleGeocodingServerApiKey()
 		{
-			return Utilities.ConfigHelper.GetApiKey( "GoogleGeocodingServerApiKey", "" );
+			//return Utilities.ConfigHelper.GetApiKey( "GoogleGeocodingServerApiKey", "" );
+			return UtilityManager.GetAppKeyValue( "GoogleGeocodingServerApiKey", "" );
 		}
 		//
 

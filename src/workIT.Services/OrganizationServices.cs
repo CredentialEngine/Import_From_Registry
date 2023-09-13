@@ -60,7 +60,9 @@ namespace workIT.Services
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
 						GetDetail( entity.Id );
 				}
-			}
+                string key = "organizationbyapi_" + entity.Id.ToString();
+                ServiceHelper.ClearCacheEntity( key );
+            }
 			bool isValid = new EntityMgr().Save( entity, ref status );
 			List<string> messages = new List<string>();
 			if ( entity.Id > 0 )
@@ -149,7 +151,7 @@ namespace workIT.Services
 
 			return Mgr.Search( filter, pOrderBy, pageNumber, pageSize, ref pTotalRows );
 		}
-		public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25, int widgetId = 0 )
+		public List<string> Autocomplete( MainSearchInput query, int maxTerms = 25, int widgetId = 0 )
 		{
 			int userId = 0;
 			string where = "";
@@ -162,7 +164,7 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
 			{
-				return ElasticHelper.OrganizationAutoComplete( query, maxTerms, ref totalRows ).Select( m => m.Text ).ToList();
+				return new ElasticHelper().OrganizationAutoComplete( query, maxTerms, ref totalRows ).Select( m => m.Text ).ToList();
 			}
 			else
 			{
@@ -203,11 +205,11 @@ namespace workIT.Services
 			return list;
 		}
 
-		public static List<OrganizationSummary> Search( MainSearchInput data, ref int pTotalRows )
+		public List<OrganizationSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
 			{
-				return ElasticHelper.OrganizationSearch( data, ref pTotalRows );
+				return new ElasticHelper().OrganizationSearch( data, ref pTotalRows );
 			}
 			else
 			{
@@ -220,7 +222,7 @@ namespace workIT.Services
 		/// <param name="data"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<OrganizationSummary> DoSearch( MainSearchInput data, ref int pTotalRows )
+		private List<OrganizationSummary> DoSearch( MainSearchInput data, ref int pTotalRows )
 		{
 			string where = "";
 			int userId = 0;
@@ -448,6 +450,12 @@ namespace workIT.Services
             return entity;
 
         }
+        public static CM.Organization GetBasic( Guid id )
+        {
+            var entity = Mgr.GetForSummary( id );
+            return entity;
+
+        }
         public static CM.Organization GetForSummaryWithRoles( int id )
         {
             return Mgr.GetForSummary( id, true );
@@ -464,8 +472,11 @@ namespace workIT.Services
 
 			return GetDetail( id, request );
 		}
-
-		public static CM.Organization GetDetail( int id, EntityMgr.OrganizationRequest request )
+        public static CM.Organization GetDetail( Guid id)
+        {
+            return Mgr.GetDetail( id );
+        }
+        public static CM.Organization GetDetail( int id, EntityMgr.OrganizationRequest request )
         {
             int cacheMinutes = UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 );
             DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );

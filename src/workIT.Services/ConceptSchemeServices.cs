@@ -13,7 +13,7 @@ using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
 using workIT.Factories;
-using Manager = workIT.Factories.ConceptSchemeManager;
+using ResourceManager = workIT.Factories.ConceptSchemeManager;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Elastic;
@@ -23,7 +23,8 @@ using workIT.Models.Helpers.CompetencyFrameworkHelpers;
 using workIT.Models.Search;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.Common.ConceptScheme;
+using ThisResource = workIT.Models.Common.ConceptScheme;
+using ThisResourceSummary = workIT.Models.Common.ConceptSchemeSummary;
 namespace workIT.Services
 {
 	public class ConceptSchemeServices
@@ -34,7 +35,7 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource entity, ref SaveStatus status )
 		{
 			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
 			//do a get, and add to cache before updating
@@ -43,7 +44,7 @@ namespace workIT.Services
 				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
 				//var detail = GetDetail( entity.Id );
 			}
-			bool isValid = new Manager().Save( entity, ref status, true );
+			bool isValid = new ResourceManager().Save( entity, ref status, true );
 			List<string> messages = new List<string>();
 			if ( entity.Id > 0 )
 			{
@@ -64,6 +65,7 @@ namespace workIT.Services
 				}
 				else
 				{
+					//since not in elastic, do we need to do this?
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, entity.Id, 1, ref messages );
 					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
@@ -82,25 +84,25 @@ namespace workIT.Services
 		public static ConceptScheme GetByCtid( string ctid )
 		{
 			ConceptScheme entity = new ConceptScheme();
-			entity = Manager.GetByCtid( ctid );
+			entity = ResourceManager.GetByCtid( ctid );
 			return entity;
 		}
 
 		public static ConceptScheme Get( int id )
 		{
 			ConceptScheme entity = new ConceptScheme();
-			entity = Manager.Get( id );
+			entity = ResourceManager.Get( id );
 			return entity;
 		}
 		//
 
-		//public static string GetCTIDFromID( int id )
-		//{
-		//	return Manager.GetCTIDFromID( id );
-		//}
+		public static string GetCTIDFromID( int id )
+		{
+			return ResourceManager.GetCTIDFromID( id );
+		}
 		//
 
-		public static List<ConceptSchemeSummary> Autocomplete( string keywords, int maxRows, ref int totalRows )
+		public static List<ThisResourceSummary> Autocomplete( string keywords, int maxRows, ref int totalRows )
 		{
 
 			string where = "";
@@ -108,11 +110,11 @@ namespace workIT.Services
 
 			LoggingHelper.DoTrace( 7, "ConceptSchemeServices.Autocomplete(). Filter: " + where );
 
-			return Manager.Search( where, "", 1, maxRows, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRows, ref totalRows );
 	
 		}
 
-		public static List<ConceptSchemeSummary> Search( MainSearchInput data, ref int totalRows )
+		public static List<ThisResourceSummary> Search( MainSearchInput data, ref int totalRows )
 		{
 
 			//if ( UtilityManager.GetAppKeyValue( "usingElasticConceptSchemeSearch", false ) )
@@ -152,7 +154,7 @@ namespace workIT.Services
 
 				LoggingHelper.DoTrace( 5, "ConceptSchemeServices.Search(). Filter: " + where );
 
-				return Manager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+				return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 			}
 		}
 
@@ -277,7 +279,7 @@ namespace workIT.Services
 			SearchServices.SetBoundariesFilter( data, ref where );
 
 			LoggingHelper.DoTrace( 6, "CompetencyFrameworkServices.DoFrameworksSearch(). Filter: " + where );
-			//return Manager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			//return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 			return ElasticManager.CompetencyFramework_SearchForElastic( where, data.StartPage, data.PageSize, ref pTotalRows );
 		}
 		//

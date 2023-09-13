@@ -79,19 +79,22 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_ALTERNATE_NAME = 38;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE = 39;
 		public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_ACTIVE = "credentialStat:Active";
+        public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_DEPRECATED = "credentialStat:Deprecated";
 
-		public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
+        public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
 		public static int PROPERTY_CATEGORY_CLAIM_TYPE = 41;
 		public static int PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE = 42;
 		public static int PROPERTY_CATEGORY_FINANCIAL_ASSISTANCE = 43;
 		//      [Obsolete]
 		//      public static int PROPERTY_CATEGORY_STAFF_EVALUATION_METHOD = 44;
 		public static int PROPERTY_CATEGORY_QA_TARGET_TYPE = 45;
-		//public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
-		public static int PROPERTY_CATEGORY_OWNING_ORGANIZATION_TYPE = 47;
+        public static int PROPERTY_CATEGORY_PATHWAY_COMPONENT_TYPE = 46;
+        //public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
+        public static int PROPERTY_CATEGORY_OWNING_ORGANIZATION_TYPE = 47;
 		public static int PROPERTY_CATEGORY_PRIMARY_EARN_METHOD = 48;
 
-		public static int PROPERTY_CATEGORY_JurisdictionAssertionType = 52;
+        public static int PROPERTY_CATEGORY_CREDIT_UNIT_TYPE = 50;
+        public static int PROPERTY_CATEGORY_JurisdictionAssertionType = 52;
 		public static int PROPERTY_CATEGORY_Learning_Method_Type = 53;
 		public static int PROPERTY_CATEGORY_Scoring_Method = 54;
 
@@ -122,13 +125,27 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_KSA_TYPE = 83;
 		public static int PROPERTY_CATEGORY_LIFE_CYCLE_STATUS = 84;
 		public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE = "lifeCycle:Active";
-		
-			public static int PROPERTY_CATEGORY_COLLECTION_CATEGORY = 85;
-		//
+        public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED = "lifeCycle:Ceased";
+        public static int PROPERTY_CATEGORY_COLLECTION_CATEGORY = 85;
+		//??	86
+        public static int PROPERTY_CATEGORY_Environmental_Hazard_Type = 87;
+        public static int PROPERTY_CATEGORY_Demand_Level_Type = 88;
+        public static int PROPERTY_CATEGORY_Performance_Level_Type = 89;
+        public static int PROPERTY_CATEGORY_Physical_Capability_Type = 90;
 
+        //
+        public static int PROPERTY_CATEGORY_ARRAY_OPERATION_CATEGORY	= 91;
+        public static int PROPERTY_CATEGORY_COMPARATOR_CATEGORY			= 92;
+        public static int PROPERTY_CATEGORY_LOGICAL_OPERATOR_CATEGORY	= 93;
+		//schedule and offer frequency have the same concept scheme, but will need to retrieve separately!
+        public static int PROPERTY_CATEGORY_SCHEDULE_FREQUENCY			= 94;
+        public static int PROPERTY_CATEGORY_SCHEDULE_TIMING				= 95;
+        public static int PROPERTY_CATEGORY_OFFER_FREQUENCY				= 96;
 
-		//proxy/virtual
-		public static int PROPERTY_CATEGORY_US_REGIONS = 99;
+        public static int PROPERTY_CATEGORY_ACCOMMODATION				= 100;
+        public static int PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY	= 101;
+        //proxy/virtual ?? applicable
+        public static int PROPERTY_CATEGORY_US_REGIONS = 99;
 
 
 		//help categories for FinderAPI
@@ -143,8 +160,10 @@ namespace workIT.Factories
 		#region constants - entity types. 
 		//An Entity is typically created only where it can have a child relationship, ex: Entity.Property
 		public static int ENTITY_TYPE_CREDENTIAL = 1;
-		public static int ENTITY_TYPE_CREDENTIAL_ORGANIZATION = 2; //what about QACred
-		public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
+		public static int ENTITY_TYPE_CREDENTIAL_ORGANIZATION = 2; //ENTITY_TYPE_QAORGANIZATION = 13
+        public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
+        public static string ENTITY_TYPE_LABEL_ASSESSMENT_PROFILE = "AssessmentProfile";
+
 		public static int ENTITY_TYPE_CONNECTION_PROFILE = 4;
 		public static int ENTITY_TYPE_CONDITION_PROFILE = 4;
 		public static int ENTITY_TYPE_COST_PROFILE = 5;
@@ -153,48 +172,51 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_PATHWAY = 8;
 		public static int ENTITY_TYPE_COLLECTION = 9;
 
-		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;
-		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;
-		public static int ENTITY_TYPE_PROGRESSION_MODEL = 12;
+		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;	//	(ENTITY_TYPE_COMPETENCY = 17)
+		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;			//	(ENTITY_TYPE_CONCEPT = 29)
+        public static int ENTITY_TYPE_PROGRESSION_MODEL = 12;		//	(ENTITY_TYPE_PROGRESSION_LEVEL = 30)
 
-		public static int ENTITY_TYPE_QAORGANIZATION = 13;
+        public static int ENTITY_TYPE_QAORGANIZATION = 13;
 		//for now use plain until addressed all chgs
 		public static int ENTITY_TYPE_PLAIN_ORGANIZATION = 14;
 
-		//public static int ENTITY_TYPE_REVOCATION_PROFILE = 12;
-		//public static int ENTITY_TYPE_VERIFICATION_PROFILE = 13;
-		//public static int ENTITY_TYPE_PROCESS_PROFILE = 14;
-		//public static int ENTITY_TYPE_CONTACT_POINT = 15;
+        public static int ENTITY_TYPE_SCHEDULED_OFFERING = 15;
 
-		public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
-		public static int ENTITY_TYPE_COMPETENCY = 17;//unique to finder - need to update publisher
+        public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
+		public static int ENTITY_TYPE_COMPETENCY = 17;	
 		public static int ENTITY_TYPE_JURISDICTION_PROFILE = 18;
 		public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
 		public static int ENTITY_TYPE_COST_MANIFEST = 20;
+		//
 		public static int ENTITY_TYPE_FINANCIAL_ASST_PROFILE = 21;
 		public static int ENTITY_TYPE_ACCREDIT_ACTION_PROFILE = 22;
-		//
 		public static int ENTITY_TYPE_PATHWAY_SET = 23;
 		public static int ENTITY_TYPE_PATHWAY_COMPONENT = 24;
 		public static int ENTITY_TYPE_COMPONENT_CONDITION = 25;
-		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
 		//
+		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
 		public static int ENTITY_TYPE_AGGREGATE_DATA_PROFILE = 27;
 		public static int ENTITY_TYPE_TRANSFER_INTERMEDIARY = 28;
-
-		public static int ENTITY_TYPE_DATASET_PROFILE = 31;
+        public static int ENTITY_TYPE_CONCEPT = 29;
+        public static int ENTITY_TYPE_PROGRESSION_LEVEL = 30;
 		//
+        public static int ENTITY_TYPE_DATASET_PROFILE = 31;
 		public static int ENTITY_TYPE_JOB_PROFILE = 32;
 		public static int ENTITY_TYPE_TASK_PROFILE = 33;
 		public static int ENTITY_TYPE_WORKROLE_PROFILE = 34;
 		public static int ENTITY_TYPE_OCCUPATIONS_PROFILE = 35;
+		//
 		public static int ENTITY_TYPE_LEARNING_PROGRAM = 36;
 		public static int ENTITY_TYPE_COURSE = 37;
-		//refactored non top level resources
-		public static int ENTITY_TYPE_REVOCATION_PROFILE = 40;
+        public static int ENTITY_TYPE_SUPPORT_SERVICE = 38;
+
+
+        //refactored non top level resources
+        public static int ENTITY_TYPE_REVOCATION_PROFILE = 40;
 		public static int ENTITY_TYPE_VERIFICATION_PROFILE = 41;
 		public static int ENTITY_TYPE_PROCESS_PROFILE = 42;
 		public static int ENTITY_TYPE_CONTACT_POINT = 43;
+
 		//obsolete/unused yet
 		public static int ENTITY_TYPE_EARNINGS_PROFILE = 55;
 		public static int ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE = 56;
@@ -644,7 +666,7 @@ namespace workIT.Factories
 			}
 		}
 
-		public static List<CodeItem> GetAllEntityStatistics()
+        public static List<CodeItem> GetAllEntityStatistics()
 		{
 			List<CodeItem> list = new List<CodeItem>();
 			CodeItem code;
@@ -1363,9 +1385,15 @@ namespace workIT.Factories
 						ParentSchemaName = item.ParentSchemaName,
 						Totals = item.Totals ?? 0
 					};
-					if ( item.Codes_PropertyCategory != null && item.Codes_PropertyCategory.Id > 0 )
+					try
 					{
-						code.Category = item.Codes_PropertyCategory.Title;
+						if ( item.Codes_PropertyCategory != null && item.Codes_PropertyCategory.Id > 0 )
+						{
+							code.Category = item.Codes_PropertyCategory.Title;
+						}
+					} catch(Exception ex)
+					{
+
 					}
 				}
 			}
@@ -1730,11 +1758,71 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		#endregion
+        #endregion
+        #region pathway related
+        /// <summary>
+        /// Get pathway components
+        /// </summary>
+        /// <param name="getAll">If true get all types, otherwise just pathway components</param>
+        /// <returns></returns>
+        public static Enumeration PathwayComponentTypesAsEnumeration( bool includeComponentCondition = false )
+        {
+            Enumeration entity = new Enumeration();
+            var code = new CodeItem();
+            using ( var context = new EntityContext() )
+            {
+                Codes_PropertyCategory category = context.Codes_PropertyCategory
+                            .FirstOrDefault( s => s.IsActive == true && ( s.Id == PROPERTY_CATEGORY_PATHWAY_COMPONENT_TYPE ) );
 
+                if ( category != null && category.Id > 0 )
+                {
+                    entity.Id = category.Id;
+                    entity.Name = category.Title;
+                    entity.Description = category.Description;
+                    entity.SchemaName = category.SchemaName;
+                    entity.Url = category.SchemaUrl;
+                    entity.Items = new List<EnumeratedItem>();
+                    //
+                    var results = context.Codes_PathwayComponentType
+                                    .Where( s => s.IsActive == true
+                                    && ( ( includeComponentCondition && s.ComponentClassTypeId == 2 ) || s.ComponentClassTypeId == 1 ) )
+                                    .OrderBy( s => s.ComponentClassTypeId ).ThenBy( s => s.Id )
+                                    .ToList();
 
-		#region		Currencies
-		public static Enumeration GetCurrencies()
+                    if ( results != null && results.Count > 0 )
+                    {
+                        EnumeratedItem val = new EnumeratedItem();
+                        foreach ( var item in results )
+                        {
+                            val = new EnumeratedItem();
+                            val.Id = item.Id;
+                            val.CodeId = item.Id;
+                            val.Name = item.Title;
+                            val.Description = item.Description != null ? item.Description : "";
+                            val.SortOrder = item.Id;
+                            val.SchemaName = item.SchemaName ?? "";
+                            val.SchemaUrl = item.SchemaName ?? "";
+                            val.Icon = item.ComponentIcon ?? "";
+                            val.Value = item.Id.ToString();
+                            val.Totals = item.Totals ?? 0;
+
+                            //if ( IsDevEnv() )
+                            //	val.Name += string.Format( " ({0})", val.Totals );
+                            entity.Items.Add( val );
+                        }
+                    }
+
+                }
+            }
+
+            return entity;
+        }
+      
+
+        #endregion
+
+        #region		Currencies
+        public static Enumeration GetCurrencies()
 		{
 
 			Enumeration entity = new Enumeration();
@@ -1833,85 +1921,85 @@ namespace workIT.Factories
 			return item;
 		}
 
-		#endregion
-		#region Language Codes
-		public static Enumeration GetLanguages()
-		{
+        #endregion
+        #region Language Codes
+        //public static Enumeration GetLanguages()
+        //{
 
-			Enumeration entity = new Enumeration();
-			EnumeratedItem val = new EnumeratedItem();
+        //	Enumeration entity = new Enumeration();
+        //	EnumeratedItem val = new EnumeratedItem();
 
-			using ( var context = new EntityContext() )
-			{
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-				.FirstOrDefault( s => s.Id == PROPERTY_CATEGORY_LANGUAGE );
+        //	using ( var context = new EntityContext() )
+        //	{
+        //		Codes_PropertyCategory category = context.Codes_PropertyCategory
+        //		.FirstOrDefault( s => s.Id == PROPERTY_CATEGORY_LANGUAGE );
 
-				entity.Id = category.Id;
-				entity.Name = category.Title;
-				entity.Description = category.Description;
+        //		entity.Id = category.Id;
+        //		entity.Name = category.Title;
+        //		entity.Description = category.Description;
 
-				entity.SchemaName = category.SchemaName;
-				entity.Url = category.SchemaUrl;
-				entity.Items = new List<EnumeratedItem>();
+        //		entity.SchemaName = category.SchemaName;
+        //		entity.Url = category.SchemaUrl;
+        //		entity.Items = new List<EnumeratedItem>();
 
-				using ( var vcontext = new ViewContext() )
-				{
-					List<Codes_Language> results = vcontext.Codes_Language
-					.OrderBy( s => s.SortOrder )
-					.ThenBy( s => s.LanguageName )
-					.ToList();
+        //		using ( var vcontext = new ViewContext() )
+        //		{
+        //			List<Codes_Language> results = vcontext.Codes_Language
+        //			.OrderBy( s => s.SortOrder )
+        //			.ThenBy( s => s.LanguageName )
+        //			.ToList();
 
-					if ( results != null && results.Count > 0 )
-					{
-						foreach ( Codes_Language item in results )
-						{
-							val = new EnumeratedItem();
-							val.Id = ( int )item.Id;
-							val.Value = item.LangugeCode;
-							val.Name = item.LanguageName;
-							val.Description = item.LanguageName;
-							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-							entity.Items.Add( val );
-						}
-					}
-				}
-			}
+        //			if ( results != null && results.Count > 0 )
+        //			{
+        //				foreach ( Codes_Language item in results )
+        //				{
+        //					val = new EnumeratedItem();
+        //					val.Id = ( int )item.Id;
+        //					val.Value = item.LanguageCode;
+        //					val.Name = item.LanguageName;
+        //					val.Description = item.LanguageName;
+        //					val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
+        //					entity.Items.Add( val );
+        //				}
+        //			}
+        //		}
+        //	}
 
-			return entity;
-		}
+        //	return entity;
+        //}
 
-		public static EnumeratedItem GetLanguage( int languageId )
-		{
-			EnumeratedItem val = new EnumeratedItem();
+        //public static EnumeratedItem GetLanguage( int languageId )
+        //{
+        //	EnumeratedItem val = new EnumeratedItem();
 
-			using ( var context = new ViewContext() )
-			{
-				Codes_Language item = context.Codes_Language
-				.FirstOrDefault( s => s.Id == languageId );
-				if ( item != null && item.Id > 0 )
-				{
-					val.Id = item.Id;
-					val.Value = item.LangugeCode;
-					val.Name = item.LanguageName;
-					val.Description = item.LanguageName;
-					val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-					val.SchemaName = item.LangugeCode;
-				}
+        //	using ( var context = new ViewContext() )
+        //	{
+        //		Codes_Language item = context.Codes_Language
+        //		.FirstOrDefault( s => s.Id == languageId );
+        //		if ( item != null && item.Id > 0 )
+        //		{
+        //			val.Id = item.Id;
+        //			val.Value = item.LanguageCode;
+        //			val.Name = item.LanguageName;
+        //			val.Description = item.LanguageName;
+        //			val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
+        //			val.SchemaName = item.LanguageCode;
+        //		}
 
-			}
+        //	}
 
-			return val;
-		}
-		public static int GetLanguageId( string language )
-		{
-			int id = 0;
-			EnumeratedItem item = GetLanguage( language );
-			if ( item != null && item.Id > 0 )
-				return item.Id;
+        //	return val;
+        //}
+        //public static int GetLanguageId( string language )
+        //{
+        //	int id = 0;
+        //	EnumeratedItem item = GetLanguage( language );
+        //	if ( item != null && item.Id > 0 )
+        //		return item.Id;
 
-			return id;
-		}
-		public static EnumeratedItem GetLanguage( string language )
+        //	return id;
+        //}
+        public static EnumeratedItem GetLanguage( string language )
 		{
 			EnumeratedItem val = new EnumeratedItem();
 			//may want to trim region
@@ -1932,19 +2020,19 @@ namespace workIT.Factories
 			using ( var context = new ViewContext() )
 			{
 				Codes_Language item = context.Codes_Language
-				.FirstOrDefault( s => s.LangugeCode == language
+				.FirstOrDefault( s => s.LanguageCode == language
 						|| s.LanguageName == language
-						|| ( altLanguage.Length > 0 && s.LangugeCode.StartsWith( altLanguage ) )
+						|| ( altLanguage.Length > 0 && s.LanguageCode.StartsWith( altLanguage ) )
 						);
 				if ( item != null && item.Id > 0 )
 				{
 					val.Id = item.Id;
-					val.Value = item.LangugeCode;
+					val.Value = item.LanguageCode;
 					val.Name = item.LanguageName;
 					val.Description = item.LanguageName;
 					val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-					val.SchemaName = item.LangugeCode; 
-					if ( language.IndexOf( "-" ) > 1 && item.LangugeCode != language)
+					val.SchemaName = item.LanguageCode; 
+					if ( language.IndexOf( "-" ) > 1 && item.LanguageCode != language)
 					{
 						val.Value = language;
 					}
@@ -2793,7 +2881,6 @@ namespace workIT.Factories
 						{
 
 							int count = context.SaveChanges();
-
 							if ( count >= 0 )
 							{
 
@@ -2936,7 +3023,8 @@ namespace workIT.Factories
                             Id = item.Id,
                             Title = item.Title,
                             //description should contain the display friendly label
-                            Description = item.Description,
+							//	Now use label
+                            Description = item.Label,
                             Totals = item.Totals ?? 0
                         };
 

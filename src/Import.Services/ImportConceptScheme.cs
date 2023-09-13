@@ -12,20 +12,28 @@ using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
 using EntityServices = workIT.Services.ConceptSchemeServices;
-using ConceptScheme = workIT.Models.Common.ConceptScheme;
+
+
 using InputConcept = RA.Models.JsonV2.Concept;
 using InputEntity = RA.Models.JsonV2.ConceptScheme;
+using InputPModel = RA.Models.JsonV2.ProgressionModel;
+using InputPLevel = RA.Models.JsonV2.ProgressionLevel ;
 using InputGraph = RA.Models.JsonV2.GraphContainer;
 using MC = workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.ConceptScheme;
-
+using ThisEntity		= workIT.Models.Common.ConceptScheme;
+using PModel			= workIT.Models.Common.ConceptScheme;
 namespace Import.Services
 {
+	/// <summary>
+	/// Import concept schemes and progression models
+	/// These are different enough to have separate processes now!!!!!!!
+	/// </summary>
 	public class ImportConceptSchemes
     {
         int DefaultEntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
         string thisClassName = "ImportConceptSchemes";
-        ImportManager importManager = new ImportManager();
+		string resourceType = "ConceptScheme";
+		ImportManager importManager = new ImportManager();
         InputGraph input = new InputGraph();
         ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
@@ -121,7 +129,7 @@ namespace Import.Services
 			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
 			//store envelope
 			//22-05-11 - have to check envelope type for conceptscheme or progression model
-			int newImportId = importHelper.Add( item, CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, status.Ctid, importSuccessfull, importError, ref messages );
+			int newImportId = importHelper.Add( item, status.EntityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
 			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
 			{
 				//add indicator of current recored
@@ -171,21 +179,26 @@ namespace Import.Services
 			var saveDuration = new TimeSpan();
 			//set default
 			var entityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
-			if ( ctdlType == "ConceptScheme" )
+			if (ctdlType == "ConceptScheme")
 				entityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
-			else if ( ctdlType == "ProgressionModel" )
+			else if (ctdlType == "ProgressionModel")
+			{
 				entityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_MODEL;
+				//in case get here, call PM import
+				return new ImportProgressionModels().Import(payload, status, ctdlType );
+			}
 			else
-            {
+			{
 
-            }
+			}
+			status.EntityTypeId = entityTypeId;
 			MappingHelperV3 helper = new MappingHelperV3( entityTypeId );
 			bool importSuccessfull = true;
 			var input = new InputEntity();
 			var concept = new InputConcept();
 			var mainEntity = new Dictionary<string, object>();
 			List<InputConcept> concepts = new List<InputConcept>();
-
+			List<InputPLevel> progressionLevels = new List<InputPLevel>();
 			//Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
 			//object graph = dictionary[ "@graph" ];
 			////serialize the graph object
@@ -200,39 +213,71 @@ namespace Import.Services
 				cntr++;
 				//note older frameworks will not be in the priority order
 				var main = item.ToString();
-				var baseObject = JsonConvert.DeserializeObject<RegistryBaseObject>( main );
-
-				if ( cntr == 1 || main.IndexOf( ctdlType ) > -1 )
+				RegistryObject mro = new RegistryObject( main );
+				if ( mro.CtdlType == "skos:ConceptScheme" || mro.CtdlType == "ConceptScheme" )
 				{
-					//HACK
-					
-					if ( main.IndexOf( "ConceptScheme" ) > -1 )
+					input = JsonConvert.DeserializeObject<InputEntity>( main );
+				} 
+				else if ( mro.CtdlType == "asn:ProgressionModel" || mro.CtdlType == "ProgressionModel" )
+				{
+					//????????????Should distinguish thios
+					input = JsonConvert.DeserializeObject<InputEntity>( main );
+				}
+				else if ( mro.CtdlType == "skos:Concept" || mro.CtdlType == "Concept" )
+				{
+					concepts.Add( JsonConvert.DeserializeObject<InputConcept>( main ) );
+				}
+				else if ( mro.CtdlType == "asn:ProgressionLevel" || mro.CtdlType == "ProgressionLevel" )
+				{
+					//need to start distinguishing
+					progressionLevels.Add( JsonConvert.DeserializeObject<InputPLevel>( main ) );
+				}
+				else if( main.IndexOf( "_:" ) > -1 )
 					{
-						input = JsonConvert.DeserializeObject<InputEntity>( main );
-					}		
-					else if ( main.IndexOf( "ProgressionModel" ) > -1 )
-					{
-						input = JsonConvert.DeserializeObject<InputEntity>( main );
-					}
+					bnodes.Add( JsonConvert.DeserializeObject<BNode>( main ) );
 				}
 				else
-				{
-
-					//should just have concepts, but should check for bnodes
-					var child = item.ToString();
-					if ( child.IndexOf( "_:" ) > -1 )
-					{
-						bnodes.Add( JsonConvert.DeserializeObject<BNode>( child ) );
-					}
-					else if ( child.IndexOf( "skos:Concept" ) > -1 )
-					{
-						concepts.Add( JsonConvert.DeserializeObject<InputConcept>( child ) );
-					}
-					else
-					{
-						//unexpected
-					}
+                {
+					//unexpected
 				}
+				//
+				//var baseObject = JsonConvert.DeserializeObject<RegistryBaseObject>( main );
+
+				//if ( cntr == 1 || main.IndexOf( ctdlType ) > -1 )
+				//{
+				//	//HACK
+					
+				//	if ( main.IndexOf( "ConceptScheme" ) > -1 )
+				//	{
+				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//	}		
+				//	else if ( main.IndexOf( "ProgressionModel" ) > -1 )
+				//	{
+				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//	}
+				//	else if ( main.IndexOf( "asn:ProgressionLevel" ) > -1 )
+				//	{
+				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//	}
+				//}
+				//else
+				//{
+
+				//	//should just have concepts, but should check for bnodes
+				//	var child = item.ToString();
+				//	if ( child.IndexOf( "_:" ) > -1 )
+				//	{
+				//		bnodes.Add( JsonConvert.DeserializeObject<BNode>( child ) );
+				//	}
+				//	else if ( child.IndexOf( "skos:Concept" ) > -1 )
+				//	{
+				//		concepts.Add( JsonConvert.DeserializeObject<InputConcept>( child ) );
+				//	}
+				//	else
+				//	{
+				//		//unexpected
+				//	}
+				//}
 			}
 
 			//try
@@ -281,7 +326,6 @@ namespace Import.Services
 					{
 						//if publisher not imported yet, all publishee stuff will be orphaned
 						var entityUid = Guid.NewGuid();
-						var statusMsg = "";
 						var resPos = status.ResourceURL.IndexOf( "/resources/" );
 						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
 						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
@@ -309,7 +353,7 @@ namespace Import.Services
 				output.Description = helper.HandleLanguageMap( input.Description, output, "description" );
 				output.CTID = input.CTID;
 				output.PrimaryOrganizationCTID = orgCTID;
-				output.EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
+				output.EntityTypeId = entityTypeId;
 				//
 				var publisherList = new List<string>();
 				var publisher = input.Publisher;
@@ -376,36 +420,84 @@ namespace Import.Services
 					output.OrganizationId = org.Id;
 					helper.CurrentOwningAgentUid = org.RowId;
 				}
+				output.ChangeNote = helper.HandleLanguageMapList( input.ChangeNote, output, "ChangeNote" );
+				output.ConceptKeyword = helper.HandleLanguageMapList( input.ConceptKeyword, output, "ConceptKeyword" );
+				output.DateCopyrighted = input.DateCopyrighted;
+				output.DateCreated = input.DateCreated;
+				output.DateModified = input.DateModified;
+				output.InLanguageCodeList = helper.MapInLanguageToTextValueProfile( input.InLanguage, $"{resourceType}.InLanguage. CTID: " + ctid );
+
+				output.License = input.License;
+				output.PublicationStatusType = input.PublicationStatusType;
+				output.Rights = helper.HandleLanguageMap( input.Rights, output, "Rights" );
+
+				if ( input.RightsHolder != null && input.RightsHolder.Any())
+					output.RightsHolder = input.RightsHolder[0];
+				if ( input.Source != null )
+					output.Source = input.Source.ToString();
 
 				//output.CredentialRegistryId = envelopeIdentifier;
 				output.HasConcepts = new List<MC.Concept>();
-				//?store concepts in string?
-				if ( concepts != null && concepts.Count > 0 )
+				//if ( entityTypeId == CodesManager.ENTITY_TYPE_PROGRESSION_MODEL )
+				//{
+				//	if ( progressionLevels != null && progressionLevels.Count > 0 )
+				//	{
+				//		output.TotalConcepts = progressionLevels.Count();
+				//		foreach ( var item in progressionLevels )
+				//		{
+				//			var c = new MC.Concept()
+				//			{
+				//				PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
+				//				Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
+				//				Notes = helper.HandleLanguageMapList( item.Note, output ),
+				//				CTID = item.CTID,
+				//			};
+				//			if ( c.Notes != null && c.Notes.Any() )
+				//				c.Note = c.Notes[0];
+				//			output.HasConcepts.Add( c );
+				//		}
+				//	}
+				//}
+				//else
 				{
-					output.TotalConcepts = concepts.Count();
-					foreach ( var item in concepts )
+					//?store concepts in string?
+					if ( concepts != null && concepts.Count > 0 )
 					{
-						var c = new MC.Concept()
+						output.TotalConcepts = concepts.Count();
+						foreach ( var item in concepts )
 						{
-							PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
-							Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
-							Notes = helper.HandleLanguageMapList( item.Note, output ),
-							CTID = item.CTID
-						};
-						if ( c.Notes != null && c.Notes.Any() )
-							c.Note = c.Notes[ 0 ];
-						output.HasConcepts.Add( c );
+							var c = new MC.Concept()
+							{
+								PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
+								Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
+								Notes = helper.HandleLanguageMapList( item.Note, output ),
+								CTID = item.CTID,
+								SubjectWebpage = item.SubjectWebpage
+							};
+							if ( c.Notes != null && c.Notes.Any() )
+								c.Note = c.Notes[0];
+							output.HasConcepts.Add( c );
+						}
 					}
 				}
 				//20-07-02 just storing the index ready concepts
 				output.ConceptsStore = JsonConvert.SerializeObject( output.HasConcepts, MappingHelperV3.GetJsonSettings() );
 
 				//adding common import pattern
+				if (entityTypeId == CodesManager.ENTITY_TYPE_CONCEPT_SCHEME)
+				{
+					new ConceptSchemeServices().Import( output, ref status );
+                    status.DetailPageUrl = string.Format( "~/conceptscheme/{0}", output.Id );
 
-				new ConceptSchemeServices().Import( output, ref status );
-				//
-				status.DocumentId = output.Id;
-				status.DetailPageUrl = string.Format( "~/conceptscheme/{0}", output.Id );
+                }
+    //            else
+				//{
+				//	new ProgressionModelServices().Import( output, ref status );
+    //                status.DetailPageUrl = string.Format( "~/progressionmodel/{0}", output.Id );
+
+    //            }
+                //
+                status.DocumentId = output.Id;
 				status.DocumentRowId = output.RowId;
 				//just in case
 				if ( status.HasErrors )
@@ -414,7 +506,7 @@ namespace Import.Services
 				//if record was added to db, add to/or set EntityResolution as resolved
 				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 							ctid,
-							CodesManager.ENTITY_TYPE_CONCEPT_SCHEME,
+							entityTypeId,
 							output.RowId,
 							output.Id,
 							( output.Id > 0 ),
@@ -435,8 +527,8 @@ namespace Import.Services
 			return importSuccessfull;
         }
 
-		//currently use education framework
-		public bool DoesEntityExist( string ctid, ref ConceptScheme entity )
+		//
+		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
 		{
 			bool exists = false;
 			entity = EntityServices.GetByCtid( ctid );
@@ -445,43 +537,6 @@ namespace Import.Services
 
 			return exists;
 		}
-		private InputEntity GetFramework( object graph )
-        {
-            //string ctid = "";
-            InputEntity entity = new InputEntity();
-            Newtonsoft.Json.Linq.JArray jarray = ( Newtonsoft.Json.Linq.JArray ) graph;
-            foreach ( var token in jarray )
-            {
-                if ( token.GetType() == typeof( Newtonsoft.Json.Linq.JObject ) )
-                {
-                    if ( token.ToString().IndexOf( "ceasn:ConceptScheme" ) > -1 )
-                    {
-                        entity = ( ( Newtonsoft.Json.Linq.JObject ) token ).ToObject<InputEntity>();
-
-                        //InputEntity cf = ( InputEntity ) JsonConvert.DeserializeObject( token.ToString() );
-                        return entity;
-                    }
-                    else if ( token.ToString().IndexOf( "ceasn:Concept" ) > -1 )
-                    {
-                        //ignore
-                        //var c1 = token.ToString().Replace( "exactMatch", "exactAlignment" );
-                        //var c2 = ( ( Newtonsoft.Json.Linq.JObject ) c1 ).ToObject<RA.Models.Json.InputConcept>();
-
-                    }
-
-					//var itemProperties = token.Children<JProperty>();
-					////you could do a foreach or a linq here depending on what you need to do exactly with the value
-					//var myElement = itemProperties.FirstOrDefault( x => x.Name == "url" );
-					//var myElementValue = myElement.Value; ////This is a JValue type
-				}
-                else
-                {
-                    //error
-                }
-            }
-            //no ctid found, so????
-            return entity;
-        }
 
     }
 }

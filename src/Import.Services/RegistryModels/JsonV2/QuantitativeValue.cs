@@ -29,13 +29,13 @@ namespace RA.Models.JsonV2
 		/// Minimum value for this purpose.
 		/// </summary>
 		[JsonProperty( "schema:minValue" )]
-		public decimal MinValue { get; set; }
+		public decimal? MinValue { get; set; }
 
 		/// <summary>
 		/// Maximum value for this purpose.
 		/// </summary>
 		[JsonProperty( "schema:maxValue" )]
-		public decimal MaxValue { get; set; }
+		public decimal? MaxValue { get; set; }
 
 		/// <summary>
 		/// A percentage for this purpose. 

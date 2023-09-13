@@ -10,7 +10,7 @@ GO
 
 
 /*
-use [credFinder_github]
+use [ctdlEditor]
 GO
 
 exec [Entity_ReferenceConnection_Populate] 6777
@@ -77,11 +77,11 @@ FROM
 	dbo.Entity credEntity  
 	
 	INNER JOIN dbo.[Entity.LearningOpportunity] b ON credEntity.Id = b.EntityId 
-	INNER JOIN dbo.LearningOpportunity c			ON b.LearningOpportunityId = c.Id 
-	inner join Entity loppEntity on c.RowId = loppEntity.EntityUid
+	INNER JOIN dbo.LearningOpportunity c		ON b.LearningOpportunityId = c.Id 
+	inner join Entity loppEntity				on c.RowId = loppEntity.EntityUid
 
-	inner join [dbo].[Entity.Reference] er	on loppEntity.Id = er.EntityId
-left join [Entity.ReferenceConnection] d	on er.Id = d.EntityReferenceId
+	inner join [dbo].[Entity.Reference] er		on loppEntity.Id = er.EntityId
+	left join [Entity.ReferenceConnection] d	on er.Id = d.EntityReferenceId
 where credEntity.EntityTypeId = 1 
 AND er.[CategoryId]= 34
 and (er.Id = @EntityReferenceId OR @EntityReferenceId = 0)

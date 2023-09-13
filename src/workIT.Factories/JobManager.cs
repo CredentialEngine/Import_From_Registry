@@ -11,33 +11,35 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.Common.Job;
+using ThisResource = workIT.Models.Common.Job;
 using DBEntity = workIT.Data.Tables.JobProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
-
+using Newtonsoft.Json;
+using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworkItemManager;
 namespace workIT.Factories
 {
 	public class JobManager : BaseFactory
 	{
 		static readonly string thisClassName = "JobManager";
-		static string EntityType = "JobProfile";
+		static string EntityType = "Job";
 		static int EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE;
+        static string Entity_Label = "Job";
+        static string Entities_Label = "Jobs";
 
-		EntityManager entityMgr = new EntityManager();
 
-		#region Job - persistance ==================
-		/// <summary>
-		/// Update a Job
-		/// - base only, caller will handle parts?
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+        #region Job - persistance ==================
+        /// <summary>
+        /// Update a Job
+        /// - base only, caller will handle parts?
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -75,11 +77,12 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
-							//assume and validate, that if we get here we have a full record
-							if ( ( efEntity.EntityStateId ) != 2 )
-								efEntity.EntityStateId = 3;
+                            //assume and validate, that if we get here we have a full record
+                            if ( efEntity.EntityStateId != 2 )
+                                efEntity.EntityStateId = 3;
+                            entity.EntityStateId = efEntity.EntityStateId;
 
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+                            if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							{
 								efEntity.Created = status.LocalCreatedDate;
 							}
@@ -170,7 +173,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		private int Add( ThisEntity entity, ref SaveStatus status )
+		private int Add( ThisResource entity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			using ( var context = new EntityContext() )
@@ -183,7 +186,7 @@ namespace workIT.Factories
 						efEntity.RowId = entity.RowId;
 					else
 						efEntity.RowId = Guid.NewGuid();
-					efEntity.EntityStateId = 3;
+					efEntity.EntityStateId = entity.EntityStateId = 3;
 					if ( IsValidDate( status.EnvelopeCreatedDate ) )
 					{
 						efEntity.Created = status.LocalCreatedDate;
@@ -247,7 +250,7 @@ namespace workIT.Factories
 
 			return efEntity.Id;
 		}
-		public int AddBaseReference( ThisEntity entity, ref SaveStatus status )
+		public int AddBaseReference( ThisResource entity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -263,10 +266,10 @@ namespace workIT.Factories
 						return 0;
 					}
 
-					//only add DB required properties
-					//NOTE - an entity will be created via trigger
-					efEntity.EntityStateId = 2;
-					efEntity.Name = entity.Name;
+                    //only add DB required properties
+                    //NOTE - an entity will be created via trigger
+                    efEntity.EntityStateId = entity.EntityStateId = 2;
+                    efEntity.Name = entity.Name;
 					efEntity.Description = entity.Description;
 					efEntity.SubjectWebpage = entity.SubjectWebpage;
 
@@ -340,7 +343,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					var entity = GetByCtid( ctid );
+					var entity = GetMinimumByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -398,7 +401,7 @@ namespace workIT.Factories
 			return 0;
 		}
 
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
@@ -414,7 +417,7 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
@@ -423,7 +426,7 @@ namespace workIT.Factories
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
 		}
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -435,8 +438,9 @@ namespace workIT.Factories
 
 
 			if ( string.IsNullOrWhiteSpace( profile.SubjectWebpage ) )
-				status.AddWarning( "Error - A Subject Webpage name must be entered" );
-
+			{
+				//status.AddWarning( "Error - A Subject Webpage name must be entered" );
+			}
 			else if ( !IsUrlValid( profile.SubjectWebpage, ref commonStatusMessage ) )
 			{
 				status.AddWarning( "The Job Subject Webpage is invalid. " + commonStatusMessage );
@@ -554,7 +558,7 @@ namespace workIT.Factories
 							} );
 							isValid = true;
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_JOB_PROFILE, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 							//add pending request 
 							List<String> messages = new List<string>();
 							new SearchPendingReindexManager().AddDeleteRequest( CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, efEntity.Id, ref messages );
@@ -592,48 +596,59 @@ namespace workIT.Factories
 		}
 
 		#region Job properties ===================
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource resource, ref SaveStatus status )
 		{
 			bool isAllValid = true;
-			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			Entity relatedEntity = EntityManager.GetEntity( resource.RowId );
 			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
 			}
 
-			if ( UpdateProperties( entity, relatedEntity, ref status ) == false )
+			if ( UpdateProperties( resource, relatedEntity, ref status ) == false )
 			{
 				isAllValid = false;
 			}
 			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
-			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY, resource.OfferedByList, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
 
-			//Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
-			//erfm.DeleteAll( relatedEntity, ref status );
+			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
+            erfm.DeleteAll( relatedEntity, ref status );
 
-			//if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.Jobs, ref status ) == false )
-			//	isAllValid = false;
-			//if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
-			//	isAllValid = false;
+            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, resource.Occupations, ref status ) == false )
+                isAllValid = false;
+            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, resource.Industries, ref status ) == false )
+                isAllValid = false;
+
+            //ConditionProfile =======================================
+            Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
+            //emanager.DeleteAll( relatedEntity, ref status );
+            emanager.SaveList( resource.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, resource.RowId, ref status );
+
+            //Entity_HasResource
+            var eHasResourcesMge = new Entity_HasResourceManager();
+			//no, doing delete in save method
+			//eHasResourcesMge.DeleteAllEntityType( relatedEntity, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, ref status );
+
+			if ( eHasResourcesMge.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, resource.HasWorkRoleIds, ref status ) == false )
+				isAllValid = false;
+            if ( eHasResourcesMge.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, resource.HasOccupationIds, ref status ) == false )
+                isAllValid = false;
+            if ( eHasResourcesMge.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_TASK_PROFILE, resource.HasTaskIds, ref status ) == false )
+                isAllValid = false;
 
 
-			//Entity_ReferenceManager erm = new Entity_ReferenceManager();
-			//erm.DeleteAll( relatedEntity, ref status );
-			//if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_Job_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
-			//	isAllValid = false;
+            var ehssMgr = new Entity_HasSupportServiceManager();
+            ehssMgr.Update( resource.HasSupportServiceIds, relatedEntity, ref status );
 
-			//if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_Job_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
-			//	isAllValid = false;
-
-
-			AddProfiles( entity, relatedEntity, ref status );
 
 
 			return isAllValid;
 		}
 
-		public bool UpdateProperties( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool UpdateProperties( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			EntityPropertyManager mgr = new EntityPropertyManager();
@@ -645,10 +660,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public void AddProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
-		{
 
-		} //
 
 
 		#endregion
@@ -656,9 +668,9 @@ namespace workIT.Factories
 		#endregion
 
 		#region == Retrieval =======================
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetMinimumByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity from = context.JobProfile
@@ -678,9 +690,9 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static ThisEntity Get( Guid profileUid )
+		public static ThisResource Get( Guid profileUid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( !IsGuidValid( entity.RowId ) )
 				return null;
 			try
@@ -702,9 +714,9 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static ThisEntity GetBasic( int id )
+		public static ThisResource GetBasic( int id )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.JobProfile
@@ -720,9 +732,9 @@ namespace workIT.Factories
 		}
 
 		
-		public static ThisEntity GetForDetail( int id )
+		public static ThisResource GetForDetail( int id )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.JobProfile
@@ -748,14 +760,175 @@ namespace workIT.Factories
 			return entity;
 		}
 
+        /// <summary>
+        /// typically used with blank node resolution
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="swp"></param>
+        /// <returns></returns>
+        public static ThisResource GetByName_SubjectWebpage( string name, string swp )
+        {
+            var entity = new ThisResource();
+            if ( string.IsNullOrWhiteSpace( swp ) )
+                return null;
+            if ( swp.IndexOf( "//" ) == -1 )
+                return null;
+            bool hasHttps = false;
+            if ( swp.ToLower().IndexOf( "https:" ) > -1 )
+                hasHttps = true;
 
-		public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
+            //swp = swp.Substring( swp.IndexOf( "//" ) + 2 );
+            //swp = swp.ToLower().TrimEnd( '/' );
+            var host = new Uri( swp ).Host;
+            var domain = host.Substring( host.LastIndexOf( '.', host.LastIndexOf( '.' ) - 1 ) + 1 );
+            using ( var context = new EntityContext() )
+            {
+                //s.Name.ToLower() == name.ToLower() && 
+                context.Configuration.LazyLoadingEnabled = false;
+                var list = context.JobProfile
+                        .Where( s => s.SubjectWebpage.ToLower().Contains( domain ) && s.EntityStateId > 1 )
+                        .OrderByDescending( s => s.EntityStateId )
+                        .ThenBy( s => s.Name )
+                        .ToList();
+                int cntr = 0;
+
+                ActivityManager amgr = new ActivityManager();
+
+                foreach ( var from in list )
+                {
+                    cntr++;
+                    //any way to check further?
+                    //the full org will be returned first
+                    //may want a secondary check and send notifications if additional full orgs found, or even if multiples are found.
+                    if ( from.Name.ToLower().Contains( name.ToLower() )
+                    || name.ToLower().Contains( from.Name.ToLower() )
+                    )
+                    {
+                        //OK, take me
+                        if ( cntr == 1 || entity.Id == 0 )
+                        {
+                            //hmmm if input was https and found http, and a reference, should update to https!
+                            if ( hasHttps && from.SubjectWebpage.StartsWith( "http:" ) )
+                            {
+
+                            }
+                            //
+                            MapFromDB( from, entity, false );
+                        }
+                        else
+                        {
+                            if ( from.EntityStateId == 3 )
+                            {
+                                //could log warning conditions to activity log, and then report out at end of an import?
+                                amgr.SiteActivityAdd( new SiteActivity()
+                                {
+                                    ActivityType = "System",
+                                    Activity = "Import",
+                                    Event = $"{EntityType} Reference Check",
+                                    Comment = $"{Entity_Label} Get by Name and subject webpage. Found additional full {EntityType} for name: {name}, swp: {swp}. First {EntityType}: {entity.Name} ({entity.Id})"
+                                } );
+
+                            }
+                            MapFromDB( from, entity, false );
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return entity;
+        }
+
+		
+        public static ThisResource GetByNameAndDescription( string name, string description )
+        {
+            var entity = new ThisResource();
+            using ( var context = new EntityContext() )
+            {
+                context.Configuration.LazyLoadingEnabled = false;
+                var list = context.JobProfile
+                        .Where( s => s.Name.ToLower() == name.ToLower() && s.EntityStateId > 1 
+							&& !string.IsNullOrWhiteSpace(s.Description) )
+                        .OrderByDescending( s => s.EntityStateId )
+                        .ThenBy( s => s.Name )
+                        .ToList();
+                int cntr = 0;
+                foreach ( var from in list )
+                {
+                    cntr++;
+					//if only one take it. 
+					if ( list.Count == 1 )
+					{
+						MapFromDB( from, entity, false );
+						break;
+					}
+                    //just start with an exact match on the desc. The key is having one
+                    if ( from.Description.ToLower() == description.ToLower() )
+					{
+                        MapFromDB( from, entity, false );
+                        break;
+                    }
+                }
+            }
+
+            return entity;
+        }
+        /// <summary>
+        /// look up by name for blank node resolution.
+        /// Need an exact match with this limited data. Should be the last resort
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static ThisResource GetByName( string name )
+        {
+            var entity = new ThisResource();
+            using ( var context = new EntityContext() )
+            {
+                //s.Name.ToLower() == name.ToLower() && 
+                context.Configuration.LazyLoadingEnabled = false;
+                var list = context.JobProfile
+                        .Where( s => s.Name.ToLower() == name.ToLower() && s.EntityStateId > 1 )
+                        .OrderByDescending( s => s.EntityStateId )
+                        .ThenBy( s => s.Name )
+                        .ToList();
+                int cntr = 0;
+                foreach ( var from in list )
+                {
+                    cntr++;
+                    //just take first one
+                    MapFromDB( from, entity, false );
+
+                    break;
+                }
+            }
+
+            return entity;
+        }
+
+        public static int Count_ForOwningOrg( Guid orgUid )
+        {
+            int totalRecords = 0;
+
+            using ( var context = new EntityContext() )
+            {
+                var results = context.JobProfile
+                            .Where( s => s.PrimaryAgentUID == orgUid && s.EntityStateId == 3 )
+                            .ToList();
+
+                if ( results != null && results.Count > 0 )
+                {
+                    totalRecords = results.Count();
+                }
+            }
+            return totalRecords;
+        }
+        public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
 		{
 			bool autocomplete = true;
 			List<object> results = new List<object>();
 			List<string> competencyList = new List<string>();
 			//ref competencyList, 
-			List<ThisEntity> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+			List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
 			bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
 			string prevName = "";
 			foreach ( var item in list )
@@ -778,11 +951,11 @@ namespace workIT.Factories
 		}
 
 
-		public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
+		public static List<ThisResource> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
 		{
 			string connectionString = DBConnectionRO();
-			ThisEntity item = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
+			ThisResource item = new ThisResource();
+			List<ThisResource> list = new List<ThisResource>();
 			var result = new DataTable();
 			string temp = "";
 			string org = "";
@@ -835,7 +1008,7 @@ namespace workIT.Factories
 
 				foreach ( DataRow dr in result.Rows )
 				{
-					item = new ThisEntity();
+					item = new ThisResource();
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.Name = GetRowColumn( dr, "Name", "missing" );
 					item.FriendlyName = FormatFriendlyTitle( item.Name );
@@ -879,7 +1052,7 @@ namespace workIT.Factories
 			}
 		} //
 
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -894,14 +1067,20 @@ namespace workIT.Factories
 			output.Name = GetData( input.Name );
 			output.Description = GetData( input.Description );
 			input.EntityStateId = output.EntityStateId;
+            output.PrimaryAgentUID = input.PrimaryAgentUID;
 
-			output.SubjectWebpage = GetUrlData( input.SubjectWebpage );
+            output.SubjectWebpage = GetUrlData( input.SubjectWebpage );
+
+			output.CodedNotation = GetData( input.CodedNotation );
+			output.Comment = GetData( input.CommentJson );
+			output.Identifier = input.IdentifierJson;
+			output.VersionIdentifier = input.VersionIdentifierJson;
 
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = input.LastUpdated;
 		}
 
-		public static void MapFromDB( DBEntity input, ThisEntity output,
+		public static void MapFromDB( DBEntity input, ThisResource output,
 				bool includingProperties )
 		{
 
@@ -915,21 +1094,90 @@ namespace workIT.Factories
 
 			output.Description = input.Description == null ? "" : input.Description;
 			output.CTID = input.CTID;
+            if ( IsGuidValid( input.PrimaryAgentUID ) )
+            {
+                output.PrimaryAgentUID = ( Guid ) input.PrimaryAgentUID;
+                output.PrimaryOrganization = OrganizationManager.GetBasics( ( Guid ) input.PrimaryAgentUID );
+				output.OfferedBy = new List<Organization>()
+				{
+					output.PrimaryOrganization
+				};
+            }
+			//this would get offered by. Should exclude the primary or ????
+            output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
 
 			output.SubjectWebpage = input.SubjectWebpage;
+			output.CodedNotation = GetData( input.CodedNotation );
 			if ( IsValidDate( input.Created ) )
 				output.Created = ( DateTime )input.Created;
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = ( DateTime )input.LastUpdated;
 
+			if ( !string.IsNullOrWhiteSpace( input.Comment ) )
+			{
+				output.Comment = JsonConvert.DeserializeObject<List<string>>( input.Comment );
+			}
+			if ( !string.IsNullOrWhiteSpace( input.Identifier ) )
+			{
+				output.Identifier = JsonConvert.DeserializeObject<List<IdentifierValue>>( input.Identifier );
+			}
+			output.OccupationType = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+			output.IndustryType = ReferenceFrameworkItemsManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
+            if ( !string.IsNullOrWhiteSpace( input.VersionIdentifier ) )
+			{
+				output.VersionIdentifier = JsonConvert.DeserializeObject<List<IdentifierValue>>( input.VersionIdentifier );
+			}
 			//=====
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
+            //if ( relatedEntity != null && relatedEntity.Id > 0 )
+            output.EntityLastUpdated = output.LastUpdated;  // relatedEntity.LastUpdated;
 
-
-		} //
+            //get condition profiles
+            List<ConditionProfile> list = Entity_ConditionProfileManager.GetAll( output.RowId, false, false );
+            if ( list != null && list.Count > 0 )
+            {
+				output.Requires = new List<ConditionProfile>();
+                foreach ( ConditionProfile item in list )
+                {
+                    if ( item.ConditionSubTypeId != Entity_ConditionProfileManager.ConditionSubType_Basic )
+                    {
+                        //should not happen
+                    }
+                    else if ( item.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_Requirement )
+                        output.Requires.Add( item );
+                    else
+                    {
+                        EmailManager.NotifyAdmin( $"Unexpected Condition Profile for {Entity_Label}", string.Format( "recordId: {0}, ConditionProfileTypeId: {1}", output.Id, item.ConnectionProfileTypeId ) );
+                    }
+                }
+            }
+			//
+			output.HasSupportService = Entity_HasSupportServiceManager.GetAllAsResourceSummary( relatedEntity );
+            //actually more effecient to get all and then split out
+			var getAll = Entity_HasResourceManager.GetAll( relatedEntity);
+			if (getAll != null && getAll.Count > 0 )
+			{
+				output.HasOccupation = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE ).ToList();
+                output.HasTask = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE ).ToList();
+                output.HasWorkRole = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_WORKROLE_PROFILE ).ToList();
+				var pathwayComponents = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT ).ToList();
+				if ( pathwayComponents != null &&  pathwayComponents.Count > 0 )
+				{
+					foreach ( var component in pathwayComponents )
+					{
+						var pathway = PathwayManager.GetByCtid( component.CTID );
+						if ( pathway != null && pathway.Id > 0)
+						{
+							output.TargetPathway.Add( pathway );
+						}
+					}
+				}
+			}
+            //output.HasOccupation = Entity_HasResourceManager.GetAllEntityType( relatedEntity, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE );
+            //output.HasWorkRole = Entity_HasResourceManager.GetAllEntityType( relatedEntity, CodesManager.ENTITY_TYPE_TASK_PROFILE);
+            //output.HasTask = Entity_HasResourceManager.GetAllEntityType( relatedEntity, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE );
+        } //
 
 		#endregion
 

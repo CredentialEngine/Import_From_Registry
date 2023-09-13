@@ -25,12 +25,12 @@ namespace workIT.Services
 	public class ServiceHelper
 	{
 		static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
-
-		//
-		/// <summary>
-		/// Session variable for message to display in the system console
-		/// </summary>
-		public const string SYSTEM_CONSOLE_MESSAGE = "SystemConsoleMessage";
+		static string thisClassName = "ServiceHelper";
+        //
+        /// <summary>
+        /// Session variable for message to display in the system console
+        /// </summary>
+        public const string SYSTEM_CONSOLE_MESSAGE = "SystemConsoleMessage";
 
 		#region === Security related Methods ===
 
@@ -278,12 +278,20 @@ namespace workIT.Services
 			else 
 				return true;
 		}
-		/// <summary>
-		/// Check if the passed dataset is indicated as one containing an error message (from a web service)
-		/// </summary>
-		/// <param name="wsDataset">DataSet for a web service method</param>
-		/// <returns>True if dataset contains an error message, otherwise false</returns>
-		public static bool HasErrorMessage( DataSet wsDataset )
+        public static bool IsInteger( string nbr, ref int validNbr )
+        {
+            validNbr = 0;
+            if ( !string.IsNullOrWhiteSpace( nbr ) && int.TryParse( nbr, out validNbr ) )
+                return true;
+            else
+                return false;
+        }
+        /// <summary>
+        /// Check if the passed dataset is indicated as one containing an error message (from a web service)
+        /// </summary>
+        /// <param name="wsDataset">DataSet for a web service method</param>
+        /// <returns>True if dataset contains an error message, otherwise false</returns>
+        public static bool HasErrorMessage( DataSet wsDataset )
 		{
 
 			if ( wsDataset.DataSetName == "ErrorMessage" )
@@ -923,6 +931,25 @@ namespace workIT.Services
 
 			return value;
 		} //
-		#endregion
-	}
+
+        public static void ClearCacheEntity( string key )
+        {
+            try
+            {
+                if ( HttpContext.Current != null )
+                {
+                    if ( HttpContext.Current.Cache[key] != null )
+                    {
+                        HttpRuntime.Cache.Remove( key );
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.DoTrace( 6, thisClassName + ".ClearCacheEntity exception " + ex.Message );
+            }
+
+        }
+        #endregion
+    }
 }

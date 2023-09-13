@@ -13,13 +13,15 @@ using BNode = RA.Models.JsonV2.BlankNode;
 using EntityServices = workIT.Services.AssessmentServices;
 using InputEntityV3 = RA.Models.JsonV2.AssessmentProfile;
 using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
+using FAPI = workIT.Services.API;
 namespace Import.Services
 {
     public class ImportAssessment
 	{
-		int entityTypeId = CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE;
+		int thisEntityTypeId = CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE;
 		string thisClassName = "ImportAssessment";
-		ImportManager importManager = new ImportManager();
+        string resourceType = "Assessment";
+        ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
 		ThisEntity output = new ThisEntity();
 
@@ -210,7 +212,7 @@ namespace Import.Services
 			///============= process =============================
             
            
-            MappingHelperV3 helper = new MappingHelperV3(3);
+            MappingHelperV3 helper = new MappingHelperV3( thisEntityTypeId );
             helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
@@ -323,7 +325,7 @@ namespace Import.Services
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "Assessment.OwnedBy", input.OwnedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[ 0 ];
+					output.PrimaryAgentUID = output.OwnedBy[ 0 ];
 					helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 				}
 				else
@@ -335,7 +337,7 @@ namespace Import.Services
 					}
 					else
 					{
-						output.OwningAgentUid = output.OfferedBy[ 0 ];
+						output.PrimaryAgentUID = output.OfferedBy[ 0 ];
 						helper.CurrentOwningAgentUid = output.OfferedBy[ 0 ];
 					}
 				}
@@ -368,11 +370,11 @@ namespace Import.Services
 				output.CodedNotation = input.CodedNotation;
 				//
 				output.Identifier = helper.MapIdentifierValueList( input.Identifier );
-				output.IdentifierNew = helper.MapIdentifierValueList2( input.Identifier );
+				output.IdentifierImport = helper.MapIdentifierValueList2( input.Identifier );
 
-				if ( output.IdentifierNew != null && output.IdentifierNew.Count() > 0 )
+				if ( output.IdentifierImport != null && output.IdentifierImport.Count() > 0 )
 				{
-					output.IdentifierJSON = JsonConvert.SerializeObject( output.IdentifierNew, MappingHelperV3.GetJsonSettings() );
+					output.IdentifierJSON = JsonConvert.SerializeObject( output.IdentifierImport, MappingHelperV3.GetJsonSettings() );
 				}
 				//
 				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
@@ -396,6 +398,12 @@ namespace Import.Services
 
 				output.ProcessStandards = input.ProcessStandards;
 				output.ProcessStandardsDescription = helper.HandleLanguageMap( input.ProcessStandardsDescription, output, "ProcessStandardsDescription" );
+
+
+				output.ScheduleTimingType = helper.MapCAOListToEnumermation( input.ScheduleTimingType );
+				output.ScheduleFrequencyType = helper.MapCAOListToEnumermation( input.ScheduleFrequencyType );
+				output.OfferFrequencyType = helper.MapCAOListToEnumermation( input.OfferFrequencyType );
+
 				output.ScoringMethodDescription = helper.HandleLanguageMap( input.ScoringMethodDescription, output, "ScoringMethodDescription" );
 
 				output.ScoringMethodExample = input.ScoringMethodExample;
@@ -478,13 +486,14 @@ namespace Import.Services
 				output.IsRecommendedFor = helper.FormatConditionProfile( input.IsRecommendedFor, ref status );
 
 				//EstimatedDuration ==============================
-				output.EstimatedDuration = helper.FormatDuration( input.EstimatedDuration, ref status );
+				output.EstimatedDuration = helper.FormatDuration( $"{resourceType}.EstimatedDuration", input.EstimatedDuration, ref status );
 
 				//conditions ======================================
 				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
 				output.Recommends = helper.FormatConditionProfile( input.Recommends, ref status );
 				output.EntryCondition = helper.FormatConditionProfile( input.EntryCondition, ref status );
 				output.Corequisite = helper.FormatConditionProfile( input.Corequisite, ref status );
+				output.CoPrerequisite = helper.FormatConditionProfile( input.CoPrerequisite, ref status );
 
 				//Process profiles ==============================
 				output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
@@ -493,20 +502,27 @@ namespace Import.Services
 
 				//
 
-				output.Addresses = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
+				output.AvailableAt = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
 				//targets
 				if ( input.TargetAssessment != null && input.TargetAssessment.Count > 0 )
-					output.TargetAssessmentIds = helper.MapEntityReferences( "Assessment.TargetAssessment", input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
+					output.TargetAssessmentIds = helper.MapEntityReferences( $"{resourceType}.TargetAssessment", input.TargetAssessment, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref status );
 				//21-04-13 mp - TargetLearningResource will be URLs not registry resources
 				if ( input.TargetLearningResource != null && input.TargetLearningResource.Count > 0 )
 				{
 					output.TargetLearningResource = input.TargetLearningResource;
 					//output.TargetLearningOpportunityIds = helper.MapEntityReferences( "Assessment.TargetLearningOpportunity", input.TargetLearningResource, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
 				}
-				//
-				if ( input.TargetPathway != null && input.TargetPathway.Count > 0 )
-					output.TargetPathwayIds = helper.MapEntityReferences( "Assessment.TargetPathway", input.TargetPathway, CodesManager.ENTITY_TYPE_PATHWAY, ref status );
-				//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+                //this is an inverse property and would not be published with this resource
+                //if ( input.TargetPathway != null && input.TargetPathway.Count > 0 )
+                //	output.TargetPathwayIds = helper.MapEntityReferences( "LearningOpportunity.TargetPathway", input.TargetPathway, CodesManager.ENTITY_TYPE_PATHWAY, ref status );
+
+                //
+                if ( input.HasOffering != null && input.HasOffering.Count > 0 )
+                    output.HasOfferingIds = helper.MapEntityReferences( $"{resourceType}.HasOffering", input.HasOffering, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING, ref status );
+                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+                    output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
+
+                output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 				//INs
 				output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
@@ -522,13 +538,18 @@ namespace Import.Services
 				output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
 				if ( output.FinancialAssistance != null && output.FinancialAssistance.Any() )
 					output.FinancialAssistanceJson = JsonConvert.SerializeObject( output.FinancialAssistance, MappingHelperV3.GetJsonSettings() );
-				//
-				if ( input.AggregateData != null && input.AggregateData.Any() )
-				{
-					output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status );
-				}
-				//=== if any messages were encountered treat as warnings for now
-				if ( messages.Count > 0 )
+                //
+                bool hasDataSetProfiles = false;
+                List<string> ctidList = new List<string>();
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+                if ( ctidList != null && ctidList.Any() )
+                {
+                    //especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
+                    hasDataSetProfiles = true;
+
+                }
+                //=== if any messages were encountered treat as warnings for now
+                if ( messages.Count > 0 )
 					status.SetMessages( messages, true );
 				//just in case check if entity added since start
 				if ( output.Id == 0 )
@@ -540,9 +561,21 @@ namespace Import.Services
 						output.RowId = entity.RowId;
 					}
 				}
-				importSuccessfull = mgr.Import( output, ref status );
+                if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
+                {
+                    importSuccessfull = mgr.Import( output, ref status );
+                    //start storing the finder api ready version
+                    var resource = FAPI.AssessmentServices.GetDetailForAPI( output.Id, true );
+                    //Remove nulls and empty properties
+                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-				status.DocumentId = output.Id;
+                    var statusMsg = "";
+                    if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                    {
+                        status.AddError( statusMsg );
+                    }
+                }
+                status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/assessment/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
 

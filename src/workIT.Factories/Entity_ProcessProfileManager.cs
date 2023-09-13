@@ -17,6 +17,7 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+using System.Data.Entity.Validation;
 
 namespace workIT.Factories
 {
@@ -78,7 +79,7 @@ namespace workIT.Factories
 
 
 			int count = 0;
-
+			var action = "Update";
 			DBEntity efEntity = new DBEntity();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
@@ -87,7 +88,6 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-
 
 			//determine type
 			int profileTypeId = 0;
@@ -142,71 +142,83 @@ namespace workIT.Factories
 						return false;
 				}
 			}
-			using ( var context = new EntityContext() )
+			try
 			{
-
-
-				if ( ValidateProfile( entity,  ref  status ) == false )
+				using ( var context = new EntityContext() )
 				{
-					status.AddError( "Process Profile was invalid. " + SetEntitySummary( entity ) );
-					return false;
-				}
-
-
-				if ( entity.Id == 0 )
-				{
-					//add
-					efEntity = new DBEntity();
-					MapToDB( entity, efEntity );
-					efEntity.EntityId = parent.Id;
-
-					efEntity.Created = efEntity.LastUpdated = DateTime.Now;
-
-                    if ( IsValidGuid( entity.RowId ) )
-                        efEntity.RowId = entity.RowId;
-                    else 
-					    efEntity.RowId = Guid.NewGuid();
-
-					context.Entity_ProcessProfile.Add( efEntity );
-					count = context.SaveChanges();
-					//update profile record so doesn't get deleted
-					entity.Id = efEntity.Id;
-					entity.ParentId = parent.Id;
-					entity.RowId = efEntity.RowId;
-					if ( count == 0 )
+					if ( ValidateProfile( entity, ref status ) == false )
 					{
-						status.AddError( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.ProfileName ) ? "no description" : entity.ProfileName ) );
+						status.AddError( "Process Profile was invalid. " + SetEntitySummary( entity ) );
+						return false;
+					}
+
+					if ( entity.Id == 0 )
+					{
+						//add
+						action = "Add";
+						efEntity = new DBEntity();
+						MapToDB( entity, efEntity );
+						efEntity.EntityId = parent.Id;
+
+						efEntity.Created = efEntity.LastUpdated = DateTime.Now;
+
+						if ( IsValidGuid( entity.RowId ) )
+							efEntity.RowId = entity.RowId;
+						else
+							efEntity.RowId = Guid.NewGuid();
+
+						context.Entity_ProcessProfile.Add( efEntity );
+						count = context.SaveChanges();
+						//update profile record so doesn't get deleted
+						entity.Id = efEntity.Id;
+						entity.RelatedEntityId = parent.Id;
+						entity.RowId = efEntity.RowId;
+						if ( count == 0 )
+						{
+							status.AddError( string.Format( " Unable to add Profile: {0} <br\\> ", string.IsNullOrWhiteSpace( entity.ProfileName ) ? "no description" : entity.ProfileName ) );
+						}
+						else
+						{
+							//other entity components use a trigger to create the entity Object. If a trigger is not created, then child adds will fail (as typically use entity_summary to get the parent. As the latter is easy, make the direct call?
+
+							UpdateParts( entity, ref status );
+						}
 					}
 					else
 					{
-						//other entity components use a trigger to create the entity Object. If a trigger is not created, then child adds will fail (as typically use entity_summary to get the parent. As the latter is easy, make the direct call?
-
-						UpdateParts( entity, ref status );
-					}
-				}
-				else
-				{
-					entity.ParentId = parent.Id;
-
-					efEntity = context.Entity_ProcessProfile.SingleOrDefault( s => s.Id == entity.Id );
-					if ( efEntity != null && efEntity.Id > 0 )
-					{
-						entity.RowId = efEntity.RowId;
-						//update
-						MapToDB( entity, efEntity );
-						//has changed?
-						if ( HasStateChanged( context ) )
+						entity.RelatedEntityId = parent.Id;
+						efEntity = context.Entity_ProcessProfile.SingleOrDefault( s => s.Id == entity.Id );
+						if ( efEntity != null && efEntity.Id > 0 )
 						{
-							efEntity.LastUpdated = System.DateTime.Now;
+							entity.RowId = efEntity.RowId;
+							//update
+							MapToDB( entity, efEntity );
+							//has changed?
+							if ( HasStateChanged( context ) )
+							{
+								efEntity.LastUpdated = System.DateTime.Now;
 
-							count = context.SaveChanges();
+								count = context.SaveChanges();
+							}
+							//always check parts
+							UpdateParts( entity, ref status );
 						}
-						//always check parts
-						UpdateParts( entity, ref status );
 					}
 				}
 			}
-
+			catch ( DbEntityValidationException dbex )
+			{
+				string message = HandleDBValidationError( dbex, thisClassName + $".Save('{action}')", string.Format( "EntityId: {0} , ProcessProfileType: {1}  ", entity.RelatedEntityId, entity.ProcessProfileType ) );
+				status.AddWarning( message );
+				LoggingHelper.LogError( dbex, thisClassName + $".Save('{action}')-DbEntityValidationException, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId}, ProcessProfileType: {entity.ProcessProfileType})" );
+				return false;
+			}
+			catch ( Exception ex )
+			{
+				status.AddError( FormatExceptions(ex) );
+				LoggingHelper.LogError( ex, thisClassName + $".Save('{action}')-Exception, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId}, ProcessProfileType: {entity.ProcessProfileType})" );
+				return false;
+			}
 			return status.WasSectionValid;
 		}
 
@@ -608,7 +620,7 @@ namespace workIT.Factories
 			}
 
 			if ( from.Entity != null )
-				to.ParentId = from.Entity.Id;
+				to.RelatedEntityId = from.Entity.Id;
 
 			to.ProfileSummary = SetEntitySummary( to );
 
@@ -663,7 +675,7 @@ namespace workIT.Factories
 				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 
-				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.LearningOpps_GetAll( to.RowId, true );
+				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.TargetResource_GetAll( to.RowId, true );
 				to.TargetCompetencyFramework = Entity_CompetencyFrameworkManager.GetAll( to.RowId );
 			}
 

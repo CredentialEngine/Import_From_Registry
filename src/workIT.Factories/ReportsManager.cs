@@ -53,7 +53,7 @@ namespace workIT.Factories
 						adapter.SelectCommand = command;
 						adapter.Fill( result );
 					}
-					string rows = command.Parameters[ 4 ].Value.ToString();
+					string rows = command.Parameters[ 5 ].Value.ToString();
 					try
 					{
 						pTotalRows = Int32.Parse( rows );

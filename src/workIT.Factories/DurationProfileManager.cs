@@ -309,7 +309,7 @@ namespace workIT.Factories
                 to.AverageMinutes = ( fromMin + totalMinutes ) / 2;
                 to.TypeId = 2;
 				DurationSummary( "", from.MaximumDuration, ref durationOnly );
-				durationOnly += " to " + durationOnly;
+				to.DurationSummary += " to " + durationOnly;
 			}
 			
 		}

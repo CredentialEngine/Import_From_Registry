@@ -43,17 +43,19 @@ namespace workIT.Services.API
 				CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID ),
 				RegistryData = ServiceHelper.FillRegistryData( input.CTID, searchType )
 			};
+			output.EntityLastUpdated = input.EntityLastUpdated;
+			output.Meta_StateId = input.EntityStateId;
+
 			//TODO - add pathway
 			if ( input.Pathways != null && input.Pathways.Any() )
 			{
-				output.HasPathways = new List<WMA.Outline>();
+				var hasPathways = new List<WMA.Outline>();
 				foreach ( var target in input.Pathways )
 				{
 					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
-						output.HasPathways.Add( ServiceHelper.MapToOutline( target, searchType ) );
+						hasPathways.Add( ServiceHelper.MapToOutline( target, searchType ) );
 				}
-				output.HasPathway = ServiceHelper.MapOutlineToAJAX( output.HasPathways, "Has {0} Pathways(s)" );
-				output.HasPathways = null;
+				output.HasPathway = ServiceHelper.MapOutlineToAJAX( hasPathways, "Has {0} Pathways(s)" );
 
 			}
 

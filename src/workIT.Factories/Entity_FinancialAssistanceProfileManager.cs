@@ -101,7 +101,8 @@ namespace workIT.Factories
 
 					if ( ValidateProfile( entity, ref messages ) == false )
 					{
-						return false;
+						//actually should always continue to the save
+						//return false;
 					}
 					bool doingParts = true;
 					if ( entity.Id == 0 )
@@ -464,7 +465,7 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-			to.ParentId = from.EntityId;
+			to.RelatedEntityId = from.EntityId;
 			to.Name = GetData( from.Name );
 			to.SubjectWebpage = GetData( from.SubjectWebpage );
 			to.Description = GetData( from.Description );
@@ -493,12 +494,20 @@ namespace workIT.Factories
 				var summary = "";
 				var units = !string.IsNullOrWhiteSpace(item.UnitText) ? item.UnitText : string.Join( ",", item.CreditUnitType.Items.ToArray().Select( m => m.Name));
 				var currencySymbol = "";
-				var code = CodesManager.GetCurrencyItem( units );
-				if ( code != null && code.NumericCode > 0 )
+				if ( !string.IsNullOrWhiteSpace( units ) )
 				{
-					//currency = code.Currency;
-					currencySymbol = code.HtmlCodes;
+					if ( units.ToLower() == "usd" )
+						currencySymbol = "$";
+					else
+					{
+						var currency = CodesManager.GetCurrencyItem( units );
+						if ( currency != null && currency.NumericCode > 0 )
+						{
+							currencySymbol = currency.HtmlCodes;
+						}
+					}
 				}
+
 				if ( item.IsRange )
 				{
 					if ( string.IsNullOrWhiteSpace( currencySymbol ) ) 

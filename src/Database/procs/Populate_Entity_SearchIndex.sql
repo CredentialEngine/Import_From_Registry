@@ -1,7 +1,9 @@
 
---use credFinder_ProdSync
 use credFinder
 GO
+use sandbox_credfinder
+go
+
 --use staging_credFinder
 --go
 --populate [Entity.SearchIndex]
@@ -14,6 +16,14 @@ exec [Populate_Entity_SearchIndex] 0
 
 */
 
+/*
+Entity.SearchIndex - is populated with properties that will be used with TextValues in elastic search
+
+
+22-11-18 mparsons - review if this is actually used anymore?
+				- Yes, is used by the various ElasticSearch procs.
+
+*/
 Alter  Procedure [dbo].[Populate_Entity_SearchIndex]
 	@EntityId int
 	
@@ -43,7 +53,7 @@ SELECT [EntityId]    ,[CategoryId] ,CodedNotation
 where (EntityId = @EntityId OR @EntityId = 0)
 
 
---subjects, keywords
+--subjects, keywords, degree major, degree minor
 INSERT INTO [dbo].[Entity.SearchIndex]
            ([EntityId]
            ,[CategoryId]
@@ -61,7 +71,7 @@ SELECT [EntityId]
     ,[Created]
  
   FROM dbo.[Entity.Reference] a
-where CategoryId in (34,35)
+where CategoryId in (34,35, 63, 64)
 and (a.EntityId = @EntityId OR @EntityId = 0)
 
 

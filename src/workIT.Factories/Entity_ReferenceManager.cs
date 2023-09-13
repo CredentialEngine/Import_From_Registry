@@ -161,7 +161,7 @@ namespace workIT.Factories
                         count = context.SaveChanges();
                         //update profile record so doesn't get deleted
                         entity.Id = efEntity.Id;
-                        entity.ParentId = parent.Id;
+                        entity.RelatedEntityId = parent.Id;
 
                         if ( count == 0 )
                         {
@@ -537,69 +537,12 @@ namespace workIT.Factories
         #endregion
 
         #region  retrieval ==================
-
         /// <summary>
         /// Get all profiles for the parent
         /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
         /// NOTE: the view: uses Entity_Cache, so this method is only for use where the related entity parent is in the Entity_Cache table.
         /// 
         /// TODO - minimize dependency on this method, ie stop using entity_cache
-        /// </summary>
-        /// <param name="parentUid"></param>
-        public static List<ThisEntity> GetAllOLD( Guid parentUid, int categoryId )
-        {
-            return GetAll( parentUid, categoryId );
-
-
-            //ThisEntity entity = new ThisEntity();
-            //List<ThisEntity> list = new List<ThisEntity>();
-            //List<ThisEntity> results = new List<ThisEntity>();
-            //Entity parent = EntityManager.GetEntity( parentUid );
-            //if ( parent == null || parent.Id == 0 )
-            //{
-            //    return list;
-            //}
-            //try
-            //{
-            //    using ( var context = new ViewContext() )
-            //    {
-            //        List<Entity_Reference_Summary> search = context.Entity_Reference_Summary
-            //                .Where( s => s.EntityId == parent.Id
-            //                && s.CategoryId == categoryId )
-            //                .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
-            //                .ToList();
-
-            //        if ( categoryId == CodesManager.PROPERTY_CATEGORY_SUBJECT
-            //          || categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
-            //        {
-            //            search = search.OrderBy( s => s.TextValue ).ToList();
-            //        }
-            //        else
-            //        {
-            //            search = search.OrderBy( s => s.EntityReferenceId ).ToList();
-            //        }
-
-            //        if ( search != null && search.Count > 0 )
-            //        {
-            //            foreach ( Entity_Reference_Summary item in search )
-            //            {
-            //                entity = new ThisEntity();
-            //                MapFromDB( item, entity );
-
-            //                list.Add( entity );
-            //            }
-            //        }
-            //    }
-            //}
-            //catch ( Exception ex )
-            //{
-            //    LoggingHelper.LogError( ex, thisClassName + ".GetAll" );
-            //}
-            //return list;
-        }//
-
-        /// <summary>
-        /// Get All Entity_Reference records for the parent 
         /// </summary>
         /// <param name="parentUid"></param>
         /// <param name="categoryId"></param>
@@ -648,10 +591,87 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, thisClassName + ".GetAllDirect" );
+                LoggingHelper.LogError( ex, thisClassName + ".GetAll( Guid parentUid, int categoryId )" );
             }
             return list;
         }//
+
+
+        public static List<ThisEntity> GetAll( Guid parentUid )
+        {
+            ThisEntity entity = new ThisEntity();
+            List<ThisEntity> list = new List<ThisEntity>();
+            List<ThisEntity> results = new List<ThisEntity>();
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                return list;
+            }
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    var search = context.Entity_Reference
+                            .Where( s => s.EntityId == parent.Id)
+                            .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
+                            .ToList();
+
+                    if ( search != null && search.Count > 0 )
+                    {
+                        foreach ( DBEntity item in search )
+                        {
+                            entity = new ThisEntity();
+                            MapFromDB( item, entity );
+
+                            list.Add( entity );
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".GetAll( Guid parentUid )" );
+            }
+            return list;
+        }//
+        /// <summary>
+        /// Get all Entity_Reference for the parent. The caller will filter as needed
+        /// </summary>
+        /// <param name="parentUid"></param>
+        /// <returns></returns>
+        public static List<string> GetAllToList( Guid parentUid)
+        {
+            List<string> list = new List<string>();
+            Entity parent = EntityManager.GetEntity( parentUid );
+            if ( parent == null || parent.Id == 0 )
+            {
+                return list;
+            }
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    List<DBEntity> search = context.Entity_Reference
+                            .Where( s => s.EntityId == parent.Id)
+                            .OrderBy( s => s.Title ).ThenBy( x => x.TextValue )
+                            .ToList();
+
+                    if ( search != null && search.Count > 0 )
+                    {
+                        foreach ( DBEntity item in search )
+                        {
+                            list.Add( item.TextValue );
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".GetAllToList" );
+            }
+            return list;
+        }//
+
         public static List<string> GetAllToList( Guid parentUid, int categoryId )
         {
             List<string> list = new List<string>();
@@ -1034,7 +1054,7 @@ namespace workIT.Factories
                         //could append to text for now
                         //op.OtherValue += "{" + ( frameworkName ?? "missing framework name" ) + "; " + schemaUrl + "}";
                         LoggingHelper.DoTrace( 2, "A new organization identifier of 'other' has been added:" + from.TextValue );
-                        SendNewOtherIdentityNotice( from );
+                        //SendNewOtherIdentityNotice( from );
                     }
                 }
                 else
@@ -1068,7 +1088,7 @@ namespace workIT.Factories
         private static void MapFromDB( DBEntity from, ThisEntity to )
         {
             to.Id = from.Id;
-            to.ParentId = from.EntityId;
+            to.RelatedEntityId = from.EntityId;
             to.TextTitle = from.Title ?? "";
             to.CategoryId = from.CategoryId;
             if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_PHONE_TYPE )

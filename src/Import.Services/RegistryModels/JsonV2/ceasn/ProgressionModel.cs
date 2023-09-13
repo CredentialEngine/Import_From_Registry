@@ -44,7 +44,10 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
 		public LanguageMapList ConceptKeyword { get; set; }
 
-        [JsonProperty( PropertyName = "ceasn:conceptTerm" )]
+		/// <summary>
+		/// Links to concepts in the registry or blank nodes
+		/// </summary>
+		[JsonProperty( PropertyName = "ceasn:conceptTerm" )]
         public List<string> ConceptTerm { get; set; }
 
         [JsonProperty( PropertyName = "ceasn:creator" )]
@@ -179,13 +182,13 @@ namespace RA.Models.JsonV2
 		/// ceterms:ComponentCondition
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:precedes" )]
-		public List<string> Precedes { get; set; }
+		public string Precedes { get; set; }
 
 		/// <summary>
 		/// Component is preceded by the referenced components
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:precededBy" )]
-		public List<string> PrecededBy { get; set; }
+		public string PrecededBy { get; set; }
 
 		[JsonProperty( PropertyName = "skos:prefLabel" )]
 		public LanguageMap PrefLabel { get; set; }

@@ -11,42 +11,42 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
-using EntityMgr = workIT.Factories.AssessmentManager;
-using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
+using ResourceManager = workIT.Factories.AssessmentManager;
+using ThisResource = workIT.Models.ProfileModels.AssessmentProfile;
 
 namespace workIT.Services
 {
-    public class AssessmentServices
+	public class AssessmentServices
     {
-        static string thisClassName = "AssessmentServices";
+		static string thisClassName = "AssessmentServices";
 
-        #region import
+		#region import
 
-        public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource entity, ref SaveStatus status )
         {
             //do a get, and add to cache before updating
             if ( entity.Id > 0 )
             {
-                //no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
-                if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-                {
-                    if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-                        GetDetail( entity.Id );
-                }
-            }
-            bool isValid = new EntityMgr().Save( entity, ref status );
+				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+				{
+					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+						GetDetail( entity.Id );
+				}
+			}
+            bool isValid = new ResourceManager().Save( entity, ref status );
             List<string> messages = new List<string>();
             if ( entity.Id > 0 )
             {
-                if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-                    CacheManager.RemoveItemFromCache( "asmt", entity.Id );
+				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
+					CacheManager.RemoveItemFromCache( "asmt", entity.Id );
 
-                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
-                    //update cache
-                    ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+					//update cache
+					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
 
-                    //new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
                     //update Elastic - this if makes no sense, it is either update elastic immediate or add to pending
                     //if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
                     //    ElasticHelper.Assessment_UpdateIndex( entity.Id );
@@ -68,44 +68,44 @@ namespace workIT.Services
 
             return isValid;
         }
-        static void UpdateCaches( Object entity )
-        {
-            if ( entity.GetType() != typeof( Models.ProfileModels.AssessmentProfile ) )
-                return;
-            var document = ( entity as Models.ProfileModels.AssessmentProfile );
+		static void UpdateCaches( Object entity )
+		{
+			if ( entity.GetType() != typeof( Models.ProfileModels.AssessmentProfile ) )
+				return;
+			var document = ( entity as Models.ProfileModels.AssessmentProfile );
 
 
-            new CacheManager().PopulateEntityRelatedCaches( document.RowId );
-            //update Elastic
-            List<string> messages = new List<string>();
+			new CacheManager().PopulateEntityRelatedCaches( document.RowId );
+			//update Elastic
+			List<string> messages = new List<string>();
 
-            if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                ElasticHelper.Assessment_UpdateIndex( document.Id );
-            else
-            {
-                new SearchPendingReindexManager().Add( 3, document.Id, 1, ref messages );
-            }
-            new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
-        }
-        #endregion
+			if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				ElasticHelper.Assessment_UpdateIndex( document.Id );
+			else
+			{
+				new SearchPendingReindexManager().Add( 3, document.Id, 1, ref messages );
+			}
+			new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, document.OwningOrganizationId, 1, ref messages );
+		}
+		#endregion
 
 
-        #region Searches 
-        //	public static List<CodeItem> SearchAsCodeItem( string keyword, int startingPageNbr, int pageSize, ref int totalRows )
-        //	{
-        //		List<ThisEntity> list = Search( keyword, startingPageNbr, pageSize, ref totalRows );
-        //		List<CodeItem> codes = new List<CodeItem>();
-        //		foreach (ThisEntity item in list) 
-        //		{
-        //			codes.Add(new CodeItem() {
-        //				Id = item.Id,
-        //				Name = item.Name,
-        //				Description = item.Description
-        //			});
-        //		}
-        //		return codes;
-        //}
-        public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
+		#region Searches 
+		//	public static List<CodeItem> SearchAsCodeItem( string keyword, int startingPageNbr, int pageSize, ref int totalRows )
+		//	{
+		//		List<ThisResource> list = Search( keyword, startingPageNbr, pageSize, ref totalRows );
+		//		List<CodeItem> codes = new List<CodeItem>();
+		//		foreach (ThisResource item in list) 
+		//		{
+		//			codes.Add(new CodeItem() {
+		//				Id = item.Id,
+		//				Name = item.Name,
+		//				Description = item.Description
+		//			});
+		//		}
+		//		return codes;
+		//}
+		public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25)
         {
 
             string where = "";
@@ -113,7 +113,7 @@ namespace workIT.Services
 
             if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
             {
-                return ElasticHelper.AssessmentAutoComplete( query, maxTerms, ref totalRows );
+                return new ElasticHelper().AssessmentAutoComplete( query, maxTerms, ref totalRows );
             }
             else
             {
@@ -123,10 +123,10 @@ namespace workIT.Services
                 where = string.Format( " (base.name like '{0}') ", keywords );
 
                 SetKeywordFilter( keywords, true, ref where );
-                return EntityMgr.Autocomplete( where, 1, maxTerms, ref totalRows );
+                return ResourceManager.Autocomplete( where, 1, maxTerms, ref totalRows );
             }
         }
-        //public static List<ThisEntity> Search( string keywords, int pageNumber, int pageSize, ref int totalRows )
+        //public static List<ThisResource> Search( string keywords, int pageNumber, int pageSize, ref int totalRows )
         //{
         //	string pOrderBy = "";
         //	string filter = "";
@@ -138,14 +138,14 @@ namespace workIT.Services
         //	SetKeywordFilter( keywords, true, ref filter );
         //	//SetAuthorizationFilter( user, ref filter );
 
-        //	return EntityMgr.Search( filter, pOrderBy, pageNumber, pageSize, ref totalRows );
+        //	return ResourceManager.Search( filter, pOrderBy, pageNumber, pageSize, ref totalRows );
         //}
 
-        public static List<ThisEntity> Search( MainSearchInput data, ref int pTotalRows )
+        public static List<ThisResource> Search( MainSearchInput data, ref int pTotalRows )
         {
             if ( UtilityManager.GetAppKeyValue( "usingElasticAssessmentSearch", false ) )
             {
-                return ElasticHelper.AssessmentSearch( data, ref pTotalRows );
+                return new ElasticHelper().AssessmentSearch( data, ref pTotalRows );
             }
             else
             {
@@ -153,7 +153,7 @@ namespace workIT.Services
             }
 
         }
-        public static List<ThisEntity> DoSearch( MainSearchInput data, ref int totalRows )
+        public static List<ThisResource> DoSearch( MainSearchInput data, ref int totalRows )
         {
             string where = "";
             List<string> competencies = new List<string>();
@@ -172,7 +172,7 @@ namespace workIT.Services
             }
             if ( idsList.Any() )
             {
-                var potentialQuery = string.Format( "(base.Id in ({0})) ", string.Join( ",", idsList ) );
+                var potentialQuery = string.Format( "(base.Id in ({0})) ", string.Join( ",", idsList ));
             }
 
             SetKeywordFilter( data.Keywords, false, ref where );
@@ -190,7 +190,7 @@ namespace workIT.Services
             SetCompetenciesFilter( data, ref where, ref competencies );
 
             LoggingHelper.DoTrace( 5, "AssessmentServices.Search(). Filter: " + where );
-            return EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+            return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
         }
 
         private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
@@ -383,108 +383,108 @@ namespace workIT.Services
         #endregion
 
         #region Retrievals
-        public static ThisEntity GetByCtid( string ctid )
+        public static ThisResource GetByCtid( string ctid )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
 
-            return EntityMgr.GetSummaryByCtid( ctid );
+            return ResourceManager.GetSummaryByCtid( ctid );
         }
-        public static ThisEntity GetDetailByCtid( string ctid, bool includingProcessProfiles, bool skippingCache = false )
+        public static ThisResource GetDetailByCtid( string ctid, bool includingProcessProfiles, bool skippingCache = false )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
-            var assessment = EntityMgr.GetSummaryByCtid( ctid );
+            var assessment = ResourceManager.GetSummaryByCtid( ctid );
 
             return GetDetail( assessment.Id, skippingCache );
         }
-        //      public static ThisEntity GetBasic( int id )
-        //      {
-        //          ThisEntity entity = EntityMgr.GetBasic( id );
-        //          return entity;
-        //}
+  //      public static ThisResource GetBasic( int id )
+  //      {
+  //          ThisResource entity = ResourceManager.GetBasic( id );
+  //          return entity;
+		//}
 
-        public static ThisEntity GetDetail( int id, bool skippingCache = false )
+		public static ThisResource GetDetail( int id, bool skippingCache = false )
+		{
+			AssessmentRequest request = new AssessmentRequest( 1 )
+			{
+				AllowCaching = !skippingCache,
+				IncludingProcessProfiles = true
+			};
+			request.AllowCaching = !skippingCache;
+			return GetDetail( id, request );
+		}
+
+		public static ThisResource GetDetail( int id, AssessmentRequest request )
         {
-            AssessmentRequest request = new AssessmentRequest( 1 )
-            {
-                AllowCaching = !skippingCache,
-                IncludingProcessProfiles = true
-            };
-            request.AllowCaching = !skippingCache;
-            return GetDetail( id, request );
-        }
+			int cacheMinutes = UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 );
+			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
+			string key = "asmt_" + id.ToString();
 
-        public static ThisEntity GetDetail( int id, AssessmentRequest request )
-        {
-            int cacheMinutes = UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 );
-            DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
-            string key = "asmt_" + id.ToString();
+			if ( request.AllowCaching 
+				&& HttpRuntime.Cache[ key ] != null 
+				&& cacheMinutes > 0 )
+			{
+				var cache = ( CachedAssessment )HttpRuntime.Cache[ key ];
+				try
+				{
+					if ( cache.lastUpdated > maxTime )
+					{
+						LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".GetDetail === Using cached version of Asmt, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
+						return cache.Item;
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 6, thisClassName + ".GetDetail === exception " + ex.Message );
+				}
+			}
+			else
+			{
+				LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".GetDetail === Retrieving full version of Asmt, Id: {0}", id ) );
+			}
 
-            if ( request.AllowCaching
-                && HttpRuntime.Cache[key] != null
-                && cacheMinutes > 0 )
-            {
-                var cache = ( CachedAssessment ) HttpRuntime.Cache[key];
-                try
-                {
-                    if ( cache.lastUpdated > maxTime )
-                    {
-                        LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".GetDetail === Using cached version of Asmt, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
-                        return cache.Item;
-                    }
-                }
-                catch ( Exception ex )
-                {
-                    LoggingHelper.DoTrace( 6, thisClassName + ".GetDetail === exception " + ex.Message );
-                }
-            }
-            else
-            {
-                LoggingHelper.DoTrace( 8, thisClassName + string.Format( ".GetDetail === Retrieving full version of Asmt, Id: {0}", id ) );
-            }
-
-            DateTime start = DateTime.Now;
-            ThisEntity entity = EntityMgr.GetForDetail( id, request );
+			DateTime start = DateTime.Now;
+			ThisResource entity = ResourceManager.GetForDetail( id, request );
             if ( entity.EntityStateId == 0 )
                 return entity;
 
-            DateTime end = DateTime.Now;
-            int elasped = ( end - start ).Seconds;
-            //Cache the output if more than specific seconds,
-            //NOTE need to be able to force it for imports
-            //&& elasped > 2
-            if ( key.Length > 0 && cacheMinutes > 0 && elasped > 6 )
-            {
-                var newCache = new CachedAssessment()
-                {
-                    Item = entity,
-                    lastUpdated = DateTime.Now
-                };
-                if ( HttpContext.Current != null )
-                {
-                    if ( HttpContext.Current.Cache[key] != null )
-                    {
-                        HttpRuntime.Cache.Remove( key );
-                        HttpRuntime.Cache.Insert( key, newCache );
+			DateTime end = DateTime.Now;
+			int elasped = ( end - start ).Seconds;
+			//Cache the output if more than specific seconds,
+			//NOTE need to be able to force it for imports
+			//&& elasped > 2
+			if ( key.Length > 0 && cacheMinutes > 0 && elasped > 6 )
+			{
+				var newCache = new CachedAssessment()
+				{
+					Item = entity,
+					lastUpdated = DateTime.Now
+				};
+				if ( HttpContext.Current != null )
+				{
+					if ( HttpContext.Current.Cache[ key ] != null )
+					{
+						HttpRuntime.Cache.Remove( key );
+						HttpRuntime.Cache.Insert( key, newCache );
 
-                        LoggingHelper.DoTrace( 6, string.Format( "==={0}.GetDetail $$$ Updating cached version of Asmt, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
-                    }
-                    else
-                    {
-                        LoggingHelper.DoTrace( 6, string.Format( "==={0}.GetDetail ****** Inserting new cached version of Asmt, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
+						LoggingHelper.DoTrace( 6, string.Format( "==={0}.GetDetail $$$ Updating cached version of Asmt, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 6, string.Format( "==={0}.GetDetail ****** Inserting new cached version of Asmt, Id: {1}, {2}", thisClassName, entity.Id, entity.Name ) );
 
-                        System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
-                    }
-                }
-            }
-            else
-            {
-                LoggingHelper.DoTrace( 7, string.Format( "==={0}.GetDetail $$$$$$ skipping caching of Asmt, Id: {1}, {2}, elasped:{3}", thisClassName, entity.Id, entity.Name, elasped ) );
-            }
-            return entity;
+						System.Web.HttpRuntime.Cache.Insert( key, newCache, null, DateTime.Now.AddMinutes( cacheMinutes ), TimeSpan.Zero );
+					}
+				}
+			}
+			else
+			{
+				LoggingHelper.DoTrace( 7, string.Format( "==={0}.GetDetail $$$$$$ skipping caching of Asmt, Id: {1}, {2}, elasped:{3}", thisClassName, entity.Id, entity.Name, elasped ) );
+			}
+			return entity;
         }
 
 
@@ -492,14 +492,14 @@ namespace workIT.Services
         #endregion
 
     }
-    public class CachedAssessment
-    {
-        public CachedAssessment()
-        {
-            lastUpdated = DateTime.Now;
-        }
-        public DateTime lastUpdated { get; set; }
-        public ThisEntity Item { get; set; }
+	public class CachedAssessment
+	{
+		public CachedAssessment()
+		{
+			lastUpdated = DateTime.Now;
+		}
+		public DateTime lastUpdated { get; set; }
+		public ThisResource Item { get; set; }
 
-    }
+	}
 }

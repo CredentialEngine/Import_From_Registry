@@ -14,6 +14,7 @@ using CM = workIT.Models.Common;
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 using Newtonsoft.Json;
+using System.Security.Cryptography;
 //Entity_AggregateDataProfileManager
 namespace workIT.Factories
 {
@@ -40,8 +41,17 @@ namespace workIT.Factories
 			var currentRecords = GetAll( parent );
 
 			//may need to delete all here, as cannot easily/dependably look up the profile
-			DeleteAll( parent.EntityUid, ref status );
+			//need to handle existing dataset profiles that may be different than the one referenced here. Logically the dsp will be imported after the source resource like lopp/cred.
+			//Or for ProPath issue where
+			//		DSP - Entity - Entity.LearningOpportunity
+			//		the dsp import will delete all entity.lopp before adding, but old dsps are the problem
+			//		Here the problem is by deleting the eadp, the related dsp is deleted. Then the ids in releventDataSetProfiles will no longer be valid
+			//	If we don't delete, then have no means to match previous. If there is just one of each then straightforward
+			//var dspList = list.Select( x => x.RelevantDataSetList ).ToList();
+			//var f = ( List<int> ) list.Where( s => s.RelevantDataSetList != null ).Select( g => g.Id );
+            DeleteAll( parent.EntityUid, ref status );
 
+			//hmm, if we just deleted all, then does that not imply to alway reindexz/
 			if (  currentRecords.Count != listCount )
 				status.UpdateElasticIndex = true;
 			//
@@ -50,7 +60,7 @@ namespace workIT.Factories
 				return true;
 			}
 
-			//now be still do a delete all until implementing a balance line
+			//now maybe still do a delete all until implementing a balance line
 			//could set date and delete all before this date!
 			DateTime updateDate = DateTime.Now;
 			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
@@ -262,7 +272,7 @@ namespace workIT.Factories
 
 			//JurisdictionProfile 
 			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
-			//do deletes 
+			//do deletes - these would already be gone on delete of Entity
 			jpm.DeleteAll( relatedEntity, ref status );
 			if ( !jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status ) )
 				isAllValid = false;
@@ -270,6 +280,8 @@ namespace workIT.Factories
 			//if ( !new DataSetProfileManager().SaveList( entity.RelevantDataSet, relatedEntity, ref status ) )
 			//	isAllValid = false;
 			//new
+			//need to check for previous dsps not in list
+			//darn, the dspId is set in the import (did an add pending), but then the dsp gets deleted when entity.adp gets deleted!
 			if ( !new DataSetProfileManager().SaveList( entity.RelevantDataSetList, relatedEntity, ref status ) )
 				isAllValid = false;
 
@@ -374,8 +386,52 @@ namespace workIT.Factories
 			return list;
 		}//
 
+		/// <summary>
+		/// Check if the provided dataSetProfileId is already referenced by a related Entity.AggregateDataProfile.
+		/// If true, then likely the relationship under the DataSetProfile.Entity will not be created.
+		/// </summary>
+		/// <param name="parentEntityId"></param>
+		/// <param name="datasetProfileId"></param>
+		/// <returns></returns>
+        public static bool ReferencesDataSetProfile( int parentEntityId, int datasetProfileId )
+        {
 
-		private static void MapToDB( ThisEntity input, DBEntity output )
+            try
+            {
+				using ( var context = new EntityContext() )
+				{
+					//context.Configuration.LazyLoadingEnabled = false;
+					var list1 = from eadp			in context.Entity_AggregateDataProfile
+								join parentEntity	in context.Entity on eadp.EntityId equals parentEntity.Id
+								join eadpEntity		in context.Entity on eadp.RowId equals eadpEntity.EntityUid
+								join edsp			in context.Entity_DataSetProfile on eadpEntity.Id equals edsp.EntityId
+								//don't really have to do the join(check indices as well - very slow in sql)
+								join dsp			in context.DataSetProfile on edsp.DataSetProfileId equals dsp.Id
+
+								where eadp.EntityId == parentEntityId && edsp.DataSetProfileId == datasetProfileId && dsp.EntityStateId == 3
+								select new
+								{
+									parentEntity.EntityTypeId,
+									parentEntity.EntityBaseId,
+									parentEntity.EntityBaseName,
+									DataSetProfileId = dsp.Id
+								};
+                    if ( list1 != null && list1.Count() > 0 )
+                    {
+						//any hits means true
+						return true;
+                    }
+
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".ReferencesDataSetProfile() for: parentEntityId: {0}, datasetProfileId: {1}", parentEntityId, datasetProfileId ) );
+            }
+            return false;
+        }//
+
+        private static void MapToDB( ThisEntity input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -400,7 +456,9 @@ namespace workIT.Factories
 			output.MedianEarnings = input.MedianEarnings;
 			output.HighEarnings = input.HighEarnings;
 			output.PostReceiptMonths = input.PostReceiptMonths;
-			output.Source = input.Source;
+
+			output.Source = !string.IsNullOrWhiteSpace( input.Source ) ? input.Source : null;
+			output.FacultyToStudentRatio = !string.IsNullOrWhiteSpace( input.FacultyToStudentRatio ) ? input.FacultyToStudentRatio : null;
 
 			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
 			{
@@ -449,6 +507,7 @@ namespace workIT.Factories
 			output.HighEarnings = ( input.HighEarnings ?? 0 );
 			output.PostReceiptMonths = ( input.PostReceiptMonths ?? 0 );
 			output.Source = GetUrlData( input.Source );
+			output.FacultyToStudentRatio = input.FacultyToStudentRatio;
 
 			output.Currency = input.Currency;
 			if ( !string.IsNullOrWhiteSpace( output.Currency ) )
@@ -512,7 +571,7 @@ namespace workIT.Factories
 			var entity = new ThisEntity();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			LoggingHelper.DoTrace( 8, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 			var summary = "";
 			var lineBreak = "";
 			try

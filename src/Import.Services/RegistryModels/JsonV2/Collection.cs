@@ -13,7 +13,7 @@ namespace RA.Models.JsonV2
 		public string Type { get; set; } = "ceterms:Collection";
 
 		[JsonProperty( "@id" )]
-		public string CtdlId { get; set; }  //		/resource
+		public string CtdlId { get; set; }  
 
 		[JsonProperty( "ceterms:ctid" )]
 		public string CTID { get; set; }
@@ -49,8 +49,15 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:hasMember" )]
 		public List<string> HasMember { get; set; }
 
-		//The primary language used in or by this resource.
-		[JsonProperty( "ceterms:inLanguage" )]
+
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
+
+        //The primary language used in or by this resource.
+        [JsonProperty( "ceterms:inLanguage" )]
 		public List<string> InLanguage { get; set; }
 
 		/// <summary>

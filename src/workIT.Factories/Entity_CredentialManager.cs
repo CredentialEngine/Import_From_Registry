@@ -21,7 +21,8 @@ namespace workIT.Factories
 	public class Entity_CredentialManager : BaseFactory
 	{
 		static string thisClassName = "Entity_CredentialManager";
-
+		public static int RelationshipType_HasPart = 1;
+		public static int RelationshipType_IsPartOf = 2;
 		#region Entity Persistance ===================
 		/// <summary>
 		/// Add a has part relationship targetting a credential
@@ -272,8 +273,9 @@ namespace workIT.Factories
 		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
 		/// </summary>
 		/// <param name="parentUid"></param>
+		/// <param name="relationshipTypeId">1:HasPart, 2:IsPartOf, 3:ETPL, 4:TargetResource</param>
 		/// <returns></returns>
-		public static List<Credential> GetAll( Guid parentUid, int relationshipTypeId = 1, bool isForDetailPageCondition = false )
+		public static List<Credential> GetAll( Guid parentUid, int relationshipTypeId, bool isForDetailPageCondition = false )
 		{
 			ThisEntity entity = new ThisEntity();
 			List<Credential> list = new List<Credential>();
@@ -290,12 +292,13 @@ namespace workIT.Factories
 					//context.Configuration.LazyLoadingEnabled = false;
 
 					List<DBEntity> results = context.Entity_Credential
-							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
+							.Where( s => s.EntityId == parent.Id && ( relationshipTypeId == 0 || s.RelationshipTypeId == relationshipTypeId ) )
 							.OrderBy( s => s.Id )
 							.ToList();
 
 					if ( results != null && results.Count > 0 )
 					{
+						var owningOrg = new Organization();
 						foreach ( DBEntity item in results )
 						{
 							entity = new ThisEntity();
@@ -337,7 +340,7 @@ namespace workIT.Factories
 		{
 			to.Id = from.Id;
 			to.CredentialId = from.CredentialId;
-			to.ParentId = from.EntityId;
+			to.RelatedEntityId = from.EntityId;
 			to.RelationshipTypeId = from.RelationshipTypeId;
 
 			//to.Credential = from.Credential;
@@ -358,7 +361,7 @@ namespace workIT.Factories
 				else
 				{
 					to.ProfileSummary = string.Format( "Credential ({0}) has not been downloaded", to.CredentialId );
-					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".MapFromDB() Credential ({0}) has not been downloaded. ParentEntityId: {1}, Entity.CredentialId: {2}", to.CredentialId, to.ParentId, to.Id ) );
+					LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".MapFromDB() Credential ({0}) has not been downloaded. ParentEntityId: {1}, Entity.CredentialId: {2}", to.CredentialId, to.RelatedEntityId, to.Id ) );
 				}
 			}
 
@@ -374,7 +377,7 @@ namespace workIT.Factories
 
 			to.Id = from.Id;
 			to.RowId = from.RowId;
-
+			
 			to.Name = from.Name;
 			to.FriendlyName = FormatFriendlyTitle( from.Name );
 
@@ -382,11 +385,11 @@ namespace workIT.Factories
 
 			to.SubjectWebpage = from.SubjectWebpage;
 			to.CTID = from.CTID;
-			to.EntityStateId = ( int ) from.EntityStateId;
+            to.EntityStateId = (int)from.EntityStateId;
 			// 16-06-15 mp - always include credential type
 			//can be null for a pending record
 			to.CredentialTypeId = ( int ) ( from.CredentialTypeId ?? 0 );
-			if ( to.CredentialTypeId > 0 )
+			if ( to.CredentialTypeId  > 0)
 			{
 				CodeItem ct = CodesManager.Codes_PropertyValue_Get( to.CredentialTypeId );
 				if ( ct != null && ct.Id > 0 )
@@ -395,9 +398,9 @@ namespace workIT.Factories
 					to.CredentialTypeSchema = ct.SchemaName;
 				}
 
-				to.CredentialTypeEnum = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE );
-				to.CredentialTypeEnum.Items.Add( new EnumeratedItem() { Id = to.CredentialTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
-			}
+                to.CredentialTypeEnum = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_TYPE );
+                to.CredentialTypeEnum.Items.Add( new EnumeratedItem() { Id = to.CredentialTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+            }
 
 			if ( from.ImageUrl != null && from.ImageUrl.Trim().Length > 0 )
 				to.Image = from.ImageUrl;
@@ -410,19 +413,19 @@ namespace workIT.Factories
 
 			//Added these because they were needed on the detail page - NA 6/1/2017
 			//try to cache this, so don't look up 100+ times for Nocti
-			to.OwningAgentUid = from.OwningAgentUid ?? Guid.Empty;
-			to.OwningOrganization = OrganizationManager.GetForSummary( to.OwningAgentUid );
+			to.PrimaryAgentUID = from.OwningAgentUid ?? Guid.Empty;
+			to.PrimaryOrganization = OrganizationManager.GetForSummary( to.PrimaryAgentUID );
 
 			//21-06-29 mp - minimize data collected - skipping
 			//to.AudienceLevelType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL );
 
 			////to.Occupation = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-			//         to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
-			//         to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+   //         to.Occupation = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+   //         to.OtherOccupations = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 
-			//         //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-			//         to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
-			//         to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+   //         //to.Industry = Entity_FrameworkItemManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+   //         to.Industry = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+   //         to.OtherIndustries = Entity_ReferenceManager.GetAll( to.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
 
 			//to.InstructionalProgramType = Reference_FrameworksManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
 

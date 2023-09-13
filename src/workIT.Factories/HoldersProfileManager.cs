@@ -100,9 +100,6 @@ namespace workIT.Factories
 
 							if ( efEntity.EntityStateId == 0 )
 							{
-								var url = string.Format( UtilityManager.GetAppKeyValue( "credentialFinderSite" ) + "HoldersProfile/{0}", efEntity.Id );
-								//notify, and???
-								//EmailManager.NotifyAdmin( "Previously Deleted HoldersProfile has been reactivated", string.Format( "<a href='{2}'>HoldersProfile: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "HoldersProfile",

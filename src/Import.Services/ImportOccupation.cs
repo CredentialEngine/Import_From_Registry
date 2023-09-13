@@ -8,10 +8,12 @@ using Newtonsoft.Json.Linq;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Services;
 using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.OccupationServices;
+using ResourceServices = workIT.Services.OccupationServices;
+using APIResourceServices = workIT.Services.API.OccupationServices;
 using InputEntity = RA.Models.JsonV2.Occupation;
 using JInput = RA.Models.JsonV2;
 using ThisEntity = workIT.Models.Common.OccupationProfile;
@@ -20,9 +22,10 @@ namespace Import.Services
 {
 	public class ImportOccupation
 	{
-		int entityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
+        readonly int EntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
 		string thisClassName = "ImportOccupations";
-		ImportManager importManager = new ImportManager();
+        readonly string ResourceType = "Occupation";
+        ImportManager importManager = new ImportManager();
 		ThisEntity output = new ThisEntity();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
@@ -44,7 +47,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -85,7 +88,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -119,7 +122,7 @@ namespace Import.Services
 			List<string> messages = new List<string>();
 			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
 			//store envelope
-			int newImportId = importHelper.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
+			int newImportId = importHelper.Add( item, EntityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
 			if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
 			{
 				//add indicator of current recored
@@ -200,7 +203,7 @@ namespace Import.Services
 			LoggingHelper.DoTrace( 6, "ImportOccupations - entered." );
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
 			InputEntity input = new InputEntity();
 			var mainEntity = new Dictionary<string, object>();
@@ -245,7 +248,7 @@ namespace Import.Services
 				}
 			}
 
-			MappingHelperV3 helper = new MappingHelperV3( entityTypeId );
+			MappingHelperV3 helper = new MappingHelperV3( EntityTypeId );
 			helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
 			helper.CurrentEntityName = input.Name.ToString();
@@ -283,8 +286,18 @@ namespace Import.Services
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.CTID = input.CTID;
-				//TBD handling of referencing third party publisher
-				helper.MapOrganizationPublishedBy( output, ref status );
+                //NOTE: there is no asserting org for occupation, etc. It doesn't make sense. Add the data publisher as the primary
+				if ( BaseFactory.IsValidCtid( status.DocumentOwnedBy))
+				{
+					output.PrimaryOrganization = OrganizationServices.GetSummaryByCtid(status.DocumentOwnedBy );
+					if ( output.PrimaryOrganization != null && output.PrimaryOrganization.Id > 0 )
+						output.PrimaryAgentUID = output.PrimaryOrganization.RowId;
+				} else
+				{
+					//always should be here
+				}
+                //TBD handling of referencing third party publisher
+                helper.MapOrganizationPublishedBy( output, ref status );
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
@@ -292,7 +305,7 @@ namespace Import.Services
 				//		Competency, Job, Occupation. Task, WorkRole
 				output.AbilityEmbodied = input.AbilityEmbodied;
 				//output.AbilitiesIds = helper.MapEntityReferences( input.AbilityEmbodied, 0, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
-				output.AbilityEmbodiedIds = helper.MapEntityReferenceGuids( "Occupation.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+				output.AbilityEmbodiedUIDs = helper.MapEntityReferenceGuids( "Occupation.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
 
 				output.CodedNotation = input.CodedNotation;
 
@@ -303,14 +316,30 @@ namespace Import.Services
 				//
 				//
 				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
-				//HasJob
+				if ( output.Comment != null && output.Comment.Count() > 0 )
+				{
+					output.CommentJson = JsonConvert.SerializeObject( output.Comment, MappingHelperV3.GetJsonSettings() );
+				}
+                //HasJob
 
-				//HasSpecialization
+                //HasSpecialization
+                if (input.HasSpecialization != null && input.HasSpecialization.Count > 0)
+                    output.HasSpecializationIds = helper.MapEntityReferences( $"{ResourceType}.HasSpecialization", input.HasSpecialization, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
+
+                if (input.IsSpecializationOf != null && input.IsSpecializationOf.Count > 0)
+                    output.IsSpecializationOfIds = helper.MapEntityReferences( $"{ResourceType}.IsSpecializationOf", input.IsSpecializationOf, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
+                //
+                //HasTask
+                if (input.HasJob != null && input.HasJob.Count > 0)
+					output.HasJobIds = helper.MapEntityReferences( $"{ResourceType}.HasJob", input.HasJob, CodesManager.ENTITY_TYPE_JOB_PROFILE, ref status );
 
 				//HasWorkRole
+				if (input.HasWorkRole != null && input.HasWorkRole.Count > 0)
+                    output.HasWorkRoleIds = helper.MapEntityReferences( $"{ResourceType}.HasWorkRole", input.HasWorkRole, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, ref status );
 
-				//
-				output.Identifier = helper.MapIdentifierValueListInternal( input.Identifier );
+
+                //
+                output.Identifier = helper.MapIdentifierValueListInternal( input.Identifier );
 				if ( output.Identifier != null && output.Identifier.Count() > 0 )
 				{
 					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
@@ -354,6 +383,19 @@ namespace Import.Services
 
 				//adding common import pattern
 				importSuccessfull = mgr.Import( output, ref status );
+				if (importSuccessfull)
+				{
+                    var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
+                    if ( resource != null && resource.Meta_Id > 0 )
+                    {
+                        var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+                        var statusMsg = "";
+                        if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                        {
+                            status.AddError( statusMsg );
+                        }
+                    }
+                }
 				//
 				status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/occupation/{0}", output.Id );
@@ -361,7 +403,7 @@ namespace Import.Services
 				//if record was added to db, add to/or set EntityResolution as resolved
 				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
 						ctid,
-						entityTypeId,
+						EntityTypeId,
 						output.RowId,
 						output.Id,
 						( output.Id > 0 ),
@@ -388,7 +430,7 @@ namespace Import.Services
 		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetByCtid( ctid );
+			entity = ResourceServices.GetMinimumByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

@@ -54,6 +54,8 @@ namespace workIT.Factories
         public static int ROLE_TYPE_Regulates = 12;
         public static int ROLE_TYPE_RenewedBy = 13;
         public static int ROLE_TYPE_Renews = 13;
+        public static int ROLE_TYPE_RegisteredBy = 14;
+
         public static int ROLE_TYPE_DEPARTMENT = 20;
         public static int ROLE_TYPE_SUBSIDIARY = 21;
         public static int ROLE_TYPE_PARENT_ORG = 22;
@@ -64,11 +66,15 @@ namespace workIT.Factories
 
 		#region context valid roles constants
 		//todo make table driven
-		public static string VALID_ROLES_OWNER = "2,6,7,10,11,";
+		public static string VALID_ROLES_OWNER = "2,6,7,10,11,13,";
         public static string VALID_ROLES_QA = "1,2,10,11,";
         public static string VALID_ROLES_ORG_QA = "1,2,10,";
         public static string VALID_ROLES_OFFERED_BY = "7,";
-        //Entity_AgentRelationshipManager.VALID_ROLES_OWNER
+        //get owns/offers roles
+        public static List<string> GetOwnsOffersRoles()
+        {
+            return new List<string>() { "6", "7" };
+        }
         #endregion
 
         #region roles persistance ==================
@@ -109,7 +115,7 @@ namespace workIT.Factories
                 Organization org = OrganizationManager.Exists( agentUid );
                 if ( org == null || org.Id == 0 )
                 {
-                    status.AddWarning( string.Format( "The agent was not found, for entityId: {0}, AgentId:{1}, RoleId: {2}", parentId, agentUid, roleId ) );
+                    status.AddWarning( string.Format( "AgentRelationship: The agent was not found, for entityId: {0}, AgentId: {1}, RoleId: {2}", parentId, agentUid, roleId ) );
                     LoggingHelper.DoTrace( 6, thisClassName + string.Format( ".Entity_AgentRole_Add the agent was not found, for entityId: {0}, AgentId:{1}, RoleId: {2}", parentId, agentUid, roleId ) );
                     return 0;
                 }
@@ -273,7 +279,7 @@ namespace workIT.Factories
             to.Id = from.EntityAgentRelationshipId;
             to.RowId = from.RowId;
 
-            to.ParentId = from.EntityId;
+            to.RelatedEntityId = from.EntityId;
             //to.ParentUid = from.SourceEntityUid;
             to.ParentTypeId = from.SourceEntityTypeId;
             to.ActingAgentUid = from.ActingAgentUid;
@@ -341,7 +347,7 @@ namespace workIT.Factories
             foreach ( EnumeratedItem e in profile.AgentRole.Items )
             {
                 entity = new OrganizationRoleProfile();
-                entity.ParentId = profile.ParentId;
+                entity.RelatedEntityId = profile.RelatedEntityId;
                 entity.ActingAgentUid = profile.ActingAgentUid;
                 entity.ActingAgentId = profile.ActingAgentId;
                 entity.RoleTypeId = e.Id;
@@ -446,22 +452,77 @@ namespace workIT.Factories
 
 
 		} //
-		#endregion
+        #endregion
 
 
-		#region == NEW retrieval ==================
-		/// <summary>
-		/// QA assertions from third party - typically the owning org of the entity 
-		/// That is:
-		///		Credential - Entity - Entity.AgentRelationship - RelationshipTypeId by AgentUid 
-		///		
-		/// OR have option to get all
-		/// </summary>
-		/// <param name="targetEntityTypeId"></param>
-		/// <param name="targetEntityUid"></param>
-		/// <param name="owningOrgId"></param>
-		/// <returns></returns>
-		public static List<OrganizationRoleProfile> GetAllThirdPartyAssertionsForEntity( int targetEntityTypeId, Guid targetEntityUid, int owningOrgId, bool onlyQAAssertions = false )
+        #region == retrieval NEW ==================
+        public static List<Organization> GetAllOfferingOrgs( Guid parentUid )
+        {
+
+            Organization org = new Organization();
+            List<Organization> list = new List<Organization>();
+
+            using ( var context = new EntityContext() )
+            {
+                var list1 = from item	in context.Entity_AgentRelationship
+                            join entity in context.Entity on item.EntityId equals entity.Id
+                            join agent	in context.Organization on item.AgentUid equals agent.RowId      
+                            //join codes in context.Codes_CredentialAgentRelationship on item.RelationshipTypeId equals codes.Id
+                            where entity.EntityUid == parentUid
+                                && agent.EntityStateId > 1    //the org can be a reference 
+								&& item.RelationshipTypeId == Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY
+
+                            select new
+                            {
+                                agent.Id,
+                                agent.RowId,
+                                agent.Name,
+                                agent.SubjectWebpage,
+                                agent.Description,
+                                agent.CTID,
+                                agent.EntityStateId,
+                                agent.ISQAOrganization
+                            };
+                var orgList = list1.OrderBy( m => m.Name ).ToList();
+
+
+                foreach ( var item in orgList )
+                {
+                    if ( item.EntityStateId < 2 )
+                        continue;
+                    org = new Organization
+                    {
+                        Id = item.Id,
+                        Name = item.Name,
+                        RowId = item.RowId,
+                        Description = item.Description,
+                        CTID = item.CTID,
+						SubjectWebpage = item.SubjectWebpage,
+						EntityStateId = (int)item.EntityStateId
+                    };
+                    list.Add( org );
+                }
+                return list;
+            }
+        } //
+
+
+        #endregion
+
+
+        #region == retrieval - UNDER REVIEW ==================
+        /// <summary>
+        /// QA assertions from third party - typically the owning org of the entity 
+        /// That is:
+        ///		Credential - Entity - Entity.AgentRelationship - RelationshipTypeId by AgentUid 
+        ///		
+        /// OR have option to get all
+        /// </summary>
+        /// <param name="targetEntityTypeId"></param>
+        /// <param name="targetEntityUid"></param>
+        /// <param name="owningOrgId"></param>
+        /// <returns></returns>
+        public static List<OrganizationRoleProfile> GetAllThirdPartyAssertionsForEntity( int targetEntityTypeId, Guid targetEntityUid, int owningOrgId, bool onlyQAAssertions = false )
 		{
 			OrganizationRoleProfile orp = new OrganizationRoleProfile();
 			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
@@ -545,7 +606,7 @@ namespace workIT.Factories
 							orp = new OrganizationRoleProfile
 							{
 								Id = 0,
-								ParentId = entity.OrgId,
+								RelatedEntityId = entity.OrgId,
 								ParentTypeId = 2,
 								ProfileSummary = entity.OrganizationName,
 								//get list of valid roles - why? Should it just be QA roles
@@ -654,10 +715,6 @@ namespace workIT.Factories
 
 		} //
 
-		#endregion
-
-
-		#region == retrieval ==================
 		private static bool AgentEntityRoleExists( int entityId, Guid agentUid, int roleId )
         {
             EntityAgentRelationship item = new EntityAgentRelationship();
@@ -673,232 +730,233 @@ namespace workIT.Factories
             }
             return false;
         }
-        private static bool AgentEntityRoleExists( Guid pParentUid, Guid agentUid, int roleId )
-        {
-            EntityAgentRelationship item = new EntityAgentRelationship();
-            Entity parent = EntityManager.GetEntity( pParentUid );
-            using ( var context = new EntityContext() )
-            {
-                EM.Entity_AgentRelationship entity = context.Entity_AgentRelationship.FirstOrDefault( s => s.EntityId == parent.Id
-                        && s.AgentUid == agentUid
-                        && s.RelationshipTypeId == roleId );
-                if ( entity != null && entity.Id > 0 )
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        //private static bool AgentEntityRoleExists( Guid pParentUid, Guid agentUid, int roleId )
+        //{
+        //    EntityAgentRelationship item = new EntityAgentRelationship();
+        //    Entity parent = EntityManager.GetEntity( pParentUid );
+        //    using ( var context = new EntityContext() )
+        //    {
+        //        EM.Entity_AgentRelationship entity = context.Entity_AgentRelationship.FirstOrDefault( s => s.EntityId == parent.Id
+        //                && s.AgentUid == agentUid
+        //                && s.RelationshipTypeId == roleId );
+        //        if ( entity != null && entity.Id > 0 )
+        //        {
+        //            return true;
+        //        }
+        //    }
+        //    return false;
+        //}
 
 
-		/// <summary>
-		/// Get summary version of roles (using CSV) - for use in lists
-		/// It will not return org to org roles like departments, and subsiduaries
-		/// </summary>
-		/// <param name="pParentUid"></param>
-		/// <param name="isParentActor"></param>
-		/// <returns></returns>
-		//public static List<OrganizationRoleProfile> AgentEntityRole_GetAllSummary( Guid pParentUid, bool isParentActor = false )
-		//{
-		//    //If parent is actor, then this is a direct role. 
-		//    //for ex. if called from assessments, then it is inverse, as the parent is the assessment, and the relate org is the actor
-		//    bool isInverseRole = !isParentActor;
+        /// <summary>
+        /// Get summary version of roles (using CSV) - for use in lists
+        /// It will not return org to org roles like departments, and subsiduaries
+        /// </summary>
+        /// <param name="pParentUid"></param>
+        /// <param name="isParentActor"></param>
+        /// <returns></returns>
+        //public static List<OrganizationRoleProfile> AgentEntityRole_GetAllSummary( Guid pParentUid, bool isParentActor = false )
+        //{
+        //    //If parent is actor, then this is a direct role. 
+        //    //for ex. if called from assessments, then it is inverse, as the parent is the assessment, and the relate org is the actor
+        //    bool isInverseRole = !isParentActor;
 
-		//    OrganizationRoleProfile orp = new OrganizationRoleProfile();
-		//    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
-		//    Entity parent = EntityManager.GetEntity( pParentUid );
-		//    using ( var context = new ViewContext() )
-		//    {
-		//        List<DBEntity> agentRoles = context.Entity_AgentRelationshipIdCSV
-		//            .Where( s => s.EntityId == parent.Id
-		//                 && s.IsInverseRole == isInverseRole )
-		//            .ToList();
-		//        foreach ( DBEntity entity in agentRoles )
-		//        {
+        //    OrganizationRoleProfile orp = new OrganizationRoleProfile();
+        //    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+        //    Entity parent = EntityManager.GetEntity( pParentUid );
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<DBEntity> agentRoles = context.Entity_AgentRelationshipIdCSV
+        //            .Where( s => s.EntityId == parent.Id
+        //                 && s.IsInverseRole == isInverseRole )
+        //            .ToList();
+        //        foreach ( DBEntity entity in agentRoles )
+        //        {
 
-		//            orp = new OrganizationRoleProfile();
+        //            orp = new OrganizationRoleProfile();
 
-		//            //warning for purposes of the editor, need to set the agent/object id to the orgId, and rowId from the org
-		//            orp.Id = entity.AgentRelativeId;
-		//            orp.RowId = ( Guid )entity.AgentUid;
+        //            //warning for purposes of the editor, need to set the agent/object id to the orgId, and rowId from the org
+        //            orp.Id = entity.AgentRelativeId;
+        //            orp.RowId = ( Guid )entity.AgentUid;
 
-		//            //parent, ex credential, assessment, or org in org-to-org
-		//            //Hmm should this be the entityId - need to be consistant
-		//            orp.ParentId = entity.EntityId;
-		//            //orp.ParentUid = entity.ParentUid;  //this the entityUid
-		//            //orp.ParentTypeId = entity.ParentTypeId; //this is wrong, it is the parent of the entity
+        //            //parent, ex credential, assessment, or org in org-to-org
+        //            //Hmm should this be the entityId - need to be consistant
+        //            orp.ParentId = entity.EntityId;
+        //            //orp.ParentUid = entity.ParentUid;  //this the entityUid
+        //            //orp.ParentTypeId = entity.ParentTypeId; //this is wrong, it is the parent of the entity
 
-		//            //useful for compare when doing deletes, and New checks
-		//            orp.ActingAgentUid = entity.AgentUid;
-		//            orp.ActingAgentId = entity.AgentRelativeId;
-		//            orp.ProfileName = entity.AgentName;
+        //            //useful for compare when doing deletes, and New checks
+        //            orp.ActingAgentUid = entity.AgentUid;
+        //            orp.ActingAgentId = entity.AgentRelativeId;
+        //            orp.ProfileName = entity.AgentName;
 
-		//            //may be included now, but with addition of person, and use of agent, it won't
+        //            //may be included now, but with addition of person, and use of agent, it won't
 
-		//            orp.ActingAgent = new Organization()
-		//            {
-		//                Id = entity.AgentRelativeId,
-		//                RowId = orp.ActingAgentUid,
-		//                Name = entity.AgentName,
-		//                SubjectWebpage = entity.AgentUrl,
-		//                Description = entity.AgentDescription,
-		//                ImageUrl = entity.AgentImageUrl
-		//            };
+        //            orp.ActingAgent = new Organization()
+        //            {
+        //                Id = entity.AgentRelativeId,
+        //                RowId = orp.ActingAgentUid,
+        //                Name = entity.AgentName,
+        //                SubjectWebpage = entity.AgentUrl,
+        //                Description = entity.AgentDescription,
+        //                ImageUrl = entity.AgentImageUrl
+        //            };
 
-		//            //don't need actual roles for summary, but including
-		//            orp.AllRoleIds = entity.RoleIds;
-		//            orp.AllRoles = entity.Roles.TrimEnd( ',', ' ', '\n' );
-		//            //could include roles in profile summary??, particularly if small)
+        //            //don't need actual roles for summary, but including
+        //            orp.AllRoleIds = entity.RoleIds;
+        //            orp.AllRoles = entity.Roles.TrimEnd( ',', ' ', '\n' );
+        //            //could include roles in profile summary??, particularly if small)
 
-		//            orp.ProfileSummary = entity.AgentName + " {" + orp.AllRoles + "}";
-		//            list.Add( orp );
-		//        }
+        //            orp.ProfileSummary = entity.AgentName + " {" + orp.AllRoles + "}";
+        //            list.Add( orp );
+        //        }
 
-		//        if ( list.Count > 0 )
-		//        {
-		//            var Query = ( from roles in list.OrderBy( p => p.ProfileSummary )
-		//                          select roles ).ToList();
-		//            list = Query;
-		//        }
-		//    }
-		//    return list;
+        //        if ( list.Count > 0 )
+        //        {
+        //            var Query = ( from roles in list.OrderBy( p => p.ProfileSummary )
+        //                          select roles ).ToList();
+        //            list = Query;
+        //        }
+        //    }
+        //    return list;
 
-		//} //
+        //} //
 
-		/// <summary>
-		/// Get All AgentEntity roles for the target entity - except where agent is the owner for the entity.
-		/// Each OrganizationRoleProfile has a list of the roles, not one role per profile
-		/// </summary>
-		/// <param name="pParentUid"></param>
-		/// <param name="owningAgentUid"></param>
-		/// <param name="excludingIfOfferedOnly">If true, and the only role is offeredBy, do not include</param>
-		/// <param name="isParentActor"></param>
-		/// <returns>Summary list of agents, with list of roles in entity</returns>
-		//public static List<OrganizationRoleProfile> AgentEntityRole_GetAllExceptOwnerSummary( Guid pParentUid, Guid owningAgentUid, bool excludingIfOfferedOnly, bool isParentActor = false )
-		//{
-		//    //If parent is actor, then this is a direct role. 
-		//    //for ex. if called from assessments, then it is inverse, as the parent is the assessment, and the relate org is the actor
-		//    bool isInverseRole = !isParentActor;
+        /// <summary>
+        /// Get All AgentEntity roles for the target entity - except where agent is the owner for the entity.
+        /// Each OrganizationRoleProfile has a list of the roles, not one role per profile
+        /// </summary>
+        /// <param name="pParentUid"></param>
+        /// <param name="owningAgentUid"></param>
+        /// <param name="excludingIfOfferedOnly">If true, and the only role is offeredBy, do not include</param>
+        /// <param name="isParentActor"></param>
+        /// <returns>Summary list of agents, with list of roles in entity</returns>
+        //public static List<OrganizationRoleProfile> AgentEntityRole_GetAllExceptOwnerSummary( Guid pParentUid, Guid owningAgentUid, bool excludingIfOfferedOnly, bool isParentActor = false )
+        //{
+        //    //If parent is actor, then this is a direct role. 
+        //    //for ex. if called from assessments, then it is inverse, as the parent is the assessment, and the relate org is the actor
+        //    bool isInverseRole = !isParentActor;
 
-		//    OrganizationRoleProfile orp = new OrganizationRoleProfile();
-		//    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
-		//    Entity parent = EntityManager.GetEntity( pParentUid );
+        //    OrganizationRoleProfile orp = new OrganizationRoleProfile();
+        //    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+        //    Entity parent = EntityManager.GetEntity( pParentUid );
 
-		//    using ( var context = new ViewContext() )
-		//    {
-		//        List<DBEntity> agentRoles = context.Entity_AgentRelationshipIdCSV
-		//            .Where( s => s.EntityId == parent.Id
-		//                 && s.AgentUid != owningAgentUid
-		//                 && s.IsInverseRole == isInverseRole )
-		//            .ToList();
-		//        foreach ( DBEntity entity in agentRoles )
-		//        {
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<DBEntity> agentRoles = context.Entity_AgentRelationshipIdCSV
+        //            .Where( s => s.EntityId == parent.Id
+        //                 && s.AgentUid != owningAgentUid
+        //                 && s.IsInverseRole == isInverseRole )
+        //            .ToList();
+        //        foreach ( DBEntity entity in agentRoles )
+        //        {
 
-		//            orp = new OrganizationRoleProfile();
+        //            orp = new OrganizationRoleProfile();
 
-		//            //warning for purposes of the editor, need to set the agent/object id to the orgId, and rowId from the org
-		//            orp.Id = entity.AgentRelativeId;
-		//            orp.RowId = ( Guid )entity.AgentUid;
+        //            //warning for purposes of the editor, need to set the agent/object id to the orgId, and rowId from the org
+        //            orp.Id = entity.AgentRelativeId;
+        //            orp.RowId = ( Guid )entity.AgentUid;
 
-		//            //parent, ex credential, assessment, or org in org-to-org
-		//            //Hmm should this be the entityId - need to be consistant
-		//            orp.ParentId = entity.EntityId;
+        //            //parent, ex credential, assessment, or org in org-to-org
+        //            //Hmm should this be the entityId - need to be consistant
+        //            orp.ParentId = entity.EntityId;
 
-		//            //useful for compare when doing deletes, and New checks
-		//            orp.ActingAgentUid = entity.AgentUid;
-		//            orp.ActingAgentId = entity.AgentRelativeId;
-		//            orp.ProfileName = entity.AgentName;
+        //            //useful for compare when doing deletes, and New checks
+        //            orp.ActingAgentUid = entity.AgentUid;
+        //            orp.ActingAgentId = entity.AgentRelativeId;
+        //            orp.ProfileName = entity.AgentName;
 
-		//            //may be included now, but with addition of person, and use of agent, it won't
+        //            //may be included now, but with addition of person, and use of agent, it won't
 
-		//            orp.ActingAgent = new Organization()
-		//            {
-		//                Id = entity.AgentRelativeId,
-		//                RowId = orp.ActingAgentUid,
-		//                Name = entity.AgentName,
-		//                SubjectWebpage = entity.AgentUrl,
-		//                Description = entity.AgentDescription,
-		//                ImageUrl = entity.AgentImageUrl
-		//            };
+        //            orp.ActingAgent = new Organization()
+        //            {
+        //                Id = entity.AgentRelativeId,
+        //                RowId = orp.ActingAgentUid,
+        //                Name = entity.AgentName,
+        //                SubjectWebpage = entity.AgentUrl,
+        //                Description = entity.AgentDescription,
+        //                ImageUrl = entity.AgentImageUrl
+        //            };
 
-		//            //don't need actual roles for summary, but including
-		//            //skip if only offered by
-		//            if ( excludingIfOfferedOnly == false || entity.RoleIds != "7" )
-		//            {
-		//                orp.AllRoleIds = entity.RoleIds;
-		//                orp.AllRoles = entity.Roles;
-		//                //could include roles in profile summary??, particularly if small)
+        //            //don't need actual roles for summary, but including
+        //            //skip if only offered by
+        //            if ( excludingIfOfferedOnly == false || entity.RoleIds != "7" )
+        //            {
+        //                orp.AllRoleIds = entity.RoleIds;
+        //                orp.AllRoles = entity.Roles;
+        //                //could include roles in profile summary??, particularly if small)
 
-		//                orp.ProfileSummary = entity.AgentName;
-		//                list.Add( orp );
-		//            }
+        //                orp.ProfileSummary = entity.AgentName;
+        //                list.Add( orp );
+        //            }
 
-		//        }
+        //        }
 
-		//        if ( list.Count > 0 )
-		//        {
-		//            var Query = ( from roles in list.OrderBy( p => p.ProfileSummary )
-		//                          select roles ).ToList();
-		//            list = Query;
-		//            //var Query = from roles in credential.OrganizationRole select roles;
-		//            //Query = Query.OrderBy( p => p.ProfileSummary );
-		//            //credential.OrganizationRole = Query.ToList();
-		//        }
-		//    }
-		//    return list;
+        //        if ( list.Count > 0 )
+        //        {
+        //            var Query = ( from roles in list.OrderBy( p => p.ProfileSummary )
+        //                          select roles ).ToList();
+        //            list = Query;
+        //            //var Query = from roles in credential.OrganizationRole select roles;
+        //            //Query = Query.OrderBy( p => p.ProfileSummary );
+        //            //credential.OrganizationRole = Query.ToList();
+        //        }
+        //    }
+        //    return list;
 
-		//} //
+        //} //
 
 
-		/// <summary>
-		/// Get All QA Roles for all assets for a credential
-		/// </summary>
-		/// <param name="pParentUid"></param>
-		/// <returns></returns>
-		//public static List<ThisEntity> CredentialAssets_GetAllQARoles( int credentialId )
-		//{
-		//    OrganizationRoleProfile orp = new OrganizationRoleProfile();
-		//    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+        /// <summary>
+        /// Get All QA Roles for all assets for a credential
+        /// </summary>
+        /// <param name="pParentUid"></param>
+        /// <returns></returns>
+        //public static List<ThisEntity> CredentialAssets_GetAllQARoles( int credentialId )
+        //{
+        //    OrganizationRoleProfile orp = new OrganizationRoleProfile();
+        //    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
 
-		//    using ( var context = new ViewContext() )
-		//    {
+        //    using ( var context = new ViewContext() )
+        //    {
 
-		//        List<Views.Credential_Assets_AgentRelationship_Totals> agentRoles = context.Credential_Assets_AgentRelationship_Totals
-		//            .Where( s => s.CredentialId == credentialId && s.QaCount > 0 )
-		//            .ToList();
+        //        List<Views.Credential_Assets_AgentRelationship_Totals> agentRoles = context.Credential_Assets_AgentRelationship_Totals
+        //            .Where( s => s.CredentialId == credentialId && s.QaCount > 0 )
+        //            .ToList();
 
-		//        return CredentialAssets_AgentRelationship_Fill( agentRoles );
-		//    }
+        //        return CredentialAssets_AgentRelationship_Fill( agentRoles );
+        //    }
 
-		//} //
+        //} //
 
-		/// <summary>
-		/// Get offered by roles for the credential, and all related assets.
-		/// </summary>
-		/// <param name="credentialId"></param>
-		/// <returns></returns>
-		//public static List<OrganizationRoleProfile> CredentialAssets_GetAllOfferedByRoles( int credentialId )
-		//{
+        /// <summary>
+        /// Get offered by roles for the credential, and all related assets.
+        /// </summary>
+        /// <param name="credentialId"></param>
+        /// <returns></returns>
+        //public static List<OrganizationRoleProfile> CredentialAssets_GetAllOfferedByRoles( int credentialId )
+        //{
 
-		//    OrganizationRoleProfile orp = new OrganizationRoleProfile();
-		//    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
+        //    OrganizationRoleProfile orp = new OrganizationRoleProfile();
+        //    List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
 
-		//    using ( var context = new ViewContext() )
-		//    {
-		//        List<Views.Credential_Assets_AgentRelationship_Totals> agentRoles = context.Credential_Assets_AgentRelationship_Totals
-		//            .Where( s => s.CredentialId == credentialId && s.OfferedCount > 0 )
-		//            .ToList();
+        //    using ( var context = new ViewContext() )
+        //    {
+        //        List<Views.Credential_Assets_AgentRelationship_Totals> agentRoles = context.Credential_Assets_AgentRelationship_Totals
+        //            .Where( s => s.CredentialId == credentialId && s.OfferedCount > 0 )
+        //            .ToList();
 
-		//        return CredentialAssets_AgentRelationship_Fill( agentRoles );
-		//    }
-		//} //
+        //        return CredentialAssets_AgentRelationship_Fill( agentRoles );
+        //    }
+        //} //
 
-		/// <summary>
-		/// Get offered by roles for the entity.
-		/// </summary>
-		/// <param name="credentialId"></param>
-		/// <returns></returns>
-		public static List<Organization> GetAllOfferingOrgs( Guid parentUid )
+        /// <summary>
+        /// Get offered by roles for the entity.
+        /// TODO - DEVELOP ALTERNATIVE THAT DOES NOT USE Entity_Relationship_AgentSummary
+        /// </summary>
+        /// <param name="credentialId"></param>
+        /// <returns></returns>
+        public static List<Organization> GetAllOfferingOrgsOLD( Guid parentUid )
 		{
 
 			Organization org = new Organization();
@@ -1098,7 +1156,7 @@ namespace workIT.Factories
                 orp.RowId = ( Guid )entity.AgentUid;
 
                 //parent, ex credential, assessment, or org in org-to-org
-                orp.ParentId = entity.EntityId;
+                orp.RelatedEntityId = entity.EntityId;
                 //orp.ParentUid = entity.ParentUid;
                 //orp.ParentTypeId = parent.EntityTypeId;
 
@@ -1167,102 +1225,11 @@ namespace workIT.Factories
             }
         }
 
-        /// <summary>
-        /// Get all entity agent roles as an enumeration - uses the summary CSV view
-        /// </summary>
-        /// <param name="pParentUid"></param>
-        /// <param name="isInverseRole"></param>
-        /// <returns></returns>
-        //public static List<OrganizationRoleProfile> AgentEntityRole_GetAll_AsEnumeration( Guid pParentUid, bool isInverseRole = true )
-        //{
-        //	OrganizationRoleProfile orp = new OrganizationRoleProfile();
-        //	List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
-        //	EnumeratedItem eitem = new EnumeratedItem();
-        //	Entity parent = EntityManager.GetEntity( pParentUid );
-
-        //	using ( var context = new ViewContext() )
-        //	{
-        //		List<DBEntity> agentRoles = context.Entity_AgentRelationshipIdCSV
-        //			.Where( s => s.EntityId == parent.Id
-        //				 && s.IsInverseRole == isInverseRole )
-        //			.ToList();
-
-        //		foreach ( DBEntity entity in agentRoles )
-        //		{
-        //			orp = new OrganizationRoleProfile();
-        //			orp.Id = 0;
-        //			orp.ParentId = entity.EntityId;
-        //			//orp.ParentUid = entity.ParentUid;
-        //			orp.ParentTypeId = parent.EntityTypeId;
-
-        //			orp.ActedUponEntityUid = entity.EntityUid;
-        //			orp.ActedUponEntityId = entity.EntityId;
-        //			orp.ActedUponEntity = new Entity()
-        //			{
-        //				Id = entity.EntityId,
-        //				RowId = entity.EntityUid,
-        //				EntityBaseName = entity.EntityBaseName
-        //			};
-
-        //			orp.ActingAgentUid = entity.AgentUid;
-        //			orp.ActingAgentId = entity.AgentRelativeId;
-        //			orp.ActingAgent = new Organization()
-        //			{
-        //				Id = entity.AgentRelativeId,
-        //				RowId = entity.AgentUid,
-        //				Name = entity.AgentName,
-        //				SubjectWebpage = entity.AgentUrl,
-        //				Description = entity.AgentDescription,
-        //				ImageUrl = entity.AgentImageUrl
-        //			};
-
-        //			orp.ProfileSummary = entity.EntityBaseName;
-
-        //			orp.AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE );
-        //			orp.AgentRole.ParentId = (int)entity.EntityBaseId;
-        //			orp.AgentRole.Items = new List<EnumeratedItem>();
-        //			string[] roles = entity.RoleIds.Split( ',' );
-
-        //			foreach ( string role in roles )
-        //			{
-        //				eitem = new EnumeratedItem();
-        //				//??
-        //				eitem.Id = int.Parse( role );
-        //				//not used here
-        //				eitem.RecordId = int.Parse( role );
-        //				eitem.CodeId = int.Parse( role );
-        //				eitem.Value = role.Trim();
-
-        //				eitem.Selected = true;
-        //				//don't have this from the csv list
-        //				//if ( ( bool ) role.IsQARole )
-        //				//{
-        //				//	eitem.IsSpecialValue = true;
-        //				//	if ( IsDevEnv() )
-        //				//		eitem.Name += " (QA)";
-        //				//}
-
-        //				orp.AgentRole.Items.Add( eitem );
-
-        //			}
-
-        //			list.Add( orp );
-        //			if ( list.Count > 0 )
-        //			{
-        //				var Query = ( from items in list.OrderBy( p => p.ProfileSummary )
-        //							  select items ).ToList();
-        //				list = Query;
-        //			}
-        //		}
-
-        //	}
-        //	return list;
-
-        //} //
 
         /// <summary>
         /// Get all roles for an entity. 
         /// The flat roles (one entity - role - agent per record) are read and returned as enumerations - fully filled out
+		/// ****TODO - this view is too general, includes many left joins
         /// </summary>
         /// <param name="pParentUid"></param>
         /// <param name="isInverseRole"></param>
@@ -1277,7 +1244,8 @@ namespace workIT.Factories
 
             using ( var context = new ViewContext() )
             {
-                //order by type, name (could have duplicate names!), then relationship
+                //TODO - this view is too general, includes many left joins
+				//23-07-10 mp - updated the view: using Entity_Cache, so removed the several left joins
                 List<DBentitySummary> agentRoles = context.Entity_Relationship_AgentSummary
                     .Where( s => s.EntityId == parent.Id
                          && s.IsInverseRole == isInverseRole )
@@ -1301,7 +1269,7 @@ namespace workIT.Factories
 
                         orp = new OrganizationRoleProfile();
                         orp.Id = 0;
-                        orp.ParentId = entity.EntityId;
+                        orp.RelatedEntityId = entity.EntityId;
                         //orp.ParentUid = entity.SourceEntityUid;
                         orp.ParentTypeId = parent.EntityTypeId;
 
@@ -1329,12 +1297,14 @@ namespace workIT.Factories
 
 
                     eitem = new EnumeratedItem();
-                    //??
+                    //??always confusion as to whether this should be the Id or RelationshipTypeId
                     eitem.Id = entity.EntityAgentRelationshipId;
+                    eitem.CodeId = entity.RelationshipTypeId;
+
                     eitem.RowId = entity.RowId.ToString();
                     //not used here
                     eitem.RecordId = entity.EntityAgentRelationshipId;
-                    eitem.CodeId = entity.RelationshipTypeId;
+                    
                     //???
                     //eitem.Value = entity.RelationshipTypeId.ToString();
                     //WARNING - the code table uses Accredited by as the title and the latter is actually the reverse (using our common context), so we need to reverse the returned values here 
@@ -1625,7 +1595,7 @@ namespace workIT.Factories
 					//this should control which relationship label is displayed (has dept or is dept of)
 					p.IsInverseRole = (bool)entity.IsInverseRole;
 
-					p.ParentId = thisOrg.Id;
+					p.RelatedEntityId = thisOrg.Id;
 					p.ParentTypeId = 2;
 
 					p.ActingAgentUid = thisOrg.RowId;
@@ -1785,7 +1755,7 @@ namespace workIT.Factories
                     //reversing the parent and agent for display
                     //16-10-31 mp - works for display, but still wrong for edit.
      
-                    p.ParentId = entity.EntityId;
+                    p.RelatedEntityId = entity.EntityId;
                     //p.ParentUid = entity.SourceEntityUid;
                     p.ParentTypeId = entity.SourceEntityTypeId;
 
@@ -1898,12 +1868,11 @@ namespace workIT.Factories
             {
 				var childRoles = context.Entity_Relationship_AgentSummary
 						.Where( (s => (s.ActingAgentUid == thisOrg.RowId
-							 && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY )
-							 ) 
+							 && ( s.RelationshipTypeId == ROLE_TYPE_DEPARTMENT || s.RelationshipTypeId == ROLE_TYPE_SUBSIDIARY ) ) 
 							// || ( s.EntityId == child.EntityId && s.RelationshipTypeId == ROLE_TYPE_PARENT_ORG ) 
 							 )
 							
-							 ).Distinct()
+							 ).Distinct()	//this is probably useless here?
 							 .OrderBy( s => s.RelationshipTypeId ).ThenBy( s => s.AgentName )
 						.ToList();
 
@@ -1939,7 +1908,7 @@ namespace workIT.Factories
                     }
                     p.IsInverseRole = entity.IsInverseRole ?? false;
 
-                    p.ParentId = entity.EntityId;
+                    p.RelatedEntityId = entity.EntityId;
                     p.ParentTypeId = entity.SourceEntityTypeId;
 
                     //ActingAgent is the parent org, but comes from the source
@@ -2029,7 +1998,7 @@ namespace workIT.Factories
 		//          EnumeratedItem eitem = new EnumeratedItem();
 		//          List<Credential> list = new List<Credential>();
 		//          Credential credential = new Credential();
-		//	if ( UtilityManager.GetAppKeyValue( "envType" ) == "production" )
+		//	if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" )
 		//	{
 		//		//show all for now in production
 		//		maxRecords = 0;
@@ -2232,15 +2201,15 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				var query = ( from entity	in context.Entity
-							  join agent	in context.Entity_AgentRelationship on entity.Id equals agent.EntityId
+							  join ear		in context.Entity_AgentRelationship on entity.Id equals ear.EntityId
 							  join artifact in context.Entity_Cache on entity.EntityUid equals artifact.EntityUid
-							  join org		in context.Organization on agent.AgentUid equals org.RowId
-							  join codes	in context.Codes_CredentialAgentRelationship on agent.RelationshipTypeId equals codes.Id
-							  where agent.AgentUid == orgUid
+							  join org		in context.Organization on ear.AgentUid equals org.RowId
+							  join codes	in context.Codes_CredentialAgentRelationship on ear.RelationshipTypeId equals codes.Id
+							  where ear.AgentUid == orgUid
 								   && entity.EntityTypeId == entityTypeId
 								   && artifact.EntityStateId == 3
 								   && org.EntityStateId == 3
-								  && ( agent.RelationshipTypeId == ROLE_TYPE_PUBLISHEDBY )
+								  && ( ear.RelationshipTypeId == ROLE_TYPE_PUBLISHEDBY )
 
 							  select new
 							  {
@@ -2258,6 +2227,7 @@ namespace workIT.Factories
 			}
 			return totalRecords;
 		}
+		/*
 		public static int CredentialCount_ForPublishedByOrg( Guid orgUid )
 		{
 			int totalRecords = 0;
@@ -2385,7 +2355,7 @@ namespace workIT.Factories
 			}
 			return totalRecords;
 		}
-		
+		*/
 		//
 		public static int AssessmentCount_ForOwningOfferingOrg( Guid orgUid)
 		{

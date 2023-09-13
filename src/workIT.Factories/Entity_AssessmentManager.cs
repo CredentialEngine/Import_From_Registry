@@ -237,7 +237,9 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					List<DBEntity> results = context.Entity_Assessment
-							.Where( s => s.EntityId == parent.Id && s.RelationshipTypeId == relationshipTypeId )
+							.Where( s => s.EntityId == parent.Id && 
+									( relationshipTypeId== 0 || s.RelationshipTypeId == relationshipTypeId )
+								)
 							.OrderBy( s => s.Assessment.Name )
 							.ToList();
 
@@ -249,13 +251,18 @@ namespace workIT.Factories
 
                             //need to distinguish between on a detail page for conditions and assessment detail
                             //would usually only want basics here??
-                            //17-05-26 mp- change to MapFromDB_Basic
                             if ( item.Assessment != null && item.Assessment.EntityStateId > 1 )
                             {
                                 AssessmentManager.MapFromDB_Basic( item.Assessment, entity,
-                                true,includingCosts,includingCompetencies );//includingCosts-not sure
-                                       //add competencies
-                                AssessmentManager.MapFromDB_Competencies( entity );
+													false, //for detail
+													includingCosts, 
+													includingCompetencies );
+												 
+								if ( includingCompetencies )
+								{
+									//21-06-01 mp - NOTE MapFromDB_Competencies is part of MapFromDB_Basic!!!
+									//AssessmentManager.MapFromDB_Competencies( entity );
+								}
                                 list.Add( entity );
                             }
 						}
@@ -296,10 +303,9 @@ namespace workIT.Factories
 						entity.ProfileSummary = from.Assessment.Name;
 						//to.Credential = from.Credential;
 						entity.Assessment = new AssessmentProfile();
-						AssessmentManager.MapFromDB_Basic( from.Assessment, entity.Assessment,
-								false
-								,false//includeCosts - propose to use for credential editor
-								,false//include competencies
+						AssessmentManager.MapFromDB_Basic( from.Assessment, entity.Assessment, false,
+								false, //includeCosts 
+								false //include competencies
 								);
 
 						if ( IsValidDate( from.Created ) )

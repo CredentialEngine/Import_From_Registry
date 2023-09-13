@@ -42,7 +42,7 @@ namespace workIT.Factories
 				status.AddError("A valid identifier was not provided to the Update method.");
 				return false;
 			}
-			if ( entity == null )
+			if ( entity == null || entity.Items.Count == 0)
 			{
 				entity = new Enumeration();
 				return true;
@@ -55,12 +55,17 @@ namespace workIT.Factories
 				return false;
 			}
 			string schemaName = "";
+			int cntr = 0;
 			using ( var context = new EntityContext() )
 			{
 				DBEntity op = new DBEntity();
-				
+				if ( categoryId == 18)
+                {
+
+                }
 				foreach (var item in entity.Items )
 				{
+					cntr++;
 					schemaName = "";
 					if ( !string.IsNullOrWhiteSpace( item.SchemaName ) )
 						schemaName = item.SchemaName;
@@ -70,17 +75,19 @@ namespace workIT.Factories
 					if ( !string.IsNullOrWhiteSpace( schemaName ) )
 					{
 						CodeItem code = CodesManager.Codes_PropertyValue_GetBySchema( categoryId, schemaName );
-						if ( code == null || code.Id == 0 && categoryId ==CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE && schemaName == "deliveryType:BlendedDelivery" )
+						if ( (code == null || code.Id == 0) && categoryId ==CodesManager.PROPERTY_CATEGORY_ASMT_DELIVERY_TYPE && schemaName.IndexOf("deliveryType") == 0 )
 						{
 							schemaName = schemaName.Replace( "deliveryType","assessmentDeliveryType" );
 							code = CodesManager.Codes_PropertyValue_GetBySchema( categoryId, schemaName );
 						}
 						if ( code != null && code.Id > 0)
 						{
-							op = new DBEntity();
-							op.EntityId = parent.Id;
-							op.PropertyValueId = code.Id;
-							op.Created = System.DateTime.Now;
+                            op = new DBEntity
+                            {
+                                EntityId = parent.Id,
+                                PropertyValueId = code.Id,
+                                Created = System.DateTime.Now
+                            };
                             //do a quick duplicates check
                             var property = context.Entity_Property.FirstOrDefault( s => s.EntityId == parent.Id && s.PropertyValueId == code.Id );
                             if ( property == null || property.Id == 0 )
@@ -97,7 +104,7 @@ namespace workIT.Factories
                             } else
                             {
                                 //not sure how can happen
-                                status.AddWarning( string.Format( thisClassName + ".AddProperties(). Duplicate property encountered for categoryId: {0}, propertyValueId: {1} parentTypeId: {2}, parent.Id: {3}. IGNORED  ", categoryId, code.Id, parentTypeId, parent.Id ) );
+                                status.AddWarning( string.Format( thisClassName + ".AddProperties(). Duplicate property encountered for categoryId: {0}, propertyValue: {1}, propertyValueId: {2}, parentTypeId: {3}, parent.Id: {4}. IGNORED  ", categoryId, code.Title, code.Id, parentTypeId, parent.Id ) );
                             }
 						}
 						else
@@ -109,13 +116,13 @@ namespace workIT.Factories
 					} else
 					{
 						//document invalid schema
-						status.AddWarning( string.Format( thisClassName + ".AddProperties(). Invalid schema name encountered of: '{0}' for categoryId: {1}, parentTypeId: {2}  ", schemaName, categoryId, parentTypeId ) ); 
+						status.AddWarning( string.Format( thisClassName + ".AddProperties(). NO schema name was provided for: '{0}' for categoryId: {1}, parentTypeId: {2}  ", entity.Name, categoryId, parentTypeId ) ); 
 						isAllValid = false;
 					}
 				}
 			}
 
-			if (updatedCount == 0 && isRequired )
+			if (updatedCount == 0 && cntr > 0 && isRequired )
 			{
 				//document invalid schema
 				status.AddError( string.Format( thisClassName + ".AddProperties(). Error a property is required for categoryId: {0}  ", categoryId ) );

@@ -1,28 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web;
 
-using workIT.Models;
-using workIT.Models.Common;
-using WMP= workIT.Models.ProfileModels;
-using WMA = workIT.Models.API;
-using workIT.Models.Search;
 using workIT.Factories;
+using workIT.Models.Common;
+using workIT.Models.Search;
 using workIT.Utilities;
-using ElasticHelper = workIT.Services.ElasticServices;
-using EntityHelper = workIT.Services.CredentialServices;
-using WorkITSearchServices = workIT.Services.SearchServices;
 
-using ThisEntity = workIT.Models.Common.Credential;
-using ThisEntityDetail = workIT.Models.API.CredentialDetail;
-using ThisSearchEntity = workIT.Models.Common.CredentialSummary;
-using EntityMgr = workIT.Factories.CredentialManager;
-
-using OutputEntity = workIT.Models.API.CredentialDetail;
 using CachedEntity = workIT.Services.API.CachedCredential;
+using ResourceManager = workIT.Factories.CredentialManager;
+using ThisResource = workIT.Models.Common.Credential;
+using OutputResource = workIT.Models.API.CredentialDetail;
+using WMA = workIT.Models.API;
+using WMP = workIT.Models.ProfileModels;
+using WorkITSearchServices = workIT.Services.SearchServices;
 
 namespace workIT.Services.API
 {
@@ -31,14 +23,14 @@ namespace workIT.Services.API
 		static string thisClassName = "API.CredentialServices";
 		public static string searchType = "Credential";
 
-		public static WMA.CredentialDetail GetDetailForAPI( int id, bool skippingCache = false )
+		public static OutputResource GetDetailForAPI( int id, bool skippingCache = false )
 		{
 			CredentialRequest cr = new CredentialRequest();
 			cr.IsAPIRequest();
 			cr.IncludingProcessProfiles = UtilityManager.GetAppKeyValue( "includeProcessProfileDetails",false);
 			cr.AllowCaching = !skippingCache;
 
-			OutputEntity outputEntity = new OutputEntity();
+			OutputResource outputEntity = new OutputResource();
 			if ( UsingCache( id, cr, ref outputEntity ) )
 			{
 				return outputEntity;
@@ -46,7 +38,7 @@ namespace workIT.Services.API
 			//only cache longer processes
 			DateTime start = DateTime.Now;
 			//var entity = EntityHelper.GetDetail( id, cr, skippingCache );
-			var entity = CredentialManager.GetForDetail( id, cr );
+			var entity = ResourceManager.GetForDetail( id, cr );
 
 			DateTime end = DateTime.Now;
 			//for now don't include the mapping in the elapsed
@@ -57,16 +49,16 @@ namespace workIT.Services.API
 			return outputEntity;
 
 		}
-		public static WMA.CredentialDetail GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
+		public static OutputResource GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
-			var credential = EntityMgr.GetMinimumByCtid( ctid );
+			var credential = ResourceManager.GetMinimumByCtid( ctid );
 			return GetDetailForAPI( credential.Id, skippingCache );
 
 		}
-		private static WMA.CredentialDetail MapToAPI( ThisEntity input )
+		private static OutputResource MapToAPI( ThisResource input )
 		{
 
-			var output = new WMA.CredentialDetail()
+			var output = new OutputResource()
 			{
 				Meta_Id = input.Id,
 				CTID = input.CTID,
@@ -79,7 +71,7 @@ namespace workIT.Services.API
 				CredentialRegistryURL = RegistryServices.GetResourceUrl( input.CTID )
 
 			};
-			if ( input.EntityStateId == 0 )
+			if (input.EntityStateId == 0)
 			{
 				return output;
 			}
@@ -96,26 +88,26 @@ namespace workIT.Services.API
 
 			//owned by and offered by 
 			//need a label link for header
-			if ( input.OwningOrganizationId > 0 )
+			if (input.OwningOrganizationId > 0)
 			{
-				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.OwningOrganization.FriendlyName );
+				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.PrimaryOrganization.FriendlyName );
 			}
 			//if there is just one org, and has both owned and offered by
 			//if ( ServiceHelper.AreOnlyRolesOwnsOffers( input.OrganizationRole ) )
 			//{
-				
+
 			//}
 			//else
 			{
 				var ownedBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
 				var offeredBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERED_BY );
-				if ( ownedBy != null && offeredBy != null && ownedBy.Count == 1 && offeredBy.Count == 1 
-					&& ownedBy[ 0 ].Meta_Id == offeredBy[ 0 ].Meta_Id )
+				if (ownedBy != null && offeredBy != null && ownedBy.Count == 1 && offeredBy.Count == 1
+					&& ownedBy[0].Meta_Id == offeredBy[0].Meta_Id)
 				{
 					//if ( ownedBy[ 0 ].Meta_Id == offeredBy[ 0 ].Meta_Id )
 					//{
 					//	//var ooBy = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
-						output.OwnedOfferedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
+					output.OwnedOfferedBy = ServiceHelper.MapOutlineToAJAX( ownedBy, "" );
 					//}
 				}
 				else
@@ -126,9 +118,9 @@ namespace workIT.Services.API
 				}
 			}
 			//should only do if different from owner! Actually only populated if by a 3rd party
-			//output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By");
+			output.Publisher = ServiceHelper.MapOutlineToAJAX( ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY ), "Published By" );
 			//QA for owner,not offerer
-			if ( input.OwningOrganizationQAReceived != null && input.OwningOrganizationQAReceived.Any() )
+			if (input.OwningOrganizationQAReceived != null && input.OwningOrganizationQAReceived.Any())
 			{
 				output.OwnerQAReceived = ServiceHelper.MapQAReceived( input.OwningOrganizationQAReceived, searchType );
 			}
@@ -136,36 +128,36 @@ namespace workIT.Services.API
 			output.EntityLastUpdated = input.EntityLastUpdated;
 			output.Meta_StateId = input.EntityStateId;
 			output.EntityTypeId = input.EntityTypeId;
-			if ( input.InLanguageCodeList != null && input.InLanguageCodeList.Any() )
+			if (input.InLanguageCodeList != null && input.InLanguageCodeList.Any())
 			{
 				//output.Meta_Language = input.InLanguageCodeList[ 0 ].TextTitle;
 				output.InLanguage = new List<string>();
-				foreach ( var item in input.InLanguageCodeList )
+				foreach (var item in input.InLanguageCodeList)
 				{
 					output.InLanguage.Add( item.TextTitle );
 				}
 			}
 			try
 			{
-				if ( input.HasVerificationType_Badge )
+				if (input.HasVerificationType_Badge)
 				{
 					//output.CTDLTypeLabel += " + Badge Issued";
 					output.Meta_HasVerificationBadge = true;
 				}
 				output.Image = input.Image;
 				//
-				if ( !string.IsNullOrWhiteSpace( input.AvailabilityListing ) )
+				if (!string.IsNullOrWhiteSpace( input.AvailabilityListing ))
 					output.AvailabilityListing = new List<string>() { input.AvailabilityListing };
-				if ( !string.IsNullOrWhiteSpace( input.AvailableOnlineAt ) )
+				if (!string.IsNullOrWhiteSpace( input.AvailableOnlineAt ))
 					output.AvailableOnlineAt = new List<string>() { input.AvailableOnlineAt };
 
-				if ( input.CopyrightHolderOrganization != null && input.CopyrightHolderOrganization.Any() )
+				if (input.CopyrightHolderOrganization != null && input.CopyrightHolderOrganization.Any())
 				{
 					output.CopyrightHolder = new List<WMA.Outline>();
 					//output.CopyrightHolder2 = new List<WMA.LabelLink>();
-					foreach ( var target in input.CopyrightHolderOrganization )
+					foreach (var target in input.CopyrightHolderOrganization)
 					{
-						if ( target != null && target.Id > 0 )
+						if (target != null && target.Id > 0)
 						{
 							//TODO - add overload to only get minimum data - like Link
 							output.CopyrightHolder.Add( ServiceHelper.MapToOutline( target, "organization" ) );
@@ -186,19 +178,19 @@ namespace workIT.Services.API
 				output.EstimatedDuration = ServiceHelper.MapDurationProfiles( input.EstimatedDuration );
 				output.RenewalFrequency = ServiceHelper.MapDurationItem( input.RenewalFrequency );
 				//
-				if ( input.DegreeConcentration != null && input.DegreeConcentration.Any() )
+				if (input.DegreeConcentration != null && input.DegreeConcentration.Any())
 					output.DegreeConcentration = ServiceHelper.MapPropertyLabelLinks( input.DegreeConcentration, searchType );
-				if ( input.DegreeMajor != null && input.DegreeMajor.Any() )
+				if (input.DegreeMajor != null && input.DegreeMajor.Any())
 					output.DegreeMajor = ServiceHelper.MapPropertyLabelLinks( input.DegreeMajor, searchType );
-				if ( input.DegreeMinor != null && input.DegreeMinor.Any() )
+				if (input.DegreeMinor != null && input.DegreeMinor.Any())
 					output.DegreeMinor = ServiceHelper.MapPropertyLabelLinks( input.DegreeMinor, searchType );
 				//
-				if ( input.EmbeddedCredentials != null && input.EmbeddedCredentials.Any() )
+				if (input.EmbeddedCredentials != null && input.EmbeddedCredentials.Any())
 				{
 					var hasPart = new List<WMA.Outline>();
-					foreach ( var target in input.EmbeddedCredentials )
+					foreach (var target in input.EmbeddedCredentials)
 					{
-						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						if (target != null && !string.IsNullOrWhiteSpace( target.Name ))
 							hasPart.Add( ServiceHelper.MapToOutline( target, searchType ) );
 					}
 					output.HasPart = ServiceHelper.MapOutlineToAJAX( hasPart, "Includes {0} Credential(s)" );
@@ -206,21 +198,21 @@ namespace workIT.Services.API
 
 				}
 				//
-				if ( input.IsPartOf != null && input.IsPartOf.Any() )
+				if (input.IsPartOf != null && input.IsPartOf.Any())
 				{
 					var isPartOf = new List<WMA.Outline>();
-					foreach ( var target in input.IsPartOf )
+					foreach (var target in input.IsPartOf)
 					{
-						if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+						if (target != null && !string.IsNullOrWhiteSpace( target.Name ))
 							isPartOf.Add( ServiceHelper.MapToOutline( target, searchType ) );
 					}
 					output.IsPartOf = ServiceHelper.MapOutlineToAJAX( isPartOf, "Is Part of {0} Credential(s)" );
 					//output.IsPartOf2 = null;
 				}
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 1, Name: {0}, Id: [1}", input.Name, input.Id ) );
+				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 1, Name: {0}, Id: {1}", input.Name, input.Id ) );
 
 			}
 
@@ -228,13 +220,13 @@ namespace workIT.Services.API
 			//MapAddress( input, ref output );
 			output.AvailableAt = ServiceHelper.MapAddress( input.Addresses );
 			//
-			//if ( input.CollectionMembers != null && input.CollectionMembers.Count > 0 )
-			//{
-			//	output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
-			//}
+			if (input.CollectionMembers != null && input.CollectionMembers.Count > 0)
+			{
+				output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
+			}
 			//
 			output.Image = input.Image;
-			if ( !string.IsNullOrWhiteSpace( input.CredentialTypeSchema ) )
+			if (!string.IsNullOrWhiteSpace( input.CredentialTypeSchema ))
 				output.Meta_Icon = WorkITSearchServices.GetCredentialIcon( input.CredentialTypeSchema.ToLower() );
 			//new
 			output.IndustryType = ServiceHelper.MapReferenceFramework( input.IndustryTypes, searchType, CodesManager.PROPERTY_CATEGORY_NAICS );
@@ -243,14 +235,14 @@ namespace workIT.Services.API
 			//Old
 			//output.OccupationTypeOld = ServiceHelper.MapReferenceFrameworkLabelLink( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
 			//
-			if ( input.IsNonCredit != null && input.IsNonCredit == true )
+			if (input.IsNonCredit != null && input.IsNonCredit == true)
 				output.IsNonCredit = input.IsNonCredit;
 			//
 			output.IsReferenceVersion = input.IsReferenceVersion;
 			//
-			if ( input.Keyword != null && input.Keyword.Any() )
+			if (input.Keyword != null && input.Keyword.Any())
 				output.Keyword = ServiceHelper.MapPropertyLabelLinks( input.Keyword, searchType );
-			if ( input.Subject != null && input.Subject.Any() )
+			if (input.Subject != null && input.Subject.Any())
 				output.Subject = ServiceHelper.MapPropertyLabelLinks( input.Subject, searchType );
 			//
 			output.AssessmentDeliveryType = ServiceHelper.MapPropertyLabelLinks( input.AssessmentDeliveryType, searchType );
@@ -263,14 +255,16 @@ namespace workIT.Services.API
 			try
 			{
 				output.Corequisite = ServiceHelper.MapToConditionProfiles( input.Corequisite, searchType );
+				output.CoPrerequisite = ServiceHelper.MapToConditionProfiles( input.CoPrerequisite, searchType );
+
 				output.Recommends = ServiceHelper.MapToConditionProfiles( input.Recommends, searchType );
 				output.Renewal = ServiceHelper.MapToConditionProfiles( input.Renewal, searchType );
 				output.Requires = ServiceHelper.MapToConditionProfiles( input.Requires, searchType );
-				if ( input.CommonConditions != null && input.CommonConditions.Any() )
+				if (input.CommonConditions != null && input.CommonConditions.Any())
 				{
 					//these will likely just be mapped to specific conditions
 					output.CommonConditions = ServiceHelper.MapConditionManifests( input.CommonConditions, searchType );
-					if ( output.CommonConditions != null && output.CommonConditions.Any() )
+					if (output.CommonConditions != null && output.CommonConditions.Any())
 					{
 						//foreach ( var item in output.CommonConditions )
 						//{
@@ -294,7 +288,7 @@ namespace workIT.Services.API
 					}
 				}
 				//connection profiles
-				if ( input.CredentialConnections != null && input.CredentialConnections.Any() )
+				if (input.CredentialConnections != null && input.CredentialConnections.Any())
 				{
 					//var list = input.CredentialConnections.Where( s => s.ConditionSubTypeId == 2 && s.ConnectionProfileTypeId == Entity_ConditionProfileManager.ConnectionProfileType_AdvancedStandingFor ).ToList();
 					//foreach ( var item in input.CredentialConnections )
@@ -325,16 +319,16 @@ namespace workIT.Services.API
 				output.IsRecommendedFor = ServiceHelper.MapToConditionProfiles( input.IsRecommendedFor, searchType );
 				//check for any inverse connections 
 				//if hasPartOfConditionProfile, add to appropriate connection. 
-				if ( input.IsPartOfConditionProfile != null && input.IsPartOfConditionProfile.Any() )
+				if (input.IsPartOfConditionProfile != null && input.IsPartOfConditionProfile.Any())
 				{
 					//the parent will be the target
-					foreach ( var item in input.IsPartOfConditionProfile )
+					foreach (var item in input.IsPartOfConditionProfile)
 					{
-						if ( item.ParentCredential != null && item.ParentCredential.Id > 0 )
+						if (item.ParentCredential != null && item.ParentCredential.Id > 0)
 						{
 							//see what we get with a straight map and then add the target credential
 							var cp = ServiceHelper.MapToConditionProfile( item, "credential" );
-							if ( cp != null )
+							if (cp != null)
 							{
 								// 
 								var clist = new List<Credential>();
@@ -344,7 +338,7 @@ namespace workIT.Services.API
 								cp.Description = "";
 								cp.Name = "The following are 'Required For' this credential";
 								//initially assume required, then customize
-								if ( output.IsRequiredFor == null )
+								if (output.IsRequiredFor == null)
 									output.IsRequiredFor = new List<WMA.ConditionProfile>();
 								else
 								{
@@ -360,7 +354,7 @@ namespace workIT.Services.API
 						//	if ( cp != null )
 						//	{
 						//		// could get many required for this way instead of one with many credentials
-						//		var list = new List<ThisEntity>();
+						//		var list = new List<ThisResource>();
 						//		list.Add( item.ParentLearningOpportunity );
 						//		cp.TargetLearningOpportunity = ServiceHelper.MapLearningOppToAJAXSettings( list, "Condition Target {0} Learning Opportunities" );
 
@@ -376,9 +370,9 @@ namespace workIT.Services.API
 					}
 				}
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 2, Name: {0}, Id: [1}", input.Name, input.Id ) );
+				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 2, Name: {0}, Id: {1}", input.Name, input.Id ) );
 
 			}
 			//====================================
@@ -388,17 +382,17 @@ namespace workIT.Services.API
 			var dataConnections = new ConnectionData();
 			ServiceHelper.GetAllChildren( dataMergedRequirements, dataMergedRecommendations, dataConnections, input, null, null );
 			//now pull out estimated durations
-			if ( dataMergedRequirements.TargetCredential != null && dataMergedRequirements.TargetCredential.Any() )
+			if (dataMergedRequirements.TargetCredential != null && dataMergedRequirements.TargetCredential.Any())
 			{
 				//21-07-12 currently not being used.
 				output.CredentialEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.CredentialsSansSelf( input.Id ), "Estimated Time to Complete Required Embedded Credentials" );
 			}
-			if ( dataMergedRequirements.TargetAssessment != null && dataMergedRequirements.TargetAssessment.Any() )
+			if (dataMergedRequirements.TargetAssessment != null && dataMergedRequirements.TargetAssessment.Any())
 			{
 				//output.AssessmentEstimatedDuration = ServiceHelper.GetAllDurationsOLD( dataMergedRequirements.TargetAssessment, "Estimated Time to Complete Required Assessments" );
 				output.AssessmentEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.TargetAssessment, "Estimated Time to Complete Required Assessments" );
 			}
-			if ( dataMergedRequirements.TargetLearningOpportunity != null && dataMergedRequirements.TargetLearningOpportunity.Any() )
+			if (dataMergedRequirements.TargetLearningOpportunity != null && dataMergedRequirements.TargetLearningOpportunity.Any())
 			{
 				output.LearningOpportunityEstimatedDuration = ServiceHelper.GetAllDurations( dataMergedRequirements.TargetLearningOpportunity, "Estimated Time to Complete Required Learning Opportunities" );
 			}
@@ -408,28 +402,28 @@ namespace workIT.Services.API
 			var started2 = DateTime.Now;
 			var dataAllCompetencies = ServiceHelper.GetAllCompetencies( new List<WMP.ConditionProfile>() { dataMergedRequirements }, true );
 			var saveDuration = DateTime.Now.Subtract( started2 );
-			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.GetAllCompetencies Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".MapToAPI. ServiceHelper.GetAllCompetencies Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
 			started2 = DateTime.Now;
 			//
 			output.RequiresCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Requires {#} Competenc{ies}", dataAllCompetencies.RequiresByFramework );
-			saveDuration = DateTime.Now.Subtract( started2 ); 
-			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			saveDuration = DateTime.Now.Subtract( started2 );
+			LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
 			started2 = DateTime.Now;
 			//
 			output.AssessesCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Assesses {#} Competenc{ies}", dataAllCompetencies.AssessesByFramework );
 			saveDuration = DateTime.Now.Subtract( started2 );
-			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
 			started2 = DateTime.Now;
 			//
 			//slow?
 			output.TeachesCompetencies = API.CompetencyFrameworkServices.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail( "Teaches {#} Competenc{ies}", dataAllCompetencies.TeachesByFramework );
 			saveDuration = DateTime.Now.Subtract( started2 );
-			LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
+			LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".MapToAPI. ServiceHelper.ConvertCredentialAlignmentObjectFrameworkProfileToAJAXSettingsForDetail Duration: {0:N2} seconds", saveDuration.TotalSeconds ) );
 			//=======================================
 			try
 			{
 				//
-				if ( input.CommonCosts != null && input.CommonCosts.Any() )
+				if (input.CommonCosts != null && input.CommonCosts.Any())
 				{
 					output.CommonCosts = ServiceHelper.MapCostManifests( input.CommonCosts, searchType );
 					//output.EstimatedCost = new List<Models.Elastic.CostProfile>();
@@ -440,99 +434,108 @@ namespace workIT.Services.API
 					//output.CommonCosts = null;
 				}
 
-				if ( input.EstimatedCost != null && input.EstimatedCost.Any() )
+				if (input.EstimatedCost != null && input.EstimatedCost.Any())
 				{
-					if ( output.EstimatedCost == null )
+					if (output.EstimatedCost == null)
 						output.EstimatedCost = new List<Models.Elastic.CostProfile>();
 
 					var estimatedCost = ServiceHelper.MapCostProfiles( input.EstimatedCost, searchType );
-					if ( estimatedCost != null && estimatedCost.Any() )
+					if (estimatedCost != null && estimatedCost.Any())
 						output.EstimatedCost.AddRange( estimatedCost );
 				}
 				//loop costs
-				if ( input.Requires.SelectMany( x => x.TargetLearningOpportunity.Where( y => y.EstimatedCost.Count() + y.CommonCosts.Count() > 0 ) ).Count() > 0 )
+				if (input.Requires.SelectMany( x => x.TargetLearningOpportunity.Where( y => y.EstimatedCost.Count() + y.CommonCosts.Count() > 0 ) ).Count() > 0)
 				{
 					var list = input.Requires.SelectMany( x => x.TargetLearningOpportunity ).ToList();
-					foreach ( var item in list )
+					foreach (var item in list)
 					{
-						if ( item.CommonCosts.Any() || item.EstimatedCost.Any() )
+						if (item.CommonCosts.Any() || item.EstimatedCost.Any())
 						{
 							var commonCosts = ServiceHelper.MapCostManifests( item.CommonCosts, searchType );
 							output.LearningOpportunityCost = new List<Models.Elastic.CostProfile>();
-							if ( commonCosts != null && commonCosts.Any() )
+							if (commonCosts != null && commonCosts.Any())
 							{
-								foreach ( var cc in commonCosts )
+								foreach (var cc in commonCosts)
 								{
 									output.LearningOpportunityCost.AddRange( cc.EstimatedCost );
 								}
 							}
 						}
 						//
-						if ( item.EstimatedCost != null && item.EstimatedCost.Any() )
+						if (item.EstimatedCost != null && item.EstimatedCost.Any())
 						{
-							if ( output.LearningOpportunityCost == null )
+							if (output.LearningOpportunityCost == null)
 								output.LearningOpportunityCost = new List<Models.Elastic.CostProfile>();
 
 							var estimatedCost = ServiceHelper.MapCostProfiles( item.EstimatedCost, searchType );
-							if ( estimatedCost != null && estimatedCost.Any() )
+							if (estimatedCost != null && estimatedCost.Any())
 								output.LearningOpportunityCost.AddRange( estimatedCost );
 						}
 					}
 				}
 				//asmt costs
-				if ( input.Requires.SelectMany( x => x.TargetAssessment.Where( y => y.EstimatedCost.Count() + y.CommonCosts.Count() > 0 ) ).Count() > 0 )
+				if (input.Requires.SelectMany( x => x.TargetAssessment.Where( y => y.EstimatedCost.Count() + y.CommonCosts.Count() > 0 ) ).Count() > 0)
 				{
 					var list = input.Requires.SelectMany( x => x.TargetAssessment ).ToList();
-					foreach ( var item in list )
+					foreach (var item in list)
 					{
-						if ( item.CommonCosts.Any() || item.EstimatedCost.Any() )
+						if (item.CommonCosts.Any() || item.EstimatedCost.Any())
 						{
 							var commonCosts = ServiceHelper.MapCostManifests( item.CommonCosts, searchType );
 							output.AssessmentCost = new List<Models.Elastic.CostProfile>();
-							if ( commonCosts != null && commonCosts.Any() )
+							if (commonCosts != null && commonCosts.Any())
 							{
-								foreach ( var cc in commonCosts )
+								foreach (var cc in commonCosts)
 								{
 									output.AssessmentCost.AddRange( cc.EstimatedCost );
 								}
 							}
 						}
 						//
-						if ( item.EstimatedCost.Any() || item.EstimatedCost.Any() )
+						if (item.EstimatedCost.Any() || item.EstimatedCost.Any())
 						{
-							if ( output.AssessmentCost == null )
+							if (output.AssessmentCost == null)
 								output.AssessmentCost = new List<Models.Elastic.CostProfile>();
 
 							var estimatedCost = ServiceHelper.MapCostProfiles( item.EstimatedCost, searchType );
-							if ( estimatedCost != null && estimatedCost.Any() )
+							if (estimatedCost != null && estimatedCost.Any())
 								output.AssessmentCost.AddRange( estimatedCost );
 						}
 					}
 				}
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 3, Name: {0}, Id: [1}", input.Name, input.Id ) );
-
+				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 3, Name: {0}, Id: {1}", input.Name, input.Id ) );
 			}
 			//
-			output.AggregateData = ServiceHelper.MapToAggregateDataProfile( input.AggregateData, searchType );
-			if (output.AggregateData != null )
+			try
 			{
-				//hmm check for dataSetProfile to add to RegistryDataList.
-				//Might be better to do this in the managers
-			}
-			//TBD - need to exclude those that are already in the AggregateDataProfile ==> try to handle this in the managers!
-			output.ExternalDataSetProfiles = ServiceHelper.MapToDatasetProfile( input.ExternalDataSetProfiles, searchType );
-			//could add these to RegistryDataList??
-			if ( output.ExternalDataSetProfiles != null && output.ExternalDataSetProfiles.Any() )
-            {
-				foreach(var item in output.ExternalDataSetProfiles)
-                {
-					var regData = ServiceHelper.FillRegistryData( item.CTID, searchType );
-					output.RegistryDataList.Add( regData );
+				output.AggregateData = ServiceHelper.MapToAggregateDataProfile( input.AggregateData, searchType );
+				if (output.AggregateData != null)
+				{
+					//hmm check for dataSetProfile to add to RegistryDataList.
+					//Might be better to do this in the managers
 				}
-            }
+				//TBD - need to exclude those that are already in the AggregateDataProfile ==> try to handle this in the managers!
+				output.ExternalDataSetProfiles = ServiceHelper.MapToDatasetProfileList( input.ExternalDataSetProfiles, searchType );
+				//could add these to RegistryDataList??
+				if (output.ExternalDataSetProfiles != null && output.ExternalDataSetProfiles.Any())
+				{
+                    foreach (var item in output.ExternalDataSetProfiles)
+					{
+						if ( item == null) 
+							continue;
+
+                        var regData = ServiceHelper.FillRegistryData( item.CTID, searchType );
+						output.RegistryDataList.Add( regData );
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 4, Name: {0}, Id: {1}", input.Name, input.Id ) );
+			}
 			//
 			if ( input.FinancialAssistance != null && input.FinancialAssistance.Any() )
 			{
@@ -588,13 +591,13 @@ namespace workIT.Services.API
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 4, Name: {0}, Id: [1}", input.Name, input.Id ) );
+				LoggingHelper.LogError( ex, string.Format( thisClassName + ".MapToAPI. Section 5, Name: {0}, Id: {1}", input.Name, input.Id ) );
 			}
 			//
-
+			var work = new List<WMA.Outline>();
 			if ( input.HasTransferValueProfile != null && input.HasTransferValueProfile.Any() )
 			{
-				var work = new List<WMA.Outline>();
+				
 				foreach ( var target in input.HasTransferValueProfile )
 				{
 					if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
@@ -609,9 +612,19 @@ namespace workIT.Services.API
 				List<object> obj = work.Select( f => ( object )f ).ToList();
 				output.HasTransferValue.Values = obj;
 			}
-
-			//
-			return output;
+            //
+            if ( input.HasSupportService?.Count > 0 )
+            {
+                work = new List<WMA.Outline>();
+                foreach ( var target in input.HasSupportService )
+                {
+                    if ( target != null && !string.IsNullOrWhiteSpace( target.Name ) )
+                        work.Add( ServiceHelper.MapToOutline( target, target.EntityType ) );
+                }
+                output.HasSupportService = ServiceHelper.MapOutlineToAJAX( work, "Has {0} Support Services" );
+            }
+            //
+            return output;
 		}
 
 		private static List<WMA.ConditionProfile> AppendConditions( List<WMA.ConditionProfile> input, List<WMA.ConditionProfile> existing )
@@ -626,7 +639,7 @@ namespace workIT.Services.API
 			return existing;
 		}
 
-		private static void MapJurisdictions( ThisEntity input, ref ThisEntityDetail output )
+		private static void MapJurisdictions( ThisResource input, ref OutputResource output )
 		{
 			if ( input.Jurisdiction != null && input.Jurisdiction.Any() )
 			{
@@ -672,7 +685,7 @@ namespace workIT.Services.API
 			if ( assertions != null && assertions.Any() )
 				output.RevokedIn = ServiceHelper.MapJurisdiction( assertions, "RevokedIn" );
 		}
-		private static void MapProcessProfiles( ThisEntity input, ref ThisEntityDetail output )
+		private static void MapProcessProfiles( ThisResource input, ref OutputResource output )
 		{
 			//will use summary, where the UI will get the detail on click
 			if ( input.ProcessProfilesSummary != null && input.ProcessProfilesSummary.Any() )
@@ -686,7 +699,7 @@ namespace workIT.Services.API
 						Label = item.Name,
 						Description = "",
 						Total = item.Totals,
-						//changed from reactFinderSiteURL to finderApiSiteURL
+						//
 						URL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 						TestURL = ServiceHelper.finderApiSiteURL + url + item.Id.ToString(),
 					};
@@ -773,7 +786,7 @@ namespace workIT.Services.API
 			}
 		}
 
-		private static bool UsingCache( int id, CredentialRequest request, ref OutputEntity output )
+		private static bool UsingCache( int id, CredentialRequest request, ref OutputResource output )
 		{
 			int cacheMinutes = UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 );
 			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
@@ -787,7 +800,7 @@ namespace workIT.Services.API
 					var cache = ( CachedEntity )HttpRuntime.Cache[ key ];
 					if ( cache.LastUpdated > maxTime )
 					{
-						LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
+						LoggingHelper.DoTrace( BaseFactory.appSectionDurationTraceLevel, string.Format( thisClassName + ".UsingCache === Using cached version of record, Id: {0}, {1}", cache.Item.Meta_Id, cache.Item.Name ) );
 						output = cache.Item;
 						return true;
 					}
@@ -803,7 +816,7 @@ namespace workIT.Services.API
 			}
 			return false;
 		}
-		private static void CacheEntity( OutputEntity entity )
+		private static void CacheEntity( OutputResource entity )
 		{
 			int cacheMinutes = UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 );
 			DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
@@ -850,7 +863,7 @@ namespace workIT.Services.API
 			LastUpdated = DateTime.Now;
 		}
 		public DateTime LastUpdated { get; set; }
-		public WMA.CredentialDetail Item { get; set; }
+		public OutputResource Item { get; set; }
 
 	}
 		//

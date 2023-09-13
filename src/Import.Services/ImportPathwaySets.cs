@@ -38,93 +38,6 @@ namespace Import.Services
 		int thisEntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET;
 		//
 
-
-		/// <summary>
-		/// Retrieve an envelop from the registry and do import
-		/// </summary>
-		/// <param name="envelopeId"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool ImportByEnvelopeId( string envelopeId, SaveStatus status )
-		{
-			//this is currently specific, assumes envelop contains a credential
-			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
-
-			if ( string.IsNullOrWhiteSpace( envelopeId ) )
-			{
-				status.AddError( thisClassName + ".ImportByEnvelope - a valid envelope id must be provided" );
-				return false;
-			}
-
-			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
-				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-				{
-					return CustomProcessEnvelope( envelope, status );
-				}
-				else
-					return false;
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportByEnvelopeId()" );
-				status.AddError( ex.Message );
-				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-				{
-					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-				}
-				return false;
-			}
-		}
-
-		/// <summary>
-		/// Retrieve an resource from the registry by ctid and do import
-		/// </summary>
-		/// <param name="ctid"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool ImportByCtid( string ctid, SaveStatus status )
-		{
-			if ( string.IsNullOrWhiteSpace( ctid ) )
-			{
-				status.AddError( thisClassName + ".ImportByCtid - a valid ctid must be provided" );
-				return false;
-			}
-
-			//this is currently specific, assumes envelop contains a credential
-			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
-			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
-			string ctdlType = "";
-			try
-			{
-				//probably always want to get by envelope
-				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
-				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
-				{
-					return CustomProcessEnvelope( envelope, status );
-				}
-				else
-					return false;
-
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".ImportByCtid(). CTID: {0}", ctid ) );
-				status.AddError( ex.Message );
-				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
-				{
-					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
-				}
-				return false;
-			}
-
-		}
 		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
 			//handle
@@ -317,7 +230,7 @@ namespace Import.Services
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "PathwaySet.OwnedBy", input.OwnedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 				{
-					output.OwningAgentUid = output.OwnedBy[ 0 ];
+					output.PrimaryAgentUID = output.OwnedBy[ 0 ];
 					helper.CurrentOwningAgentUid = output.OwnedBy[ 0 ];
 				}
 				else

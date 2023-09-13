@@ -1,6 +1,15 @@
 use credFinder
 GO
 
+--use credFinder_prod
+--go
+
+--use sandbox_credFinder
+--go
+
+--use staging_credFinder
+--go
+
 /****** Object:  StoredProcedure [dbo].[Populate_Cache.Organization_ActorRoles]    Script Date: 9/11/2017 12:24:58 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -38,6 +47,7 @@ else if @OrganizationId = -1 begin
 						,[OfferedBy]
 						,[AsmtsOwnedBy]
 						,[LoppsOwnedBy]
+						,CompetencyFrameworksOwnedBy
 						,[LastCacheDate])
     
 	SELECT [OrganizationId]
@@ -45,6 +55,7 @@ else if @OrganizationId = -1 begin
 				,[OfferedBy]
 				,[AsmtsOwnedBy]
 				,[LoppsOwnedBy]
+				,CompetencyFrameworksOwnedBy
 				,getDate() as LastCacheDate
 		FROM [dbo].[Organization_ActorRolesCSV] d
 	inner join SearchPendingReindex b on d.OrganizationId = b.RecordId And b.EntityTypeId = 2 and b.StatusId = 1
@@ -62,6 +73,7 @@ else begin
 						 ,[OfferedBy]
 						 ,[AsmtsOwnedBy]
 						 ,[LoppsOwnedBy]
+						 ,CompetencyFrameworksOwnedBy
 						 ,[LastCacheDate])
     
 	SELECT [OrganizationId]
@@ -69,6 +81,7 @@ else begin
 				,[OfferedBy]
 				,[AsmtsOwnedBy]
 				,[LoppsOwnedBy]
+				,CompetencyFrameworksOwnedBy
 				,getDate() as LastCacheDate
 		FROM [dbo].[Organization_ActorRolesCSV]
 	where (@OrganizationId = 0 OR  [OrganizationId] = @OrganizationId)

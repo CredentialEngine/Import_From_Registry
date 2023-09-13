@@ -7,27 +7,30 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
-using EntityMgr = workIT.Factories.DataSetProfileManager;
+using ResourceManager = workIT.Factories.DataSetProfileManager;
 using MP = workIT.Models.Common;
-using ThisEntity = workIT.Models.QData.DataSetProfile;
-
+using ThisResource = workIT.Models.QData.DataSetProfile;
+using ThisResourceSummary = workIT.Models.QData.DataSetProfileSummary;
 
 namespace workIT.Services
 {
 	public class DataSetProfileServices
 	{
 		static string thisClassName = "DataSetProfileServices";
-		int classEntityTypeId = CodesManager.ENTITY_TYPE_DATASET_PROFILE;
+		static string ThisEntityType = "DataSetProfile";
+		static int ThisEntityTypeId = CodesManager.ENTITY_TYPE_DATASET_PROFILE;
+
+
 		ActivityServices activityMgr = new ActivityServices();
 		public List<string> messages = new List<string>();
 
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource entity, ref SaveStatus status )
 		{
 
-			bool isValid = new EntityMgr().Save( entity, null, ref status );
+			bool isValid = new ResourceManager().Save( entity, null, ref status );
 			List<string> messages = new List<string>();
 			if ( entity.Id > 0 )
 			{
@@ -43,7 +46,7 @@ namespace workIT.Services
 					}
 					else
 					{
-						new SearchPendingReindexManager().Add( classEntityTypeId, entity.Id, 1, ref messages );
+						new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
 						if ( messages.Count > 0 )
 							status.AddWarningRange( messages );
 						//also need to reindex the 'About' resource
@@ -56,10 +59,10 @@ namespace workIT.Services
 				else
 				{
 					//at this time dataset profiles are not in elastic.
-					//new SearchPendingReindexManager().Add( classEntityTypeId, entity.Id, 1, ref messages );
+					//new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
 
 					//use about to get any credentials to reindex
-					//var dsp = EntityMgr.Get( entity.Id, false );
+					//var dsp = ResourceManager.Get( entity.Id, false );
 					//if (dsp.AboutOLD != null && dsp.AboutOLD.Count > 0)
 					//{
 					//	foreach (var item in dsp.AboutOLD )
@@ -100,9 +103,9 @@ namespace workIT.Services
 
 			return isValid;
 		}
-		public static ThisEntity HandlingExistingEntity( string ctid, ref SaveStatus status )
+		public static ThisResource HandlingExistingEntity( string ctid, ref SaveStatus status )
 		{
-			var entity = new ThisEntity();
+			var entity = new ThisResource();
 			//only need the base 
 			entity = DataSetProfileManager.GetByCtid( ctid, false );
 			if ( entity != null && entity.Id > 0 )
@@ -123,55 +126,82 @@ namespace workIT.Services
 		}
 		#endregion
 
-		public static ThisEntity GetByCtid( string ctid, bool skippingCache = false )
+		public static ThisResource GetByCtid( string ctid, bool skippingCache = false )
 		{
-			ThisEntity entity = new ThisEntity();
-			entity = DataSetProfileManager.GetByCtid( ctid );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.GetByCtid( ctid, true, false );
 			return entity;
 		}
 
 
-		public static ThisEntity Get( int id, bool skippingCache = false)
+		public static ThisResource Get( int id, bool skippingCache = false)
 		{
-			ThisEntity entity = new ThisEntity();
-			entity = DataSetProfileManager.Get( id );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.Get( id );
 			return entity;
 		}
+        public static ThisResource GetDetail( int id, bool skippingCache = false )
+        {
+            ThisResource entity = ResourceManager.Get( id, true );
+            if ( entity.EntityStateId == 0 )
+                return null;
 
-		public static List<TopLevelObject> GetDSPCredentialsForOrg( int orgId, int maxRecords )
+
+            return entity;
+        }
+        public static ThisResource GetDetailByCtid( string ctid, bool skippingCache = false )
+        {
+            ThisResource entity = new ThisResource();
+            if ( string.IsNullOrWhiteSpace( ctid ) )
+                return entity;
+            var resource = ResourceManager.GetByCtid( ctid, false );
+
+            return GetDetail( resource.Id, skippingCache );
+        }
+        public static List<TopLevelObject> GetDSPCredentialsForOrg( int orgId, int maxRecords )
 		{
-			return EntityMgr.GetAllDataSetCredentials( orgId, maxRecords );
+			return ResourceManager.GetAllDataSetCredentials( orgId, maxRecords );
 		}
+        public static List<ThisResourceSummary> Autocomplete( string keywords, int maxRows, ref int totalRows )
+        {
 
-		public static List<ThisEntity> Search( MainSearchInput data, ref int pTotalRows )
+            string where = "";
+            SetKeywordFilter( keywords, false, ref where );
+
+            LoggingHelper.DoTrace( 7, "ConceptSchemeServices.Autocomplete(). Filter: " + where );
+
+            return ResourceManager.Search( where, "", 1, maxRows, ref totalRows );
+
+        }
+        public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
-			//if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySetSearch", false ) )
-			//{
-			//	return ElasticHelper.PathwaySetSearch( data, ref pTotalRows );
-			//}
-			//else
+			if ( UtilityManager.GetAppKeyValue( "usingElasticOutcomeDataSearch", false ) )
 			{
-				//var results = new List<CommonSearchSummary>();
+				return ElasticHelper.GeneralSearch( ThisEntityTypeId, ThisEntityType, data, ref pTotalRows );
+			}
+			else
+			{
+				var results = new List<CommonSearchSummary>();
 				var list = DoSearch( data, ref pTotalRows );
-				//foreach ( var item in list )
-				//{
-				//	results.Add( new CommonSearchSummary()
-				//	{
-				//		Id = item.Id,
-				//		Name = item.Name,
-				//		Description = item.Description,
-				//		SubjectWebpage = item.SubjectWebpage,
-				//		PrimaryOrganizationName = item.PrimaryOrganizationName,
-				//		CTID = item.CTID,
-				//		EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET,
-				//		EntityType = "PathwaySet"
-				//	} );
-				//}
-				return list;
+				foreach ( var item in list )
+				{
+					results.Add( new CommonSearchSummary()
+					{
+						Id = item.Id,
+						Name = item.Name,
+						Description = item.Description,
+						SubjectWebpage = item.SubjectWebpage,
+						PrimaryOrganizationName = item.DataProviderName,
+						CTID = item.CTID,
+						EntityTypeId = ThisEntityTypeId,
+						EntityType = ThisEntityType
+					} );
+				}
+				return results;
 			}
 
 		}//
-		public static List<ThisEntity> DoSearch( MainSearchInput data, ref int totalRows )
+		public static List<ThisResourceSummary> DoSearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";
 
@@ -190,7 +220,7 @@ namespace workIT.Services
 
 
 			LoggingHelper.DoTrace( 5, thisClassName + ".DoSearch(). Filter: " + where );
-			return EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 		}
 		//
 		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )

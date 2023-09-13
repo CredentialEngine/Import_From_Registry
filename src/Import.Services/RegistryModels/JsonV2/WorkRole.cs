@@ -82,12 +82,18 @@ namespace RA.Models.JsonV2
 		public LanguageMapList Comment { get; set; } = new LanguageMapList();
 
 		[JsonProperty( PropertyName = "ceterms:environmentalHazardType" )]
-		public List<CredentialAlignmentObject> EnvironmentalHazardType { get; set; }
+		public List<string> EnvironmentalHazardType { get; set; }
 
-		/// <summary>
-		/// Task related to this resource.
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:hasTask" )]
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
+
+        /// <summary>
+        /// Task related to this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasTask" )]
 		public List<string> HasTask { get; set; }
 
 		/// <summary>
@@ -107,16 +113,19 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceterms:performanceLevelType" )]
-		public List<CredentialAlignmentObject> PerformanceLevelType { get; set; }
+		public List<string> PerformanceLevelType { get; set; }
 
 
 		[JsonProperty( PropertyName = "ceterms:physicalCapabilityType" )]
-		public List<CredentialAlignmentObject> PhysicalCapabilityType { get; set; }
+		public List<string> PhysicalCapabilityType { get; set; }
+        //
+        [JsonProperty( PropertyName = "ceterms:sensoryCapabilityType" )]
+        public List<string> SensoryCapabilityType { get; set; }
 
-		/// <summary>
-		///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
-		/// </summary>
-		[JsonProperty( PropertyName = "ceasn:skillEmbodied" )]
+        /// <summary>
+        ///Ability to apply knowledge and use know-how to complete tasks and solve problems including types or categories of developed proficiency or dexterity in mental operations and physical processes is embodied either directly or indirectly in this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceasn:skillEmbodied" )]
 		public List<string> SkillEmbodied { get; set; }
 
 		/// <summary>

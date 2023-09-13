@@ -11,7 +11,9 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.QData.DataSetProfile;
+using ThisResource = workIT.Models.QData.DataSetProfile;
+using ThisResourceSummary = workIT.Models.QData.DataSetProfileSummary;
+
 using DBEntity = workIT.Data.Tables.DataSetProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
@@ -31,7 +33,66 @@ namespace workIT.Factories
 
 		#region DataSetProfile - persistance ==================
 
-		public bool SaveList( List<ThisEntity> input, Entity parentEntity, ref SaveStatus status )
+		/// <summary>
+		/// For this method version, the datasetProfile already exists (although could have pending state), just need to confirm the Entity.DataSetProfile
+		/// Example
+		/// ADP
+		///		Entity
+		///			Entity_DSP
+		/// </summary>
+		/// <param name="input">List of integers relating to DSPs</param>
+		/// <param name="parentEntity"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool SaveList( List<int> input, Entity parentEntity, ref SaveStatus status )
+		{
+			bool allIsValid = true;
+
+			try
+			{
+				//need to handle deletes for parent?
+				//will be an issue for shared datasets
+				//DeleteAll( parentEntity, ref status );
+				using ( var context = new EntityContext() )
+				{
+					//get all datasetProfiles for this parent
+					var existing = context.Entity_DataSetProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
+					//huh - only deleting 
+					//object get all e_dsp for current parent where the ctid is not found in the input list.
+					//	- we will want to delete the e_dsp for the latter (and maybe dsp if no other connections)
+					var result = existing.Where( ex => input.All( p2 => p2 != ex.DataSetProfile.Id ) ).ToList();
+					var messages = new List<string>();
+					foreach ( var item in result )
+					{
+						//23-02-10 mp - this is not necessary if done sucessively with triggers
+						Delete( item.Id, ref messages );
+					}
+					if ( messages.Any() )
+						status.AddErrorRange( messages );
+				}
+				if ( input == null || !input.Any() )
+					return true;
+
+				new Entity_DataSetProfileManager().SaveList( input, parentEntity, ref status );
+				
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + ".SaveList(List<int> )" );
+			}
+			return allIsValid;
+		}
+
+
+		/// <summary>
+		/// This version is mostly obsolete, as used with holderProfile, employmentOutcomeProfile, and earningsProfile
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="parentEntity"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		[Obsolete]
+		public bool SaveList( List<ThisResource> input, Entity parentEntity, ref SaveStatus status )
 		{
 			bool allIsValid = true;
 
@@ -62,7 +123,7 @@ namespace workIT.Factories
 				foreach ( var item in input )
 				{
 					//current the datasetProfile is not being deleted - may be OK - TBD
-					var e = GetByCtid( item.CTID );
+					var e = GetByCtid( item.CTID, false, true );
 					item.Id = e.Id;
 					if ( !Save( item, parentEntity, ref status ) )
 					{
@@ -78,51 +139,8 @@ namespace workIT.Factories
 			return allIsValid;
 		}
 
-		/// <summary>
-		/// For this method version, the datasetProfile already exists, just need to confirm the Entity.DataSetProfile
-		/// </summary>
-		/// <param name="input"></param>
-		/// <param name="parentEntity"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public bool SaveList( List<int> input, Entity parentEntity, ref SaveStatus status )
-		{
-			bool allIsValid = true;
 
-			try
-			{
-				//need to handle deletes for parent?
-				//will be an issue for shared datasets
-				//DeleteAll( parentEntity, ref status );
-				using ( var context = new EntityContext() )
-				{
-					//get all datasetProfiles for this parent
-					var existing = context.Entity_DataSetProfile.Where( s => s.EntityId == parentEntity.Id ).ToList();
-					//huh - only deleting 
-					//object get all e_dsp for current parent where the ctid is not found in the input list.
-					//	- we will want to delete the e_dsp for the latter (and maybe dsp if no other connections)
-					var result = existing.Where( ex => input.All( p2 => p2 != ex.DataSetProfile.Id ) ).ToList();
-					var messages = new List<string>();
-					foreach ( var item in result )
-					{
-						Delete( item.Id, ref messages );
-					}
-					if ( messages.Any() )
-						status.AddErrorRange( messages );
-				}
-				if ( input == null || !input.Any() )
-					return true;
-
-				new Entity_DataSetProfileManager().SaveList( input, parentEntity, ref status );
-				
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, thisClassName + ".SaveList(List<int> )" );
-			}
-			return allIsValid;
-		}
-		public bool Save( ThisEntity entity, Entity parentEntity, ref SaveStatus status )
+		public bool Save( ThisResource entity, Entity parentEntity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -136,108 +154,106 @@ namespace workIT.Factories
 						//return false;
 					}
 
-					if ( entity.Id > 0 )
+                    context.Configuration.LazyLoadingEnabled = false;
+                    DBEntity efEntity = context.DataSetProfile
+                            .FirstOrDefault( s => s.CTID == entity.CTID );
+                    if ( efEntity!= null && efEntity.Id > 0 )
 					{
 						//TODO - consider if necessary, or interferes with anything
-						context.Configuration.LazyLoadingEnabled = false;
-						DBEntity efEntity = context.DataSetProfile
-								.SingleOrDefault( s => s.Id == entity.Id );
+						//context.Configuration.LazyLoadingEnabled = false;
+						//DBEntity efEntity = context.DataSetProfile
+						//		.SingleOrDefault( s => s.Id == entity.Id );
+						entity.Id = efEntity.Id;
+						
+						//fill in fields that may not be in entity
+						entity.RowId = efEntity.RowId;
 
-						if ( efEntity != null && efEntity.Id > 0 )
+						MapToDB( entity, efEntity );
+
+						if ( efEntity.EntityStateId == 0 )
 						{
-							//fill in fields that may not be in entity
-							entity.RowId = efEntity.RowId;
-
-							MapToDB( entity, efEntity );
-
-							if ( efEntity.EntityStateId == 0 )
+							//log?
+							//perhaps not with the approach of vdeleting on each lopp import
+							//SiteActivity sa = new SiteActivity()
+							//{
+							//	ActivityType = "DataSetProfile",
+							//	Activity = "Import",
+							//	Event = "Reactivate",
+							//	Comment = string.Format( "DataSetProfile had been marked as deleted, and was reactivted by the import. CTID: {0}, SWP: {1}", entity.CTID, entity.Source ),
+							//	ActivityObjectId = entity.Id
+							//};
+							//new ActivityManager().SiteActivityAdd( sa );
+						}
+						//assume and validate, that if we get here we have a full record
+						//if ( efEntity.EntityStateId != 2 )
+							efEntity.EntityStateId = 3;
+                        entity.EntityStateId = efEntity.EntityStateId;
+                        if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+						{
+							efEntity.Created = status.LocalCreatedDate;
+						}
+						//will always use the envelop last updated?
+						if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
+						{
+							efEntity.LastUpdated = status.LocalUpdatedDate;
+							lastUpdated = status.LocalUpdatedDate;
+						}
+						//has changed?
+						if ( HasStateChanged( context ) )
+						{
+							if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+								efEntity.LastUpdated = status.LocalUpdatedDate;
+							else
+								efEntity.LastUpdated = DateTime.Now;
+							//NOTE efEntity.EntityStateId is set to 0 in delete method )
+							count = context.SaveChanges();
+							//can be zero if no data changed
+							if ( count >= 0 )
 							{
-								//notify, and???
-								//EmailManager.NotifyAdmin( "Previously Deleted DataSetProfile has been reactivated", string.Format( "<a href='{2}'>DataSetProfile: {0} ({1})</a> was deleted and has now been reactivated.", efEntity.Name, efEntity.Id, url ) );
+								isValid = true;
+							}
+							else
+							{
+								//?no info on error
+
+								isValid = false;
+								string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a DataSetProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. DataSetProfile: {0}, Id: {1}", entity.Name, entity.Id );
+								status.AddError( "Error - the update was not successful. " + message );
+								EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+							}
+
+						}
+
+						entity.LastUpdated = lastUpdated;
+						UpdateEntityCache( entity, ref status );
+						if ( isValid )
+						{
+							if ( !UpdateParts( entity, ref status ) )
+								isValid = false;
+							//should not be necessary, but seems the e_DSP is missing somehow
+							//N/A for a directly imported dataSetProfile
+							if ( parentEntity != null )
+							{
+								new Entity_DataSetProfileManager().Add( parentEntity, entity.Id, ref status );
+							}
+							else
+							{
+								//
+								//21-04-22 only add activity if was a standalone dataset
 								SiteActivity sa = new SiteActivity()
 								{
 									ActivityType = "DataSetProfile",
 									Activity = "Import",
-									Event = "Reactivate",
-									Comment = string.Format( "DataSetProfile had been marked as deleted, and was reactivted by the import. CTID: {0}, SWP: {1}", entity.CTID, entity.Source ),
+									Event = "Update",
+									Comment = string.Format( "DataSetProfile was updated by the import. CTID: {0}, Source: {1}", entity.CTID, entity.Source ),
 									ActivityObjectId = entity.Id
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
-							//assume and validate, that if we get here we have a full record
-							if ( efEntity.EntityStateId != 2 )
-								efEntity.EntityStateId = 3;
-
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
-							{
-								efEntity.Created = status.LocalCreatedDate;
-							}
-							//will always use the envelop last updated?
-							if ( IsValidDate( status.EnvelopeUpdatedDate ) && status.LocalUpdatedDate != efEntity.LastUpdated )
-							{
-								efEntity.LastUpdated = status.LocalUpdatedDate;
-								lastUpdated = status.LocalUpdatedDate;
-							}
-							//has changed?
-							if ( HasStateChanged( context ) )
-							{
-								if ( IsValidDate( status.EnvelopeUpdatedDate ) )
-									efEntity.LastUpdated = status.LocalUpdatedDate;
-								else
-									efEntity.LastUpdated = DateTime.Now;
-								//NOTE efEntity.EntityStateId is set to 0 in delete method )
-								count = context.SaveChanges();
-								//can be zero if no data changed
-								if ( count >= 0 )
-								{
-									isValid = true;
-								}
-								else
-								{
-									//?no info on error
-
-									isValid = false;
-									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a DataSetProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. DataSetProfile: {0}, Id: {1}", entity.Name, entity.Id );
-									status.AddError( "Error - the update was not successful. " + message );
-									EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
-								}
-
-							}
-
-							entity.LastUpdated = lastUpdated;
-							UpdateEntityCache( entity, ref status );
-							if ( isValid )
-							{
-								if ( !UpdateParts( entity, ref status ) )
-									isValid = false;
-								//should not be necessary, but seems the e_DSP is missing somehow
-								//N/A for a directly imported dataSetProfile
-								if ( parentEntity != null )
-								{
-									new Entity_DataSetProfileManager().Add( parentEntity, entity.Id, ref status );
-								}
-								else
-								{
-									//
-									//21-04-22 only add activity if was a standalone dataset
-									SiteActivity sa = new SiteActivity()
-									{
-										ActivityType = "DataSetProfile",
-										Activity = "Import",
-										Event = "Update",
-										Comment = string.Format( "DataSetProfile was updated by the import. CTID: {0}, Source: {1}", entity.CTID, entity.Source ),
-										ActivityObjectId = entity.Id
-									};
-									new ActivityManager().SiteActivityAdd( sa );
-								}
-								//if ( isValid || partsUpdateIsValid )
-								//new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
-							}
+							//if ( isValid || partsUpdateIsValid )
+							//new EntityManager().UpdateModifiedDate( entity.RowId, ref status, efEntity.LastUpdated );
 						}
-						else
-						{
-							status.AddError( "Error - update failed, as DataSetProfile was not found." );
-						}
+					
 					}
 					else
 					{
@@ -271,13 +287,187 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		/// <summary>
-		/// add a DataSetProfile
-		/// </summary>
-		/// <param name="entity"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		private int Add( ThisEntity entity, Entity parentEntity, ref SaveStatus status )
+        public void ReActivate( List<string> input, ref SaveStatus status )
+        {
+			if ( input == null || !input.Any() )
+				return;
+            bool isValid = true;
+            ThisResource entity = new ThisResource();
+            int count = 0;
+            DateTime lastUpdated = System.DateTime.Now;
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+					foreach ( var item in input )
+					{
+						context.Configuration.LazyLoadingEnabled = false;
+						DBEntity efEntity = context.DataSetProfile
+								.FirstOrDefault( s => s.CTID.ToLower() == item.ToLower().Trim() );
+						if ( efEntity.Id > 0 )
+						{
+							//probably ok to ignore pending
+							if ( efEntity.EntityStateId == 0 )
+							{
+								efEntity.EntityStateId = 3;
+
+								if ( HasStateChanged( context ) )
+								{
+									count = context.SaveChanges();
+									//can be zero if no data changed
+									if ( count >= 0 )
+									{
+										isValid = true;
+                                        if ( isValid )
+                                        {
+
+                                            MapFromDB( efEntity, entity, false, false );
+                                            //may not be necessary
+                                            UpdateEntityCache( entity, ref status );
+											//the parent could be the e.ADP entity which could exist now, but
+                                            //if ( parentEntity != null )
+                                            //{
+                                            //    new Entity_DataSetProfileManager().Add( parentEntity, entity.Id, ref status );
+                                            //}
+
+                                        }
+                                    }
+									else
+									{
+										//?no info on error
+
+										isValid = false;
+										string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a DataSetProfile. The process appeared to not work, but was not an exception, so we have no message, or no clue. DataSetProfile: {0}, Id: {1}", efEntity.Name, efEntity.Id );
+										status.AddError( "Error - the update was not successful. " + message );
+										EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+									}
+								}
+
+							}
+						}
+					}
+                }
+            }
+            catch ( Exception ex )
+            {
+                string message = FormatExceptions( ex );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
+                status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
+                isValid = false;
+            }
+
+        }
+        public void ReActivate( string dspCTID, ref SaveStatus status )
+        {
+            if ( string.IsNullOrWhiteSpace( dspCTID ))
+                return;
+            ThisResource entity = new ThisResource();
+            int count = 0;
+            DateTime lastUpdated = System.DateTime.Now;
+            try
+            {
+                using ( var context = new EntityContext() )
+                {                    
+                    context.Configuration.LazyLoadingEnabled = false;
+                    DBEntity efEntity = context.DataSetProfile
+                            .FirstOrDefault( s => s.CTID.ToLower() == dspCTID.ToLower().Trim() );
+                    if ( efEntity.Id > 0 )
+                    {
+                        //probably ok to ignore pending
+                        if ( efEntity.EntityStateId == 0 )
+                        {
+                            efEntity.EntityStateId = 3;
+                          
+                            count = context.SaveChanges();
+                            //can be zero if no data changed
+                            if ( count >= 0 )
+                            {
+                                MapFromDB( efEntity, entity, false, false );
+                                //may not be necessary, as may have been reactivated in a trigger
+                                UpdateEntityCache( entity, ref status );
+                            }
+                            else
+                            {
+                                //?no info on error
+
+                                string message = string.Format( thisClassName + ".ReActivate Failed", "Attempted to ReActivate a DataSetProfile . The process appeared to not work, but we have no message, or no clue. DataSetProfile CTID: {0}", dspCTID );
+                                status.AddError( "Error - the ReActivate was not successful. " + message );
+                                EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+                            }
+                        
+                        }
+                    }
+                    
+            }
+            }
+            catch ( Exception ex )
+            {
+                string message = FormatExceptions( ex );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".ReActivate. DataSetProfile CTID: {0}", dspCTID ) );
+                status.AddError( thisClassName + $".Save(). Error - the ReActivate was not successful for DataSetProfile CTID: {dspCTID}. " + message );
+            }
+
+        }
+        public void ReActivate( int dspId, ref SaveStatus status )
+        {
+            if ( dspId < 1 )
+                return;
+            ThisResource entity = new ThisResource();
+            int count = 0;
+            DateTime lastUpdated = System.DateTime.Now;
+			var dspCTID = "";
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    context.Configuration.LazyLoadingEnabled = false;
+                    DBEntity efEntity = context.DataSetProfile
+                            .FirstOrDefault( s => s.Id == dspId );
+                    if ( efEntity.Id > 0 )
+                    {
+                        //probably ok to ignore pending
+                        if ( efEntity.EntityStateId == 0 )
+                        {
+                            efEntity.EntityStateId = 3;
+							dspCTID = efEntity.CTID;
+                            count = context.SaveChanges();
+                            //can be zero if no data changed
+                            if ( count >= 0 )
+                            {
+                                MapFromDB( efEntity, entity, false, false );
+                                //may not be necessary, as may have been reactivated in a trigger
+                                UpdateEntityCache( entity, ref status );
+                            }
+                            else
+                            {
+                                //?no info on error
+
+                                string message = string.Format( thisClassName + ".ReActivate Failed", "Attempted to ReActivate a DataSetProfile . The process appeared to not work, but we have no message, or no clue. DataSetProfile CTID: {0}", efEntity.CTID );
+                                status.AddError( "Error - the ReActivate was not successful. " + message );
+                                EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+                            }
+
+                        }
+                    }
+
+                }
+            }
+            catch ( Exception ex )
+            {
+                string message = FormatExceptions( ex );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".ReActivate. DataSetProfile CTID: {0}", dspCTID ) );
+                status.AddError( thisClassName + $".Save(). Error - the ReActivate was not successful for DataSetProfile CTID: {dspCTID}. " + message );
+            }
+
+        }
+
+        /// <summary>
+        /// add a DataSetProfile
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        private int Add( ThisResource entity, Entity parentEntity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			using ( var context = new EntityContext() )
@@ -380,7 +570,10 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					//	this will miss deleted. What are the implications of two records with same ctid?
+					//		the adp could be referring to the deleted one? maybe not
+					//	- could check for deleted here, and reset to pending?
+					ThisResource entity = GetByCtid( ctid, false, true );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -437,7 +630,7 @@ namespace workIT.Factories
 			}
 			return 0;
 		}
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
@@ -497,11 +690,11 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
-			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
-			if ( relatedEntity == null || relatedEntity.Id == 0 )
+			Entity resourceEntity = EntityManager.GetEntity( entity.RowId );
+			if ( resourceEntity == null || resourceEntity.Id == 0 )
 			{
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
@@ -509,18 +702,18 @@ namespace workIT.Factories
 			//will have either AboutUids or RelevantDataSetForUids
 			//may not have to be concerned with //will have either AboutUids or RelevantDataSetForUids??
 			//About
-			HandleAbout( relatedEntity, entity, ref status );
+			HandleAbout( resourceEntity, entity, ref status );
 			//
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
 			//do deletes - should this be done here, should be no other prior updates?
-			mgr.DeleteAll( relatedEntity, ref status );
-			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+			mgr.DeleteAll( resourceEntity, ref status );
+			mgr.SaveList( resourceEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
 			//may need to store owned by for the search
-			//mgr.Save( relatedEntity.Id, entity.DataProviderUID, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref status );
+			//mgr.Save( resourceEntity.Id, entity.DataProviderUID, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref status );
 
 			//ProcessProfile
 			Entity_ProcessProfileManager ppm = new Factories.Entity_ProcessProfileManager();
-			ppm.DeleteAll( relatedEntity, ref status );
+			ppm.DeleteAll( resourceEntity, ref status );
 			try
 			{
 				ppm.SaveList( entity.AdministrationProcess, Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE, entity.RowId, ref status );
@@ -533,75 +726,99 @@ namespace workIT.Factories
 			}
 			//
 			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
-			erfm.DeleteAll( relatedEntity, ref status );
-			if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
+			erfm.DeleteAll( resourceEntity, ref status );
+			if ( erfm.SaveList( resourceEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, entity.InstructionalProgramTypes, ref status ) == false )
 				isAllValid = false;
 
 			//JurisdictionProfile 
 			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
 			//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
-			jpm.DeleteAll( relatedEntity, ref status );
+			jpm.DeleteAll( resourceEntity, ref status );
 			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
-			//datasetProfiles
-			new DataSetTimeFrameManager().SaveList( entity.DataSetTimePeriod, entity.Id, ref status );
+
+            //DataSetTimeFrames
+            new DataSetTimeFrameManager().SaveList( entity.DataSetTimePeriod, entity.Id, ref status );
 
 
 			return isAllValid;
 		}
 
-		public void HandleAbout( Entity relatedEntity, ThisEntity entity, ref SaveStatus status )
+		/// <summary>
+		/// Manage About relationships
+		/// 23-02-12 Updated to NOT create these if an Entity.AggregateDataProfile relationship exists!
+		/// </summary>
+		/// <param name="resourceEntity"></param>
+		/// <param name="entity"></param>
+		/// <param name="status"></param>
+		public void HandleAbout( Entity resourceEntity, ThisResource entity, ref SaveStatus status )
 		{
 			
 			if ( entity.AboutUids == null || entity.AboutUids.Count == 0 )
 				return;
 			//clear
 			Entity_CredentialManager ecm = new Entity_CredentialManager();
-			ecm.DeleteAll( relatedEntity, ref status );
+			ecm.DeleteAll( resourceEntity, ref status );
 			//
 			var eam = new Entity_AssessmentManager();
-			eam.DeleteAll( relatedEntity, ref status );
+			eam.DeleteAll( resourceEntity, ref status );
 			//
 			var elom = new Entity_LearningOpportunityManager();
-			elom.DeleteAll( relatedEntity, ref status );
+			elom.DeleteAll( resourceEntity, ref status );
 
 			//Entity_AssertionManager eaMgr = new Entity_AssertionManager();
-			//eaMgr.DeleteAll( relatedEntity, ref status );
+			//eaMgr.DeleteAll( resourceEntity, ref status );
 
+			//23-02-10 mp - is this reversed? May not really matter as processed correctly
+			//Having 
+			//		DSP
+			//			Entity
+			//				Entity.Lopp (etc.)
+			//versus
+			//		Lopp
+			//			Entity
+			//				Entity.HasDsp	?????
 			foreach ( var item in entity.AboutUids )
 			{
 				var ec = EntityManager.EntityCacheGetByGuid( item );
 				if ( ec != null && ec.Id > 0 )
 				{
-					int newId = 0;
+                    //first check for ADP relationship. Confirm if this is always true. It is for the ProPath scenario. If there is an independent dsp, it will not be referenced from the lopp.eadp
+                    //	entity.adp (ec.Id=entity.adp.EntityId) -> adpEntity(entity.entityUID=adp.RowId) -> e.DataSetProfile(adpEntity.Id=adsp.EntityId).DataSetProfileId = this Dsp.Id
+					if (Entity_AggregateDataProfileManager.ReferencesDataSetProfile(ec.Id, entity.Id))
+					{
+						//hmm, maybe shouldn't do this? There are aleady checks in the detail map from db methods
+						continue;
+					}
+					//TODO - could just use Entity.HasResource
+                    int newId = 0;
 					switch ( ec.EntityTypeId )
 					{
 						case 1:
 							//simple hasPart
-							ecm.Add( relatedEntity.EntityUid, ec.BaseId, 1, ref newId, ref status );
+							ecm.Add( resourceEntity.EntityUid, ec.BaseId, 1, ref newId, ref status );
 							if ( newId > 0 )
 							{
 								entity.CredentialIds.Add( ec.BaseId );
-								//eaMgr.Save( relatedEntity.Id, 1, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+								//eaMgr.Save( resourceEntity.Id, 1, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
 							}
 							break;
 						case 3:
 							//simple hasPart
-							eam.Add( relatedEntity.EntityUid, ec.BaseId, 1, false, ref status );
+							eam.Add( resourceEntity.EntityUid, ec.BaseId, 1, false, ref status );
 							if ( newId > 0 )
 							{
 								entity.AssessmentIds.Add( ec.BaseId );
-								//eaMgr.Save( relatedEntity.Id, 3, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+								//eaMgr.Save( resourceEntity.Id, 3, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
 							}
 							break;
 						case 7:
 						case 36:
-						case 37:
-							//simple hasPart
-							elom.Add( relatedEntity.EntityUid, ec.BaseId, 1, false, ref status );
+						case 37:                          
+                            elom.Add( resourceEntity.EntityUid, ec.BaseId, 1, false, ref status );
 							if ( newId > 0 )
 							{
 								entity.LearningOpportunityIds.Add( ec.BaseId );
-								//eaMgr.Save( relatedEntity.Id, 7, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+								//eaMgr.Save( resourceEntity.Id, 7, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
 							}
 							break;
 						default:
@@ -612,13 +829,14 @@ namespace workIT.Factories
 				else
 				{
 					status.AddError( string.Format( "DataSetProfileManager.HandleAbout. An EntityCache record was not found for GUID: {0}", item ) );
+					//then a pending record should be created. Could be the pending record was not added to the cache!
 				}
 			}
 			//About - will need a method to get the type, and then add to Entity.Credential, E.Assessment, etc.
-			//mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERS, entity.AboutUids, ref status );
+			//mgr.SaveList( resourceEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OFFERS, entity.AboutUids, ref status );
 		}
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
@@ -825,7 +1043,7 @@ namespace workIT.Factories
 							isValid = true;
 							//delete cache
 							var statusMessage = "";
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_DATASET_PROFILE, efEntity.Id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 						}
 					}
 					else
@@ -860,20 +1078,20 @@ namespace workIT.Factories
 		/// <param name="includingParts"></param>
 		/// <param name="isAPIRequest"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool includingParts = true, bool isAPIRequest = false )
+		public static List<ThisResource> GetAll( Guid parentUid, bool includingParts = true, bool isAPIRequest = false )
 		{
-			var list = new List<ThisEntity>();
-			var entity = new ThisEntity();
+			var list = new List<ThisResource>();
+			var entity = new ThisResource();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
-			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
+			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, parent.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
 
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
 					var results = context.Entity_DataSetProfile
-							.Where( s => s.EntityId == parent.Id )
+							.Where( s => s.EntityId == parent.Id && s.DataSetProfile.EntityStateId == 3 )
 							.OrderBy( s => s.Created )
 							.ToList();
 
@@ -881,7 +1099,7 @@ namespace workIT.Factories
 					{
 						foreach ( var item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 
 							//need to distinguish between on a detail page for conditions and Holders detail
 							//would usually only want basics here??
@@ -911,17 +1129,17 @@ namespace workIT.Factories
 		/// <param name="includingParts"></param>
 		/// <param name="isAPIRequest"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAllForDataOwner( Guid dataOwnerUid, bool includingParts = true, bool isAPIRequest = false )
+		public static List<ThisResource> GetAllForDataOwner( Guid dataOwnerUid, bool includingParts = true, bool isAPIRequest = false )
 		{
-			var list = new List<ThisEntity>();
-			var entity = new ThisEntity();
+			var list = new List<ThisResource>();
+			var entity = new ThisResource();
 
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
 					var results = context.DataSetProfile
-							.Where( s => s.DataProviderUID == dataOwnerUid )
+							.Where( s => s.DataProviderUID == dataOwnerUid && s.EntityStateId == 3 )
 							.OrderBy( s => s.Created )
 							.ToList();
 
@@ -929,7 +1147,7 @@ namespace workIT.Factories
 					{
 						foreach ( var item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 							if ( item != null && item.EntityStateId > 1 )
 							{
 								MapFromDB( item, entity, includingParts, isAPIRequest );
@@ -949,14 +1167,14 @@ namespace workIT.Factories
 		//
 		public static int GetCountForDataOwner( Guid dataOwnerUid )
 		{
-			var list = new List<ThisEntity>();
+			var list = new List<ThisResource>();
 
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
 					var results = context.DataSetProfile
-							.Where( s => s.DataProviderUID == dataOwnerUid )
+							.Where( s => s.DataProviderUID == dataOwnerUid && s.EntityStateId == 3 )
 							.OrderBy( s => s.Created )
 							.ToList();
 
@@ -977,13 +1195,13 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="id"></param>
 		/// <returns></returns>
-		public static ThisEntity Get( int id, bool includingParts = true, bool isAPIRequest = false )
+		public static ThisResource Get( int id, bool includingParts = true, bool isAPIRequest = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.DataSetProfile
-						.FirstOrDefault( s => s.Id == id );
+						.FirstOrDefault( s => s.Id == id && s.EntityStateId == 3 );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -993,13 +1211,13 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static ThisEntity GetByCtid( string ctid, bool includingParts = true )
+		public static ThisResource GetByCtid( string ctid, bool includingParts = true, bool allowPendingState = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.DataSetProfile
-						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
+						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() && ( s.EntityStateId == 3 || ( allowPendingState && s.EntityStateId == 1 ) ));
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -1028,7 +1246,7 @@ namespace workIT.Factories
 								join entityCred in context.Entity_Credential on dspEntity.Id equals entityCred.EntityId
 								join cred in context.Credential on entityCred.CredentialId equals cred.Id
 								join codes in context.Codes_PropertyValue on cred.CredentialTypeId equals codes.Id
-								where org.Id == orgId
+								where org.Id == orgId && dsp.EntityStateId == 3 && cred.EntityStateId > 1
 								select new
 								{
 									cred.Id,
@@ -1072,7 +1290,7 @@ namespace workIT.Factories
 		}
 
 
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -1083,7 +1301,7 @@ namespace workIT.Factories
 			//if ( !string.IsNullOrWhiteSpace( input.CredentialRegistryId ) )
 			//	output.CredentialRegistryId = input.CredentialRegistryId;
 
-			output.Id = input.Id;
+			//output.Id = input.Id;
 			//output.EntityStateId = input.EntityStateId;
 			output.Description = GetData( input.Description );
 			output.Name = GetData( input.Name );
@@ -1105,11 +1323,11 @@ namespace workIT.Factories
 			}
 			else
 				output.DistributionFile = null;
+			output.DataSetTimePeriodJson = input.DataSetTimePeriodJson;
 
 		}
 
-		public static void MapFromDB( DBEntity input, ThisEntity output,
-				bool includingParts, bool isAPIRequest )
+		public static void MapFromDB( DBEntity input, ThisResource output, bool includingParts, bool isAPIRequest )
 		{
 
 			output.Id = input.Id;
@@ -1123,9 +1341,9 @@ namespace workIT.Factories
 			output.SubjectIdentification = input.SubjectIdentification;
 			output.Source = GetUrlData( input.Source );
 			//=====
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
+			var resourceEntity = EntityManager.GetEntity( output.RowId, false );
+			if ( resourceEntity != null && resourceEntity.Id > 0 )
+				output.EntityLastUpdated = resourceEntity.LastUpdated;
 			//
 			if ( IsGuidValid( input.DataProviderUID ) )
 			{
@@ -1134,14 +1352,20 @@ namespace workIT.Factories
 				output.DataProviderOld = OrganizationManager.GetForSummary( output.DataProviderUID );
 				if ( output.DataProviderOld != null && output.DataProviderOld.Id > 0 )
 				{
+					output.DataProviderId = output.DataProviderOld.Id;
+					output.DataProviderName = output.DataProviderOld.Name;
 					output.DataProvider = new Models.API.Outline()
 					{
 						Description = output.DataProviderOld.Description,
+						Meta_Id= output.DataProviderOld.Id,
 						Label = output.DataProviderOld.Name,
 						Image = output.DataProviderOld.Image,
 						URL = FormatExternalFinderUrl( "organization", output.DataProviderOld.CTID, output.DataProviderOld.SubjectWebpage, output.DataProviderOld.Id, output.DataProviderOld.FriendlyName )
 					};
-				}
+
+					output.PrimaryOrganization = output.DataProviderOld;
+
+                }
 				if ( isAPIRequest )
 					output.DataProviderOld = null;
 			}
@@ -1176,8 +1400,8 @@ namespace workIT.Factories
 
 			output.AboutInternal = new List<TopLevelEntityReference>();
 			output.About = new List<Models.API.Outline>();
-
-			if ( !includingParts )
+            output.DataSetTimePeriodJson = input.DataSetTimePeriodJson;
+            if ( !includingParts )
 				return;
 			//
 			//if ( string.IsNullOrWhiteSpace( output.CTID ) || output.EntityStateId < 3 )
@@ -1210,15 +1434,15 @@ namespace workIT.Factories
 								 Label=item.CredentialType
 							} },
 						};
-						if ( item.OwningOrganization != null && item.OwningOrganization.Id > 0 )
+						if ( item.PrimaryOrganization != null && item.PrimaryOrganization.Id > 0 )
 						{
 							about.Provider = new Models.API.Outline()
 							{
-								Label = item.OwningOrganization.Name,
-								Meta_Id = item.OwningOrganization.Id,
+								Label = item.PrimaryOrganization.Name,
+								Meta_Id = item.PrimaryOrganization.Id,
 							};
 							//21-09-13 mp - not sure why I was using reactFinderSiteURL below
-							about.Provider.URL = FormatDetailUrl( "organization", item.OwningOrganization.CTID, item.OwningOrganization.SubjectWebpage, item.OwningOrganization.Id, item.OwningOrganization.FriendlyName );
+							about.Provider.URL = FormatDetailUrl( "organization", item.PrimaryOrganization.CTID, item.PrimaryOrganization.SubjectWebpage, item.PrimaryOrganization.Id, item.PrimaryOrganization.FriendlyName );
 
 							//if ( !string.IsNullOrWhiteSpace( item.OwningOrganization.CTID ) )
 							//	about.Provider.URL = reactFinderSiteURL + "organization/" + item.OwningOrganization.Id;
@@ -1265,15 +1489,15 @@ namespace workIT.Factories
 								 Label=item.EntityType
 							} },
 						};
-						if ( item.OwningOrganization != null && item.OwningOrganization.Id > 0 )
+						if ( item.PrimaryOrganization != null && item.PrimaryOrganization.Id > 0 )
 						{
 							about.Provider = new Models.API.Outline()
 							{
-								Label = item.OwningOrganization.Name,
-								Meta_Id = item.OwningOrganization.Id,
+								Label = item.PrimaryOrganization.Name,
+								Meta_Id = item.PrimaryOrganization.Id,
 							};
 							//21-09-13 mp - not sure why I was using reactFinderSiteURL below
-							about.Provider.URL = FormatDetailUrl( "organization", item.OwningOrganization.CTID, item.OwningOrganization.SubjectWebpage, item.OwningOrganization.Id, item.OwningOrganization.FriendlyName );
+							about.Provider.URL = FormatDetailUrl( "organization", item.PrimaryOrganization.CTID, item.PrimaryOrganization.SubjectWebpage, item.PrimaryOrganization.Id, item.PrimaryOrganization.FriendlyName );
 
 							//if ( !string.IsNullOrWhiteSpace( item.OwningOrganization.CTID ) )
 							//	about.Provider.URL = reactFinderSiteURL + "organization/" + item.OwningOrganization.Id;
@@ -1319,14 +1543,14 @@ namespace workIT.Factories
 								 Label=item.EntityType
 							} },
 						};
-						if ( item.OwningOrganization != null && item.OwningOrganization.Id > 0 )
+						if ( item.PrimaryOrganization != null && item.PrimaryOrganization.Id > 0 )
 						{
 							about.Provider = new Models.API.Outline()
 							{
-								Label = item.OwningOrganization.Name,
-								Meta_Id = item.OwningOrganization.Id,
+								Label = item.PrimaryOrganization.Name,
+								Meta_Id = item.PrimaryOrganization.Id,
 							};
-							about.Provider.URL = FormatDetailUrl( "organization", item.OwningOrganization.CTID, item.OwningOrganization.SubjectWebpage, item.OwningOrganization.Id, item.OwningOrganization.FriendlyName );
+							about.Provider.URL = FormatDetailUrl( "organization", item.PrimaryOrganization.CTID, item.PrimaryOrganization.SubjectWebpage, item.PrimaryOrganization.Id, item.PrimaryOrganization.FriendlyName );
 
 							//if ( !string.IsNullOrWhiteSpace( item.OwningOrganization.CTID ) )
 							//	about.Provider.URL = reactFinderSiteURL + "organization/" + item.OwningOrganization.Id;
@@ -1372,11 +1596,11 @@ namespace workIT.Factories
 			}
 		} //
 
-		public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
+		public static List<ThisResourceSummary> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool autocomplete = false )
 		{
 			string connectionString = DBConnectionRO();
-			var item = new ThisEntity();
-			var list = new List<ThisEntity>();
+			var item = new ThisResourceSummary();
+			var list = new List<ThisResourceSummary>();
 			var result = new DataTable();
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -1413,7 +1637,7 @@ namespace workIT.Factories
 						if ( pTotalRows > 0 && result.Rows.Count == 0 )
 						{
 							//actual this can be a credential.Cache sync issue
-							item = new ThisEntity();
+							item = new ThisResourceSummary();
 							item.Name = "Error: invalid page number. Or this could mean a record is not in the credential cache. ";
 							item.Description = "Error: invalid page number. Select displayed page button only.";
 
@@ -1426,7 +1650,7 @@ namespace workIT.Factories
 						pTotalRows = 0;
 						LoggingHelper.LogError( ex, thisClassName + string.Format( ".Search() - Execute proc, Message: {0} \r\n Filter: {1} \r\n", ex.Message, pFilter ) );
 
-						item = new ThisEntity();
+						item = new ThisResourceSummary();
 						item.Name = "Unexpected error encountered. System administration has been notified. Please try again later. ";
 						item.Description = ex.Message;
 
@@ -1449,7 +1673,7 @@ namespace workIT.Factories
 
 						}
 						//avgMinutes = 0;
-						item = new ThisEntity();
+						item = new ThisResourceSummary();
 						//item.SearchRowNumber = GetRowColumn( dr, "RowNumber", 0 );
 						item.Id = GetRowColumn( dr, "Id", 0 );
 
@@ -1527,7 +1751,7 @@ namespace workIT.Factories
 					pTotalRows = 0;
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".BasicSearch() - Execute proc, Row: {0}, Message: {1} \r\n Filter: {2} \r\n", cntr, ex.Message, pFilter ) );
 
-					item = new ThisEntity();
+					item = new ThisResourceSummary();
 					item.Name = "Unexpected error encountered. System administration has been notified. Please try again later. ";
 					item.Description = ex.Message;
 					list.Add( item );

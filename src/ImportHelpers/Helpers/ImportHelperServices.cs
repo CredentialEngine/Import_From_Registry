@@ -12,7 +12,7 @@ namespace ImportHelpers
 {
 	public class ImportHelperServices
 	{
-
+		#region Imports
 		/// <summary>
 		/// Retrieve an envelop from the registry and do import
 		/// Custom version for Import from Finder.Import
@@ -95,7 +95,7 @@ namespace ImportHelpers
 					//	default:
 					//		//default to credential
 					//		//actually should have an edit for this.
-					//		return new ImportCredential().CustomProcessRequest( envelope, status );
+					//		return new ImportHelperServices().CustomProcessRequest( envelope, status );
 					//		//break;
 					//}
 				}
@@ -133,13 +133,22 @@ namespace ImportHelpers
 			//string payload = "";
 			try
 			{
-				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+				ReadEnvelope envelope = RegistryServices.GetEnvelopeByCtid( ctid.Trim(), ref statusMessage, ref ctdlType );
 				if ( envelope == null || string.IsNullOrWhiteSpace( envelope.EnvelopeType ) )
 				{
+					LoggingHelper.DoTrace( 4, string.Format( "ImportHelperServices.ImportByCtid(). envelope not found CTID: {0}", ctid ) );
+					//this is unlikely, so try again
+					envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType );
+					if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeType ) )
+					{
+						LoggingHelper.DoTrace( 4, string.Format( "ImportHelperServices.ImportByCtid(). ****found envelope on immediate retry. CTID: {0} ******", ctid ) );
+					}
+
 					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
-					if ( defCommunity != community )
-						envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType, community );
+					//21-05-07 mparsons - not a good idea. Need to provide context if using alternate community, otherwise could have unexpected results.
+					//if ( defCommunity != community )
+					//	envelope = RegistryServices.GetEnvelopeByCtid( ctid, ref statusMessage, ref ctdlType, community );
 				}
 				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
 				{
@@ -151,64 +160,47 @@ namespace ImportHelpers
 					return false;
 				}
 
-				/*======OLD ===================
-				payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage );
-				if (string.IsNullOrWhiteSpace(payload))
-				{
-					string defCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
-					string community = UtilityManager.GetAppKeyValue( "additionalCommunity" );
-					if ( defCommunity != community )
-						payload = GetResourceGraphByCtid( ctid, ref ctdlType, ref statusMessage, community );
-				}
-				if ( !string.IsNullOrWhiteSpace( payload ) )
-                {
-                    LoggingHelper.WriteLogFile( 5, ctid + "_ImportByCtid.json", payload, "", false );
-                    LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, ctid: {1} ", ctdlType, ctid ) );
-                    ctdlType = ctdlType.Replace( "ceterms:", "" );
-                    switch ( ctdlType.ToLower() )
-                    {
-                        case "credentialorganization":
-                        case "qacredentialorganization":
-                        case "organization":
-                            return new ImportOrganization().ImportByPayload( payload, status );
-                        //break;CredentialOrganization
-                        case "assessmentprofile":
-                            return new ImportAssessment().ImportByPayload( payload, status );
-                        //break;
-                        case "learningopportunityprofile":
-                            return new ImportLearningOpportunties().ImportByPayload( payload, status );
-                        //break;
-                        case "conditionmanifest":
-                            return new ImportConditionManifests().ImportByPayload( payload, status );
-                        //break;
-                        case "costmanifest":
-                            return new ImportCostManifests().ImportByPayload( payload, status );
-						case "competencyframework":
-							return new ImportCompetencyFramesworks().Import( payload, "", status );
-						case "conceptscheme":
-						case "skos:conceptscheme":
-							return new ImportConceptSchemes().Import( payload, "", status );
-						case "pathway":
-							return new ImportPathways().Import( payload, "", status );
-						case "pathwayset":
-							return new ImportPathwaySets().Import( payload, "", status );
-						case "transfervalue":
-						case "transfervalueprofile":
-							return new ImportTransferValue().Import( payload, "", status );
-						//break;
-						default:
-                            //default to credential
-                            return new ImportCredential().ImportByPayload( payload, status );
-                            //break;
-                    }
-                }
-                else
-                    return false;
-				*/
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "ImportCredential.ImportByCtid(). ctdlType: {0}", ctdlType ) );
+				LoggingHelper.LogError( ex, string.Format( "ImportHelperServices.ImportByCtid(). ctdlType: {0}", ctdlType ) );
+				status.AddError( ex.Message );
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
+				}
+				return false;
+			}
+		}
+		//
+		public bool ImportByURL( string resourceUrl, SaveStatus status )
+		{
+			if ( string.IsNullOrWhiteSpace( resourceUrl ) )
+			{
+				status.AddError( "ImportByURL - a valid resourceUrl must be provided" );
+				return false;
+			}
+
+			string statusMessage = "";
+			string ctdlType = "";
+			//string payload = "";
+			try
+			{
+				ReadEnvelope envelope = RegistryServices.GetEnvelopeByURL( resourceUrl, ref statusMessage, ref ctdlType );
+				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
+				{
+					return ImportEnvelope( envelope, ctdlType, status );
+				}
+				else
+				{
+					status.AddError( string.Format( "ImportHelperServices.ImportByURL. Registry Envelope was not found for: {0}", resourceUrl ) );
+					return false;
+				}
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "ImportHelperServices.ImportByURL(). ctdlType: {0}", ctdlType ) );
 				status.AddError( ex.Message );
 				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
 				{
@@ -225,12 +217,64 @@ namespace ImportHelpers
 				//
 				if ( envelope != null && !string.IsNullOrWhiteSpace( envelope.EnvelopeIdentifier ) )
 				{
-					//LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, CTID: {1} ", envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
+					LoggingHelper.DoTrace( 4, string.Format( "RegistryServices.ImportByCtid ctdlType: {0}, CTID: {1} ", envelope.EnvelopeCtdlType, envelope.EnvelopeCtid ) );
 					//TODO - can we just use string envelope.EnvelopeCtdlType consistently 
 					ctdlType = ctdlType.Replace( "ceterms:", "" );
+					//
+					string payload = envelope.DecodedResource.ToString();
+					LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), envelope.EnvelopeCtid + "_" + ctdlType, payload, "", false );
+
 
 					switch ( ctdlType.ToLower() )
 					{
+						case "credential":
+						case "apprenticeshipcertificate":
+						case "associatedegree":
+						case "bachelordegree":
+						case "badge":
+						case "certificate":
+						case "certificateofcompletion":
+						case "participationcertificate":
+						case "certification":
+						case "degree":
+						case "diploma":
+						case "digitalbadge":
+						case "doctoraldegree":
+						case "generaleducationdevelopment":
+						case "journeymancertificate":
+						case "license":
+						case "mastercertificate":
+						case "masterdegree":
+						case "microcredential":
+						case "openbadge":
+						case "professionaldoctorate":
+						case "qualityassurancecredential":
+						case "researchdoctorate":
+						case "secondaryschooldiploma":
+						case "ceterms:apprenticeshipcertificate":
+						case "ceterms:associatedegree":
+						case "ceterms:bachelordegree":
+						case "ceterms:badge":
+						case "ceterms:certificate":
+						case "ceterms:certificateofcompletion":
+						case "ceterms:participationcertificate":
+						case "ceterms:certification":
+						case "ceterms:degree":
+						case "ceterms:diploma":
+						case "ceterms:digitalbadge":
+						case "ceterms:doctoraldegree":
+						case "ceterms:generaleducationdevelopment":
+						case "ceterms:journeymancertificate":
+						case "ceterms:license":
+						case "ceterms:mastercertificate":
+						case "ceterms:masterdegree":
+						case "ceterms:microcredential":
+						case "ceterms:openbadge":
+						case "ceterms:professionaldoctorate":
+						case "ceterms:qualityassurancecredential":
+						case "ceterms:researchdoctorate":
+						case "ceterms:secondaryschooldiploma":
+							return new ImportCredential().CustomProcessRequest( envelope, status );
 						case "credentialorganization":
 						case "qacredentialorganization": //what distinctions do we need for QA orgs?
 						case "organization":
@@ -240,7 +284,11 @@ namespace ImportHelpers
 							return new ImportAssessment().CustomProcessEnvelope( envelope, status );
 						//break;
 						case "learningopportunityprofile":
+						case "learningprogram":
+						case "course":
 							return new ImportLearningOpportunties().CustomProcessEnvelope( envelope, status );
+						case "collection":
+							return new ImportCollections().CustomProcessEnvelope( envelope, status );
 						//break;
 						case "conditionmanifest":
 							return new ImportConditionManifests().CustomProcessEnvelope( envelope, status );
@@ -248,30 +296,52 @@ namespace ImportHelpers
 						case "costmanifest":
 							return new ImportCostManifests().CustomProcessEnvelope( envelope, status );
 						case "competencyframework":
+						case "ceasn:competencyframework":
 							return new ImportCompetencyFramesworks().CustomProcessEnvelope( envelope, status );
+						case "conceptscheme":
+						case "skos:conceptscheme":
+							return new ImportConceptSchemes().CustomProcessEnvelope( envelope, status );
+						case "progressionmodel":
+						case "asn:progressionmodel":
+							return new ImportProgressionModels().CustomProcessEnvelope( envelope, status );
+						case "datasetprofile":
+						case "qdata:datasetprofile":
+							return new ImportDataSetProfile().CustomProcessEnvelope( envelope, status );
 						case "pathway":
 							return new ImportPathways().CustomProcessEnvelope( envelope, status );
-						case "pathwaysset":
+						case "pathwayset":
 							return new ImportPathwaySets().CustomProcessEnvelope( envelope, status );
-						case "transfervalueprofile":
+                        case "scheduledoffering":
+                            return new ImportScheduledOfferings().CustomProcessEnvelope( envelope, status );
+                        case "supportservice":
+                            return new ImportSupportService().CustomProcessEnvelope( envelope, status );
+                        case "transferintermediary":
+                            return new ImportTransferIntermediary().CustomProcessEnvelope( envelope, status );
+                        case "transfervalueprofile":
 						case "transfervalue":
 							return new ImportTransferValue().CustomProcessEnvelope( envelope, status );
-
+                        case "verificationserviceprofile":
+                            return new ImportVerificationService().CustomProcessEnvelope( envelope, status );
+                        case "occupation":
+							return new ImportOccupation().CustomProcessEnvelope( envelope, status );
 						case "job":
-						case "occupation":
+							return new ImportJob().CustomProcessEnvelope( envelope, status );
+                        case "task":
+                            return new ImportTask().CustomProcessEnvelope( envelope, status );
+                        case "workrole":
+							return new ImportWorkRole().CustomProcessEnvelope( envelope, status );
+						case "ccc":
 						case "rating":
 						case "rubric":
-						case "task":
-						case "workrole":
-						{
-							//LoggingHelper.DoTrace( 1, string.Format( "ImportHelperServices.ImportEnvelope. {0} ({1}-{2}) is not handled at this time. ", ctdlType, envelope.EnvelopeCtdlType, envelope.EnvelopeCetermsCtid ) );
-							return false;
-						}
+							{
+								LoggingHelper.DoTrace( 1, string.Format( "ImportHelperServices.ImportEnvelope. {0} ({1}-{2}) is not handled at this time. ", ctdlType, envelope.EnvelopeCtdlType, envelope.EnvelopeCtid ) );
+								return false;
+							}
 						//break;
 						default:
-							//default to credential
-							//should have an edit
-							return new ImportCredential().CustomProcessRequest( envelope, status );
+							//
+							LoggingHelper.DoTrace( 1, string.Format( "ImportHelperServices.ImportEnvelope. {0} ({1}-{2}) is not handled at this time. ", ctdlType, envelope.EnvelopeCtdlType, envelope.EnvelopeCtid ) );
+							return false;
 							//break;
 					}
 				}
@@ -284,7 +354,7 @@ namespace ImportHelpers
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "ImportCredential.ImportByCtid(). ctdlType: {0}", ctdlType ) );
+				LoggingHelper.LogError( ex, string.Format( "ImportHelperServices.ImportByCtid(). ctdlType: {0}", ctdlType ) );
 				status.AddError( ex.Message );
 				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
 				{
@@ -293,6 +363,115 @@ namespace ImportHelpers
 				return false;
 			}
 		}
+		#endregion
 
+		#region utilities
+
+		//
+		public bool PurgeByCtid( string ctid, SaveStatus status, bool deleteOnlyNoPurge = false )
+		{
+			//this is currently specific, assumes envelop contains a credential
+			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
+
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				status.AddError( "PurgeByCtid - a valid ctid must be provided" );
+				return false;
+			}
+			string statusMessage = "";
+
+			string dataOwnerCtid = "";
+			string entityType = "";
+			var deleteService = new ImportUtilities();
+			var isValid = false;
+			try
+			{
+				if ( deleteOnlyNoPurge )
+				{
+					isValid = new RegistryServices().DeleteRequest( ctid, ref statusMessage, ref entityType );
+				}
+				else
+				{
+					isValid = new RegistryServices().PurgeRequest( ctid, ref dataOwnerCtid, ref entityType, ref statusMessage );
+				}
+
+				if ( isValid )
+				{
+                    //might be better to let the import take care of the delete or will see an error!
+                    if ( UtilityManager.GetAppKeyValue( "onPurgeOrDeleteAlsoDeleteFromDB", false ) )
+					{
+						deleteService.HandleDeleteRequest( 1, ctid, entityType, ref statusMessage );
+					}
+				}
+				else
+				{
+                    status.AddError( statusMessage );
+				}
+				
+				return isValid;
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "ImportHelperServices.PurgeByCtid(). CTID: {0}, Type: {1}", ctid, entityType ) );
+				status.AddError( ex.Message );
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
+				}
+				return false;
+			}
+		}
+		//
+		public bool SetOrganizationToCeased( string ctid, SaveStatus status)
+		{
+			//this is currently specific, assumes envelop contains a credential
+			//can use the hack fo GetResourceType to determine the type, and then call the appropriate import method
+
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				status.AddError( "SetOrganizationToCeased - a valid ctid must be provided" );
+				return false;
+			}
+			string statusMessage = "";
+
+			string dataOwnerCtid = "";
+			string entityType = "";
+			var deleteService = new ImportUtilities();
+			var isValid = false;
+			try
+			{
+
+				{
+					isValid = new RegistryServices().SetOrganizationToCeased( ctid,  ref statusMessage );
+				}
+				if ( isValid )
+				{
+					deleteService.HandleDeleteRequest( 1, ctid, entityType, ref statusMessage );
+				}
+				else
+				{
+					status.Messages.Add( new StatusMessage()
+					{
+						Message = statusMessage
+					} );
+				}
+
+				return isValid;
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "ImportHelperServices.PurgeByCtid(). CTID: {0}, Type: {1}", ctid, entityType ) );
+				status.AddError( ex.Message );
+				if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
+				{
+					status.AddWarning( "The referenced registry document is using an old schema. Please republish it with the latest schema!" );
+				}
+				return false;
+			}
+		}
+		//
+		#endregion
 	}
 }

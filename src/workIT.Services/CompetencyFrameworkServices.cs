@@ -96,10 +96,16 @@ namespace workIT.Services
 		}
 		//
 
-		//public static string GetCTIDFromID( int id )
-		//{
-		//	return CompetencyFrameworkManager.GetCTIDFromID( id );
-		//}
+		public static string GetCTIDFromID( int id )
+		{
+			return CompetencyFrameworkManager.GetCTIDFromID( id );
+		}
+		//
+
+		public static string GetCompetencyCTIDFromCompetencyID( int id )
+		{
+			return CompetencyFrameworkManager.GetCompetencyCTIDFromCompetencyID( id );
+		}
 		//
 
 		public static List<MPM.CompetencyFrameworkSummary> CompetencyFrameworkSearch( MainSearchInput data, ref int pTotalRows )
@@ -122,7 +128,7 @@ namespace workIT.Services
 						Description = item.Description,
 						Source = item.SourceUrl,
 						CTID = item.CTID,
-						OwningOrganization = item.OwnerOrganizationId == 0 ? null : new Organization() { Id = item.OwnerOrganizationId, Name=item.PrimaryOrganizationName} 
+						PrimaryOrganization = item.PrimaryOrganizationId == 0 ? null : new Organization() { Id = item.PrimaryOrganizationId, Name=item.PrimaryOrganizationName} 
 						//EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK,
 						//EntityType = "CompetencyFramework"
 					} );

@@ -273,9 +273,12 @@ namespace workIT.Services
 					mgr.UpdateEntityTypes( 10, total, false );
 				}
 
-				mgr.UpdateEntityStatistic( 10, "frameworkReport:Competencies", GetCompetencyTermTotal( null ), false );
+				var competencyTotals = GetCompetencyTermTotal( null );
+                mgr.UpdateEntityStatistic( 10, "frameworkReport:Competencies", competencyTotals, false );
+                //23-04-07 also update Codes.EntityTypes
+                mgr.UpdateEntityTypes( 17, competencyTotals, false );
 
-				if ( includingRelationships )
+                if ( includingRelationships )
 				{
 					if ( usingCFTotals )
 					{

@@ -1,21 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity.Validation;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.ProfileModels.CostProfile;
 using DBEntity = workIT.Data.Tables.Entity_CostProfile;
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
 using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
+using EntityContext = workIT.Data.Tables.workITEntities;
+using ThisEntity = workIT.Models.ProfileModels.CostProfile;
 
 namespace workIT.Factories
 {
@@ -201,21 +197,19 @@ namespace workIT.Factories
 				}
 
 			}
-			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			catch ( DbEntityValidationException dbex )
 			{
-				string message = HandleDBValidationError( dbex, thisClassName + ".Save()", entity.ProfileName );
-
-				status.AddWarning( thisClassName + " - Error - the save was not successful. " + message );
-				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save()-DbEntityValidationException, Parent: {0} (type: {1}, Id: {2})", parent.EntityBaseName, parent.EntityTypeId, parent.EntityBaseId ) );
-				isValid = false;
+				string message2 = HandleDBValidationError( dbex, thisClassName + ".Save()", entity.ProfileName );
+				status.AddWarning( thisClassName + " - Error - the save was not successful. " + message2 );
+				LoggingHelper.LogError( dbex, thisClassName, $".Save()-DbEntityValidationException, Parent: {parent.EntityBaseName} (type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})" );
+				return false;
 			}
 			catch ( Exception ex )
 			{
-				string message = FormatExceptions( ex );
+				string message = BaseFactory.FormatExceptions( ex );
 				status.AddError( thisClassName + " - Error - the save was not successful. " + message );
-
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} (type: {1}, Id: {2})", parent.EntityBaseName, parent.EntityTypeId, parent.EntityBaseId ) );
-				isValid = false;
+				LoggingHelper.LogError( ex, thisClassName, $".Save(), Parent: {parent.EntityBaseName} (parent type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})", notifyAdmin: true );
+				return false;
 			}
 
 
@@ -621,7 +615,12 @@ namespace workIT.Factories
 			if ( code != null && code.NumericCode > 0 )
 			{
 				to.Currency = code.Currency;
-				to.CurrencySymbol = code.HtmlCodes;
+				if ( code.Currency.ToLower() == "usd" )
+					to.CurrencySymbol = "$";
+				else
+				{
+					to.CurrencySymbol = code.HtmlCodes;
+				}
 			}
 
 			to.ProfileSummary = SetCostProfileSummary( to );

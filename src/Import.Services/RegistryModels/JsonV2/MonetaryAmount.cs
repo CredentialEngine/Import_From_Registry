@@ -27,19 +27,19 @@ namespace RA.Models.JsonV2
 		/// Value of a monetary amount or a quantitative value.
 		/// </summary>
 		[JsonProperty( "schema:value" )]
-		public decimal Value { get; set; }
+		public decimal? Value { get; set; }
 
 		/// <summary>
 		/// Lower value of some characteristic or property.
 		/// </summary>
 		[JsonProperty( "schema:minValue" )]
-		public decimal MinValue { get; set; }
+		public decimal? MinValue { get; set; }
 
 		/// <summary>
 		/// Upper value of some characteristic or property.
 		/// </summary>
 		[JsonProperty( "schema:maxValue" )]
-		public decimal MaxValue { get; set; }
+		public decimal? MaxValue { get; set; }
 
 		[JsonProperty( "schema:description" )]
 		public LanguageMap Description { get; set; }
@@ -75,30 +75,30 @@ namespace RA.Models.JsonV2
 		/// Median salary value.
 		/// </summary>
 		[JsonProperty( "qdata:median" )]
-		public decimal Median { get; set; }
+		public decimal? Median { get; set; }
 
 		/// <summary>
 		/// 10th percentile salary value.
 		/// </summary>
 		[JsonProperty( "qdata:percentile10" )]
-		public decimal Percentile10 { get; set; }
+		public decimal? Percentile10 { get; set; }
 
 		/// <summary>
 		/// 25th percentile salary value.
 		/// </summary>
 		[JsonProperty( "qdata:percentile25" )]
-		public decimal Percentile25 { get; set; }
+		public decimal? Percentile25 { get; set; }
 
 		/// <summary>
 		/// 75th percentile salary value.
 		/// </summary>
 		[JsonProperty( "qdata:percentile75" )]
-		public decimal Percentile75 { get; set; }
+		public decimal? Percentile75 { get; set; }
 
 		/// <summary>
 		/// 90th percentile salary value.
 		/// </summary>
 		[JsonProperty( "qdata:percentile90" )]
-		public decimal Percentile90 { get; set; }
+		public decimal? Percentile90 { get; set; }
 	}
 }

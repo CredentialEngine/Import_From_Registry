@@ -43,11 +43,16 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasDestinationComponent" )]
 		public List<string> HasDestinationComponent { get; set; }
 
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
 
-		/// <summary>
-		/// This property identifies all pathway components for a pathway
-		/// </summary>
-		[JsonProperty( PropertyName = "ceasn:hasPart" )]
+        /// <summary>
+        /// This property identifies all pathway components for a pathway
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasPart" )]
 		public List<string> HasPart { get; set; } = new List<string>();
 
 		[JsonProperty( PropertyName = "asn:hasProgressionModel" )]

@@ -11,14 +11,14 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.QData.DataSetTimeFrame;
+using ThisResource = workIT.Models.QData.DataSetTimeFrame;
 using DBEntity = workIT.Data.Tables.DataSetTimeFrame;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
-
+using System.Data.Entity.Infrastructure;
 
 namespace workIT.Factories
 {
@@ -28,7 +28,7 @@ namespace workIT.Factories
 
 		#region DataSetTimeFrame - persistance ==================
 
-		public bool SaveList( List<ThisEntity> input, int dataSetProfileId, ref SaveStatus status )
+		public bool SaveList( List<ThisResource> input, int dataSetProfileId, ref SaveStatus status )
 		{
 			bool allIsValid = true;
 			int dataSetTimeFrameId = 0;
@@ -86,96 +86,107 @@ namespace workIT.Factories
 
 			return allIsValid;
 		}
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
-			try
+			bool saveFailed;
+			do
 			{
-				using ( var context = new EntityContext() )
+				saveFailed = false;
+				try
 				{
-					if ( ValidateProfile( entity, ref status ) == false )
+					using ( var context = new EntityContext() )
 					{
-						//return false;
-					}
-
-					if ( entity.Id > 0 )
-					{
-						//TODO - consider if necessary, or interferes with anything
-						context.Configuration.LazyLoadingEnabled = false;
-						DBEntity efEntity = context.DataSetTimeFrame
-								.SingleOrDefault( s => s.Id == entity.Id );
-
-						if ( efEntity != null && efEntity.Id > 0 )
+						if ( ValidateProfile( entity, ref status ) == false )
 						{
-							//fill in fields that may not be in entity
-							entity.RowId = efEntity.RowId;
+							//return false;
+						}
 
-							MapToDB( entity, efEntity );
-							//these classes should probably use the dates from the parent
-							if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+						if ( entity.Id > 0 )
+						{
+							//TODO - consider if necessary, or interferes with anything
+							context.Configuration.LazyLoadingEnabled = false;
+							DBEntity efEntity = context.DataSetTimeFrame
+									.SingleOrDefault( s => s.Id == entity.Id );
+
+							if ( efEntity != null && efEntity.Id > 0 )
 							{
-								efEntity.Created = status.LocalCreatedDate;
-							}
-							//has changed?
-							if ( HasStateChanged( context ) )
-							{
-								if ( IsValidDate( status.EnvelopeUpdatedDate ) )
-									efEntity.LastUpdated = status.LocalUpdatedDate;
-								else
-									efEntity.LastUpdated = DateTime.Now;
-								//NOTE efEntity.EntityStateId is set to 0 in delete method )
-								count = context.SaveChanges();
-								//can be zero if no data changed
-								if ( count >= 0 )
-								{
-									isValid = true;
-								}
-								else
-								{
-									//?no info on error
+								//fill in fields that may not be in entity
+								entity.RowId = efEntity.RowId;
 
-									isValid = false;
-									string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a DataSetTimeFrame. The process appeared to not work, but was not an exception, so we have no message, or no clue. DataSetTimeFrame: {0}, Id: {1}", entity.Name, entity.Id );
-									status.AddError( "Error - the update was not successful. " + message );
-									EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+								MapToDB( entity, efEntity );
+								//these classes should probably use the dates from the parent
+								if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
+								{
+									efEntity.Created = status.LocalCreatedDate;
 								}
+								//has changed?
+								if ( HasStateChanged( context ) )
+								{
+									if ( IsValidDate( status.EnvelopeUpdatedDate ) )
+										efEntity.LastUpdated = status.LocalUpdatedDate;
+									else
+										efEntity.LastUpdated = DateTime.Now;
+									//NOTE efEntity.EntityStateId is set to 0 in delete method )
+									count = context.SaveChanges();
+									//can be zero if no data changed
+									if ( count >= 0 )
+									{
+										isValid = true;
+									}
+									else
+									{
+										//?no info on error
 
-							}
+										isValid = false;
+										string message = string.Format( thisClassName + ".Save Failed", "Attempted to update a DataSetTimeFrame. The process appeared to not work, but was not an exception, so we have no message, or no clue. DataSetTimeFrame: {0}, Id: {1}", entity.Name, entity.Id );
+										status.AddError( "Error - the update was not successful. " + message );
+										EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+									}
+								}
 							
-							if ( isValid )
+								if ( isValid )
+								{
+									if ( !UpdateParts( entity, ref status ) )
+										isValid = false;
+								}
+							}
+							else
 							{
-								if ( !UpdateParts( entity, ref status ) )
-									isValid = false;
+								status.AddError( "Error - update failed, as DataSetTimeFrame was not found." );
 							}
 						}
 						else
 						{
-							status.AddError( "Error - update failed, as DataSetTimeFrame was not found." );
+							//add
+							int newId = Add( entity, ref status );
+							if ( newId == 0 || status.HasSectionErrors )
+								isValid = false;
 						}
 					}
-					else
-					{
-						//add
-						int newId = Add( entity, ref status );
-						if ( newId == 0 || status.HasErrors )
-							isValid = false;
-					}
 				}
-			}
-			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
-			{
-				string message = HandleDBValidationError( dbex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), "DataSetTimeFrame" );
-				status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
-			}
-			catch ( Exception ex )
-			{
-				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
-				status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
-				isValid = false;
-			}
+				catch ( DbUpdateConcurrencyException ducex )
+				{
+					//Resolving optimistic concurrency exceptions with Reload (database wins)
+					saveFailed = true;
 
+					// Update the values of the entity that failed to save from the store
+					ducex.Entries.Single().Reload();
+				}
+				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+				{
+					string message = HandleDBValidationError( dbex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), "DataSetTimeFrame" );
+					status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
+				}
+				catch ( Exception ex )
+				{
+					string message = FormatExceptions( ex );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
+					status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
+					isValid = false;
+				}
+			} while ( saveFailed );
 
 			return isValid;
 		}
@@ -186,10 +197,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		private int Add( ThisEntity entity, ref SaveStatus status )
+		private int Add( ThisResource entity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
-			using ( var context = new EntityContext() )
+            status.HasSectionErrors = false;
+
+            using ( var context = new EntityContext() )
 			{
 				try
 				{
@@ -261,7 +274,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 
@@ -274,7 +287,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			if ( string.IsNullOrWhiteSpace( profile.Description ) )
@@ -334,9 +347,9 @@ namespace workIT.Factories
 
 		#region == Retrieval =======================
 
-		public static ThisEntity GetBasic( int id )
+		public static ThisResource GetBasic( int id )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.DataSetTimeFrame
@@ -355,10 +368,10 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="dataSetProfileId"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( int dataSetProfileId )
+		public static List<ThisResource> GetAll( int dataSetProfileId )
 		{
-			var list = new List<ThisEntity>();
-			ThisEntity entity = new ThisEntity();
+			var list = new List<ThisResource>();
+			ThisResource entity = new ThisResource();
 			//Guid guid = new Guid( id );
 			using ( var context = new EntityContext() )
 			{
@@ -371,7 +384,7 @@ namespace workIT.Factories
 				{
 					foreach ( var item in results )
 					{
-						entity = new ThisEntity();
+						entity = new ThisResource();
 						MapFromDB( item, entity, true );
 						list.Add( entity );
 					}
@@ -382,7 +395,7 @@ namespace workIT.Factories
 
 		//
 
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -413,7 +426,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBEntity input, ThisEntity output,
+		public static void MapFromDB( DBEntity input, ThisResource output,
 				bool includingParts )
 		{
 			output.DataSetProfileId = input.DataSetProfileId;

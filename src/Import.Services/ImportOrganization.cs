@@ -1,27 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using workIT.Utilities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-using EntityServices = workIT.Services.OrganizationServices;
-
-using InputEntityV3 = RA.Models.JsonV2.Agent;
-using BNodeV3 = RA.Models.JsonV2.BlankNode;
-using ThisEntity = workIT.Models.Common.Organization;
-using workIT.Models.Common;
 using workIT.Factories;
 using workIT.Models;
-using workIT.Models.ProfileModels;
+using workIT.Models.Common;
+using workIT.Utilities;
 
+using BNodeV3 = RA.Models.JsonV2.BlankNode;
+using EntityServices = workIT.Services.OrganizationServices;
+using FAPI = workIT.Services.API;
+using InputEntityV3 = RA.Models.JsonV2.Agent;
+using ThisEntity = workIT.Models.Common.Organization;
 namespace Import.Services
 {
-    public class ImportOrganization
+	public class ImportOrganization
     {
         int entityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION;
 		string thisClassName = "ImportOrganization";
@@ -251,7 +247,7 @@ namespace Import.Services
 				} 
 				else
 				{
-					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ));
+					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name.ToString(), input.CTID ));
 				}
 
 				helper.currentBaseObject = output;
@@ -374,21 +370,34 @@ namespace Import.Services
 				output.ConditionManifestIds = helper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
 				output.CostManifestIds = helper.MapEntityReferences( input.HasCostManifest, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
 
-				//hasVerificationService
-				output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status );
+                //hasVerificationService. just do both for now. will need to handle import of old data at some point
+                //if ( UtilityManager.GetAppKeyValue( "usingNewHasVerificationService", false ) )
+                    output.HasVerificationServiceIds = helper.MapVerificationServiceReferences( input.HasVerificationService, "HasVerificationService", output.CTID, ref status );
+				//else 
+					//output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status );
+                
 
-				// output.targetc
-				//other enumerations
-				//	serviceType, AgentSectorType
-				output.ServiceType = helper.MapCAOListToEnumermation( input.ServiceType );
+                // output.targetc
+                //other enumerations
+                //	serviceType, AgentSectorType
+                output.ServiceType = helper.MapCAOListToEnumermation( input.ServiceType );
 				output.AgentSectorType = helper.MapCAOListToEnumermation( input.AgentSectorType );
 
 				//Industries
 				//output.Industry = helper.MapCAOListToEnumermation( input.IndustryType );
 				output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
 				//naics
-				output.Naics = input.Naics;
-
+				//should check for duplicates in Naics, IndustryTypes, then remove from Naics
+				//output.Naics = input.Naics;
+				if ( input.Naics != null )
+                {
+					foreach (var item in input.Naics )
+                    {
+						var exists = output.IndustryTypes.FirstOrDefault( i => i.CodedNotation == item );
+						if ( exists == null || string.IsNullOrWhiteSpace(exists.CodedNotation))
+							output.Naics.Add( item );
+                    }
+                }
 				//keywords
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 
@@ -500,7 +509,22 @@ namespace Import.Services
 				}
 
 				//================= save the data ========================================
-				importSuccessfull = mgr.Import( output, ref status );
+				if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
+				{
+					importSuccessfull = mgr.Import( output, ref status );
+					//confirm the third parameter of getting all
+					var resource = FAPI.OrganizationServices.GetDetailForAPI( output.Id, true, true );
+					//var resourceDetail2 = JObject.FromObject( resource );
+					//or 
+					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+                
 				saveDuration = DateTime.Now.Subtract( saveStarted );
 				if ( saveDuration.TotalSeconds > 5 )
 					LoggingHelper.DoTrace( 6, string.Format( "         WARNING SAVE Duration: {0:N2} seconds ", saveDuration.TotalSeconds ) );
@@ -512,57 +536,57 @@ namespace Import.Services
 				//just in case
 				if ( status.HasErrors )
 					importSuccessfull = false;
-					//
-					//========== if requested call method to send to external API
-					if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "myExternalAPIEndpoint" ) ) )
+				//
+				//========== if requested call method to send to external API
+				if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "myExternalAPIEndpoint" ) ) )
+				{
+					var request = new CredentialRegistryResource()
 					{
-						var request = new CredentialRegistryResource()
-						{
-							EntityType = "Organization",
-							CTID = output.CTID,
-							Name = output.Name,
-							Description = output.Description,
-							SubjectWebpage = output.SubjectWebpage,
-							OwningOrganizationCTID = output.CTID,
-							CredentialFinderObject = output,
-							DownloadDate = DateTime.Now,
-							Created = status.EnvelopeCreatedDate,
-							LastUpdated = status.EnvelopeUpdatedDate
-						};
-						var url = UtilityManager.GetAppKeyValue( "myExternalAPIEndpoint" );
-						new ExternalServices().PostResourceToExternalService( url, request, ref messages );
-					}
-					//========== check if to be written to the generic CredentialRegistryDownload.Resource table
-					if ( UtilityManager.GetAppKeyValue( "writingToDownloadResourceDatabase", false ) )
+						EntityType = "Organization",
+						CTID = output.CTID,
+						Name = output.Name,
+						Description = output.Description,
+						SubjectWebpage = output.SubjectWebpage,
+						OwningOrganizationCTID = output.CTID,
+						CredentialFinderObject = output,
+						DownloadDate = DateTime.Now,
+						Created = status.EnvelopeCreatedDate,
+						LastUpdated = status.EnvelopeUpdatedDate
+					};
+					var url = UtilityManager.GetAppKeyValue( "myExternalAPIEndpoint" );
+					new ExternalServices().PostResourceToExternalService( url, request, ref messages );
+				}
+				//========== check if to be written to the generic CredentialRegistryDownload.Resource table
+				if ( UtilityManager.GetAppKeyValue( "writingToDownloadResourceDatabase", false ) )
+				{
+					var resource = "";
+					resource = JsonConvert.SerializeObject( output, JsonHelper.GetJsonSettings() );
+					//resource = output.ToString();
+					var request = new CredentialRegistryResource()
 					{
-						var resource = "";
-						resource = JsonConvert.SerializeObject( output, JsonHelper.GetJsonSettings() );
-						//resource = output.ToString();
-						var request = new CredentialRegistryResource()
-						{
-							EntityType = "Organization",
-							CTID = output.CTID,
-							Name = output.Name,
-							Description = output.Description,
-							SubjectWebpage = output.SubjectWebpage,
-							OwningOrganizationCTID = output.CTID,
-							CredentialFinderObject = resource,
-							CredentialRegistryGraph = payload,
-							DownloadDate = DateTime.Now,
-							Created = status.EnvelopeCreatedDate,
-							LastUpdated = status.EnvelopeUpdatedDate
-						};
-						new ExternalServices().DownloadSave( request, ref messages );
-					}
-					//
-					//if record was added to db, add to/or set EntityResolution as resolved
-					int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
-							ctid, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION,
-							output.RowId,
-							output.Id,
-							false,
-							ref messages,
-							output.Id > 0 );
+						EntityType = "Organization",
+						CTID = output.CTID,
+						Name = output.Name,
+						Description = output.Description,
+						SubjectWebpage = output.SubjectWebpage,
+						OwningOrganizationCTID = output.CTID,
+						CredentialFinderObject = resource,
+						CredentialRegistryGraph = payload,
+						DownloadDate = DateTime.Now,
+						Created = status.EnvelopeCreatedDate,
+						LastUpdated = status.EnvelopeUpdatedDate
+					};
+					new ExternalServices().DownloadSave( request, ref messages );
+				}
+				//
+				//if record was added to db, add to/or set EntityResolution as resolved
+				int ierId = new ImportManager().Import_EntityResolutionAdd( status.ResourceURL,
+						ctid, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION,
+						output.RowId,
+						output.Id,
+						false,
+						ref messages,
+						output.Id > 0 );
 			}
 			catch ( Exception ex )
 			{

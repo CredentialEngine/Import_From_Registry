@@ -66,6 +66,7 @@
     <Compile Include="CodesManager.cs" />
     <Compile Include="CollectionCompetencyManager.cs" />
     <Compile Include="CollectionManager.cs" />
+    <Compile Include="CollectionMemberManager.cs" />
     <Compile Include="CompetencyFrameworkCompetencyManager.cs" />
     <Compile Include="CompetencyFrameworkManager.cs" />
     <Compile Include="ConceptSchemeManager.cs" />
@@ -92,6 +93,7 @@
     <Compile Include="Entity_CommonCostManager.cs" />
     <Compile Include="Entity_CompetencyFrameworkManager.cs" />
     <Compile Include="Entity_CompetencyManager.cs" />
+    <Compile Include="Entity_ComponentConditionManager.cs" />
     <Compile Include="Entity_ConditionProfileManager.cs" />
     <Compile Include="Entity_ContactPointManager.cs" />
     <Compile Include="Entity_CredentialManager.cs" />
@@ -99,10 +101,16 @@
     <Compile Include="Entity_EarningsProfileManager.cs" />
     <Compile Include="Entity_EmploymentOutcomeManager.cs" />
     <Compile Include="Entity_FinancialAssistanceProfileManager.cs" />
+    <Compile Include="Entity_HasOfferingManager.cs" />
+    <Compile Include="Entity_HasResourceManager.cs" />
+    <Compile Include="Entity_HasSupportServiceManager.cs" />
+    <Compile Include="Entity_HasVerificationServiceManager.cs" />
     <Compile Include="Entity_HoldersProfileManager.cs" />
     <Compile Include="Entity_IdentifierValueManager.cs" />
+    <Compile Include="Entity_IsPartOfSupportServiceManager.cs" />
     <Compile Include="Entity_JurisdictionProfileManager.cs" />
     <Compile Include="Entity_LearningOpportunityManager.cs" />
+    <Compile Include="Entity_OccupationManager.cs" />
     <Compile Include="Entity_PathwayComponentManager.cs" />
     <Compile Include="Entity_PathwayManager.cs" />
     <Compile Include="Entity_ProcessProfileManager.cs" />
@@ -110,6 +118,7 @@
     <Compile Include="Entity_ReferenceManager.cs" />
     <Compile Include="Entity_RevocationProfileManager.cs" />
     <Compile Include="Entity_TransferValueProfileManager.cs" />
+    <Compile Include="Entity_UsesVerificationServiceManager.cs" />
     <Compile Include="Entity_VerificationProfileManager.cs" />
     <Compile Include="HoldersProfileManager.cs" />
     <Compile Include="ImportManager.cs" />
@@ -123,14 +132,21 @@
     <Compile Include="PathwayComponentManager.cs" />
     <Compile Include="PathwayManager.cs" />
     <Compile Include="PathwaySetManager.cs" />
+    <Compile Include="ProgressionModelManager.cs" />
+    <Compile Include="ProgressTrackingManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QueryManager.cs" />
     <Compile Include="Reference_FrameworkItemManager.cs" />
     <Compile Include="Reference_FrameworkManager.cs" />
     <Compile Include="ReportsManager.cs" />
+    <Compile Include="ScheduledOfferingManager.cs" />
     <Compile Include="SearchPendingReindexManager.cs" />
+    <Compile Include="SupportServiceManager.cs" />
     <Compile Include="TaskManager.cs" />
     <Compile Include="TransferIntermediaryManager.cs" />
+    <Compile Include="TransferIntermediaryTransferValueManager.cs" />
     <Compile Include="TransferValueProfileManager.cs" />
+    <Compile Include="VerificationServiceProfileManager.cs" />
     <Compile Include="WidgetManager.cs" />
     <Compile Include="WorkRoleManager.cs" />
   </ItemGroup>
@@ -156,7 +172,7 @@
       <Version>6.2.0</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>13.0.1</Version>
+      <Version>13.0.3</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

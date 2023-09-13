@@ -13,10 +13,12 @@ namespace RA.Models.JsonV2
 	/// </summary>
 	public class Job
 	{
-		/// <summary>
-		///  type
-		/// </summary>
-		[JsonProperty( "@type" )]
+        [JsonIgnore]
+        public static string classType = "ceterms:Job";
+        /// <summary>
+        ///  type
+        /// </summary>
+        [JsonProperty( "@type" )]
 		public string Type { get; set; } = "ceterms:Job";
 
 		/// <summary>
@@ -82,10 +84,17 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceasn:comment" )]
 		public LanguageMapList Comment { get; set; } = new LanguageMapList();
 
-		/// <summary>
-		/// Occupation related to this resource.
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:hasOccupation" )]
+
+        /// <summary>
+        /// Reference to a relevant support service available for this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+        public List<string> HasSupportService { get; set; }
+
+        /// <summary>
+        /// Occupation related to this resource.
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:hasOccupation" )]
 		public List<string> HasOccupation { get; set; }
 
 		/// <summary>
@@ -147,10 +156,23 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; }
 
-		/// <summary>
-		/// Organization(s) that offer this resource
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:offeredBy" )]
+        [JsonProperty( PropertyName = "ceterms:environmentalHazardType" )]
+        public List<string> EnvironmentalHazardType { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:performanceLevelType" )]
+        public List<string> PerformanceLevelType { get; set; }
+
+        [JsonProperty( PropertyName = "ceterms:physicalCapabilityType" )]
+        public List<string> PhysicalCapabilityType { get; set; }
+
+
+        [JsonProperty( PropertyName = "ceterms:sensoryCapabilityType" )]
+        public List<string> SensoryCapabilityType { get; set; }
+
+        /// <summary>
+        /// Organization(s) that offer this resource
+        /// </summary>
+        [JsonProperty( PropertyName = "ceterms:offeredBy" )]
 		public List<string> OfferedBy { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:requires" )]

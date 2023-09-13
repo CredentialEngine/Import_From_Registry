@@ -54,7 +54,7 @@ namespace RA.Models.JsonV2
 		public List<string> altCodedNotation { get; set; } 
 
 		[JsonProperty( "ceasn:author" )]
-		public List<string> author { get; set; } 
+		public string author { get; set; } 
 
 		[JsonProperty( "ceasn:codedNotation" )]
 		public string codedNotation { get; set; }
@@ -98,16 +98,17 @@ namespace RA.Models.JsonV2
 		public string dateModified { get; set; }
 		/// <summary>
 		/// A version of the entity being referenced that has been modified in meaning through editing, extension or refinement.
+		/// 23-03-22 - change to a list, sigh
 		/// </summary>
 		[JsonProperty( "ceasn:derivedFrom" )]
-		public string derivedFrom { get; set; }
-		//public List<string> derivedFrom { get; set; } 
+        public object derivedFrom { get; set; }
+        //public List<string> derivedFrom { get; set; }
 
-		/// <summary>
-		/// Education Level Type
-		/// Concept URI
-		/// </summary>
-		[JsonProperty( "ceasn:educationLevelType" )]
+        /// <summary>
+        /// Education Level Type
+        /// Concept URI
+        /// </summary>
+        [JsonProperty( "ceasn:educationLevelType" )]
 		//public List<string> educationLevelType { get; set; }
 		public List<string> educationLevelType { get; set; }
 
@@ -156,14 +157,17 @@ namespace RA.Models.JsonV2
 		/// Concept in a ProgressionModel concept scheme
 		/// </summary>
 		[JsonProperty( PropertyName = "asn:hasProgressionLevel" )]
-		public List<string> HasProgressionLevel { get; set; }
+		public string HasProgressionLevel { get; set; }
 
-		[JsonProperty( "ceasn:listID" )]
+        [JsonProperty( PropertyName = "ceterms:keyword" )]
+        public LanguageMapList Keyword { get; set; }
+
+        [JsonProperty( "ceasn:listID" )]
 		public string ListID { get; set; }
 
 		[JsonProperty( "ceasn:localSubject" )]
 		//public LanguageMapList LocalSubject { get; set; }
-		public object LocalSubject { get; set; }
+		public object localSubject { get; set; }
 		#region alignments
 		/// <summary>
 		/// Competency uris
@@ -224,7 +228,7 @@ namespace RA.Models.JsonV2
 		/// URI
 		/// </summary>
 		[JsonProperty( "ceasn:taskEmbodied" )]
-		public List<string> taskEmbodied { get; set; }
+		public List<string> TaskEmbodied { get; set; }
 
 		[JsonProperty( "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; }
@@ -407,7 +411,7 @@ namespace RA.Models.JsonV2
 		/// NAICS List is a helper when publishing from a graph. It will not be published
 		[JsonProperty( "naicsList" )]
 		public List<string> NaicsList { get; set; }
-		//temp
+		//temp??
 		/// <summary>
 		/// Only used where part of a Collection
 		/// </summary>
@@ -440,11 +444,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceasn:conceptKeyword" )]
 		public new List<string> conceptKeyword { get; set; } = new List<string>();
 
-		
+		[JsonProperty( "ceasn:localSubject" )]
+		public new List<string> localSubject { get; set; } = new List<string>();
 
 
 	}
-	
+
 	///// <summary>
 	///// The class of structured profiles describing discrete levels of expertise and performance mastery.
 	///// </summary>

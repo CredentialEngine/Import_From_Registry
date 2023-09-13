@@ -1,4 +1,5 @@
 ﻿using Nest;
+using Nest.JsonNetSerializer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -16,11 +17,13 @@ using workIT.Models;
 using workIT.Models.Common;
 using MC = workIT.Models.Common;
 using workIT.Models.Elastic;
-using ME = workIT.Models.Elastic;
+using ME=workIT.Models.Elastic;
 using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
 using PM = workIT.Models.ProfileModels;
+using Elasticsearch.Net;
+using System.Runtime;
 
 namespace workIT.Services
 {
@@ -30,14 +33,16 @@ namespace workIT.Services
 		public static string enviroment = UtilityManager.GetAppKeyValue( "environment" );
 
 		JavaScriptSerializer serializer = new JavaScriptSerializer();
-		//common queries - remove these as being static can make them 'sticky'
-		//static QueryContainer createdFromQuery = null;
-		//static QueryContainer createdToQuery = null;
-		//static QueryContainer historyFromQuery = null;
-		//static QueryContainer historyToQuery = null;
+        //common queries - remove these as being static can make them 'sticky'
+        //static QueryContainer createdFromQuery = null;
+        //static QueryContainer createdToQuery = null;
+        //static QueryContainer historyFromQuery = null;
+        //static QueryContainer historyToQuery = null;
 
-		#region Elastic related properties
-		public static string CommonIndex
+
+
+        #region Elastic related properties
+        public static string CommonIndex
 		{
 			get { return UtilityManager.GetAppKeyValue( "commonCollection", "common" ); }
 		}
@@ -77,9 +82,22 @@ namespace workIT.Services
 			{
 				var url = UtilityManager.GetAppKeyValue( "elasticSearchUrl", "http://localhost:9207" );
 				var uri = new Uri( url );
-				var settings = new ConnectionSettings( uri ).DefaultIndex( CredentialIndex );
-				settings.DisableDirectStreaming();
-				return new ElasticClient( settings );
+				var pool = new SingleNodeConnectionPool( new Uri( url ) );
+				//OLD
+				var settingsOld = new ConnectionSettings( uri ).DefaultIndex( CredentialIndex );
+				//     Ensures the response bytes are always available on the Elasticsearch.Net.ElasticsearchResponse`1
+				//     IMPORTANT: Depending on the registered serializer, this may cause the response
+				//     to be buffered in memory first, potentially affecting performance.
+				settingsOld.DisableDirectStreaming(); //defaults to true
+				var clientOld = new ElasticClient( settingsOld );
+				//23-02-15 new to enable index with JObject
+				var connectionSettings = new ConnectionSettings( pool, JsonNetSerializer.Default );
+                //TBD The following seems to result in not being able to see the elastic query in search.DebugInformation
+				//23-03-08 setting to true. Can see the query again. 
+                //connectionSettings.DisableDirectStreaming( false );
+                connectionSettings.DisableDirectStreaming( true );
+                var client = new ElasticClient( connectionSettings );
+				return client;
 			}
 		}
 
@@ -106,6 +124,343 @@ namespace workIT.Services
 
 		#region General/Common Search
 
+		public static List<string> GeneralAutoComplete( int entityTypeId, string entityType, MainSearchInput query, int maxTerms, ref int pTotalRows )
+		{
+            if ( UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false ) )
+            {
+                List<string> autocompleteList = new List<string>();
+
+                //test just calling the related main search and returning the terms
+                GeneralSearch( entityTypeId, entityType, query, ref pTotalRows, ref autocompleteList, true );
+                return autocompleteList;
+            }
+
+            var keywords = query.Keywords;
+            var search = EC.Search<GenericIndex>( i => i.Index( CommonIndex ).Query( q => q.MultiMatch( m => m
+						   .Fields( f => f
+							   .Field( ff => ff.Name )
+							   .Field( ff => ff.Description )
+						   )
+						   //.Operator( Operator.Or )
+						   .Type( TextQueryType.PhrasePrefix )
+						   .Query( keywords )
+						   .MaxExpansions( 10 ) ) ).Size( maxTerms * 2 ) );
+
+			pTotalRows = ( int ) search.Total;
+			var list = ( List<GenericIndex> ) search.Documents;
+			//why was this using object?
+			//return list.Select( x => x.Name ).Distinct().Take( maxTerms ).ToList().Cast<object>().ToList();
+            return list.Select( m => m.ListTitle ).Distinct().Take( maxTerms ).ToList();
+        }
+		/// <summary>
+		/// Proxy for full search
+		/// </summary>
+		/// <param name="query"></param>
+		/// <param name="pTotalRows"></param>
+		/// <returns></returns>
+		public static List<CommonSearchSummary> GeneralSearch( int entityTypeId, string entityType, MainSearchInput query, ref int pTotalRows )
+		{
+			List<string> autocompleteList = new List<string>();
+			bool requestIsAutocomplete = false;
+			return GeneralSearch( entityTypeId, entityType, query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
+		}
+		public static List<CommonSearchSummary> GeneralSearch( int entityTypeId, string entityType, MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
+		{
+			//????
+			General_BuildIndex();
+
+			var list = new List<CommonSearchSummary>();
+            QueryContainer accommodationTypeQuery = null;
+            QueryContainer deliveryTypeQuery = null;
+            QueryContainer supportServiceCategoryQuery = null;
+            QueryContainer collectionCategoryTypeQuery = null;
+			QueryContainer classificationsQuery = null;
+			QueryContainer entityTypeQuery = null;
+			QueryContainer industriesQuery = null;
+			QueryContainer keywordsQuery = null;
+			QueryContainer lifeCycleStatusTypeQuery = null;
+			QueryContainer occupationsQuery = null;
+			//QueryContainer ownedByQuery = null;
+			QueryContainer qaFilterQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+			QueryContainer reportsQuery = null;
+			QueryContainer subjectsQuery = null;
+			QueryContainer transferIntermediaryIdQuery = null;
+            QueryContainer ctidQuery = null;
+            //QueryContainer widgetIdQuery = null;
+            QueryContainer widgetOccupationsQuery = null;
+			QueryContainer windustriesQuery = null;
+			//QueryContainer wsubjectsQuery = null;
+			HistoryQueryFilters history = new HistoryQueryFilters();
+            var accommondationTypeIds = new List<int>();
+            var deliveryTypeIds = new List<int>();
+            var lifeCycleStatusTypeIds = new List<int>();
+            var supportServiceCategoryIds = new List<int>();
+			var relationshipTypeIds = new List<int>();
+            //var thisIndex = GenericIndex;		//??
+
+            if ( entityTypeId > 0 )
+				entityTypeQuery = Query<GenericIndex>.Match( ts => ts.Field( f => f.EntityTypeId ).Query( entityTypeId.ToString() ) );
+
+			if ( BaseFactory.IsValidCtid( query.Keywords ))
+			{
+                ctidQuery = Query<GenericIndex>.Match( ts => ts.Field( f => f.CTID ).Query( query.Keywords ) );
+            }
+            //
+            #region properties
+            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
+			{
+				//collection: 85,
+				//TVP: ??
+				//TI: ??
+				//conceptScheme: ??
+				//
+				var collectionCategoryTypeIds = new List<int>();
+				var reportIds = new List<int>();
+
+				//TODO watch for relationshipIds being passed for two filters
+				foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
+				{
+					var item = filter.AsCodeItem();
+					if ( filter.Name == "reports" || filter.Name == "otherfilters" || filter.Name == "filter:OtherFilters" )
+					{
+						reportIds.Add( item.Id ); //can probably continue after here?
+						continue;
+					}
+					else if ( filter.Name == "" && filter.Values != null && filter.Values.Count == 3 )
+					{
+						//HACK test while determine why no filter.name
+						//var filterItem = filter.AsDefaultCodeItem();
+						//if ( item.CategoryId == 1 || item.CategoryId == 58 )
+						//{
+						//	reportIds.Add( item.Id ); //can probably continue after here?
+						//	continue;
+						//}
+					}
+
+					if ( filter.Name == "history" )
+					{
+						continue;
+					}
+
+					if ( item == null || item.CategoryId < 1 )
+					{
+						//check for text only 
+						var text = filter.AsText();
+						if ( !string.IsNullOrWhiteSpace( text ) )
+						{
+							//what? if no keywords, then append. Or append?
+							if ( string.IsNullOrWhiteSpace( query.Keywords ) )
+								query.Keywords = text;
+							else
+								query.Keywords += " " + text;
+						}
+						continue;
+					}
+
+					//if ( credSearchCategories.Contains( item.CategoryId ) )
+					//{ }
+					if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY )
+						collectionCategoryTypeIds.Add( item.Id );
+
+					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS )
+						lifeCycleStatusTypeIds.Add( item.Id );
+                    else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_ACCOMMODATION )
+                        accommondationTypeIds.Add( item.Id );
+                    else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+                        deliveryTypeIds.Add( item.Id );
+                    else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY )
+                        supportServiceCategoryIds.Add( item.Id );
+                }
+
+				CommonHistoryFilter<GenericIndex>( query, ref history );
+
+				if ( collectionCategoryTypeIds.Any() )
+				{
+					collectionCategoryTypeQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.CollectionCategoryTypeIds ).Terms( collectionCategoryTypeIds.ToArray() ) );
+				}
+
+				if ( lifeCycleStatusTypeIds.Any() )
+					lifeCycleStatusTypeQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.LifeCycleStatusTypeId ).Terms( lifeCycleStatusTypeIds.ToArray() ) );
+                if ( accommondationTypeIds.Any() )
+                    accommodationTypeQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.AccommodationTypeIds ).Terms( accommondationTypeIds.ToArray() ) );
+
+                if ( deliveryTypeIds.Any() )
+                    deliveryTypeQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.DeliveryMethodTypeIds ).Terms( deliveryTypeIds.ToArray() ) );
+
+                if ( supportServiceCategoryIds.Any() )
+                    supportServiceCategoryQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.SupportServiceCategoryIds ).Terms( supportServiceCategoryIds.ToArray() ) );
+
+                if ( reportIds.Any() )
+				{
+					reportsQuery = Query<GenericIndex>.Terms( ts => ts
+								.Field( f => f
+									.ReportFilters )
+										.Terms<int>( reportIds.ToArray() ) );
+				}
+
+			}
+			#endregion
+
+			#region General potentialresults list
+			QueryContainer potentialResultsQuery = null;
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var idsList = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
+				{
+					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+				}
+
+				if ( idsList.Any() )
+				{
+					idsList.ForEach( x =>
+					{
+						potentialResultsQuery |= Query<GenericIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
+					} );
+				}
+			}
+			#endregion
+
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<GenericIndex>( query );
+			publishedBYQuery = PublishedByFilter<GenericIndex>( query );
+
+			//TransferIntermediary	??
+			if ( entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
+			{
+				if ( query.TransferIntermediaryId > 0 )
+				{
+					transferIntermediaryIdQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.TransferIntermediariesFor ).Terms( query.TransferIntermediaryId ) );
+				}
+				//or
+				var transIntermediaryQuery = CommonPartOfTransferIntermediaryFilters<LearningOppIndex>( query );
+			}
+
+            #region Subject Areas.keywords
+            //from widget and from search filters
+            if ( query.FiltersV2.Any( x => x.Name == "subjects" ) )
+			{
+				subjectsQuery = HandleSubjects<GenericIndex>( query );
+			}
+			//keywords from widget
+			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
+			{
+				keywordsQuery = HandleWidgetKeywords<GenericIndex>( query );
+			}
+			#endregion
+			//NOTE: this is only referenced after clicking on a gray box or on detail, not from the search page
+			//		==> actually now used by search widget => type = organizationroles
+			//NOT WORKING YET
+			//qaFilterQuery = CommonQualityAssurance<GenericIndex>( query );
+
+
+
+			#region Occupations, industries
+			occupationsQuery = CommonOccupations<GenericIndex>( query, ref widgetOccupationsQuery );
+			classificationsQuery = CommonCip<GenericIndex>( query );
+			industriesQuery = CommonIndustries<GenericIndex>( query, ref windustriesQuery );
+			#endregion
+
+			#region Query
+
+			var sort = new SortDescriptor<GenericIndex>();
+
+			var sortOrder = query.SortOrder;
+			if ( sortOrder == "alpha" )
+				sort.Ascending( s => s.Name.Suffix( "keyword" ) );
+			else if ( sortOrder == "zalpha" )
+				sort.Descending( s => s.Name.Suffix( "keyword" ) );
+			else if ( sortOrder == "newest" )
+				sort.Field( f => f.LastUpdated, SortOrder.Descending );
+			else if ( sortOrder == "oldest" )
+				sort.Field( f => f.LastUpdated, SortOrder.Ascending );
+			else if ( sortOrder == "relevance" )
+				sort.Descending( SortSpecialField.Score );
+			//
+			QueryContainer phrasePrefixQuery = SetPhrasePrefixQuery<GenericIndex>( query );
+			QueryContainer bestFieldsQuery = SetBestFieldsQuery<GenericIndex>( query );
+			QueryContainer autoCompleteQuery = SetAutocompleteQuery<GenericIndex>( query );
+			var pageSize = query.PageSize;
+			if ( requestIsAutocomplete )
+			{
+				pageSize = pageSize * 2;
+				phrasePrefixQuery = null;
+				//bestFieldsQuery = null;
+			}
+			else
+			{
+				autoCompleteQuery = null;
+				//remove for TI testing
+				//bestFieldsQuery = null;
+			}
+			if ( query.StartPage < 1 )
+				query.StartPage = 1;
+
+			var search = EC.Search<GenericIndex>( body => body
+				   .Index( CommonIndex )
+				   .Query( q =>
+						entityTypeQuery
+					  //&& ownedByQuery
+					  && potentialResultsQuery
+					  && transferIntermediaryIdQuery
+					  && subjectsQuery
+					  //&& wsubjectsQuery         //widget specific!!!
+					  && keywordsQuery
+					  && occupationsQuery && industriesQuery && classificationsQuery
+					  && commonOrgRolesBYQuery && publishedBYQuery
+					   && ctidQuery
+                      && collectionCategoryTypeQuery && lifeCycleStatusTypeQuery
+					  && supportServiceCategoryQuery && accommodationTypeQuery && deliveryTypeQuery
+                      && qaFilterQuery
+					  && history.CreatedFromQuery && history.CreatedToQuery && history.HistoryFromQuery && history.HistoryToQuery
+					  && reportsQuery
+					  && ( phrasePrefixQuery || autoCompleteQuery || bestFieldsQuery )
+				   )
+				   .TrackTotalHits( true )
+				   .Sort( s => sort )
+				   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+				   .Skip( ( query.StartPage - 1 ) * query.PageSize )
+				   .Size( pageSize ) );
+
+
+			#endregion
+
+			var debug = search.DebugInformation;
+			pTotalRows = ( int ) search.Total;
+			if ( requestIsAutocomplete )
+			{
+				var requestList = ( List<GenericIndex> ) search.Documents;
+				autocompleteList = requestList.Select( x => x.ListTitle ).Distinct().Take( query.PageSize ).ToList();
+				return null;
+			}
+			if ( query.StartPage == 1 && ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) ) )
+			{
+				//actually extract the request: between #request and #response
+				var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
+				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "GENERAL", pTotalRows ) + elasticQuery, "ElasticQuery" );
+			}
+			if ( pTotalRows > 0 )
+			{
+				list = ElasticManager.CommonIndex_MapFromElastic( ( List<GenericIndex> ) search.Documents, entityTypeId, query.StartPage, query.PageSize );
+
+				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.GeneralSearch. found: {0} records", pTotalRows ) );
+			}
+			//stats
+			query.Results = pTotalRows;
+			string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
+			string searchType = "blind";
+			if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
+			{
+				searchType = "filters selected";
+			}
+			if ( query.StartPage > 1 )
+				searchType += " - paging";
+			new ActivityServices().AddActivity( new SiteActivity()
+			{ ActivityType = entityType, Activity = "Search", Event = searchType, Comment = jsoninput }
+			);
+			return list;
+		}
 		#region Build/update index
 		#region Collection
 		public static void General_BuildIndexForCollection( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
@@ -222,7 +577,8 @@ namespace workIT.Services
 						else if ( action == 2 )
 						{
 							cntr = cntr + list.Count;
-							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.Id.ToString() ) ) );
+							//22-12-16 NEW using EntityId as the PK, otherwise Id in one type overwrites the Id from another type
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
 							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
 							{
 								Console.WriteLine( results.ToString() );
@@ -264,6 +620,297 @@ namespace workIT.Services
 		}
 
 		#endregion
+		#region OutcomeData
+		public static void General_BuildIndexForOutcomeData( bool updatingIndexRegardless = true )
+		{
+			var list = new List<GenericIndex>();
+
+			if ( updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "General- BuildIndexForOutcomeData" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "OutcomeData", Activity = "Elastic", Event = "Build Index for OutcomeData" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					//
+					General_UpdateIndexForOutcomeData( filter, ref processed );
+					if ( processed > 0 )
+					{
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "OutcomeData",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex-for OutcomeData for {0} records.", processed )
+						} );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 1, " General_BuildIndexForOutcomeData - no data was found" );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndexForOutcomeData" );
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForOutcomeData( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForOutcomeData";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.OutcomeData_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[ 0 ].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[ 0 ].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[ 0 ].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+		#endregion
+		#region PathwaySet
+		public static void General_BuildIndexForPathwaySet( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
+		{
+			var list = new List<GenericIndex>();
+			bool indexInitialized = false;
+			//would have to have more control if sharing an index
+			if ( deleteIndexFirst && EC.Indices.Exists( CommonIndex ).Exists )
+			{
+				//note if we want to handle multiple types, then either don't do a delete of everything, and then call each related build method
+				//	or don't do a delete and provide info on which general index resources to rebuild
+				LoggingHelper.DoTrace( 1, " General_BuildIndexForPathwaySet - deleting CommonIndex" );
+				EC.Indices.Delete( CommonIndex );
+			}
+			if ( !EC.Indices.Exists( CommonIndex ).Exists )
+			{
+				GeneralInitializeIndex();
+				indexInitialized = true;
+			}
+
+			if ( indexInitialized || updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "General_BuildIndexForPathwaySet" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "PathwaySet", Activity = "Elastic", Event = "Build Index for PathwaySet" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					//20-12-28 - update to be like credentials
+					General_UpdateIndexForPathwaySet( filter, ref processed );
+					if ( processed > 0 )
+					{
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "PathwaySet",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex-for PathwaySet for {0} records.", processed )
+						} );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 1, " General_BuildIndexForPathwaySet - no data was found" );
+
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndexForPathwaySet" );
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+		public static void General_UpdateIndexForPathwaySet( int recordId )
+		{
+			if ( recordId < 1 )
+				return;
+			string filter = string.Format( " ( base.Id = {0} ) ", recordId );
+			int processed = 0;
+			General_UpdateIndexForPathwaySet( filter, ref processed );
+
+		} //
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForPathwaySet( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForPathwaySet";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.PathwaySet_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+		#endregion
+
+		#region Transfer Value
 		public static void General_BuildIndexForTVP( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
 		{
 			var list = new List<GenericIndex>();
@@ -271,6 +918,7 @@ namespace workIT.Services
 			//would have to have more control if sharing an index
 			if ( deleteIndexFirst && EC.Indices.Exists( CommonIndex ).Exists )
 			{
+				//NOTE: a delete of the general index should only be done when building all
 				LoggingHelper.DoTrace( 1, " General_BuildIndexForTVP - deleting CommonIndex" );
 				EC.Indices.Delete( CommonIndex );
 			}
@@ -317,25 +965,119 @@ namespace workIT.Services
 				}
 				finally
 				{
-					//if ( list != null && list.Count > 0 )
-					//{
-					//	var results = EC.Bulk( b => b.IndexMany( list, ( d, document ) => d.Index( CommonIndex ).Document( document ).Id( document.Id.ToString() ) ) );
-					//	if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
-					//	{
-					//		Console.WriteLine( results.ToString() );
-					//		LoggingHelper.DoTrace( 1, " Issue building General index: " + results.DebugInformation.Substring( 0, 2000 ) );
-					//	}
 
-					//	EC.Indices.Refresh( CommonIndex );
-					//} else
-					//{
-					//	LoggingHelper.DoTrace( 1, " General_BuildIndexForTVP - no data was found" );
-					//}
 				}
 			}
 
 		}
+		//NOTE: this is only used when updating elastic immediately which we are not, so don't replicate this method for new classes
+		public static void General_UpdateIndexForTVP( int recordId )
+		{
+			if ( recordId < 1 )
+				return;
+			try
+			{
+				string filter = string.Format( " ( base.Id = {0} ) ", recordId );
+				int processed = 0;
+				General_UpdateIndexForTVP( filter, ref processed );
 
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "General_UpdateIndex", false );
+			}
+		} //
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForTVP( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForTVP";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					//var list = ElasticManager.TransferValue_SearchForElastic( filter );
+					var list = ElasticManager.TransferValue_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						//LoggingHelper.DoTrace( 2, string.Format( "TransferValue_UpdateIndex failed, no data returned for filter: {0}", filter ) );
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+		#endregion
 		#region Transfer Intermediary
 		public static void General_BuildIndexForTransferIntermediary( bool deleteIndexFirst = false, bool updatingIndexRegardless = false )
 		{
@@ -466,7 +1208,617 @@ namespace workIT.Services
 						else if ( action == 2 )
 						{
 							cntr = cntr + list.Count;
-							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.Id.ToString() ) ) );
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+        #endregion
+        #region ConceptScheme/Progression model
+        //Currently mostly N/A as search is done thru the registry
+        public static void General_UpdateIndexForConceptScheme( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForConceptScheme";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.ConceptScheme_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+        public static void General_UpdateIndexForProgressionModel( bool updatingIndexRegardless = true )
+        {
+            var list = new List<GenericIndex>();
+			var EntityType = "ProgressionModel";
+            if (updatingIndexRegardless)
+            {
+                LoggingHelper.DoTrace( 1, $"General- General_UpdateIndexFor{EntityType}" );
+                int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+                try
+                {
+                    new ActivityServices().AddActivity( new SiteActivity()
+                    { ActivityType = EntityType, Activity = "Elastic", Event = $"Build Index for {EntityType}" }
+                    );
+                    int processed = 0;
+                    string filter = "( base.EntityStateId >= 2 )";
+                    //
+                    General_UpdateIndexForProgressionModel( filter, ref processed );
+                    if (processed > 0)
+                    {
+                        var refreshResults = EC.Indices.Refresh( CommonIndex );
+                        new ActivityServices().AddActivity( new SiteActivity()
+                        {
+                            ActivityType = EntityType,
+                            Activity = "Elastic",
+                            Event = "Build Index Completed",
+                            Comment = $"Completed rebuild of CommonIndex-for {EntityType} for {processed} records."
+                        } );
+                    }
+                    else
+                    {
+                        LoggingHelper.DoTrace( 1, $" General_BuildIndexFor{EntityType} - no data was found" );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LoggingHelper.LogError( ex, $"General_BuildIndexFor{EntityType}" );
+                }
+                finally
+                {
+
+                }
+            }
+        }
+
+        //
+        public static void General_UpdateIndexForProgressionModel( string filter, ref int processed )
+        {
+            if (string.IsNullOrWhiteSpace( filter ))
+                return;
+            int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+            if (action == 0)
+                return;
+            string methodName = "General_UpdateIndexForProgressionModel";
+            string IndexName = CommonIndex;
+            int pageSize = 500; ;
+            int pageNbr = 1;
+            int totalRows = 0;
+            bool isComplete = false;
+            int cntr = 0; ;
+            try
+            {
+                while (pageNbr > 0 && !isComplete)
+                {
+                    var list = ElasticManager.ProgressionModel_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+                    if (list != null && list.Count > 0)
+                    {
+                        if (list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1)
+                        {
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+                            isComplete = true;
+                            break;
+                        }
+                        processed = totalRows;
+                        if (action == 1)
+                        {
+                            foreach (var item in list)
+                            {
+                                cntr++;
+                                var res = EC.Index( item, idx => idx.Index( IndexName ) );
+                                Console.WriteLine( res.Result );
+                            }
+                        }
+                        else if (action == 2)
+                        {
+                            cntr = cntr + list.Count;
+                            var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+                            if (results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1)
+                            {
+                                Console.WriteLine( results.ToString() );
+                                LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (list != null && list.Count == 1 && totalRows == -1)
+                        {
+                            LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+                        }
+                        else if (pageNbr == 1)
+                        {
+                            if (string.IsNullOrWhiteSpace( filter ))
+                            {
+                                LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+                            }
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+                        }
+                        isComplete = true;
+                        break;
+                    }
+                    LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+                    if (cntr >= totalRows)
+                    {
+                        isComplete = true;
+                    }
+
+                    pageNbr++;
+                } //loop
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+            }
+        }
+
+        #endregion
+        #region SupportService
+        public static void General_BuildIndexForSupportService( bool updatingIndexRegardless = true )
+        {
+            var list = new List<GenericIndex>();
+
+            if ( updatingIndexRegardless )
+            {
+                LoggingHelper.DoTrace( 1, "General- BuildIndexForSupportService" );
+                int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+                try
+                {
+                    new ActivityServices().AddActivity( new SiteActivity()
+                    { ActivityType = "SupportService", Activity = "Elastic", Event = "Build Index for SupportService" }
+                    );
+                    int processed = 0;
+                    string filter = "( base.EntityStateId >= 2 )";
+                    //
+                    General_UpdateIndexForSupportService( filter, ref processed );
+                    if ( processed > 0 )
+                    {
+                        var refreshResults = EC.Indices.Refresh( CommonIndex );
+                        new ActivityServices().AddActivity( new SiteActivity()
+                        {
+                            ActivityType = "SupportService",
+                            Activity = "Elastic",
+                            Event = "Build Index Completed",
+                            Comment = string.Format( "Completed rebuild of CommonIndex-for SupportService for {0} records.", processed )
+                        } );
+                    }
+                    else
+                    {
+                        LoggingHelper.DoTrace( 1, " General_BuildIndexForSupportService - no data was found" );
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    LoggingHelper.LogError( ex, "General_BuildIndexForSupportService" );
+                }
+                finally
+                {
+
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Pass a filter to use for updating the index
+        /// </summary>
+        /// <param name="filter"></param>
+        public static void General_UpdateIndexForSupportService( string filter, ref int processed )
+        {
+            if ( string.IsNullOrWhiteSpace( filter ) )
+                return;
+            int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+            if ( action == 0 )
+                return;
+            string methodName = "General_UpdateIndexForSupportService";
+            string IndexName = CommonIndex;
+            int pageSize = 500; ;
+            int pageNbr = 1;
+            int totalRows = 0;
+            bool isComplete = false;
+            int cntr = 0; ;
+            try
+            {
+                while ( pageNbr > 0 && !isComplete )
+                {
+                    var list = ElasticManager.SupportService_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+                    if ( list != null && list.Count > 0 )
+                    {
+                        if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+                        {
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+                            isComplete = true;
+                            break;
+                        }
+                        processed = totalRows;
+                        if ( action == 1 )
+                        {
+                            foreach ( var item in list )
+                            {
+                                cntr++;
+                                var res = EC.Index( item, idx => idx.Index( IndexName ) );
+                                Console.WriteLine( res.Result );
+                            }
+                        }
+                        else if ( action == 2 )
+                        {
+                            cntr = cntr + list.Count;
+                            var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+                            if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+                            {
+                                Console.WriteLine( results.ToString() );
+                                LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if ( list != null && list.Count == 1 && totalRows == -1 )
+                        {
+                            LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+                        }
+                        else if ( pageNbr == 1 )
+                        {
+                            if ( string.IsNullOrWhiteSpace( filter ) )
+                            {
+                                LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+                            }
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+                        }
+                        isComplete = true;
+                        break;
+                    }
+                    LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+                    if ( cntr >= totalRows )
+                    {
+                        isComplete = true;
+                    }
+
+                    pageNbr++;
+                } //loop
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+            }
+        }
+
+
+        #endregion
+        #region ScheduledOffering
+        public static void General_BuildIndexForScheduledOffering( bool updatingIndexRegardless = true )
+        {
+            var list = new List<GenericIndex>();
+
+            if ( updatingIndexRegardless )
+            {
+                LoggingHelper.DoTrace( 1, "General- BuildIndexForScheduledOffering" );
+                try
+                {
+                    new ActivityServices().AddActivity( new SiteActivity()
+                    { ActivityType = "ScheduledOffering", Activity = "Elastic", Event = "Build Index for ScheduledOffering" }
+                    );
+                    int processed = 0;
+					//no pending, could have virtual deletes at some point
+                    string filter = "( base.EntityStateId >= 2 )";
+                    //
+                    General_UpdateIndexForScheduledOffering( filter, ref processed );
+                    if ( processed > 0 )
+                    {
+                        var refreshResults = EC.Indices.Refresh( CommonIndex );
+                        new ActivityServices().AddActivity( new SiteActivity()
+                        {
+                            ActivityType = "ScheduledOffering",
+                            Activity = "Elastic",
+                            Event = "Build Index Completed",
+                            Comment = string.Format( "Completed rebuild of CommonIndex-for ScheduledOffering for {0} records.", processed )
+                        } );
+                    }
+                    else
+                    {
+                        LoggingHelper.DoTrace( 1, " General_BuildIndexForScheduledOffering - no data was found" );
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    LoggingHelper.LogError( ex, "General_BuildIndexForScheduledOffering" );
+                }
+                finally
+                {
+
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Pass a filter to use for updating the index
+        /// </summary>
+        /// <param name="filter"></param>
+        public static void General_UpdateIndexForScheduledOffering( string filter, ref int processed )
+        {
+            if ( string.IsNullOrWhiteSpace( filter ) )
+                return;
+            int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+            if ( action == 0 )
+                return;
+            string methodName = "General_UpdateIndexForScheduledOffering";
+            string IndexName = CommonIndex;
+            int pageSize = 500; ;
+            int pageNbr = 1;
+            int totalRows = 0;
+            bool isComplete = false;
+            int cntr = 0; ;
+            try
+            {
+                while ( pageNbr > 0 && !isComplete )
+                {
+                    var list = ElasticManager.ScheduledOffering_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+                    if ( list != null && list.Count > 0 )
+                    {
+                        if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+                        {
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+                            isComplete = true;
+                            break;
+                        }
+                        processed = totalRows;
+                        if ( action == 1 )
+                        {
+                            foreach ( var item in list )
+                            {
+                                cntr++;
+                                var res = EC.Index( item, idx => idx.Index( IndexName ) );
+                                Console.WriteLine( res.Result );
+                            }
+                        }
+                        else if ( action == 2 )
+                        {
+                            cntr = cntr + list.Count;
+                            //22-12-16 NEW using **EntityId** as the PK, otherwise Id in one type overwrites the Id from another type
+                            var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+                            if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+                            {
+                                Console.WriteLine( results.ToString() );
+                                LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if ( list != null && list.Count == 1 && totalRows == -1 )
+                        {
+                            LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+                        }
+                        else if ( pageNbr == 1 )
+                        {
+                            if ( string.IsNullOrWhiteSpace( filter ) )
+                            {
+                                LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+                            }
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+                        }
+                        isComplete = true;
+                        break;
+                    }
+                    LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+                    if ( cntr >= totalRows )
+                    {
+                        isComplete = true;
+                    }
+
+                    pageNbr++;
+                } //loop
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+            }
+        }
+
+
+        #endregion
+        #region Job
+        public static void General_BuildIndexForJob( bool updatingIndexRegardless = true )
+		{
+			var list = new List<GenericIndex>();
+
+			if ( updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "General- BuildIndexForJob" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "Job", Activity = "Elastic", Event = "Build Index for Job" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					//
+					General_UpdateIndexForJob( filter, ref processed );
+					if ( processed > 0 )
+					{
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "Job",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex-for Job for {0} records.", processed )
+						} );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 1, " General_BuildIndexForJob - no data was found" );
+
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndexForJob" );
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForJob( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForJob";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.Job_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
 							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
 							{
 								Console.WriteLine( results.ToString() );
@@ -509,6 +1861,423 @@ namespace workIT.Services
 
 
 		#endregion
+
+		#region Occupation
+		public static void General_BuildIndexForOccupation()
+		{
+			var list = new List<GenericIndex>();
+
+			LoggingHelper.DoTrace( 1, "General- BuildIndexForOccupation" );
+			int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+			try
+			{
+				new ActivityServices().AddActivity( new SiteActivity()
+				{ ActivityType = "Occupation", Activity = "Elastic", Event = "Build Index for Occupation" }
+				);
+				int processed = 0;
+				string filter = "( base.EntityStateId >= 2 )";
+				//
+				General_UpdateIndexForOccupation( filter, ref processed );
+				if ( processed > 0 )
+				{
+					var refreshResults = EC.Indices.Refresh( CommonIndex );
+					new ActivityServices().AddActivity( new SiteActivity()
+					{
+						ActivityType = "Occupation",
+						Activity = "Elastic",
+						Event = "Build Index Completed",
+						Comment = string.Format( "Completed rebuild of CommonIndex-for Occupation for {0} records.", processed )
+					} );
+				}
+				else
+				{
+					LoggingHelper.DoTrace( 1, " General_BuildIndexForOccupation - no data was found" );
+
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, "General_BuildIndexForOccupation" );
+			}
+			finally
+			{
+
+			}
+
+		}
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForOccupation( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForOccupation";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.Occupation_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+		#endregion
+		#region Task
+		public static void General_BuildIndexForTask( bool updatingIndexRegardless = true )
+		{
+			var list = new List<GenericIndex>();
+
+			if ( updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "General- BuildIndexForTask" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "Task", Activity = "Elastic", Event = "Build Index for Task" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					//
+					General_UpdateIndexForTask( filter, ref processed );
+					if ( processed > 0 )
+					{
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "Task",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex-for Task for {0} records.", processed )
+						} );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 1, " General_BuildIndexForTask - no data was found" );
+
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndexForTask" );
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForTask( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForTask";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.Task_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+		#endregion
+		#region WorkRole
+		public static void General_BuildIndexForWorkRole( bool updatingIndexRegardless = true )
+		{
+			var list = new List<GenericIndex>();
+
+			if ( updatingIndexRegardless )
+			{
+				LoggingHelper.DoTrace( 1, "General- BuildIndexForWorkRole" );
+				int minEntityStateId = UtilityManager.GetAppKeyValue( "minAsmtEntityStateId", 3 );
+				try
+				{
+					new ActivityServices().AddActivity( new SiteActivity()
+					{ ActivityType = "WorkRole", Activity = "Elastic", Event = "Build Index for WorkRole" }
+					);
+					int processed = 0;
+					string filter = "( base.EntityStateId >= 2 )";
+					//
+					General_UpdateIndexForWorkRole( filter, ref processed );
+					if ( processed > 0 )
+					{
+						var refreshResults = EC.Indices.Refresh( CommonIndex );
+						new ActivityServices().AddActivity( new SiteActivity()
+						{
+							ActivityType = "WorkRole",
+							Activity = "Elastic",
+							Event = "Build Index Completed",
+							Comment = string.Format( "Completed rebuild of CommonIndex-for WorkRole for {0} records.", processed )
+						} );
+					}
+					else
+					{
+						LoggingHelper.DoTrace( 1, " General_BuildIndexForWorkRole - no data was found" );
+
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.LogError( ex, "General_BuildIndexForWorkRole" );
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+
+		/// <summary>
+		/// Pass a filter to use for updating the index
+		/// </summary>
+		/// <param name="filter"></param>
+		public static void General_UpdateIndexForWorkRole( string filter, ref int processed )
+		{
+			if ( string.IsNullOrWhiteSpace( filter ) )
+				return;
+			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
+			if ( action == 0 )
+				return;
+			string methodName = "General_UpdateIndexForWorkRole";
+			string IndexName = CommonIndex;
+			int pageSize = 500; ;
+			int pageNbr = 1;
+			int totalRows = 0;
+			bool isComplete = false;
+			int cntr = 0; ;
+			try
+			{
+				while ( pageNbr > 0 && !isComplete )
+				{
+					var list = ElasticManager.WorkRole_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					if ( list != null && list.Count > 0 )
+					{
+						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
+							isComplete = true;
+							break;
+						}
+						processed = totalRows;
+						if ( action == 1 )
+						{
+							foreach ( var item in list )
+							{
+								cntr++;
+								var res = EC.Index( item, idx => idx.Index( IndexName ) );
+								Console.WriteLine( res.Result );
+							}
+						}
+						else if ( action == 2 )
+						{
+							cntr = cntr + list.Count;
+							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.EntityId.ToString() ) ) );
+							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+							{
+								Console.WriteLine( results.ToString() );
+								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+							}
+						}
+					}
+					else
+					{
+						if ( list != null && list.Count == 1 && totalRows == -1 )
+						{
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+
+						}
+						else if ( pageNbr == 1 )
+						{
+							if ( string.IsNullOrWhiteSpace( filter ) )
+							{
+								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+							}
+							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+						}
+						isComplete = true;
+						break;
+					}
+					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+					if ( cntr >= totalRows )
+					{
+						isComplete = true;
+					}
+
+					pageNbr++;
+				} //loop
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
+			}
+		}
+
+
+		#endregion
+
+
+		public static void GeneralIndex_Reset()
+		{
+
+			if ( EC.Indices.Exists( CommonIndex ).Exists )
+			{
+				LoggingHelper.DoTrace( 1, " GeneralIndex_Reset - deleting CommonIndex" );
+				EC.Indices.Delete( CommonIndex );
+			}
+			if ( !EC.Indices.Exists( CommonIndex ).Exists )
+			{
+				GeneralInitializeIndex();
+			}
+		}
+		//
 		/// <summary>
 		/// If requested, must include all resource types under general. Currently:
 		/// - transfer value
@@ -566,13 +2335,53 @@ namespace workIT.Services
 					//20-12-28 - update to be like credentials
 					General_UpdateIndexForTVP( filter, ref processed );
 					var totalCount = processed;
+
 					processed = 0;
 					General_UpdateIndexForTransferIntermediary( filter, ref processed );
 					totalCount += processed;
+
 					processed = 0;
 					//something wrong with this, wipes out transfer intermediary!
-					//General_UpdateIndexForCollection( filter, ref processed );
+					//23-06-15 mp - this should be fixed now?
+					General_UpdateIndexForCollection( filter, ref processed );
 					totalCount += processed;
+					//
+					General_UpdateIndexForSupportService( filter, ref processed );
+                    totalCount += processed;
+					//
+					General_UpdateIndexForOutcomeData( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+                    General_UpdateIndexForScheduledOffering( filter, ref processed );
+                    totalCount += processed;
+
+					processed = 0;
+					General_UpdateIndexForConceptScheme( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+                    General_UpdateIndexForOccupation( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+					General_UpdateIndexForProgressionModel( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+					General_UpdateIndexForJob( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+					General_UpdateIndexForTask( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+					General_UpdateIndexForWorkRole( filter, ref processed );
+					totalCount += processed;
+
+					processed = 0;
+					//
 					if ( totalCount > 0 )
 					{
 						//??is this done in Assessment_UpdateIndex
@@ -648,6 +2457,9 @@ namespace workIT.Services
 									.Name( nn => nn.AgentRelationshipsForEntity )
 									.AutoMap()
 								)
+								.Object<JObject>( o => o
+									.Name( n => n.ResourceDetail )
+									.Enabled( false ) )
 							)
 						)
 				//)	//.Mappings
@@ -655,356 +2467,8 @@ namespace workIT.Services
 			}
 		}
 		#endregion
-		public static void General_UpdateIndexForTVP( int recordId )
-		{
-			if ( recordId < 1 )
-				return;
-			try
-			{
-				string filter = string.Format( " ( base.Id = {0} ) ", recordId );
-				int processed = 0;
-				General_UpdateIndexForTVP( filter, ref processed );
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, "General_UpdateIndex", false );
-			}
-		} //
 
 
-		/// <summary>
-		/// Pass a filter to use for updating the index
-		/// </summary>
-		/// <param name="filter"></param>
-		public static void General_UpdateIndexForTVP( string filter, ref int processed )
-		{
-			if ( string.IsNullOrWhiteSpace( filter ) )
-				return;
-			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
-			if ( action == 0 )
-				return;
-			string methodName = "General_UpdateIndexForTVP";
-			string IndexName = CommonIndex;
-			int pageSize = 500; ;
-			int pageNbr = 1;
-			int totalRows = 0;
-			bool isComplete = false;
-			int cntr = 0; ;
-			try
-			{
-				while ( pageNbr > 0 && !isComplete )
-				{
-					//var list = ElasticManager.TransferValue_SearchForElastic( filter );
-					var list = ElasticManager.TransferValue_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
-					if ( list != null && list.Count > 0 )
-					{
-						if ( list.Count == 1 && list[0].Name.ToLower().IndexOf( "exception" ) > -1 )
-						{
-							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE Error encountered during search for data: {1}", methodName, list[0].Description ) );
-							isComplete = true;
-							break;
-						}
-						processed = totalRows;
-						if ( action == 1 )
-						{
-							foreach ( var item in list )
-							{
-								cntr++;
-								var res = EC.Index( item, idx => idx.Index( IndexName ) );
-								Console.WriteLine( res.Result );
-							}
-						}
-						else if ( action == 2 )
-						{
-							cntr = cntr + list.Count;
-							var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.Id.ToString() ) ) );
-							if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
-							{
-								Console.WriteLine( results.ToString() );
-								LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
-							}
-						}
-					}
-					else
-					{
-						//LoggingHelper.DoTrace( 2, string.Format( "TransferValue_UpdateIndex failed, no data returned for filter: {0}", filter ) );
-						if ( list != null && list.Count == 1 && totalRows == -1 )
-						{
-							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
-
-						}
-						else if ( pageNbr == 1 )
-						{
-							if ( string.IsNullOrWhiteSpace( filter ) )
-							{
-								LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
-							}
-							LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
-						}
-						isComplete = true;
-						break;
-					}
-					LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
-					if ( cntr >= totalRows )
-					{
-						isComplete = true;
-					}
-
-					pageNbr++;
-				} //loop
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {0}", methodName, filter ), false );
-			}
-		}
-
-
-
-		public static List<object> GeneralAutoComplete( string keyword, int maxTerms, ref int pTotalRows )
-		{
-
-			var search = EC.Search<GenericIndex>( i => i.Index( CommonIndex ).Query( q => q.MultiMatch( m => m
-						   .Fields( f => f
-							   .Field( ff => ff.Name )
-							   .Field( ff => ff.Description )
-						   )
-						   //.Operator( Operator.Or )
-						   .Type( TextQueryType.PhrasePrefix )
-						   .Query( keyword )
-						   .MaxExpansions( 10 ) ) ).Size( maxTerms * 2 ) );
-
-			pTotalRows = ( int ) search.Total;
-			var list = ( List<GenericIndex> ) search.Documents;
-			return list.Select( x => x.Name ).Distinct().Take( maxTerms ).ToList().Cast<object>().ToList();
-		}
-		/// <summary>
-		/// Proxy for full search
-		/// </summary>
-		/// <param name="query"></param>
-		/// <param name="pTotalRows"></param>
-		/// <returns></returns>
-		public static List<CommonSearchSummary> GeneralSearch( int entityTypeId, string entityType, MainSearchInput query, ref int pTotalRows )
-		{
-			List<string> autocompleteList = new List<string>();
-			bool requestIsAutocomplete = false;
-			return GeneralSearch( entityTypeId, entityType, query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
-		}
-		public static List<CommonSearchSummary> GeneralSearch( int entityTypeId, string entityType, MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
-		{
-			//????
-			General_BuildIndex();
-
-			var list = new List<CommonSearchSummary>();
-			QueryContainer entityTypeQuery = null;
-			QueryContainer industriesQuery = null;
-			QueryContainer keywordsQuery = null;
-			QueryContainer occupationsQuery = null;
-			QueryContainer ownedByQuery = null;
-			QueryContainer qaFilterQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
-			QueryContainer reportsQuery = null;
-			QueryContainer subjectsQuery = null;
-			QueryContainer transferIntermediaryIdQuery = null;
-
-			QueryContainer widgetOccupationsQuery = null;
-			QueryContainer windustriesQuery = null;
-			QueryContainer wsubjectsQuery = null;
-			HistoryQueryFilters history = new HistoryQueryFilters();
-			var relationshipTypeIds = new List<int>();
-
-			if ( entityTypeId > 0 )
-				entityTypeQuery = Query<GenericIndex>.Match( ts => ts.Field( f => f.EntityTypeId ).Query( entityTypeId.ToString() ) );
-
-			if ( query.FiltersV2.Count > 0 )
-			{
-				var assurances = new List<CodeItem>();
-				//will only be one owner
-				var orgId = 0;
-				if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-				{
-					foreach ( var filter in query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
-					{
-						var cc = filter.AsOrgRolesItem();
-						orgId = cc.Id;
-
-						assurances.Add( filter.AsOrgRolesItem() );
-						break;
-					}
-				}
-				if ( orgId > 0 )
-					ownedByQuery = Query<GenericIndex>.Match( ts => ts.Field( f => f.OwnerOrganizationId ).Query( orgId.ToString() ) );
-			}
-			//collections
-			//if ( query.TransferIntermediaryId > 0 )
-			//{
-			//	transferIntermediaryIdQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.TransferIntermediariesFor ).Terms( query.TransferIntermediaryId ) );
-			//}
-			qualityAssuranceSearchQuery = CommonQualityAssurance<GenericIndex>( query );
-
-
-			#region Subject Areas.keywords
-			//from widget and from search filters
-			if ( query.FiltersV2.Any( x => x.Name == "subjects" ) )
-			{
-				subjectsQuery = HandleSubjects<GenericIndex>( query );
-			}
-			//keywords from widget
-			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
-			{
-				keywordsQuery = HandleWidgetKeywords<GenericIndex>( query );
-			}
-			#endregion
-			//NOTE: this is only referenced after clicking on a gray box or on detail, not from the search page
-			//		==> actually now used by search widget => type = organizationroles
-			//NOT WORKING YET
-			//qaFilterQuery = CommonQualityAssurance<GenericIndex>( query );
-
-			#region Properties
-
-			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
-			{
-				//var asmtUseIds = new List<int>();
-				var reportIds = new List<int>();
-
-				foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
-				{
-					var item = filter.AsCodeItem();
-					if ( filter.Name == "reports" || filter.Name == "otherfilters" || filter.Name == "filter:OtherFilters" )
-						reportIds.Add( item.Id );
-				}
-
-				if ( reportIds.Any() )
-				{
-					reportsQuery = Query<GenericIndex>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( reportIds.ToArray() ) );
-				}
-			}
-
-			#endregion
-
-			#region General Ids list
-			QueryContainer recordIdListQuery = null;
-			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-			{
-				var idsList = new List<int>();
-				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "potentialresults" ).ToList() )
-				{
-					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
-				}
-
-				if ( idsList.Any() )
-				{
-					idsList.ForEach( x =>
-					{
-						recordIdListQuery |= Query<GenericIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
-					} );
-				}
-			}
-			#endregion
-			#region Occupations, industries
-			occupationsQuery = CommonOccupations<GenericIndex>( query, ref widgetOccupationsQuery );
-
-			industriesQuery = CommonIndustries<GenericIndex>( query, ref windustriesQuery );
-			#endregion
-
-			#region Query
-
-			var sort = new SortDescriptor<GenericIndex>();
-
-			var sortOrder = query.SortOrder;
-			if ( sortOrder == "alpha" )
-				sort.Ascending( s => s.Name.Suffix( "keyword" ) );
-			else if ( sortOrder == "zalpha" )
-				sort.Descending( s => s.Name.Suffix( "keyword" ) );
-			else if ( sortOrder == "newest" )
-				sort.Field( f => f.LastUpdated, SortOrder.Descending );
-			else if ( sortOrder == "oldest" )
-				sort.Field( f => f.LastUpdated, SortOrder.Ascending );
-			else if ( sortOrder == "relevance" )
-				sort.Descending( SortSpecialField.Score );
-			//
-			QueryContainer phrasePrefixQuery = SetPhrasePrefixQuery<GenericIndex>( query );
-			QueryContainer bestFieldsQuery = SetBestFieldsQuery<GenericIndex>( query );
-			QueryContainer autoCompleteQuery = SetAutocompleteQuery<GenericIndex>( query );
-			var pageSize = query.PageSize;
-			if ( requestIsAutocomplete )
-			{
-				pageSize = pageSize * 2;
-				phrasePrefixQuery = null;
-				//bestFieldsQuery = null;
-			}
-			else
-			{
-				autoCompleteQuery = null;
-				//remove for TI testing
-				//bestFieldsQuery = null;
-			}
-			if ( query.StartPage < 1 )
-				query.StartPage = 1;
-
-			var search = EC.Search<GenericIndex>( body => body
-				   .Index( CommonIndex )
-				   .Query( q =>
-						entityTypeQuery
-					  && ownedByQuery
-					  && recordIdListQuery
-					  && transferIntermediaryIdQuery
-					  && subjectsQuery
-					  //&& wsubjectsQuery         //widget specific!!!
-					  && keywordsQuery
-					  && occupationsQuery
-					  && industriesQuery
-					  && qualityAssuranceSearchQuery
-					  && qaFilterQuery
-					  && history.CreatedFromQuery && history.CreatedToQuery && history.HistoryFromQuery && history.HistoryToQuery
-					  && reportsQuery
-					  && ( phrasePrefixQuery || autoCompleteQuery || bestFieldsQuery )
-				   )
-				   .TrackTotalHits( true )
-				   .Sort( s => sort )
-				   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
-				   .Skip( ( query.StartPage - 1 ) * query.PageSize )
-				   .Size( pageSize ) );
-
-
-			#endregion
-
-			var debug = search.DebugInformation;
-			pTotalRows = ( int ) search.Total;
-			if ( requestIsAutocomplete )
-			{
-				var requestList = ( List<GenericIndex> ) search.Documents;
-				autocompleteList = requestList.Select( x => x.ListTitle ).Distinct().Take( query.PageSize ).ToList();
-				return null;
-			}
-			if ( query.StartPage == 1 && ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) ) )
-			{
-				//actually extract the request: between #request and #response
-				var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
-				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "GENERAL", pTotalRows ) + elasticQuery, "ElasticQuery" );
-			}
-			if ( pTotalRows > 0 )
-			{
-				list = ElasticManager.CommonIndex_MapFromElastic( ( List<GenericIndex> ) search.Documents, query.StartPage, query.PageSize );
-
-				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.GeneralSearch. found: {0} records", pTotalRows ) );
-			}
-			//stats
-			query.Results = pTotalRows;
-			string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
-			string searchType = "blind";
-			if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
-			{
-				searchType = "filters selected";
-			}
-			if ( query.StartPage > 1 )
-				searchType += " - paging";
-			new ActivityServices().AddActivity( new SiteActivity()
-			{ ActivityType = entityType, Activity = "Search", Event = searchType, Comment = jsoninput }
-			);
-			return list;
-		}
 		#endregion
 
 		#region Credentials
@@ -1096,8 +2560,11 @@ namespace workIT.Services
 			if ( action == 0 )
 				return;
 
-			LoggingHelper.DoTrace( 6, "Credential_UpdateIndex. Enter. Filter: '" + filter + "' " );
 			string methodName = "Credential_UpdateIndex";
+			string IndexName = CredentialIndex;
+			LoggingHelper.DoTrace( 6, $"{methodName}. Enter. Index: {IndexName} Filter: '" + filter + "' " );
+
+
 
 			try
 			{
@@ -1149,8 +2616,7 @@ namespace workIT.Services
 						{
 							LoggingHelper.LogError( string.Format( "Credential_UpdateIndex: Error in search. Filter: {0}, message: {1}", filter, list[0].Description ), true, "UpdateCredentialIndex EXCEPTION" );
 
-						}
-						else if ( pageNbr == 1 )
+						} else if ( pageNbr == 1 )
 						{
 							if ( string.IsNullOrWhiteSpace( filter ) )
 							{
@@ -1207,83 +2673,94 @@ namespace workIT.Services
 			return response;
 		}
 
-		//public static void CredentialInitializeIndex()
-		//{
-		//	if ( !EC.Indices.Exists( CredentialIndex ).Exists )
-		//	{
-		//		// .String(s => s.Index(FieldIndexOption.NotAnalyzed).Name(n => n.Name))
-		//		EC.Indices.Create( CredentialIndex, c => new CreateIndexDescriptor( CredentialIndex )
-		//			  .Settings( st => st
-		//				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) )
-		//					.Analyzers( anz => anz
-		//						.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) )
-		//						)
-		//					) ) //Settings
-		//						//21-05-31 mparsons - as Mappings is obsolete in e7x, changed to use Map and commented the first instance of Map
-		//						//		backed out - only 10000 records would appear in search=> still only 10000 using original search
-		//				  .Mappings( ms => ms
-		//					.Map<CredentialIndex>( m => m
-		//						.AutoMap()
-		//						.Properties( p => p
-		//							.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" )
-		//						 )
-		//						//.Text( s => s.Name( n => n.Name ).Analyzer( "my_analyzer" )) .Fields( f=> f.Text (t => t.Analyzer( "english_exav" ) )
-		//						.Nested<IndexSubject>( n => n
-		//							.Name( nn => nn.Subjects )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Industries )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Occupations )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.InstructionalPrograms )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexCompetency>( n => n
-		//							.Name( nn => nn.Competencies )
-		//							.AutoMap()
-		//						)
-		//						//.GeoPoint( g => g.Name( n => n.AddressLocations ) )
-		//						.Nested<Models.Elastic.Address>( n => n
-		//							.Name( nn => nn.Addresses )
-		//							.AutoMap()
-		//							) //AgentRelationshipForEntity will replace IndexQualityAssurance
-		//						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-		//							.Name( nn => nn.AgentRelationshipsForEntity )
-		//							.AutoMap()
-		//							)
-		//						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-		//							.Name( nn => nn.OutcomeProvidersForEntity )
-		//							.AutoMap()
-		//						)
-		//						//.Nested<IndexQualityAssurance>( n => n
-		//						//	.Name( nn => nn.QualityAssurance )
-		//						//	.AutoMap()
-		//						//)
-		//						//.Nested<QualityAssurancePerformed>( n => n
-		//						//	.Name( nn => nn.QualityAssurancePerformed )
-		//						//	.AutoMap()
-		//						//)
+        //public static void CredentialInitializeIndex()
+        //{
+        //	if ( !EC.Indices.Exists( CredentialIndex ).Exists )
+        //	{
+        //		// .String(s => s.Index(FieldIndexOption.NotAnalyzed).Name(n => n.Name))
+        //		EC.Indices.Create( CredentialIndex, c => new CreateIndexDescriptor( CredentialIndex )
+        //			  .Settings( st => st
+        //				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) )
+        //					.Analyzers( anz => anz
+        //						.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) )
+        //						)
+        //					) ) //Settings
+        //						//21-05-31 mparsons - as Mappings is obsolete in e7x, changed to use Map and commented the first instance of Map
+        //						//		backed out - only 10000 records would appear in search=> still only 10000 using original search
+        //				  .Mappings( ms => ms
+        //					.Map<CredentialIndex>( m => m
+        //						.AutoMap()
+        //						.Properties( p => p
+        //							.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" )
+        //						 )
+        //						//.Text( s => s.Name( n => n.Name ).Analyzer( "my_analyzer" )) .Fields( f=> f.Text (t => t.Analyzer( "english_exav" ) )
+        //						.Nested<IndexSubject>( n => n
+        //							.Name( nn => nn.Subjects )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.Industries )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.Occupations )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.InstructionalPrograms )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexCompetency>( n => n
+        //							.Name( nn => nn.Competencies )
+        //							.AutoMap()
+        //						)
+        //						//.GeoPoint( g => g.Name( n => n.AddressLocations ) )
+        //						.Nested<Models.Elastic.Address>( n => n
+        //							.Name( nn => nn.Addresses )
+        //							.AutoMap()
+        //							) //AgentRelationshipForEntity will replace IndexQualityAssurance
+        //						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+        //							.Name( nn => nn.AgentRelationshipsForEntity )
+        //							.AutoMap()
+        //							)
+        //						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+        //							.Name( nn => nn.OutcomeProvidersForEntity )
+        //							.AutoMap()
+        //						)
+        //						//.Nested<IndexQualityAssurance>( n => n
+        //						//	.Name( nn => nn.QualityAssurance )
+        //						//	.AutoMap()
+        //						//)
+        //						//.Nested<QualityAssurancePerformed>( n => n
+        //						//	.Name( nn => nn.QualityAssurancePerformed )
+        //						//	.AutoMap()
+        //						//)
 
-		//						.Nested<Connection>( n => n
-		//							.Name( nn => nn.Connections )
-		//							.AutoMap()
-		//						)
-		//						.Nested<Models.Common.IdentifierValue>( n => n
-		//							.Name( nn => nn.RegionIdentifier )
-		//							.AutoMap()
-		//						)
-		//						)
-		//					)
-		//				)
-		//		);
-		//	}
-		//}
+        //						.Nested<Connection>( n => n
+        //							.Name( nn => nn.Connections )
+        //							.AutoMap()
+        //						)
+        //						.Nested<Models.Common.IdentifierValue>( n => n
+        //							.Name( nn => nn.RegionIdentifier )
+        //							.AutoMap()
+        //						)
+        //						)
+        //					)
+        //				)
+        //		);
+        //	}
+        //}
+        public static void Credential_ManageIndex( bool deleteIndexFirst = false )
+        {
+            if ( deleteIndexFirst && EC.Indices.Exists( CredentialIndex ).Exists )
+            {
+                EC.Indices.Delete( CredentialIndex );
+            }
+            if ( !EC.Indices.Exists( CredentialIndex ).Exists )
+            {
+                CredentialInitializeIndex7();
+            }
+        }
 		public static void CredentialInitializeIndex7()
 		{
 			if ( !EC.Indices.Exists( CredentialIndex ).Exists )
@@ -1295,69 +2772,67 @@ namespace workIT.Services
 							.Analyzers( anz => anz
 								.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) )
 								)
-							) ) //Settings
-								//21 - 05 - 31 mparsons - as Mappings is obsolete in e7x, changed to use Map and commented the first instance of Map
-								//		backed out -only 10000 records would appear in search => still only 10000 using original search
-								//.Mappings( ms => ms
-							.Map<CredentialIndex>( m => m
-								.AutoMap()
-								.Properties( p => p
-								 .Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
-								//.Keyword( s => s.Name( n => n.Name ) ) //22-09-12 mp - not sure if this is why we are getting an error on sorting of credentials, so commented to match asmt
-								//.Text( s => s.Name( n => n.Name ).Analyzer( "my_analyzer" )) .Fields( f=> f.Text (t => t.Analyzer( "english_exav" ) )
-								.Nested<IndexSubject>( n => n
-									.Name( nn => nn.Subjects )
-									.AutoMap()
-								)
-								.Nested<IndexReferenceFramework>( n => n
-									.Name( nn => nn.Industries )
-									.AutoMap()
-								)
-								.Nested<IndexReferenceFramework>( n => n
-									.Name( nn => nn.Occupations )
-									.AutoMap()
-								)
-								.Nested<IndexReferenceFramework>( n => n
-									.Name( nn => nn.InstructionalPrograms )
-									.AutoMap()
-								)
-								.Nested<IndexCompetency>( n => n
-									.Name( nn => nn.Competencies )
-									.AutoMap()
-								)
-								//.GeoPoint( g => g.Name( n => n.AddressLocations ) )
-								.Nested<Models.Elastic.Address>( n => n
-									.Name( nn => nn.Addresses )
-									.AutoMap()
-									) //AgentRelationshipForEntity will replace IndexQualityAssurance
-								.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-									.Name( nn => nn.AgentRelationshipsForEntity )
-									.AutoMap()
-									)
-								.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-									.Name( nn => nn.OutcomeProvidersForEntity )
-									.AutoMap()
-								)
-								//.Nested<IndexQualityAssurance>( n => n
-								//	.Name( nn => nn.QualityAssurance )
-								//	.AutoMap()
-								//)
-								//.Nested<QualityAssurancePerformed>( n => n
-								//	.Name( nn => nn.QualityAssurancePerformed )
-								//	.AutoMap()
-								//)
-
-								.Nested<Connection>( n => n
-									.Name( nn => nn.Connections )
-									.AutoMap()
-								)
-								.Nested<Models.Common.IdentifierValue>( n => n
-									.Name( nn => nn.RegionIdentifier )
-									.AutoMap()
-								)
-								)
+							) 						 
+						 )
+						
+					  //Settings
+						//21 - 05 - 31 mparsons - as Mappings is obsolete in e7x, changed to use Map and commented the first instance of Map
+						//		backed out -only 10000 records would appear in search => still only 10000 using original search
+						//.Mappings( ms => ms
+					.Map<CredentialIndex>( m => m
+						.AutoMap()
+						.Properties( p => p
+							.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
+							//.Keyword( s => s.Name( n => n.Name ) ) //22-09-12 mp - not sure if this is why we are getting an error on sorting of credentials, so commented to match asmt
+																//.Text( s => s.Name( n => n.Name ).Analyzer( "my_analyzer" )) .Fields( f=> f.Text (t => t.Analyzer( "english_exav" ) )
+						.Nested<IndexSubject>( n => n
+							.Name( nn => nn.Subjects )
+							.AutoMap()
+						)
+						.Nested<IndexReferenceFramework>( n => n
+							.Name( nn => nn.Industries )
+							.AutoMap()
+						)
+						.Nested<IndexReferenceFramework>( n => n
+							.Name( nn => nn.Occupations )
+							.AutoMap()
+						)
+						.Nested<IndexReferenceFramework>( n => n
+							.Name( nn => nn.InstructionalPrograms )
+							.AutoMap()
+						)
+						.Nested<IndexCompetency>( n => n
+							.Name( nn => nn.Competencies )
+							.AutoMap()
+						)
+						.Nested<Models.Elastic.Address>( n => n
+							.Name( nn => nn.Addresses )
+							.AutoMap()
+							) //AgentRelationshipForEntity will replace IndexQualityAssurance
+						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+							.Name( nn => nn.AgentRelationshipsForEntity )
+							.AutoMap()
 							)
-				//)	//.Mappings
+						.Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+							.Name( nn => nn.OutcomeProvidersForEntity )
+							.AutoMap()
+						)
+
+						.Nested<Connection>( n => n
+							.Name( nn => nn.Connections )
+							.AutoMap()
+						)
+						.Nested<Models.Common.IdentifierValue>( n => n
+							.Name( nn => nn.RegionIdentifier )
+							.AutoMap()
+                        )
+                        .Object<JObject>( o => o
+                            .Name( n => n.ResourceDetail )
+                            .Enabled( false ) 
+							)
+                        )//Properties
+                    )//Map
+							
 				);
 			}
 		}
@@ -1424,8 +2899,7 @@ namespace workIT.Services
 					descriptionBoost = 0;
 				if ( !query.CustomSearchInFields.Contains( "Keywords" ) )
 					keywordsBoost = 0;
-			}
-			else
+			} else
 			{
 
 			}
@@ -1457,7 +2931,7 @@ namespace workIT.Services
 					 q.MultiMatch( m => m
 									 .Fields( f => f
 										  .Field( ff => ff.Name, nameBoost )
-										  .Field( ff => ff.OwnerOrganizationName, orgNameBoost )
+										  .Field( ff => ff.PrimaryOrganizationName, orgNameBoost )
 										  .Field( ff => ff.SubjectWebpage, 60 )
 										  .Field( ff => ff.Description, descriptionBoost )
 										  .Field( ff => ff.Keyword, keywordsBoost )
@@ -1504,7 +2978,7 @@ namespace workIT.Services
 		/// <param name="maxTerms"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<string> CredentialAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
+		public List<string> CredentialAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false ) )
 			{
@@ -1516,7 +2990,8 @@ namespace workIT.Services
 			}
 			var keywords = query.Keywords;
 			QueryContainer widgetIdQuery = null;
-			QueryContainer orgRolesFilterQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
 			//bool hasNewPotentialResults = false;
 			//if ( query.WidgetId > 0 && query.HasCredentialPotentialResults )
 			//{
@@ -1529,16 +3004,14 @@ namespace workIT.Services
 			if ( relationshipTypeIds?.Count > 0 )
 			{
 				//seems poorly names
-				orgRolesFilterQuery = CommonQualityAssurance<CredentialIndex>( query );
-				//vs: 
-				//orgRolesFilterQuery = CommonOrgRolesFilter<CredentialIndex>( query, relationshipTypeIds );
+				commonOrgRolesBYQuery = CommonOrgRolesByFilter<CredentialIndex>( query );
 			}
-
+			publishedBYQuery = PublishedByFilter<CredentialIndex>( query );
 			//Phrase Prefix is looking for matches to what a user types in (i.e., the phrase)"
 			QueryContainer multiMatchPhrasePrefixQuery = Query<CredentialIndex>.MultiMatch( m => m
 				.Fields( f => f
 					.Field( ff => ff.NameOrganizationKey, 100 )      //??
-					.Field( ff => ff.OwnerOrganizationName, 90 )
+					.Field( ff => ff.PrimaryOrganizationName, 90 )
 				)
 				.Type( TextQueryType.PhrasePrefix )
 				.Query( keywords )
@@ -1568,7 +3041,7 @@ namespace workIT.Services
 				queryStringQuery = Query<CredentialIndex>.QueryString( m => m
 									.Fields( f => f
 										.Field( ff => ff.NameOrganizationKey, 90 )
-										.Field( ff => ff.OwnerOrganizationName, 25 )
+										.Field( ff => ff.PrimaryOrganizationName, 25 )
 									 )
 									.Query( keywords )
 									.Analyzer( "standard" )
@@ -1591,7 +3064,7 @@ namespace workIT.Services
 			 .Index( CredentialIndex )
 				 .Query( q =>
 					( multiMatchPhrasePrefixQuery || queryStringQuery )
-					&& orgRolesFilterQuery
+					&& commonOrgRolesBYQuery && publishedBYQuery
 				 )
 				.TrackTotalHits( true )
 				.Size( maxTerms * 2 )
@@ -1639,27 +3112,27 @@ namespace workIT.Services
 
 			return relationshipTypeIds;
 		}
-		public static List<object> CredentialAutoCompleteOLD( string keyword, int maxTerms, ref int pTotalRows )
-		{
-			//get more than the max terms to allow returning max after getting distinct list
-			var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q =>
-				 q.MultiMatch( m => m
-								 .Fields( f => f
-								  .Field( ff => ff.NameOrganizationKey, 100 )
-								  .Field( ff => ff.OwnerOrganizationName, 80 )
-				 )
-				.Type( TextQueryType.PhrasePrefix )
-				.Query( keyword )
-				.MaxExpansions( 10 ) ) )
-				.Size( maxTerms * 2 ) );
-			//21-08-11 mp - search.Total is the total that would be returned. search.Documents is the actual to be returned 
+		//public static List<object> CredentialAutoCompleteOLD( string keyword, int maxTerms, ref int pTotalRows )
+		//{
+		//	//get more than the max terms to allow returning max after getting distinct list
+		//	var search = EC.Search<CredentialIndex>( i => i.Index( CredentialIndex ).Query( q =>
+		//		 q.MultiMatch( m => m
+		//						 .Fields( f => f
+		//						  .Field( ff => ff.NameOrganizationKey, 100 )
+		//						  .Field( ff => ff.OwnerOrganizationName, 80 )
+		//		 )
+		//		.Type( TextQueryType.PhrasePrefix )
+		//		.Query( keyword )
+		//		.MaxExpansions( 10 ) ) )
+		//		.Size( maxTerms * 2 ) );
+		//	//21-08-11 mp - search.Total is the total that would be returned. search.Documents is the actual to be returned 
 
-			pTotalRows = ( int ) search.Total;
+		//	pTotalRows = ( int ) search.Total;
 
-			var list = ( List<CredentialIndex> ) search.Documents;
-			return list.Select( x => x.ListTitle ).Distinct().Take( maxTerms ).ToList().Cast<object>().ToList();
+		//	var list = ( List<CredentialIndex> ) search.Documents;
+		//	return list.Select( x => x.ListTitle ).Distinct().Take( maxTerms ).ToList().Cast<object>().ToList();
 
-		}
+		//}
 		public static void CustomAnalyzer( string keyword )
 		{
 			var indexSettings = new IndexSettings();
@@ -1716,13 +3189,13 @@ namespace workIT.Services
 		/// <param name="query"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<CredentialSummary> Credential_Search( MainSearchInput query, ref int pTotalRows )
+		public List<CredentialSummary> Credential_Search( MainSearchInput query, ref int pTotalRows )
 		{
 			List<string> autocompleteList = new List<string>();
 			bool requestIsAutocomplete = false;
 			return Credential_Search( query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
 		}
-		public static List<CredentialSummary> Credential_Search( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
+		public List<CredentialSummary> Credential_Search( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
 		{
 			//
 			if ( UtilityManager.GetAppKeyValue( "usingCredentialPrototypingSearch", false ) )
@@ -1734,6 +3207,7 @@ namespace workIT.Services
 			Credential_BuildIndex();
 
 			QueryContainer collectionIdQuery = null;
+			QueryContainer collectionsQuery = null;
 			QueryContainer credentialTypeQuery = null;
 			QueryContainer credentialIdQuery = null;
 			QueryContainer widgetIdQuery = null;
@@ -1751,7 +3225,9 @@ namespace workIT.Services
 			QueryContainer occupationsQuery = null;
 			QueryContainer industriesQuery = null;
 			QueryContainer boundariesQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer qaFilterQuery = null;
 
 			QueryContainer languagesQuery = null;
@@ -1763,16 +3239,18 @@ namespace workIT.Services
 			QueryContainer windustriesQuery = null;
 			QueryContainer wsubjectsQuery = null;
 			HistoryQueryFilters history = new HistoryQueryFilters();
-			//QueryContainer createdFromQuery = null;
-			//QueryContainer createdToQuery = null;
-			//QueryContainer historyFromQuery = null;
-			//QueryContainer historyToQuery = null;
-			LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
+            QueryContainer ctidQuery = null;
+            //QueryContainer createdFromQuery = null;
+            //QueryContainer createdToQuery = null;
+            //QueryContainer historyFromQuery = null;
+            //QueryContainer historyToQuery = null;
+            LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
 			var qaRelationshipTypeIds = new List<int>();
 			var relationshipTypeIds = new List<int>();
 			var credentialStatusTypeIds = new List<int>();
-			//20-04-16 mparsons - set a default value for credentialStatusTypeQuery to exclude deprecated. Will be overridden if any credential status are provided
-			if ( UtilityManager.GetAppKeyValue( "hidingDeprecatedStatus", false ) )
+
+            //20-04-16 mparsons - set a default value for credentialStatusTypeQuery to exclude deprecated. Will be overridden if any credential status are provided
+            if ( UtilityManager.GetAppKeyValue( "hidingDeprecatedStatus", false ) )
 			{
 				var defStatus = CodesManager.Property_GetValues( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE, "", false );
 				var exists = defStatus.Where( s => s.Title.Contains( "Deprecated" ) == false ).ToList();
@@ -1787,19 +3265,17 @@ namespace workIT.Services
 			try
 			{
 
-				#region credSearchCategories
+				#region cred properties/Categories
 				//20-09-09 mparsons - in preparation of implementation of this filter, make it mutually exclusive with the current filter
 				bool hasNewPotentialResults = false;
-				if ( query.WidgetId > 0 && query.HasCredentialPotentialResults )
+				//quick hack for miLEAP
+				if ( (query.WidgetId > 0 && query.HasCredentialPotentialResults) 
+					|| (query.WidgetId== 68 || query.WidgetId == 70 ) )
 				{
 					hasNewPotentialResults = true;
 					widgetIdQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.ResourceForWidget ).Terms( query.WidgetId ) );
 				}
-				//collections
-				//if ( query.CollectionId > 0 )
-				//{
-				//	collectionIdQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms( query.CollectionId ) );
-				//}
+
 				//21-10-26 WATCH - Has Any Subjects might be missed if selected from the Subject Areas filters, vs Other Filters
 				if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
 				{
@@ -1839,8 +3315,7 @@ namespace workIT.Services
 						{
 							reportIds.Add( item.Id ); //can probably continue after here?
 							continue;
-						}
-						else if ( filter.Name == "" && filter.Values != null && filter.Values.Count == 3 )
+						} else if ( filter.Name == "" && filter.Values != null && filter.Values.Count == 3 )
 						{
 							//HACK test while determine why no filter.name
 							//var filterItem = filter.AsDefaultCodeItem();
@@ -1874,14 +3349,14 @@ namespace workIT.Services
 						{
 							//check for text only 
 							var text = filter.AsText();
-							if ( !string.IsNullOrWhiteSpace( text ) )
-							{
+							if ( !string.IsNullOrWhiteSpace(text) )
+                            {
 								//what? if no keywords, then append. Or append?
 								if ( string.IsNullOrWhiteSpace( query.Keywords ) )
 									query.Keywords = text;
 								else
 									query.Keywords += " " + text;
-							}
+							}  
 							continue;
 						}
 
@@ -2009,10 +3484,34 @@ namespace workIT.Services
 					}
 				}
 
-				#endregion
+                #endregion
 
-				#region Handle Location queries
-				bool usingRegionHack = false;
+                #region collections
+                //if ( query.CollectionId > 0 )       //???
+                //{
+                //	collectionIdQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms( query.CollectionId ) );
+                //}
+                if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+                {
+                    var idsList = new List<int>();
+                    foreach ( var filter in query.FiltersV2.Where( m => m.Name == "collectionresults" ).ToList() )
+                    {
+                        //filter.CustomJSON is populated in workIT.Services.API.SearchServicesTranslateMainQueryFiltersToMainSearchInputFilters
+                        //	TBD if should use something different
+                        idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+                    }
+
+                    if ( idsList.Any() )
+                    {
+                        collectionIdQuery = Query<CredentialIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms<int>( idsList.ToArray() ) );
+                    }
+                }
+                collectionsQuery = CommonInCollectionByIdFilters<CredentialIndex>( query );
+                if ( collectionsQuery == null )
+                    collectionsQuery = CommonPartOfCollectionFilters<CredentialIndex>( query );
+                #endregion
+                #region Handle Location queries
+                bool usingRegionHack = false;
 				//int regionBoost = 10;
 				LocationFilter<CredentialIndex>( query, locationQueryFilters, ref usingRegionHack );
 				//custom filter for Illinois LWIAs
@@ -2029,31 +3528,39 @@ namespace workIT.Services
 				//		==> actually now used by search widget => type = organizationroles
 				//20-11-20 - the QA performed search from org detail page uses this. Updated. Note that the QA target will need to be reindexed
 				//21-06-01	ALSO the owns/offers searches from the detail pages
-				qualityAssuranceSearchQuery = CommonQualityAssurance<CredentialIndex>( query );
+				//23-07-21 we had a conflict where the widget over writes the organizationroles filter from an org detail page. TBD will we get two filters, or do we need to create two methods
+				//23-08-14 To address the latter, we had changed the query to use ANDs. BUT, this is an issue with multiple owners in a widget. 
+
+				commonOrgRolesBYQuery = CommonOrgRolesByFilter<CredentialIndex>( query );
+				publishedBYQuery = PublishedByFilter<CredentialIndex>( query );
 
 				//USED BY QUALITY ASSURANCE FILTER check boxes and org list
 				//21-03-29 mp - while adding organization roles filter, noted that this method may produce a filter using relationshipTypeIds. However, will this work with an org filter????
 				//need to ensure relationshipTypeIds are not applied to the wrong filter type
 				qaFilterQuery = CommonQualityAssuranceFilter<CredentialIndex>( query, qaRelationshipTypeIds );
 
-				var orgRolesFilterQuery = CommonOrgRolesFilter<CredentialIndex>( query, relationshipTypeIds );
+				var commonOrgQARolesQuery = CommonOrgQARolesFilter<CredentialIndex>( query, relationshipTypeIds );
 				//
 				var commonOutcomeProvidersQuery = CommonOutcomeProviders<CredentialIndex>( query );
 
 
+                #endregion
+
+                if ( BaseFactory.IsValidCtid( query.Keywords ) )
+                {
+                    ctidQuery = Query<CredentialIndex>.Match( ts => ts.Field( f => f.CTID ).Query( query.Keywords ) );
+                }
+
+                #region Competencies
+                competenciesQuery = CommonCompetencies<CredentialIndex>( query );
+
+
 				#endregion
 
 
+                #region Occupations, Industries, Programs
 
-				#region Competencies
-				competenciesQuery = CommonCompetencies<CredentialIndex>( query );
-
-
-				#endregion
-
-				#region Occupations, Industries, programs
-
-				occupationsQuery = CommonOccupations<CredentialIndex>( query, ref widgetOccupationsQuery );
+                occupationsQuery = CommonOccupations<CredentialIndex>( query, ref widgetOccupationsQuery );
 
 				industriesQuery = CommonIndustries<CredentialIndex>( query, ref windustriesQuery );
 
@@ -2101,86 +3608,7 @@ namespace workIT.Services
 
 				#region Boundaries
 
-				var mapFilter = query.FiltersV2.FirstOrDefault( m => !string.IsNullOrWhiteSpace( m.Map_PositionType ) );
-				//Only look for results that are within the specified area
-				if ( mapFilter != null && mapFilter.Map_PositionType == "positionType:In" && !string.IsNullOrWhiteSpace( mapFilter.Map_Country ) && !string.IsNullOrWhiteSpace( mapFilter.Map_Region ) )
-				{
-					if ( string.IsNullOrWhiteSpace( mapFilter.Map_Locality ) )
-					{
-						boundariesQuery = Query<CredentialIndex>
-							.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => Query<CredentialIndex>.Bool( b =>
-								b.Must(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) )
-								)
-								.Should(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
-								)
-							) ).IgnoreUnmapped() );
-					}
-					else
-					{
-						boundariesQuery = Query<CredentialIndex>
-							.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => Query<CredentialIndex>.Bool( b =>
-								b.Must(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressLocality ).Query( mapFilter.Map_Locality ) )
-								)
-								.Should(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
-								)
-							) ).IgnoreUnmapped() );
-					}
-				}
-				//Do a bounding box search but prioritize results that are in the specified area
-				else if ( mapFilter != null && mapFilter.Map_PositionType == "positionType:Near" && !string.IsNullOrWhiteSpace( mapFilter.Map_Country ) && !string.IsNullOrWhiteSpace( mapFilter.Map_Region ) )
-				{
-					var boundaries = SearchServices.GetBoundaries( query, "bounds" );
-					if ( string.IsNullOrWhiteSpace( mapFilter.Map_Locality ) )
-					{
-						boundariesQuery = Query<CredentialIndex>
-							.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => Query<CredentialIndex>.Bool( b =>
-								b.Must(
-									m => m.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ),
-									m => m.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) )
-								)
-								.Should(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
-								)
-							) ).IgnoreUnmapped() );
-					}
-					else
-					{
-						boundariesQuery = Query<CredentialIndex>
-							.Nested( n => n.Path( p => p.Addresses )
-							.Query( q => Query<CredentialIndex>.Bool( b =>
-								b.Must(
-									m => m.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ),
-									m => m.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) )
-								)
-								.Should(
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressLocality ).Query( mapFilter.Map_Locality ) ),
-									m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
-								)
-							) ).IgnoreUnmapped() );
-					}
-				}
-				//Just do a classic bounding box search
-				else
-				{
-					var boundaries = SearchServices.GetBoundaries( query, "bounds" );
-					if ( boundaries.IsDefined )
-					{
-						boundariesQuery = Query<CredentialIndex>
-							  .Nested( n => n.Path( p => p.Addresses )
-							  .Query( q => Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
-					}
-
-				}
+				boundariesQuery = HandleLocationQuery<CredentialIndex>( query );
 
 				#endregion
 
@@ -2255,17 +3683,17 @@ namespace workIT.Services
 					.Fields( f => f
 						.Field( ff => ff.NameOrganizationKey, 90 )      //??
 						.Field( ff => ff.ListTitle, 90 )
-						.Field( ff => ff.OwnerOrganizationName, 90 )
+						.Field( ff => ff.PrimaryOrganizationName, 90 )
 						.Field( ff => ff.Description, 30 )
 						.Field( ff => ff.AlternateNames, 35 )
-						.Field( ff => ff.TextValues, 50 )       //no longer being populated?
-																//.Field( ff => ff.PremiumValues, 50 )
+						.Field( ff => ff.TextValues, 50 )       //no longer being populated? 23-06-06 - chould CTIDs be added to these?
+						//.Field( ff => ff.PremiumValues, 50 )
 						.Field( ff => ff.Occupation, 30 )
 						.Field( ff => ff.Industry, 30 )
 						.Field( ff => ff.InstructionalProgram, 30 )
-						.Field( ff => ff.Keyword, 60 )  //
-														//.Field( ff => ff.CodedNotation, 30 )  //
-														//.Field( ff => ff.TextValues, 30 )	//mostly obsolete, esp if excluding occ/ind/programs
+						.Field( ff => ff.Keyword, 60 )  
+						//.Field( ff => ff.CodedNotation, 30 )  //
+						//.Field( ff => ff.TextValues, 30 )	//mostly obsolete, esp if excluding occ/ind/programs
 					)
 					.Type( TextQueryType.PhrasePrefix )
 					.Query( query.Keywords )
@@ -2275,7 +3703,7 @@ namespace workIT.Services
 				QueryContainer autocompletePhrasePrefixQuery = Query<CredentialIndex>.MultiMatch( m => m
 				.Fields( f => f
 					.Field( ff => ff.NameOrganizationKey, 100 )      //??
-					.Field( ff => ff.OwnerOrganizationName, 90 )
+					.Field( ff => ff.PrimaryOrganizationName, 90 )
 				)
 				.Type( TextQueryType.PhrasePrefix )
 				.Query( query.Keywords )
@@ -2288,7 +3716,7 @@ namespace workIT.Services
 					.Fields( f => f
 						.Field( ff => ff.Name, 90 )     //??
 						.Field( ff => ff.ListTitle, 90 )
-						.Field( ff => ff.OwnerOrganizationName, 90 )
+						.Field( ff => ff.PrimaryOrganizationName, 90 )
 						.Field( ff => ff.Description, 45 )
 						.Field( ff => ff.AlternateNames, 35 )
 						.Field( ff => ff.TextValues, 50 )
@@ -2404,6 +3832,7 @@ namespace workIT.Services
 					regionQuery = locationQueryFilters.RegionQuery;
 					locationQueryFilters.RegionQuery = null;
 				}
+				
 				var pageSize = query.PageSize;
 				if ( requestIsAutocomplete )
 				{
@@ -2411,8 +3840,14 @@ namespace workIT.Services
 					crossFieldsQuery = null;
 					multiMatchBestFieldsQuery = null;
 					//retaining bestFields
-				}
-				else
+				} else if ( ctidQuery != null )
+                {
+                    multiMatchPhrasePrefixQuery = null;
+                    multiMatchBestFieldsQuery = null;
+                    crossFieldsQuery = null;
+                    autocompletePhrasePrefixQuery = null;
+                }
+                else
 				{
 					//??
 					//autocompletePhrasePrefixQuery = null;
@@ -2427,14 +3862,15 @@ namespace workIT.Services
 							credentialTypeQuery
 							&& credentialIdQuery
 							&& widgetIdQuery
-							&& collectionIdQuery
+							&& collectionIdQuery && collectionsQuery
 							&& credentialStatusTypeQuery
 							&& connectionsQuery
 							&& audienceLevelTypeQuery
 							&& audienceTypeQuery
 							&& competenciesQuery
-							//&& relationshipIdQuery
-							&& subjectsQuery
+							&& ctidQuery
+                            //&& relationshipIdQuery
+                            && subjectsQuery
 							&& widgetKeywordsQuery        //special used by widget search only
 							&& occupationsQuery
 							&& industriesQuery
@@ -2442,10 +3878,10 @@ namespace workIT.Services
 							&& asmntDeliveryTypesQuery
 							&& learningDeliveryTypesQuery
 							&& boundariesQuery
-							&& orgRolesFilterQuery
+							&& commonOrgQARolesQuery
 							&& commonOutcomeProvidersQuery
 							&& qaFilterQuery
-							&& qualityAssuranceSearchQuery
+							&& commonOrgRolesBYQuery && publishedBYQuery
 							&& languagesQuery
 							&& locationQueryFilters.RegionQuery
 							&& locationQueryFilters.CountryQuery
@@ -2456,7 +3892,7 @@ namespace workIT.Services
 							&&
 							(
 								 queryStringQuery || autocompletePhrasePrefixQuery
-								//	simpleQuery || matchPhrasePrefixQuery ||	matchPhraseBestFieldsQuery
+							//	simpleQuery || matchPhrasePrefixQuery ||	matchPhraseBestFieldsQuery
 
 								|| regionQuery
 								|| crossFieldsQuery
@@ -2492,26 +3928,37 @@ namespace workIT.Services
 				//only do for first page and where has filters
 				if ( query.StartPage == 1 )
 				{
-					//OR to avoid excessive logging could look for a special character 
-					if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
+					try
 					{
-						//actually extract the request: between #request and #response
-						var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
-						LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "Credential", pTotalRows ) + elasticQuery, "ElasticQuery" );
-
-					}
-					else if ( query.Filters.Count == 0 && query.FiltersV2.Count == 0 && string.IsNullOrWhiteSpace( query.Keywords ) && query.WidgetId == 0 )
-					{
-						if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" && pTotalRows < 23000 )
+						//OR to avoid excessive logging could look for a special character 
+						if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
 						{
 							//actually extract the request: between #request and #response
 							var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
 							LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "Credential", pTotalRows ) + elasticQuery, "ElasticQuery" );
-							var acctsemail = UtilityManager.GetAppKeyValue( "accountNotifications" );
-							EmailManager.NotifyAdmin( acctsemail, "WARNING Credential Blind Search Result Low", string.Format( "A Credential blind search only returned {0} records. This seems to be unexpected.", pTotalRows ) );
+
+						}
+						else if ( query.Filters.Count == 0 && query.FiltersV2.Count == 0 && string.IsNullOrWhiteSpace( query.Keywords ) && query.WidgetId == 0 )
+						{
+							if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" && pTotalRows < 23000 )
+							{
+								//actually extract the request: between #request and #response
+								var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
+								LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "Credential", pTotalRows ) + elasticQuery, "ElasticQuery" );
+								//TODO - need to be sure not alarmist?
+								//23-08-20 for example the latter were empty but there was a filter on occupations. It could be related to where a search is done twice
+								var acctsemail = UtilityManager.GetAppKeyValue( "accountNotifications" );
+								//so skip accounts for now
+								EmailManager.NotifyAdmin( "", "WARNING Credential Blind Search Result Low", $"A <a href='https://credentialfinder.org/search?searchType=credential'>Credential blind search</a> only returned {pTotalRows} records. This seems to be unexpected. Full query:\n {elasticQuery}" );
+							}
 						}
 					}
-				}
+					catch ( Exception ex )
+					{
+						var msg = BaseFactory.FormatExceptions( ex );
+                        LoggingHelper.DoTrace( 3, string.Format( "ElasticServices.Search: {0}. Exception encountered extracting elastic summary. Results: {1}, ElasticLog: \r\n", "Credential", pTotalRows ) + msg, "ElasticQuery" );
+                    }
+                }
 				//
 				if ( debug.IndexOf( "Invalid NEST response built" ) == 0 )
 				{
@@ -2530,9 +3977,7 @@ namespace workIT.Services
 					{
 						Name = "NO DATA - You entered an invalid search query.",
 						Description = "The information entered for the query DOES NOT COMPUTE. Please try again with a better effort.",
-						CredentialType = "",
-						CredentialTypeSchema = "",
-						LastUpdated = DateTime.Now,
+						CredentialType = "", CredentialTypeSchema = "", LastUpdated = DateTime.Now,
 						CTID = ""
 					} );
 					return list;
@@ -2589,7 +4034,7 @@ namespace workIT.Services
 			return list;
 		} //
 
-		public static List<CredentialSummary> Credential_SearchPROTOTYPING( MainSearchInput query, ref int pTotalRows )
+		public List<CredentialSummary> Credential_SearchPROTOTYPING( MainSearchInput query, ref int pTotalRows )
 		{
 			LoggingHelper.DoTrace( 7, "ElasticServices.Credential_SearchPROTOTYPING - entered" );
 			List<CredentialSummary> list = new List<CredentialSummary>();
@@ -2611,7 +4056,9 @@ namespace workIT.Services
 			QueryContainer occupationsQuery = null;
 			QueryContainer industriesQuery = null;
 			QueryContainer boundariesQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer qaFilterQuery = null;
 			QueryContainer widgetOccupationsQuery = null;
 			QueryContainer windustriesQuery = null;
@@ -2862,14 +4309,15 @@ namespace workIT.Services
 				//		==> actually now used by search widget => type = organizationroles
 				//20-11-20 - the QA performed search from org detail page uses this. Updated. Note that the QA target will need to be reindexed
 				//21-06-01	ALSO the owns/offers searches from the detail pages
-				qualityAssuranceSearchQuery = CommonQualityAssurance<CredentialIndex>( query );
+				commonOrgRolesBYQuery = CommonOrgRolesByFilter<CredentialIndex>( query );
+				publishedBYQuery = PublishedByFilter<CredentialIndex>( query );
 
 				//USED BY QUALITY ASSURANCE FILTER check boxes and org list
 				//21-03-29 mp - while adding organization roles filter, noted that this method may produce a filter using relationshipTypeIds. However, will this work with an org filter????
 				//need to ensure relationshipTypeIds are not applied to the wrong filter type
 				qaFilterQuery = CommonQualityAssuranceFilter<CredentialIndex>( query, qaRelationshipTypeIds );
 
-				var orgRolesFilterQuery = CommonOrgRolesFilter<CredentialIndex>( query, relationshipTypeIds );
+				var commonOrgQARolesQuery = CommonOrgQARolesFilter<CredentialIndex>( query, relationshipTypeIds );
 				//
 				var commonOutcomeProvidersQuery = CommonOutcomeProviders<CredentialIndex>( query );
 
@@ -3079,6 +4527,8 @@ namespace workIT.Services
 
 				#region Boundaries
 
+				boundariesQuery = HandleLocationQuery<CredentialIndex>( query );
+				/*
 				var boundaries = SearchServices.GetBoundaries( query, "bounds" );
 				if ( boundaries.IsDefined )
 				{
@@ -3086,6 +4536,7 @@ namespace workIT.Services
 						  .Nested( n => n.Path( p => p.Addresses )
 						  .Query( q => Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 				}
+				*/
 
 				#endregion
 
@@ -3329,8 +4780,8 @@ namespace workIT.Services
 							&& learningDeliveryTypesQuery
 							&& boundariesQuery
 							&& commonOutcomeProvidersQuery
-							&& orgRolesFilterQuery
-							&& qaFilterQuery && qualityAssuranceSearchQuery
+							&& commonOrgQARolesQuery
+							&& qaFilterQuery && commonOrgRolesBYQuery && publishedBYQuery
 							&& languagesQuery
 							&& locationQueryFilters.RegionQuery
 							&& locationQueryFilters.CountryQuery
@@ -3561,7 +5012,7 @@ namespace workIT.Services
 				q.MultiMatch( m => m
 					.Fields( f => f
 						.Field( ff => ff.Name )
-						.Field( ff => ff.OwnerOrganizationName )
+						.Field( ff => ff.PrimaryOrganizationName )
 					)
 					.Type( TextQueryType.PhrasePrefix )
 					.Query( query.Keywords )
@@ -3570,7 +5021,7 @@ namespace workIT.Services
 				q.MultiMatch( m => m
 					.Fields( f => f
 						.Field( ff => ff.Name )
-						.Field( ff => ff.OwnerOrganizationName )
+						.Field( ff => ff.PrimaryOrganizationName )
 					)
 					.Type( TextQueryType.BestFields )
 					.Query( query.Keywords )
@@ -3657,9 +5108,19 @@ namespace workIT.Services
 			}
 		}
 
+        public static void Organization_ManageIndex( bool deleteIndexFirst = false )
+        {
+            if ( deleteIndexFirst && EC.Indices.Exists( OrganizationIndex ).Exists )
+            {
+                EC.Indices.Delete( OrganizationIndex );
+            }
+            if ( !EC.Indices.Exists( OrganizationIndex ).Exists )
+            {
+                OrganizationInitializeIndex();
+            }
+        }
 
-
-		public static void OrganizationInitializeIndex()
+        public static void OrganizationInitializeIndex()
 		{
 			if ( !EC.Indices.Exists( OrganizationIndex ).Exists )
 			{
@@ -3701,8 +5162,12 @@ namespace workIT.Services
 								 .Nested<Models.Common.IdentifierValue>( n => n
 									.Name( nn => nn.RegionIdentifier )
 									.AutoMap()
+                                )
+                                .Object<JObject>( o => o
+                                    .Name( n => n.ResourceDetail )
+                                    .Enabled( false ) 
 								)
-							)
+                            )
 						)
 
 				//)	//.Mappings
@@ -3751,8 +5216,9 @@ namespace workIT.Services
 			{
 				while ( pageNbr > 0 && !isComplete )
 				{
-					//var list = ElasticManager.Organization_SearchForElastic( filter );
-					var list = ElasticManager.Organization_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+                    //var list = ElasticManager.Organization_SearchForElastic( filter );
+                    totalRows = 0;
+                    var list = ElasticManager.Organization_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
 					if ( list != null && list.Count > 0 )
 					{
 						processed += list.Count;
@@ -3920,7 +5386,7 @@ namespace workIT.Services
 		/// <param name="maxTerms"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<FilterItem> OrganizationAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
+		public List<FilterItem> OrganizationAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false ) )
 			{
@@ -4005,13 +5471,13 @@ namespace workIT.Services
 		/// <param name="query"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<OrganizationSummary> OrganizationSearch( MainSearchInput query, ref int pTotalRows )
+		public List<OrganizationSummary> OrganizationSearch( MainSearchInput query, ref int pTotalRows )
 		{
 			var autocompleteList = new List<FilterItem>();
 			bool requestIsAutocomplete = false;
 			return OrganizationSearch( query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
 		}
-		public static List<OrganizationSummary> OrganizationSearch( MainSearchInput query, ref int pTotalRows, ref List<FilterItem> autocompleteList, bool requestIsAutocomplete = false )
+		public List<OrganizationSummary> OrganizationSearch( MainSearchInput query, ref int pTotalRows, ref List<FilterItem> autocompleteList, bool requestIsAutocomplete = false )
 		{
 			LoggingHelper.DoTrace( 7, thisClassName + "OrganizationSearch Started" );
 			Organization_BuildIndex();
@@ -4021,14 +5487,16 @@ namespace workIT.Services
 			QueryContainer organizationEntityStateQuery = null;
 			QueryContainer organizationTypeQuery = null;
 			QueryContainer orgClassTypeQuery = null;
-
+			
 			QueryContainer HasQaQuery = null;
 			QueryContainer OrgIdQuery = null;
 			QueryContainer organizationServiceQuery = null;
 			QueryContainer sectorTypeQuery = null;
 			QueryContainer claimTypeQuery = null;
 			//QueryContainer relationshipIdQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer qaFilterQuery = null;
 			QueryContainer industriesQuery = null;
 			QueryContainer boundariesQuery = null;
@@ -4068,7 +5536,7 @@ namespace workIT.Services
 					LifeCycleStatusTypeQuery = Query<OrganizationIndex>.Terms( ts => ts.Field( f => f.LifeCycleStatusTypeId ).Terms( defaultStatusTypeIds.ToArray() ) );
 				}
 			}
-
+			
 			#region orgSearchCategories
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CODE ) )
 			{
@@ -4268,7 +5736,8 @@ namespace workIT.Services
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
 			//		==> actually now used by search widget => CONFIRM THIS
 			//20-11-20 - the QA performed search from org detail page uses this. Updated. Note that the QA target will need to be reindexed
-			qualityAssuranceSearchQuery = CommonQualityAssurance<OrganizationIndex>( query );
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<OrganizationIndex>( query );
+			publishedBYQuery = PublishedByFilter<OrganizationIndex>( query );
 
 			//USED BY QUALITY ASSURANCE FILTER check boxes and org list
 			qaFilterQuery = CommonQualityAssuranceFilter<OrganizationIndex>( query, relationshipTypeIds );
@@ -4311,6 +5780,8 @@ namespace workIT.Services
 
 			#region Boundaries
 
+			boundariesQuery = HandleLocationQuery<OrganizationIndex>( query );
+			/*
 			var boundaries = SearchServices.GetBoundaries( query, "bounds" );
 			if ( boundaries.IsDefined )
 			{
@@ -4318,6 +5789,7 @@ namespace workIT.Services
 					.Nested( n => n.Path( p => p.Addresses )
 					.Query( q => Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<OrganizationIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
+			*/
 			#endregion
 
 			#region Query
@@ -4370,25 +5842,24 @@ namespace workIT.Services
 			);
 			//
 			//QueryContainer autoCompleteQuery = SetAutocompleteQuery<OrganizationIndex>( query );
-			QueryContainer autoCompleteQuery = Query<OrganizationIndex>
-				.MultiMatch( m => m
-					.Fields( f => f
-						.Field( ff => ff.Name, 100 )      //??
-						.Field( ff => ff.Description )
-				)
-				.Type( TextQueryType.PhrasePrefix )
-				.Query( query.Keywords )
-				.MaxExpansions( 10 )
-			//.Analyzer( "standard" )
-			);
-			var pageSize = query.PageSize;
+            QueryContainer autoCompleteQuery = Query<OrganizationIndex>
+                .MultiMatch( m => m
+                    .Fields( f => f
+                        .Field( ff => ff.Name, 100 )      //??
+                        .Field( ff => ff.Description )
+                )
+                .Type( TextQueryType.PhrasePrefix )
+                .Query( query.Keywords )
+                .MaxExpansions( 10 )
+            //.Analyzer( "standard" )
+            );
+            var pageSize = query.PageSize;
 			if ( requestIsAutocomplete )
 			{
 				pageSize = pageSize * 2;
 				phrasePrefixQuery = null;
 				//bestFieldsQuery = null;
-			}
-			else
+			} else
 			{
 				autoCompleteQuery = null;
 			}
@@ -4412,7 +5883,7 @@ namespace workIT.Services
 					  && industriesQuery
 					  && boundariesQuery
 					  && LifeCycleStatusTypeQuery
-					  && qaFilterQuery && qualityAssuranceSearchQuery
+					  && qaFilterQuery && commonOrgRolesBYQuery && publishedBYQuery
 					  && qualityAssurancePerformedAgentQuery
 					  && qualityAssurancePerformedTypesQuery
 					  && reportsQuery
@@ -4442,7 +5913,7 @@ namespace workIT.Services
 				//actually extract the request: between #request and #response
 				var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, requestIsAutocomplete: {1}, Results: {2}, ElasticLog: \r\n", "Organization", requestIsAutocomplete, pTotalRows ) + elasticQuery, "ElasticQuery" );
-
+				
 			}
 			//
 			if ( requestIsAutocomplete )
@@ -4554,57 +6025,20 @@ namespace workIT.Services
 			}
 
 		}
-		#endregion
+        #endregion
 
-		//public static void AssessmentInitializeIndex( bool deleteIndexFirst = true )
-		//{
-		//	if ( !EC.Indices.Exists( AssessmentIndex ).Exists )
-		//	{
-		//		var tChars = new List<string> { "letter", "digit", "punctuation", "symbol" };
-
-		//		EC.Indices.Create( AssessmentIndex, c => new CreateIndexDescriptor( AssessmentIndex )
-		//		 //.Settings( s => s.Analysis( a => a.TokenFilters( t => t.Stop( "my_stop", st => st.RemoveTrailing() ).Snowball( "my_snowball", st => st.Language( SnowballLanguage.English ) ) ).Analyzers( aa => aa.Custom( "my_analyzer", sa => sa.Tokenizer( "standard" ).Filters( "lowercase", "my_stop", "my_snowball" ) ) ) ) )
-		//		 //.Settings( s => s.Analysis( a => a.Analyzers( aa => aa.Standard( "snowball", sa => sa.StopWords( "_english_" ) ) ) ) )
-		//		 // .Settings( s => s.Analysis( a => a.Tokenizers (aa => aa.EdgeNGram( "my_ngram_tokenizer" ,   )
-
-		//		 .Settings( st => st
-		//				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
-		//			.Mappings( ms => ms
-		//				.Map<AssessmentIndex>( m => m
-		//					.AutoMap()
-		//					.Properties( p => p
-		//						.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
-		//						.Nested<IndexCompetency>( n => n
-		//							.Name( nn => nn.Competencies ) //21-08-31 chg to use combined competencies
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Industries )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Occupations )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.InstructionalPrograms )
-		//							.AutoMap()
-		//						)
-		//						.Nested<Models.Elastic.Address>( n => n
-		//							.Name( nn => nn.Addresses )
-		//							.AutoMap()
-		//						) //AgentRelationshipForEntity will replace IndexQualityAssurance
-		//						 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-		//							.Name( nn => nn.AgentRelationshipsForEntity )
-		//							.AutoMap()
-		//						)
-		//					)
-		//				)
-		//			)
-		//		);
-		//	}
-		//}
-		public static void AssessmentInitializeIndex7( bool deleteIndexFirst = true )
+        public static void Assessment_ManageIndex( bool deleteIndexFirst = false )
+        {
+            if ( deleteIndexFirst && EC.Indices.Exists( AssessmentIndex ).Exists )
+            {
+                EC.Indices.Delete( AssessmentIndex );
+            }
+            if ( !EC.Indices.Exists( AssessmentIndex ).Exists )
+            {
+                AssessmentInitializeIndex7();
+            }
+        }
+        public static void AssessmentInitializeIndex7( bool deleteIndexFirst = true )
 		{
 			if ( !EC.Indices.Exists( AssessmentIndex ).Exists )
 			{
@@ -4644,7 +6078,10 @@ namespace workIT.Services
 									.Name( nn => nn.AgentRelationshipsForEntity )
 									.AutoMap()
 								)
-							)
+								.Object<JObject>( o => o
+                                    .Name( n => n.ResourceDetail )
+                                    .Enabled( false ) )
+                            )
 						)
 				//)
 				);
@@ -4806,7 +6243,7 @@ namespace workIT.Services
 				 q.MultiMatch( m => m
 								 .Fields( f => f
 								  .Field( ff => ff.Name, 90 )
-								  .Field( ff => ff.OwnerOrganizationName, 80 )
+								  .Field( ff => ff.PrimaryOrganizationName, 80 )
 								  .Field( ff => ff.SubjectWebpage, 60 )
 								  .Field( ff => ff.Description, 45 )
 								  .Field( ff => ff.Keyword, 60 )
@@ -4848,7 +6285,7 @@ namespace workIT.Services
 		/// <param name="maxTerms"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<string> AssessmentAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
+		public List<string> AssessmentAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false ) )
 			{
@@ -4878,23 +6315,24 @@ namespace workIT.Services
 		/// <param name="query"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<AssessmentProfile> AssessmentSearch( MainSearchInput query, ref int pTotalRows )
+		public List<AssessmentProfile> AssessmentSearch( MainSearchInput query, ref int pTotalRows )
 		{
 			List<string> autocompleteList = new List<string>();
 			bool requestIsAutocomplete = false;
 			return AssessmentSearch( query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
 		}
-		public static List<AssessmentProfile> AssessmentSearch( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
+		public List<AssessmentProfile> AssessmentSearch( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
 		{
 			Assessment_BuildIndex();
 
 			var list = new List<PM.AssessmentProfile>();
-
+		
 			QueryContainer audienceTypeQuery = null;
 			QueryContainer audienceLevelTypeQuery = null;
 			QueryContainer asmtMethodTypesQuery = null;
 			QueryContainer asmtUseTypesQuery = null;
 			QueryContainer collectionIdQuery = null;
+			QueryContainer collectionsQuery = null;
 			QueryContainer competenciesQuery = null;
 			QueryContainer connectionsQuery = null;
 			QueryContainer deliveryTypesQuery = null;
@@ -4905,7 +6343,9 @@ namespace workIT.Services
 			QueryContainer industriesQuery = null;
 			QueryContainer classificationsQuery = null;
 			//QueryContainer relationshipIdQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer qaFilterQuery = null;
 			QueryContainer languagesQuery = null;
 			QueryContainer boundariesQuery = null;
@@ -4938,14 +6378,10 @@ namespace workIT.Services
 				wLWIAQuery = LocationSubregionFilter<AssessmentIndex>( query );
 			}
 			#endregion
-			//collections
-			//if ( query.CollectionId > 0 )
-			//{
-			//	collectionIdQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms( query.CollectionId ) );
-			//}
+		
 			#region Competencies
 			competenciesQuery = CommonCompetencies<AssessmentIndex>( query );
-
+			
 			#endregion
 
 			#region Subject Areas.keywords
@@ -5130,12 +6566,13 @@ namespace workIT.Services
 			#region QualityAssurance
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
 			//		==> actually now used by search widget => using organizationroles
-			qualityAssuranceSearchQuery = CommonQualityAssurance<AssessmentIndex>( query );
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<AssessmentIndex>( query );
+			publishedBYQuery = PublishedByFilter<AssessmentIndex>( query );
 
 			//USED BY QUALITY ASSURANCE FILTER check boxes and org list
 			qaFilterQuery = CommonQualityAssuranceFilter<AssessmentIndex>( query, qaRelationshipTypeIds );
 
-			var orgRolesFilterQuery = CommonOrgRolesFilter<AssessmentIndex>( query, relationshipTypeIds );
+			var commonOrgQARolesQuery = CommonOrgQARolesFilter<AssessmentIndex>( query, relationshipTypeIds );
 			#endregion
 
 			#region Assessment Ids list
@@ -5157,7 +6594,16 @@ namespace workIT.Services
 				}
 			}
 			#endregion
-			#region Occupations, industries, programs
+			//collections
+			if ( query.CollectionId > 0 )       //???
+			{
+				collectionIdQuery = Query<AssessmentIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms( query.CollectionId ) );
+			}
+			collectionsQuery = CommonInCollectionByIdFilters<AssessmentIndex>( query );
+			if ( collectionsQuery == null )
+				collectionsQuery = CommonPartOfCollectionFilters<AssessmentIndex>( query );
+
+			#region Occupations, Industries, Programs
 			occupationsQuery = CommonOccupations<AssessmentIndex>( query, ref widgetOccupationsQuery );
 
 			industriesQuery = CommonIndustries<AssessmentIndex>( query, ref windustriesQuery );
@@ -5184,6 +6630,9 @@ namespace workIT.Services
 			#endregion
 
 			#region Boundaries
+
+			boundariesQuery = HandleLocationQuery<CredentialIndex>( query );
+			/*
 			var boundaries = SearchServices.GetBoundaries( query, "bounds" );
 			if ( boundaries.IsDefined )
 			{
@@ -5192,6 +6641,7 @@ namespace workIT.Services
 					.Nested( n => n.Path( p => p.Addresses )
 					.Query( q => Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<AssessmentIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
+			*/
 			#endregion
 
 			#region Query
@@ -5284,7 +6734,7 @@ namespace workIT.Services
 					  && subjectsQuery
 					  //&& wsubjectsQuery         //widget specific!!!
 					  && keywordsQuery
-					  && collectionIdQuery
+					  && collectionIdQuery && collectionsQuery
 					  && asmtMethodTypesQuery
 					  && asmtUseTypesQuery
 					  && audienceLevelTypeQuery
@@ -5298,8 +6748,8 @@ namespace workIT.Services
 					  && industriesQuery
 					  && windustriesQuery       //widget specific!!!
 					  && classificationsQuery
-					  && orgRolesFilterQuery
-					  && qaFilterQuery && qualityAssuranceSearchQuery
+					  && commonOrgQARolesQuery
+					  && qaFilterQuery && commonOrgRolesBYQuery && publishedBYQuery
 					  && languagesQuery
 					  && boundariesQuery
 					  && locationQueryFilters.RegionQuery
@@ -5350,7 +6800,7 @@ namespace workIT.Services
 			if ( query.StartPage > 1 )
 				searchType += " - paging";
 			new ActivityServices().AddActivity( new SiteActivity()
-			{ ActivityType = "AssessmentProfile", Activity = "Search", Event = searchType, Comment = jsoninput }
+				{ ActivityType = "AssessmentProfile", Activity = "Search", Event = searchType, Comment = jsoninput }
 			);
 			return list;
 		}
@@ -5368,7 +6818,7 @@ namespace workIT.Services
 				if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
 				{
 					//if ( UtilityManager.GetAppKeyValue( "environment" ) == "development" )
-					LearningOppInitializeIndex7();
+						LearningOppInitializeIndex7();
 					//else
 					//	LearningOppInitializeIndex();
 					indexInitialized = true;
@@ -5420,55 +6870,65 @@ namespace workIT.Services
 				LoggingHelper.LogError( ex, "LearningOpp_BuildIndex" );
 			}
 		}
-
-		//public static void LearningOppInitializeIndex( bool deleteIndexFirst = true )
-		//{
-		//	if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
-		//	{
-		//		EC.Indices.Create( LearningOppIndex, c => new CreateIndexDescriptor( LearningOppIndex )
-		//		 .Settings( st => st
-		//				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
-		//			.Mappings( ms => ms
-		//				.Map<LearningOppIndex>( m => m
-		//					.AutoMap()
-		//					.Properties( p => p
-		//						.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
-		//						//.Text( s => s.Index( true ).Name( n => n.Name ).Fielddata( true ).Analyzer( "lowercase_analyzer" ) )
-		//						.Nested<IndexCompetency>( n => n
-		//							.Name( nn => nn.Competencies )  //21-08-31 chg to use general competencies
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Industries )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.Occupations )
-		//							.AutoMap()
-		//						)
-		//						.Nested<IndexReferenceFramework>( n => n
-		//							.Name( nn => nn.InstructionalPrograms )
-		//							.AutoMap()
-		//					   )
-		//						.Nested<Models.Elastic.Address>( n => n
-		//							.Name( nn => nn.Addresses )
-		//							.AutoMap()
-		//						) //AgentRelationshipForEntity will replace IndexQualityAssurance
-		//						 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
-		//							.Name( nn => nn.AgentRelationshipsForEntity )
-		//							.AutoMap()
-		//						)
-		//						 .Nested<Models.Common.IdentifierValue>( n => n
-		//							.Name( nn => nn.RegionIdentifier )
-		//							.AutoMap()
-		//						)
-		//					)
-		//				)
-		//			)
-		//		);
-		//	}
-		//}
-		public static void LearningOppInitializeIndex7( bool deleteIndexFirst = true )
+        public static void LearningOpp_ManageIndex( bool deleteIndexFirst = false )
+        {
+            if ( deleteIndexFirst && EC.Indices.Exists( LearningOppIndex ).Exists )
+            {
+                EC.Indices.Delete( LearningOppIndex );
+            }
+            if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
+            {
+                LearningOppInitializeIndex7();
+            }
+        }
+        //public static void LearningOppInitializeIndex( bool deleteIndexFirst = true )
+        //{
+        //	if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
+        //	{
+        //		EC.Indices.Create( LearningOppIndex, c => new CreateIndexDescriptor( LearningOppIndex )
+        //		 .Settings( st => st
+        //				 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
+        //			.Mappings( ms => ms
+        //				.Map<LearningOppIndex>( m => m
+        //					.AutoMap()
+        //					.Properties( p => p
+        //						.Text( s => s.Name( n => n.Description ).Analyzer( "custom_lowercase_stemmed" ) )
+        //						//.Text( s => s.Index( true ).Name( n => n.Name ).Fielddata( true ).Analyzer( "lowercase_analyzer" ) )
+        //						.Nested<IndexCompetency>( n => n
+        //							.Name( nn => nn.Competencies )  //21-08-31 chg to use general competencies
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.Industries )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.Occupations )
+        //							.AutoMap()
+        //						)
+        //						.Nested<IndexReferenceFramework>( n => n
+        //							.Name( nn => nn.InstructionalPrograms )
+        //							.AutoMap()
+        //					   )
+        //						.Nested<Models.Elastic.Address>( n => n
+        //							.Name( nn => nn.Addresses )
+        //							.AutoMap()
+        //						) //AgentRelationshipForEntity will replace IndexQualityAssurance
+        //						 .Nested<Models.Elastic.AgentRelationshipForEntity>( n => n
+        //							.Name( nn => nn.AgentRelationshipsForEntity )
+        //							.AutoMap()
+        //						)
+        //						 .Nested<Models.Common.IdentifierValue>( n => n
+        //							.Name( nn => nn.RegionIdentifier )
+        //							.AutoMap()
+        //						)
+        //					)
+        //				)
+        //			)
+        //		);
+        //	}
+        //}
+        public static void LearningOppInitializeIndex7( bool deleteIndexFirst = true )
 		{
 			if ( !EC.Indices.Exists( LearningOppIndex ).Exists )
 			{
@@ -5509,8 +6969,20 @@ namespace workIT.Services
 									.Name( nn => nn.RegionIdentifier )
 									.AutoMap()
 								)
-							)
-						)
+								 //override the automap inferred mapping for ResourceDetail
+								 .Object<JObject>( o => o
+									.Name( n => n.ResourceDetail )
+									.Enabled( false ) 
+									)
+
+								//.Object<object>( o => o
+								//.Name( n => n.ResourceDetail2 )
+								//.Enabled( false ) )
+								//.Object<object>( o => o
+								//   .Name( n => n.ResourceDetail3 )
+								//   .Enabled( false ) )
+                            ) //Properties
+                        )
 				//)
 				);
 			}
@@ -5535,24 +7007,41 @@ namespace workIT.Services
 		{
 			processed = 0;
 
-			if ( string.IsNullOrWhiteSpace( filter ) )
+            if ( string.IsNullOrWhiteSpace( filter ) )
 				return;
+
 			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
 			if ( action == 0 )
 				return;
-			string methodName = "LearningOpp_UpdateIndex";
+
+    //        if ( DateTime.Now.ToString("yyyy-MM-dd") == "2023-02-16" )
+    //        {
+				////ADHOC DELETE AND RE-INIT
+    //            EC.Indices.Delete( LearningOppIndex );
+    //            LearningOppInitializeIndex7();
+    //        }
+            string methodName = "LearningOpp_UpdateIndex";
 			string IndexName = LearningOppIndex;
 			int pageSize = UtilityManager.GetAppKeyValue( "nonCredentialPageSize", 300 );
-			int pageNbr = 1;
+            LoggingHelper.DoTrace( 6, $"{methodName}. Enter. Index: {IndexName} Filter: '" + filter + "' " );
+
+            int pageNbr = 1;
 			int totalRows = 0;
 			bool isComplete = false;
-			int cntr = 0; ;
-			try
+			int cntr = 0;
+			//no longer necessary, populating detail is part of import
+			var usingNewLoppElasticProcess = UtilityManager.GetAppKeyValue( "usingNewLoppElasticProcess", false );
+			var manager = new LearningOpportunityServices();
+            try
 			{
 				while ( pageNbr > 0 && !isComplete )
 				{
-					//var list = ElasticManager.LearningOpp_SearchForElastic( filter );
-					var list = ElasticManager.LearningOpp_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					var list = new List<LearningOppIndex>();
+                    //
+					//if ( usingNewLoppElasticProcess )
+     //                   list = manager.LearningOpp_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+					//else
+						list = ElasticManager.LearningOpp_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
 					if ( list != null && list.Count > 0 )
 					{
 						processed += list.Count;
@@ -5609,7 +7098,7 @@ namespace workIT.Services
 			}
 		}
 
-		public static List<PM.LearningOpportunityProfile> LearningOppSimpleSearch( MainSearchInput query, ref int pTotalRows )
+		public static List<PM.LearningOpportunityProfile> LearningOppSimpleSearch( MainSearchInput query, ref int pTotalRows, string searchType = "learningopportunity" )
 		{
 			var list = new List<PM.LearningOpportunityProfile>();
 			if ( query.FiltersV2.Any( x => x.Name == "keywords" ) )
@@ -5666,7 +7155,7 @@ namespace workIT.Services
 				 q.MultiMatch( m => m
 						.Fields( f => f
 								  .Field( ff => ff.Name, 90 )
-								  .Field( ff => ff.OwnerOrganizationName, 80 )
+								  .Field( ff => ff.PrimaryOrganizationName, 80 )
 								  .Field( ff => ff.SubjectWebpage, 60 )
 								  .Field( ff => ff.Description, 45 )
 								  .Field( ff => ff.Keyword, 60 )
@@ -5696,7 +7185,7 @@ namespace workIT.Services
 			return list;
 		}
 		//need to include the filters related to a widget here
-		public static List<string> LearningOppAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
+		public List<string> LearningOppAutoComplete( MainSearchInput query, int maxTerms, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false ) )
 			{
@@ -5708,12 +7197,12 @@ namespace workIT.Services
 			}
 
 			//new need to call a method to get all applicable query containers. Or just start with the widget org relationship
-			QueryContainer orgRolesFilterQuery = null;
+			QueryContainer commonOrgQARolesQuery = null;
 			QueryContainer wLWIAQuery = null;
 			List<int> targetOrgIds = new List<int>();
 			var relationshipTypeIds = GetAnyRelationships( query, ref targetOrgIds );
 			if ( relationshipTypeIds?.Count > 0 ) //not working
-				orgRolesFilterQuery = CommonQualityAssurance<LearningOppIndex>( query );
+				commonOrgQARolesQuery = CommonOrgRolesByFilter<LearningOppIndex>( query );
 
 			wLWIAQuery = LocationSubregionFilter<LearningOppIndex>( query );
 			var search = EC.Search<LearningOppIndex>( i => i
@@ -5729,7 +7218,7 @@ namespace workIT.Services
 					   .Query( query.Keywords )
 					   .MaxExpansions( 10 )
 					 )
-					&& orgRolesFilterQuery
+					&& commonOrgQARolesQuery
 					&& wLWIAQuery
 				)
 				.Size( maxTerms * 2 ) );
@@ -5741,7 +7230,7 @@ namespace workIT.Services
 
 		}
 
-		public static List<string> LearningOppAutoCompleteOld( string keyword, int maxTerms, ref int pTotalRows )
+		public List<string> LearningOppAutoCompleteOld( string keyword, int maxTerms, ref int pTotalRows )
 		{
 			var search = EC.Search<LearningOppIndex>( i => i.Index( LearningOppIndex ).Query( q => q.MultiMatch( m => m
 			  .Fields( f => f
@@ -5764,20 +7253,20 @@ namespace workIT.Services
 		/// <param name="query"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<PM.LearningOpportunityProfile> LearningOppSearch( MainSearchInput query, ref int pTotalRows )
+		public List<PM.LearningOpportunityProfile> LearningOppSearch( MainSearchInput query, ref int pTotalRows )
 		{
 			List<string> autocompleteList = new List<string>();
 			bool requestIsAutocomplete = false;
 			return LearningOppSearch( query, ref pTotalRows, ref autocompleteList, requestIsAutocomplete );
 		}
 
-		public static List<PM.LearningOpportunityProfile> LearningOppSearch( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
+		public List<PM.LearningOpportunityProfile> LearningOppSearch( MainSearchInput query, ref int pTotalRows, ref List<string> autocompleteList, bool requestIsAutocomplete = false )
 		{
 			LearningOpp_BuildIndex();
 
 			var list = new List<PM.LearningOpportunityProfile>();
 
-			QueryContainer collectionIdQuery = null;
+			
 			QueryContainer competenciesQuery = null;
 			QueryContainer learningObjectTypeQuery = null;
 			QueryContainer widgetIdQuery = null;
@@ -5786,10 +7275,13 @@ namespace workIT.Services
 			QueryContainer windustriesQuery = null;
 			QueryContainer wsubjectsQuery = null;
 
+
 			QueryContainer subjectsQuery = null;
 			QueryContainer keywordsQuery = null;
 			QueryContainer audienceTypeQuery = null;
 			QueryContainer audienceLevelTypeQuery = null;
+			QueryContainer collectionIdQuery = null;
+			QueryContainer collectionsQuery = null;
 			QueryContainer connectionsQuery = null;
 			QueryContainer methodTypesQuery = null;
 			QueryContainer deliveryTypesQuery = null;
@@ -5798,7 +7290,9 @@ namespace workIT.Services
 			QueryContainer classificationsQuery = null;
 			//QueryContainer relationshipIdQuery = null;
 			QueryContainer qaFilterQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer languagesQuery = null;
 			QueryContainer LifeCycleStatusTypeQuery = null;
 			QueryContainer boundariesQuery = null;
@@ -5807,7 +7301,7 @@ namespace workIT.Services
 			LocationQueryFilters locationQueryFilters = new LocationQueryFilters();
 			var relationshipTypeIds = new List<int>();
 			var qaRelationshipTypeIds = new List<int>();
-			List<int> LifeCycleStatusTypeIds = new List<int>();
+			List<int> lifeCycleStatusTypeIds = new List<int>();
 
 			//22-07-07 mparsons - set a default value for LifeCycleStatusTypeQuery to exclude deprecated. Will be overridden if any LifeCycleStatusType status are provided. might be better to have simple property of IsActive (non ceased)
 			//					- however, this will result in hiding the references. Need to set references to an active status!
@@ -5946,7 +7440,7 @@ namespace workIT.Services
 							connectionFilters.Add( item.SchemaName.Replace( "ceterms:", "" ) );
 					}
 					else if ( item.CategoryId == CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS )
-						LifeCycleStatusTypeIds.Add( item.Id );
+						lifeCycleStatusTypeIds.Add( item.Id );
 				}
 				//
 				CommonHistoryFilter<LearningOppIndex>( query, ref history );
@@ -5964,8 +7458,8 @@ namespace workIT.Services
 				if ( learningObjectTypesIds.Any() )
 					learningObjectTypeQuery = Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.EntityTypeId ).Terms( learningObjectTypesIds.ToArray() ) );
 
-				if ( LifeCycleStatusTypeIds.Any() )
-					LifeCycleStatusTypeQuery = Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.LifeCycleStatusTypeId ).Terms( LifeCycleStatusTypeIds.ToArray() ) );
+				if ( lifeCycleStatusTypeIds.Any() )
+					LifeCycleStatusTypeQuery = Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.LifeCycleStatusTypeId ).Terms( lifeCycleStatusTypeIds.ToArray() ) );
 				if ( relationshipTypeIds.Any() )
 				{
 					//relationshipIdQuery = Query<LearningOppIndex>.Nested( n => n.Path( p => p.AgentRelationshipsForEntity ).Query( q => q.Terms( t => t.Field( f => f.AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms<int>( relationshipTypeIds.ToArray() ) ) ) );
@@ -6024,17 +7518,18 @@ namespace workIT.Services
 			#region QualityAssurance
 			//NOTE: this is only referenced after clicking on a gray box, not from the search page
 			//		==> actually now used by search widget => CONFIRM THIS
-			qualityAssuranceSearchQuery = CommonQualityAssurance<LearningOppIndex>( query );
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<LearningOppIndex>( query );
+			publishedBYQuery = PublishedByFilter<LearningOppIndex>( query );
 
 			//USED BY QUALITY ASSURANCE FILTER check boxes and org list
 			qaFilterQuery = CommonQualityAssuranceFilter<LearningOppIndex>( query, qaRelationshipTypeIds );
 
-			var orgRolesFilterQuery = CommonOrgRolesFilter<LearningOppIndex>( query, relationshipTypeIds );
+			var commonOrgQARolesQuery = CommonOrgQARolesFilter<LearningOppIndex>( query, relationshipTypeIds );
 			#endregion
 
 
 			#region Lopp Ids list
-			QueryContainer loppIdListQuery = null;
+			QueryContainer potentialResultsQuery = null;
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
 			{
 				var idsList = new List<int>();
@@ -6047,17 +7542,49 @@ namespace workIT.Services
 				{
 					idsList.ForEach( x =>
 					{
-						loppIdListQuery |= Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
+						potentialResultsQuery |= Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
 					} );
 				}
 			}
 			#endregion
-			//collections
-			//if ( query.CollectionId > 0 )
+			//collections. TBD on how the widget side will work. Probably not a collection Id
+			//if ( query.CollectionId > 0 )		//???
 			//{
 			//	collectionIdQuery = Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms( query.CollectionId ) );
 			//}
-			#region Occupations, Industries, Classifications
+			//
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var idsList = new List<int>();
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "collectionresults" ).ToList() )
+				{
+					//filter.CustomJSON is populated in workIT.Services.API.SearchServicesTranslateMainQueryFiltersToMainSearchInputFilters
+					//	TBD if should use something different
+					idsList.AddRange( JsonConvert.DeserializeObject<List<int>>( filter.CustomJSON ) );
+					//var f = filter.AsRecordIdList();
+					//if ( f != null && f.IdsList?.Count > 0 )
+					//	idsList.AddRange( f.IdsList );
+				}
+
+				if ( idsList.Any() )
+				{
+					//or
+					collectionIdQuery = Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms<int>( idsList.ToArray() ) );
+
+					//idsList.ForEach( x =>
+					//{
+					//	collectionIdQuery |= Query<LearningOppIndex>.Terms( ts => ts.Field( f => f.Id ).Terms( x ) );
+						
+					//} );
+				}
+			}
+
+
+			collectionsQuery = CommonInCollectionByIdFilters<LearningOppIndex>( query );
+			if ( collectionsQuery  == null)
+				collectionsQuery = CommonPartOfCollectionFilters<LearningOppIndex>( query );
+
+			#region Occupations, Industries, Programs
 
 			occupationsQuery = CommonOccupations<LearningOppIndex>( query, ref widgetOccupationsQuery );
 
@@ -6086,6 +7613,9 @@ namespace workIT.Services
 			#endregion
 
 			#region Boundaries
+
+			boundariesQuery = HandleLocationQuery<CredentialIndex>( query );
+			/*
 			var boundaries = SearchServices.GetBoundaries( query, "bounds" );
 			if ( boundaries.IsDefined )
 			{
@@ -6094,6 +7624,7 @@ namespace workIT.Services
 					.Nested( n => n.Path( p => p.Addresses )
 					.Query( q => Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) && Query<LearningOppIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ) ).IgnoreUnmapped() );
 			}
+			*/
 			#endregion
 
 			#region Query
@@ -6120,131 +7651,172 @@ namespace workIT.Services
 			//
 
 
-			//if ( query.Keywords.LastIndexOf( "[" ) > 0 )
-			//	query.Keywords = query.Keywords.Substring( 0, query.Keywords.LastIndexOf( "[" ) );
-
-			if ( query.StartPage < 1 )
-				query.StartPage = 1;
-			var pageSize = query.PageSize;
-			if ( requestIsAutocomplete )
+			try
 			{
-				pageSize = pageSize * 2;
-				phrasePrefixQuery = null;
-				//??
-				crossFieldsQuery = null;
-				//bestFieldsQuery = null;
+
+				//if ( query.Keywords.LastIndexOf( "[" ) > 0 )
+				//	query.Keywords = query.Keywords.Substring( 0, query.Keywords.LastIndexOf( "[" ) );
+
+				if ( query.StartPage < 1 )
+					query.StartPage = 1;
+				var pageSize = query.PageSize;
+				if ( requestIsAutocomplete )
+				{
+					pageSize = pageSize * 2;
+					phrasePrefixQuery = null;
+					//??
+					crossFieldsQuery = null;
+					//bestFieldsQuery = null;
+				}
+				else
+				{
+					//autoCompleteQuery = null;
+
+				}
+
+				var search = EC.Search<LearningOppIndex>( body => body
+					   .Index( LearningOppIndex )
+					   .Query( q =>
+						  competenciesQuery
+						  //&& widgetQuery.OwningOrgsQuery //??
+						  && potentialResultsQuery
+						  && collectionIdQuery
+						  && learningObjectTypeQuery
+						  && LifeCycleStatusTypeQuery
+						  && collectionsQuery
+						  && subjectsQuery
+						  && keywordsQuery
+						  && methodTypesQuery
+						  && deliveryTypesQuery
+						  && occupationsQuery
+						  && industriesQuery
+						  && classificationsQuery
+						  && connectionsQuery
+						  && audienceLevelTypeQuery
+						  && audienceTypeQuery
+						  && commonOrgQARolesQuery
+						  && qaFilterQuery && commonOrgRolesBYQuery && publishedBYQuery
+						  && languagesQuery
+						  && boundariesQuery
+						  && locationQueryFilters.RegionQuery
+						  && locationQueryFilters.CountryQuery
+						  && locationQueryFilters.CityQuery
+						  && wLWIAQuery
+						  && history.CreatedFromQuery && history.CreatedToQuery && history.HistoryFromQuery && history.HistoryToQuery
+						  //&& widgetQuery.KeywordQuery
+						  && reportsQuery
+						  && ( phrasePrefixQuery || autoCompleteQuery || bestFieldsQuery || crossFieldsQuery )
+					   //&& ( q.MultiMatch( m => m
+					   // .Fields( f => f
+					   //  .Field( ff => ff.Name, 90 )
+					   //  .Field( ff => ff.ListTitle, 90 )
+					   //  .Field( ff => ff.Description, 75 )
+					   //  .Field( ff => ff.OwnerOrganizationName, 80 )
+					   //  .Field( ff => ff.TextValues, 45 )
+					   //  .Field( ff => ff.SubjectAreas, 50 ) //??
+					   // )
+					   // .Operator( Operator.Or )
+					   // .Type( TextQueryType.BestFields )
+					   // .Query( query.Keywords )
+					   // .MaxExpansions( 10 )
+
+					   //)
+					   //these appear to be mostly the same??
+					   // || q.MultiMatch( m => m
+					   //		.Fields( f => f
+					   //		.Field( ff => ff.Name, 90 )
+					   //		.Field( ff => ff.Description, 50 )
+					   //		.Field( ff => ff.OwnerOrganizationName, 80 )
+					   //		.Field( ff => ff.ListTitle, 95 )
+					   //		)
+					   //		.Operator( Operator.Or )
+					   //		.Type( TextQueryType.PhrasePrefix )
+					   //		.Query( query.Keywords )
+					   //	)
+					   //)
+					   )
+					   .TrackTotalHits( true )
+					   .Sort( s => sort )
+					   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
+					   .Skip( ( query.StartPage - 1 ) * query.PageSize )
+					   .Size( pageSize ) );
+
+
+				#endregion
+
+				var debug = search.DebugInformation;
+				pTotalRows = ( int ) search.Total;
+				if ( requestIsAutocomplete )
+				{
+					var requestList = ( List<LearningOppIndex> ) search.Documents;
+					autocompleteList = requestList.Select( x => x.ListTitle ).Distinct().Take( query.PageSize ).ToList();
+					return null;
+				}
+				if ( query.StartPage == 1 )
+				{
+					try
+					{
+						//OR to avoid excessive logging could look for a special character 
+						if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
+						{
+							//actually extract the request: between #request and #response
+							var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
+							LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "LearningOpportunity", pTotalRows ) + elasticQuery, "ElasticQuery" );
+
+						}
+						else if ( query.Filters.Count == 0 && query.FiltersV2.Count == 0 && string.IsNullOrWhiteSpace( query.Keywords ) && query.WidgetId == 0 )
+						{
+							if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" && pTotalRows < 1000 )
+							{
+								//actually extract the request: between #request and #response
+								var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
+								LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "LearningOpportunity", pTotalRows ) + elasticQuery, "ElasticQuery" );
+
+								var acctsemail = UtilityManager.GetAppKeyValue( "accountNotifications" );
+								EmailManager.NotifyAdmin( acctsemail, "WARNING LearningOpportunity Blind Search Result Low", string.Format( "A LearningOpportunity blind search only returned {0} records. This seems to be unexpected.", pTotalRows ) );
+							}
+						}
+					}catch(Exception ex)
+					{
+                        var msg = BaseFactory.FormatExceptions( ex );
+                        LoggingHelper.DoTrace( 3, string.Format( "ElasticServices.Search: {0}. Exception encountered extracting elastic summary. Results: {1}, ElasticLog: \r\n", "LearningOpportunity", pTotalRows ) + msg, "ElasticQuery" );
+
+                    }
+                }
+				if ( pTotalRows > 0 )
+				{
+					list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> ) search.Documents, query.StartPage, query.PageSize );
+					LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.LearningOppSearch. found: {0} records", pTotalRows ) );
+					if ( list.Count == 0 )
+						pTotalRows = 0;
+				}
+
+				//stats
+				query.Results = pTotalRows;
+				string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
+				string searchType = "blind";
+				if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
+				{
+					searchType = "filters selected";
+				}
+				if ( query.StartPage > 1 )
+					searchType += " - paging";
+				new ActivityServices().AddActivity( new SiteActivity()
+				{ ActivityType = "LearningOpportunity", Activity = "Search", Event = searchType, Comment = jsoninput }
+				);
+
 			}
-			else
+			catch ( Exception ex )
 			{
-				//autoCompleteQuery = null;
+				list.Add( new PM.LearningOpportunityProfile()
+				{
+					Name = "Exception encountered during search",
+					Description = BaseFactory.FormatExceptions(ex),
+				} );
+				LoggingHelper.DoTrace( 1, string.Format( "ElasticServices.LearningOpportunitySearch. Exception: {0}", ex.Message ) );
 
 			}
-
-			var search = EC.Search<LearningOppIndex>( body => body
-				   .Index( LearningOppIndex )
-				   .Query( q =>
-					  competenciesQuery
-					  //&& widgetQuery.OwningOrgsQuery //??
-					  && loppIdListQuery
-					  && collectionIdQuery
-					  && learningObjectTypeQuery
-					  && LifeCycleStatusTypeQuery
-					  && subjectsQuery
-					  && keywordsQuery
-					  && methodTypesQuery
-					  && deliveryTypesQuery
-					  && occupationsQuery
-					  && industriesQuery
-					  && classificationsQuery
-					  && connectionsQuery
-					  && audienceLevelTypeQuery
-					  && audienceTypeQuery
-					  && orgRolesFilterQuery
-					  && qaFilterQuery && qualityAssuranceSearchQuery
-					  && languagesQuery
-					  && boundariesQuery
-					  && locationQueryFilters.RegionQuery
-					  && locationQueryFilters.CountryQuery
-					  && locationQueryFilters.CityQuery
-					  && wLWIAQuery
-					  && history.CreatedFromQuery && history.CreatedToQuery && history.HistoryFromQuery && history.HistoryToQuery
-					  //&& widgetQuery.KeywordQuery
-					  && reportsQuery
-					  && ( phrasePrefixQuery || autoCompleteQuery || bestFieldsQuery || crossFieldsQuery )
-				   //&& ( q.MultiMatch( m => m
-				   // .Fields( f => f
-				   //  .Field( ff => ff.Name, 90 )
-				   //  .Field( ff => ff.ListTitle, 90 )
-				   //  .Field( ff => ff.Description, 75 )
-				   //  .Field( ff => ff.OwnerOrganizationName, 80 )
-				   //  .Field( ff => ff.TextValues, 45 )
-				   //  .Field( ff => ff.SubjectAreas, 50 ) //??
-				   // )
-				   // .Operator( Operator.Or )
-				   // .Type( TextQueryType.BestFields )
-				   // .Query( query.Keywords )
-				   // .MaxExpansions( 10 )
-
-				   //)
-				   //these appear to be mostly the same??
-				   // || q.MultiMatch( m => m
-				   //		.Fields( f => f
-				   //		.Field( ff => ff.Name, 90 )
-				   //		.Field( ff => ff.Description, 50 )
-				   //		.Field( ff => ff.OwnerOrganizationName, 80 )
-				   //		.Field( ff => ff.ListTitle, 95 )
-				   //		)
-				   //		.Operator( Operator.Or )
-				   //		.Type( TextQueryType.PhrasePrefix )
-				   //		.Query( query.Keywords )
-				   //	)
-				   //)
-				   )
-				   .TrackTotalHits( true )
-				   .Sort( s => sort )
-				   .From( query.StartPage > 0 ? query.StartPage - 1 : 1 )
-				   .Skip( ( query.StartPage - 1 ) * query.PageSize )
-				   .Size( pageSize ) );
-
-
-			#endregion
-
-			var debug = search.DebugInformation;
-			pTotalRows = ( int ) search.Total;
-			if ( requestIsAutocomplete )
-			{
-				var requestList = ( List<LearningOppIndex> ) search.Documents;
-				autocompleteList = requestList.Select( x => x.ListTitle ).Distinct().Take( query.PageSize ).ToList();
-				return null;
-			}
-			if ( query.StartPage == 1 && ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) ) )
-			{
-				//actually extract the request: between #request and #response
-				var elasticQuery = UtilityManager.ExtractNameValue( debug, "# Request", ":", "# Response:" );
-				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.Search: {0}, Results: {1}, ElasticLog: \r\n", "LearningOpportunity", pTotalRows ) + elasticQuery, "ElasticQuery" );
-			}
-			if ( pTotalRows > 0 )
-			{
-				list = ElasticManager.LearningOpp_MapFromElastic( ( List<LearningOppIndex> ) search.Documents, query.StartPage, query.PageSize );
-				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.LearningOppSearch. found: {0} records", pTotalRows ) );
-				if ( list.Count == 0 )
-					pTotalRows = 0;
-			}
-
-			//stats
-			query.Results = pTotalRows;
-			string jsoninput = JsonConvert.SerializeObject( query, JsonHelper.GetJsonSettings() );
-			string searchType = "blind";
-			if ( query.Filters.Count > 0 || query.FiltersV2.Count > 0 || !string.IsNullOrWhiteSpace( query.Keywords ) )
-			{
-				searchType = "filters selected";
-			}
-			if ( query.StartPage > 1 )
-				searchType += " - paging";
-			new ActivityServices().AddActivity( new SiteActivity()
-			{ ActivityType = "LearningOpportunity", Activity = "Search", Event = searchType, Comment = jsoninput }
-			);
-			return list;
+            return list;
 		}
 
 		#endregion
@@ -6420,7 +7992,9 @@ namespace workIT.Services
 			var list = new List<PM.CompetencyFrameworkSummary>();
 
 			QueryContainer competenciesQuery = null;
-			QueryContainer qualityAssuranceSearchQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
 			QueryContainer keywordsQuery = null;
 
 			QueryContainer connectionsQuery = null;
@@ -6531,7 +8105,7 @@ namespace workIT.Services
 					keywordsQuery = Query<CompetencyFrameworkIndex>.MultiMatch( m => m
 								 .Fields( f => f
 									.Field( ff => ff.Name, 90 )
-									.Field( ff => ff.OwnerOrganizationName, 90 )
+									.Field( ff => ff.PrimaryOrganizationName, 90 )
 									.Field( ff => ff.Description, 45 )
 									.Field( ff => ff.SourceUrl, 25 )
 									.Field( ff => ff.TextValues, 50 )
@@ -6549,7 +8123,7 @@ namespace workIT.Services
 								.Field( ff => ff.Name, 90 )
 								 .Field( ff => ff.Description, 45 )
 								 .Field( ff => ff.SourceUrl, 25 )
-								 .Field( ff => ff.OwnerOrganizationName, 90 )
+								 .Field( ff => ff.PrimaryOrganizationName, 90 )
 								 .Field( ff => ff.TextValues, 50 )
 								 .Field( ff => ff.Keyword, 60 )
 							 )
@@ -6582,7 +8156,9 @@ namespace workIT.Services
 			/*
 			The type 'workIT.Models.Elastic.CompetencyFrameworkIndex' cannot be used as type parameter 'T' in the generic type or method 'ElasticServices.CommonQualityAssurance<T>(MainSearchInput)'. There is no implicit reference conversion from 'workIT.Models.Elastic.CompetencyFrameworkIndex' to 'workIT.Models.Elastic.IIndex'.
 			*/
-			//			qualityAssuranceSearchQuery = CommonQualityAssurance<CompetencyFrameworkIndex>( query );
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<CompetencyFrameworkIndex>( query );
+			publishedBYQuery = PublishedByFilter<CompetencyFrameworkIndex>( query );
+
 			#region Query
 
 			var sort = new SortDescriptor<CompetencyFrameworkIndex>();
@@ -6611,7 +8187,7 @@ namespace workIT.Services
 					  && keywordsQuery
 					  && connectionsQuery
 					  && languagesQuery
-					  //&& qualityAssuranceSearchQuery
+					  && commonOrgRolesBYQuery && publishedBYQuery
 					  && reportsQuery
 					  && ( q.MultiMatch( m => m
 						  .Fields( f => f
@@ -6620,7 +8196,7 @@ namespace workIT.Services
 							  .Field( ff => ff.CTID, 100 )
 							  .Field( ff => ff.OwnerOrganizationCTID, 100 )
 							  .Field( ff => ff.SourceUrl, 25 )
-							  .Field( ff => ff.OwnerOrganizationName, 80 )
+							  .Field( ff => ff.PrimaryOrganizationName, 80 )
 							  .Field( ff => ff.TextValues, 45 )
 						  )
 						  .Operator( Operator.Or )
@@ -6636,7 +8212,7 @@ namespace workIT.Services
 							  .Field( ff => ff.OwnerOrganizationCTID, 100 )
 							  .Field( ff => ff.Description, 50 )
 							  .Field( ff => ff.SourceUrl, 25 )
-							  .Field( ff => ff.OwnerOrganizationName, 80 )
+							  .Field( ff => ff.PrimaryOrganizationName, 80 )
 							  .Field( ff => ff.TextValues, 60 )
 						 )
 						 .Operator( Operator.Or )
@@ -6912,6 +8488,7 @@ namespace workIT.Services
 					}
 				}
 			}//
+			//this should be ignored if there was any text! NOTE: Done later.
 			if ( competencySchemas.Any() )
 			{
 				var ids = CodesManager.GetEntityStatisticBySchema( competencySchemas );
@@ -6974,13 +8551,13 @@ namespace workIT.Services
 					.Fields( f => f
 						.Field( ff => ff.NameOrganizationKey, 90 )      //??
 						.Field( ff => ff.ListTitle, 90 )
-						.Field( ff => ff.OwnerOrganizationName, 90 )
+						.Field( ff => ff.PrimaryOrganizationName, 90 )
 						.Field( ff => ff.Description, 50 )
 						.Field( ff => ff.SubjectAreas, 50 ) //??
-						.Field( ff => ff.Occupation, 30 )
-						.Field( ff => ff.Industry, 30 )
-						.Field( ff => ff.InstructionalProgram, 30 )
-						.Field( ff => ff.Keyword, 60 )  //
+                        .Field( ff => ff.Occupation, 30 )
+                        .Field( ff => ff.Industry, 30 )
+                        .Field( ff => ff.InstructionalProgram, 30 )
+                        .Field( ff => ff.Keyword, 60 )  //
 					)
 			.Type( TextQueryType.PhrasePrefix )
 			.Query( query.Keywords )
@@ -6997,7 +8574,7 @@ namespace workIT.Services
 				.MultiMatch( m => m
 					.Fields( f => f
 						.Field( ff => ff.NameOrganizationKey, 90 )      //??
-																		//.Field( ff => ff.Description, 50 )
+						//.Field( ff => ff.Description, 50 )
 						.Field( ff => ff.Occupation, 30 )
 						.Field( ff => ff.Industry, 30 )
 						.Field( ff => ff.InstructionalProgram, 30 )
@@ -7019,7 +8596,7 @@ namespace workIT.Services
 					.Fields( f => f
 						.Field( ff => ff.Name, 90 )      //??
 						.Field( ff => ff.ListTitle, 90 )
-						.Field( ff => ff.OwnerOrganizationName, 90 )
+						.Field( ff => ff.PrimaryOrganizationName, 90 )
 						.Field( ff => ff.Description, 50 )
 						.Field( ff => ff.SubjectAreas, 50 ) //??
 						.Field( ff => ff.Occupation, 30 )
@@ -7030,7 +8607,7 @@ namespace workIT.Services
 				.Type( TextQueryType.BestFields )
 				.Query( query.Keywords )
 				.MaxExpansions( 10 )
-			//.Analyzer( "standard" )
+				//.Analyzer( "standard" )
 			);
 
 			return bestFieldsQuery;
@@ -7042,8 +8619,8 @@ namespace workIT.Services
 				.MultiMatch( m => m
 					.Fields( f => f
 						.Field( ff => ff.NameOrganizationKey, 90 )      //??
-						.Field( ff => ff.OwnerOrganizationName, 90 )
-					//.Field( ff => ff.Description, 50 )
+						.Field( ff => ff.PrimaryOrganizationName, 90 )
+						//.Field( ff => ff.Description, 50 )
 					)
 				.Type( TextQueryType.PhrasePrefix )
 				.Query( query.Keywords )
@@ -7053,7 +8630,171 @@ namespace workIT.Services
 
 			return autoCompleteQuery;
 		}
-		public static QueryContainer CommonOccupations<T>( MainSearchInput query, ref QueryContainer widgetOccupationsQuery ) where T : class, IIndex
+
+		/// <summary>
+		/// Handle search using link from a detail page for members of a collection
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="query"></param>
+		/// <returns></returns>
+		public static QueryContainer CommonInCollectionByIdFilters<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer thisQuery = null;
+			var results = new List<CodeItem>();
+			var list = new List<int>();
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "partofcollection" ).ToList() )
+				{
+					var f = filter.AsRecordId();
+					list.Add( f.Id );
+					results.Add( filter.AsRecordId() );
+				}
+
+				if ( results.Any() )
+					results.ForEach( x =>
+					{
+						thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ResourceForCollection ).Terms<int>( list.ToArray() ) );
+					} );
+		}
+
+			return thisQuery;
+		}
+
+		/// <summary>
+		/// Handle left rail filters of: In any collection, and search by name
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="query"></param>
+		/// <returns></returns>
+		public static QueryContainer CommonPartOfCollectionFilters<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			//, ref QueryContainer widgetQuery
+			QueryContainer thisQuery = null;
+			QueryContainer qc = null;
+			var tags = new List<string>();
+			var reportSchemas = new List<string>();
+			List<int> ids = new List<int>();
+
+			//check for entered filters
+
+			//In any collection check:
+			if ( query.FiltersV2.Any( x => x.Name == "collections" || x.Name == "filter:CollectionType" ) )
+			{
+				foreach ( var filter in query.FiltersV2.Where( x => x.Name == "collections" || x.Name == "filter:CollectionType" ) )
+				{
+					var codeItem = filter.HasAnyValue();
+					if ( codeItem.AnyValue || ( !string.IsNullOrWhiteSpace( codeItem.SchemaName ) && codeItem.SchemaName != "filter:CollectionType" ) )
+					{
+						reportSchemas.Add( codeItem.SchemaName );
+					}
+					else
+					{
+						//obsolete approach?. Will the filter for a specific collection fall thru to here?
+						string text = filter.AsText();
+						if ( string.IsNullOrWhiteSpace( text ) ) 
+							continue;
+						tags.Add( text );
+					}
+				}
+				if ( reportSchemas.Any() )
+				{
+					ids = CodesManager.GetEntityStatisticBySchema( reportSchemas );
+					if ( ids.Any() )
+					{
+						thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( ids.ToArray() ) );
+					}
+				}
+			}
+			
+
+			if ( tags.Any() )
+			{
+				if ( reportSchemas.Any() ) //if there are concrete results, remove the Has any
+					thisQuery = null;
+				tags.ForEach( name =>
+				{	
+					qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Collection.First(), 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
+				} );
+				//??
+				if ( qc != null )
+				{
+					//???
+					//thisQuery = Query<T>.Nested( n => n.Path( p => p.Collection ).Query( q => qc ).IgnoreUnmapped() );
+					thisQuery = qc;
+				}
+			}
+
+			//TBD
+			if ( query.FiltersV2.Any( x => x.Name == "wcollection" ) )
+			{
+				
+			}
+			return thisQuery;
+		}
+
+        public static QueryContainer CommonPartOfTransferIntermediaryFilters<T>( MainSearchInput query ) where T : class, IIndex
+        {
+            //, ref QueryContainer widgetQuery
+            QueryContainer thisQuery = null;
+            QueryContainer qc = null;
+            var tags = new List<string>();
+            var reportSchemas = new List<string>();
+            List<int> ids = new List<int>();
+
+            //check for entered filters
+
+            //In any collection check:
+            if ( query.FiltersV2.Any( x => x.Name == "transfervalues" || x.Name == "filter:TransferValue" ) )
+            {
+                foreach ( var filter in query.FiltersV2.Where( x => x.Name == "transfervalues" || x.Name == "filter:TransferValue" ) )
+                {
+                    var codeItem = filter.HasAnyValue();
+                    if ( codeItem.AnyValue || ( !string.IsNullOrWhiteSpace( codeItem.SchemaName ) && codeItem.SchemaName != "filter:TransferValue" ) )
+                    {
+                        reportSchemas.Add( codeItem.SchemaName );
+                    }
+                    else
+                    {
+                        //obsolete approach?. Will the filter for a specific collection fall thru to here?
+                        var text = filter.AsText();
+                        if ( string.IsNullOrWhiteSpace( text ) )
+                            continue;
+                        tags.Add( text );
+                    }
+                }
+                if ( reportSchemas.Any() )		//???
+                {
+                    ids = CodesManager.GetEntityStatisticBySchema( reportSchemas );
+                    if ( ids.Any() )
+                    {
+                        thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( ids.ToArray() ) );
+                    }
+                }
+            }
+
+
+            if ( tags.Any() )
+            {
+                if ( reportSchemas.Any() ) //if there are concrete results, remove the Has any
+                    thisQuery = null;
+                tags.ForEach( name =>
+                {
+                    qc |= Query<T>.MultiMatch( m => m.Fields( mf => mf.Field( f => f.Collection.First(), 70 ) ).Type( TextQueryType.BestFields ).Query( name ) );
+                } );
+                //??
+                if ( qc != null )
+                {
+                    //???
+                    //thisQuery = Query<T>.Nested( n => n.Path( p => p.Collection ).Query( q => qc ).IgnoreUnmapped() );
+                    thisQuery = qc;
+                }
+            }
+
+            return thisQuery;
+        }
+
+        public static QueryContainer CommonOccupations<T>( MainSearchInput query, ref QueryContainer widgetOccupationsQuery ) where T : class, IIndex
 		{
 			QueryContainer thisQuery = null;
 			QueryContainer qc = null;
@@ -7063,7 +8804,7 @@ namespace workIT.Services
 
 			//check for entered filters
 			if ( query.FiltersV2.Any( x => x.Name == "occupations" || x.Name == "filter:OccupationType" ) )
-			{
+			{						
 				foreach ( var filter in query.FiltersV2.Where( x => x.Name == "occupations" || x.Name == "filter:OccupationType" ) )
 				{
 					var codeItem = filter.HasAnyValue();
@@ -7085,7 +8826,7 @@ namespace workIT.Services
 					{
 						thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( ids.ToArray() ) );
 					}
-				}
+				}				
 			}
 			else if ( query.FiltersV2.Any( x => x.Name == "" && x.Values.Count > 0 ) )
 			{
@@ -7209,7 +8950,7 @@ namespace workIT.Services
 				if ( qc != null )
 					thisQuery = Query<T>.Nested( n => n.Path( p => p.Occupations ).Query( q => qc ).IgnoreUnmapped() );
 			}
-
+			
 			//TBD
 			if ( query.FiltersV2.Any( x => x.Name == "woccupations" ) )
 			{
@@ -7291,8 +9032,8 @@ namespace workIT.Services
 					}
 				}
 			}
-
-
+	
+			
 
 			//if ( !tags.Any() )
 			//{
@@ -7358,8 +9099,8 @@ namespace workIT.Services
 					//21-07-30 mp - added specific codedNotation check with a high boost, started with PhrasePrefix
 					//22-04-21 mp - does this handle where no dash included?
 					var notation = UtilityManager.ExtractDelimitedValue( name );
-					if ( !string.IsNullOrWhiteSpace( notation ) )
-					{
+					if (!string.IsNullOrWhiteSpace( notation ) )
+                    {
 						qc |= Query<T>.MultiMatch( m => m
 						.Fields( mf => mf
 							.Field( f => f
@@ -7368,7 +9109,7 @@ namespace workIT.Services
 										.Type( TextQueryType.PhrasePrefix )
 											.Query( notation ) );
 					}
-
+					
 					qc |= Query<T>.MultiMatch( m => m
 						.Fields( mf => mf
 							.Field( f => f
@@ -7560,7 +9301,7 @@ namespace workIT.Services
 			var tags = new List<string>();
 			List<int> ids = new List<int>();
 			var reportSchemas = new List<string>();
-			if ( query.FiltersV2.Any( x => x.Name == "instructionalprogramtypes" || x.Name == "filter:InstructionalProgramType" ) )
+			if ( query.FiltersV2.Any( x => x.Name == "instructionalprogramtypes" || x.Name == "filter:InstructionalProgramType" )  )
 			{
 				foreach ( var filter in query.FiltersV2.Where( x => x.Name == "instructionalprogramtypes" || x.Name == "filter:InstructionalProgramType" ) )
 				{
@@ -7588,7 +9329,7 @@ namespace workIT.Services
 
 
 			}
-			else if ( query.FiltersV2.Any( x => x.Name == "" && x.Values.Count > 0 ) )
+			else if( query.FiltersV2.Any( x => x.Name == "" && x.Values.Count > 0 ))
 			{
 				foreach ( var filter in query.FiltersV2.Where( x => x.Name == "" && x.Values.Count > 0 ) )
 				{
@@ -7610,12 +9351,12 @@ namespace workIT.Services
 				}
 				if ( reportSchemas.Any() )
 				{
-					ids = CodesManager.GetEntityStatisticBySchema( reportSchemas );
-					if ( ids.Any() )
-					{
-						thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( ids.ToArray() ) );
-					}
-				}
+                    ids = CodesManager.GetEntityStatisticBySchema( reportSchemas );
+                    if ( ids.Any() )
+                    {
+                        thisQuery = Query<T>.Terms( ts => ts.Field( f => f.ReportFilters ).Terms<int>( ids.ToArray() ) );
+                    }
+                }
 			}
 
 			if ( !tags.Any() )
@@ -7728,7 +9469,46 @@ namespace workIT.Services
 			return thisQuery;
 		}
 
-		public static QueryContainer CommonOrgRolesFilter<T>( MainSearchInput query, List<int> relationshipTypeIds ) where T : class, IIndex
+        public static QueryContainer CommonHasSupportService<T>( MainSearchInput query ) where T : class, IIndex
+        {
+            QueryContainer thisQuery = null;
+            var selected = new List<CodeItem>();
+            if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+            {
+                foreach ( var filter in query.FiltersV2.Where( m => m.Name == "outcomeproviders" ).ToList() )
+                {
+                    //should be OK using this method to get the orgId
+                    selected.Add( filter.AsOrgRolesItem() );
+                }
+
+                if ( selected.Any() )
+                    selected.ForEach( x =>
+                    {
+                        thisQuery |= Query<T>.Nested( n => n
+                               .Path( p => p.OutcomeProvidersForEntity )
+                                .Query( q => q
+                                    .Bool( mm => mm
+                                         .Must( mu => mu.Terms( m => m.Field( f => f.OutcomeProvidersForEntity.First().OrgId ).Terms( x.Id )
+                                               )
+                                               )//Must
+                                           )//Bool
+                                   ) //Query
+                               );
+                    } );
+            }
+
+            return thisQuery;
+        }
+
+        /// <summary>
+        /// Clarify scenario for this method
+        /// Uses organizationnonqaroles, which suggests NON QA, which is the purpose of CommonOrgRolesByFilter (but uses: organizationroles)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="query"></param>
+        /// <param name="relationshipTypeIds"></param>
+        /// <returns></returns>
+        public static QueryContainer CommonOrgQARolesFilter<T>( MainSearchInput query, List<int> relationshipTypeIds ) where T : class, IIndex
 		{
 			QueryContainer thisQuery = null;
 			var roles = new List<CodeItem>();
@@ -7746,7 +9526,7 @@ namespace workIT.Services
 				{
 					if ( relationshipTypeIds == null || relationshipTypeIds.Count() == 0 )
 					{
-						//ensure only targets Non-QA roles
+						//ensure only targets Non-QA roles	(then why is this method named: CommonOrgQARolesFilter)
 						relationshipTypeIds.AddRange( new List<int>() { 6, 7, Entity_AgentRelationshipManager.ROLE_TYPE_Revokes, Entity_AgentRelationshipManager.ROLE_TYPE_Renews } );
 					}
 
@@ -7827,26 +9607,40 @@ namespace workIT.Services
 
 		/// <summary>
 		/// Used primarily from a gray box search such as show where this qa org does this QA
-		/// AND for searches from the detail page (owns/offers)
-		/// 2019-April - also used for widget filters ==> SO SHOULD CHG THE NAME
+		/// AND for searches from the detail page (owns/offers and publishedby)
+		/// 2019-April - also used for widget filters 
 		/// </summary>
 		/// <typeparam name="T">Current Elastic Index</typeparam>
 		/// <param name="query"></param>
 		/// <returns></returns>
-		public static QueryContainer CommonQualityAssurance<T>( MainSearchInput query ) where T : class, IIndex
+		public static QueryContainer CommonOrgRolesByFilter<T>( MainSearchInput query ) where T : class, IIndex
 		{
 			QueryContainer thisQuery = null;
 			var assurances = new List<CodeItem>();
+			var publishedBy = new List<CodeItem>();
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
 			{
-				foreach ( var filter in query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
+				var targetQuery = query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList();
+
+				foreach ( var filter in targetQuery )
 				{
-					assurances.Add( filter.AsOrgRolesItem() );
+					var orgFilter = filter.AsOrgRolesItem();
+					//maybe better to just use a separate query for publisher
+					if ( orgFilter.IdsList.Contains( 30 ) )
+					{
+						//23-08-14 mp - now will basically ignore publishedBy here
+						publishedBy.Add( orgFilter );
+					}
+					else
+					{
+						assurances.Add( orgFilter );
+					}					
 				}
 
 				if ( assurances.Any() )
 					assurances.ForEach( x =>
 					{
+						//need to do ANDs. 23-08-14 - back to an OR
 						thisQuery |= Query<T>.Nested( n => n
 							   .Path( p => p.AgentRelationshipsForEntity )
 								.Query( q => q
@@ -7861,32 +9655,51 @@ namespace workIT.Services
 							   );
 					} );
 			}
-			//if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.TEXT ) )
-			//{				
-			//	foreach ( var filter in query.FiltersV2.Where( m => m.Name == "qualityassurance" ).ToList() )
-			//	{
-			//		CodeItem ci = filter.AsQaText();
-			//		if (ci != null && ci.Id > 0)
-			//			assurances.Add( filter.AsQaText() );	//getting orgIds
-			//	}
 
-			//	if ( assurances.Any() )
-			//	{
-			//		assurances.ForEach( x =>
-			//		{
-			//			thisQuery |= Query<T>.Nested( n => n
-			//				   .Path( p => p.AgentRelationshipsForEntity )
-			//					.Query( q => q
-			//						.Bool( mm => mm
-			//							 .Must( mu => mu.Terms( m => m.Field( f => f.AgentRelationshipsForEntity.First().OrgId ).Terms( x.Id ) ) ) ) ) );
-			//		} );
-			//	}
-			//}
+			return thisQuery;
+		}
+
+		public static QueryContainer PublishedByFilter<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			QueryContainer thisQuery = null;
+			var publishedBy = new List<CodeItem>();
+			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			{
+				var targetQuery = query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList();
+
+				foreach ( var filter in targetQuery )
+				{
+					var orgFilter = filter.AsOrgRolesItem();
+					//hmm actually what if more than 30?
+					if ( orgFilter.IdsList.Contains( 30 ) )
+					{
+						publishedBy.Add( orgFilter );
+					}
+				}
+
+				if ( publishedBy.Any() )
+					publishedBy.ForEach( x =>
+					{
+						//need to do ANDs. 23-08-14
+						thisQuery &= Query<T>.Nested( n => n
+							   .Path( p => p.AgentRelationshipsForEntity )
+								.Query( q => q
+									.Bool( mm => mm
+										 .Must( mu => mu.Terms( m => m.Field( f => f.AgentRelationshipsForEntity.First().RelationshipTypeIds ).Terms( x.IdsList )
+												   )
+											   && mu.Terms( m => m.Field( f => f.AgentRelationshipsForEntity.First().OrgId ).Terms( x.Id )
+											   )
+											   )//Must
+										   )//Bool
+								   ) //Query
+							   );
+					} );
+			}
 			return thisQuery;
 		}
 
 		/// <summary>
-		/// Used from the Quality Assurance section
+		/// Used from the Quality Assurance filter section
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="query"></param>
@@ -7916,7 +9729,7 @@ namespace workIT.Services
 								if ( int.TryParse( value, out int cid ) )
 								{
 									//ci.Id = cid;
-									filter.Values["Id"] = cid.ToString();
+									filter.Values[ "Id" ] = cid.ToString();
 									hasId = true;
 								}
 							}
@@ -7924,7 +9737,7 @@ namespace workIT.Services
 							var name = UtilityManager.ExtractNameValue( ci.Name, "{ label ", "=", "value" );
 							if ( !string.IsNullOrWhiteSpace( name ) )
 							{
-								filter.Values["TextValue"] = name.Trim().TrimEnd( ',' );
+								filter.Values[ "TextValue" ] = name.Trim().TrimEnd( ',' );
 								//ci.Name = name.Trim().TrimEnd( ',' );
 							}
 
@@ -7934,7 +9747,7 @@ namespace workIT.Services
 				}
 
 				if ( assurances.Any() )
-				{
+				{	
 					//21-08-30 mp - check if this will work with a mix of with an orgId and without! It does seem so, although not sure until FTS is working. 
 					if ( relationshipTypeIds == null || relationshipTypeIds.Count() == 0 )
 					{
@@ -7961,8 +9774,7 @@ namespace workIT.Services
 									) //Query
 								); //Nested
 						} );
-					}
-					else
+					} else
 					{
 						//21-05-10 mparsons - search on name only not working. Try modelling after competencies
 						//			LATER
@@ -7979,7 +9791,7 @@ namespace workIT.Services
 													//)
 													&& mu.MultiMatch( m => m
 														.Fields( mf => mf
-															.Field( f => f.AgentRelationshipsForEntity.First().AgentName, 70 ) ).Type( TextQueryType.Phrase ).Query( x.Name ) )
+															.Field( f => f.AgentRelationshipsForEntity.First().AgentName, 70 ) ).Type( TextQueryType.Phrase).Query( x.Name ) )
 											)//Must
 										) //Bool
 									) //Query
@@ -8074,6 +9886,143 @@ namespace workIT.Services
 		//	return qualityAssurancesQuery;
 		//}
 
+
+		public static QueryContainer HandleLocationQuery<T>( MainSearchInput query ) where T : class, IIndex
+		{
+			var boundariesQuery = new QueryContainer();
+
+			//Get map filter data, in new or old flavors as applicable
+			var mapFilter = query.FiltersV2.FirstOrDefault( m => !string.IsNullOrWhiteSpace( m.Map_PositionType ) );
+			var boundaries = SearchServices.GetBoundaries( query, "bounds" );
+			var newMapFilter = query.OriginalQuery?.MapFilter;
+			if ( newMapFilter != null && newMapFilter.PositionType != null )
+			{
+				mapFilter = new MainSearchFilterV2()
+				{
+					Map_PositionType = newMapFilter.PositionType ?? "positionType:In", //Sometimes React doesn't assign this property!
+					Map_Country = newMapFilter.Country,
+					Map_Region = newMapFilter.Region,
+					Map_Locality = newMapFilter.Label == newMapFilter.Region ? null : newMapFilter.Label
+				};
+				boundaries = new workIT.Models.Common.BoundingBox()
+				{
+					North = ( decimal ) newMapFilter.BBoxNorth,
+					East = ( decimal ) newMapFilter.BBoxEast,
+					South = ( decimal ) newMapFilter.BBoxSouth,
+					West = ( decimal ) newMapFilter.BBoxWest
+				};
+			}
+
+            //Skip if no location data
+            //if ( !boundaries.IsDefined && string.IsNullOrWhiteSpace( mapFilter.Map_Country ) )
+            if ( !boundaries.IsDefined && ( mapFilter == null || string.IsNullOrWhiteSpace( mapFilter.Map_Country ) ) )
+            {
+                return null;
+			}
+
+			//Only look for results that are within the specified area
+			if ( mapFilter != null && mapFilter.Map_PositionType == "positionType:In" && !string.IsNullOrWhiteSpace( mapFilter.Map_Country ) && !string.IsNullOrWhiteSpace( mapFilter.Map_Region ) )
+			{
+				if ( string.IsNullOrWhiteSpace( mapFilter.Map_Locality ) )
+				{
+					boundariesQuery = Query<CredentialIndex>
+						.Nested( n => n.Path( p => p.Addresses )
+						.Query( q => Query<CredentialIndex>.Bool( b =>
+							b.Must(
+								m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) )
+							)
+							.Should(
+								m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
+							)
+						) ).IgnoreUnmapped() );
+				}
+				else
+				{
+					boundariesQuery = Query<CredentialIndex>
+						.Nested( n => n.Path( p => p.Addresses )
+						.Query( q => Query<CredentialIndex>.Bool( b =>
+							b.Must(
+								m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
+								m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressLocality ).Query( mapFilter.Map_Locality ) )
+							)
+							.Should(
+								m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
+							)
+						) ).IgnoreUnmapped() );
+				}
+			}
+			//Do a bounding box search but prioritize results that are in the specified area
+			else if ( mapFilter != null && mapFilter.Map_PositionType.IndexOf( "positionType:Near" ) == 0 )
+			{
+				var latitude25Unit = 0.362d; //One degree of latitude is 69 miles, so this represents 25 miles of latitude
+				var longitude25Unit = 0.463d; //One degree of longitude is a little over 54 miles, so this represents 25 miles of longitude
+				var latitudeRadius = latitude25Unit;
+				var longitudeRadius = longitude25Unit;
+				var latitudeCenter = newMapFilter?.BBoxCenterLatitude ?? ( ( double ) boundaries.North + ( double ) boundaries.South ) / 2d;
+				var longitudeCenter = newMapFilter?.BBoxCenterLongitude ?? ( ( double ) boundaries.East + ( double ) boundaries.West ) / 2d;
+				switch ( mapFilter.Map_PositionType )
+				{
+					case "positionType:Near_25": latitudeRadius = latitude25Unit * 1; longitudeRadius = longitude25Unit * 1; break;
+					case "positionType:Near_50": latitudeRadius = latitude25Unit * 2; longitudeRadius = longitude25Unit * 2; break;
+					case "positionType:Near_100": latitudeRadius = latitude25Unit * 3; longitudeRadius = longitude25Unit * 3; break;
+					default: break;
+				}
+
+				if ( latitudeCenter != 0 && longitudeCenter != 0 )
+				{
+					boundariesQuery = Query<CredentialIndex>
+						.Nested( n => n.Path( p => p.Addresses )
+						.Query( q => Query<CredentialIndex>.Bool( b =>
+							b.Must(
+								//m => m.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ),
+								//m => m.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) ),
+								m => m.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( longitudeCenter + longitudeRadius ).GreaterThan( longitudeCenter - longitudeRadius ) ),
+								m => m.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( latitudeCenter + latitudeRadius ).GreaterThan( latitudeCenter - latitudeRadius ) )
+							)
+						//.Should(
+						//	m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
+						//	m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
+						//)
+						) ).IgnoreUnmapped() );
+				}
+				else
+				{
+					boundariesQuery = Query<CredentialIndex>
+						.Nested( n => n.Path( p => p.Addresses )
+						.Query( q => Query<CredentialIndex>.Bool( b =>
+							b.Must(
+								m => m.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ),
+								m => m.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) )
+							)
+						//.Should(
+						//	m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressRegion ).Query( mapFilter.Map_Region ) ),
+						//	m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressLocality ).Query( mapFilter.Map_Locality ) ),
+						//	m => m.Match( mm => mm.Field( f => f.Addresses.First().AddressCountry ).Query( mapFilter.Map_Country ) )
+						//)
+						) ).IgnoreUnmapped() );
+				}
+			}
+			//Just do a classic bounding box search
+			else
+			{
+				if ( boundaries.IsDefined )
+				{
+					boundariesQuery = Query<CredentialIndex>
+						.Nested( n => n.Path( p => p.Addresses )
+						.Query( q =>
+							Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Longitude ).LessThan( ( double ) boundaries.East ).GreaterThan( ( double ) boundaries.West ) ) &&
+							Query<CredentialIndex>.Range( r => r.Field( f => f.Addresses.First().Latitude ).LessThan( ( double ) boundaries.North ).GreaterThan( ( double ) boundaries.South ) )
+						).IgnoreUnmapped() );
+				}
+
+			}
+
+			return boundariesQuery;
+
+		}
+		//
+
+
 		private static void CommonHistoryFilter<T>( MainSearchInput query, ref HistoryQueryFilters history ) where T : class, IIndex
 		{
 			foreach ( var filter in query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE ).ToList() )
@@ -8134,7 +10083,7 @@ namespace workIT.Services
 		/// <param name="query"></param>
 		/// <param name="locationQueryFilters"></param>
 		/// <param name="usingRegionHack"></param>
-		private static void LocationFilter<T>( MainSearchInput query, LocationQueryFilters locationQueryFilters, ref bool usingRegionHack ) where T : class, IIndex
+		private void LocationFilter<T>( MainSearchInput query, LocationQueryFilters locationQueryFilters, ref bool usingRegionHack ) where T : class, IIndex
 		{
 			//TODO - try to include a Region search with keywords. 
 			//	The problem here could be only a few letters were entered before search start. Use a low priority
@@ -8208,17 +10157,17 @@ namespace workIT.Services
 				if ( !hasLocationFilters && !string.IsNullOrWhiteSpace( query.Keywords ) )
 				{
 					var region = query.Keywords.Trim().ToLower();
-					if ( IsUSRegion( region, ref regionBoost ) && UtilityManager.GetAppKeyValue( "searchAllowingRegionGuessing", false ) )
+					if ( IsUSRegion( region, ref regionBoost ) && UtilityManager.GetAppKeyValue( "searchAllowingRegionGuessing", false )) 
 					{
 						//if ( region.Length > 3 && region.Length < 15 && region.IndexOf( " " ) == -1 )
 						//{
-						var rfilter = new MainSearchFilterV2()
-						{
-							Name = "locationset",
-							Type = MainSearchFilterV2Types.CODE
-						};
+							var rfilter = new MainSearchFilterV2()
+							{
+								Name = "locationset",
+								Type = MainSearchFilterV2Types.CODE
+							};
 						rfilter.Values = new Dictionary<string, object>
-						{
+						{ 
 							{ "Countries[0]", "United States" },
 							{ "Regions[0]", region }
 						};
@@ -8241,12 +10190,13 @@ namespace workIT.Services
 					continue;
 				}
 				//TODO not sure if can use the same process
-				var locationSet = filter.AsLocationSet();
+				//var locationSet = filter.AsLocationSet();
+				var locationSet = query.OriginalQuery.MainFilters?.FirstOrDefault( m => m.Items?.FirstOrDefault( n => n.URI?.ToLower() == "locationset" ) != null )?.Items.FirstOrDefault( m => m.URI?.ToLower() == "locationset" ).Values?.ToObject<WidgetV2.LocationSet>() ?? new WidgetV2.LocationSet();
 				if ( locationSet.Regions.Count() > 0 )
 				{
-					if ( locationSet.Regions.Count() == 1 && locationSet.Cities.Count() > 0 && !string.IsNullOrEmpty( locationSet.Cities[0] ) )
+					if ( locationSet.Regions.Count() == 1 && locationSet.Cities.Count() > 0 && !string.IsNullOrEmpty( locationSet.Cities[ 0 ] ) )
 					{
-						string region = locationSet.Regions[0];
+						string region = locationSet.Regions[ 0 ];
 						//need to check cities with regions, maybe country, but latter may not exist in index
 						locationSet.Cities.ForEach( x =>
 						{
@@ -8331,26 +10281,26 @@ namespace workIT.Services
 			if ( query.FiltersV2.Count == 0 )
 				return null;
 
-			var lwiaFiltersExists = query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE && ( m.Name == "filter:IllinoisEDR" || m.Name == "filter:IllinoisLWIA" ) ).ToList();
+			var lwiaFiltersExists = query.FiltersV2.Where( m => m.Type == MainSearchFilterV2Types.CODE && (m.Name == "filter:IllinoisEDR" || m.Name == "filter:IllinoisLWIA" )).ToList();
 			if ( lwiaFiltersExists?.Count == 0 )
 			{
 				return null;
 			}
 
 			//
-			foreach ( var filter in query.FiltersV2.Where( m => m.Name == "filter:IllinoisLWIA" ).ToList() )
+			foreach ( var filter in query.FiltersV2.Where( m => m.Name == "filter:IllinoisLWIA"  ).ToList() )
 			{
 				CodeItem ci = filter.AsLWIAText();
 				if ( ci != null && ( ci.Id > 0 || !string.IsNullOrWhiteSpace( ci.Name ) ) )
 				{
-					if ( ci.Id > 0 )
+					if ( ci.Id > 0 ) 
 					{
 						hasId = true;
 						lwiaList.Add( ci.Id.ToString() );
 					}
-
+					
 					identifiers.Add( filter.AsQaText() );    //getting orgIds
-
+					
 				}
 			}
 			if ( hasId )
@@ -8384,8 +10334,7 @@ namespace workIT.Services
 				if ( qc != null )
 				{
 					thisQuery = Query<T>.Nested( n => n.Path( p => p.RegionIdentifier ).Query( q => qc ).IgnoreUnmapped() );
-				}
-				else if ( qc2 != null )
+				} else if ( qc2 != null )
 				{
 					thisQuery = qc2;
 				}
@@ -8404,7 +10353,7 @@ namespace workIT.Services
 			//}
 			//else
 			{
-
+				
 				//test duration
 				if ( UtilityManager.GetAppKeyValue( "useDatabaseForRegionGuessing", false ) )
 				{
@@ -8414,8 +10363,7 @@ namespace workIT.Services
 						//if region = full region then use a higher boost
 						region = fullRegion;
 					}
-				}
-				else
+				} else
 				{
 					if ( "alabama alaska arizona arkansas california colorado connecticut delaware district of columbia florida georgia hawaii idaho illinois indiana iowa kansas kentucky louisiana maine maryland massachusetts michigan minnesota mississippi missouri montana nebraska nevada new hampshire new jersey new mexico new york north carolina north dakota ohio oklahoma oregon pennsylvania rhode island south carolina south dakota tennessee texas utah vermont virginia washington west virginia wisconsin wyoming".IndexOf( region.ToLower() ) > -1 )
 						return true;
@@ -8472,7 +10420,7 @@ namespace workIT.Services
 					else
 					{
 						//ISSUE-not necessarily
-						LoggingHelper.DoTrace( 1, "Build PathwayIndex: no results were returned from SearchForElastic method." );
+						LoggingHelper.DoTrace( 1, "Build PathwayIndex: no results were returned from SearchForElastic method.");
 					}
 				}
 				catch ( Exception ex )
@@ -8508,7 +10456,7 @@ namespace workIT.Services
 
 				 .Settings( st => st
 						 .Analysis( an => an.TokenFilters( tf => tf.Stemmer( "custom_english_stemmer", ts => ts.Language( "english" ) ) ).Analyzers( anz => anz.Custom( "custom_lowercase_stemmed", cc => cc.Tokenizer( "standard" ).Filters( new List<string> { "lowercase", "custom_english_stemmer" } ) ) ) ) )
-						//.Mappings( ms => ms
+					//.Mappings( ms => ms
 						.Map<PathwayIndex>( m => m
 							.AutoMap()
 							.Properties( p => p
@@ -8529,7 +10477,7 @@ namespace workIT.Services
 
 							)
 						)
-				//)
+					//)
 				);
 			}
 		}
@@ -8604,7 +10552,7 @@ namespace workIT.Services
 						//LoggingHelper.DoTrace( 2, string.Format( "Pathway_UpdateIndex failed, no data returned for filter: {0}", filter ) );
 						if ( list != null && list.Count == 1 && totalRows == -1 )
 						{
-							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
+							LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[ 0 ].Description ), true );
 
 						}
 						else if ( pageNbr == 1 )
@@ -8658,56 +10606,89 @@ namespace workIT.Services
 			//return list.Select( x => x.Name).Distinct().Take( maxTerms ).ToList().Cast<object>().ToList();
 		}
 
-		/// <summary>
-		/// Update Index for PathwaySet
-		/// 22-07-15 - this should use the general index at this time, and was pointing to the PathwayIndex
-		/// </summary>
-		/// <param name="filter"></param>
-		/// <param name="processed"></param>
-		public static void PathwaySet_UpdateIndex( string filter, ref int processed )
-		{
-			if ( string.IsNullOrWhiteSpace( filter ) )
-				return;
-			int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 0 );
-			if ( action == 0 )
-				return;
-			try
-			{
-				var list = ElasticManager.PathwaySet_SearchForElastic( filter );
-				if ( list != null && list.Count > 0 )
-				{
-					processed = list.Count;
-					if ( action == 1 )
-					{
-						foreach ( var item in list )
-						{
-							var res = EC.Index( item, idx => idx.Index( PathwayIndex ) );
-							Console.WriteLine( res.Result );
-						}
-					}
-					else if ( action == 2 )
-					{
-						var results = EC.Bulk( b => b.IndexMany( list, ( d, entity ) => d.Index( PathwayIndex ).Document( entity ).Id( entity.Id.ToString() ) ) );
-						if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
-						{
-							Console.WriteLine( results.ToString() );
-							LoggingHelper.DoTrace( 1, " Issue building General/PathwaySet index: " + results );
-						}
-					}
-				}
-				else
-				{
-					//can be empty when called after import
-					LoggingHelper.DoTrace( 2, string.Format( "PathwaySet_UpdateIndex. no data returned for filter: {0}", filter ) );
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.LogError( ex, string.Format( "PathwaySet_UpdateIndex failed for filter: {0}", filter ), false );
-			}
-		}
+        /// <summary>
+        /// Update Index for PathwaySet
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <param name="processed"></param>
+        public static void PathwaySet_UpdateIndex( string filter, ref int processed )
+        {
+            if ( string.IsNullOrWhiteSpace( filter ) )
+                return;
+            int action = UtilityManager.GetAppKeyValue( "updateCredIndexAction", 2 );
+            if ( action == 0 )
+                return;
+            string methodName = "PathwaySet_UpdateIndex";
+            string IndexName = CommonIndex;
+            int pageSize = 500; ;
+            int pageNbr = 1;
+            int totalRows = 0;
+            bool isComplete = false;
+            int cntr = 0; ;
+            try
+            {
+                while ( pageNbr > 0 && !isComplete )
+                {
+                    //var list = ElasticManager.PathwaySet_SearchForElastic( filter );
+                    var list = ElasticManager.PathwaySet_SearchForElastic( filter, pageSize, pageNbr, ref totalRows );
+                    if ( list != null && list.Count > 0 )
+                    {
+                        processed = list.Count;
+                        if ( action == 1 )
+                        {
+                            foreach ( var item in list )
+                            {
+                                cntr++;
+                                var res = EC.Index( item, idx => idx.Index( IndexName ) );
+                                Console.WriteLine( res.Result );
+                            }
+                        }
+                        else if ( action == 2 )
+                        {
+                            cntr = cntr + list.Count;
+                            var results = EC.Bulk( b => b.IndexMany( list, ( d, record ) => d.Index( IndexName ).Document( record ).Id( record.Id.ToString() ) ) );
+                            if ( results.ToString().IndexOf( "Valid NEST response built from a successful" ) == -1 )
+                            {
+                                Console.WriteLine( results.ToString() );
+                                LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + results.DebugInformation.Substring( 0, 2000 ) );
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //LoggingHelper.DoTrace( 2, string.Format( "PathwaySet_UpdateIndex failed, no data returned for filter: {0}", filter ) );
+                        if ( list != null && list.Count == 1 && totalRows == -1 )
+                        {
+                            LoggingHelper.LogError( string.Format( "{0}: Error in search. {1}", methodName, list[0].Description ), true );
 
-		public static List<CommonSearchSummary> PathwaySetSearch( MainSearchInput query, ref int pTotalRows )
+                        }
+                        else if ( pageNbr == 1 )
+                        {
+                            if ( string.IsNullOrWhiteSpace( filter ) )
+                            {
+                                LoggingHelper.LogError( string.Format( "{0}: entered with no filter, but no results were returned from search.", methodName ), true, string.Format( "{0} ISSUE: zero records returned", methodName ) );
+                            }
+                            LoggingHelper.DoTrace( 2, string.Format( "{0}: NOTE no data returned for filter: {1}", methodName, filter ) );
+                        }
+                        isComplete = true;
+                        break;
+                    }
+                    LoggingHelper.DoTrace( 4, string.Format( "{0}. Page: {1}, Records Indexed: {2}", methodName, pageNbr, processed ) );
+                    pageNbr++;
+                    if ( cntr >= totalRows )
+                    {
+                        isComplete = true;
+                    }
+                } //loop
+            }
+            catch ( Exception ex )
+            {
+                var msg = BaseFactory.FormatExceptions( ex );
+                LoggingHelper.DoTrace( 1, string.Format( " Issue building {0}: ", IndexName ) + msg );
+                LoggingHelper.LogError( ex, string.Format( "{0} failed for filter: {1}", methodName, filter ), false );
+            }
+        }
+        public static List<CommonSearchSummary> PathwaySetSearch( MainSearchInput query, ref int pTotalRows )
 		{
 			return GeneralSearch( CodesManager.ENTITY_TYPE_PATHWAY_SET, "PathwaySet", query, ref pTotalRows );
 
@@ -8734,8 +10715,10 @@ namespace workIT.Services
 
 
 
-			var list = new List<CommonSearchSummary>();
-			QueryContainer entityTypeQuery = null;
+			var list = new List<CommonSearchSummary> ();
+            //
+            QueryContainer collectionsQuery = null;
+            QueryContainer entityTypeQuery = null;
 			//QueryContainer LifeCycleStatusTypeQuery = null;
 			QueryContainer keywordsQuery = null;
 			QueryContainer industriesQuery = null;
@@ -8743,8 +10726,10 @@ namespace workIT.Services
 			QueryContainer qaFilterQuery = null;
 			QueryContainer subjectsQuery = null;
 			QueryContainer reportsQuery = null;
-			//QueryContainer qualityAssuranceSearchQuery = null;
-			QueryContainer ownedByQuery = null;
+			QueryContainer commonOrgRolesBYQuery = null;
+			QueryContainer publishedBYQuery = null;
+
+			//QueryContainer ownedByQuery = null;
 			QueryContainer widgetOccupationsQuery = null;
 			QueryContainer windustriesQuery = null;
 			HistoryQueryFilters history = new HistoryQueryFilters();
@@ -8764,26 +10749,6 @@ namespace workIT.Services
 			//	LifeCycleStatusTypeQuery = Query<PathwayIndex>.Terms( ts => ts.Field( f => f.LifeCycleStatusTypeId ).Terms( defaultStatusTypeIds.ToArray() ) );
 			//}
 
-			if ( query.FiltersV2.Count > 0 )
-			{
-				//NOTE: not used - so purpose? should be part of the ownedByQuery?
-				var assurances = new List<CodeItem>();
-				//will only be one owner
-				var orgId = 0;
-				if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
-				{
-					foreach ( var filter in query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
-					{
-						var cc = filter.AsOrgRolesItem();
-						orgId = cc.Id;
-
-						assurances.Add( filter.AsOrgRolesItem() );
-						break;
-					}
-				}
-				if ( orgId > 0 )
-					ownedByQuery = Query<PathwayIndex>.Match( ts => ts.Field( f => f.OwnerOrganizationId ).Query( orgId.ToString() ) );
-			}
 
 			#region Subject Areas.keywords
 			//from widget and from search filters
@@ -8820,8 +10785,29 @@ namespace workIT.Services
 
 			#endregion
 
-			//qualityAssuranceSearchQuery = CommonQualityAssurance<PathwayIndex>( query );
+			commonOrgRolesBYQuery = CommonOrgRolesByFilter<PathwayIndex>( query );
+			publishedBYQuery = PublishedByFilter<PathwayIndex>( query );
 
+			//if ( query.FiltersV2.Count > 0 )
+			//{
+			//	//NOTE: not used - so purpose? should be part of the ownedByQuery?
+			//	var assurances = new List<CodeItem>();
+			//	//will only be one owner
+			//	var orgId = 0;
+			//	if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
+			//	{
+			//		foreach ( var filter in query.FiltersV2.Where( m => m.Name == "organizationroles" ).ToList() )
+			//		{
+			//			var cc = filter.AsOrgRolesItem();
+			//			orgId = cc.Id;
+
+			//			assurances.Add( filter.AsOrgRolesItem() );
+			//			break;
+			//		}
+			//	}
+			//	if ( orgId > 0 )
+			//		ownedByQuery = Query<PathwayIndex>.Match( ts => ts.Field( f => f.OwnerOrganizationId ).Query( orgId.ToString() ) );
+			//}
 			#region Pathway Ids list
 			QueryContainer recordIdListQuery = null;
 			if ( query.FiltersV2.Any( x => x.Type == MainSearchFilterV2Types.CUSTOM ) )
@@ -8840,9 +10826,14 @@ namespace workIT.Services
 					} );
 				}
 			}
-			#endregion
-			#region Occupations, industries
-			occupationsQuery = CommonOccupations<PathwayIndex>( query, ref widgetOccupationsQuery );
+            #endregion
+
+
+            collectionsQuery = CommonInCollectionByIdFilters<PathwayIndex>( query );
+            if ( collectionsQuery == null )
+                collectionsQuery = CommonPartOfCollectionFilters<PathwayIndex>( query );
+            #region Occupations, industries
+            occupationsQuery = CommonOccupations<PathwayIndex>( query, ref widgetOccupationsQuery );
 
 			industriesQuery = CommonIndustries<PathwayIndex>( query, ref windustriesQuery );
 			#endregion
@@ -8886,13 +10877,14 @@ namespace workIT.Services
 				   .Index( PathwayIndex )
 				   .Query( q =>
 					  recordIdListQuery
-					  && ownedByQuery
+					  //&& ownedByQuery
 					  && subjectsQuery
-					  //&& wsubjectsQuery         //widget specific!!!
-					  && keywordsQuery
+					  && collectionsQuery
+                      //&& wsubjectsQuery         //widget specific!!!
+                      && keywordsQuery
 					  && occupationsQuery
 					  && industriesQuery
-					  //&& qualityAssuranceSearchQuery
+					  && commonOrgRolesBYQuery && publishedBYQuery
 					  //&& LifeCycleStatusTypeQuery
 					  && qaFilterQuery
 					  && history.CreatedFromQuery && history.CreatedToQuery && history.HistoryFromQuery && history.HistoryToQuery
@@ -8924,7 +10916,7 @@ namespace workIT.Services
 			}
 			if ( pTotalRows > 0 )
 			{
-				list = ElasticManager.Pathway_MapFromElastic( ( List<PathwayIndex> ) search.Documents );
+				list = ElasticManager.Pathway_MapFromElastic( ( List<PathwayIndex> )search.Documents );
 
 				LoggingHelper.DoTrace( 6, string.Format( "ElasticServices.PathwaySearch. found: {0} records", pTotalRows ) );
 			}
@@ -8951,7 +10943,7 @@ namespace workIT.Services
 		/// </summary>
 		/// <param name="doingAll"></param>
 		/// <param name="populatingCachesFirst"></param>
-		public static void UpdateElastic( bool doingAll, bool populatingCachesFirst = false )
+		public static void UpdateElastic( bool doingAll, bool populatingCachesFirst = false)
 		{
 			//procs have been updated to use the 
 			if ( populatingCachesFirst )
@@ -8970,7 +10962,8 @@ namespace workIT.Services
 			int processedCnt = 0;
 			string filter = "";
 			messages = new List<string>();
-			List<SearchPendingReindex> expected = new List<SearchPendingReindex>();
+            var currentEntityTypeId = 0;
+            List<SearchPendingReindex> expected = new List<SearchPendingReindex>();
 			//or could do bulk
 			// 
 			//will need process to update statusId after completion
@@ -8996,7 +10989,7 @@ namespace workIT.Services
 							var diff = expected.Count() - processedCnt;
 							if ( diff < 10 && processedCnt > 100 )
 							{
-								messages.Add( $"Expected to reindex {expected.Count()} credentials, but only did: {processedCnt}. Regardless, did the update of SearchPendingReindex!!" );
+								messages.Add( $"Expected to reindex {expected.Count()} credentials, but only did: {processedCnt}. Regardless, do the update of SearchPendingReindex!!" );
 								new SearchPendingReindexManager().UpdateAll( 1, ref messages, 1 );
 							}
 							else
@@ -9005,13 +10998,12 @@ namespace workIT.Services
 								//new SearchPendingReindexManager().UpdateAll( 1, ref messages, 1 );
 							}
 						}
-					}
-					else
+					} else
 					{
 						messages.Add( $"Expected to reindex {expected.Count()} credentials, but only did: {processedCnt}. INVESTIGATE!!" );
 					}
 				}
-			}
+			}	
 
 			//org
 			processedCnt = 0;
@@ -9054,7 +11046,7 @@ namespace workIT.Services
 			processedCnt = 0;
 			if ( entityTypeId == 0 || entityTypeId == 7 || entityTypeId == 36 || entityTypeId == 37 )
 			{
-				var entityIds = new List<int>() { 7, 36, 37 };
+				var entityIds = new List<int>() { 7,36,37 };
 				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, entityIds );
 				if ( expected != null && expected.Count > 0 )
 				{
@@ -9103,15 +11095,17 @@ namespace workIT.Services
 					}
 				}
 			}
-			//concept schemes
+			//concept schemes/progresssion levels
 			processedCnt = 0;
 			if ( entityTypeId == 0 || entityTypeId == 11 || entityTypeId == 12 )
 			{
-				var entityIds = new List<int>() { 11, 12 };
+				var entityIds = new List<int>() { 11,12 };
 				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, entityIds );
 				if ( expected != null && expected.Count > 0 )
 				{
 					filter = "(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId] in (11, 12) And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+					//NOTE: the concept scheme search is done via the registry, not elastic
+					//General_UpdateIndexForConceptScheme( filter, ref processedCnt );
 					if ( expected.Count > 0 )
 					{
 						messages.Add( $"Reindexed {processedCnt} ConceptSchemes." );
@@ -9137,25 +11131,25 @@ namespace workIT.Services
 					}
 				}
 			}
-			//transferIntermediary
-			processedCnt = 0;
-			if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY )
-			{
-				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY );
-				if ( expected != null && expected.Count > 0 )
-				{
-					filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+            //transferIntermediary
+            processedCnt = 0;
+            if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
 					General_UpdateIndexForTransferIntermediary( filter, ref processedCnt );
-					if ( processedCnt > 0 )
-					{
-						messages.Add( $"Reindexed {processedCnt} transferIntermediaries." );
-						LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} transferIntermediaries." );
-						new SearchPendingReindexManager().UpdateAll( 1, ref messages, CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY );
-					}
-				}
-			}
-			//pathway
-			processedCnt = 0;
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} transferIntermediaries." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} transferIntermediaries." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY );
+                    }
+                }
+            }
+            //pathway
+            processedCnt = 0;
 			if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
 			{
 				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_PATHWAY );
@@ -9181,7 +11175,7 @@ namespace workIT.Services
 				{
 					filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_PATHWAY_SET} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
 					//PathwaySet_UpdateIndex( filter, ref processedCnt );
-					General_UpdateIndexForTVP( filter, ref processedCnt );
+					General_UpdateIndexForPathwaySet( filter, ref processedCnt );
 					if ( processedCnt > 0 )
 					{
 						messages.Add( $"Reindexed {processedCnt} PathwaySets." );
@@ -9190,31 +11184,184 @@ namespace workIT.Services
 					}
 				}
 			}
-			//Occupations
-			if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+            //support service
+            processedCnt = 0;
+            if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_SUPPORT_SERVICE )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_SUPPORT_SERVICE} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    General_UpdateIndexForSupportService( filter, ref processedCnt );
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} SupportServices." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} SupportServices." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE );
+                    }
+                }
+            }
+            //ScheduledOffering
+            processedCnt = 0;
+            if ( entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    General_UpdateIndexForSupportService( filter, ref processedCnt );
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} ScheduledOffering records." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} ScheduledOffering records." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING );
+                    }
+                }
+            }
+            //ProgressionModel
+            processedCnt = 0;
+            if (entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_PROGRESSION_MODEL)
+            {
+                currentEntityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_MODEL;
+
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, currentEntityTypeId );
+                if (expected != null && expected.Count > 0)
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {currentEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    General_UpdateIndexForProgressionModel( filter, ref processedCnt );
+                    if (processedCnt > 0)
+                    {
+                        messages.Add( $"Reindexed {processedCnt} ProgressionModel records." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} ProgressionModel records." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, currentEntityTypeId );
+                    }
+                }
+            }
+            //ConceptScheme
+            processedCnt = 0;
+			
+            if (entityTypeId == 0 || entityTypeId == CodesManager.ENTITY_TYPE_CONCEPT_SCHEME)
+            {
+				currentEntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME;
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, currentEntityTypeId );
+                if (expected != null && expected.Count > 0)
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {currentEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    General_UpdateIndexForConceptScheme( filter, ref processedCnt );
+                    if (processedCnt > 0)
+                    {
+                        messages.Add( $"Reindexed {processedCnt} ConceptScheme records." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} ConceptScheme records." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, currentEntityTypeId );
+                    }
+                }
+            }
+            //Occupations
+            var nextEntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
+			var nextLabel = "Occupations";
+            if ( entityTypeId == 0 || entityTypeId == nextEntityTypeId )
 			{
-				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE );
+				expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, nextEntityTypeId );
 				if ( expected != null && expected.Count > 0 )
 				{
-					filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+					filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {nextEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+					General_UpdateIndexForOccupation( filter, ref processedCnt );
 					if ( processedCnt > 0 )
 					{
-						messages.Add( $"Reindexed {processedCnt} Occupations." );
-						LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} Occupations." );
-						new SearchPendingReindexManager().UpdateAll( 1, ref messages, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE );
+						messages.Add( $"Reindexed {processedCnt} {nextLabel}." );
+						LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} {nextLabel}." );
+						new SearchPendingReindexManager().UpdateAll( 1, ref messages, nextEntityTypeId );
 					}
 				}
 			}
-			//
-			if ( messages.Count == 0 )
+            //Jobs
+            nextEntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE;
+            nextLabel = "Jobs";
+            if ( entityTypeId == 0 || entityTypeId == nextEntityTypeId )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, nextEntityTypeId );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {nextEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+					//					******
+                    General_UpdateIndexForJob( filter, ref processedCnt );
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} {nextLabel}." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} {nextLabel}." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, nextEntityTypeId );
+                    }
+                }
+            }
+            //WorkRole
+            nextEntityTypeId = CodesManager.ENTITY_TYPE_WORKROLE_PROFILE;
+            nextLabel = "WorkRoles";
+            if ( entityTypeId == 0 || entityTypeId == nextEntityTypeId )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, nextEntityTypeId );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {nextEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    //					******
+                    General_UpdateIndexForWorkRole( filter, ref processedCnt );
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} {nextLabel}." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} {nextLabel}." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, nextEntityTypeId );
+                    }
+                }
+            }
+            //Task
+            nextEntityTypeId = CodesManager.ENTITY_TYPE_TASK_PROFILE;
+            nextLabel = "Tasks";
+            if ( entityTypeId == 0 || entityTypeId == nextEntityTypeId )
+            {
+                expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, nextEntityTypeId );
+                if ( expected != null && expected.Count > 0 )
+                {
+                    filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {nextEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                    //					******
+                    General_UpdateIndexForTask( filter, ref processedCnt );
+                    if ( processedCnt > 0 )
+                    {
+                        messages.Add( $"Reindexed {processedCnt} {nextLabel}." );
+                        LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} {nextLabel}." );
+                        new SearchPendingReindexManager().UpdateAll( 1, ref messages, nextEntityTypeId );
+                    }
+                }
+            }
+            //
+            if ( messages.Count == 0)
 				messages.Add( "There were no records found for pending re-indexing." );
 
-			//set all in pending to resolved - not ideal - don't want to delete in case updates failed!
-			//new SearchPendingReindexManager().UpdateAll( 1, ref messages );
+            //set all in pending to resolved - not ideal - don't want to delete in case updates failed!
+            //new SearchPendingReindexManager().UpdateAll( 1, ref messages );
+        }
 
-		}
+		/*
+        public static void HandlePendingReindex<T>( string entityType, int nextEntityTypeId, 
+				Func<string, ref int, T> General_UpdateIndexForEntity, 
+				ref List<string> messages )
+        {
+			var processedCnt = 0;
 
+            var expected = SearchPendingReindexManager.GetAllPendingReindex( ref messages, nextEntityTypeId );
+            if (expected != null && expected.Count > 0)
+            {
+                var filter = $"(base.Id in (SELECT [RecordId]  FROM [dbo].[SearchPendingReindex] where [EntityTypeId]= {nextEntityTypeId} And [StatusId] = 1 AND IsUpdateOrDeleteTypeId= 1 ) )";
+                //					******
+                General_UpdateIndexForEntity( filter, ref processedCnt );
+                if (processedCnt > 0)
+                {
+                    messages.Add( $"Reindexed {processedCnt} {entityType}." );
+                    LoggingHelper.DoTrace( 1, $"Reindexed {processedCnt} {entityType}." );
+                    new SearchPendingReindexManager().UpdateAll( 1, ref messages, nextEntityTypeId );
+                }
+            }
+        }
 
+		*/
 		public static void HandlePendingDeletes( ref List<String> messages )
 		{
 			SearchPendingReindexManager mgr = new SearchPendingReindexManager();
@@ -9257,59 +11404,38 @@ namespace workIT.Services
 						}
 						break;
 					case 8:
-						{
-							//Problem, can't use record ID for the common index, could delete the wrong record
-							//		 DELETE: /common_index/genericindex/178
-							//var response = EC.Delete<PathwayIndex>( item.RecordId, d => d.Index( PathwayIndex ).Type( "genericindex" ) );
+					{
+						//Problem, can't use record ID for the common index, could delete the wrong record
+						//		 DELETE: /common_index/genericindex/178
+						//var response = EC.Delete<PathwayIndex>( item.RecordId, d => d.Index( PathwayIndex ).Type( "genericindex" ) );
 
-							//this works in the head plugin - to return the record
-							//YES - did delete
-							var response5 = EC.DeleteByQuery<PathwayIndex>( q => q.Query( rq => rq
-									  .Bool( mm => mm
-											 .Must( mu =>
-														mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "8" ) )
-													&&
-														mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
-													)
-											)//Must
-										) //Bool
-								 ).Index( PathwayIndex )
-							);
+						//this works in the head plugin - to return the record
+						//YES - did delete
+						var response5 = EC.DeleteByQuery<PathwayIndex>( q => q.Query( rq => rq
+								  .Bool( mm => mm
+										 .Must( mu =>
+													mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "8" ) )
+												&&
+													mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+												)
+										)//Must
+									) //Bool
+							 ).Index( PathwayIndex )
+						);
 
-							messages.Add( string.Format( "Removed pathway #{0} from elastic index", item.RecordId ) );
-						}
-						break;
-					case 10:
+						messages.Add( string.Format( "Removed pathway #{0} from elastic index", item.RecordId ) );
+					}
+					break;
+					case 9:
 						{
-							var response = EC.Delete<CompetencyFrameworkIndex>( item.RecordId, d => d.Index( CompetencyFrameworkIndex ) ); ;
-							messages.Add( string.Format( "Removed Competency framework #{0} from elastic index", item.RecordId ) );
-						}
-						break;
-					case 23:
-						{
-							var response5 = EC.DeleteByQuery<PathwayIndex>( q => q.Query( rq => rq
-									  .Bool( mm => mm
-											 .Must( mu =>
-														mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "23" ) )
-													&&
-														mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
-													)
-											)//Must
-										) //Bool
-								 ).Index( PathwayIndex )
-							);
-							messages.Add( string.Format( "Removed TVP #{0} from elastic index", item.RecordId ) );
-						}
-						break;
-					case 26:
-						{
+
 							//Problem, can't use record ID for the common index, could delete the wrong record
 							//var response = EC.Delete<GenericIndex>( item.RecordId, d => d.Index( CommonIndex ).Type( "genericindex" ) );
 
-							var response = EC.DeleteByQuery<PathwayIndex>( q => q.Query( rq => rq
+							var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
 									  .Bool( mm => mm
 											 .Must( mu =>
-														mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "26" ) )
+														mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "9" ) )
 													&&
 														mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
 													)
@@ -9317,10 +11443,144 @@ namespace workIT.Services
 										) //Bool
 								 ).Index( CommonIndex )
 							);
-							messages.Add( string.Format( "Removed TVP #{0} from elastic index", item.RecordId ) );
+							messages.Add( string.Format( "Removed Collection #{0} from elastic index", item.RecordId ) );
 						}
 						break;
-				}
+					case 10:
+					{
+						var response = EC.Delete<CompetencyFrameworkIndex>( item.RecordId, d => d.Index( CompetencyFrameworkIndex) ); ;
+						messages.Add( string.Format( "Removed Competency framework #{0} from elastic index", item.RecordId ) );
+					}
+					break;
+					case 11:
+                        {
+                            var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+                                   .Bool( mm => mm
+                                          .Must( mu =>
+                                                     mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "11" ) ) //???
+                                                 &&
+                                                     mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+                                                 )
+                                         )//Must
+                                     ) //Bool
+                              ).Index( CommonIndex )
+                         );
+                            messages.Add( string.Format( "Removed Concept scheme #{0} from elastic index", item.RecordId ) );
+                        }
+                        break;
+                    case 12:
+                        {
+                            var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+                                   .Bool( mm => mm
+                                          .Must( mu =>
+                                                     mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "12" ) ) //???
+                                                 &&
+                                                     mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+                                                 )
+                                         )//Must
+                                     ) //Bool
+                              ).Index( CommonIndex )
+                         );
+                            messages.Add( string.Format( "Removed Progression Model #{0} from elastic index", item.RecordId ) );
+                        }
+                        break;
+                    case 15:
+                        {
+                            var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+                                   .Bool( mm => mm
+                                          .Must( mu =>
+                                                     mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "15" ) ) //???
+                                                 &&
+                                                     mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+                                                 )
+                                         )//Must
+                                     ) //Bool
+                              ).Index( CommonIndex )
+                         );
+                            messages.Add( string.Format( "Removed Scheduled Offering #{0} from elastic index", item.RecordId ) );
+                        }
+                        break;
+                    case 26:
+					{
+						//Problem, can't use record ID for the common index, could delete the wrong record
+						//var response = EC.Delete<GenericIndex>( item.RecordId, d => d.Index( CommonIndex ).Type( "genericindex" ) );
+
+						var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+								  .Bool( mm => mm
+										 .Must( mu =>
+													mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "26" ) )
+												&&
+													mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+												)
+										)//Must
+									) //Bool
+							 ).Index( CommonIndex )
+						);
+						messages.Add( string.Format( "Removed TVP #{0} from elastic index", item.RecordId ) );
+					}
+					break;
+					case 28:
+						{
+							//Problem, can't use record ID for the common index, could delete the wrong record
+							//var response = EC.Delete<GenericIndex>( item.RecordId, d => d.Index( CommonIndex ).Type( "genericindex" ) );
+
+							var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+									  .Bool( mm => mm
+											 .Must( mu =>
+														mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "28" ) )
+													&&
+														mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+													)
+											)//Must
+										) //Bool
+								 ).Index( CommonIndex )
+							);
+							messages.Add( string.Format( "Removed Transfer Intermediary #{0} from elastic index", item.RecordId ) );
+						}
+						break;
+                    case 31:
+                    case 32:
+                    case 33:
+					case 34:
+                    case 35:
+                        {
+                            //Problem, can't use record ID for the common index, could delete the wrong record
+                            //var response = EC.Delete<GenericIndex>( item.RecordId, d => d.Index( CommonIndex ).Type( "genericindex" ) );
+
+                            var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+                                      .Bool( mm => mm
+                                             .Must( mu =>
+                                                        mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( item.EntityTypeId.ToString() ) )
+                                                    &&
+                                                        mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+                                                    )
+                                            )//Must
+                                        ) //Bool
+                                 ).Index( CommonIndex )
+                            );
+                            messages.Add( $"Removed {item.EntityTypeId} #{item.RecordId} from elastic index" );
+                        }
+                        break;
+                    case 38:
+                        {
+                            //Problem, can't use record ID for the common index, could delete the wrong record
+                            //var response = EC.Delete<GenericIndex>( item.RecordId, d => d.Index( CommonIndex ).Type( "genericindex" ) );
+
+                            var response = EC.DeleteByQuery<GenericIndex>( q => q.Query( rq => rq
+                                      .Bool( mm => mm
+                                             .Must( mu =>
+                                                        mu.Terms( m => m.Field( f => f.EntityTypeId ).Terms( "38" ) )
+                                                    &&
+                                                        mu.Terms( m => m.Field( f => f.Id ).Terms( item.RecordId )
+                                                    )
+                                            )//Must
+                                        ) //Bool
+                                 ).Index( CommonIndex )
+                            );
+                            messages.Add( string.Format( "Removed Support Service #{0} from elastic index", item.RecordId ) );
+                        }
+                        break;
+                }
 
 				if ( resettingPendingRecordImmediately )
 				{
@@ -9360,10 +11620,10 @@ namespace workIT.Services
              * 
              */
 
-		}
+			}
 
 
-		public static bool Search( List<string> field, List<string> list )
+			public static bool Search( List<string> field, List<string> list )
 		{
 			return list.Any( x => field.Any( y => y == x ) );
 		}
@@ -9382,7 +11642,18 @@ namespace workIT.Services
 		//{
 		//	AppendItem( index, recordId, fieldName, item, checkExists );
 		//}
-		public bool CredentialResourceAddWidgetId( string index, int widgetId, string widgetProperty, string recordId, bool checkExists, ref string status )
+
+		/// <summary>
+		/// Do a direct elastic update, to add widgetId to property: 
+		/// </summary>
+		/// <param name="index"></param>
+		/// <param name="widgetId"></param>
+		/// <param name="widgetProperty"></param>
+		/// <param name="recordId"></param>
+		/// <param name="checkExists"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool CredentialResourceAddWidgetId( string index, int widgetId, string widgetProperty, string recordId,  bool checkExists, ref string status )
 		{
 			//if (ctx._source.resourceForWidget == null) {ctx._source.resourceForWidget = new ArrayList();  ctx._source.resourceForWidget.add( params.widget_id )}
 			//{ "inline", "ctx._source.resourceForWidget.add( params.widget_id )" },
@@ -9390,16 +11661,17 @@ namespace workIT.Services
 			try
 			{
 				var method = string.Format( "if (ctx._source.{0} == null) ctx._source.{0} = new ArrayList();  if (!ctx._source.{0}.contains(params.widget_id)) ctx._source.{0}.add( params.widget_id )", widgetProperty );
-				var query = new JObject() {
-				{ "script", new JObject()  {
-					{ "inline",method },
-					{ "lang", "painless" },
-					{ "params", new JObject()
-					{
-						{ "widget_id", widgetId }
-					}}
-				} }
-			};
+				var query = new JObject() 
+				{
+					{ "script", new JObject()  {
+						{ "inline",method },
+						{ "lang", "painless" },
+						{ "params", new JObject()
+						{
+							{ "widget_id", widgetId }
+						}}
+					} }
+				};
 				//var query = new JObject() {
 				//	{ "script", new JObject()  {
 				//		{ "inline", "if (ctx._source.resourceForWidget == null) ctx._source.resourceForWidget = new ArrayList();  if (!ctx._source.resourceForWidget.contains(params.widget_id)) ctx._source.resourceForWidget.add( params.widget_id )" },
@@ -9416,6 +11688,7 @@ namespace workIT.Services
 
 				//need to hard code the type, so may use specific methods by index
 				//var elasticVersion = UtilityManager.GetAppKeyValue( "elasticVersion", "6.x" );
+				//23-02-01 mp - note the index property is the actual name of the index from the web.config file. 
 				var endpoint = FormatEndpoint( index, "CredentialIndex", recordId );
 
 				return ContactServer( "POST", q2, endpoint, ref status );
@@ -9430,7 +11703,7 @@ namespace workIT.Services
 
 		public bool CredentialResourceRemoveWidgetId( string index, int widgetId, string widgetProperty, string recordId, ref string status )
 		{
-			var method = string.Format( "if (ctx._source.{0}.contains(params.widget_id)) {1}", widgetProperty, string.Format( "ctx._source.{0}.remove(ctx._source.{0}.indexOf(params.widget_id)) ", widgetProperty ) );
+			var method = string.Format( "if (ctx._source.{0}.contains(params.widget_id)) {1}", widgetProperty, string.Format( "ctx._source.{0}.remove(ctx._source.{0}.indexOf(params.widget_id)) ", widgetProperty) );
 			try
 			{
 				//should have an existance check just in case. 
@@ -9459,11 +11732,11 @@ namespace workIT.Services
 
 				var q1 = JsonConvert.SerializeObject( query );
 				var endpoint = FormatEndpoint( index, "credentialindex", recordId );
-
+				
 				return ContactServer( "POST", q1, endpoint, ref status );
 				//Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( result );
 			}
-			catch ( Exception ex )
+			catch (Exception ex )
 			{
 				status = ex.Message;
 				LoggingHelper.LogError( ex, "ElasticServices.CredentialRemoveWidgetId" );
@@ -9551,7 +11824,7 @@ namespace workIT.Services
 				try
 				{
 					//string wsUrl = "http://localhost:9200/" + collection + urlAddendum;
-					HttpWebRequest request = ( HttpWebRequest ) WebRequest.Create( wsUrl );
+					HttpWebRequest request = ( HttpWebRequest )WebRequest.Create( wsUrl );
 					request.Method = method;
 
 					if ( method == "POST" || method == "PUT" || json.Length > 0 )
@@ -9563,12 +11836,12 @@ namespace workIT.Services
 						requestStream.Write( byteData, 0, byteData.Length );
 						request.Timeout = 15000;
 					}
-					HttpWebResponse response = ( HttpWebResponse ) request.GetResponse();
+					HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 					success = true;
 					//Console.WriteLine("Server contact successful");
 
 					StreamReader reader = new StreamReader( response.GetResponseStream() );
-					result = reader.ReadToEnd();
+					result= reader.ReadToEnd();
 					return true;
 				}
 				catch ( TimeoutException tex )

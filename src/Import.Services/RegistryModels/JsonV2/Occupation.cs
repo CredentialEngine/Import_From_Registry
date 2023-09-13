@@ -13,10 +13,13 @@ namespace RA.Models.JsonV2
 	/// </summary>
 	public class Occupation : BaseResourceDocument
 	{
-		/// <summary>
-		///  type
-		/// </summary>
-		[JsonProperty( "@type" )]
+        [JsonIgnore]
+        public static string classType = "ceterms:Occupation";
+
+        /// <summary>
+        ///  type
+        /// </summary>
+        [JsonProperty( "@type" )]
 		public string Type { get; set; } = "ceterms:Occupation";
 
 		/// <summary>
@@ -48,14 +51,15 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
 		public LanguageMapList AlternateName { get; set; }
 
-		/// <summary>
-		/// AbilityEmbodied
-		/// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
-		/// ceasn:abilityEmbodied
-		/// </summary>
-		[JsonProperty( PropertyName = "ceasn:abilityEmbodied" )]
+        /// <summary>
+        /// AbilityEmbodied
+        /// Enduring attributes of the individual that influence performance are embodied either directly or indirectly in this resource.
+        /// CTID/URI to any of:
+        /// ceasn:Competency ceterms:Job ceterms:Occupation ceterms:Task ceterms:WorkRole
+        /// ceasn:abilityEmbodied
+        /// </summary>
+        [JsonProperty( PropertyName = "ceasn:abilityEmbodied" )]
 		public List<string> AbilityEmbodied { get; set; }
-		//public List<CredentialAlignmentObject> AbilityEmbodied { get; set; } 
 
 		/// <summary>
 		/// Category or classification of this resource.

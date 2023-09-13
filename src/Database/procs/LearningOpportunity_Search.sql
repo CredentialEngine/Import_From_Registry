@@ -1,5 +1,10 @@
 USE credFinder
 GO
+use sandbox_credFinder
+go
+--use staging_credFinder
+--go
+
 /****** Object:  StoredProcedure [dbo].[LearningOpportunity_Search]    Script Date: 3/8/2018 7:29:22 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -37,6 +42,7 @@ set @SortOrder = 'newest'
 set @SortOrder = 'cost_highest'
 set @SortOrder = 'cost_lowest'
 set @SortOrder = 'org_alpha'
+set @SortOrder = 'alpha'
 --set @SortOrder = 'duration_shortest'
 --set @SortOrder = 'duration_longest'
 
@@ -44,14 +50,14 @@ set @SortOrder = 'org_alpha'
 
 set @Filter = '  (base.name like ''%western gov%'' OR base.Description like ''%western gov%''  OR base.Organization like ''%western gov%''   OR base.Url like ''%western gov%'') '
 
-set @Filter = ' (base.name like ''%western%'' OR base.Description like ''%western%''  OR base.Organization like ''%western%''  )'
+set @Filter = '  ( base.EntityStateId = 3 ) AND ( base.CTID in (Select distinct CTID from [Entity_Cache]  where EntityTypeId=7 AND  IsNull(ResourceDetail,'''') = '''' ) ) '
 	
-	set @Filter = '  (base.Id in (SELECT c.id FROM [dbo].[Entity.FrameworkItemSummary] a inner join Entity b on a.EntityId = b.Id inner join LearningOpportunity c on b.EntityUid = c.RowId where [CategoryId] = 23 and ([CodeGroup] in ('''')  OR ([CodeId] in ('''') ) ) ) )  '
+--set @Filter = '  ( CTID in (Select distinct EntityCtid from [Import.PendingRequest] where PublisherCTID = ''ce-89bd0d16-6492-4ae1-8059-deabc3d89c15''  )) and EntityStateId=3 '
 
-set @Filter = ''
+--set @Filter = ' base.EntityStateId > 2 '
 
-set @StartPageIndex = 1
-set @PageSize = 95
+set @StartPageIndex = 4
+set @PageSize = 75
 --set statistics time on       
 EXECUTE @RC = [LearningOpportunity_Search]
      @Filter,@SortOrder  ,@StartPageIndex  ,@PageSize, @TotalRows OUTPUT
@@ -105,6 +111,7 @@ if @SortOrder = 'relevance' set @SortOrder = 'base.Name '
 else if @SortOrder = 'alpha' set @SortOrder = 'base.Name '
 else if @SortOrder = 'org_alpha' set @SortOrder = 'base.Organization, base.Name '
 else if @SortOrder = 'newest' set @SortOrder = 'base.lastUpdated Desc '
+else if @SortOrder = 'oldest' set @SortOrder = 'base.Id '
 --else if @SortOrder = 'cost_highest' set @SortOrder = 'costs.TotalCost DESC'
 --else if @SortOrder = 'cost_lowest' set @SortOrder = 'costs.TotalCost'
 else set @SortOrder = 'base.Name '
@@ -127,7 +134,7 @@ CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
       Id int,
       Title             varchar(500)
-			,Organization varchar(300)
+			,Organization varchar(500)
 )
 
 -- =================================
@@ -156,7 +163,8 @@ CREATE TABLE #tempWorkTable(
 
 print 'added to temp table: ' + convert(varchar,@TotalRows)
 if @debugLevel > 7 begin
-  select * from #tempWorkTable
+  select a.*, base.ctid from #tempWorkTable a
+  	Inner join LearningOpportunity_Summary base on a.Id = base.Id
   end
 
 -- Calculate the range
@@ -176,6 +184,8 @@ SET ROWCOUNT @PageSize
 SELECT        
 	RowNumber, 
 	base.id, 
+	base.CTID,
+	base.EntityStateId,
 	base.Name, 
 	isnull(base.Description,'') As Description
 	--[OrgId],base.Organization,
@@ -201,7 +211,7 @@ SELECT
 	
 	--,isnull(comps.Nbr,0) as Competencies
 	,0 as Competencies
-	,base.CTID
+
 	,base.CredentialRegistryId
 
 	,base.RequiresCount
@@ -216,7 +226,7 @@ SELECT
 
 From #tempWorkTable work
 	Inner join LearningOpportunity_Summary base on work.Id = base.Id
-	Inner Join Entity e on base.RowId = e.EntityUid
+	Left Join Entity e on base.RowId = e.EntityUid
 	left Join (select EntityId, count(*) as nbr from [Entity.Address] group by EntityId ) ea on e.Id = ea.EntityId
 
 	--left Join (

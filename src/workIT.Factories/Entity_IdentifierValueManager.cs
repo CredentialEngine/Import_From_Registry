@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisEntity = workIT.Models.ProfileModels.Entity_IdentifierValue;
-using DBEntity = workIT.Data.Tables.Entity_IdentifierValue;
+using ThisResource = workIT.Models.ProfileModels.Entity_IdentifierValue;
+using DBResource = workIT.Data.Tables.Entity_IdentifierValue;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
 
@@ -24,18 +24,18 @@ namespace workIT.Factories
 		public static int IdentifierValue_VersionIdentifier = 1;
 		public static int IdentifierValue_Identifier = 2;
 		//
-		public static int CREDENTIAL_VersionIdentifier = 1;
-		public static int ORGANIZATION_AlternativeIdentifier = 2; //OBSOLETE
-		public static int ASSESSMENT_VersionIdentifier = 1;//3;
+		//public static int CREDENTIAL_VersionIdentifier = 1;
+		//public static int ORGANIZATION_AlternativeIdentifier = 2; //OBSOLETE
+		//public static int ASSESSMENT_VersionIdentifier = 1;//3;
 		//public static int LEARNING_OPP_VersionIdentifier = 1;//4;
 
-		public static int CREDENTIAL_Identifier = 2;//11;
-		public static int ORGANIZATION_Identifier = 2;//12;
-		public static int ASSESSMENT_Identifier = 2;//13;
+		//public static int CREDENTIAL_Identifier = 2;//11;
+		//public static int ORGANIZATION_Identifier = 2;//12;
+		//public static int ASSESSMENT_Identifier = 2;//13;
 		//public static int LEARNING_OPP_Identifier = 2;//14;
-													  //NOTE: for pathwayComponent, Idenifier is store in the JsonProperties
+		//NOTE: for pathwayComponent, Idenifier is stored in the JsonProperties
 		#region === Persistance ===================
-		public bool SaveList( List<ThisEntity> list, Guid parentUid, int IdentityValueTypeId, ref SaveStatus status, bool doingDelete )
+		public bool SaveList( List<ThisResource> list, Guid parentUid, int IdentityValueTypeId, ref SaveStatus status, bool doingDelete )
 		{
             if ( !IsValidGuid( parentUid ) )
             {
@@ -58,7 +58,7 @@ namespace workIT.Factories
 				return true;
 
 			bool isAllValid = true;
-			foreach ( ThisEntity item in list )
+			foreach ( ThisResource item in list )
 			{
 				item.IdentityValueTypeId = IdentityValueTypeId;
 				Add( parent, item, ref status );
@@ -74,9 +74,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		private int Add( Entity parent,
-					ThisEntity entity,
-					ref SaveStatus status )
+		private int Add( Entity parent, ThisResource entity, ref SaveStatus status )
 		{
 			int id = 0;
 			int count = 0;
@@ -89,11 +87,10 @@ namespace workIT.Factories
 			}
 			using ( var context = new EntityContext() )
 			{
-				DBEntity efEntity = new DBEntity();
+				DBResource efEntity = new DBResource();
 				try
 				{
-
-					efEntity = new DBEntity();
+					efEntity = new DBResource();
 
 					MapToDB( entity, efEntity );
 					efEntity.EntityId = parent.Id;
@@ -112,7 +109,7 @@ namespace workIT.Factories
 					{
 						//?no info on error
 						status.AddError( thisClassName + "Error - the add was not successful." );
-						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_IdentifierValue for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. Parent Profile: {0}, Type: {1}, learningOppId: {2}, createdById: {3}", parent.EntityUid, parent.EntityType, entity.IdentifierType );
+						string message = thisClassName + string.Format( ".Add Failed", "Attempted to add a Entity_IdentifierValue for a profile. The process appeared to not work, but there was no exception, so we have no message, or no clue. parent.EntityUid,: {0}, Type: {1}, IdentifierType: {2}", parent.EntityUid, parent.EntityType, entity.IdentifierType );
 						EmailManager.NotifyAdmin( thisClassName + ".Add Failed", message );
 					}
 				}
@@ -129,8 +126,6 @@ namespace workIT.Factories
 					status.AddError( "Error - the save was not successful. " + message );
 					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save(), Parent: {0} ({1})", parent.EntityBaseName, parent.EntityBaseId ) );
 				}
-
-
 			}
 			return id;
 		}
@@ -181,10 +176,10 @@ namespace workIT.Factories
         /// </summary>
         /// <param name="parentUid"></param>
         /// <returns></returnsThisEntity
-        public static List<ThisEntity> GetAll( Guid parentUid, int identityValueTypeId )
+        public static List<ThisResource> GetAll( Guid parentUid, int identityValueTypeId )
 		{
-			List<ThisEntity> list = new List<ThisEntity>();
-			ThisEntity entity = new ThisEntity();
+			List<ThisResource> list = new List<ThisResource>();
+			ThisResource entity = new ThisResource();
 
 			Entity parent = EntityManager.GetEntity( parentUid );
 			LoggingHelper.DoTrace( 7, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
@@ -193,16 +188,16 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					List<DBEntity> results = context.Entity_IdentifierValue
+					List<DBResource> results = context.Entity_IdentifierValue
 							.Where( s => s.EntityId == parent.Id && s.IdentityValueTypeId == identityValueTypeId )
 							.OrderBy( s => s.Name )
 							.ToList();
 
 					if ( results != null && results.Count > 0 )
 					{
-						foreach ( DBEntity item in results )
+						foreach ( DBResource item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 							MapFromDB( item, entity );
 							list.Add( entity );
 						}
@@ -216,9 +211,9 @@ namespace workIT.Factories
 			}
 			return list;
 		}
-		public static ThisEntity Get( int parentId, int recordId )
+		public static ThisResource Get( int parentId, int recordId )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( parentId < 1 || recordId < 1 )
 			{
 				return entity;
@@ -227,7 +222,7 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity from = context.Entity_IdentifierValue
+					DBResource from = context.Entity_IdentifierValue
 							.SingleOrDefault( s => s.Id == recordId && s.EntityId == parentId );
 
 					if ( from != null && from.Id > 0 )
@@ -243,7 +238,7 @@ namespace workIT.Factories
 			return entity;
 		}//
 
-		public static void MapFromDB( DBEntity from, ThisEntity to )
+		public static void MapFromDB( DBResource from, ThisResource to )
 		{
 			to.Id = from.Id;
 			to.EntityId = from.EntityId;
@@ -253,7 +248,7 @@ namespace workIT.Factories
 			to.IdentifierValueCode = from.IdentifierValueCode;
 			to.Created = ( DateTime ) from.Created;
 		}
-		public static void MapToDB( ThisEntity from, DBEntity to )
+		public static void MapToDB( ThisResource from, DBResource to )
 		{
 			if ( from.Id == 0)
 			{

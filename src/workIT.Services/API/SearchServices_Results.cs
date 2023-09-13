@@ -22,7 +22,7 @@ namespace workIT.Services.API
 	//Search Services dealing with results and result transformation
 	public partial class SearchServices
 	{
-		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
+		public static string credentialFinderMainSite = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
 
 		public static MainQueryResponse TranslateMainSearchResultsToAPIResults( MainSearchResults mainResultsData, JObject debug = null )
 		{
@@ -33,7 +33,8 @@ namespace workIT.Services.API
 			mainResultsData = mainResultsData ?? new MainSearchResults();
 			var translatedResultsData = new MainQueryResponse()
 			{
-				TotalResults = mainResultsData.TotalResults
+				TotalResults = mainResultsData.TotalResults,
+				RelatedItems = mainResultsData.RelatedItems?.Count() == 0 ? null : mainResultsData.RelatedItems
 			};
 
 			//Translate each result
@@ -427,7 +428,7 @@ namespace workIT.Services.API
 					result.Add( new Models.API.TagItem()
 					{
 						Label = item.TargetEntityName,
-						URL = reactFinderSiteURL + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId + "/" + item.TargetFriendlyName
+						URL = credentialFinderMainSite + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId + "/" + item.TargetFriendlyName
 					} );
 				}
 				break;
@@ -439,7 +440,7 @@ namespace workIT.Services.API
 					result.Add( new Models.API.TagItem()
 					{
 						Label = item.Label,
-						URL = reactFinderSiteURL + request.SearchType + "/" + request.RecordId + "/" + friendlyName
+						URL = credentialFinderMainSite + request.SearchType + "/" + request.RecordId + "/" + friendlyName
 					} );
 				}
 				break;
@@ -454,7 +455,7 @@ namespace workIT.Services.API
 						//Label = item.AgentToTargetRelationship + " by " + item.TargetEntityName, //TODO: Verify that this is the right combination
 						//Label = item.AgentToTargetRelationship + item.TargetEntityName, //TargetEntityType
 						Label = item.AgentToTargetRelationship + " '" + item.TargetEntityName + "' ", //TargetEntityType
-						URL = reactFinderSiteURL + item.TargetEntityType + "/" + item.TargetEntityBaseId + "/" + friendlyName
+						URL = credentialFinderMainSite + item.TargetEntityType + "/" + item.TargetEntityBaseId + "/" + friendlyName
 						} );
 				}
 				break;
@@ -512,9 +513,11 @@ namespace workIT.Services.API
 				case "tvphasassessment": return Services.SearchServices.TagTypes.TVPHASASSESSMENT;
 				case "tvphaslopp": return Services.SearchServices.TagTypes.TVPHASLOPP;
 				case "tvphaslearningopportunity": return Services.SearchServices.TagTypes.TVPHASLOPP;
+				case "tvphastransferintermediary": return Services.SearchServices.TagTypes.TVPHASTRANSFERINTERMEDIARY;
 				case "learningopportunityprofile": return Services.SearchServices.TagTypes.LEARNINGOPPORTUNITY;
 
-				case "pathway": return Services.SearchServices.TagTypes.PATHWAY;
+                case "partofcollection": return Services.SearchServices.TagTypes.PARTOFCOLLECTION;
+                case "pathway": return Services.SearchServices.TagTypes.PATHWAY;
 				case "pathwayset": return Services.SearchServices.TagTypes.PATHWAYSET;
 				case "qualityassuranceperformed": return Services.SearchServices.TagTypes.QAPERFORMED;
 				case "transfervalue": return Services.SearchServices.TagTypes.TRANSFERVALUE;

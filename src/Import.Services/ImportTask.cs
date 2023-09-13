@@ -8,10 +8,12 @@ using Newtonsoft.Json.Linq;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Services;
 using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.TaskServices;
+using ResourceServices = workIT.Services.TaskServices;
+using APIResourceServices = workIT.Services.API.TaskServices;
 using InputEntity = RA.Models.JsonV2.Task;
 using JInput = RA.Models.JsonV2;
 using ThisEntity = workIT.Models.Common.Task;
@@ -44,7 +46,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -85,7 +87,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -181,7 +183,7 @@ namespace Import.Services
 				Y		ceasn:knowledgeEmbodied
 				Y		ceasn:skillEmbodied
 				Y		ceterms:classification
-				Y		ceterms:codedNotation
+				Y		ceterms:codedNotationcodedNotation
 				Y		ceterms:ctid
 				Y		ceterms:description
 				ceterms:HasTask			
@@ -193,7 +195,7 @@ namespace Import.Services
 			LoggingHelper.DoTrace( 6, "ImportTasks - entered." );
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
 			InputEntity input = new InputEntity();
 			var mainEntity = new Dictionary<string, object>();
@@ -274,8 +276,19 @@ namespace Import.Services
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.CTID = input.CTID;
-				//TBD handling of referencing third party publisher
-				helper.MapOrganizationPublishedBy( output, ref status );
+                //NOTE: there is no asserting org for occupation, etc. It doesn't make sense. Add the data publisher as the primary
+                if ( BaseFactory.IsValidCtid( status.DocumentOwnedBy ) )
+                {
+                    output.PrimaryOrganization = OrganizationServices.GetSummaryByCtid( status.DocumentOwnedBy );
+                    if ( output.PrimaryOrganization != null && output.PrimaryOrganization.Id > 0 )
+                        output.PrimaryAgentUID = output.PrimaryOrganization.RowId;
+                }
+                else
+                {
+                    //always should be here
+                }
+                //TBD handling of referencing third party publisher
+                helper.MapOrganizationPublishedBy( output, ref status );
 
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
@@ -291,6 +304,10 @@ namespace Import.Services
 				output.CodedNotation = input.CodedNotation;
 				//
 				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
+				if ( output.Comment != null && output.Comment.Count() > 0 )
+				{
+					output.CommentJson = JsonConvert.SerializeObject( output.Comment, MappingHelperV3.GetJsonSettings() );
+				}
 				//
 				//HasTask
 				//if ( input.HasTask != null && input.HasTask.Count > 0 )
@@ -362,7 +379,7 @@ namespace Import.Services
 		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetByCtid( ctid );
+			entity = ResourceServices.GetMinimumByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

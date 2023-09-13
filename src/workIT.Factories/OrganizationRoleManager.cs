@@ -16,6 +16,9 @@ using workIT.Utilities;
 
 namespace workIT.Factories
 {
+	/// <summary>
+	/// THIS IS CONFUSING AS THE TABLE IS NOT Organization.Role, but Entity.AgentRelationship
+	/// </summary>
 	public class OrganizationRoleManager : BaseFactory
 	{
 		public static int CredentialToOrgRole_AccreditedBy = 1;
@@ -39,8 +42,52 @@ namespace workIT.Factories
 		public static int CredentialToOrgRole_ValidatedBy = 17;
 		public static int CredentialToOrgRole_Contributor = 18;
 		public static int CredentialToOrgRole_WIOAApproved = 19;
+        #region
+        //public List<OrganizationRoleProfile> GetCombinedRoles( int targetEntityTypeId, Guid entityRowId, int owningOrganizationId, bool onlyQAAssertions = false )
+        //{
+        //	/*
+        //	 * change to get a flat list from each method to enable merging here into OrganizationRole
+        //	 * 
+        //	 */
 
-		public List<OrganizationRoleProfile> GetAllCombinedForTarget( int targetEntityTypeId, int targetBaseId, int assertingAgentId, bool onlyQAAssertions = false )
+
+        //	//get assertions made via the entity owner (ownedBy, approvedBy) 
+        //	var roles = Entity_AgentRelationshipManager.GetAllThirdPartyAssertionsForEntity( targetEntityTypeId, entityRowId, owningOrganizationId, onlyQAAssertions );
+        //	//get assertions made by an organization (accredits, approves)
+        //	var orgFirstPartyAssertions = Entity_AssertionManager.GetAllFirstPartyAssertionsForTarget( targetEntityTypeId, entityRowId, owningOrganizationId, onlyQAAssertions );
+        //	if ( orgFirstPartyAssertions != null && orgFirstPartyAssertions.Any() )
+        //	{
+        //		//what to do with duplicates?
+        //		//foreach ( var item in orgFirstPartyAssertions )
+        //		//{
+        //		//	//check for same org 
+        //		//	var exists = roles.Where( m => m.ActingAgentId == item.ActingAgentId ).ToList();
+        //		//}
+        //		///OR just add and then loop thru and adjust like old method
+        //		roles.AddRange( orgFirstPartyAssertions );
+        //	} else
+        //	{
+        //		//if no first party, just return roles
+        //		return roles;
+        //	}
+        //	if ( roles == null || !roles.Any() )
+        //		return roles;
+        //	//merge roles
+        //	var mergedRoles = roles.OrderBy( m => m.ActingAgent.Id ).ToList();
+
+
+        //	return roles;
+        //}
+
+        /// <summary>
+        /// THIS IS CONFUSING AS THE TABLE IS NOT Organization.Role, but Entity.AgentRelationship
+        /// </summary>
+        /// <param name="targetEntityTypeId"></param>
+        /// <param name="targetBaseId"></param>
+        /// <param name="assertingAgentId"></param>
+        /// <param name="onlyQAAssertions"></param>
+        /// <returns></returns>
+        public List<OrganizationRoleProfile> GetAllCombinedForTarget( int targetEntityTypeId, int targetBaseId, int assertingAgentId, bool onlyQAAssertions = false )
 		{
 			OrganizationRoleProfile orp = new OrganizationRoleProfile();
 			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
@@ -49,7 +96,7 @@ namespace workIT.Factories
 			//|| assertingAgentId == 0
 			if ( targetEntityTypeId == 0 || targetBaseId == 0 )
 				return list;
-			LoggingHelper.DoTrace( 5, string.Format( "@@@@@ OrganizationRoleManager.GetAllCombinedForTarget targetEntityTypeId:{0}, targetBaseId:{1}, assertingAgent: {2}", targetEntityTypeId, targetBaseId, assertingAgentId ) );
+			LoggingHelper.DoTrace( 7, string.Format( "@@@@@ OrganizationRoleManager.GetAllCombinedForTarget targetEntityTypeId:{0}, targetBaseId:{1}, assertingAgent: {2}", targetEntityTypeId, targetBaseId, assertingAgentId ) );
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			int prevActingAgentId = 0;
@@ -57,48 +104,51 @@ namespace workIT.Factories
 			int prevRoleTypeId = 0;
 			//would like to enable this in the sandbox
 			bool includingPublishedBy = UtilityManager.GetAppKeyValue( "displayingPublishedBy", false );
-
+			
 			using ( var context = new EntityContext() )
 			{
 				//Entity_AgentRelationship is always the AgentUID making an assertion for the related EntityId
-				var list1 = from item in context.Entity_AgentRelationship
-							join entity in context.Entity on item.EntityId equals entity.Id
-							join actingAgent in context.Organization on item.AgentUid equals actingAgent.RowId      // assertion attributed to actingAgent by entity
-							join codes in context.Codes_CredentialAgentRelationship on item.RelationshipTypeId equals codes.Id
-							where entity.EntityTypeId == targetEntityTypeId
-								&& entity.EntityBaseId == targetBaseId
-								&& actingAgent.EntityStateId > 1    //the actingAgent can be a reference 
+
+				//getting relationships for the target
+				var list1 = from item			in context.Entity_AgentRelationship
+							join entity			in context.Entity on item.EntityId equals entity.Id
+							join actingAgent	in context.Organization on item.AgentUid equals actingAgent.RowId      // assertion attributed to actingAgent by entity
+							join codes			in context.Codes_CredentialAgentRelationship on item.RelationshipTypeId equals codes.Id
+							where	entity.EntityTypeId == targetEntityTypeId 
+								&&	entity.EntityBaseId == targetBaseId
+								&&	actingAgent.EntityStateId > 1    //the actingAgent can be a reference 
 
 							select new OrganizationRole
 							{
-								RoleSource = "EntityPublisher", //from POV of entity, accredited by the agent
-								RelationshipTypeId = item.RelationshipTypeId,
+								RoleSource="EntityPublisher", //from POV of entity, accredited by the agent
+								RelationshipTypeId=item.RelationshipTypeId,
 								RelationshipType = codes.Title,
 								IsInverseRole = item.IsInverseRole ?? false, //not sure needed.
-								ReverseRelation = codes.ReverseRelation,
-								SchemaTag = codes.SchemaTag,
-								ReverseSchemaTag = codes.ReverseSchemaTag,
-								IsQARole = codes.IsQARole ?? false,
+								ReverseRelation=codes.ReverseRelation,
+								SchemaTag=codes.SchemaTag,
+								ReverseSchemaTag=codes.ReverseSchemaTag,
+								IsQARole=codes.IsQARole ?? false,
 
-								AssertingOrganizationId = assertingAgentId,
-
-								ActingAgentId = actingAgent.Id,
+                                //21-09-24 mp - this seems wrong, it is the actingAgent
+                                //AssertingOrganizationId = assertingAgentId,
+                                AssertingOrganizationId = actingAgent.Id,
+                                ActingAgentId = actingAgent.Id,
 								ActingAgentUid = actingAgent.RowId,
 								ActingAgentName = actingAgent.Name,
-								ActingAgentSubjectWebpage = actingAgent.SubjectWebpage,
+								ActingAgentSubjectWebpage=actingAgent.SubjectWebpage,
 								ActingAgentDescription = actingAgent.Description,
-								ActingAgentCTID = actingAgent.CTID,
-								ActingAgentImage = actingAgent.ImageURL,
-								ActingAgentEntityStateId = actingAgent.EntityStateId ?? 0,
-								ISQAOrganization = actingAgent.ISQAOrganization ?? false
+								ActingAgentCTID=actingAgent.CTID,
+								ActingAgentImage=actingAgent.ImageURL,
+								ActingAgentEntityStateId=actingAgent.EntityStateId ?? 0,
+								ISQAOrganization=actingAgent.ISQAOrganization ?? false
 							};
 
 				//get external assertions from Entity_Assertion
-				var list2 = from item in context.Entity_Assertion
-							join entity in context.Entity on item.EntityId equals entity.Id
-							join targetEntity in context.Entity on item.TargetEntityUid equals targetEntity.EntityUid
-							join actingAgent in context.Organization on entity.EntityUid equals actingAgent.RowId
-							join codes in context.Codes_CredentialAgentRelationship on item.AssertionTypeId equals codes.Id
+				var list2 = from item			in context.Entity_Assertion
+							join entity			in context.Entity on item.EntityId equals entity.Id
+							join targetEntity	in context.Entity on item.TargetEntityUid equals targetEntity.EntityUid							
+							join actingAgent	in context.Organization on entity.EntityUid equals actingAgent.RowId
+							join codes			in context.Codes_CredentialAgentRelationship on item.AssertionTypeId equals codes.Id
 							where item.TargetEntityTypeId == targetEntityTypeId
 								&& targetEntity.EntityBaseId == targetBaseId
 								//&& item.TargetEntityUid == targetEntityUid
@@ -131,7 +181,7 @@ namespace workIT.Factories
 
 				//var agentRoles1 = list1.Concat(list2);
 				//sort so org, then relationship, then roleSource, so the entity is first, then the org
-				var agentRoles = list1.Concat( list2 ).OrderBy( m => m.ActingAgentName ).ThenBy( m => m.RelationshipTypeId ).ThenBy( x => x.RoleSource ).ToList();
+				var agentRoles = list1.Concat( list2 ).OrderBy( m => m.ActingAgentName ).ThenBy( m => m.RelationshipTypeId ).ThenBy(x => x.RoleSource ).ToList();
 
 
 				if ( onlyQAAssertions )
@@ -149,7 +199,7 @@ namespace workIT.Factories
 						{
 							continue;
 						}
-						if ( entity.RelationshipTypeId == 11 )
+						if ( entity.RelationshipTypeId  == 11 )
 						{
 
 						}
@@ -174,10 +224,10 @@ namespace workIT.Factories
 							orp = new OrganizationRoleProfile
 							{
 								Id = 0,
-								ParentId = entity.ActingAgentId,
+								RelatedEntityId = entity.ActingAgentId,
 								ParentTypeId = 2,
 								ProfileSummary = entity.ActingAgentName,
-								FriendlyName = FormatFriendlyTitle( entity.ActingAgentName ),
+								FriendlyName = FormatFriendlyTitle(entity.ActingAgentName),
 								//get list of valid roles - why? Should it just be QA roles
 								//	there are no Codes.PropertyValue] for categoryId=13? This just established the Enumeration. The Items are added later. 
 								AgentRole = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ENTITY_AGENT_ROLE ),
@@ -225,7 +275,7 @@ namespace workIT.Factories
 								prevRoleSource = entity.RoleSource;
 								continue;
 							}
-
+													
 						}
 						else
 						{
@@ -268,8 +318,16 @@ namespace workIT.Factories
 
 		} //
 
-		#region role codes retrieval ==================
-
+        #endregion
+        #region role codes retrieval for enumerations ==================
+        /// <summary>
+        /// need to dump this and use Codes.CredentialAgentRelationship
+        /// </summary>
+        /// <param name="isOrgToCredentialRole"></param>
+        /// <param name="parentEntityTypeId"></param>
+        /// <param name="getAll"></param>
+        /// <returns></returns>
+        [Obsolete]	
 		public static Enumeration GetEntityAgentQAActions( bool isOrgToCredentialRole, int parentEntityTypeId, bool getAll = true )
         {
             return GetEntityToOrgQARolesCodes( isOrgToCredentialRole, 1, getAll, parentEntityTypeId );
@@ -598,383 +656,62 @@ namespace workIT.Factories
 
 		#endregion
 
-
-		#region OBSOLETE
-		//private static void MapAgentToOrgRole( Credential credential, EM.Credential_AgentRelationship entity )
-		//{
-		//	ThisEntity p = new ThisEntity();
-		//	p.Id = entity.Id;
-		//	p.ParentId = entity.CredentialId;
-		//	p.Url = entity.URL;
-		//	p.Description = entity.Description;
-
-		//	p.ActingAgentId = entity.OrgId;
-		//	if ( entity.AgentUid != null )
-		//		p.ActingAgentUid = ( Guid ) entity.AgentUid;
-		//	p.RoleTypeId = entity.RelationshipTypeId;
-		//	string relation = "";
-		//	if ( entity.Codes_CredentialAgentRelationship != null )
-		//	{
-		//		relation = entity.Codes_CredentialAgentRelationship.ReverseRelation;
-		//	}
-
-		//	//may be included now, but with addition of person, and use of agent, it won't
-		//	if ( entity.Organization != null )
-		//	{
-		//		OrganizationManager.Organization_ToMap( entity.Organization, p.TargetOrganization );
-		//	}
-		//	else
-		//	{
-		//		//get basic?
-		//		p.TargetOrganization = OrganizationManager.Organization_Get( entity.OrgId );
-		//	}
-
-		//	p.ProfileSummary = string.Format( "{0} {1} this credential", entity.Organization.Name, relation );
-		//	if ( IsValidDate( entity.EffectiveDate ) )
-		//		p.DateEffective = ( ( DateTime ) entity.EffectiveDate ).ToString("yyyy-MM-dd");
-		//	else
-		//		p.DateEffective = "";
-
-		//	if ( IsValidDate( entity.Created ) )
-		//		p.Created = ( DateTime ) entity.Created;
-		//	p.CreatedById = entity.CreatedById == null ? 0 : ( int ) entity.CreatedById;
-		//	if ( IsValidDate( entity.LastUpdated ) )
-		//		p.LastUpdated = ( DateTime ) entity.LastUpdated;
-		//	p.LastUpdatedById = entity.LastUpdatedById == null ? 0 : ( int ) entity.LastUpdatedById;
-
-		//	credential.OrganizationRole.Add(p);
-		//}		//private bool CredentialOrgRole_Update( int recordId, int agentId, int roleId, int userId, ref string status )
-		//{
-		//	bool isValid = true;
-		//	if ( recordId == 0 )
-		//	{
-		//		status = "Error: invalid request, please ensure a valid record has been selected.";
-		//		return false;
-		//	}
-
-		//	//TODO - need to handle agent
-		//	Organization org = OrganizationManager.Organization_Get( agentId, false );
-		//	if ( org == null || org.Id == 0 )
-		//	{
-		//		status = "Error: the selected organization was not found!";
-		//		LoggingHelper.DoTrace( 5, string.Format( "OrganizationRoleManager.CredentialOrgRole_Update the organization was not found, for credential: {0}, AgentId:{1}, RoleId: {2}", recordId, agentId, roleId ) );
-		//		return false;
-		//	}
-
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		EM.Credential_AgentRelationship car = context.Credential_AgentRelationship.FirstOrDefault( s => s.Id == recordId );
-		//		if ( car != null && car.Id > 0 )
-		//		{
-		//			status = "Error: the selected relationship was not found!";
-		//			return false;
-		//		}
-
-		//		//assign, then check if there were any actual updates
-		//		//this credential centric, so leave alone
-		//		car.OrgId = agentId;
-		//		car.AgentUid = org.RowId;
-		//		car.RelationshipTypeId = roleId;
-
-		//		if ( HasStateChanged( context ) )
-		//		{
-		//			car.LastUpdated = System.DateTime.Now;
-		//			car.LastUpdatedById = userId;
-
-		//			// submit the change to database
-		//			int count = context.SaveChanges();
-		//		}
-		//	}
-
-		//	return isValid;
-		//}
-		/// <summary>
-		/// Persist all credential - org relationships
-		/// ==> note will want to watch for creator and owner, and ignore as FOR NOW should not be handled here!
-		/// </summary>
-		/// <param name="credential"></param>
-		/// <returns></returns>
-		//public bool CredentialAgentRoles_Update( Credential credential, ref string status, ref int count )
-		//{
-		//	bool isValid = true;
-		//	count = 0;
-		//	int count1 = 0;
-		//	string status1 = "";
-		//	isValid = Credential_UpdateOrgRoles( credential, ref status1, ref count1 );
-		//	count = count1;
-		//	status = status1;
-		//	if ( Credential_UpdateQAActions( credential, ref status, ref count1 ) )
-		//	{
-		//		isValid = false;
-		//	}
-		//	count += count1;
-		//	status += status1;
-		//	//List<string> messages = new List<string>();
-
-		//	//if ( credential.OrganizationRole == null )
-		//	//	credential.OrganizationRole = new List<ThisEntity>();
-
-		//	//if ( credential.QualityAssuranceAction == null )
-		//	//	credential.QualityAssuranceAction = new List<QualityAssuranceActionProfile>();
-
-		//	//using ( var context = new EntityContext() )
-		//	//{
-		//	//	//loop thru input, check for changes to existing, and for adds
-		//	//	foreach ( ThisEntity item in credential.OrganizationRole )
-		//	//	{
-		//	//		int codeId = CodesManager.GetEnumerationSelection( item.RoleType );
-		//	//		if ( codeId == 0 )
-		//	//		{
-		//	//			isValid = false;
-		//	//			messages.Add( string.Format( "Error: a role was not entered. Select a role and try again. AgentId: {0}", item.ActingAgentId ) );
-		//	//			continue;
-		//	//		}
-
-		//	//		if ( item.Id > 0 )
-		//	//		{
-		//	//			EM.Credential_AgentRelationship p = context.Credential_AgentRelationship.FirstOrDefault( s => s.Id == item.Id);
-		//	//			if ( p != null && p.Id > 0 )
-		//	//			{
-		//	//				p.CredentialId = credential.Id;
-		//	//				//int itemId = CodesManager.GetEnumerationSelection( item.RoleType );
-		//	//				//if ( itemId == 0 )
-		//	//				//{
-		//	//				//	isValid = false;
-		//	//				//	messages.Add( string.Format( "Error: a role was not found: {0}", item.ActingAgentId ) );
-		//	//				//	continue;
-		//	//				//}
-		//	//				p.RelationshipTypeId = codeId;
-		//	//				//actually need to get the rowId!
-		//	//				if ( p.OrgId != item.ActingAgentId )
-		//	//				{
-		//	//					//NOTE - need to handle agent!!!
-		//	//					Organization org = OrganizationManager.Organization_Get( item.OrganizationId, false );
-		//	//					if ( org == null || org.Id == 0 )
-		//	//					{
-		//	//						isValid = false;
-		//	//						messages.Add( string.Format( "Error: the selected organization was not found: {0}", item.ActingAgentId ) );
-		//	//						continue;
-		//	//					}
-		//	//					p.AgentUid = org.RowId;
-		//	//				}
-		//	//				p.OrgId = item.ActingAgentId;
-		//	//				if ( HasStateChanged( context ) )
-		//	//				{
-		//	//					p.LastUpdated = System.DateTime.Now;
-		//	//					p.LastUpdatedById = credential.LastUpdatedById;
-		//	//					count = context.SaveChanges();
-		//	//				}
-		//	//			}
-		//	//			else
-		//	//			{
-		//	//				//error should have been found
-		//	//				isValid = false;
-		//	//				messages.Add( string.Format("Error: the requested role was not found: recordId: {0}", item.Id ));
-		//	//			}
-		//	//		}
-		//	//		else
-		//	//		{
-		//	//			CredentialOrgRole_Add( credential.Id, item.ActingAgentId, codeId, credential.LastUpdatedById, ref status );
-		//	//		}
-		//	//	}
-
-		//	//}
-
-		//	return isValid;
-		//}
-
-		//public static void FillAllOrgToOrgRoles( EM.Credential fromCredential, Credential credential )
-		//{
-		//	//start by assuming all roles have been read
-		//	if ( fromCredential.Credential_AgentRelationship == null || fromCredential.Credential_AgentRelationship.Count == 0 )
-		//	{
-		//		return;
-		//	}
-
-		//	credential.OrganizationRole = new List<ThisEntity>();
-		//	credential.QualityAssuranceAction = new List<QualityAssuranceActionProfile>();
-
-		//	foreach ( EM.Credential_AgentRelationship item in fromCredential.Credential_AgentRelationship )
-		//	{
-		//		bool isActionType = item.IsActionType == null ? false : ( bool ) item.IsActionType;
-
-		//		if ( item.TargetCredentialId > 0 || isActionType )
-		//		{
-		//			MapAgentToQAAction( credential, item );
-		//		}
-		//		else
-		//		{
-		//			//MapAgentToOrgRole( credential, item );
-		//			credential.OrganizationRole.Add( MapAgentToOrgRole( item, "credential" ) );
-		//		}
-
-
-		//		if ( item.RelationshipTypeId == CredentialToOrgRole_CreatedBy )
-		//			credential.CreatorOrganizationId = item.OrgId;
-
-		//		if ( item.RelationshipTypeId == CredentialToOrgRole_OwnedBy )
-		//			credential.OwnerOrganizationId = item.OrgId;
-
-
-		//	}
-
-
-		//}
-		// item
-		//public static CredentialAgentRelationship AgentCredentialRoleGet( int recordId )
-		//{
-		//	CredentialAgentRelationship item = new CredentialAgentRelationship();
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		EM.Credential_AgentRelationship entity = context.Credential_AgentRelationship.FirstOrDefault( s => s.Id == recordId );
-		//		if ( entity != null && entity.Id > 0 )
-		//		{
-		//			item.Id = entity.Id;
-		//			item.ParentId = entity.CredentialId;
-		//			item.OrganizationId = entity.OrgId;
-		//			item.RelationshipId = entity.RelationshipTypeId;
-		//			item.AgentUid = entity.AgentUid != null ? ( Guid ) entity.AgentUid : Guid.Empty;
-
-		//			//item.TargetOrganization = entity.Organization;
-		//		}
-		//		else
-		//		{
-		//			item.Id = 0;
-		//		}
-
-		//	}
-		//	return item;
-
-		//}
-
-		/// <summary>
-		/// Retrieve and fill org roles of creator or owner only
-		/// </summary>
-		/// <param name="credential"></param>
-		//public static void FillOwnerOrgRolesForCredential( Credential credential )
-		//{
-		//	EnumeratedItem row = new EnumeratedItem();
-		//	using ( var context = new EntityContext() )
-		//	{
-		//		List<Views.CredentialAgentRelationships_Summary> results = context.CredentialAgentRelationships_Summary
-		//				.Where( s => s.CredentialId == credential.Id
-		//				&& ( s.RelationshipTypeId == CredentialToOrgRole_CreatedBy || s.RelationshipTypeId == CredentialToOrgRole_OwnedBy ) )
-		//				.OrderBy( s => s.RelationshipTypeId )
-		//				.ToList();
-
-		//		if ( results != null && results.Count > 0 )
-		//		{
-		//			foreach ( Views.CredentialAgentRelationships_Summary item in results )
-		//			{
-		//				if ( item.RelationshipTypeId == CredentialToOrgRole_CreatedBy )
-		//				{
-		//					//create an enumeration, but can be minimal
-		//					//credential.CreatorUrl = new Enumeration();
-		//					//credential.CreatorUrl.Name = "creatorUrl";
-		//					//credential.CreatorUrl.SchemaName = "creatorUrl";
-		//					//credential.CreatorUrl.ParentId = credential.Id;
-		//					//credential.CreatorUrl.Id = item.OrgId;
-
-		//					credential.CreatorOrganizationId = item.OrgId;
-
-		//					//row = new EnumeratedItem()
-		//					//{
-		//					//	Id = item.OrgId,
-		//					//	Name = item.OrganizationName,
-		//					//	Description = item.RelationshipType,
-		//					//	Selected = true, 
-		//					//	Value = item.OrgId.ToString(),
-		//					//	Created = item.Created ?? DateTime.Now,
-		//					//	CreatedById = item.CreatedById ?? 0
-		//					//};
-		//					//credential.CreatorUrl.Items.Add( row );
-		//				}
-		//				else if ( item.RelationshipTypeId == CredentialToOrgRole_OwnedBy )
-		//				{
-		//					//credential.OwnerUrl = new Enumeration();
-		//					//credential.OwnerUrl.Name = "ownerUrl";
-		//					//credential.OwnerUrl.SchemaName = "ownerUrl";
-		//					//credential.OwnerUrl.ParentId = credential.Id;
-		//					//credential.OwnerUrl.Id = item.OrgId;
-
-		//					credential.OwnerOrganizationId = item.OrgId;
-
-		//					//row = new EnumeratedItem()
-		//					//{
-		//					//	Id = item.OrgId,
-		//					//	Name = item.OrganizationName,
-		//					//	Description = item.RelationshipType,
-		//					//	Selected = true,
-		//					//	Value = item.OrgId.ToString(),
-		//					//	Created = item.Created ?? DateTime.Now,
-		//					//	CreatedById = item.CreatedById ?? 0
-		//					//};
-		//					//credential.OwnerUrl.Items.Add( row );
-		//				}
-		//			}
-		//		}
-		//	}
-
-		//}//
-
-		#endregion
-
-		public class OrganizationRole
+	}
+	public class OrganizationRole 
+	{
+		public OrganizationRole()
 		{
-			public OrganizationRole()
-			{
-			}
-
-			//parent had been an entity like credential. this may now be the context, and 
-			//will use ActedUponEntityUid separately as the target entity
-			public Guid ParentUid { get; set; }
-
-			public Guid ActedUponEntityUid { get; set; }
-			public Entity ActedUponEntity { get; set; }
-			public int ActedUponEntityId { get; set; }
-
-			public int ParentTypeId { get; set; }
-
-			//agent that states the assertion
-			public int AssertingOrganizationId { get; set; }
-
-
-			//agent that does the assertion
-			public int ActingAgentId { get; set; }
-			public int ActingAgentEntityStateId { get; set; }
-			public Guid ActingAgentUid { get; set; }
-			public string ActingAgentName { get; set; }
-			public string ActingAgentDescription { get; set; }
-			public string ActingAgentCTID { get; set; }
-			public string ActingAgentSubjectWebpage { get; set; }
-			public string ActingAgentImage { get; set; }
-			public bool ISQAOrganization { get; set; }
-			/// <summary>
-			/// Acting agent is actually for the org making the assertion
-			/// </summary>
-			//public Organization ActingAgent { get; set; } = new Organization();
-
-
-			/// <summary>
-			/// IsDirect. True - first party (by QA org), false third party (by owning org)
-			/// May need a label for both
-			/// </summary>
-			public bool IsDirectAssertion { get; set; }
-			public string AssertionType { get; set; }
-			//public bool IsQAActionRole { get; set; }
-
-			public string RoleSource { get; set; }
-			public int RelationshipTypeId { get; set; }
-			public string RelationshipType { get; set; }
-			public string ReverseRelation { get; set; }
-			public bool IsInverseRole { get; set; }
-			public bool IsQARole { get; set; }
-			public string SourceEntityType { get; set; }
-			public int SourceEntityStateId { get; set; }
-			public string SchemaTag { get; set; }
-			public string ReverseSchemaTag { get; set; }
-
-
 		}
+
+		//parent had been an entity like credential. this may now be the context, and 
+		//will use ActedUponEntityUid separately as the target entity
+		public Guid ParentUid { get; set; }
+
+		public Guid ActedUponEntityUid { get; set; }
+		public Entity ActedUponEntity { get; set; }
+		public int ActedUponEntityId { get; set; }
+
+		public int ParentTypeId { get; set; }
+
+		//agent that states the assertion
+		public int AssertingOrganizationId { get; set; }
+
+
+		//agent that does the assertion
+		public int ActingAgentId { get; set; }
+		public int ActingAgentEntityStateId { get; set; }
+		public Guid ActingAgentUid { get; set; }
+		public string ActingAgentName { get; set; }
+		public string ActingAgentDescription { get; set; }
+		public string ActingAgentCTID { get; set; }
+		public string ActingAgentSubjectWebpage { get; set; }
+		public string ActingAgentImage { get; set; }
+		public bool ISQAOrganization { get; set; }
+		/// <summary>
+		/// Acting agent is actually for the org making the assertion
+		/// </summary>
+		//public Organization ActingAgent { get; set; } = new Organization();
+
+
+		/// <summary>
+		/// IsDirect. True - first party (by QA org), false third party (by owning org)
+		/// May need a label for both
+		/// </summary>
+		public bool IsDirectAssertion { get; set; }
+		public string AssertionType { get; set; }
+		//public bool IsQAActionRole { get; set; }
+
+		public string RoleSource { get; set; }
+		public int RelationshipTypeId { get; set; }
+		public string RelationshipType { get; set; }
+		public string ReverseRelation { get; set; }
+		public bool IsInverseRole { get; set; }
+		public bool IsQARole { get; set; }
+		public string SourceEntityType { get; set; }
+		public int SourceEntityStateId { get; set; }
+		public string SchemaTag { get; set; }
+		public string ReverseSchemaTag { get; set; }
+
+
 	}
 }

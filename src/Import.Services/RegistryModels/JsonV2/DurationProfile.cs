@@ -34,14 +34,14 @@ namespace RA.Models.JsonV2
 
     }
 
-	public class DurationItem
-	{
-		public int Years { get; set; }
-		public int Months { get; set; }
-		public int Weeks { get; set; }
-		public int Days { get; set; }
-		public int Hours { get; set; }
-		public int Minutes { get; set; }
-		public bool HasValue { get { return Years + Months + Weeks + Days + Hours + Minutes > 0; } }
-	}
+	//public class DurationItem
+	//{
+	//	public int Years { get; set; }
+	//	public int Months { get; set; }
+	//	public int Weeks { get; set; }
+	//	public int Days { get; set; }
+	//	public int Hours { get; set; }
+	//	public int Minutes { get; set; }
+	//	public bool HasValue { get { return Years + Months + Weeks + Days + Hours + Minutes > 0; } }
+	//}
 }

@@ -40,7 +40,7 @@ namespace RA.Models.JsonV2
 		/// Provide the CTID for a participant in the Credential Registry or provide minimum data where not in the registry.
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:actingAgent" )]
-		public string ActingAgent { get; set; }
+		public List<string> ActingAgent { get; set; }
 
 		/// <summary>
 		/// Accredit Action Description
@@ -107,5 +107,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:endDate" )]
 		public string EndDate { get; set; }
 
-	}
+        [JsonProperty( PropertyName = "ceterms:jurisdiction" )]
+        public List<JurisdictionProfile> Jurisdiction { get; set; }
+    }
 }

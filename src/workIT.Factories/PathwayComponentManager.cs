@@ -13,7 +13,7 @@ using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using ThisEntity = workIT.Models.Common.PathwayComponent;
+using ThisResource = workIT.Models.Common.PathwayComponent;
 using PC = workIT.Models.Common.PathwayComponent;
 using DBEntity = workIT.Data.Tables.PathwayComponent;
 using EntityContext = workIT.Data.Tables.workITEntities;
@@ -21,6 +21,7 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+//using System.Security.Policy;
 
 namespace workIT.Factories
 {
@@ -30,9 +31,9 @@ namespace workIT.Factories
 		static string EntityType = "PathwayComponent";
 		static int EntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT;
 
-		public static int componentActionOfNone = 0;
-		public static int componentActionOfSummary = 1;
-		public static int componentActionOfDeep = 2;
+		public static int ComponentActionOfNone = 0;
+		public static int ComponentActionOfSummary = 1;
+		public static int ComponentActionOfDeep = 2;
 
 		#region persistance ==================
 
@@ -42,7 +43,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			var efEntity = new DBEntity();
@@ -75,10 +76,11 @@ namespace workIT.Factories
 						if ( count > 0 )
 						{
 							entity.Id = efEntity.Id;
-
-							UpdateParts( entity, ref status );
-
-							return true;
+                            entity.Created = efEntity.Created.Value;
+                            entity.LastUpdated = efEntity.LastUpdated.Value;
+                            UpdateParts( entity, ref status );
+                            UpdateEntityCache( entity, ref status );
+                            return true;
 						}
 						else
 						{
@@ -98,6 +100,8 @@ namespace workIT.Factories
 							//for updates, chances are some fields will not be in interface, don't map these (ie created stuff)
 							MapToDB( entity, efEntity );
 							efEntity.EntityStateId = 3;
+							//??
+							entity.RowId = efEntity.RowId;
 							if ( HasStateChanged( context ) )
 							{
 								efEntity.LastUpdated = System.DateTime.Now;
@@ -106,7 +110,9 @@ namespace workIT.Factories
 								if ( count >= 0 )
 								{
 									isValid = true;
-								}
+                                    entity.LastUpdated = efEntity.LastUpdated.Value;
+                                    UpdateEntityCache( entity, ref status );
+                                }
 								else
 								{
 									//?no info on error
@@ -145,7 +151,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					var message = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".PathwayComponent_Add(), PathwayComponentId: {0}", entity.ParentId ) );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".PathwayComponent_Add(), PathwayComponentId: {0}", entity.RelatedEntityId ) );
 					status.AddError( string.Format( "Error encountered saving component. Type: {0}, Name: {1}, Error: {2}. ", entity.PathwayComponentType, entity.Name, message ) );
 					isValid = false;
 				}
@@ -153,15 +159,24 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
 			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
-				status.AddError( "Error - the related Entity was not found." );
+				status.AddError( thisClassName + $".UpdateParts(). Error - the related Entity was not found using {entity.RowId}." );
 				return false;
 			}
+            Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
+            erfm.DeleteAll( relatedEntity, ref status );
+
+            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.OccupationTypes, ref status ) == false )
+                isValid = false;
+            if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.IndustryTypes, ref status ) == false )
+                isValid = false;
+
+			var hasResourceMgr = new Entity_HasResourceManager();
 			//21-01-07 mparsons - Identifier will now be saved in the Json properties, not in Entity_IdentifierValue
 			//new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.CREDENTIAL_Identifier, ref status, false );
 			Entity_CredentialManager ecm = new Entity_CredentialManager();
@@ -180,25 +195,36 @@ namespace workIT.Factories
 
 			if ( entity.JsonProperties != null )
 			{
-				if ( entity.JsonProperties.SourceCredential != null && entity.JsonProperties.SourceCredential.Id > 0 )
+                
+                if (entity.JsonProperties.ProxyForResource != null && entity.JsonProperties.ProxyForResource.Id > 0)
+                {
+					//may want to add the reference so can get to any components that reference the resource
+					//could use Entity.HasResource. Then creds, etc would need the extra step to call the latter
+
+					hasResourceMgr.Add( relatedEntity, entity.JsonProperties.ProxyForResource.EntityTypeId, entity.JsonProperties.ProxyForResource.Id, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, true, ref status );
+                }
+
+                //TODO once latter fully implemented, remove the following
+                if ( entity.JsonProperties.SourceCredential != null && entity.JsonProperties.SourceCredential.Id > 0 )
 				{
 					//21-07-23 mp	- These relationships are now considered inverse relationships for TargetPathway.
 					//				- IsPartOf is not correct. TargetResource makes more sense!
-					ecm.Add( entity.RowId, entity.JsonProperties.SourceCredential.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, ref newId, ref status );
+					ecm.Add( entity.RowId, entity.JsonProperties.SourceCredential.Id, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, ref newId, ref status );
 				}
 				if ( entity.JsonProperties.SourceAssessment != null && entity.JsonProperties.SourceAssessment.Id > 0 )
 				{
-					eam.Add( entity.RowId, entity.JsonProperties.SourceAssessment.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, false, ref status );
+					eam.Add( entity.RowId, entity.JsonProperties.SourceAssessment.Id, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, false, ref status );
 				}
 				if ( entity.JsonProperties.SourceLearningOpportunity != null && entity.JsonProperties.SourceLearningOpportunity.Id > 0 )
 				{
-					elom.Add( entity.RowId, entity.JsonProperties.SourceLearningOpportunity.Id, BaseFactory.RELATIONSHIP_TYPE_TARGET_RESOURCE, false, ref status );
+					elom.Add( entity.RowId, entity.JsonProperties.SourceLearningOpportunity.Id, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, false, ref status );
 				}
 				if ( entity.JsonProperties.SourceCompetency != null && entity.JsonProperties.SourceCompetency.Id > 0 )
 				{
 					//TBD for a competency? Will need to add a Entity for competency
 					//ecompm.Add( entity.RowId, entity.JsonProperties.SourceCompetency.Id, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, false, ref status );
 				}
+				//TODO need to keep adding types, like job, or try to go generic with ProxyForResource
 			}
 			return isValid;
 		}
@@ -215,7 +241,7 @@ namespace workIT.Factories
 						return 0;
 					}
 					//quick check to ensure not existing
-					ThisEntity entity = GetByCtid( ctid );
+					ThisResource entity = GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 						return entity.Id;
 
@@ -259,7 +285,8 @@ namespace workIT.Factories
 						entity.SubjectWebpage = efEntity.SubjectWebpage;
 						entity.Created = ( DateTime )efEntity.Created;
 						entity.LastUpdated = ( DateTime )efEntity.LastUpdated;
-						UpdateEntityCache( entity, ref status );
+						//23-02-20 - commenting for now as not needed in cache
+						//UpdateEntityCache( entity, ref status );
 						return efEntity.Id;
 					}
 
@@ -276,13 +303,14 @@ namespace workIT.Factories
 			}
 			return 0;
 		}
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
 				EntityTypeId = EntityTypeId,
 				EntityType = EntityType,
-				EntityStateId = document.EntityStateId,
+				EntityStateId = 3,// document.EntityStateId,
+				IsActive = true,		//the default
 				EntityUid = document.RowId,
 				BaseId = document.Id,
 				Description = document.Description,
@@ -292,10 +320,13 @@ namespace workIT.Factories
 				LastUpdated = document.LastUpdated,
 				//ImageUrl = document.ImageUrl,
 				Name = document.Name,
-				OwningAgentUID = document.OwningAgentUid,
+				//need to derive these - added from the pathway
+				OwningAgentUID = document.PrimaryAgentUID,
+				//this will be derived in save method
 				OwningOrgId = document.OrganizationId
 			};
 			var statusMessage = "";
+			//not sure if we want to cache these. We don't really treat them as top level
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -323,14 +354,15 @@ namespace workIT.Factories
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
 						string statusMessage = "";
-						new EntityManager().Delete( item.RowId, string.Format( "PathwayComponent: {0} ({1})", item.Name, item.Id ), ref statusMessage );
+                        Guid rowId = item.RowId;
+                        new EntityManager().Delete( item.RowId, string.Format( "PathwayComponent: {0} ({1})", item.Name, item.Id ), ref statusMessage );
 						var id = item.Id;
 						context.PathwayComponent.Remove( item );
 						var count = context.SaveChanges();
 						if ( count > 0 )
 						{
 							//delete cache
-							new EntityManager().EntityCacheDelete( CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT, id, ref statusMessage );
+							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 
 						}
 					}
@@ -394,9 +426,9 @@ namespace workIT.Factories
 
 		#region == Retrieval =======================
 
-		public static ThisEntity Get( int id, int childComponentsAction = 1 )
+		public static ThisResource Get( int id, int childComponentsAction = 1, bool includingPathway = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.PathwayComponent
@@ -404,7 +436,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB( item, entity, childComponentsAction );
+					MapFromDB( item, entity, childComponentsAction, includingPathway );
 				}
 			}
 
@@ -416,9 +448,9 @@ namespace workIT.Factories
 		/// <param name="id"></param>
 		/// <param name="childComponentsAction">1-default of summary</param>
 		/// <returns></returns>
-		public static ThisEntity Get( Guid id, int childComponentsAction = 1 )
+		public static ThisResource Get( Guid id, int childComponentsAction = 1, bool includingPathway = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				DBEntity item = context.PathwayComponent
@@ -426,7 +458,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB( item, entity, childComponentsAction );
+					MapFromDB( item, entity, childComponentsAction, includingPathway );
 				}
 			}
 
@@ -437,7 +469,7 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="ctid"></param>
 		/// <returns></returns>
-		public static ThisEntity GetByCtid( string ctid, int childComponentsAction = 1 )
+		public static ThisResource GetByCtid( string ctid, int childComponentsAction = 1, bool includingPathway = false )
 		{
 
 			PathwayComponent entity = new PathwayComponent();
@@ -453,7 +485,7 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					MapFromDB( item, entity, childComponentsAction );
+					MapFromDB( item, entity, childComponentsAction, includingPathway );
 				}
 			}
 
@@ -461,10 +493,10 @@ namespace workIT.Factories
 		}
 
 		//
-		public static List<ThisEntity> GetAllForPathway( string pathwayCTID, int childComponentsAction = 2 )
+		public static List<ThisResource> GetAllForPathway( string pathwayCTID, int childComponentsAction = 2 )
 		{
-			var output = new List<ThisEntity>();
-			var entity = new ThisEntity();
+			var output = new List<ThisResource>();
+			var entity = new ThisResource();
 
 			using ( var context = new EntityContext() )
 			{
@@ -473,7 +505,7 @@ namespace workIT.Factories
 							.ToList();
 				foreach ( var item in list )
 				{
-					entity = new ThisEntity();
+					entity = new ThisResource();
 					//when called via a pathway getAll, the subcomponents will be useally lists, and the detailed component will be in the hasPart
 					MapFromDB( item, entity, childComponentsAction );
 					output.Add( entity );
@@ -491,7 +523,7 @@ namespace workIT.Factories
 		/// <param name="from"></param>
 		/// <param name="to"></param>
 		/// <param name="childComponentsAction">0-none; 1-summary; 2-deep </param>
-		public static void MapFromDB( DBEntity input, ThisEntity output, int childComponentsAction = 1 )
+		public static void MapFromDB( DBEntity input, ThisResource output, int childComponentsAction = 1, bool includingPathway = false )
 		{
 
 			output.Id = input.Id;
@@ -501,17 +533,21 @@ namespace workIT.Factories
 			output.Name = input.Name;
 			output.Description = input.Description;
 			output.PathwayCTID = input.PathwayCTID;
-			//if ( input.Entity_HasPathwayComponent != null && input.Entity_HasPathwayComponent.Count > 0 )
-			//{
-			//	//
-			//}
 
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
+			{
 				output.EntityLastUpdated = relatedEntity.LastUpdated;
+				output.RelatedEntityId= relatedEntity.Id;
+			}
 
 			//need output get parent pathway?
-			//output.IsDestinationComponentOf = Entity_PathwayComponentManager.GetPathwayForComponent( output.Id, PathwayComponent.PathwayComponentRelationship_HasDestinationComponent );
+			//don't want to do this when getting each component
+			if (includingPathway)
+			{
+				//note the destination component will be populated
+				output.Pathway = PathwayManager.GetByCtid( output.PathwayCTID, false );
+			}
 
 			//ispartof. Should be single, but using list for flexibility?
 			//actually force one, as we are using pathway identifier an external id for a unique lookup
@@ -519,9 +555,10 @@ namespace workIT.Factories
 			//output.IsPartOf = Entity_PathwayComponentManager.GetPathwayForComponent( output.Id, PathwayComponent.PathwayComponentRelationship_HasPart );
 
 			//may want output get all and split out
-			if ( childComponentsAction == 2 )
+			//23-07-27 mp - with the addition of a component detail page, need to determine if 
+			if ( childComponentsAction == ComponentActionOfDeep)
 			{
-				output.AllComponents = Entity_PathwayComponentManager.GetAll( output.RowId, componentActionOfSummary );
+				output.AllComponents = Entity_PathwayComponentManager.GetAll( output.RowId, ComponentActionOfSummary );
 				foreach ( var item in output.AllComponents )
 				{
 					if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_HasChild )
@@ -530,11 +567,14 @@ namespace workIT.Factories
 						output.IsChildOf.Add( item );
 					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Precedes )
 						output.Precedes.Add( item );
-					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Prerequiste )
-						output.Prerequisite.Add( item );
+					else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_PrecededBy )
+						output.PrecededBy.Add( item );
+					//else if ( item.ComponentRelationshipTypeId == PC.PathwayComponentRelationship_Prerequiste )
+					//	output.Prerequisite.Add( item );
 				}
 				//child components - details of condition, but summary of components
-				output.HasCondition = PathwayComponentConditionManager.GetAll( output.Id, true );
+				//	ensure only one level
+				output.HasCondition = Entity_ComponentConditionManager.GetAll( output.RowId, true );
 			}
 
 			//output.CodedNotation = input.CodedNotation;
@@ -571,14 +611,23 @@ namespace workIT.Factories
 				string[] array = input.HasProgressionLevel.Split( '|' );
 				if ( array.Count() > 0 )
 				{
-					foreach ( var i in array )
+					output.HasProgressionLevelDisplay = "";
+
+                    foreach ( var i in array )
 					{
 						if ( !string.IsNullOrWhiteSpace( i ) )
 						{
-							var pl = ConceptSchemeManager.GetByConceptCtid( i );
-							output.ProgressionLevels.Add( pl );
+							var pl = ProgressionModelManager.GetByConceptCtid( i );
+							//need to confirm progression model import. Or should the look up be
+							if ( pl != null && !string.IsNullOrWhiteSpace( pl.PrefLabel ) )
+							{
+								output.ProgressionLevels.Add( pl );
 
-							output.HasProgressionLevelDisplay += pl.PrefLabel + ", ";
+								output.HasProgressionLevelDisplay += pl.PrefLabel + ", ";
+							}
+							//really should only have one
+							output.HasProgressionLevel = i;
+							output.HasProgressionLevels.Add( i );
 						}
 					}
 					output.HasProgressionLevelDisplay.Trim().TrimEnd( ',' );
@@ -589,13 +638,36 @@ namespace workIT.Factories
 			output.SubjectWebpage = input.SubjectWebpage;
 			output.SourceData = input.SourceData;
 
-			//where output store ComponentDesignation - textvalue
-			//Json
-			if ( !string.IsNullOrEmpty( input.Properties ) )
+            output.OccupationTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
+            output.IndustryTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
+
+            output.ProxyFor = input.ProxyFor;
+            output.FinderResource = new ResourceSummary();
+            var finder = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
+            if ( !string.IsNullOrWhiteSpace( output.ProxyFor ) )
+            {
+				//should already be storing just the CTID
+				if ( IsValidCtid( output.ProxyFor ) )
+				{
+					output.ProxyFor = ExtractCtid( output.ProxyFor );
+					//do generic here, and replace below
+					output.FinderResource = new ResourceSummary()
+					{
+						CTID = output.ProxyFor,
+						Name = "View Resource in Credential Finder", //??
+						URI = finder + "resources/" + output.ProxyFor
+					};
+				}
+            }
+            //where output store ComponentDesignation - textvalue
+            //Json
+            if ( !string.IsNullOrEmpty( input.Properties ) )
 			{
 				PathwayComponentProperties pcp = JsonConvert.DeserializeObject<PathwayComponentProperties>( input.Properties );
 				if ( pcp != null )
 				{
+					output.RowNumber = pcp.RowNumber;
+					output.ColumnNumber = pcp.ColumnNumber;
 					//unpack ComponentDesignation
 					output.ComponentDesignationList = pcp.ComponentDesignationList;
 					//credit value
@@ -606,22 +678,53 @@ namespace workIT.Factories
 					output.Identifier = new List<IdentifierValue>();
 					if ( pcp.Identifier != null )
 						output.Identifier = pcp.Identifier;
-					if ( pcp.SourceCredential != null && pcp.SourceCredential.Id > 0 )
+
+					if (pcp.ProxyForResource != null && pcp.ProxyForResource.Id > 0)
 					{
-						output.SourceCredential = pcp.SourceCredential;
-						output.SourceData = "";
-					}
-					if ( pcp.SourceAssessment != null && pcp.SourceAssessment.Id > 0 )
+						output.ProxyForResource = pcp.ProxyForResource;
+						output.FinderResource = new ResourceSummary()
+						{
+							EntityTypeId = pcp.ProxyForResource.EntityTypeId, 
+							Id = pcp.ProxyForResource.Id,
+							Name = pcp.ProxyForResource.Name,
+							Description = pcp.ProxyForResource.Description,
+							CTID = pcp.ProxyForResource.CTID,
+							URI = finder + "resources/" + output.ProxyForResource.CTID
+                    };
+
+                    }
+					else
 					{
-						output.SourceAssessment = pcp.SourceAssessment;
-						output.SourceData = "";
+						if (pcp.SourceCredential != null && pcp.SourceCredential.Id > 0)
+						{
+							output.SourceCredential = pcp.SourceCredential;
+							output.FinderResource.Name = output.SourceCredential.Name;
+							output.FinderResource.URI = finder + "resources/" + output.SourceCredential.CTID;
+							output.SourceData = "";
+						}
+						if (pcp.SourceAssessment != null && pcp.SourceAssessment.Id > 0)
+						{
+							output.SourceAssessment = pcp.SourceAssessment;
+							output.FinderResource.Name = output.SourceAssessment.Name;
+							output.FinderResource.URI = finder + "resources/" + output.SourceAssessment.CTID;
+							output.SourceData = "";
+						}
+						if (pcp.SourceLearningOpportunity != null && pcp.SourceLearningOpportunity.Id > 0)
+						{
+							output.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
+							output.FinderResource.Name = output.SourceLearningOpportunity.Name;
+							output.FinderResource.URI = finder + "resources/" + output.SourceLearningOpportunity.CTID;
+							output.SourceData = "";
+						}
+						if (pcp.SourceCompetency != null && pcp.SourceCompetency.Id > 0)
+						{
+							output.SourceCompetency = pcp.SourceCompetency;
+							//may want to shorten the competency text?
+							output.FinderResource.Name = output.SourceCompetency.Name;
+							output.SourceData = "";
+						}
 					}
-					if ( pcp.SourceLearningOpportunity != null && pcp.SourceLearningOpportunity.Id > 0 )
-					{
-						output.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
-						output.SourceData = "";
-					}
-				}
+                }
 			}
 
 			//
@@ -631,7 +734,7 @@ namespace workIT.Factories
 				output.LastUpdated = ( DateTime )input.LastUpdated;
 
 		}
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			output.Id = input.Id;
@@ -685,8 +788,8 @@ namespace workIT.Factories
 				output.ProgramTerm = input.ProgramTerm;
 				output.SubjectWebpage = input.SubjectWebpage;
 				output.SourceData = input.SourceData;
-
-				output.Properties = JsonConvert.SerializeObject( input.JsonProperties );
+                output.ProxyFor = input.ProxyFor;
+                output.Properties = JsonConvert.SerializeObject( input.JsonProperties );
 			}
 
 

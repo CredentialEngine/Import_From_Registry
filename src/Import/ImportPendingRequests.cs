@@ -61,7 +61,10 @@ namespace CTI.Import
 			//	
 			int primeTimeSleepSeconds = UtilityManager.GetAppKeyValue( "primeTimeSleepSeconds", 60 ) * 1000;
 			if ( primeTimeSleepSeconds < 1 )
-				primeTimeSleepSeconds = 5000;
+				primeTimeSleepSeconds = 10000;
+			int offHoursSleepSeconds = UtilityManager.GetAppKeyValue( "offHoursSleepSeconds", 300 ) * 1000;
+			if ( offHoursSleepSeconds < 1 )
+				offHoursSleepSeconds = 1800000;
 
 			DateTime lastTimeDataFound = DateTime.Now;
 			DateTime lastPendingUpdatesCheck = DateTime.Now;
@@ -158,6 +161,12 @@ namespace CTI.Import
 							//May NOT want to do this every minute
 							if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
 							{
+								//2023 - need to update addresses first (geocode) or elastic will be off
+								if ( UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) == false && UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) == false )
+								{
+									//ThreadPool.QueueUserWorkItem( HandleAddressGeoCoding, Guid.NewGuid() );
+									ProfileServices.HandleAddressGeoCoding();
+								}
 								LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Updating Elastic  ***************** " ) );
 								//22-08-22 mp - perhaps we need to be populating the caches here - rather than the populate cache proc running every few minutes
 								ElasticHelper.UpdateElastic( false, true );
@@ -203,8 +212,7 @@ namespace CTI.Import
 						LoggingHelper.DoTrace( 1, string.Format( "**** ImportPendingRequests - sleeping for {0} seconds. ****", 60 ) );
 						//WARNING - COULD RUN INTO THE NEXT SCHEDULE CAUSING A CONFLIC
 						//this may be too long if using a shorter schedule
-						//Thread.Sleep( 360000 ); // 60 minutes
-						Thread.Sleep( 60000 );// 1 minutes
+						Thread.Sleep( offHoursSleepSeconds );// 1 minutes
 					}
 					else if ( DateTime.Now.Hour >= 6 && DateTime.Now.Hour < 19 )
 					{
@@ -213,7 +221,7 @@ namespace CTI.Import
 						Thread.Sleep( primeTimeSleepSeconds ); // prime time default 60 seconds
 					}
 					else //now this will not be hit!
-						Thread.Sleep( 60000 );// 1 minutes
+						Thread.Sleep( offHoursSleepSeconds );//
 
 					if ( DateTime.Now.DayOfYear - start.DayOfYear != 0 )
 					{
@@ -228,24 +236,31 @@ namespace CTI.Import
 			//completed cycle
 			//check for pending (could be necessary becuase of an end due to period time)
 			//21-04-01 mp - always check on end of cycle, just in case
-			//if ( pendingElasticUpdates )
-			//{
-				LoggingHelper.DoTrace( 1, "**** ImportPendingRequests - End of period cleanup ****" );
 
-				if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
-				{
-					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Updating Elastic  ***************** " ) );
-					//only do the populate cache if we know that we have data - should not really affect the website though
-					ElasticHelper.UpdateElastic( false, pendingElasticUpdates );
-				}
+			LoggingHelper.DoTrace( 1, "**** ImportPendingRequests - End of period cleanup ****" );
+			//Ahh same issue will the geocode step stop once the console job stops
+			//2023 - IF GEOCODING IS DONE AFTER ELASTIC, THEN ELASTIC WILL BE OUT OF DATE
+			//	Sigh-actually updated the entity.address process to add a pending reindex record in 2022-08. So why are there still issues?
+			if ( UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) == false && UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) == false )
+			{
+				//ThreadPool.QueueUserWorkItem( HandleAddressGeoCoding, Guid.NewGuid() );
+				ProfileServices.HandleAddressGeoCoding();
+			}
+			if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Updating Elastic  ***************** " ) );
+				//only do the populate cache if we know that we have data - should not really affect the website though
+				ElasticHelper.UpdateElastic( false, pendingElasticUpdates );
+			}
 
-				//set all resolved records in Import_EntityResolution to be resolved.
-				//do we want this? What if a new record was added after end of cycle and this step resets it?
-				//could be date based
-				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  SetAllResolvedEntities  ***************** " ) );
-				new ImportManager().SetAllResolvedEntities();
 
-			//}
+			//set all resolved records in Import_EntityResolution to be resolved.
+			//do we want this? What if a new record was added after end of cycle and this step resets it?
+			//could be date based
+			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  SetAllResolvedEntities  ***************** " ) );
+			new ImportManager().SetAllResolvedEntities();
+
+
 			if ( dataFoundDuringThisPeriod )
 			{
 				//send email to accounts admin
@@ -266,17 +281,7 @@ namespace CTI.Import
 				//	ThreadPool.QueueUserWorkItem( UpdateCodeTableCounts, Guid.NewGuid() );
 				//}
 
-				//handle geo coding addresses if not doing immediately
-				//Ahh same issue will the geocode step stop once the console job stops
-				if ( UtilityManager.GetAppKeyValue( "doingGeoCodingImmediately", false ) == false )
-				{
-					//so just do directly
-					if ( UtilityManager.GetAppKeyValue( "skippingGeoCodingCompletely", false ) == false )
-					{
-						//ThreadPool.QueueUserWorkItem( HandleAddressGeoCoding, Guid.NewGuid() );
-						ProfileServices.HandleAddressGeoCoding();
-					}
-				}
+
 			}
 			//if any frameworks encountered during period, or always ?
 			//20-11-11 mp - change to always do
