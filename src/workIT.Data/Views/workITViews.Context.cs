@@ -29,12 +29,10 @@ namespace workIT.Data.Views
         public virtual DbSet<NAIC> NAICS { get; set; }
         public virtual DbSet<NAICS_NaicsGroup> NAICS_NaicsGroup { get; set; }
         public virtual DbSet<ONET_SOC> ONET_SOC { get; set; }
-        public virtual DbSet<ONET_SOC_JobFamily> ONET_SOC_JobFamily { get; set; }
         public virtual DbSet<CIPCode2010> CIPCode2010 { get; set; }
         public virtual DbSet<CIPCode2010_JobFamily> CIPCode2010_JobFamily { get; set; }
         public virtual DbSet<Codes_Countries> Codes_Countries { get; set; }
         public virtual DbSet<Codes_Language> Codes_Language { get; set; }
-        public virtual DbSet<Activity_Summary> Activity_Summary { get; set; }
         public virtual DbSet<EntityProperty_Summary> EntityProperty_Summary { get; set; }
         public virtual DbSet<Entity_Subjects> Entity_Subjects { get; set; }
         public virtual DbSet<Entity_Reference_Summary> Entity_Reference_Summary { get; set; }
@@ -49,6 +47,7 @@ namespace workIT.Data.Views
         public virtual DbSet<Entity_FrameworkItemSummary> Entity_FrameworkItemSummary { get; set; }
         public virtual DbSet<Entity_FrameworkCIPCodeSummary> Entity_FrameworkCIPCodeSummary { get; set; }
         public virtual DbSet<Entity_FrameworkIndustryCodeSummary> Entity_FrameworkIndustryCodeSummary { get; set; }
+        public virtual DbSet<Entity_ReferenceFramework_Totals> Entity_ReferenceFramework_Totals { get; set; }
         public virtual DbSet<SiteTotalsSummary> SiteTotalsSummaries { get; set; }
         public virtual DbSet<CodesProperty_Counts_ByEntity> CodesProperty_Counts_ByEntity { get; set; }
         public virtual DbSet<CodesProperty_Summary> CodesProperty_Summary { get; set; }
@@ -61,8 +60,24 @@ namespace workIT.Data.Views
         public virtual DbSet<Query_IndianapolisCredentials> Query_IndianapolisCredentials { get; set; }
         public virtual DbSet<Query_IndianaCredentials> Query_IndianaCredentials { get; set; }
         public virtual DbSet<Organization_CombinedConnections> Organization_CombinedConnections { get; set; }
-        public virtual DbSet<Organization_Summary> Organization_Summary { get; set; }
-        public virtual DbSet<Entity_ReferenceFramework_Totals> Entity_ReferenceFramework_Totals { get; set; }
+        public virtual DbSet<Reports_DuplicateAsmtsNameDescSWP> Reports_DuplicateAsmtsNameDescSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateCredentialsOrgCredentialDescSWP> Reports_DuplicateCredentialsOrgCredentialDescSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateCredentialsOrgCredentialSWP> Reports_DuplicateCredentialsOrgCredentialSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateLoppsNameSWP> Reports_DuplicateLoppsNameSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateOrgsName> Reports_DuplicateOrgsName { get; set; }
+        public virtual DbSet<Reports_CredentialType> Reports_CredentialType { get; set; }
+        public virtual DbSet<Reports_DuplicateLoppsNameDescSWP> Reports_DuplicateLoppsNameDescSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateAsmtsNameSWP> Reports_DuplicateAsmtsNameSWP { get; set; }
+        public virtual DbSet<Reports_DuplicateOrgsNameSWP> Reports_DuplicateOrgsNameSWP { get; set; }
+        public virtual DbSet<ResourceCurrency_Summary> ResourceCurrency_Summary { get; set; }
+        public virtual DbSet<Reports_CredentialOrgsWithoutOwnsOrOffers> Reports_CredentialOrgsWithoutOwnsOrOffers { get; set; }
+        public virtual DbSet<Reports_ResourceType> Reports_ResourceType { get; set; }
+        public virtual DbSet<ONET_SOC_JobFamily> ONET_SOC_JobFamily { get; set; }
         public virtual DbSet<Entity_ReferenceFramework_Summary> Entity_ReferenceFramework_Summary { get; set; }
+        public virtual DbSet<Entity_CacheSummary> Entity_CacheSummary { get; set; }
+        public virtual DbSet<Activity_Summary> Activity_Summary { get; set; }
+        public virtual DbSet<Reports_ReferencesFinder> Reports_ReferencesFinder { get; set; }
+        public virtual DbSet<Reports_ReferencesPublisher> Reports_ReferencesPublisher { get; set; }
+        public virtual DbSet<Entity_HasResourceSummary> Entity_HasResourceSummary { get; set; }
     }
 }

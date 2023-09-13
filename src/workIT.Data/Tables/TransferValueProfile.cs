@@ -41,6 +41,8 @@ namespace workIT.Data.Tables
         public string StartDate { get; set; }
         public string EndDate { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }

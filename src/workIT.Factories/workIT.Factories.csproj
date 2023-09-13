@@ -128,12 +128,10 @@
     <Compile Include="OccupationManager.cs" />
     <Compile Include="OrganizationManager.cs" />
     <Compile Include="OrganizationRoleManager.cs" />
-    <Compile Include="PathwayComponentConditionManager.cs" />
     <Compile Include="PathwayComponentManager.cs" />
     <Compile Include="PathwayManager.cs" />
     <Compile Include="PathwaySetManager.cs" />
     <Compile Include="ProgressionModelManager.cs" />
-    <Compile Include="ProgressTrackingManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueryManager.cs" />
     <Compile Include="Reference_FrameworkItemManager.cs" />

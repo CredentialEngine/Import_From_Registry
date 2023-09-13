@@ -103,6 +103,9 @@
       <DependentUpon>Accounts.tt</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tables\Account.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\ActivityLog.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -154,6 +157,9 @@
     <Compile Include="Tables\Collection_Competency.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Collection_HasMember.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\CompetencyFramework.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -170,6 +176,21 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\CostManifest.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_Assessment_Property.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_BenchmarkProperty.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_ConditionManifest_Property.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_CostManifest_Property.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Counts_Credential_Property.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
@@ -202,13 +223,13 @@
     <Compile Include="Tables\EarningsProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\EducationFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\EmploymentOutcomeProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EntityLanguageMaps.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_Address.cs">
@@ -239,6 +260,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_CompetencyFramework.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_ComponentCondition.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_ConditionManifest.cs">
@@ -277,16 +301,34 @@
     <Compile Include="Tables\Entity_FinancialAssistanceProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_HasOffering.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_HasPathway.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_HasPathwayComponent.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Entity_HasResource.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_HasSupportService.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_HasVerificationService.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Entity_HoldersProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_IdentifierValue.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_IsPartOfSupportService.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Job.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_JurisdictionProfile.cs">
@@ -296,6 +338,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_LearningOpportunity.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_Occupation.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_Organization.cs">
@@ -320,6 +365,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_TransferValueProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_UsesVerificationService.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_VerificationProfile.cs">
@@ -370,7 +418,10 @@
     <Compile Include="Tables\PathwaySet.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Pathway_ComponentCondition.cs">
+    <Compile Include="Tables\ProgressionModel.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\ProgressionModel_ProgressionLevel.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Reference_Framework.cs">
@@ -379,7 +430,22 @@
     <Compile Include="Tables\Reference_FrameworkItem.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\Reports_Duplicates.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Reports_Summary.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Reports_SummaryHistory.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\ScheduledOffering.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\SearchPendingReindex.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\SupportService.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\TaskProfile.cs">
@@ -392,6 +458,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\TransferValueProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\VerificationServiceProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Widget.cs">
@@ -416,6 +485,9 @@
       <DependentUpon>workIT.edmx</DependentUpon>
     </Compile>
     <Compile Include="Tables\WorkRole.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Work_Query.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\Activity_Summary.cs">
@@ -469,6 +541,9 @@
     <Compile Include="Views\Entity_Assertion_Summary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
+    <Compile Include="Views\Entity_CacheSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
     <Compile Include="Views\Entity_FrameworkCIPCodeSummary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
@@ -476,6 +551,9 @@
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\Entity_FrameworkItemSummary.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Entity_HasResourceSummary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\Entity_LearningOpportunity_IsPartOfSummary.cs">
@@ -523,13 +601,52 @@
     <Compile Include="Views\Organization_CombinedQAPerformed.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
-    <Compile Include="Views\Organization_Summary.cs">
-      <DependentUpon>workITViews.tt</DependentUpon>
-    </Compile>
     <Compile Include="Views\Query_IndianaCredentials.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\Query_IndianapolisCredentials.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_CredentialOrgsWithoutOwnsOrOffers.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_CredentialType.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateAsmtsNameDescSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateAsmtsNameSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateCredentialsOrgCredentialDescSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateCredentialsOrgCredentialSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateLoppsNameDescSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateLoppsNameSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateOrgsName.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_DuplicateOrgsNameSWP.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_ReferencesFinder.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_ReferencesPublisher.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Reports_ResourceType.cs">
+      <DependentUpon>workITViews.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ResourceCurrency_Summary.cs">
       <DependentUpon>workITViews.tt</DependentUpon>
     </Compile>
     <Compile Include="Views\SiteTotalsSummary.cs">

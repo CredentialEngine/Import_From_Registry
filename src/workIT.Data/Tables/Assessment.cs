@@ -65,6 +65,8 @@ namespace workIT.Data.Tables
         public string TargetLearningResource { get; set; }
         public Nullable<bool> IsNonCredit { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Assessment> Entity_Assessment { get; set; }

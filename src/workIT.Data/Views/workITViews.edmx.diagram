@@ -4,20 +4,18 @@
   <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
     <!-- Diagram content (shape and connector positions) -->
     <edmx:Diagrams>
-      <Diagram DiagramId="fe98d90777bb43e293c76761b513e046" Name="Diagram1" ZoomLevel="106">
+      <Diagram DiagramId="fe98d90777bb43e293c76761b513e046" Name="Diagram1" ZoomLevel="80">
         <EntityTypeShape EntityType="workITViewModels.Codes_Currency" Width="1.5" PointX="3.375" PointY="0.5" IsExpanded="true" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.NAIC" Width="1.5" PointX="4.875" PointY="3.75" IsExpanded="true" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.NAICS_NaicsGroup" Width="1.5" PointX="7.125" PointY="4.75" IsExpanded="true" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.ONET_SOC" Width="1.5" PointX="11.5" PointY="0.625" IsExpanded="true" FillColor="0, 192, 0" />
-        <EntityTypeShape EntityType="workITViewModels.ONET_SOC_JobFamily" Width="1.5" PointX="9.125" PointY="4.75" IsExpanded="true" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CIPCode2010" Width="2.125" PointX="9.875" PointY="7.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CIPCode2010_JobFamily" Width="2.125" PointX="13.25" PointY="7.625" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Codes_Countries" Width="2.125" PointX="13.875" PointY="0.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Codes_Language" Width="2.125" PointX="7.25" PointY="9.5" FillColor="0, 192, 0" />
-        <EntityTypeShape EntityType="workITViewModels.Activity_Summary" Width="1.5" PointX="12.75" PointY="10.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.EntityProperty_Summary" Width="1.5" PointX="14.75" PointY="10.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_Subjects" Width="1.5" PointX="5.75" PointY="13.75" FillColor="0, 192, 0" />
-        <EntityTypeShape EntityType="workITViewModels.Entity_Reference_Summary" Width="1.75" PointX="7.75" PointY="13.75" FillColor="0, 192, 0" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_Reference_Summary" Width="1.75" PointX="30.375" PointY="22.25" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Credential_Assets" Width="1.5" PointX="9.75" PointY="13.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Assessment_Summary" Width="2.375" PointX="16.375" PointY="0.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_LearningOpportunity_IsPartOfSummary" Width="1.5" PointX="16.75" PointY="12.75" FillColor="0, 192, 0" />
@@ -29,6 +27,7 @@
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkItemSummary" Width="3.375" PointX="20.75" PointY="0.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkCIPCodeSummary" Width="1.5" PointX="10.25" PointY="21.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.Entity_FrameworkIndustryCodeSummary" Width="3.5" PointX="12.25" PointY="21.5" FillColor="0, 192, 0" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Totals" Width="2.5" PointX="20.75" PointY="11.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.SiteTotalsSummary" Width="1.5" PointX="7.375" PointY="0.5" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CodesProperty_Counts_ByEntity" Width="1.5" PointX="20.75" PointY="15.75" FillColor="0, 192, 0" />
         <EntityTypeShape EntityType="workITViewModels.CodesProperty_Summary" Width="2.125" PointX="2.875" PointY="7.125" FillColor="0, 192, 0" />
@@ -40,10 +39,26 @@
         <EntityTypeShape EntityType="workITViewModels.Organization_CombinedQAPerformed" Width="2.875" PointX="5.125" PointY="18.125" FillColor="Fuchsia" />
         <EntityTypeShape EntityType="workITViewModels.Query_IndianapolisCredentials" Width="2.75" PointX="21.375" PointY="19.75" FillColor="255, 128, 0" />
         <EntityTypeShape EntityType="workITViewModels.Query_IndianaCredentials" Width="2.125" PointX="18.375" PointY="19.75" FillColor="255, 128, 0" />
-        <EntityTypeShape EntityType="workITViewModels.Organization_CombinedConnections" Width="2.375" PointX="23.375" PointY="11.75" />
-        <EntityTypeShape EntityType="workITViewModels.Organization_Summary" Width="1.5" PointX="16.375" PointY="23.75" />
-        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Totals" Width="1.5" PointX="18.375" PointY="23.75" />
-        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Summary" Width="1.5" PointX="20.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Organization_CombinedConnections" Width="2.375" PointX="25.25" PointY="11.25" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateAsmtsNameDescSWP" Width="1.5" PointX="16.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateCredentialsOrgCredentialDescSWP" Width="1.5" PointX="18.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateCredentialsOrgCredentialSWP" Width="1.5" PointX="20.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateLoppsNameSWP" Width="1.5" PointX="22.375" PointY="23.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateOrgsName" Width="1.5" PointX="12.375" PointY="24.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_CredentialType" Width="1.5" PointX="25.75" PointY="0.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateLoppsNameDescSWP" Width="1.5" PointX="0.75" PointY="25.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateAsmtsNameSWP" Width="2.75" PointX="26.5" PointY="22.875" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_DuplicateOrgsNameSWP" Width="1.5" PointX="3.375" PointY="25.75" />
+        <EntityTypeShape EntityType="workITViewModels.ResourceCurrency_Summary" Width="1.5" PointX="5.375" PointY="25.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_CredentialOrgsWithoutOwnsOrOffers" Width="3.125" PointX="7.375" PointY="25.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_ResourceType" Width="2.5" PointX="33.625" PointY="23.25" />
+        <EntityTypeShape EntityType="workITViewModels.ONET_SOC_JobFamily" Width="1.5" PointX="9.375" PointY="4.75" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_ReferenceFramework_Summary" Width="2.625" PointX="21" PointY="6.5" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_CacheSummary" Width="1.5" PointX="28" PointY="11.5" />
+        <EntityTypeShape EntityType="workITViewModels.Activity_Summary" Width="3.5" PointX="25.375" PointY="4.75" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_ReferencesFinder" Width="2.875" PointX="26" PointY="28.875" />
+        <EntityTypeShape EntityType="workITViewModels.Reports_ReferencesPublisher" Width="3" PointX="17.75" PointY="28.5" />
+        <EntityTypeShape EntityType="workITViewModels.Entity_HasResourceSummary" Width="2.875" PointX="30.75" PointY="4.625" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

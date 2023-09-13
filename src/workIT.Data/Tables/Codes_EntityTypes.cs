@@ -19,6 +19,7 @@ namespace workIT.Data.Tables
         {
             this.Entity = new HashSet<Entity>();
             this.Counts_EntityStatistic = new HashSet<Counts_EntityStatistic>();
+            this.Collection_HasMember = new HashSet<Collection_HasMember>();
         }
     
         public int Id { get; set; }
@@ -36,5 +37,7 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity> Entity { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Collection_HasMember> Collection_HasMember { get; set; }
     }
 }

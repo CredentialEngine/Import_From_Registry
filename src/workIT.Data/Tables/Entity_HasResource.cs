@@ -12,15 +12,15 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EntityLanguageMaps
+    public partial class Entity_HasResource
     {
         public int Id { get; set; }
         public int EntityId { get; set; }
-        public string Property { get; set; }
-        public bool HasMultipleLanguages { get; set; }
-        public string LanguageMap { get; set; }
+        public Nullable<int> EntityTypeId { get; set; }
+        public Nullable<int> ResourceId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
-        public System.Guid EntityUid { get; set; }
-        public int EntityTypeId { get; set; }
+        public Nullable<int> RelationshipTypeId { get; set; }
+    
+        public virtual Entity Entity { get; set; }
     }
 }

@@ -36,5 +36,6 @@ namespace workIT.Data.Views
         public int ConditionEntityBaseId { get; set; }
         public Nullable<bool> ExistsInRegistry { get; set; }
         public string TargetNodeCTID { get; set; }
+        public string Alignment { get; set; }
     }
 }

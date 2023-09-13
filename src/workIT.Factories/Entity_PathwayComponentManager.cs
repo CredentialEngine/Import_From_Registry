@@ -1,20 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
 using workIT.Utilities;
-using EM = workIT.Data;
-using EntityContext = workIT.Data.Tables.workITEntities;
-
 using DBEntity = workIT.Data.Tables.Entity_HasPathwayComponent;
+using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisEntity = workIT.Models.Common.Entity_HasPathwayComponent;
-using System.Web.UI;
-using Nest;
 
 namespace workIT.Factories
 {

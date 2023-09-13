@@ -59,6 +59,8 @@ namespace workIT.Data.Tables
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }
+        public virtual Credential Credential1 { get; set; }
+        public virtual Credential Credential2 { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Credential> Entity_Credential { get; set; }
     }

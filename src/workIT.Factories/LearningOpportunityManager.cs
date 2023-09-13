@@ -4,27 +4,23 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 
+using Newtonsoft.Json;
+
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
-using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
-using DBEntity = workIT.Data.Tables.LearningOpportunity;
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
 using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
-
+using DBEntity = workIT.Data.Tables.LearningOpportunity;
 using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
-using Newtonsoft.Json;
+using EntityContext = workIT.Data.Tables.workITEntities;
 using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworkItemManager;
-using Nest;
+using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
 //using ReferenceFrameworkItemsManager = workIT.Factories.Reference_FrameworksManager;
 
 namespace workIT.Factories
 {
-    public class LearningOpportunityManager : BaseFactory
+	public class LearningOpportunityManager : BaseFactory
     {
         static string thisClassName = "LearningOpportunityManager";
 		static string EntityType = "LearningOpportunity";

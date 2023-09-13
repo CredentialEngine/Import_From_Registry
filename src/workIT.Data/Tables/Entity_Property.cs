@@ -20,5 +20,6 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
     
         public virtual Entity Entity { get; set; }
+        public virtual Codes_PropertyValue Codes_PropertyValue { get; set; }
     }
 }

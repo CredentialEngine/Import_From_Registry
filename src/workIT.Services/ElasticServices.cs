@@ -1,29 +1,24 @@
-﻿using Nest;
-using Nest.JsonNetSerializer;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 using System.Web.Script.Serialization;
+
+using Elasticsearch.Net;
+using Nest;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
-using MC = workIT.Models.Common;
 using workIT.Models.Elastic;
-using ME=workIT.Models.Elastic;
 using workIT.Models.ProfileModels;
 using workIT.Models.Search;
 using workIT.Utilities;
 using PM = workIT.Models.ProfileModels;
-using Elasticsearch.Net;
-using System.Runtime;
 
 namespace workIT.Services
 {
@@ -91,11 +86,16 @@ namespace workIT.Services
 				settingsOld.DisableDirectStreaming(); //defaults to true
 				var clientOld = new ElasticClient( settingsOld );
 				//23-02-15 new to enable index with JObject
-				var connectionSettings = new ConnectionSettings( pool, JsonNetSerializer.Default );
-                //TBD The following seems to result in not being able to see the elastic query in search.DebugInformation
+				//23-09-13 mp - this doesn't work in this env??????
+				//var connectionSettings = new ConnectionSettings( pool, Nest.JsonNetSerializer.Default );
+				//so revert to this approach
+				var connectionSettings = new ConnectionSettings( pool );
+
+
+				//TBD The following seems to result in not being able to see the elastic query in search.DebugInformation
 				//23-03-08 setting to true. Can see the query again. 
-                //connectionSettings.DisableDirectStreaming( false );
-                connectionSettings.DisableDirectStreaming( true );
+				//connectionSettings.DisableDirectStreaming( false );
+				connectionSettings.DisableDirectStreaming( true );
                 var client = new ElasticClient( connectionSettings );
 				return client;
 			}

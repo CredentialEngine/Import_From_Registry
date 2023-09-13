@@ -62,19 +62,30 @@
     <Compile Include="AccountServices.cs" />
     <Compile Include="ActivityServices.cs" />
     <Compile Include="API\AssessmentServices.cs" />
+    <Compile Include="API\CollectionServices.cs" />
     <Compile Include="API\CompetencyFrameworkServices.cs" />
+    <Compile Include="API\ConceptSchemeServices.cs" />
     <Compile Include="API\CredentialServices.cs" />
+    <Compile Include="API\JobServices.cs" />
     <Compile Include="API\LearningOpportunityServices.cs" />
+    <Compile Include="API\OccupationServices.cs" />
+    <Compile Include="API\OutcomeDataServices.cs" />
     <Compile Include="API\PathwayServices.cs" />
     <Compile Include="API\PathwaySetServices.cs" />
     <Compile Include="API\ProfileServices.cs" />
+    <Compile Include="API\ProgressionModelServices.cs" />
+    <Compile Include="API\ScheduledOfferingServices.cs" />
     <Compile Include="API\ServiceHelper.cs" />
     <Compile Include="API\OrganizationServices.cs" />
     <Compile Include="API\SearchServices_Results.cs" />
     <Compile Include="API\SearchServices_Filters.cs" />
     <Compile Include="API\SearchServices.cs" />
     <Compile Include="API\SearchServices_Queries.cs" />
+    <Compile Include="API\SupportServiceServices.cs" />
+    <Compile Include="API\TaskServices.cs" />
+    <Compile Include="API\TransferIntermediaryServices.cs" />
     <Compile Include="API\TransferValueServices.cs" />
+    <Compile Include="API\WorkRoleServices.cs" />
     <Compile Include="AssessmentServices.cs" />
     <Compile Include="CollectionServices.cs" />
     <Compile Include="CompetencyFrameworkServices.cs" />
@@ -132,6 +143,9 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NEST">
+      <Version>7.11.1</Version>
+    </PackageReference>
+    <PackageReference Include="NEST.JsonNetSerializer">
       <Version>7.11.1</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">

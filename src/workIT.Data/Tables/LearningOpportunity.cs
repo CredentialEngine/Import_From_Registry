@@ -53,6 +53,8 @@ namespace workIT.Data.Tables
         public string SCED { get; set; }
         public Nullable<bool> IsNonCredit { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
+        public string Supersedes { get; set; }
+        public string SupersededBy { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_LearningOpportunity> Entity_LearningOpportunity { get; set; }

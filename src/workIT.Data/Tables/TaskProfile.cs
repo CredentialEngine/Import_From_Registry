@@ -32,5 +32,6 @@ namespace workIT.Data.Tables
         public string JsonProperties { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
+        public Nullable<System.Guid> PrimaryAgentUid { get; set; }
     }
 }

@@ -30,9 +30,9 @@ namespace workIT.Data.Tables
         public Nullable<System.Guid> OwningAgentUid { get; set; }
         public string HasProgressionModel { get; set; }
         public string CredentialRegistryId { get; set; }
-        public string Payload { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
+        public string Properties { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasPathway> Entity_HasPathway { get; set; }

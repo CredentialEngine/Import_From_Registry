@@ -3,20 +3,17 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
-using WM= workIT.Models;
-using ThisEntity = workIT.Models.RegistryImport;
+using workIT.Utilities;
+
 using DBEntity = workIT.Data.Tables.Import_Staging;
 using DBPendingRequest = workIT.Data.Tables.Import_PendingRequest;
+using EM = workIT.Data.Tables;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ImportMessage = workIT.Data.Tables.Import_Message;
-
-using workIT.Utilities;
-using EM = workIT.Data.Tables;
-using Elasticsearch.Net;
+using ThisEntity = workIT.Models.RegistryImport;
+using WM = workIT.Models;
 
 namespace workIT.Factories
 {

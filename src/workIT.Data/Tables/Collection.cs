@@ -17,9 +17,10 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Collection()
         {
-            this.Entity_Competency = new HashSet<Entity_Competency>();
-            this.Collection_Competency = new HashSet<Collection_Competency>();
             this.Collection_CollectionMember = new HashSet<Collection_CollectionMember>();
+            this.Collection_Competency = new HashSet<Collection_Competency>();
+            this.Collection_HasMember = new HashSet<Collection_HasMember>();
+            this.Entity_Competency = new HashSet<Entity_Competency>();
         }
     
         public int Id { get; set; }
@@ -41,10 +42,12 @@ namespace workIT.Data.Tables
         public int LifeCycleStatusTypeId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
+        public virtual ICollection<Collection_CollectionMember> Collection_CollectionMember { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Collection_Competency> Collection_Competency { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Collection_CollectionMember> Collection_CollectionMember { get; set; }
+        public virtual ICollection<Collection_HasMember> Collection_HasMember { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
     }
 }

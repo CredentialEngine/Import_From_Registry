@@ -19,6 +19,7 @@ namespace workIT.Data.Tables
         {
             this.ConceptScheme = new HashSet<ConceptScheme>();
             this.Entity_Organization = new HashSet<Entity_Organization>();
+            this.ProgressionModel = new HashSet<ProgressionModel>();
         }
     
         public int Id { get; set; }
@@ -52,5 +53,7 @@ namespace workIT.Data.Tables
         public virtual ICollection<ConceptScheme> ConceptScheme { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Organization> Entity_Organization { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<ProgressionModel> ProgressionModel { get; set; }
     }
 }

@@ -33,6 +33,7 @@ namespace workIT.Data.Tables
         public System.DateTime Created { get; set; }
         public System.DateTime LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
+        public string CTID { get; set; }
     
         public virtual Entity Entity { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

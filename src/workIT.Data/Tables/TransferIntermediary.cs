@@ -28,7 +28,6 @@ namespace workIT.Data.Tables
         public string SubjectWebpage { get; set; }
         public string CTID { get; set; }
         public Nullable<System.Guid> OwningAgentUid { get; set; }
-        public string LifecycleStatusType { get; set; }
         public string CredentialRegistryId { get; set; }
         public string CodedNotation { get; set; }
         public string CreditValueJson { get; set; }

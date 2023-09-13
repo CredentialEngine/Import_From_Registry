@@ -19,8 +19,8 @@ namespace workIT.Data.Views
         public string CodeGroup { get; set; }
         public string CodedNotation { get; set; }
         public string Name { get; set; }
-        public int ReferenceFrameworkItemId { get; set; }
         public string TargetNode { get; set; }
         public Nullable<int> Totals { get; set; }
+        public int ReferenceFrameworkItemId { get; set; }
     }
 }

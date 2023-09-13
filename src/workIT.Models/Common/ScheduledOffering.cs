@@ -1,17 +1,11 @@
-﻿using Nest;
-using Newtonsoft.Json;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-    public class ScheduledOffering : TopLevelObject
+	public class ScheduledOffering : TopLevelObject
     {
         public string Type { get; set; } = "ceterms:ScheduledOffering";
 

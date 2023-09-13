@@ -17,26 +17,24 @@ namespace workIT.Data.Views
         public int Id { get; set; }
         public System.DateTime CreatedDate { get; set; }
         public string ActivityType { get; set; }
+        public Nullable<int> EntityTypeId { get; set; }
         public string Activity { get; set; }
         public string Event { get; set; }
         public string Comment { get; set; }
         public Nullable<int> TargetUserId { get; set; }
-        public int ActionByUserId { get; set; }
-        public string ActionByUser { get; set; }
         public Nullable<int> ActivityObjectId { get; set; }
+        public string EntityName { get; set; }
+        public string EntityCTID { get; set; }
+        public int EntityStateId { get; set; }
         public Nullable<int> ObjectRelatedId { get; set; }
+        public Nullable<int> OwningOrgId { get; set; }
+        public string Organization { get; set; }
+        public int OrganizationEntityStateId { get; set; }
         public string RelatedTargetUrl { get; set; }
         public Nullable<int> TargetObjectId { get; set; }
         public string SessionId { get; set; }
         public string IPAddress { get; set; }
         public string Referrer { get; set; }
         public Nullable<bool> IsBot { get; set; }
-        public Nullable<int> EntityTypeId { get; set; }
-        public Nullable<int> OwningOrgId { get; set; }
-        public string Organization { get; set; }
-        public string EntityName { get; set; }
-        public string EntityCTID { get; set; }
-        public int EntityStateId { get; set; }
-        public int OrganizationEntityStateId { get; set; }
     }
 }

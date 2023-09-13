@@ -14,6 +14,12 @@ namespace workIT.Data.Tables
     
     public partial class JobProfile
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+        public JobProfile()
+        {
+            this.Entity_Job = new HashSet<Entity_Job>();
+        }
+    
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
         public int EntityStateId { get; set; }
@@ -33,5 +39,9 @@ namespace workIT.Data.Tables
         public string JsonProperties { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
+        public Nullable<System.Guid> PrimaryAgentUID { get; set; }
+    
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Job> Entity_Job { get; set; }
     }
 }

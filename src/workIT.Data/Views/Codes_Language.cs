@@ -15,12 +15,12 @@ namespace workIT.Data.Views
     public partial class Codes_Language
     {
         public int Id { get; set; }
-        public string LangugeCode { get; set; }
         public string Code_639_2T { get; set; }
         public string Code_639_2B { get; set; }
         public string LanguageName { get; set; }
         public string NativeName { get; set; }
         public Nullable<int> SortOrder { get; set; }
         public Nullable<bool> HasSublanguage { get; set; }
+        public string LanguageCode { get; set; }
     }
 }

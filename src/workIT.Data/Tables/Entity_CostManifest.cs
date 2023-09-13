@@ -19,7 +19,7 @@ namespace workIT.Data.Tables
         public int CostManifestId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
-        public virtual CostManifest CostManifest { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual CostManifest CostManifest { get; set; }
     }
 }

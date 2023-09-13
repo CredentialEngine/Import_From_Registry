@@ -101,7 +101,6 @@
     <Compile Include="AppUser.cs" />
     <Compile Include="CodeItem.cs" />
     <Compile Include="Common\Address.cs" />
-    <Compile Include="Common\Agent.cs" />
     <Compile Include="Common\AggregateDataProfile.cs" />
     <Compile Include="Common\BaseEmploymentObject.cs" />
     <Compile Include="Common\BaseObject.cs" />
@@ -186,6 +185,12 @@
     <Compile Include="Node\ProfileLink.cs" />
     <Compile Include="Node\Profiles.cs" />
     <Compile Include="Node\Property.cs" />
+    <Compile Include="PathwayBuilder\ApiResponse.cs" />
+    <Compile Include="PathwayBuilder\ConceptScheme.cs" />
+    <Compile Include="PathwayBuilder\CredentialAlignmentObject.cs" />
+    <Compile Include="PathwayBuilder\PathwayComponent.cs" />
+    <Compile Include="PathwayBuilder\PathwayWrapper.cs" />
+    <Compile Include="PathwayBuilder\SearchQuery.cs" />
     <Compile Include="ProfileModels\AssessmentProfile.cs" />
     <Compile Include="ProfileModels\Assessment_Summary.cs" />
     <Compile Include="ProfileModels\BaseProfile.cs" />

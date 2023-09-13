@@ -1,8 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-
-using RA.Models.Input;
 
 namespace RA.Models.JsonV2
 {

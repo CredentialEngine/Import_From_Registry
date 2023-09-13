@@ -10,7 +10,7 @@ using workIT.Models.API;
 using workIT.Models.Services.Reports;
 
 using EntityContext = workIT.Data.Tables.workITEntities;
-using LinkCheckerServices;
+//using LinkCheckerServices;
 using Views = workIT.Data.Views;
 using ViewContext = workIT.Data.Views.workITViews;
 using workIT.Utilities;
@@ -1546,7 +1546,7 @@ namespace workIT.Factories
         }
 
         #endregion
-
+		/*
         #region LinkChecker
         public static List<QuerySummary> LinkcheckerSearch( Query request )
         {
@@ -1730,12 +1730,12 @@ namespace workIT.Factories
             }
             return output;
         }
-        public static string DeleteBrokenWebpageLink( string[] CTIDs )
-        {
-            return LinkCheckerServices.LinkCheckerServices.DeleteExistingRecord( CTIDs );
-        }
+        //public static string DeleteBrokenWebpageLink( string[] CTIDs )
+        //{
+        //    return LinkCheckerServices.LinkCheckerServices.DeleteExistingRecord( CTIDs );
+        //}
         #endregion
-
+		*/
         #region CredentialType
         public static List<QuerySummary> CredentialType( Query request )
         {

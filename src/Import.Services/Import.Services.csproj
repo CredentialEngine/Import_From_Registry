@@ -83,7 +83,6 @@
     <Compile Include="ImportVerificationService.cs" />
     <Compile Include="ImportWorkRole.cs" />
     <Compile Include="MappingHelperV3.cs" />
-    <Compile Include="NavyServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RegistryModels\CredentialDescriptionSet.cs" />
     <Compile Include="RegistryModels\DeleteRequest.cs" />

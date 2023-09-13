@@ -34,6 +34,9 @@ namespace workIT.Data.Tables
         public Nullable<int> EntityStateId { get; set; }
         public Nullable<int> OwningOrgId { get; set; }
         public Nullable<int> PublishedByOrgId { get; set; }
+        public string ResourceDetail { get; set; }
+        public string AgentRelationshipsForEntity { get; set; }
+        public Nullable<bool> IsActive { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

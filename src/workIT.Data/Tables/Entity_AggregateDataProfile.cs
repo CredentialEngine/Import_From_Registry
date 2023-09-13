@@ -32,6 +32,7 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string Currency { get; set; }
         public string ExpirationDate { get; set; }
+        public string FacultyToStudentRatio { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

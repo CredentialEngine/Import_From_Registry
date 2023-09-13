@@ -28,6 +28,8 @@ namespace workIT.Data.Tables
         public System.DateTime LastUpdated { get; set; }
         public int LastUpdatedById { get; set; }
         public string Note { get; set; }
+        public string SubjectWebpage { get; set; }
+        public string Properties { get; set; }
     
         public virtual ConceptScheme ConceptScheme { get; set; }
     }

@@ -19,6 +19,7 @@ namespace workIT.Data.Tables
         {
             this.Entity_CostProfileItem = new HashSet<Entity_CostProfileItem>();
             this.Entity_Reference = new HashSet<Entity_Reference>();
+            this.Entity_Property = new HashSet<Entity_Property>();
         }
     
         public int Id { get; set; }
@@ -39,5 +40,7 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity_CostProfileItem> Entity_CostProfileItem { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Reference> Entity_Reference { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Property> Entity_Property { get; set; }
     }
 }

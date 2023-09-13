@@ -18,12 +18,13 @@ namespace workIT.Data.Tables
         public int CollectionId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public System.Guid MemberUID { get; set; }
         public Nullable<System.DateTime> StartDate { get; set; }
         public Nullable<System.DateTime> EndDate { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public System.Guid RowId { get; set; }
+        public string ProxyFor { get; set; }
+        public Nullable<int> EntityTypeId { get; set; }
     
         public virtual Collection Collection { get; set; }
     }

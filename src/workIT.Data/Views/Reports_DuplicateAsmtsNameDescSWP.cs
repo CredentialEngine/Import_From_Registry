@@ -7,23 +7,23 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace workIT.Data.Tables
+namespace workIT.Data.Views
 {
     using System;
     using System.Collections.Generic;
     
-    public partial class Pathway_ComponentCondition
+    public partial class Reports_DuplicateAsmtsNameDescSWP
     {
-        public int Id { get; set; }
-        public System.Guid RowId { get; set; }
-        public int ParentComponentId { get; set; }
+        public string Publisher { get; set; }
+        public string PublisherCTID { get; set; }
+        public string Organization { get; set; }
+        public string DataOwnerCTID { get; set; }
         public string Name { get; set; }
+        public string EntityCTID { get; set; }
+        public int Id { get; set; }
+        public string SubjectWebpage { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
         public string Description { get; set; }
-        public Nullable<int> RequiredNumber { get; set; }
-        public string PathwayCTID { get; set; }
-        public System.DateTime Created { get; set; }
-        public System.DateTime LastUpdated { get; set; }
-    
-        public virtual PathwayComponent PathwayComponent { get; set; }
+        public int ExistsInPublisher { get; set; }
     }
 }

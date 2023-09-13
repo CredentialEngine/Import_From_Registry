@@ -45,12 +45,15 @@ namespace workIT.Data.Tables
         public virtual DbSet<ConceptScheme> ConceptScheme { get; set; }
         public virtual DbSet<ConceptScheme_Concept> ConceptScheme_Concept { get; set; }
         public virtual DbSet<ConditionManifest> ConditionManifest { get; set; }
-        public virtual DbSet<CostManifest> CostManifest { get; set; }
+        public virtual DbSet<Counts_RegionTotals> Counts_RegionTotals { get; set; }
+        public virtual DbSet<Counts_SiteTotals> Counts_SiteTotals { get; set; }
         public virtual DbSet<Credential> Credential { get; set; }
         public virtual DbSet<Credential_SummaryCache> Credential_SummaryCache { get; set; }
         public virtual DbSet<DataProfile> DataProfile { get; set; }
         public virtual DbSet<DataSetProfile> DataSetProfile { get; set; }
         public virtual DbSet<DataSetTimeFrame> DataSetTimeFrame { get; set; }
+        public virtual DbSet<EarningsProfile> EarningsProfile { get; set; }
+        public virtual DbSet<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; }
         public virtual DbSet<Entity> Entity { get; set; }
         public virtual DbSet<Entity_Address> Entity_Address { get; set; }
         public virtual DbSet<Entity_AgentRelationship> Entity_AgentRelationship { get; set; }
@@ -60,6 +63,7 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_CommonCondition> Entity_CommonCondition { get; set; }
         public virtual DbSet<Entity_CommonCost> Entity_CommonCost { get; set; }
         public virtual DbSet<Entity_Competency> Entity_Competency { get; set; }
+        public virtual DbSet<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
         public virtual DbSet<Entity_ConditionManifest> Entity_ConditionManifest { get; set; }
         public virtual DbSet<Entity_ConditionProfile> Entity_ConditionProfile { get; set; }
         public virtual DbSet<Entity_ContactPoint> Entity_ContactPoint { get; set; }
@@ -69,9 +73,12 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_Credential> Entity_Credential { get; set; }
         public virtual DbSet<Entity_DataSetProfile> Entity_DataSetProfile { get; set; }
         public virtual DbSet<Entity_DurationProfile> Entity_DurationProfile { get; set; }
+        public virtual DbSet<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
+        public virtual DbSet<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
         public virtual DbSet<Entity_FinancialAssistanceProfile> Entity_FinancialAssistanceProfile { get; set; }
         public virtual DbSet<Entity_HasPathway> Entity_HasPathway { get; set; }
         public virtual DbSet<Entity_HasPathwayComponent> Entity_HasPathwayComponent { get; set; }
+        public virtual DbSet<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
         public virtual DbSet<Entity_IdentifierValue> Entity_IdentifierValue { get; set; }
         public virtual DbSet<Entity_JurisdictionProfile> Entity_JurisdictionProfile { get; set; }
         public virtual DbSet<Entity_Language> Entity_Language { get; set; }
@@ -87,8 +94,8 @@ namespace workIT.Data.Tables
         public virtual DbSet<Entity_VerificationProfile> Entity_VerificationProfile { get; set; }
         public virtual DbSet<Entity_VerificationStatus> Entity_VerificationStatus { get; set; }
         public virtual DbSet<Entity_Cache> Entity_Cache { get; set; }
-        public virtual DbSet<EntityLanguageMaps> EntityLanguageMaps { get; set; }
         public virtual DbSet<GeoCoordinate> GeoCoordinate { get; set; }
+        public virtual DbSet<HoldersProfile> HoldersProfile { get; set; }
         public virtual DbSet<Import_EntityResolution> Import_EntityResolution { get; set; }
         public virtual DbSet<Import_Message> Import_Message { get; set; }
         public virtual DbSet<Import_PendingRequest> Import_PendingRequest { get; set; }
@@ -99,9 +106,12 @@ namespace workIT.Data.Tables
         public virtual DbSet<OccupationProfile> OccupationProfile { get; set; }
         public virtual DbSet<Organization> Organization { get; set; }
         public virtual DbSet<Pathway> Pathway { get; set; }
+        public virtual DbSet<PathwayComponent> PathwayComponent { get; set; }
         public virtual DbSet<PathwaySet> PathwaySet { get; set; }
         public virtual DbSet<Reference_Framework> Reference_Framework { get; set; }
         public virtual DbSet<Reference_FrameworkItem> Reference_FrameworkItem { get; set; }
+        public virtual DbSet<Reports_Duplicates> Reports_Duplicates { get; set; }
+        public virtual DbSet<ScheduledOffering> ScheduledOffering { get; set; }
         public virtual DbSet<SearchPendingReindex> SearchPendingReindex { get; set; }
         public virtual DbSet<TaskProfile> TaskProfile { get; set; }
         public virtual DbSet<TransferIntermediary> TransferIntermediary { get; set; }
@@ -109,21 +119,35 @@ namespace workIT.Data.Tables
         public virtual DbSet<TransferValueProfile> TransferValueProfile { get; set; }
         public virtual DbSet<Widget> Widget { get; set; }
         public virtual DbSet<Widget_Selection> Widget_Selection { get; set; }
+        public virtual DbSet<Work_Query> Work_Query { get; set; }
         public virtual DbSet<WorkRole> WorkRole { get; set; }
-        public virtual DbSet<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
-        public virtual DbSet<Collection_Competency> Collection_Competency { get; set; }
-        public virtual DbSet<HoldersProfile> HoldersProfile { get; set; }
-        public virtual DbSet<EarningsProfile> EarningsProfile { get; set; }
-        public virtual DbSet<EmploymentOutcomeProfile> EmploymentOutcomeProfile { get; set; }
-        public virtual DbSet<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
-        public virtual DbSet<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
-        public virtual DbSet<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
-        public virtual DbSet<Counts_SiteTotals> Counts_SiteTotals { get; set; }
-        public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
+        public virtual DbSet<Counts_Assessment_Property> Counts_Assessment_Property { get; set; }
+        public virtual DbSet<Counts_BenchmarkProperty> Counts_BenchmarkProperty { get; set; }
+        public virtual DbSet<Counts_ConditionManifest_Property> Counts_ConditionManifest_Property { get; set; }
+        public virtual DbSet<Counts_CostManifest_Property> Counts_CostManifest_Property { get; set; }
+        public virtual DbSet<Counts_Credential_Property> Counts_Credential_Property { get; set; }
         public virtual DbSet<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
-        public virtual DbSet<Counts_RegionTotals> Counts_RegionTotals { get; set; }
-        public virtual DbSet<Pathway_ComponentCondition> Pathway_ComponentCondition { get; set; }
-        public virtual DbSet<PathwayComponent> PathwayComponent { get; set; }
+        public virtual DbSet<CostManifest> CostManifest { get; set; }
+        public virtual DbSet<Counts_EntityMonthlyTotals> Counts_EntityMonthlyTotals { get; set; }
         public virtual DbSet<Collection_CollectionMember> Collection_CollectionMember { get; set; }
+        public virtual DbSet<Collection_Competency> Collection_Competency { get; set; }
+        public virtual DbSet<Collection_HasMember> Collection_HasMember { get; set; }
+        public virtual DbSet<Entity_ComponentCondition> Entity_ComponentCondition { get; set; }
+        public virtual DbSet<Entity_UsesVerificationService> Entity_UsesVerificationService { get; set; }
+        public virtual DbSet<VerificationServiceProfile> VerificationServiceProfile { get; set; }
+        public virtual DbSet<Account> Account { get; set; }
+        public virtual DbSet<EducationFramework> EducationFramework { get; set; }
+        public virtual DbSet<Entity_HasOffering> Entity_HasOffering { get; set; }
+        public virtual DbSet<Entity_HasResource> Entity_HasResource { get; set; }
+        public virtual DbSet<Entity_HasSupportService> Entity_HasSupportService { get; set; }
+        public virtual DbSet<Entity_HasVerificationService> Entity_HasVerificationService { get; set; }
+        public virtual DbSet<Entity_IsPartOfSupportService> Entity_IsPartOfSupportService { get; set; }
+        public virtual DbSet<Entity_Job> Entity_Job { get; set; }
+        public virtual DbSet<Entity_Occupation> Entity_Occupation { get; set; }
+        public virtual DbSet<ProgressionModel> ProgressionModel { get; set; }
+        public virtual DbSet<ProgressionModel_ProgressionLevel> ProgressionModel_ProgressionLevel { get; set; }
+        public virtual DbSet<Reports_Summary> Reports_Summary { get; set; }
+        public virtual DbSet<Reports_SummaryHistory> Reports_SummaryHistory { get; set; }
+        public virtual DbSet<SupportService> SupportService { get; set; }
     }
 }
