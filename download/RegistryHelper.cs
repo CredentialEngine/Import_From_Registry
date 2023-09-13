@@ -65,7 +65,7 @@ namespace Download
 				//	importSummary.Add( "Skipped import of " + registryEntityType );
 				//	return;
 				//}
-				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Importing {0}  ***************** ", registryEntityType ) );
+				LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading {0}  ***************** ", registryEntityType ) );
 			}
 
 			//
@@ -139,7 +139,7 @@ namespace Download
 						LoggingHelper.WriteLogFile( 1, resourceType + "_" + ctid, payload, "", false );
 					}
 
-					#region future: define process to generic record to a database.
+					#region future: define process to generate record to a database.
 					//TODO - add optional save to a database
 					//		- will need entity type, ctid, name, description (maybe), created and lastupdated from envelope,payload
 					//		- only doing adds, allows for history, user can choose to do updates
@@ -166,16 +166,20 @@ namespace Download
 							resource.Description = graphMainResource.Description.ToString();
 							resource.SubjectWebpage = graphMainResource.SubjectWebpage ?? "";
 						}
-						//get owning org
-						//if ( graphMainResource.OwnedBy != null && graphMainResource.OwnedBy.Count > 0 )
-						//                  {
-						//	foreach ( var org in graphMainResource.OwnedBy )
-						//                      {
-						//		//only storing one
-						//		resource.OwningOrganizationCTID = org	//only get the CTID
-						//                      }
-						//                  }
-						statusMessage = "";
+
+                        //23-02-19 mp - what happened to populating CredentialFinderObject.
+						//				- only populated when called from the import projectonly project
+
+                        //get owning org
+                        //if ( graphMainResource.OwnedBy != null && graphMainResource.OwnedBy.Count > 0 )
+                        //                  {
+                        //	foreach ( var org in graphMainResource.OwnedBy )
+                        //                      {
+                        //		//only storing one
+                        //		resource.OwningOrganizationCTID = org	//only get the CTID
+                        //                      }
+                        //                  }
+                        statusMessage = "";
 						//optionally save record to a database
 						if ( new DatabaseServices().Add( resource, ref statusMessage ) == 0 )
 						{
@@ -225,9 +229,11 @@ namespace Download
 		{
 			int pageNbr = 1;
 			int pageSize = 50;
-			//string importError = "";
-			//may want to just do all types!
-			string type = "";
+            //string importError = "";
+            //may want to just do all types!
+            var manager = new DatabaseServices();
+
+            string type = "";
 			List<string> messages = new List<string>();
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
 			SaveStatus status = new SaveStatus();
@@ -272,9 +278,21 @@ namespace Download
 							//only need the envelopeId and type
 							//so want a full delete, or set EntityStateId to 0 - just as a precaution
 							messages = new List<string>();
-							//action - place in a deleted folder?
-							LoggingHelper.WriteLogFile( 1, "Deleted_" + ctdlType + "_" + ctid, payload, "", false );
-
+							statusMessage = "";
+                            //action - place in a deleted folder?
+                            var resource = new CredentialRegistryResource()
+                            {
+                                EntityType = ctdlType,
+                                CTID = ctid,
+                            };
+							if ( manager.Delete( resource, ref statusMessage ) == 0)
+							{
+								LoggingHelper.DoTrace( 1, $"Delete of CTID: '{ctid}' was unsuccessful. {statusMessage}" );
+							}
+							else 
+							{
+								LoggingHelper.WriteLogFile( 1, "Deleted_" + ctdlType + "_" + ctid, payload, "", false );
+							}
 						}
 						catch ( Exception ex )
 						{

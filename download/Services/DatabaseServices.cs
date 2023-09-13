@@ -34,21 +34,21 @@ namespace Download.Services
 						command.CommandType = CommandType.StoredProcedure;
 						command.Parameters.AddWithValue( "@CTID", entity.CTID );
 						command.Parameters.AddWithValue( "@CTDLType", entity.EntityType );
-						command.Parameters.AddWithValue( "@Name", entity.Name );
-						command.Parameters.AddWithValue( "@Description", entity.Description );
+						command.Parameters.AddWithValue( "@Name", entity.Name ?? "Unnamed DataSet Profile" );
+						command.Parameters.AddWithValue( "@Description", entity.Description ?? "none" );
 						command.Parameters.AddWithValue( "@PrimaryOrganizationCTID", entity.OwningOrganizationCTID );
-						command.Parameters.AddWithValue( "@SubjectWebpage", entity.SubjectWebpage );
+						command.Parameters.AddWithValue( "@SubjectWebpage", entity.SubjectWebpage ?? "" );
 						command.Parameters.AddWithValue( "@Created", entity.Created );
 						command.Parameters.AddWithValue( "@LastUpdated", entity.LastUpdated );
 						command.Parameters.AddWithValue( "@DownloadDate", entity.DownloadDate );
 						command.Parameters.AddWithValue( "@CredentialRegistryGraph", entity.CredentialRegistryGraph );
-						//TBD - what was expected here?
-						command.Parameters.AddWithValue( "@CredentialFinderObject", entity.CredentialFinderObject );
-						//SqlParameter outputId = new SqlParameter( "@NewId", newId );
-						//outputId.Direction = ParameterDirection.Output;
-						//command.Parameters.Add( outputId );
-						try
-						{
+                        //TBD - CredentialFinderObjectis N/A for standalone download
+                        //command.Parameters.AddWithValue( "@CredentialFinderObject", "");
+                        //SqlParameter outputId = new SqlParameter( "@NewId", newId );
+                        //outputId.Direction = ParameterDirection.Output;
+                        //command.Parameters.Add( outputId );
+                        try
+                        {
 							command.ExecuteNonQuery();
 							//newId = ( int )command.Parameters[ "@NewId" ].Value;
 							//OR
@@ -81,7 +81,52 @@ namespace Download.Services
 			return newId;
 		}
 
-		public static string MainConnection()
+        public int Delete( CredentialRegistryResource entity, ref string statusMessage )
+        {
+            int newId = 0;
+            try
+            {
+                string connectionString = MainConnection();
+                using ( SqlConnection c = new SqlConnection( connectionString ) )
+                {
+                    c.Open();
+
+                    using ( SqlCommand command = new SqlCommand( "[Resource.Delete]", c ) )
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue( "@CTID", entity.CTID );
+                        try
+                        {
+                            command.ExecuteNonQuery();
+                        }
+                        catch ( Exception ex )
+                        {
+                            newId = 0;
+                            statusMessage = thisClassName + "- Unsuccessful: Delete(): " + ex.Message.ToString();
+                            LoggingHelper.LogError( ex, thisClassName + string.Format( ".Delete() for EntityType: {0} and CTID: {1}", entity.EntityType, entity.CTID ) );
+                            return 0;
+                        }
+                    }
+                }
+
+                statusMessage = "";
+                //for now just set to 1 to show successful
+                newId = 1;
+
+            }
+            catch ( Exception ex )
+            {
+                //provide helpful info about failing entity
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Delete() for EntityType: {0} and CTID: {1}", entity.EntityType, entity.CTID ) );
+                statusMessage = thisClassName + "- Unsuccessful: Delete(): " + ex.Message.ToString();
+
+                entity.IsValid = false;
+            }
+
+            return newId;
+        }
+
+        public static string MainConnection()
 		{
 			string conn = WebConfigurationManager.ConnectionStrings[ "MainConnection" ].ConnectionString;
 			return conn;
