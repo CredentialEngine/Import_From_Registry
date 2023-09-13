@@ -106,7 +106,7 @@ namespace RA.Models.JsonV2
 		public List<AggregateDataProfile> AggregateData { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
-		public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
+		public LanguageMapList AlternateName { get; set; } 
 
 		/// <summary>
 		/// Assessment Method Description 

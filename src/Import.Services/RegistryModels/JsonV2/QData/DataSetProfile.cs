@@ -13,9 +13,9 @@ namespace RA.Models.JsonV2.QData
 	/// DataSet Profile
 	/// Particular characteristics or properties of a data set and its records.
 	/// qdata:DataSetProfile
-	/// <see cref="https://credreg.net/qdata/terms/DataSetProfile"/>
+	/// <see href="https://credreg.net/qdata/terms/DataSetProfile"/>
 	/// </summary>
-	public class DataSetProfile
+	public class DataSetProfile : BaseResourceDocument
 	{
 		[JsonProperty( "@type" )]
 		public string Type { get; set; } = "qdata:DataSetProfile";
@@ -35,12 +35,13 @@ namespace RA.Models.JsonV2.QData
 
 		/// <summary>
 		/// Entity describing the process by which a credential, assessment, organization, or aspects of it, are administered.
-		/// <see cref="https://credreg.net/ctdl/terms/administrationProcess"/>
+		/// <see href="https://credreg.net/ctdl/terms/administrationProcess"/>
 		/// </summary>
 		[ JsonProperty( PropertyName = "ceterms:administrationProcess" )]
-		public List<ProcessProfile> AdministrationProcess { get; set; } 
+		public List<ProcessProfile> AdministrationProcess { get; set; }
 
-
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 
 		/// <summary>
 		/// Instructional Program Type
@@ -52,7 +53,7 @@ namespace RA.Models.JsonV2.QData
 		/// <summary>
 		/// Jurisdiction Profile
 		/// Geo-political information about applicable geographic areas and their exceptions.
-		/// <see cref="https://credreg.net/ctdl/terms/JurisdictionProfile"/>
+		/// <see href="https://credreg.net/ctdl/terms/JurisdictionProfile"/>
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:jurisdiction" )]
 		public List<JurisdictionProfile> Jurisdiction { get; set; }
@@ -82,8 +83,8 @@ namespace RA.Models.JsonV2.QData
 		public List<DataSetTimeFrame> DataSetTimePeriod { get; set; }
 
 
-		[JsonProperty( PropertyName = "qdata:dataSetTimePeriodBNList" )]
-		public List<string> DataSetTimePeriodBNList { get; set; }
+		//[JsonProperty( PropertyName = "qdata:dataSetTimePeriodBNList" )]
+		//public List<string> DataSetTimePeriodBNList { get; set; }
 
 		/// <summary>
 		/// Data Suppression Policy
@@ -100,16 +101,24 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( PropertyName = "qdata:distributionFile" )]
 		public List<string> DistributionFile { get; set; }
 
-		/// <summary>
-		/// Relevant Data Set For
-		/// Data set for the entity being referenced.
-		/// ??Inverse property - point back to the parent, i.e. HoldersProfile, EarningsProfile, EmploymentOutlook
-		/// URI
-		/// </summary>
-		[JsonProperty( PropertyName = "qdata:relevantDataSetFor" )]
-		//public object RelevantDataSetFor { get; set; }
-		public List<string> RelevantDataSetFor { get; set; } 
+		///// <summary>
+		///// Relevant Data Set For
+		///// Data set for the entity being referenced.
+		///// REQUIRED when dataSetProfile published separately.
+		///// Inverse property	- point back to the parent
+		///// 21-02-19 mparsons	Removing these from range: HoldersProfile, EarningsProfile, EmploymentOutlook
+		/////						- adding credential, assessment, and lopp
+		///// 21-05-10 mparsons	- effectively obsolete outside of HoldersProfile, EarningsProfile, EmploymentOutlook and the latter are moving to be obsolete
+		///// </summary>
+		//[Obsolete]
+		//[JsonProperty( PropertyName = "qdata:relevantDataSetFor" )]
+		//public List<string> RelevantDataSetFor { get; set; }
 
+		/// <summary>
+		/// Subject matter of the resource.
+		/// Means to point to a credential (etc.) where data is published by a third party.
+		/// CTID/URI
+		/// </summary>
 		[JsonProperty( PropertyName = "schema:about" )]
 		public List<string> About { get; set; } 
 

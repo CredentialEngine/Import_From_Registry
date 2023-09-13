@@ -60,7 +60,6 @@ namespace RA.Models.JsonV2
 
             CommonConditions = new List<string>();
             CommonCosts = new List<string>();
-          //  FinancialAssistanceOLD = new List<FinancialAlignmentObject>();
 
 			HasPart = new List<string>();
 			IsPartOf = new List<string>();
@@ -132,7 +131,7 @@ namespace RA.Models.JsonV2
 		public List<AggregateDataProfile> AggregateData { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
-		public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
+		public LanguageMapList AlternateName { get; set; } 
 
 		//[JsonProperty( PropertyName = "ceterms:verificationMethodDescription" )] 
 		//public LanguageMap VerificationMethodDescription { get; set; }
@@ -156,6 +155,11 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:approvedBy" )]
 		public List<string> ApprovedBy { get; set; }
+
+		//Assesses
+		[JsonProperty( PropertyName = "ceterms:assesses" )]
+		public List<CredentialAlignmentObject> Assesses { get; set; }
+
 		/// <summary>
 		/// Assessment Method Description 
 		/// Description of the assessment methods for a resource.
@@ -193,6 +197,10 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:creditUnitTypeDescription" )]
         public LanguageMap CreditUnitTypeDescription { get; set; }
 
+
+		[JsonProperty( PropertyName = "ceterms:degreeConcentration" )]
+		public List<CredentialAlignmentObject> DegreeConcentration { get; set; }
+
 		//frameworks
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; } = new List<CredentialAlignmentObject>();
@@ -215,6 +223,7 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:teaches" )]
 		public List<CredentialAlignmentObject> Teaches { get; set; }
+
 
 		[JsonProperty( PropertyName = "ceterms:hasPart" )]
 		public List<string> HasPart { get; set; }

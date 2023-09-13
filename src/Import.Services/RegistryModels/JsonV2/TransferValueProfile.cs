@@ -35,6 +35,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
+
 		/// <summary>
 		/// A third party version of the entity being referenced that has been modified in meaning through editing, extension or refinement.
 		/// </summary>
@@ -95,6 +98,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:transferValue" )]
 		public List<ValueProfile> TransferValue { get; set; } = null;
 		//public List<QuantitativeValue> TransferValue { get; set; } = null;
+
+		[JsonProperty( PropertyName = "ceterms:supersededBy" )]
+		public string SupersededBy { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:supersedes" )]
+		public string Supersedes { get; set; } //URL
 
 		/// <summary>
 		///  Resource that accepts the transfer value described by this resource, according to the entity providing this resource.

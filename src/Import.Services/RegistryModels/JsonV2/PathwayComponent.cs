@@ -91,6 +91,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:name" )]
 		public LanguageMap Name { get; set; } = new LanguageMap();
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:credentialType" )]
 		public string CredentialType { get; set; }
@@ -239,6 +241,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasConstraint" )]
 		public List<Constraint> HasConstraint{ get; set; }
 
+
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
 	}
 
 	public class Constraint
@@ -305,7 +310,10 @@ namespace RA.Models.JsonV2
 		/// Range: ceterms:Concept
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:rightAction" )]
-
 		public string RightAction { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
+
 	}
 }

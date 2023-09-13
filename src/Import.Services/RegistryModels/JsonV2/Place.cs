@@ -65,6 +65,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:longitude" )]
 		public double? Longitude { get; set; } = null;
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 
 		[JsonProperty( "ceterms:targetContactPoint" )]
 		public List<ContactPoint> ContactPoint { get; set; }

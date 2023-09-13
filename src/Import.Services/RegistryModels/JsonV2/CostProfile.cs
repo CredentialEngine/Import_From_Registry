@@ -24,6 +24,12 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:costDetails" )]
 		public string CostDetails { get; set; }
 
+		/// <summary>
+		/// A currency code, for ex USD
+		/// Currency in which the monetary amount is expressed in 3-letter ISO 4217 format such as "USD".
+		/// Optional
+		/// https://en.wikipedia.org/wiki/ISO_4217#List_of_ISO_4217_currency_codes
+		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:currency" )]
 		public string Currency { get; set; }
 
@@ -65,6 +71,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:paymentPattern" )]
 		public LanguageMap PaymentPattern { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 
 		//[JsonProperty( PropertyName = "ceterms:region" )]
 		//public List<GeoCoordinates> Region { get; set; }

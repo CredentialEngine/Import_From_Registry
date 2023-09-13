@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
+using RA.Models.Input;
+
 namespace RA.Models.JsonV2
 {
 	public class ConceptSchemeGraph
@@ -36,9 +38,15 @@ namespace RA.Models.JsonV2
 	public class ConceptScheme //: JsonLDDocument
 	{
 	
+		/// <summary>
+		/// constructor
+		/// </summary>
 		public ConceptScheme()
 		{
 		}
+		/// <summary>
+		/// Type
+		/// </summary>
 		[JsonProperty( "@type" )]
 		public string Type { get; set; } = "skos:ConceptScheme";
 
@@ -52,11 +60,17 @@ namespace RA.Models.JsonV2
 		//[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
 		//public List<string> AltIdentifier { get; set; }
 
-		//20-08-05 no longer on credReg.net
-		//[JsonProperty( PropertyName = "skos:changeNote" )]
-		//public LanguageMapList ChangeNote { get; set; }
+		//
+		//
+		/// <summary>
+		/// Text describing a significant change to the concept.
+		/// 20-08-05 no longer on credReg.net
+		/// 22-03-30 apparantly back
+		/// </summary>
+		[JsonProperty( PropertyName = "skos:changeNote" )]
+        public LanguageMapList ChangeNote { get; set; }
 
-		[JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
+        [JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
 		public LanguageMapList ConceptKeyword { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:conceptTerm" )]
@@ -78,17 +92,15 @@ namespace RA.Models.JsonV2
 		public LanguageMap Description { get; set; } 
 
 		[JsonProperty( PropertyName = "skos:hasTopConcept" )]
-		public List<string> HasTopConcept { get; set; } 
+		public List<string> HasTopConcept { get; set; }
 
-		//[JsonProperty( PropertyName = "skos:historyNote" )]
-		//public LanguageMap HistoryNote { get; set; }
+		///// <summary>
+		///// obsolete
+		///// </summary>
+  //      [JsonProperty( PropertyName = "skos:historyNote" )]
+  //      public LanguageMap HistoryNote { get; set; }
 
-		//[JsonProperty( PropertyName = "ceasn:inLanguage" )]
-		//public string InLanguage { get; set; } 
-		//public List<string> InLanguage { get; set; } = new List<string>();
-
-
-		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
+        [JsonProperty( PropertyName = "ceasn:inLanguage" )]
 		public List<string> InLanguage { get; set; } 
 
 		[JsonProperty( PropertyName = "ceasn:license" )]
@@ -100,11 +112,17 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceasn:publicationStatusType" )]
 		public string PublicationStatusType { get; set; }
 
+		/// <summary>
+		/// This defined as an object to handle old data from CaSS.
+		/// The Finder import and link checker can define this as a list.
+		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:publisher" )]
-		public string Publisher { get; set; }
+		public object Publisher { get; set; }
+		//public List<string> Publisher { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:publisherName" )]
-		public LanguageMap PublisherName { get; set; }
+		public object PublisherName { get; set; }
+		//public LanguageMap PublisherName { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:rights" )]
 		public LanguageMap Rights { get; set; }
@@ -123,9 +141,9 @@ namespace RA.Models.JsonV2
 	/// </summary>
 	public class Concept //: JsonLDDocument
 	{
-
-		//[JsonIgnore]
-		//public static string classType = "skos:Concept";
+		/// <summary>
+		/// Constructor
+		/// </summary>
 		public Concept()
 		{
 			//Type = classType;
@@ -174,8 +192,8 @@ namespace RA.Models.JsonV2
 		//[JsonProperty( PropertyName = "skos:inSchemeList" )]
 		//public List<string> InSchemeList { get; set; }
 
-		[JsonProperty( PropertyName = "ceasn:inLanguage" )]
-		public List<string> InLanguage { get; set; }
+		//[JsonProperty( PropertyName = "ceasn:inLanguage" )]
+		//public List<string> InLanguage { get; set; }
 
 		[JsonProperty( PropertyName = "skos:narrower" )]
 		public List<string> Narrower { get; set; }
@@ -183,21 +201,46 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "skos:narrowMatch" )]
 		public List<string> NarrowMatch { get; set; }
 
+		/// <summary>
+		/// Alphanumeric notation or ID code as defined by the promulgating body to identify this resource.
+		/// </summary>
 		[JsonProperty( PropertyName = "skos:notation" )]
 		public string Notation { get; set; }
 
+		/// <summary>
+		///  Annotations to the concept for purposes of general documentation.
+		/// </summary>
 		[JsonProperty( PropertyName = "skos:note" )]
 		public LanguageMapList Note { get; set; }
 
+		/// <summary>
+		/// Resource that logically comes after this resource.
+		/// This property indicates a simple or suggested ordering of resources; if a required ordering is intended, use ceterms:prerequisite instead.
+		/// ceterms:ComponentCondition
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:precedes" )]
+		public List<string> Precedes { get; set; }
 
+		/// <summary>
+		/// Component is preceded by the referenced components
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:precededBy" )]
+		public List<string> PrecededBy { get; set; }
+
+		/// <summary>
+		///  Preferred language-tagged label representing this concept.
+		/// </summary>
 		[JsonProperty( PropertyName = "skos:prefLabel" )]
 		public LanguageMap PrefLabel { get; set; }
 
 		[JsonProperty( PropertyName = "skos:related" )]
 		public List<string> Related{ get; set; }
 
-		[JsonProperty( PropertyName = "skos:relatedMatch" )]
-		public List<string> RelatedMatch { get; set; }
+		//[JsonProperty( PropertyName = "skos:relatedMatch" )]
+		//public List<string> RelatedMatch { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
+		public string SubjectWebpage { get; set; }
 
 		[JsonProperty( PropertyName = "meta:supersededBy" )]
 		public string SupersededBy { get; set; }
@@ -206,15 +249,15 @@ namespace RA.Models.JsonV2
 		public string TopConceptOf { get; set; }
 
 		//TBD....................
+		//Navy
+		//[JsonProperty( PropertyName = "navy:codeNEC" )]
+		//public string CodeNEC { get; set; }
 
-		[JsonProperty( PropertyName = "navy:codeNEC" )]
-		public string CodeNEC { get; set; }
+		//[JsonProperty( PropertyName = "navy:legacyCodeNEC" )]
+		//public string LegacyCodeNEC { get; set; }
 
-		[JsonProperty( PropertyName = "navy:legacyCodeNEC" )]
-		public string LegacyCodeNEC { get; set; }
-
-		[JsonProperty( PropertyName = "navy:SourceCareerFieldCode" )]
-		public List<string> SourceCareerFieldCode { get; set; } 
+		//[JsonProperty( PropertyName = "navy:SourceCareerFieldCode" )]
+		//public List<string> SourceCareerFieldCode { get; set; } 
 
 	}
 
@@ -286,13 +329,19 @@ namespace RA.Models.JsonV2
 		public string Publisher { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:publisherName" )]
-		public string PublisherName { get; set; }
+		public List<string> PublisherName { get; set; }
 
 		[JsonProperty( PropertyName = "ceasn:rights" )]
 		public string Rights { get; set; }
 
+		/// <summary>
+		/// In this concept, the content is a URL for an organization in the registry.
+		/// Not sure if needed, could switch to organizationReference?
+		/// Actually this context is a formed, but plain graph with URIs.
+		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:rightsHolder" )]
 		public string RightsHolder { get; set; }
+		//public OrganizationReference RightsHolder { get; set; } = new OrganizationReference();
 
 
 		[JsonProperty( PropertyName = "ceasn:source" )]

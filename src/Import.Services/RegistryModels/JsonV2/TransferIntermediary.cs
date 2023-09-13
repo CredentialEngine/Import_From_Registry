@@ -32,7 +32,7 @@ namespace RA.Models.JsonV2
 		public LanguageMap Description { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:alternateName" )]
-        public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
+        public LanguageMapList AlternateName { get; set; } 
 
         [JsonProperty( PropertyName = "ceterms:codedNotation" )]
 		public string CodedNotation { get; set; }

@@ -65,5 +65,8 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:coPrerequisite" )]
 		public List<ConditionProfile> CoPrerequisite { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 	}
 }

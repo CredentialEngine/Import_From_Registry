@@ -26,6 +26,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
+
 		/// <summary>
 		/// This property identifies a child pathwayComponent(s) in the downward path.
 		/// </summary>

@@ -85,7 +85,8 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
 		public List<string> RelevantDataSet { get; set; }
-
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 		//[JsonProperty( PropertyName = "qdata:relevantDataSet" )]
 		//public List<DataSetProfile> RelevantDataSets { get; set; }
 

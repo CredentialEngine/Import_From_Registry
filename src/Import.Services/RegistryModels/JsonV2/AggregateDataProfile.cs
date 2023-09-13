@@ -20,6 +20,8 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
 
 		[JsonProperty( PropertyName = "ceterms:currency" )]
 		public string Currency { get; set; }
@@ -38,6 +40,15 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:demographicInformation" )]
 		public LanguageMap DemographicInformation { get; set; }
+
+		/// <summary>
+		/// Faculty-to-Student Ratio
+		/// Ratio of the number of teaching faculty to the number of students.
+		/// The expression of the ratio should feature the number of faculty first, followed by the number of students, e.g., "1:10" to mean "one faculty per ten students".
+		/// 
+		/// </summary>
+		[JsonProperty( PropertyName = "qdata:facultyToStudentRatio" )]
+		public string FacultyToStudentRatio { get; set; }
 
 		/// <summary>
 		///  Upper interquartile earnings.
@@ -134,6 +145,7 @@ namespace RA.Models.JsonV2
 			|| !string.IsNullOrWhiteSpace( Currency )
 			|| !string.IsNullOrWhiteSpace( DateEffective )
 			|| !string.IsNullOrWhiteSpace( ExpirationDate )
+			|| !string.IsNullOrWhiteSpace( FacultyToStudentRatio )
 			|| !string.IsNullOrWhiteSpace( Source )
 			|| HighEarnings> 0
 			|| LowEarnings > 0

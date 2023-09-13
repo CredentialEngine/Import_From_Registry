@@ -100,7 +100,7 @@ namespace RA.Models.JsonV2
 
 
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
-		public LanguageMapList AlternateName { get; set; } = new LanguageMapList();
+		public LanguageMapList AlternateName { get; set; } 
 
 
 		[JsonProperty( PropertyName = "ceterms:assessmentDeliveryType" )]

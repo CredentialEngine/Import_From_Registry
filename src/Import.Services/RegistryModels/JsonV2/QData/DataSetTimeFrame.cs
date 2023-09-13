@@ -39,6 +39,9 @@ namespace RA.Models.JsonV2.QData
 		[JsonProperty( PropertyName = "ceterms:endDate" )]
 		public string EndDate { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
+
 		/// <summary>
 		/// Attributes of the data set.
 		/// URI to blank node
@@ -53,9 +56,9 @@ namespace RA.Models.JsonV2.QData
 		/// <summary>
 		/// Data Source Coverage Type
 		/// Type of geographic coverage of the subjects.
-		/// <see cref="https://credreg.net/qdata/terms/dataSourceCoverageType#dataSourceCoverageType"/>
+		/// <see cref="https://credreg.net/qdata/terms/dataSourceCoverageType"/>
 		/// skos:Concept
-		/// <see cref="https://credreg.net/qdata/terms/DataSourceCoverage#DataSourceCoverage"/>
+		/// <see cref="https://credreg.net/qdata/terms/DataSourceCoverage"/>
 		/// sourceCoverage:Country
 		///	sourceCoverage:Global
 		///	sourceCoverage:Region

@@ -69,7 +69,8 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceasn:description" )]
         public LanguageMap FrameworkDescription { get; set; } = new LanguageMap();
 
-
+        [JsonProperty( "skos:prefLabel" )]
+        public LanguageMap PrefLabel { get; set; } = new LanguageMap();
 
         [JsonProperty( "ceasn:competencyText" )]
         public LanguageMap CompetencyText { get; set; } = new LanguageMap();
@@ -100,6 +101,8 @@ namespace RA.Models.JsonV2
                     return FrameworkName.ToString();
                 else if ( CompetencyText != null )
                     return CompetencyText.ToString();
+                else if ( PrefLabel != null )
+                    return PrefLabel.ToString();
                 else
                     return "";
             }

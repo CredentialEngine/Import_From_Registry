@@ -47,8 +47,12 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; }
 
-		//TODO - alter from enumeration
-		[JsonProperty( PropertyName = "ceterms:audienceLevelType" )]
+        [JsonProperty( PropertyName = "ceterms:alternateName" )]
+        public LanguageMapList AlternateName { get; set; } 
+
+
+        //TODO - alter from enumeration
+        [JsonProperty( PropertyName = "ceterms:audienceLevelType" )]
         public List<CredentialAlignmentObject> AudienceLevelType { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:audienceType" )]
@@ -77,7 +81,7 @@ namespace RA.Models.JsonV2
 		public List<string> AssertedBy { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:experience" )]
-        public object Experience { get; set; }
+        public LanguageMap Experience { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:minimumAge" )]
         public int MinimumAge { get; set; }

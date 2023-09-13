@@ -18,11 +18,14 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:ctid" )]
 		public string CTID { get; set; }
 
-        /// <summary>
-        /// Category or classification of this resource.
-        /// List of URIs that point to a concept
-        /// </summary>
-        [JsonProperty( "ceterms:classification" )]
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; } 
+
+		/// <summary>
+		/// Category or classification of this resource.
+		/// List of URIs that point to a concept
+		/// </summary>
+		[JsonProperty( "ceterms:classification" )]
         public List<string> Classification { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:codedNotation" )]
@@ -180,5 +183,7 @@ namespace RA.Models.JsonV2
 		[JsonProperty( "ceterms:endDate" )]
 		public string EndDate { get; set; }
 
+		[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		public LanguageMapList AlternateName { get; set; }
 	}
 }
