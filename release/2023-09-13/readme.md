@@ -4,7 +4,8 @@
 ## Application Config
 Updates
 - Upgrade from 4.6.2 to 4.7.2.Net
-- 
+- Added a new backup for CE_ExternalData. Recall that this database must always be present with the credential finder database.
+	CE_ExternalData_backup_2023_09_14.zip
 
 ## Logging
 
