@@ -1,5 +1,5 @@
 # Import_From_Registry
-Sample project to import resources from the credential registry. While the code is also included for the [**Credential Finder**](https://credentialfinder.org/) site, the main focus of this repo is importing data from the [**Credential Registry**](https://credreg.net/). 
+Sample project to import resources from the credential registry.The main focus of this repo is importing data from the [**Credential Registry**](https://credreg.net/). 
 
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
@@ -12,6 +12,15 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### Oct. 4, 2023
+Added folder DatabaseScripts
+- will contain useful scripts to export data etc.
+
+### September 13, 2023 Release
+- Upgrade from 4.6.2 to 4.7.2.Net
+- Added a new backup for CE_ExternalData. Recall that this database must always be present with the credential finder database.
+	CE_ExternalData_backup_2023_09_14.zip
+	- 
 ### November 18, 2022 Update for August 30 release
 The after insert trigger for the Entity database had been removed but was still in the credFinderGithub220830.bak file. A script for removing the trigger is included in:
 - **DatabaseUpdates\3. Triggers\22-08-31 DROP TRIGGER trgEntityAfterInsert.sql**
