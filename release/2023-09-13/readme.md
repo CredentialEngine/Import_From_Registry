@@ -7,6 +7,15 @@ Updates
 - Added a new backup for CE_ExternalData. Recall that this database must always be present with the credential finder database.
 	CE_ExternalData_backup_2023_09_14.zip
 
+New Classes
+- Verification Service Profile is now a top level class (with a CTID)
+- SupportService
+- ScheduledOffering
+- Version 1 for Job, Occupation, WorkRole, Task
+
+## Application Config
+
+
 ## Logging
 
 Reminder: There are options to save documents downloaded from the Credential Registry as part of an import. 

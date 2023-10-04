@@ -1,10 +1,19 @@
-# Releases
+# Releases History
 ## September 14, 2023
 We apolgize for the long delay between releases. 
 See specific details in the release [**README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2023-09-13/readme.md)
 
 Added a new backup for CE_ExternalData. Recall that this database must always be present with the credential finder database.
 	CE_ExternalData_backup_2023_09_14.zip
+
+# August 30, 2022 Release Update
+Updates
+- Added collections, and progression model
+- Added LifeCycleStatusTypeId to learning opportunity, assessment, transfer value, and organization
+
+# May 17, 2022 Release Update
+A connection string was missing from the April 27, 2022 release. 
+The previous release zip file was removed, and a new one (**CTI.Import_22-04-26_UpdatedConfig.zip**) was added with the missing connection string for **ceExternalData**.
  
 ## December 03 2021
 We are using a new or alternate approach for using the import application. 
