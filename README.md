@@ -13,7 +13,7 @@ https://visualstudio.microsoft.com/vs/community/
 
 ## Updates
 ### Oct. 4, 2023
-Added folder [DatabaseScripts](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/DatabaseScripts)
+Added folder [**DatabaseScripts**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/DatabaseScripts)
 - will contain useful scripts to export data etc.
 
 ### September 13, 2023 Release
