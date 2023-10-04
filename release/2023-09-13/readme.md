@@ -1,4 +1,3 @@
-# Releases
 # September 13, 2023 Release
 
 ## Application Config
