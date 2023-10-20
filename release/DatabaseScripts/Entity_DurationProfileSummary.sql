@@ -1,11 +1,5 @@
-USE [credFinder]
-GO
-
-use sandbox_credFinder
+use credfinder_github
 go
-
---use credfinder_github
---go
 /****** Object:  View [dbo].[Entity_DurationProfileSummary]    Script Date: 9/6/2023 3:47:48 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -13,8 +7,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 /*
-USE [credFinder]
-GO
+
 
 SELECT top 1000
 b.[EntityId]

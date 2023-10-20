@@ -1,9 +1,5 @@
-USE [credFinder]
-GO
-use sandbox_credfinder
+use credfinder_github
 go
---use credfinder_github
---go
 /****** Object:  View [dbo].[Credential_BasicSummary_Export]    Script Date: 9/5/2023 5:51:54 PM ******/
 SET ANSI_NULLS ON
 GO

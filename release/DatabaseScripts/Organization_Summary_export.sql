@@ -1,11 +1,5 @@
-use credFinder
-GO
-
-
---use sandbox_credFinder
---go
---use staging_credFinder
---go
+use credfinder_github
+go
 
 /****** Object:  View [dbo].[Organization_Summary_export]    Script Date: 8/16/2017 9:51:51 AM ******/
 SET ANSI_NULLS ON
@@ -15,8 +9,6 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 /*
-use credFinder
-GO
 
 
 SELECT top(1000)

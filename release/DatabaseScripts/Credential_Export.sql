@@ -1,5 +1,5 @@
-USE [credFinder]
-GO
+use credfinder_github
+go
 
 /****** Object:  View [dbo].[Credential_Export]    Script Date: 10/4/2023 2:51:53 PM ******/
 SET ANSI_NULLS ON
@@ -9,10 +9,6 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 /*
-USE [credFinder]
-GO
-USE [credFinder]
-GO
 
 SELECT top 500
 [CTID]

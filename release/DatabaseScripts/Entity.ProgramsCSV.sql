@@ -1,6 +1,5 @@
-USE credFinder
-GO
-
+use credfinder_github
+go
 /****** Object:  View [dbo].[Entity.ProgramsCSV]    Script Date: 7/3/2018 5:24:47 PM ******/
 SET ANSI_NULLS ON
 GO
@@ -8,21 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-
-
-/*
-
-USE [ctdlEditor]
-GO
-
-SELECT [EntityId]
-      ,[Programs]
-  FROM [dbo].[Entity.ProgramsCSV]
-order by 1,2
-
-
-*/
 
 /*
 modifications

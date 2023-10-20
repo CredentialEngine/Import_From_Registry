@@ -1,12 +1,5 @@
-use credFinder
-GO
-use sandbox_credFinder
+use credfinder_github
 go
-
---use credfinder_github
---go
---use staging_credFinder
---go
 
 /****** Object:  View [dbo].[LearningOpportunity_Summary_Export]    Script Date: 8/16/2017 10:06:44 AM ******/
 SET ANSI_NULLS ON

@@ -1,12 +1,5 @@
-use credFinder
+use credfinder_github
 go
-
-USE [sandbox_credFinder]
-GO
---use credfinder_github
---go
---use staging_credFinder
---go
 
 /****** Object:  View [dbo].[DataSetProfileSummary]    Script Date: 5/31/2021 2:14:30 PM ******/
 SET ANSI_NULLS ON
