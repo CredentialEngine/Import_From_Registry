@@ -1,8 +1,8 @@
 USE credFinder
 GO
 
-use sandbox_credFinder
-go
+--use sandbox_credFinder
+--go
 
 /****** Object:  StoredProcedure [dbo].[Credentials_Export]    Script Date: 5/21/2018 1:01:56 PM ******/
 SET ANSI_NULLS ON
@@ -43,7 +43,7 @@ exec [Credentials_Export] '4D07FBE3-13B4-4A84-80F4-FB63CE78C23D'
 
 -- noct: 
 select * from organization where name like '%nocti%'
-exec [Credentials_Export] '6EC5F5B9-542D-4073-8C03-A2B9B49286A8'
+exec [Credentials_Export] 'D3AF6791-E561-4344-A63A-BDB4DCBD2C7A'
 
 
 
@@ -51,6 +51,8 @@ exec [Credentials_Export] '6EC5F5B9-542D-4073-8C03-A2B9B49286A8'
 select * from organization where name like '%hutch%'
 exec [Credentials_Export] '5C501AA2-FFFB-412D-93D3-27BA4D58EFE7'
 
+select * from organization where name like '%corning%'
+exec [Credentials_Export] '101A37DC-F7C2-494F-B0FE-3BEF6E216C18'
 
 */
 
@@ -77,8 +79,7 @@ SET NOCOUNT ON;
 
 
 select distinct
-	'' as [External Identifier]
-	,a.CTID
+	a.CTID
 	,b.ctid as 'Owned By'
 	,a.Id as CredentialId
 	,a.Name As 'Credential Name'
@@ -86,8 +87,9 @@ select distinct
 	--,replace(a.Description, '"','`') as Description
 
 	--,'Roles'
-	,replace(a .CredentialTypeSchema, 'ceterms:','') as 'Credential Type'
-	,cstat.Property as  'Credential Status'
+	--,replace(a .CredentialTypeSchema, 'ceterms:','') as 'Credential Type'
+	,replace(credType.SchemaName, 'ceterms:','') as 'Credential Type'
+	,credStatus.Title as 'Credential Status'
 	, a.SubjectWebpage as 'Webpage'
 	, isnull(c.AvailableOnlineAt,'') 'Available Online At'
 	, isnull(c.AvailabilityListing,'') 'Availability Listing'
@@ -260,7 +262,9 @@ select distinct
 from Credential_Summary a 
 inner join Organization b			on a.owningOrganizationId = b.Id 
 inner join credential c				on a.Id = c.id
-Inner Join [EntityProperty_Summary] cstat	on a.EntityId = cstat.EntityId and cstat.CategoryId = 39
+--Inner Join [EntityProperty_Summary] cstat	on a.EntityId = cstat.EntityId and cstat.CategoryId = 39
+Left Join [Codes.PropertyValue] credStatus on c.CredentialStatusTypeId = credStatus.Id
+Inner Join [Codes.PropertyValue] credType on c.CredentialTypeId = credType.Id
 Left join Organization cpr			on c.CopyrightHolder = cpr.RowId 
 left join [Entity.NaicsCSV] enaics	on a.EntityId = enaics.EntityId
 left join [Entity.OccupationsCSV] eoccupations on a.EntityId = eoccupations.EntityId

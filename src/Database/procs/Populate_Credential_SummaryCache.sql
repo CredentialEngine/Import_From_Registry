@@ -6,8 +6,8 @@ go
 
 --use staging_credFinder
 --go
---use snhu_credFinder
---go
+--use flstaging_credFinder	
+--goo
 
 SET ANSI_NULLS ON
 GO
@@ -101,6 +101,7 @@ else begin
 		print 'truncating table'
 		truncate table [Credential.SummaryCache]
 	end
+BEGIN TRY
 
 	
 INSERT INTO [dbo].[Credential.SummaryCache]
@@ -290,7 +291,33 @@ SELECT Distinct
 	)
 
 	print 'added credentials ' + convert(varchar, @@ROWCOUNT)
+END TRY  
+BEGIN CATCH  
+     print 'Errors encountered in Populate_Credential_SummaryCache ' 
+	   --SELECT
+    --ERROR_NUMBER() AS ErrorNumber,
+    --ERROR_STATE() AS ErrorState,
+    --ERROR_SEVERITY() AS ErrorSeverity,
+    --ERROR_PROCEDURE() AS ErrorProcedure,
+    --ERROR_LINE() AS ErrorLine,
+    --ERROR_MESSAGE() AS ErrorMessage;
 
+INSERT INTO [dbo].[MessageLog]
+           ([Created],[Application],[Activity]
+           ,[MessageType],[Message],[Description]
+           ,[ActionByUserId],[ActivityObjectId]
+           ,[RelatedUrl],[SessionId],[IPAddress],[Tags])
+     VALUES
+           (getdate(), 'CredentialFinder'
+           ,'Populate_Credential_SummaryCache'
+           ,'Error'
+           ,ERROR_MESSAGE()
+           ,'Errors encountered in Populate_Credential_SummaryCache for @CredentialId: ' + @CredentialId 
+           ,0
+           ,@CredentialId
+           ,NULL,NULL,NULL,NULL)
+
+END CATCH 
 GO
 grant execute on [Populate_Credential_SummaryCache] to public
 go

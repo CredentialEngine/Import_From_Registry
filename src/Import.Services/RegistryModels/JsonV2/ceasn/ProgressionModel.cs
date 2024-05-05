@@ -30,8 +30,8 @@ namespace RA.Models.JsonV2
 		public string CTID { get; set; }
 		//
 
-		[JsonProperty( PropertyName = "ceterms:alternateName" )]
-		public LanguageMapList AlternateName { get; set; }
+		//[JsonProperty( PropertyName = "ceterms:alternateName" )]
+		//public LanguageMapList AlternateName { get; set; }
 		//
 		/// <summary>
 		/// Text describing a significant change to the concept.
@@ -45,9 +45,9 @@ namespace RA.Models.JsonV2
 		public LanguageMapList ConceptKeyword { get; set; }
 
 		/// <summary>
-		/// Links to concepts in the registry or blank nodes
+		/// Links to concepts in the registry or blank nodes.
 		/// </summary>
-		[JsonProperty( PropertyName = "ceasn:conceptTerm" )]
+        [JsonProperty( PropertyName = "ceasn:conceptTerm" )]
         public List<string> ConceptTerm { get; set; }
 
         [JsonProperty( PropertyName = "ceasn:creator" )]

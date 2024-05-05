@@ -1,5 +1,5 @@
-USE credFinder
-GO
+--USE credFinder
+--GO
 
 --use credFinder_prod
 --go
@@ -7,8 +7,8 @@ GO
 --use staging_credFinder
 --go
 
---use sandbox_credFinder
---go
+use sandbox_credFinder
+go
 
 --use snhu_credFinder
 --go
@@ -2516,6 +2516,20 @@ INSERT INTO [dbo].[Counts.RegionTotals]
 
 Select 1, regions.Country, regions.Region, count(*) as cnt 
 from (
+--this works where credentials have addresses
+	SELECT DISTINCT c.Id,  ea.Country, ea.Region
+	--org.Name,
+	--SELECT top 555 c.Id, org.Name, ea.Country, ea.Region
+	-- select count(*)
+	FROM  dbo.Credential c
+	INNER JOIN dbo.Entity e ON c.RowId = e.EntityUid
+	--INNER JOIN dbo.Organization org on c.OwningAgentUid = org.RowId
+	--INNER JOIN dbo.Entity e ON org.RowId = e.EntityUid
+	INNER JOIN dbo.[Entity.Address] ea on e.Id = ea.EntityId
+	WHERE        (c.EntityStateId = 3)
+	--and (ea.Region = 'New Jersey' OR ea.Region = 'NJ')
+/*
+--this works where credentials don't have addresses like Illinois
 
 	SELECT DISTINCT dbo.Credential.Id, dbo.Organization.Name, dbo.[Entity.Address].Country, dbo.[Entity.Address].Region
 	FROM            dbo.[Entity.Address] 
@@ -2526,9 +2540,23 @@ from (
 			ON dbo.Entity.EntityUid = dbo.Organization.RowId
 	WHERE        (dbo.Credential.EntityStateId = 3)
 --and dbo.[Entity.Address].Region = 'Ohio'
+*/
+
 ) regions
 group by regions.Country,regions.Region
 order by 1,2
+
+--==========================Updating CredentialingActionTotals
+UPDATE [dbo].[Codes.CredentialingActionType]
+   SET [Totals] = isnull(base.Totals,0)
+from [Codes.CredentialingActionType] codes
+Inner join ( 
+SELECT ActionTypeId, count(*) AS Totals
+  FROM [dbo].CredentialingAction tags
+  where tags.EntityStateId = 3
+  group by ActionTypeId
+    ) base on codes.Id = base.ActionTypeId
+where codes.IsActive = 1
 
 go
 grant execute on [CodeTables_UpdateTotals] to public

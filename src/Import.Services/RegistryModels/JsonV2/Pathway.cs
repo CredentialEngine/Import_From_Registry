@@ -69,6 +69,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:keyword" )]
 		public LanguageMapList Keyword { get; set; }
 
+		/// <summary>
+		/// Type of official status of the Assessment; select from an enumeration of such types.
+		/// URI to a concept
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:lifeCycleStatusType" )]
+		public CredentialAlignmentObject LifeCycleStatusType { get; set; }
+
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
 		public List<CredentialAlignmentObject> OccupationType { get; set; } = new List<CredentialAlignmentObject>();
 
@@ -89,6 +96,20 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; }
 
+		#region Versions
+		[JsonProperty( PropertyName = "ceterms:latestVersion" )]
+		public string LatestVersion { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:previousVersion" )]
+		public string PreviousVersion { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:nextVersion" )]
+		public string NextVersion { get; set; } //URL
+
+		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		#endregion
+		//
 	}
 
 }

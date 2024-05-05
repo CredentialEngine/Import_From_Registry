@@ -43,7 +43,7 @@ AS
 	--print '[Populate_Cache.Organization_ActorRoles] - SKIPPING - ORG SEARCHES USE A VIEW DUE TO TIMING ISSUES. '
 	---exec [Populate_Cache.Organization_ActorRoles]  @PopulateType
 
-	--
+	--these should probably be separate so a failure in one doesn't affect the others
 	print 'Populate_Credential_SummaryCache'
 	--OR IS IT? THE IMPORT CALLS A METHOD TO POPULATE THE CACHES
 	exec Populate_Credential_SummaryCache @PopulateType

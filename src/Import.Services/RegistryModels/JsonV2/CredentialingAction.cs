@@ -16,6 +16,7 @@ namespace RA.Models.JsonV2
 		ceterms:CredentialingAction
 		ceterms:OfferAction
 		ceterms:RecognizeAction
+		ceterms:RegistrationAction 
 		ceterms:RegulateAction
 		ceterms:RenewAction
 		ceterms:RevokeAction
@@ -25,6 +26,13 @@ namespace RA.Models.JsonV2
 	 */
 		[JsonProperty( "@type" )]
 		public string Type { get; set; } = "ceterms:CredentialingAction";
+
+
+		[JsonProperty( "@id" )]
+		public string CtdlId { get; set; }
+
+		[JsonProperty( "ceterms:ctid" )]
+		public string CTID { get; set; }
 
 		/// <summary>
 		/// Action Status
@@ -46,8 +54,16 @@ namespace RA.Models.JsonV2
 		/// Accredit Action Description
 		/// REQUIRED
 		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:name" )]
+		public LanguageMap Name { get; set; } 
+
+
+		/// <summary>
+		/// Accredit Action Description
+		/// REQUIRED
+		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:description" )]
-		public LanguageMap Description { get; set; } = new LanguageMap();
+		public LanguageMap Description { get; set; } 
 
 
 		/// <summary>
@@ -84,16 +100,6 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:participant" )]
 		public List<string> Participant { get; set; }
 
-		/// <summary>
-		/// Resulting Award
-		/// Awarded credential resulting from an action.
-		/// Domain: RenewAction, AccreditAction
-		/// Range: ceterms:CredentialAssertion - Representation of a credential awarded to a person.
-		/// ???		https://www.imsglobal.org/sites/default/files/Badges/OBv2p0Final/index.html#Assertion
-		/// SO A URI???
-		/// </summary>
-		[JsonProperty( PropertyName = "ceterms:resultingAward" )]
-		public string ResultingAward { get; set; }
 
 		/// <summary>
 		/// Date this action starts.
@@ -109,5 +115,33 @@ namespace RA.Models.JsonV2
 
         [JsonProperty( PropertyName = "ceterms:jurisdiction" )]
         public List<JurisdictionProfile> Jurisdiction { get; set; }
-    }
+
+
+
+		/// <summary>
+		/// Outcome produced in the action.
+		/// Domain: only ceterms:WorkforceDemandAction
+		/// Range: ceterms:CredentialAlignmentObject
+		/// NOT CURRENTLY USED
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:result" )]
+		public List<CredentialAlignmentObject> Result { get; set; }
+
+		/// <summary>
+		/// Resulting Award
+		/// Awarded credential resulting from an action.
+		/// Domain: RenewAction, AccreditAction
+		/// Range: ceterms:CredentialAssertion - Representation of a credential awarded to a person.
+		/// ???		https://www.imsglobal.org/sites/default/files/Badges/OBv2p0Final/index.html#Assertion
+		/// NOT CURRENTLY USED
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:resultingAward" )]
+		public string ResultingAward { get; set; }
+
+		/// <summary>
+		/// Image URL
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:image" )]
+		public string Image { get; set; }
+	}
 }

@@ -14,6 +14,7 @@ namespace RA.Models.JsonV2
 			MinimumDuration = null;
 			MaximumDuration = null;
 			ExactDuration = null;
+			TimeRequired = null;
 			Type = "ceterms:DurationProfile";
 		}
 
@@ -32,7 +33,11 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:exactDuration" )]
 		public string ExactDuration { get; set; }
 
-    }
+
+		[JsonProperty( PropertyName = "ceterms:timeRequired" )]
+		public string TimeRequired { get; set; }
+
+	}
 
 	//public class DurationItem
 	//{

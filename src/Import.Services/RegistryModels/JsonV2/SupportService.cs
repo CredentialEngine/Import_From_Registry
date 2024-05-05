@@ -207,19 +207,19 @@ namespace RA.Models.JsonV2
         /// <summary>
         /// Qualifying requirements for receiving a support service.
         /// </summary>
-        [JsonProperty( PropertyName = "ceterms:SupportServiceCondition" )]
+        [JsonProperty( PropertyName = "ceterms:supportServiceCondition" )]
         public List<ConditionProfile> SupportServiceCondition { get; set; }
 
         /// <summary>
         /// Resource to which this support service is applicable.
         /// NOTE: LIKELY AN INVERSE PROPERTY THAT WILL NOT BE USED HERE!
         /// </summary>
-        [JsonProperty( PropertyName = "ceterms:SupportServiceFor" )]
+        [JsonProperty( PropertyName = "ceterms:supportServiceFor" )]
         public List<string> SupportServiceFor { get; set; }
 
         /// <summary>
         /// Types of support services offered by an agent; select from an existing enumeration of such types.
-        /// SupportService?
+        /// ConceptScheme:SupportServiceCategory
         /// <see href="https://credreg.net/ctdl/terms/SupportServiceCategory"></see>
         /// </summary>
         [JsonProperty( PropertyName = "ceterms:supportServiceType" )]

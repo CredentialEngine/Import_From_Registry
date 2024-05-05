@@ -48,5 +48,12 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( "schema:description" )]
 		public LanguageMap Description { get; set; }
+
+		/// <summary>
+		/// Type of suppression, masking, or other modification made to the data to protect the identities of its subjects.
+		/// URI to a concept from qdata:DataWithholdingCategory
+		/// </summary>
+		[JsonProperty( "qdata:dataWithholdingType" )]
+		public string DataWithholdingType { get; set; }
 	}
 }

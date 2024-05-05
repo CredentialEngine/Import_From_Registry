@@ -80,10 +80,13 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:assertedBy" )]
 		public List<string> AssertedBy { get; set; }
 
-		[JsonProperty( PropertyName = "ceterms:experience" )]
-        public LanguageMap Experience { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:minimumAge" )]
+		//setting to an object to handle old records with experience as a string
+		[JsonProperty( PropertyName = "ceterms:experience" )]
+		//public LanguageMap Experience { get; set; }
+		public object Experience { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:minimumAge" )]
         public int MinimumAge { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:yearsOfExperience" )]

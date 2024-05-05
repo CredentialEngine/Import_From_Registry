@@ -34,9 +34,13 @@ namespace RA.Models.JsonV2
 		/// ceasn:comment
 		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:comment" )]
-		public LanguageMapList Comment { get; set; } 
+		public LanguageMapList Comment { get; set; }
 
-
+		/// <summary>
+		/// Organization(s) that own this resource
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:assertedBy" )]
+		public List<string> AssertedBy { get; set; }
 	}
 	/// <summary>
 	/// Specific activity, typically related to performing a function or achieving a goal.
@@ -67,7 +71,7 @@ namespace RA.Models.JsonV2
 
 
 	}
-	public class BaseTask : BaseResourceDocument
+	public class BaseTask : BaseEmploymentToWorkObject
 	{
 		/// <summary>
 		///  type
@@ -116,6 +120,18 @@ namespace RA.Models.JsonV2
 		public string CodedNotation { get; set; }
 
 
+		[JsonProperty( PropertyName = "ceterms:environmentalHazardType" )]
+		public List<string> EnvironmentalHazardType { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:performanceLevelType" )]
+		public List<string> PerformanceLevelType { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:physicalCapabilityType" )]
+		public List<string> PhysicalCapabilityType { get; set; }
+
+
+		[JsonProperty( PropertyName = "ceterms:sensoryCapabilityType" )]
+		public List<string> SensoryCapabilityType { get; set; }
 
 		/// <summary>
 		/// The referenced resource is lower in some arbitrary hierarchy than this resource.
@@ -130,6 +146,12 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:isChildOf" )]
 		public List<string> IsChildOf { get; set; }
+
+		/// <summary>
+		/// Rubric related to this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasRubric" )]
+		public List<string> HasRubric { get; set; }
 
 		/// <summary>
 		/// Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
@@ -163,6 +185,28 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceasn:skillEmbodied" )]
 		public List<string> SkillEmbodied { get; set; }
+
+
+		/// <summary>
+		/// Occupation related to this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasOccupation" )]
+		public List<string> HasOccupation { get; set; }
+		/// <summary>
+		/// Work Role related to this resource.
+		/// List of URIs for an existing WorkRole
+		/// ceterms:hasWorkRole
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasWorkRole" )]
+		public List<string> HasWorkRole { get; set; }
+
+		/// <summary>
+		/// Job related to this resource.
+		/// CTID for an existing Job
+		/// ceterms:hasJob
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasJob" )]
+		public List<string> HasJob { get; set; }
 
 		/// <summary>
 		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.

@@ -55,5 +55,19 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:subject" )]
 		public List<CredentialAlignmentObject> Subject { get; set; }
+
+		/// <summary>
+		/// This resource provides transfer value for the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:providesTransferValueFor" )]
+		public List<string> ProvidesTransferValueFor { get; set; }
+
+		/// <summary>
+		/// This resource receives transfer value from the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:receivesTransferValueFrom" )]
+		public List<string> ReceivesTransferValueFrom { get; set; }
 	}
 }

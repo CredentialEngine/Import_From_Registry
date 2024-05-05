@@ -49,6 +49,13 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( "schema:unitText" )]
 		public string UnitText { get; set; }
+
+		/// <summary>
+		/// Type of suppression, masking, or other modification made to the data to protect the identities of its subjects.
+		/// URI to a concept from qdata:DataWithholdingCategory
+		/// </summary>
+		[JsonProperty( "qdata:dataWithholdingType" )]
+		public string DataWithholdingType { get; set; }
 	}
 
 	/// <summary>
@@ -100,5 +107,12 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( "qdata:percentile90" )]
 		public decimal? Percentile90 { get; set; }
+
+		/// <summary>
+		/// Type of suppression, masking, or other modification made to the data to protect the identities of its subjects.
+		/// URI to a concept from qdata:DataWithholdingCategory
+		/// </summary>
+		[JsonProperty( "qdata:dataWithholdingType" )]
+		public string DataWithholdingType { get; set; }
 	}
 }

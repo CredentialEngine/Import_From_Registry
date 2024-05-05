@@ -199,17 +199,21 @@ namespace RA.Models.JsonV2.QData
 
         /// <summary>
         /// Type of subject included or excluded from the data set.
+        /// 23-??-?? No longer has a domain of dataProfile
         /// skos:Concept
         /// ConceptScheme: qdata:SubjectCategory
         /// <see href="https://credreg.net/qdata/terms/SubjectCategory"/>
-        /// </summary>
+        /// </summary>        
+        [Obsolete]
         [JsonProperty( PropertyName = "qdata:subjectType" )]
-        public CredentialAlignmentObject SubjectType { get; set; }
+        public CredentialAlignmentObject SubjectType { get; set; }	
 
         /// <summary>
         /// Quantitative values and percentages for a subject category (SubjectType) in the data set.
-        /// </summary>
-        [JsonProperty( PropertyName = "qdata:subjectValue" )]
+		/// 23-??-?? No longer has a domain of dataProfile
+        /// </summary>        
+		[Obsolete]
+		[JsonProperty( PropertyName = "qdata:subjectValue" )]
         public List<QuantitativeValue> SubjectValue { get; set; }
 
 

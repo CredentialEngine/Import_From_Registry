@@ -66,7 +66,9 @@ namespace RA.Models.JsonV2.QData
 		///	sourceCoverage:UrbanArea
 		/// </summary>
 		[JsonProperty( PropertyName = "qdata:dataSourceCoverageType" )]
-		public List<CredentialAlignmentObject> DataSourceCoverageType { get; set; }
+		public List<CredentialAlignmentObject> DataSourceCoverageTypeOLD { get; set; }
 
+		[JsonProperty( PropertyName = "qdata:dataSourceCoverageTypeNew" )]
+		public object DataSourceCoverageType { get; set; }
 	}
 }

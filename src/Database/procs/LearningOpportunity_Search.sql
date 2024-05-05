@@ -1,7 +1,7 @@
 USE credFinder
 GO
-use sandbox_credFinder
-go
+--use sandbox_credFinder
+--go
 --use staging_credFinder
 --go
 
@@ -54,7 +54,7 @@ set @Filter = '  ( base.EntityStateId = 3 ) AND ( base.CTID in (Select distinct 
 	
 --set @Filter = '  ( CTID in (Select distinct EntityCtid from [Import.PendingRequest] where PublisherCTID = ''ce-89bd0d16-6492-4ae1-8059-deabc3d89c15''  )) and EntityStateId=3 '
 
---set @Filter = ' base.EntityStateId > 2 '
+set @Filter = ' base.EntityStateId = 2 '
 
 set @StartPageIndex = 4
 set @PageSize = 75
@@ -130,11 +130,12 @@ IF @StartPageIndex < 1        SET @StartPageIndex = 1
 
  
 -- =================================
+--TODO - just remove title and organization
 CREATE TABLE #tempWorkTable(
       RowNumber         int PRIMARY KEY IDENTITY(1,1) NOT NULL,
       Id int,
-      Title             varchar(500)
-			,Organization varchar(500)
+      Title             varchar(1000)
+			,Organization varchar(1000)
 )
 
 -- =================================
@@ -223,10 +224,12 @@ SELECT
 	,base.isPreparationForCount
 	,base.PreparationFromCount as isPreparationFromCount
 	,'' as QualityAssurance
+	,case when isnull(e.AgentRelationshipsForEntity,'') = '' then '' else 'yes' end as  HasAgentRelationshipsForEntity
+	,case when isnull(e.ResourceDetail,'') = '' then '' else 'yes' end as  HasResourceDetail
 
 From #tempWorkTable work
 	Inner join LearningOpportunity_Summary base on work.Id = base.Id
-	Left Join Entity e on base.RowId = e.EntityUid
+	Left Join Entity_Cache e on base.RowId = e.EntityUid
 	left Join (select EntityId, count(*) as nbr from [Entity.Address] group by EntityId ) ea on e.Id = ea.EntityId
 
 	--left Join (

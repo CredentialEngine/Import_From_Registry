@@ -5,6 +5,7 @@ namespace RA.Models.JsonV2
 {
 	/// <summary>
 	/// TBD - perhaps we need an IBlankNode Interface. Then have Org and entity base implement the latter, rather than jamming all the properties in one class!
+	/// 23-10-05 - this needs to be more generic, and handle objects
 	/// </summary>
 	public class BlankNode
 	{

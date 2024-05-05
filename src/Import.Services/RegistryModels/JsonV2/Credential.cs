@@ -198,6 +198,12 @@ namespace RA.Models.JsonV2
 
 
 		/// <summary>
+		/// Rubric related to this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasRubric" )]
+		public List<string> HasRubric { get; set; }
+
+		/// <summary>
 		/// Identifier
 		/// Means of identifying a resource, typically consisting of an alphanumeric token and a context or scheme from which that token originates.
 		/// List of IdentifierValue 
@@ -205,6 +211,12 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
 
+
+		/// <summary>
+		/// An inventory or listing of resources that includes this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:inCatalog" )]
+		public string InCatalog { get; set; }
 
 		//Image URL
 		[JsonProperty( PropertyName = "ceterms:image" )]
@@ -253,6 +265,21 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:processStandardsDescription" )]
 		public LanguageMap ProcessStandardsDescription { get; set; } = new LanguageMap();
 
+
+		/// <summary>
+		/// This resource provides transfer value for the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:providesTransferValueFor" )]
+		public List<string> ProvidesTransferValueFor { get; set; }
+
+		/// <summary>
+		/// This resource receives transfer value from the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:receivesTransferValueFrom" )]
+		public List<string> ReceivesTransferValueFrom { get; set; } 
+
 		/// <summary>
 		/// Action related to the credential
 		/// This may end up being a list of URIs?
@@ -297,8 +324,6 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:usesVerificationService" )]
         public List<string> UsesVerificationService { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
-        public List<IdentifierValue> VersionIdentifier { get; set; }
 
 		#region Versions
 		[JsonProperty( PropertyName = "ceterms:latestVersion" )]
@@ -315,8 +340,16 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:supersedes" )]
 		public string Supersedes { get; set; } //URL
-        #endregion
-        //
+
+		/// <summary>
+		/// VersionIdentifier
+		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
+		/// The credential version captured here is any local identifier used by the credential owner to identify the version of the credential in the its local system.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		#endregion
+		//
 
 		#region Occupation, Industry, Program
 		[JsonProperty( PropertyName = "ceterms:occupationType" )]
@@ -435,6 +468,12 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( PropertyName = "ceterms:recognizedBy" )]
 		public List<string> RecognizedBy { get; set; }
+
+		/// <summary>
+		/// Agent with whom an apprenticeship is registered.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:registeredBy" )]
+		public List<string> RegisteredBy { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:regulatedBy" )]
 		public List<string> RegulatedBy { get; set; }

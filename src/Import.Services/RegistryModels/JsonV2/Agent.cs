@@ -211,6 +211,19 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:transferValueStatementDescription" )]
 		public LanguageMap TransferValueStatementDescription { get; set; }
 
+		/// <summary>
+		/// Webpage or online document that defines or explains the nature of support services offered by the organization.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:supportServiceStatement" )]
+		public string SupportServiceStatement { get; set; }
+
+		/// <summary>
+		/// Description of the nature of support services by the organization.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:supportServiceStatementDescription" )]
+		public LanguageMap SupportServiceStatementDescription { get; set; }
+
+
 		[JsonProperty( PropertyName = "ceterms:serviceType" )]
         public List<CredentialAlignmentObject> ServiceType { get; set; }
 
@@ -265,15 +278,25 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:hasCostManifest" )]
 		public List<string> HasCostManifest { get; set; }
 
+		/// <summary>
+		/// TBD
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasCourseCatalog" )]
+		public string HasCourseCatalog { get; set; }
+
 		//[JsonProperty( PropertyName = "ceterms:hasVerificationServiceOLD" )]
 		//[Obsolete]
 		//public List<VerificationServiceProfile> VerificationServiceProfiles { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:hasVerificationService" )]
-        public List<string> HasVerificationService { get; set; } //URL
+		/// <summary>
+		/// may need to define as an object for link checker
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasVerificationService" )]
+		//public List<string> HasVerificationService { get; set; } //URL
+		public object HasVerificationService { get; set; } //URL
 
-        #region ProcessProfiles
-        [JsonProperty( PropertyName = "ceterms:administrationProcess", NullValueHandling = NullValueHandling.Ignore )]
+		#region ProcessProfiles
+		[JsonProperty( PropertyName = "ceterms:administrationProcess", NullValueHandling = NullValueHandling.Ignore )]
         public List<ProcessProfile> AdministrationProcess { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:developmentProcess" )]
@@ -295,39 +318,39 @@ namespace RA.Models.JsonV2
         public List<ProcessProfile> RevocationProcess { get; set; }
 
         #endregion
-        #region CredentialingActions
+        #region CredentialingActions - OBSOLETE. Now using top level classes
 
-        [JsonProperty( PropertyName = "ceterms:accreditAction" )]
-        public List<CredentialingAction> AccreditAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:accreditAction" )]
+        //public List<CredentialingAction> AccreditAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:advancedStandingAction" )]
-        public List<CredentialingAction> AdvancedStandingAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:advancedStandingAction" )]
+        //public List<CredentialingAction> AdvancedStandingAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:approveAction" )]
-        public List<CredentialingAction> ApproveAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:approveAction" )]
+        //public List<CredentialingAction> ApproveAction { get; set; }
 
-        //CredentialingAction????
+        ////CredentialingAction????
 
-        [JsonProperty( PropertyName = "ceterms:offerAction" )]
-        public List<CredentialingAction> OfferAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:offerAction" )]
+        //public List<CredentialingAction> OfferAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:recognizeAction" )]
-        public List<CredentialingAction> RecognizeAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:recognizeAction" )]
+        //public List<CredentialingAction> RecognizeAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:regulateAction" )]
-        public List<CredentialingAction> RegulateAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:regulateAction" )]
+        //public List<CredentialingAction> RegulateAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:renewAction" )]
-        public List<CredentialingAction> RenewAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:renewAction" )]
+        //public List<CredentialingAction> RenewAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:revokeAction" )]
-        public List<CredentialingAction> RevokeAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:revokeAction" )]
+        //public List<CredentialingAction> RevokeAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:RightsAction" )]
-        public List<CredentialingAction> RightsAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:RightsAction" )]
+        //public List<CredentialingAction> RightsAction { get; set; }
 
-        [JsonProperty( PropertyName = "ceterms:workforceDemandAction" )]
-        public List<CredentialingAction> WorkforceDemandAction { get; set; }
+        //[JsonProperty( PropertyName = "ceterms:workforceDemandAction" )]
+        //public List<CredentialingAction> WorkforceDemandAction { get; set; }
         #endregion
 
         [JsonProperty( PropertyName = "ceterms:parentOrganization" )]

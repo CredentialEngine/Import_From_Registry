@@ -103,9 +103,10 @@ namespace RA.Models.JsonV2
 
 		//single per https://github.com/CredentialEngine/CompetencyFrameworks/issues/66
 		//23-03-22 back to a list
+		//but store as object due to old resources as string
 		[JsonProperty( "ceasn:derivedFrom" )]
-        //public object derivedFrom { get; set; }
-        public List<string> derivedFrom { get; set; }
+        public object derivedFrom { get; set; }
+        //public List<string> derivedFrom { get; set; }
 
         //???language map??
         [JsonProperty( "ceasn:description" )]
@@ -191,7 +192,15 @@ namespace RA.Models.JsonV2
         /// NAICS List is a helper when publishing from a graph. It will not be published
         [JsonProperty( "naicsList" )]
 		public List<string> NaicsList { get; set; } = null;
-    }
+
+		/// <summary>
+		/// VersionIdentifier
+		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
+		/// The credential version captured here is any local identifier used by the credential owner to identify the version of the credential in the its local system.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+	}
 
 	public class CompetencyFrameworkPlain
 	{
@@ -322,6 +331,7 @@ namespace RA.Models.JsonV2
 
 		[JsonProperty( "ceterms:industryType" )]
 		public List<CredentialAlignmentObject> IndustryType { get; set; } = new List<CredentialAlignmentObject>();
+
 
 	}
 	

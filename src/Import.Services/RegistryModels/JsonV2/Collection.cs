@@ -56,8 +56,14 @@ namespace RA.Models.JsonV2
         [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
         public List<string> HasSupportService { get; set; }
 
-        //The primary language used in or by this resource.
-        [JsonProperty( "ceterms:inLanguage" )]
+		/// <summary>
+		/// An inventory or listing of resources that includes this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:inCatalog" )]
+		public string InCatalog { get; set; }
+
+		//The primary language used in or by this resource.
+		[JsonProperty( "ceterms:inLanguage" )]
 		public List<string> InLanguage { get; set; }
 
 		/// <summary>
@@ -91,11 +97,14 @@ namespace RA.Models.JsonV2
 
 		/// <summary>
 		/// Type of collection, list, set, or other grouping of resources; select from an existing enumeration of such types.
+		/// Need to treat as an object due to different sources (like CaSS)
 		/// ConceptScheme: CollectionCategory 
+		/// NOTE: this is an object in the API, but a CredentialAlignmentObject will be in the registry/finder - so be careful on updates to this class
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:collectionType" )]
 		//public object CollectionType { get; set; }
 		public List<CredentialAlignmentObject> CollectionType { get; set; }
+
 		/// <summary>
 		/// The name or title of this resource.
 		/// </summary>

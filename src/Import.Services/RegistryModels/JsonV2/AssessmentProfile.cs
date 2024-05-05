@@ -224,10 +224,16 @@ namespace RA.Models.JsonV2
         //public List<ScheduledOffering> HasOffering { get; set; }
         public List<string> HasOffering { get; set; }
 
-        /// <summary>
-        /// Reference to a relevant support service available for this resource.
-        /// </summary>
-        [JsonProperty( PropertyName = "ceterms:hasSupportService" )]
+		/// <summary>
+		/// Rubric related to this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasRubric" )]
+		public List<string> HasRubric { get; set; }
+
+		/// <summary>
+		/// Reference to a relevant support service available for this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasSupportService" )]
         public List<string> HasSupportService { get; set; }
 
         /// <summary>
@@ -237,6 +243,12 @@ namespace RA.Models.JsonV2
         /// </summary>
         [JsonProperty( PropertyName = "ceterms:identifier" )]
 		public List<IdentifierValue> Identifier { get; set; }
+
+		/// <summary>
+		/// An inventory or listing of resources that includes this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:inCatalog" )]
+		public string InCatalog { get; set; }
 
 		/// <summary>
 		/// Is Non-Credit
@@ -349,6 +361,21 @@ namespace RA.Models.JsonV2
 		//URL
 		[JsonProperty( PropertyName = "ceterms:processStandards" )]
 		public string ProcessStandards { get; set; }
+
+		/// <summary>
+		/// This resource provides transfer value for the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:providesTransferValueFor" )]
+		public List<string> ProvidesTransferValueFor { get; set; }
+
+		/// <summary>
+		/// This resource receives transfer value from the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:receivesTransferValueFrom" )]
+		public List<string> ReceivesTransferValueFrom { get; set; }
+
 		//
 		/// <summary>
 		/// Another source of information about the entity being described.

@@ -11,7 +11,7 @@ namespace RA.Models.JsonV2
 	/// <summary>
 	/// Profession, trade, or career field that may involve training and/or a formal qualification.
 	/// </summary>
-	public class Occupation : BaseResourceDocument
+	public class Occupation : BaseEmploymentToWorkObject 
 	{
         [JsonIgnore]
         public static string classType = "ceterms:Occupation";
@@ -47,6 +47,9 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:description" )]
 		public LanguageMap Description { get; set; }
 
+
+		[JsonProperty( PropertyName = "ceterms:assertedBy" )]
+		public List<string> AssertedBy { get; set; }
 
 		[JsonProperty( PropertyName = "ceterms:alternateName" )]
 		public LanguageMapList AlternateName { get; set; }
@@ -102,6 +105,12 @@ namespace RA.Models.JsonV2
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:hasSpecialization" )]
 		public List<string> HasSpecialization { get; set; }
+
+		/// <summary>
+		/// Task related to this resource.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:hasTask" )]
+		public List<string> HasTask { get; set; }
 
 		/// <summary>
 		/// Work Role related to this resource.
@@ -189,12 +198,41 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		public string SubjectWebpage { get; set; } //URL
 
+
+
+		[JsonProperty( PropertyName = "ceterms:environmentalHazardType" )]
+		public List<string> EnvironmentalHazardType { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:performanceLevelType" )]
+		public List<string> PerformanceLevelType { get; set; }
+
+		[JsonProperty( PropertyName = "ceterms:physicalCapabilityType" )]
+		public List<string> PhysicalCapabilityType { get; set; }
+
+
+		[JsonProperty( PropertyName = "ceterms:sensoryCapabilityType" )]
+		public List<string> SensoryCapabilityType { get; set; }
+
 		/// <summary>
 		/// Alphanumeric identifier of the version of the credential that is unique within the organizational context of its owner.
 		/// ceterms:versionIdentifier
 		/// </summary>
 		[JsonProperty( PropertyName = "ceterms:versionIdentifier" )]
-		public List<IdentifierValue> VersionIdentifier { get; set; } 
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		/// <summary>
+		/// This resource provides transfer value for the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:providesTransferValueFor" )]
+		public List<string> ProvidesTransferValueFor { get; set; }
+
+		/// <summary>
+		/// This resource receives transfer value from the referenced Transfer Value Profile.
+		/// Refer to the referenced Transfer Value Profile for more information. Other resources may be included for the full value.
+		/// </summary>
+		[JsonProperty( PropertyName = "ceterms:receivesTransferValueFrom" )]
+		public List<string> ReceivesTransferValueFrom { get; set; }
+
 
 	}
 }

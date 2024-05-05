@@ -24,8 +24,11 @@ namespace RA.Models.JsonV2
 		/// If this object is a monetary purpose, the UnitText would typically be the related currency for the value (example: "USD")
 		/// </summary>
 		[JsonProperty( "ceterms:creditUnitType" )]
-		public List<CredentialAlignmentObject> CreditUnitType { get; set; }
+		public List<CredentialAlignmentObject> CreditUnitTypeOLD { get; set; }
 
+		[JsonIgnore]
+		[JsonProperty( "ceterms:creditUnitTypeNew" )]
+		public object CreditUnitType { get; set; }
 
 		/// <summary>
 		/// The level of credit associated with the credit awarded or required.
@@ -33,9 +36,12 @@ namespace RA.Models.JsonV2
 		/// CoceptScheme - assumes audienceLevel, as no means to provide altenatives
 		/// </summary>
 		[JsonProperty( "ceterms:creditLevelType" )]
-		public List<CredentialAlignmentObject> CreditLevelType { get; set; }
+		public List<CredentialAlignmentObject> CreditLevelTypeOLD { get; set; }
 
-	
+		[JsonIgnore]
+		[JsonProperty( "ceterms:creditLevelTypeNew" )]
+		public object CreditLevelType { get; set; }
+
 		/// <summary>
 		/// Optional description of the value, using either a string value or as a language map
 		/// </summary>
