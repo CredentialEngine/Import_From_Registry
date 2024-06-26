@@ -8,11 +8,13 @@ using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
+using APIResourceServices = workIT.Services.API.OccupationServices;
 
 using ThisResource = workIT.Models.Common.OccupationProfile;
 using ResourceManager = workIT.Factories.OccupationManager;
 using workIT.Utilities;
 using workIT.Factories;
+using Newtonsoft.Json;
 
 namespace workIT.Services
 {
@@ -38,9 +40,18 @@ namespace workIT.Services
 			if ( resource.Id > 0 )
 			{
                 List<string> messages = new List<string>();
-
-                //TODO - will need to update related elastic indices
-                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, resource.Id, 1, ref messages );
+				var apiDetail = APIResourceServices.GetDetailForElastic( resource.Id, true );
+				if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+				{
+					var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+				//TODO - will need to update related elastic indices
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, resource.Id, 1, ref messages );
 
                 //	NOTE: not sure if there is an organization
                 new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.PrimaryOrganizationId, 1, ref messages );

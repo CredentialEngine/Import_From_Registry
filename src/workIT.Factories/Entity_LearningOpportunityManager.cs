@@ -200,7 +200,7 @@ namespace workIT.Factories
 							.ToList();
 						if ( exists != null && exists.Count() == 1 )
 						{
-							var statusMsg = "";
+							var statusMsg = string.Empty;
 							//this method will also add pending request to remove from elastic.
 							//20-12-18 mp - Only done for a reference lopp but what about a full lopp that may now be an orphan? We are not allowing lopps without parent, but will still exist in registry!!!
 							//actually this delete will probably also delete the Entity_LearningOpportunity

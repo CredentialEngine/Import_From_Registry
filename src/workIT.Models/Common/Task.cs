@@ -44,12 +44,26 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string Type { get; set; } = "ceterms:Task";
 
-
+		/// <summary>
+		/// Less specialized profession, trade, or career field that encompasses the one being described.
+		/// List of URIs for an existing Task
+		/// ceterms:isChildOf
+		/// </summary>
+		public List<ResourceSummary> IsChildOf { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasChild { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasOccupation { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasWorkRole { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasJob { get; set; } = new List<ResourceSummary>();
 		#region import
-		public List<int> HasChild { get; set; }
-		public List<int> IsChildOf { get; set; }
+		public List<int> HasChildIds { get; set; }
+		public List<int> HasOccupationIds { get; set; }
+		public List<int> HasWorkRoleIds { get; set; }
+		public List<int> HasJobIds { get; set; }
+		public List<int> IsChildOfIds { get; set; }
 
-		public List<int> ListId { get; set; }
+		public string ListId { get; set; }
+		public List<Guid> OfferedBy { get; set; }
+		public List<Guid> AssertedByList { get; set; } = new List<Guid>();
 		#endregion
 
 	}

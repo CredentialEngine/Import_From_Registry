@@ -57,7 +57,7 @@ namespace workIT.Services
 			return GetResourceByUrl( resourceIdUrl, ref ctdlType, ref statusMessage );
 		}
 
-		public static string GetResourceGraphByCtid( string ctid, ref string ctdlType, ref string statusMessage, string community = "" )
+		private static string GetResourceGraphByCtid( string ctid, ref string ctdlType, ref string statusMessage, string community = "" )
 		{
 			string registryUrl = GetResourceUrl( ctid, community );
 			//not sure about this anymore
@@ -68,6 +68,12 @@ namespace workIT.Services
 			return GetResourceByUrl( registryUrl, ref ctdlType, ref statusMessage );
 		}
 
+		/// <summary>
+		/// format a registry URL using the CTID
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <param name="community"></param>
+		/// <returns></returns>
 		public static string GetResourceUrl( string ctid, string community = "" )
 		{
 
@@ -78,7 +84,7 @@ namespace workIT.Services
 			string serviceUri = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
 			if (community != "ce-registry" && UtilityManager.GetAppKeyValue( "usingAssistantForRegistryGets", false ) )
 			{
-				var assistantAPIUrl = ConfigHelper.GetConfigValue( "assistantAPIUrl", "" );
+				var assistantAPIUrl = UtilityManager.GetAppKeyValue( "assistantAPIUrl", "" );
 				//only include the key if the default community is not ce-registry
 				string todaysKey = UtilityManager.GenerateMD5String( DateTime.Now.ToString( "yyyy-MM-dd" ) );
 				string registryUrl = assistantAPIUrl + string.Format("resources/{0}/?community={1}&apiKey={2}", ctid, community, todaysKey );
@@ -106,12 +112,12 @@ namespace workIT.Services
 		}
 
 		/// <summary>
-		/// Retrieve a resource from the registry by resourceId
+		/// Retrieve a resource from the registry by resourceUrl
 		/// </summary>
-		/// <param name="resourceId">Url to a resource in the registry</param>
+		/// <param name="resourceUrl">Url to a resource in the registry</param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>	
-		public static string GetResourceByUrl( string resourceUrl, ref string ctdlType, ref string statusMessage )
+		private static string GetResourceByUrl( string resourceUrl, ref string ctdlType, ref string statusMessage )
 		{
 			string payload = "";
 			statusMessage = "";

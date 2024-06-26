@@ -21,7 +21,7 @@ using OutputComponent = workIT.Models.Common.PathwayComponent;
 using ThisResource = workIT.Models.Common.Pathway;
 using PB=workIT.Models.PathwayBuilder;
 using workIT.Services;
-using FAPI = workIT.Services.API;
+using APIResourceServices = workIT.Services.API.PathwayServices;
 //using System.Data.Common;
 
 namespace Import.Services
@@ -103,8 +103,8 @@ namespace Import.Services
                 return false;
             }
 
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -237,14 +237,14 @@ namespace Import.Services
                     LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
                 }
                 helper.currentBaseObject = output;
-                //TODO - may want to get from publisher if available to get the row and column info. 
+				//TODO - may want to get from publisher if available to get the row and column info. 
 
 
-                //
-                output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+				output.CTID = input.CTID;
+				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
                 output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
                 output.SubjectWebpage = input.SubjectWebpage;
-                output.CTID = input.CTID;
+
                 //TBD handling of referencing third party publisher
                 helper.MapOrganizationPublishedBy( output, ref status );
 
@@ -297,6 +297,17 @@ namespace Import.Services
 
                 output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
+                output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+                output.LatestVersion = input.LatestVersion ?? "";
+                output.PreviousVersion = input.PreviousVersion ?? "";
+                output.NextVersion = input.NextVersion ?? "";
+                output.VersionIdentifier = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
+                if ( output.VersionIdentifier != null && output.VersionIdentifier.Count() > 0 )
+                {
+                    output.VersionIdentifierJson = JsonConvert.SerializeObject( output.VersionIdentifier, MappingHelperV3.GetJsonSettings() );
+                }
+
+
                 output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
                 output.Subject = helper.MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
                 //Industries/occupations
@@ -317,6 +328,26 @@ namespace Import.Services
                 //components now or after save ?
                 foreach ( var item in inputComponents )
                 {
+                    if ( item.PrecededBy != null )
+                    {
+                        foreach ( string id in item.PrecededBy )
+                        {
+                            HandleExternalComponent( id, item, input, output, messages );
+                        }
+
+                    }
+                    if ( item.IsChildOf != null )
+                    {
+                        foreach ( string id in item.IsChildOf )
+                        {
+                            HandleExternalComponent( id, item, input, output, messages );
+                        }
+                    }
+                    if ( item.HasCondition != null )
+                    {
+                        ProcessConditions( item.HasCondition, input, item, output, messages );
+
+                    }
                     var c = ImportComponent( item, output, bnodes, status );
                     output.HasPart.Add( c );
                 }
@@ -326,24 +357,71 @@ namespace Import.Services
                 if ( GetPathwayLayoutDataFromPublisher( output.CTID, output ) )
                 {
                     //mark the pathway one way or the other to control use or not using with pathway display
-                    if ( output.Properies == null)
-                        output.Properies= new PathwayJSONProperties();
+                    if ( output.Properies == null )
+                        output.Properies = new PathwayJSONProperties();
 
                     output.AllowUseOfPathwayDisplay = output.Properies.AllowUseOfPathwayDisplay = true;
+                }
+
+                var externalComponent = output.HasPart.Where( part => part.ExternalPathwayCTID != null ).ToList();
+                foreach ( var comp in externalComponent )
+                {
+                    var component = PathwayComponentManager.GetByCtid( comp.ProxyFor );
+                    foreach ( var item in output.HasPart )
+                    {
+                        if ( item.HasPrecededByList != null )
+                        {
+                            for ( int i = 0; i < item.HasPrecededByList.Count; i++ )
+                            {
+                                if ( item.HasPrecededByList[i] == component.RowId )
+                                {
+                                    item.HasPrecededByList[i] = comp.RowId;
+                                }
+                            }
+                        }
+                        if ( item.HasIsChildOfList != null )
+                        {
+                            for ( int i = 0; i < item.HasIsChildOfList.Count; i++ )
+                            {
+                                if ( item.HasIsChildOfList[i] == component.RowId )
+                                {
+                                    item.HasIsChildOfList[i] = comp.RowId;
+                                }
+                            }
+                        }
+                        if ( item.HasCondition != null && item.HasCondition.Count > 0 )
+                        {
+                            UpdateHasTargetComponent( item.HasCondition, component, comp );
+
+                        }
+                    }
+
                 }
 
 
                 //adding common import pattern
                 importSuccessfull = mgr.Import( output, ref status );
-                //start storing the finder api ready version
-                var resource = FAPI.PathwayServices.GetDetailForAPI( output.Id, true );
-                var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-                var statusMsg = "";
-                if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                //TODO 
+                if ( output.AllowUseOfPathwayDisplay == false )
                 {
-                    status.AddError( statusMsg );
-                }
+                    FormatPathwayForViewer( output, status ); 
+
+				}
+                //start storing the finder api ready version
+                var resource = APIResourceServices.GetDetailForAPI( output.Id, true );
+                if ( importSuccessfull )
+                {
+                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+
+                    var statusMsg = "";
+                    if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+                    {
+                        status.AddError( statusMsg );
+                    }
+					//24-03-25 - start using the generic process
+					new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+				}
                 //
                 status.DocumentId = output.Id;
                 status.DetailPageUrl = string.Format( "~/pathway/{0}", output.Id );
@@ -363,24 +441,36 @@ namespace Import.Services
                     importSuccessfull = false;
                     //email an error report, and/or add to activity log?
                 }
-                //
-                //if ( output.Id > 0 )
-                //{
-                //	foreach ( var item in inputComponents )
-                //	{
-                //		var c=ImportComponent( item, output, bnodes, status );
-                //		output.HasPart.Add( c );
-                //	}//
-                //	//call method to handle components
-                //}
+
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, string.Format( "Exception encountered in CTID: {0}", input.CTID ), false, "Pathway Import exception" );
+                LoggingHelper.LogError(ex, string.Format("Exception encountered in CTID: {0}", input.CTID));
             }
 
             return importSuccessfull;
-        }
+		}
+
+		//
+		/// <summary>
+		/// TODO - rough out formatting a pathway for display
+		/// </summary>
+		/// <param name="pathway"></param>
+		/// <param name="status">TODO - do we need the pathway SaveStatus?</param>
+		/// <returns></returns>
+		public void FormatPathwayForViewer( ThisResource pathway,  SaveStatus status )
+		{
+
+
+            /*
+             * get the progression model
+             *     - if found get all levels and populated ???
+             * get the destination component
+             * get conditions
+             *  - will display in the dest component section?
+             *  - 
+             */ 
+		}
 
         //
         /// <summary>
@@ -556,6 +646,49 @@ namespace Import.Services
 
                 }
 
+                if ( input.PathwayComponentType=="ceterms:MultiComponent" &&  input.ProxyForList.Count>0 )
+                {
+                    var proxyForList = new List<TopLevelEntityReference>();
+                    foreach(var proxyFor in input.ProxyForList )
+                    {
+                        if ( !string.IsNullOrWhiteSpace( proxyFor ) && proxyFor.IndexOf( "/resources/" ) > 0 )
+                        {
+                            //TODO - make more generic - use entity_cache and resourceSummary
+                            var ctid = ResolutionServices.ExtractCtid( proxyFor );
+                            if ( !string.IsNullOrWhiteSpace( ctid ) )
+                            {
+                                //store the ctid in ProxyFor
+                                output.ProxyFor = ctid;
+                                //could just use one call to entity cache?
+                                //NO. need to be able to set up relationship to the related detail page.
+                                //could store resourceSummary in the json?
+                                var entity = EntityManager.EntityCacheGetByCTID( ctid );
+                                if ( entity != null && entity.Id > 0 )
+                                {
+                                    //this approach 'buries' the cred from external references like credential in pathway
+                                    //21-07-22 mparsons - OK, the database manager creates the Entity.Credential relationships as needed
+                                    var entityReference = new TopLevelEntityReference()
+                                    {
+                                        Id = entity.BaseId,
+                                        Name = entity.Name,
+                                        Description = entity.Description,
+                                        CTID = entity.CTID,
+                                        SubjectWebpage = entity.SubjectWebpage,
+                                        EntityType = entity.EntityType,
+                                        EntityTypeId = entity.EntityTypeId,
+                                        EntityStateId = entity.EntityStateId,
+
+                                        DetailURL = credentialFinderMainSite + "resources/" + entity.CTID
+                                    };
+                                    proxyForList.Add( entityReference );
+                                }
+                                output.JsonProperties.ProxyForResourceList = proxyForList;
+                            }
+
+
+                        }
+                    }
+                }
                 output.CTID = input.CTID;
                 output.PathwayCTID = pathway.CTID;
 
@@ -717,7 +850,7 @@ namespace Import.Services
             var hasPathwayBuilderLayout = false;
             List<string> messages = new List<string>();
             //try wrapper 
-            bool usingWrapper = true;
+            //bool usingWrapper = true;
             //pbURL = "https://localhost:44330/PathwayBuilderApi/Load/Pathway/" + ctid;
             //resourceUrl = "https://localhost:44330/PathwayBuilderApi/Load/Pathway/ce-c5632451-cdbd-4f6b-bca1-3668dece6aa5?userCreds=finderImport";
             //what to do about a login? 
@@ -757,6 +890,36 @@ namespace Import.Services
                             if (importedPC.ColumnNumber > 0 || importedPC.RowNumber> 0 )
                             {
                                 hasPathwayBuilderLayout = true;
+                            }
+                        }
+                        else //external Component CTID won't be there
+                        {
+                            var externalPC = importedPathway.HasPart.FirstOrDefault( x => x.Name == wrapperPC.Name && x.PathwayComponentType.Contains( wrapperPC.Type.Replace( "ceterms:", "" )) );
+                            if ( externalPC != null )
+                            {
+                                externalPC.JsonProperties.ColumnNumber = externalPC.ColumnNumber = wrapperPC.ColumnNumber;
+                                externalPC.JsonProperties.RowNumber = externalPC.RowNumber = wrapperPC.RowNumber;
+                                ////todo handle conditions.may have to handle here
+                                if ( externalPC.HasCondition != null && externalPC.HasCondition.Any() )
+                                {
+                                    externalPC.HasCondition = MapConditions( pathwayWrapper, wrapperPC.RowId, externalPC.HasCondition, ref statusMessage );
+                                }
+
+                                //worst case could be one component per level and all at 0,0 - unlikely
+                                if ( externalPC.ColumnNumber > 0 || externalPC.RowNumber > 0 )
+                                {
+                                    hasPathwayBuilderLayout = true;
+                                }
+                                if(externalPC.CTID == null )
+                                {
+                                    externalPC.CTID = wrapperPC.CTID;// adding the publisher ctid and rowId for the externalcomponent
+                                    if ( Guid.TryParse( wrapperPC.RowId, out Guid rowId ) )
+                                    {
+                                        externalPC.RowId = rowId;
+                                        importedPathway.HasPartList.Add( rowId );
+
+                                    }
+                                }
                             }
                         }
                     }
@@ -840,6 +1003,93 @@ namespace Import.Services
 
 
         }
+
+        public static PathwayComponent HandleExternalComponent( string id, InputComponent pathwayComponent, InputResource input, Pathway output, List<string> messages )
+        {
+            var component = new PathwayComponent();
+            string externalComponentId = "";
+            var pos = id.ToLower().IndexOf( "/resources/ce-" );
+            if ( pos > 1 )
+            {
+                externalComponentId = id.Substring( pos + 11 );
+            }
+            if ( !input.HasPart.Contains( id ) && !output.HasPart.Any( x => x.ProxyFor == externalComponentId ) )
+            {
+                component = PathwayComponentManager.GetByCtid( externalComponentId );
+                if ( component.Id > 0 && component != null )
+                {
+                    component.PrecededBy = null;
+                    component.Precedes = null;
+                    component.HasChild = null;
+                    component.IsChildOf = null;
+                    component.ProxyFor = component.CTID;
+                    component.Id = 0;
+                    if ( pathwayComponent.HasProgressionLevel != null && pathwayComponent.HasProgressionLevel.Any() )
+                    {
+                        component.HasProgressionLevel = ResolutionServices.ExtractCtid( pathwayComponent.HasProgressionLevel[0] );
+                    }
+                    else
+                    {
+                        component.HasProgressionLevel = null;
+                        component.HasProgressionLevelDisplay = null;
+                        component.HasProgressionLevels = null;
+                        component.ProgressionLevels = null;
+                    }
+                    component.CTID = null;// CTID is set to null here as this is the proxyforCTID 
+                    component.JsonProperties.ExternalPathwayCTID = component.ExternalPathwayCTID = component.PathwayCTID;
+                    component.HasCondition = null;
+                    component.PathwayCTID = output.CTID;
+                    output.HasPart.Add( component );
+                }
+                else
+                {
+                    messages.Add( string.Format( "The external component {0} was not found in the finder", externalComponentId ) );
+
+                }
+
+            }
+
+            return component;
+        }
+
+        private void ProcessConditions( List<JInput.ComponentCondition> conditions, InputResource input, InputComponent inpComponent, Pathway output, List<string> messages )
+        {
+            foreach ( var cond in conditions )
+            {
+                if ( cond.TargetComponent != null )
+                {
+                    foreach ( var id in cond.TargetComponent )
+                    {
+                       HandleExternalComponent( id, inpComponent, input, output,messages );
+                    }
+                }
+                if(cond.HasCondition != null )
+                {
+                    ProcessConditions( cond.HasCondition, input, inpComponent,output,messages );
+
+                }
+            }
+        }
+        private void UpdateHasTargetComponent( List<ComponentCondition> conditions, PathwayComponent externalParentcomponent, PathwayComponent externalcomp )
+        {
+            foreach ( var cond in conditions )
+            {
+                for ( int i = 0; i < cond.HasTargetComponentList.Count; i++ )
+                {
+                    if ( cond.HasTargetComponentList[i] == externalParentcomponent.RowId )
+                    {
+                        cond.HasTargetComponentList[i] = externalcomp.RowId;
+                    }
+                }
+
+                if ( cond.HasCondition != null && cond.HasCondition.Count > 0 )
+                {
+                    UpdateHasTargetComponent( cond.HasCondition, externalParentcomponent, externalcomp );
+                }
+            }
+        }
+
+
         public static string GetPublisherResource( string resourceUrl, ref string statusMessage )
         {
             string payload = "";
@@ -935,7 +1185,7 @@ namespace Import.Services
         public object Extra { get; set; } = null;
     }
 
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
+    #region Classes used by the import from publisher process
 
     public class PathwayWrapperImport
     {
@@ -1143,10 +1393,7 @@ namespace Import.Services
         public int ParentId { get; set; }
         public List<Item> Items { get; set; }
         public int Id { get; set; }
-        //public string OtherValue { get; set; }
-        //public List<ItemsAsAlignmentObject> ItemsAsAlignmentObjects { get; set; }
-        //public List<ItemsAsAlignmentObjectsWithCode> ItemsAsAlignmentObjectsWithCodes { get; set; }
-        //public List<string> ItemsAsString { get; set; }
+
     }
 
     public class AgentSectorType
@@ -1212,90 +1459,6 @@ namespace Import.Services
         public int LastUpdatedById { get; set; }
     }
 
-    //public class AssessmentConnectionsList
-    //{
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class AssessmentDeliveryType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class AssessmentMethodType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class AssessmentMethodTypes
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class AssessmentUseType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class AssessmentUseTypes
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class AudienceLevelType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class AudienceType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class AutoTargetContactPointForDetail
-    //{
-    //    public string ProfileName { get; set; }
-    //    public string Name { get; set; }
-    //    public List<object> PhoneNumbers { get; set; }
-    //    public List<object> Emails { get; set; }
-    //    public List<object> SocialMediaPages { get; set; }
-    //    public List<object> Auto_Telephone { get; set; }
-    //    public List<object> Auto_FaxNumber { get; set; }
-    //    public List<object> Auto_Email { get; set; }
-    //    public List<object> Auto_SocialMedia { get; set; }
-    //    public List<object> Auto_ContactOption { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
-    //public class Bounds
-    //{
-    //}
 
     public class ConditionProperties
     {
@@ -1303,24 +1466,6 @@ namespace Import.Services
         public int ColumnNumber { get; set; }
         public string HasProgressionLevel { get; set; }
     }
-
-    //public class CredentialStatusType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class CredentialType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
 
     public class CreditLevelTypeEnum
     {
@@ -1339,65 +1484,6 @@ namespace Import.Services
         public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
         public List<object> ItemsAsString { get; set; }
     }
-
-    //public class CreditValue
-    //{
-    //    public CreditUnitType CreditUnitType { get; set; }
-    //    public CreditLevelTypeEnum CreditLevelTypeEnum { get; set; }
-    //    public List<object> CreditLevelType { get; set; }
-    //    public List<object> CreditUnitTypes { get; set; }
-    //    public List<object> Subject { get; set; }
-    //}
-
-    //public class DeliveryMethodTypes
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class DeliveryType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class ExtraData
-    //{
-    //}
-
-    //public class FirstAddress
-    //{
-    //    public string StreetAddress { get; set; }
-    //    public List<object> Identifier { get; set; }
-    //    public GeoCoordinates GeoCoordinates { get; set; }
-    //    public List<object> ContactPoint { get; set; }
-    //    public List<object> Auto_TargetContactPoint { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
-    //public class GeoCoordinates
-    //{
-    //    public string Name { get; set; }
-    //    public List<object> Auto_Address { get; set; }
-    //    public string ToponymName { get; set; }
-    //    public string Region { get; set; }
-    //    public string Country { get; set; }
-    //    public string TitleFormatted { get; set; }
-    //    public string LocationFormatted { get; set; }
-    //    public Bounds Bounds { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
 
     public class HasComponentCondition
     {
@@ -1540,36 +1626,6 @@ namespace Import.Services
     
     }
 
-    //public class Identifiers
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class Industry
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class IndustryOtherResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class IndustryResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
     public class IndustryType
     {
         public string Name { get; set; }
@@ -1583,41 +1639,6 @@ namespace Import.Services
         public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
         public List<object> ItemsAsString { get; set; }
     }
-
-    //public class InLanguageCodeList
-    //{
-    //    public int LanguageCodeId { get; set; }
-    //    public string LanguageName { get; set; }
-    //    public string LanguageCode { get; set; }
-    //    public string ParentSummary { get; set; }
-    //    public string ViewHeading { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public List<object> ReferenceUrl { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
-    //public class InstructionalProgramResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class InstructionalProgramType
-    //{
-    //    public string Name { get; set; }
-    //    public string SchemaName { get; set; }
-    //    public string Description { get; set; }
-    //    public List<object> Items { get; set; }
-    //    public int Id { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
 
     public class Item
     {
@@ -1659,98 +1680,6 @@ namespace Import.Services
         public List<object> ComponentDesignationList { get; set; }
     }
 
-    //public class Keyword
-    //{
-    //    public int CategoryId { get; set; }
-    //    public int EntityId { get; set; }
-    //    public string TextValue { get; set; }
-    //    public string ProfileSummary { get; set; }
-    //    public string ParentSummary { get; set; }
-    //    public string ViewHeading { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public List<object> ReferenceUrl { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public int ParentId { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public int Id { get; set; }
-    //    public string RowIdString { get; set; }
-    //    public DateTime Created { get; set; }
-    //    public int CreatedById { get; set; }
-    //}
-
-    //public class LearningDeliveryType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class LearningMethodType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class LearningOppConnectionsList
-    //{
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class LearningType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class LifeCycleStatusType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class NavyRating
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class Occupation
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class OccupationOtherResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class OccupationResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
     public class OccupationType
     {
         public string Name { get; set; }
@@ -1763,77 +1692,6 @@ namespace Import.Services
         public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
         public List<object> ItemsAsString { get; set; }
     }
-
-    //public class OrganizationRole
-    //{
-    //    public int ParentTypeId { get; set; }
-    //    public ActingAgent ActingAgent { get; set; }
-    //    public int ActingAgentId { get; set; }
-    //    public string ActingAgentUid { get; set; }
-    //    public AgentRole AgentRole { get; set; }
-    //    public TargetCredential TargetCredential { get; set; }
-    //    public TargetOrganization TargetOrganization { get; set; }
-    //    public TargetAssessment TargetAssessment { get; set; }
-    //    public TargetLearningOpportunity TargetLearningOpportunity { get; set; }
-    //    public string ProfileSummary { get; set; }
-    //    public string ParentSummary { get; set; }
-    //    public string ViewHeading { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public List<object> ReferenceUrl { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public int ParentId { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
-    //public class OrganizationSectorType
-    //{
-    //    public string Name { get; set; }
-    //    public string SchemaName { get; set; }
-    //    public string Description { get; set; }
-    //    public string Url { get; set; }
-    //    public List<Item> Items { get; set; }
-    //    public int Id { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<ItemsAsAlignmentObject> ItemsAsAlignmentObjects { get; set; }
-    //    public List<ItemsAsAlignmentObjectsWithCode> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<string> ItemsAsString { get; set; }
-    //}
-
-    //public class OrganizationSubclass
-    //{
-    //    public string Name { get; set; }
-    //    public string SchemaName { get; set; }
-    //    public string Description { get; set; }
-    //    public string Url { get; set; }
-    //    public List<Item> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<ItemsAsAlignmentObject> ItemsAsAlignmentObjects { get; set; }
-    //    public List<ItemsAsAlignmentObjectsWithCode> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<string> ItemsAsString { get; set; }
-    //}
-
-    //public class OrganizationType
-    //{
-    //    public string Name { get; set; }
-    //    public string SchemaName { get; set; }
-    //    public string Description { get; set; }
-    //    public string Url { get; set; }
-    //    public List<Item> Items { get; set; }
-    //    public int Id { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<ItemsAsAlignmentObject> ItemsAsAlignmentObjects { get; set; }
-    //    public List<ItemsAsAlignmentObjectsWithCode> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<string> ItemsAsString { get; set; }
-    //}
-
-    //public class OtherInstructionalProgramResults
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
 
     public class OwnerRoles
     {
@@ -1869,205 +1727,6 @@ namespace Import.Services
         public DateTime LastUpdated { get; set; }
    
     }
-
-    //public class Precede
-    //{
-    //    public string PathwayComponentType { get; set; }
-    //    public string TypeLabel { get; set; }
-    //    public int PathwayComponentTypeId { get; set; }
-    //    public int ComponentRelationshipTypeId { get; set; }
-    //    public int RowNumber { get; set; }
-    //    public int ColumnNumber { get; set; }
-    //    public string PathwayCTID { get; set; }
-    //    public List<object> AllComponents { get; set; }
-    //    public List<object> HasChild { get; set; }
-    //    public List<object> HasCondition { get; set; }
-    //    public List<object> Identifier { get; set; }
-    //    public List<object> IsChildOf { get; set; }
-    //    public List<object> HasProgressionLevels { get; set; }
-    //    public string HasProgressionLevelDisplay { get; set; }
-    //    public List<object> ProgressionLevels { get; set; }
-    //    public List<object> PrecededBy { get; set; }
-    //    public List<object> Precedes { get; set; }
-    //    public string ProxyFor { get; set; }
-    //    public string ComponentCategory { get; set; }
-    //    public string ProgramTerm { get; set; }
-    //    public string CredentialType { get; set; }
-    //    public IndustryType IndustryType { get; set; }
-    //    public OccupationType OccupationType { get; set; }
-    //    public JsonProperties JsonProperties { get; set; }
-    //    public string Name { get; set; }
-    //    public string Description { get; set; }
-    //    public string CTID { get; set; }
-    //    public string SubjectWebpage { get; set; }
-    //    public string OrganizationName { get; set; }
-    //    public List<object> OrganizationRole { get; set; }
-    //    public string LastPublishDate { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public RelatedEntity RelatedEntity { get; set; }
-    //    public DateTime EntityLastUpdated { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public int Id { get; set; }
-    //    public string RowId { get; set; }
-    //    public string RowIdString { get; set; }
-    //    public DateTime Created { get; set; }
-    //    public int CreatedById { get; set; }
-    //    public DateTime LastUpdated { get; set; }
-    //    public int LastUpdatedById { get; set; }
-    //}
-
-    //public class Properties
-    //{
-    //}
-
-    //public class QualityAssurance
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class RelatedEntity
-    //{
-    //    public string EntityUid { get; set; }
-    //    public int EntityTypeId { get; set; }
-    //    public int EntityBaseId { get; set; }
-    //    public string EntityBaseName { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public string EntityType { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public int Id { get; set; }
-    //    public string RowIdString { get; set; }
-    //    public DateTime Created { get; set; }
-    //    public DateTime LastUpdated { get; set; }
-    //    public bool IsTopLevelEntity { get; set; }
-    //}
-
-    //public class RenewalFrequencyPublish
-    //{
-    //}
-
-
-    //public class ScoringMethodType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class ScoringMethodTypes
-    //{
-    //    public bool HasAnIdentifer { get; set; }
-    //    public List<object> Results { get; set; }
-    //}
-
-    //public class ServiceType
-    //{
-    //    public List<object> Items { get; set; }
-    //    public string OtherValue { get; set; }
-    //    public List<object> ItemsAsAlignmentObjects { get; set; }
-    //    public List<object> ItemsAsAlignmentObjectsWithCodes { get; set; }
-    //    public List<object> ItemsAsString { get; set; }
-    //}
-
-    //public class TargetAssessment
-    //{
-    //    public LifeCycleStatusType LifeCycleStatusType { get; set; }
-    //    public OwnerRoles OwnerRoles { get; set; }
-    //    public List<object> OfferedByOrganization { get; set; }
-    //    public List<object> InLanguageIds { get; set; }
-    //    public List<object> InLanguageCodeList { get; set; }
-    //    public List<object> Auto_InLanguageCode { get; set; }
-    //    public List<object> AlternateName { get; set; }
-    //    public List<object> AlternateNameTVP { get; set; }
-    //    public AssessmentUseType AssessmentUseType { get; set; }
-    //    public AudienceLevelType AudienceLevelType { get; set; }
-    //    public AudienceType AudienceType { get; set; }
-    //    public CreditValue CreditValue { get; set; }
-    //    public DeliveryType DeliveryType { get; set; }
-    //    public List<object> ProcessProfiles { get; set; }
-    //    public List<object> AdministrationProcess { get; set; }
-    //    public List<object> DevelopmentProcess { get; set; }
-    //    public List<object> MaintenanceProcess { get; set; }
-    //    public List<object> EstimatedCost { get; set; }
-    //    public List<object> EstimatedCost_Merged { get; set; }
-    //    public List<object> FinancialAssistance { get; set; }
-    //    public List<object> EstimatedDuration { get; set; }
-    //    public List<object> Subject { get; set; }
-    //    public List<object> Subjects { get; set; }
-    //    public List<object> Auto_Subject { get; set; }
-    //    public List<object> Keyword { get; set; }
-    //    public List<object> AssessesCompetencies { get; set; }
-    //    public List<object> AssessesCompetenciesFrameworks { get; set; }
-    //    public List<object> RequiresCompetenciesFrameworks { get; set; }
-    //    public List<object> TargetCompetency { get; set; }
-    //    public List<object> Addresses { get; set; }
-    //    public List<object> Identifier { get; set; }
-    //    public List<object> IdentifierTVP { get; set; }
-    //    public List<object> WhereReferenced { get; set; }
-    //    public List<object> IsPartOfConditionProfile { get; set; }
-    //    public List<object> IsPartOfCredential { get; set; }
-    //    public List<object> IsPartOfLearningOpp { get; set; }
-    //    public List<object> IsResourceOnETPL { get; set; }
-    //    public List<object> CommonCosts { get; set; }
-    //    public List<object> CommonConditions { get; set; }
-    //    public List<object> AllConditions { get; set; }
-    //    public List<object> Requires { get; set; }
-    //    public List<object> Recommends { get; set; }
-    //    public List<object> AssessmentConnections { get; set; }
-    //    public AssessmentConnectionsList AssessmentConnectionsList { get; set; }
-    //    public List<object> PreparationFrom { get; set; }
-    //    public List<object> AdvancedStandingFrom { get; set; }
-    //    public List<object> IsRequiredFor { get; set; }
-    //    public List<object> IsRecommendedFor { get; set; }
-    //    public List<object> IsAdvancedStandingFor { get; set; }
-    //    public List<object> IsPreparationFor { get; set; }
-    //    public List<object> Corequisite { get; set; }
-    //    public List<object> EntryCondition { get; set; }
-    //    public AgentAndRoles AgentAndRoles { get; set; }
-    //    public Occupation Occupation { get; set; }
-    //    public OccupationResults OccupationResults { get; set; }
-    //    public OccupationOtherResults OccupationOtherResults { get; set; }
-    //    public Industry Industry { get; set; }
-    //    public IndustryResults IndustryResults { get; set; }
-    //    public IndustryOtherResults IndustryOtherResults { get; set; }
-    //    public InstructionalProgramType InstructionalProgramType { get; set; }
-    //    public InstructionalProgramResults InstructionalProgramResults { get; set; }
-    //    public OtherInstructionalProgramResults OtherInstructionalProgramResults { get; set; }
-    //    public List<object> AlternativeInstructionalProgramType { get; set; }
-    //    public AssessmentMethodType AssessmentMethodType { get; set; }
-    //    public AssessmentMethodTypes AssessmentMethodTypes { get; set; }
-    //    public List<object> SameAs { get; set; }
-    //    public ScoringMethodType ScoringMethodType { get; set; }
-    //    public List<object> TargetLearningResource { get; set; }
-    //    public List<object> Region { get; set; }
-    //    public List<object> JurisdictionAssertions { get; set; }
-    //    public AssessmentUseTypes AssessmentUseTypes { get; set; }
-    //    public ScoringMethodTypes ScoringMethodTypes { get; set; }
-    //    public DeliveryMethodTypes DeliveryMethodTypes { get; set; }
-    //    public QualityAssurance QualityAssurance { get; set; }
-    //    public List<object> CommonCostsList { get; set; }
-    //    public List<object> CommonConditionsList { get; set; }
-    //    public List<object> FrameworksList { get; set; }
-    //    public OwningOrganization OwningOrganization { get; set; }
-    //    public string OrganizationName { get; set; }
-    //    public List<object> OrganizationRole { get; set; }
-    //    public string LastPublishDate { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public string EntityType { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
     public class TargetComponent
     {
         public string PathwayComponentType { get; set; }
@@ -2119,274 +1778,21 @@ namespace Import.Services
 
     public class TargetCredential
     {
-        //public string OwnerNameAndCredentialName { get; set; }
-        //public OwnerRoles OwnerRoles { get; set; }
-        //public List<object> OwnerOrganizationRoles { get; set; }
-        //public List<object> InLanguageIds { get; set; }
-        //public List<object> InLanguageCodeList { get; set; }
-        //public List<object> Auto_InLanguageCode { get; set; }
-        //public List<object> Auto_InLanguageCode2 { get; set; }
-        //public bool IsDescriptionRequired { get; set; }
-        //public List<object> AlternateNames { get; set; }
-        //public List<object> Identifier { get; set; }
-        //public List<object> Auto_LatestVersion { get; set; }
-        //public List<object> Auto_PreviousVersion { get; set; }
-        //public List<object> Auto_AvailableOnlineAt { get; set; }
-        //public List<object> Auto_AvailabilityListing { get; set; }
-        //public List<object> Auto_ImageUrl { get; set; }
-        //public List<object> Addresses { get; set; }
-        //public List<object> Locations { get; set; }
-        //public List<object> JurisdictionAssertions { get; set; }
-        //public List<object> EstimatedDuration { get; set; }
-        //public List<object> RenewalFrequency { get; set; }
-        //public RenewalFrequencyPublish RenewalFrequency_Publish { get; set; }
-        //public CredentialType CredentialType { get; set; }
-        //public string ProfileType { get; set; }
-        //public AudienceLevelType AudienceLevelType { get; set; }
-        //public AudienceType AudienceType { get; set; }
-        //public CredentialStatusType CredentialStatusType { get; set; }
-        //public List<object> EmbeddedCredentials { get; set; }
-        //public List<object> IsPartOf { get; set; }
-        //public List<object> HasPartIds { get; set; }
-        //public List<object> IsPartOfIds { get; set; }
-        //public List<object> ETPLCredentials { get; set; }
-        //public List<object> ETPLAssessments { get; set; }
-        //public List<object> ETPLLearningOpportunities { get; set; }
-        //public List<object> HasETPLMembers { get; set; }
-        //public List<object> IsResourceOnETPL { get; set; }
-        //public List<object> HasTransferValueProfile { get; set; }
-        //public List<object> CredentialProcess { get; set; }
-        //public List<object> AdministrationProcess { get; set; }
-        //public List<object> DevelopmentProcess { get; set; }
-        //public List<object> MaintenanceProcess { get; set; }
-        //public List<object> AppealProcess { get; set; }
-        //public List<object> ComplaintProcess { get; set; }
-        //public List<object> RevocationProcess { get; set; }
-        //public List<object> ReviewProcess { get; set; }
-        //public Industry Industry { get; set; }
-        //public List<object> Naics { get; set; }
-        //public List<object> AlternativeIndustries { get; set; }
-        //public Occupation Occupation { get; set; }
-        //public List<object> AlternativeOccupations { get; set; }
-        //public InstructionalProgramResults InstructionalProgramResults { get; set; }
-        //public NavyRating NavyRating { get; set; }
-        //public AssessmentDeliveryType AssessmentDeliveryType { get; set; }
-        //public LearningDeliveryType LearningDeliveryType { get; set; }
-        //public List<object> OfferedByOrganizationRole { get; set; }
-        //public List<object> OfferedByOrganization { get; set; }
-        //public List<object> QualityAssuranceAction { get; set; }
-        //public List<object> AllConditions { get; set; }
-        //public List<object> CredentialConnections { get; set; }
-        //public List<object> CommonCosts { get; set; }
-        //public List<object> CommonConditions { get; set; }
-        //public List<object> Requires { get; set; }
-        //public List<object> Recommends { get; set; }
-        //public List<object> PreparationFrom { get; set; }
-        //public List<object> AdvancedStandingFrom { get; set; }
-        //public List<object> IsRequiredFor { get; set; }
-        //public List<object> IsRecommendedFor { get; set; }
-        //public List<object> IsAdvancedStandingFor { get; set; }
-        //public List<object> IsPreparationFor { get; set; }
-        //public List<object> Renewal { get; set; }
-        //public List<object> Corequisite { get; set; }
-        //public List<object> Revocation { get; set; }
-        //public List<object> Keyword { get; set; }
-        //public List<object> Subject { get; set; }
-        //public List<object> Auto_Subject { get; set; }
-        //public List<object> DegreeConcentration { get; set; }
-        //public List<object> DegreeMajor { get; set; }
-        //public List<object> DegreeMinor { get; set; }
-        //public List<object> Auto_DegreeConcentration { get; set; }
-        //public List<object> Auto_DegreeMajor { get; set; }
-        //public List<object> Auto_DegreeMinor { get; set; }
-        //public List<object> EstimatedCosts { get; set; }
-        //public List<object> AssessmentEstimatedCosts { get; set; }
-        //public List<object> LearningOpportunityEstimatedCosts { get; set; }
-        //public List<object> EstimatedCost { get; set; }
-        //public List<object> FinancialAssistance { get; set; }
-        //public List<object> RequiresCompetenciesFrameworks { get; set; }
-        //public List<object> TargetAssessment { get; set; }
-        //public List<object> TargetLearningOpportunity { get; set; }
-        //public List<object> SameAs { get; set; }
-        //public List<object> UsesVerificationService { get; set; }
         public string Name { get; set; }
-        //public OwningOrganization OwningOrganization { get; set; }
+
         public string OrganizationName { get; set; }
-        //public List<object> OrganizationRole { get; set; }
+
         public int EntityStateId { get; set; }
-        //public string LastPublishDate { get; set; }
-        //public List<object> Jurisdiction { get; set; }
-        //public bool IsEditorUpdate { get; set; }
-        //public string StatusMessage { get; set; }
-        //public string LastUpdatedDisplay { get; set; }
-        //public string EntityType { get; set; }
-        //public ExtraData ExtraData { get; set; }
-        //public string RowIdString { get; set; }
+
     }
 
     public class TargetLearningOpportunity
     {
-        //public LearningType LearningType { get; set; }
-        //public int LearningEntityTypeId { get; set; }
-        //public LifeCycleStatusType LifeCycleStatusType { get; set; }
-        //public List<object> Auto_AvailableOnlineAt { get; set; }
-        //public List<object> AvailableAt { get; set; }
-        //public OwnerRoles OwnerRoles { get; set; }
-        //public List<object> OfferedByOrganization { get; set; }
-        //public List<object> InLanguageIds { get; set; }
-        //public List<object> InLanguageCodeList { get; set; }
-        //public List<object> Auto_InLanguageCode { get; set; }
-        //public AudienceLevelType AudienceLevelType { get; set; }
-        //public AudienceType AudienceType { get; set; }
-        //public CreditValue CreditValue { get; set; }
-        //public DeliveryType DeliveryType { get; set; }
-        //public List<object> EstimatedDuration { get; set; }
-        //public Occupation Occupation { get; set; }
-        //public Industry Industry { get; set; }
-        //public InstructionalProgramType InstructionalProgramType { get; set; }
-        //public InstructionalProgramResults InstructionalProgramResults { get; set; }
-        //public List<object> HasPart { get; set; }
-        //public List<object> IsPartOf { get; set; }
-        //public List<object> Prerequisite { get; set; }
-        //public List<object> IsResourceOnETPL { get; set; }
-        //public List<object> Keyword { get; set; }
-        //public List<object> Subject { get; set; }
-        //public List<object> Subjects { get; set; }
-        //public List<object> Auto_Subject { get; set; }
-        //public List<object> WhereReferenced { get; set; }
-        //public List<object> Addresses { get; set; }
-        //public List<object> AlternateName { get; set; }
-        //public List<object> AlternateNameTVP { get; set; }
-        //public List<object> Auto_AvailabilityListing { get; set; }
-        //public List<object> SameAs { get; set; }
-        //public List<object> IsPartOfConditionProfile { get; set; }
-        //public List<object> IsPartOfCredential { get; set; }
-        //public List<object> TeachesCompetencies { get; set; }
-        //public List<object> TargetCompetency { get; set; }
-        //public List<object> TeachesCompetenciesFrameworks { get; set; }
-        //public List<object> RequiresCompetenciesFrameworks { get; set; }
-        //public List<object> TargetCompetencies { get; set; }
-        //public AssessmentMethodType AssessmentMethodType { get; set; }
-        //public AssessmentMethodTypes AssessmentMethodTypes { get; set; }
-        //public List<object> Region { get; set; }
-        //public List<object> JurisdictionAssertions { get; set; }
-        //public LearningMethodType LearningMethodType { get; set; }
-        //public List<object> EstimatedCost { get; set; }
-        //public List<object> EstimatedCost_Merged { get; set; }
-        //public List<object> FinancialAssistance { get; set; }
-        //public List<object> CommonCosts { get; set; }
-        //public List<object> CommonConditions { get; set; }
-        //public List<object> Identifier { get; set; }
-        //public List<object> AllConditions { get; set; }
-        //public List<object> Requires { get; set; }
-        //public List<object> Recommends { get; set; }
-        //public List<object> LearningOppConnections { get; set; }
-        //public LearningOppConnectionsList LearningOppConnectionsList { get; set; }
-        //public List<object> PreparationFrom { get; set; }
-        //public List<object> AdvancedStandingFrom { get; set; }
-        //public List<object> IsRequiredFor { get; set; }
-        //public List<object> IsRecommendedFor { get; set; }
-        //public List<object> IsAdvancedStandingFor { get; set; }
-        //public List<object> IsPreparationFor { get; set; }
-        //public List<object> Corequisite { get; set; }
-        //public List<object> EntryCondition { get; set; }
-        //public QualityAssurance QualityAssurance { get; set; }
-        //public List<object> CommonCostsList { get; set; }
-        //public List<object> CommonConditionsList { get; set; }
-        //public List<object> FrameworksList { get; set; }
-        //public OwningOrganization OwningOrganization { get; set; }
+
         public string OrganizationName { get; set; }
-       // public List<object> OrganizationRole { get; set; }
+
         public string LastPublishDate { get; set; }
-        //public List<object> Jurisdiction { get; set; }
-        //public bool IsEditorUpdate { get; set; }
-        //public string StatusMessage { get; set; }
-        //public string LastUpdatedDisplay { get; set; }
-        //public ExtraData ExtraData { get; set; }
-        //public string RowIdString { get; set; }
+
     }
-
-    //public class TargetOrganization
-    //{
-    //    public LifeCycleStatusType LifeCycleStatusType { get; set; }
-    //    public string AgentType { get; set; }
-    //    public int AgentTypeId { get; set; }
-    //    public OrganizationSubclass OrganizationSubclass { get; set; }
-    //    public string Auto_OrgURI { get; set; }
-    //    public List<object> Addresses { get; set; }
-    //    public List<object> Auto_Address { get; set; }
-    //    public FirstAddress FirstAddress { get; set; }
-    //    public List<object> Auto_AvailabilityListing { get; set; }
-    //    public List<object> SocialMediaPages { get; set; }
-    //    public List<object> Auto_SocialMedia { get; set; }
-    //    public List<object> PhoneNumbers { get; set; }
-    //    public List<AutoTargetContactPointForDetail> Auto_TargetContactPointForDetail { get; set; }
-    //    public List<object> Emails { get; set; }
-    //    public List<object> Keyword { get; set; }
-    //    public List<object> AlternateName { get; set; }
-    //    public List<object> ContactPoint { get; set; }
-    //    public List<object> IdentificationCodes { get; set; }
-    //    public List<object> AlternativeIdentifiers { get; set; }
-    //    public List<object> ID_AlternativeIdentifier { get; set; }
-    //    public string FoundingDate { get; set; }
-    //    public string FoundingYear { get; set; }
-    //    public string FoundingMonth { get; set; }
-    //    public string FoundingDay { get; set; }
-    //    public string Founded { get; set; }
-    //    public OrganizationType OrganizationType { get; set; }
-    //    public OrganizationSectorType OrganizationSectorType { get; set; }
-    //    public AgentSectorType AgentSectorType { get; set; }
-    //    public ServiceType ServiceType { get; set; }
-    //    public List<object> HasConditionManifest { get; set; }
-    //    public List<object> HasCostManifest { get; set; }
-    //    public List<object> ParentOrganizations { get; set; }
-    //    public List<object> OrganizationRole_Dept { get; set; }
-    //    public List<object> OrganizationRole_Subsidiary { get; set; }
-    //    public List<object> OrganizationRole_QAPerformed { get; set; }
-    //    public List<object> OrganizationRole_Actor { get; set; }
-    //    public List<object> OrganizationThirdPartyAssertions { get; set; }
-    //    public List<object> OrganizationFirstPartyAssertions { get; set; }
-    //    public List<object> CredentialAssertions { get; set; }
-    //    public List<object> OrganizationAssertions { get; set; }
-    //    public List<object> AssessmentAssertions { get; set; }
-    //    public List<object> LoppAssertions { get; set; }
-    //    public List<object> OrganizationRole_Recipient { get; set; }
-    //    public List<object> OrganizationRole { get; set; }
-    //    public Identifiers Identifiers { get; set; }
-    //    public List<object> Identifier { get; set; }
-    //    public List<object> VerificationServiceProfiles { get; set; }
-    //    public List<object> HasVerificationService { get; set; }
-    //    public List<object> CreatedCredentials { get; set; }
-    //    public List<object> Owns_Auto_Organization_OwnsCredentials { get; set; }
-    //    public List<object> OfferedCredentials { get; set; }
-    //    public List<object> OwnedAssessments { get; set; }
-    //    public List<object> OwnedLearningOpportunities { get; set; }
-    //    public List<object> QACredentials { get; set; }
-    //    public List<object> JurisdictionAssertions { get; set; }
-    //    public List<object> AgentProcess { get; set; }
-    //    public Industry Industry { get; set; }
-    //    public IndustryType IndustryType { get; set; }
-    //    public List<object> AlternativeIndustries { get; set; }
-    //    public List<object> InLanguageIds { get; set; }
-    //    public List<object> ProcessProfiles { get; set; }
-    //    public List<object> AppealProcess { get; set; }
-    //    public List<object> ComplaintProcess { get; set; }
-    //    public List<object> ReviewProcess { get; set; }
-    //    public List<object> RevocationProcess { get; set; }
-    //    public List<object> AdministrationProcess { get; set; }
-    //    public List<object> DevelopmentProcess { get; set; }
-    //    public List<object> MaintenanceProcess { get; set; }
-    //    public List<object> VerificationStatus { get; set; }
-    //    public string OrganizationName { get; set; }
-    //    public string LastPublishDate { get; set; }
-    //    public List<object> Jurisdiction { get; set; }
-    //    public bool IsEditorUpdate { get; set; }
-    //    public string StatusMessage { get; set; }
-    //    public string LastUpdatedDisplay { get; set; }
-    //    public string EntityType { get; set; }
-    //    public ExtraData ExtraData { get; set; }
-    //    public string RowIdString { get; set; }
-    //}
-
-
+    #endregion
 }

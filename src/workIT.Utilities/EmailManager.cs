@@ -364,7 +364,7 @@ namespace workIT.Utilities
             bool valid = true;
             string status = "";
             var sendingDomain = System.Configuration.ConfigurationManager.AppSettings[ "MailgunSendingDomainName" ];
-            var apiKey = System.Configuration.ConfigurationManager.AppSettings[ "MailgunSecretAPIKey" ];
+            var apiKey = System.Configuration.ConfigurationManager.AppSettings[ "MailgunSendingAPIKey" ];
             if ( string.IsNullOrWhiteSpace( sendingDomain ) )
             {
                 //no service api
@@ -606,11 +606,12 @@ namespace workIT.Utilities
 						LogEmail( 1, email );
 					}
 					return true;
-				} catch ( Exception exc )
+				}
+				catch ( Exception exc )
 				{
-					LoggingHelper.LogError( "EmailManager.NotifyAdmin(): Error while attempting to send:"
+					LoggingHelper.LogError( exc, "EmailManager.NotifyAdmin(): Error while attempting to send:"
 						+ "\r\nSubject:" + subject + "\r\nMessage:" + message
-						+ "\r\nError message: " + exc.ToString(), false );
+						+ "\r\nError message: " + exc.ToString() );
 				}
 			}
 

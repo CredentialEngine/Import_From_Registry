@@ -13,84 +13,97 @@ using MCD=workIT.Models.API;
 using ME = workIT.Models.Elastic;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
-
-using ThisEntity = workIT.Models.Common.Organization;
-using EntityMgr = workIT.Factories.OrganizationManager;
+using APIResourceServices = workIT.Services.API.OrganizationServices;
+using Newtonsoft.Json;
+using ThisResource = workIT.Models.Common.Organization;
+using ResourceMgr = workIT.Factories.OrganizationManager;
 using CM = workIT.Models.Common;
 using Mgr = workIT.Factories.OrganizationManager;
 using workIT.Factories;
 using System.Web.Script.Serialization;
 using System.Net.Http;
+using System.Web.UI;
 
 namespace workIT.Services
 {
 	public class OrganizationServices
 	{
 		static string thisClassName = "OrganizationServices";
-
+		static int ThisResourceEntityTypeId = 2;
 		#region import
 		/// <summary>
 		/// Get by CTID - will return pending records
 		/// </summary>
 		/// <param name="ctid"></param>
 		/// <returns></returns>
-		public static ThisEntity GetSummaryByCtid( string ctid )
+		public static ThisResource GetSummaryByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
-			return EntityMgr.GetSummaryByCtid( ctid );
+			return ResourceMgr.GetSummaryByCtid( ctid );
 		}
-		public static ThisEntity GetMinimumSummaryByCtid( string ctid )
+		public static ThisResource GetMinimumSummaryByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
-			return EntityMgr.GetMinimumSummaryByCtid( ctid, true );
+			return ResourceMgr.GetMinimumSummaryByCtid( ctid, true );
 		}
 
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				if ( UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 ) > 0 )
 				{
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-						GetDetail( entity.Id );
+						GetDetail( resource.Id );
 				}
-                string key = "organizationbyapi_" + entity.Id.ToString();
+                string key = "organizationbyapi_" + resource.Id.ToString();
                 ServiceHelper.ClearCacheEntity( key );
             }
-			bool isValid = new EntityMgr().Save( entity, ref status );
+			bool isValid = new ResourceMgr().Save( resource, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				if ( UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 ) > 0 )
-					CacheManager.RemoveItemFromCache( "organization", entity.Id );
+					CacheManager.RemoveItemFromCache( "organization", resource.Id );
 
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
-				{
-					//update cache
-					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//update cache
+				//	ThreadPool.QueueUserWorkItem( UpdateCaches, resource );
 
-				}
-				else
+				//}
+				//else
 				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.Id, 1, ref messages );
-					//add all credential in a verification profile
-					if ( entity.VerificationServiceProfiles != null && entity.VerificationServiceProfiles.Count > 0 )
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true , true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
 					{
-						foreach ( var profile in entity.VerificationServiceProfiles )
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
 						{
-							if ( profile.TargetCredential != null
-								&& profile.TargetCredential.Count > 0 )
-							{
-								new CredentialServices().AddCredentialsToPendingReindex( profile.TargetCredential );
-							}
+							status.AddError( statusMsg );
 						}
 					}
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.Id, 1, ref messages );
+					//add all credential in a verification profile
+					//if ( resource.VerificationServiceProfiles != null && resource.VerificationServiceProfiles.Count > 0 )
+					//{
+					//	foreach ( var profile in resource.VerificationServiceProfiles )
+					//	{
+					//		if ( profile.TargetCredential != null
+					//			&& profile.TargetCredential.Count > 0 )
+					//		{
+					//			new CredentialServices().AddCredentialsToPendingReindex( profile.TargetCredential );
+					//		}
+					//	}
+					//}
 					//20-11-20 mp re: QA performed
 					//				- may have to reindex all orgs etc that have QA performed by a QA org!!!
 					if ( messages.Count > 0 )
@@ -99,6 +112,14 @@ namespace workIT.Services
 			}
 
 			return isValid;
+		}
+		public void UpdatePendingReindex( ThisResource resource, ref SaveStatus status )
+		{
+			List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
 		}
 		static void UpdateCaches( Object entity )
 		{
@@ -118,12 +139,12 @@ namespace workIT.Services
 				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, document.Id, 1, ref messages );
 
 		}
-		//public static ThisEntity GetBySubjectWebpage( string swp )
+		//public static ThisResource GetBySubjectWebpage( string swp )
 		//{
-		//	ThisEntity entity = new ThisEntity();
+		//	ThisResource entity = new ThisResource();
 		//	if ( string.IsNullOrWhiteSpace( swp ) )
 		//		return entity;
-		//	return EntityMgr.GetBySubjectWebpage( swp );
+		//	return ResourceMgr.GetBySubjectWebpage( swp );
 		//}
 		#endregion
 
@@ -164,7 +185,8 @@ namespace workIT.Services
 
 			if ( UtilityManager.GetAppKeyValue( "usingElasticOrganizationSearch", false ) )
 			{
-				return new ElasticHelper().OrganizationAutoComplete( query, maxTerms, ref totalRows ).Select( m => m.Text ).ToList();
+				var includingAllFiltersWithAutocomplete = UtilityManager.GetAppKeyValue( "includingAllFiltersWithAutocomplete", false );
+				return new ElasticHelper().OrganizationAutoComplete( query, maxTerms, ref totalRows, includingAllFiltersWithAutocomplete ).Select( m => m.Text ).ToList();
 			}
 			else
 			{
@@ -175,7 +197,7 @@ namespace workIT.Services
 				//	keywords = "%" + keywords.Trim() + "%";
 				//where = string.Format( " (base.name like '{0}') ", keywords );
 
-				return EntityMgr.Autocomplete( where, 1, maxTerms, userId, ref totalRows );
+				return ResourceMgr.Autocomplete( where, 1, maxTerms, userId, ref totalRows );
 			}
 		}
 		public static List<MicroProfile> GetMicroProfile( List<int> organizationIDs )
@@ -251,7 +273,7 @@ namespace workIT.Services
 			//SetOrgCategoryFilter( data, ref where ); //Not updated - I'm not sure we're still using this. - NA 5/12/2017
 
 			LoggingHelper.DoTrace( 5, thisClassName + ".Search(). Filter: " + where );
-			return EntityMgr.MainSearch( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
+			return ResourceMgr.MainSearch( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
 		}
 
 		private static void SetBoundariesFilter( MainSearchInput data, ref string where )
@@ -456,9 +478,10 @@ namespace workIT.Services
             return entity;
 
         }
-        public static CM.Organization GetForSummaryWithRoles( int id )
-        {
-            return Mgr.GetForSummary( id, true );
+		//used by old detail page
+		public static CM.Organization GetForSummaryWithRoles( int id )
+		{
+			return Mgr.GetForSummary( id, true );
 		}
 
 		public static CM.Organization GetDetail( int id, bool skippingCache = false )
@@ -476,7 +499,7 @@ namespace workIT.Services
         {
             return Mgr.GetDetail( id );
         }
-        public static CM.Organization GetDetail( int id, EntityMgr.OrganizationRequest request )
+        public static CM.Organization GetDetail( int id, ResourceMgr.OrganizationRequest request )
         {
             int cacheMinutes = UtilityManager.GetAppKeyValue( "organizationCacheMinutes", 0 );
             DateTime maxTime = DateTime.Now.AddMinutes( cacheMinutes * -1 );
@@ -557,13 +580,13 @@ namespace workIT.Services
         }
 
 
-		public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+		public static ThisResource GetDetailByCtid( string ctid, bool skippingCache = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			//21-03-06 mp - there is too much extra work doing this (would be OK if just the entity)
-			var organization = EntityMgr.GetSummaryByCtid( ctid );
+			var organization = ResourceMgr.GetSummaryByCtid( ctid );
 			return GetDetail( organization.Id, skippingCache );
 		}
 	}

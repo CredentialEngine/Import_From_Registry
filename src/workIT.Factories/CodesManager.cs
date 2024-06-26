@@ -21,6 +21,8 @@ using EntityContext = workIT.Data.Tables.workITEntities;
 using workIT.Data.Tables;
 using workIT.Utilities;
 using System.Linq.Expressions;
+using System.Runtime.Caching;
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -30,7 +32,7 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_ORGANIZATION_CLASS_TYPE = 1;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_TYPE = 2;
 		public static int PROPERTY_CATEGORY_LEARNING_OBJECT_TYPE = 3;
-	
+
 		//public static int PROPERTY_CATEGORY_CREDENTIAL_PURPOSE = 3;
 		/// <summary>
 		/// AudienceLevelType
@@ -63,7 +65,8 @@ namespace workIT.Factories
 		//public static int PROPERTY_CATEGORY_CIPCODE = 23;
 		public static int PROPERTY_CATEGORY_CURRENCIES = 24;
 		public static int PROPERTY_CATEGORY_REFERENCE_URLS = 25;
-		public static int PROPERTY_CATEGORY_REVOCATION_CRITERIA_TYPE = 26;
+		//NEW
+		public static int PROPERTY_CATEGORY_CREDENTIALING_ACTION_TYPE = 26;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_URLS = 27;
 		public static int PROPERTY_CATEGORY_CONDITION_ITEM = 28;
 		public static int PROPERTY_CATEGORY_COMPETENCY = 29;
@@ -79,22 +82,22 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_ALTERNATE_NAME = 38;
 		public static int PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE = 39;
 		public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_ACTIVE = "credentialStat:Active";
-        public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_DEPRECATED = "credentialStat:Deprecated";
+		public static string PROPERTY_CATEGORY_CREDENTIAL_STATUS_TYPE_DEPRECATED = "credentialStat:Deprecated";
 
-        public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
+		public static int PROPERTY_CATEGORY_ACTION_STATUS_TYPE = 40;
 		public static int PROPERTY_CATEGORY_CLAIM_TYPE = 41;
 		public static int PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE = 42;
 		public static int PROPERTY_CATEGORY_FINANCIAL_ASSISTANCE = 43;
 		//      [Obsolete]
 		//      public static int PROPERTY_CATEGORY_STAFF_EVALUATION_METHOD = 44;
 		public static int PROPERTY_CATEGORY_QA_TARGET_TYPE = 45;
-        public static int PROPERTY_CATEGORY_PATHWAY_COMPONENT_TYPE = 46;
-        //public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
-        public static int PROPERTY_CATEGORY_OWNING_ORGANIZATION_TYPE = 47;
+		public static int PROPERTY_CATEGORY_PATHWAY_COMPONENT_TYPE = 46;
+		//public static int PROPERTY_CATEGORY_LEARNING_RESOURCE_URLS = 46;
+		public static int PROPERTY_CATEGORY_OWNING_ORGANIZATION_TYPE = 47;
 		public static int PROPERTY_CATEGORY_PRIMARY_EARN_METHOD = 48;
 
-        public static int PROPERTY_CATEGORY_CREDIT_UNIT_TYPE = 50;
-        public static int PROPERTY_CATEGORY_JurisdictionAssertionType = 52;
+		public static int PROPERTY_CATEGORY_CREDIT_UNIT_TYPE = 50;
+		public static int PROPERTY_CATEGORY_JurisdictionAssertionType = 52;
 		public static int PROPERTY_CATEGORY_Learning_Method_Type = 53;
 		public static int PROPERTY_CATEGORY_Scoring_Method = 54;
 
@@ -104,6 +107,15 @@ namespace workIT.Factories
 
 		//reporting
 
+		public static int PROPRTY_CREDENTIAL_REPORT_ITEM = 58;
+		public static int PROPRTY_ORGANIZATION_REPORT_ITEM = 59;
+		public static int PROPRTY_ASSESSMENT_REPORT_ITEM = 60;
+		public static int PROPRTY_LOPP_REPORT_ITEM = 61;
+		//
+		public static int PROPRTY_PATHWAY_REPORT_ITEM = 70;
+		public static int PROPRTY_TRANSFERVALUE_REPORT_ITEM = 71;
+		public static int PROPRTY_TRANSFERINTERMEDIARY_REPORT_ITEM = 72;
+
 		//continued
 		public static int PROPERTY_CATEGORY_DEGREE_CONCENTRATION = 62;
 		public static int PROPERTY_CATEGORY_DEGREE_MAJOR = 63;
@@ -112,7 +124,8 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_LANGUAGE = 65;
 		//
 		public static int PROPERTY_CATEGORY_PHONE_TYPE_FAX = 73; //change to 73 from 77
-		public static int PROPERTY_CATEGORY_ACTION_STATUS = 74;
+																 //no 74
+																 //public static int PROPERTY_CATEGORY_ACTION_STATUS = 74;
 		public static int PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE = 75;
 		public static int PROPERTY_CATEGORY_SAME_AS = 76;
 		public static int PROPERTY_CATEGORY_DATA_SOURCE_COVERAGE = 77;
@@ -125,34 +138,38 @@ namespace workIT.Factories
 		public static int PROPERTY_CATEGORY_KSA_TYPE = 83;
 		public static int PROPERTY_CATEGORY_LIFE_CYCLE_STATUS = 84;
 		public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE = "lifeCycle:Active";
-        public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED = "lifeCycle:Ceased";
-        public static int PROPERTY_CATEGORY_COLLECTION_CATEGORY = 85;
+		public static string PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED = "lifeCycle:Ceased";
+		public static int PROPERTY_CATEGORY_COLLECTION_CATEGORY = 85;
 		//??	86
-        public static int PROPERTY_CATEGORY_Environmental_Hazard_Type = 87;
-        public static int PROPERTY_CATEGORY_Demand_Level_Type = 88;
-        public static int PROPERTY_CATEGORY_Performance_Level_Type = 89;
-        public static int PROPERTY_CATEGORY_Physical_Capability_Type = 90;
+		public static int PROPERTY_CATEGORY_Environmental_Hazard_Type = 87;
+		public static int PROPERTY_CATEGORY_Demand_Level_Type = 88;
+		public static int PROPERTY_CATEGORY_Performance_Level_Type = 89;
+		public static int PROPERTY_CATEGORY_Physical_Capability_Type = 90;
 
-        //
-        public static int PROPERTY_CATEGORY_ARRAY_OPERATION_CATEGORY	= 91;
-        public static int PROPERTY_CATEGORY_COMPARATOR_CATEGORY			= 92;
-        public static int PROPERTY_CATEGORY_LOGICAL_OPERATOR_CATEGORY	= 93;
+		//
+		public static int PROPERTY_CATEGORY_ARRAY_OPERATION_CATEGORY = 91;
+		public static int PROPERTY_CATEGORY_COMPARATOR_CATEGORY = 92;
+		public static int PROPERTY_CATEGORY_LOGICAL_OPERATOR_CATEGORY = 93;
 		//schedule and offer frequency have the same concept scheme, but will need to retrieve separately!
-        public static int PROPERTY_CATEGORY_SCHEDULE_FREQUENCY			= 94;
-        public static int PROPERTY_CATEGORY_SCHEDULE_TIMING				= 95;
-        public static int PROPERTY_CATEGORY_OFFER_FREQUENCY				= 96;
+		public static int PROPERTY_CATEGORY_SCHEDULE_FREQUENCY = 94;
+		public static int PROPERTY_CATEGORY_SCHEDULE_TIMING = 95;
+		public static int PROPERTY_CATEGORY_OFFER_FREQUENCY = 96;
+		//proxy/virtual ?? applicable
+		public static int PROPERTY_CATEGORY_US_REGIONS = 98;
+		public static int PROPERTY_CATEGORY_OTHER_FILTERS = 99;
 
-        public static int PROPERTY_CATEGORY_ACCOMMODATION				= 100;
-        public static int PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY	= 101;
-        //proxy/virtual ?? applicable
-        public static int PROPERTY_CATEGORY_US_REGIONS = 99;
+		public static int PROPERTY_CATEGORY_ACCOMMODATION = 100;
+		public static int PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY = 101; 
+		public static int PROPERTY_CATEGORY_EVALUATOR_CATEGORY = 102;
+		public static int PROPERTY_CATEGORY_PLACEHOLDER_CATEGORY = 103;
 
 
-		//help categories for FinderAPI
-		public static int PROPERTY_CATEGORY_HISTORY = 100;
-		//public static int PROPERTY_CATEGORY_COMPETENCIES = 101;-see 29
-		public static int PROPERTY_CATEGORY_OTHER_FILTERS = 101;
-		public static int PROPERTY_CATEGORY_QA_PERFORMED = 102;
+		//Virtual placeholder categories for use with FinderAPI
+		public static int PROPERTY_CATEGORY_HISTORY = 200;
+		public static int PROPERTY_CATEGORY_QA_PERFORMED = 201;
+		public static int PROPERTY_CATEGORY_ORG_OWNS_OFFERS = 202;
+		public static int PROPERTY_CATEGORY_ORG_HAS_FOR_TVPS = 203;
+		public static int PROPERTY_CATEGORY_ORG_HAS_FROM_TVPS = 204;
 
 
 
@@ -161,8 +178,8 @@ namespace workIT.Factories
 		//An Entity is typically created only where it can have a child relationship, ex: Entity.Property
 		public static int ENTITY_TYPE_CREDENTIAL = 1;
 		public static int ENTITY_TYPE_CREDENTIAL_ORGANIZATION = 2; //ENTITY_TYPE_QAORGANIZATION = 13
-        public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
-        public static string ENTITY_TYPE_LABEL_ASSESSMENT_PROFILE = "AssessmentProfile";
+		public static int ENTITY_TYPE_ASSESSMENT_PROFILE = 3;
+		public static string ENTITY_TYPE_LABEL_ASSESSMENT_PROFILE = "AssessmentProfile";
 
 		public static int ENTITY_TYPE_CONNECTION_PROFILE = 4;
 		public static int ENTITY_TYPE_CONDITION_PROFILE = 4;
@@ -172,24 +189,24 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_PATHWAY = 8;
 		public static int ENTITY_TYPE_COLLECTION = 9;
 
-		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;	//	(ENTITY_TYPE_COMPETENCY = 17)
-		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;			//	(ENTITY_TYPE_CONCEPT = 29)
-        public static int ENTITY_TYPE_PROGRESSION_MODEL = 12;		//	(ENTITY_TYPE_PROGRESSION_LEVEL = 30)
+		public static int ENTITY_TYPE_COMPETENCY_FRAMEWORK = 10;    //	(ENTITY_TYPE_COMPETENCY = 17)
+		public static int ENTITY_TYPE_CONCEPT_SCHEME = 11;          //	(ENTITY_TYPE_CONCEPT = 29)
+		public static int ENTITY_TYPE_PROGRESSION_MODEL = 12;       //	(ENTITY_TYPE_PROGRESSION_LEVEL = 30)
 
-        public static int ENTITY_TYPE_QAORGANIZATION = 13;
+		public static int ENTITY_TYPE_QAORGANIZATION = 13;
 		//for now use plain until addressed all chgs
 		public static int ENTITY_TYPE_PLAIN_ORGANIZATION = 14;
 
-        public static int ENTITY_TYPE_SCHEDULED_OFFERING = 15;
+		public static int ENTITY_TYPE_SCHEDULED_OFFERING = 15;
 
-        public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
-		public static int ENTITY_TYPE_COMPETENCY = 17;	
-		public static int ENTITY_TYPE_JURISDICTION_PROFILE = 18;
+		public static int ENTITY_TYPE_ADDRESS_PROFILE = 16;
+		public static int ENTITY_TYPE_COMPETENCY = 17;
+		public static int ENTITY_TYPE_COLLECTION_COMPETENCY = 18;
 		public static int ENTITY_TYPE_CONDITION_MANIFEST = 19;
 		public static int ENTITY_TYPE_COST_MANIFEST = 20;
 		//
 		public static int ENTITY_TYPE_FINANCIAL_ASST_PROFILE = 21;
-		public static int ENTITY_TYPE_ACCREDIT_ACTION_PROFILE = 22;
+		public static int ENTITY_TYPE_CREDENTIALING_ACTION = 22;
 		public static int ENTITY_TYPE_PATHWAY_SET = 23;
 		public static int ENTITY_TYPE_PATHWAY_COMPONENT = 24;
 		public static int ENTITY_TYPE_COMPONENT_CONDITION = 25;
@@ -197,10 +214,10 @@ namespace workIT.Factories
 		public static int ENTITY_TYPE_TRANSFER_VALUE_PROFILE = 26;
 		public static int ENTITY_TYPE_AGGREGATE_DATA_PROFILE = 27;
 		public static int ENTITY_TYPE_TRANSFER_INTERMEDIARY = 28;
-        public static int ENTITY_TYPE_CONCEPT = 29;
-        public static int ENTITY_TYPE_PROGRESSION_LEVEL = 30;
+		public static int ENTITY_TYPE_CONCEPT = 29;
+		public static int ENTITY_TYPE_PROGRESSION_LEVEL = 30;
 		//
-        public static int ENTITY_TYPE_DATASET_PROFILE = 31;
+		public static int ENTITY_TYPE_DATASET_PROFILE = 31;
 		public static int ENTITY_TYPE_JOB_PROFILE = 32;
 		public static int ENTITY_TYPE_TASK_PROFILE = 33;
 		public static int ENTITY_TYPE_WORKROLE_PROFILE = 34;
@@ -208,20 +225,25 @@ namespace workIT.Factories
 		//
 		public static int ENTITY_TYPE_LEARNING_PROGRAM = 36;
 		public static int ENTITY_TYPE_COURSE = 37;
-        public static int ENTITY_TYPE_SUPPORT_SERVICE = 38;
+		public static int ENTITY_TYPE_SUPPORT_SERVICE = 38;
+		public static int ENTITY_TYPE_RUBRIC = 39;
 
-
-        //refactored non top level resources
-        public static int ENTITY_TYPE_REVOCATION_PROFILE = 40;
+		//refactored non top level resources
+		public static int ENTITY_TYPE_REVOCATION_PROFILE = 40;
 		public static int ENTITY_TYPE_VERIFICATION_PROFILE = 41;
 		public static int ENTITY_TYPE_PROCESS_PROFILE = 42;
 		public static int ENTITY_TYPE_CONTACT_POINT = 43;
 
+		public static int ENTITY_TYPE_RUBRIC_CRITERION = 44;
+		public static int ENTITY_TYPE_RUBRIC_CRITERION_LEVEL = 45;
+		public static int ENTITY_TYPE_RUBRIC_LEVEL = 46;
+
+		public static int ENTITY_TYPE_JURISDICTION_PROFILE = 50;
 		//obsolete/unused yet
 		public static int ENTITY_TYPE_EARNINGS_PROFILE = 55;
 		public static int ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE = 56;
 		public static int ENTITY_TYPE_HOLDERS_PROFILE = 57;
-		public static int ENTITY_TYPE_RUBRIC = 58;
+
 		/// <summary>
 		/// Placeholder for stats, will not actually have an entity
 		/// </summary>
@@ -246,29 +268,35 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static Enumeration GetEnumeration( string datasource, bool getAll = true, bool onlySubType1 = false )
 		{
-			using ( var context = new EntityContext() )
+
+			return GetFromCacheOrDB( GetCacheName( "aee81bb9-f6b0-47cf-bcc4-cb309d93646d", datasource, getAll, onlySubType1 ), () =>
 			{
-				//context.Configuration.LazyLoadingEnabled = false;
+				using ( var context = new EntityContext() )
+				{
+					//context.Configuration.LazyLoadingEnabled = false;
 
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() && s.IsActive == true );
+					Codes_PropertyCategory category = context.Codes_PropertyCategory
+								.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() && s.IsActive == true );
 
-				return FillEnumeration( category, getAll, onlySubType1 );
-			}
-
+					return FillEnumeration( category, getAll, onlySubType1 );
+				}
+			} );
 		}
 
 		public static Enumeration GetEnumeration( int categoryId, bool getAll = true )
 		{
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "27b3776a-3c2b-49e7-8b0b-e30e7c3313db", categoryId, getAll ), () =>
 			{
+				using ( var context = new EntityContext() )
+				{
 
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.Id == categoryId && s.IsActive == true );
+					Codes_PropertyCategory category = context.Codes_PropertyCategory
+								.FirstOrDefault( s => s.Id == categoryId && s.IsActive == true );
 
-				return FillEnumeration( category, getAll, false );
+					return FillEnumeration( category, getAll, false );
 
-			}
+				}
+			} );
 
 		}
 		private static Enumeration FillEnumeration( Codes_PropertyCategory category, bool getAll, bool onlySubType1 )
@@ -309,10 +337,10 @@ namespace workIT.Factories
 
 							val.Name = item.Title;
 							val.Description = item.Description != null ? item.Description : "";
-							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-							val.SchemaName = item.SchemaName ?? "";
+							val.SortOrder = item.SortOrder != null ? ( int ) item.SortOrder : 0;
+							val.SchemaName = item.SchemaName ?? string.Empty;
 							val.SchemaUrl = item.SchemaUrl;
-							val.ParentSchemaName = item.ParentSchemaName ?? "";
+							val.ParentSchemaName = item.ParentSchemaName ?? string.Empty;
 							val.Value = item.Id.ToString();
 							val.Totals = item.Totals ?? 0;
 							if ( IsDevEnv() )
@@ -341,44 +369,44 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		/// <summary>
-		/// Get the selected item from an enumeration that only allows a singles selection
-		/// </summary>
-		/// <param name="e"></param>
-		/// <returns></returns>
-		public static int GetEnumerationSelection( Enumeration e )
+		///// <summary>
+		///// Get the selected item from an enumeration that only allows a singles selection
+		///// </summary>
+		///// <param name="e"></param>
+		///// <returns></returns>
+		//public static int GetEnumerationSelection( Enumeration e )
+		//{
+		//	int selectedId = 0;
+		//	if ( e == null || e.Items == null || e.Items.Count() == 0 )
+		//	{
+		//		return 0;
+		//	}
+
+		//	foreach ( EnumeratedItem item in e.Items )
+		//	{
+		//		if ( item.Selected )
+		//		{
+		//			selectedId = item.Id;
+		//			break;
+		//		}
+		//	}
+
+		//	return selectedId;
+
+		//}
+
+		public static Enumeration GetCredentialTypes( string datasource, bool getAll, bool includingAllBadges = false, string parentSchemaName = "" )
 		{
-			int selectedId = 0;
-			if ( e == null || e.Items == null || e.Items.Count() == 0 )
-			{
-				return 0;
-			}
-
-			foreach ( EnumeratedItem item in e.Items )
-			{
-				if ( item.Selected )
-				{
-					selectedId = item.Id;
-					break;
-				}
-			}
-
-			return selectedId;
-
-		}
-
-		public static Enumeration GetCredentialTypes( string datasource, bool getAll, bool includingAllBadges = false, string parentSchemaName = "")
-		{
-			Enumeration entity = new Enumeration();	
+			Enumeration entity = new Enumeration();
 			using ( var context = new EntityContext() )
 			{
 				//context.Configuration.LazyLoadingEnabled = false;
 
 				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() 
-												&& s.IsActive == true 
+							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower()
+												&& s.IsActive == true
 												);
-							
+
 				if ( category != null && category.Id > 0 )
 				{
 					entity.Id = category.Id;
@@ -392,7 +420,7 @@ namespace workIT.Factories
 					var results = context.Codes_PropertyValue
 							.Where( s => s.IsActive == true && s.CategoryId == category.Id
 							&& ( getAll || s.Totals > 0 )
-							&& ( parentSchemaName == "" || s.ParentSchemaName == parentSchemaName )
+							&& ( parentSchemaName == string.Empty || s.ParentSchemaName == parentSchemaName )
 							)
 							.OrderBy( p => p.Title )
 							.ToList();
@@ -413,11 +441,11 @@ namespace workIT.Factories
 
 							val.Name = item.Title;
 							val.Description = item.Description != null ? item.Description : "";
-							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-							val.SchemaName = item.SchemaName ?? "";
+							val.SortOrder = item.SortOrder != null ? ( int ) item.SortOrder : 0;
+							val.SchemaName = item.SchemaName ?? string.Empty;
 							val.SchemaUrl = item.SchemaUrl;
-							val.ParentSchemaName = item.ParentSchemaName ?? "";
-							if (val.ParentSchemaName== "Badge" )
+							val.ParentSchemaName = item.ParentSchemaName ?? string.Empty;
+							if ( val.ParentSchemaName == "Badge" )
 							{
 								if ( hasABadge && !includingAllBadges )
 									continue;
@@ -437,9 +465,9 @@ namespace workIT.Factories
 						}
 						//need to reorder the Items by sortOrder, then name. 
 					}
-					
+
 				}
-				
+
 
 			}
 			return entity;
@@ -450,7 +478,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() && s.IsActive == true);
+							.FirstOrDefault( s => s.CodeName.ToLower() == datasource.ToLower() && s.IsActive == true );
 
 				if ( category != null && category.Id > 0 )
 				{
@@ -485,10 +513,10 @@ namespace workIT.Factories
 
 							val.Name = item.Title;
 							val.Description = item.Description != null ? item.Description : "";
-							val.SortOrder = item.SortOrder != null ? ( int )item.SortOrder : 0;
-							val.SchemaName = item.SchemaName ?? "";
+							val.SortOrder = item.SortOrder != null ? ( int ) item.SortOrder : 0;
+							val.SchemaName = item.SchemaName ?? string.Empty;
 							val.SchemaUrl = item.SchemaUrl;
-							val.ParentSchemaName = item.ParentSchemaName ?? "";
+							val.ParentSchemaName = item.ParentSchemaName ?? string.Empty;
 							if ( val.ParentSchemaName == "Badge" )
 							{
 								if ( hasABadge )
@@ -559,10 +587,10 @@ namespace workIT.Factories
 							//21-05-11 mparsons - found that for at least language, want to use Id. Not sure if this will be a proble for other codes
 							if ( item.CodeId == null || item.CodeId == 0 )
 								val.Id = item.Id;
-							else 
-								val.Id = item.CodeId == null ? 0 : ( int )item.CodeId;
+							else
+								val.Id = item.CodeId == null ? 0 : ( int ) item.CodeId;
 
-							val.CodeId = item.CodeId == null ? 0 : ( int )item.CodeId;
+							val.CodeId = item.CodeId == null ? 0 : ( int ) item.CodeId;
 							val.ParentId = category.Id;
 							val.Name = item.Title;
 							val.SchemaName = item.SchemaName;
@@ -576,7 +604,7 @@ namespace workIT.Factories
 							}
 							else
 							{
-								val.Value = item.CodeId == null ? "" : ( ( int )item.CodeId ).ToString();
+								val.Value = item.CodeId == null ? string.Empty : ( ( int ) item.CodeId ).ToString();
 							}
 							if ( category.Id == 4 || category.Id == 14 || category.Id == 18 || category.Id == 21 )
 							{
@@ -597,6 +625,42 @@ namespace workIT.Factories
 
 			return entity;
 		}
+		/// <summary>
+		/// Get a code item by category and title
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="title"></param>
+		/// <returns></returns>
+		private static CodeItem Codes_PropertyValue_Get( int categoryId, string title )
+		{
+			CodeItem code = new CodeItem();
+
+			using ( var context = new EntityContext() )
+			{
+				List<Codes_PropertyValue> results = context.Codes_PropertyValue
+					.Where( s => s.CategoryId == categoryId
+							&& ( s.IsActive == true )
+							&& s.Title.ToLower() == title.ToLower() )
+							.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( Codes_PropertyValue item in results )
+					{
+						code = new CodeItem();
+						code.Id = ( int ) item.Id;
+						code.Title = item.Title;
+						code.Description = item.Description;
+						code.URL = item.SchemaUrl;
+						code.SchemaName = item.SchemaName;
+						code.ParentSchemaName = item.ParentSchemaName;
+						code.Totals = item.Totals ?? 0;
+						break;
+					}
+				}
+			}
+			return code;
+		}
 
 		public static List<CodeItem> GetAllPathwayComponentStatistics()
 		{
@@ -612,7 +676,7 @@ namespace workIT.Factories
 					{
 						code = new CodeItem
 						{
-							Id = ( int )item.Id,
+							Id = ( int ) item.Id,
 							CategoryId = item.Id,
 							Title = item.Title,
 							SchemaName = item.SchemaName,
@@ -666,13 +730,13 @@ namespace workIT.Factories
 			}
 		}
 
-        public static List<CodeItem> GetAllEntityStatistics()
+		public static List<CodeItem> GetAllEntityStatistics()
 		{
 			List<CodeItem> list = new List<CodeItem>();
 			CodeItem code;
 			using ( var context = new EntityContext() )
 			{
-				List<Counts_EntityStatistic> results = context.Counts_EntityStatistic.Where(s => s.IsActive == true ).ToList();
+				List<Counts_EntityStatistic> results = context.Counts_EntityStatistic.Where( s => s.IsActive == true ).ToList();
 
 				if ( results != null && results.Count > 0 )
 				{
@@ -682,7 +746,7 @@ namespace workIT.Factories
 						//20-04-15 mparsons - appears that for entity statistics, we have to use the entitytypeId for the categoryId
 						code = new CodeItem
 						{
-							Id = ( int )item.Id,
+							Id = ( int ) item.Id,
 							//CategoryId = ( int )( item.CategoryId ?? 0 ),
 							//21-08-09 mp - force this to be 101 for better handling in new finder
 							//21-08-13 mp - but now doesn't work in old finder
@@ -716,17 +780,50 @@ namespace workIT.Factories
 							&& s.SchemaName.Trim() == schemaName.Trim() );
 				if ( item != null && item.Id > 0 )
 				{
-                    //could have an additional check that the returned category is correct - no guarentees though
-                    code = new CodeItem
-                    {
-                        Id = ( int ) item.Id,
-                        CategoryId = ( int ) ( item.CategoryId ?? 0 ),
-                        Title = item.Title,
-                        Description = item.Description,
-                        SchemaName = item.SchemaName,
-                        Totals = item.Totals ?? 0
-                    };
-                }
+					//could have an additional check that the returned category is correct - no guarentees though
+					code = new CodeItem
+					{
+						Id = ( int ) item.Id,
+						CategoryId = ( int ) ( item.CategoryId ?? 0 ),
+						Title = item.Title,
+						Description = item.Description,
+						SchemaName = item.SchemaName,
+						Totals = item.Totals ?? 0
+					};
+				}
+			}
+			return code;
+		}
+
+		/// <summary>
+		/// As we don't really need to use categoryId anymore, start getting by entityTypeId and schemaName (and yes may only really need schemaName)
+		/// </summary>
+		/// <param name="entityTypeId"></param>
+		/// <param name="schemaName"></param>
+		/// <returns></returns>
+		public static CodeItem GetEntityStatisticUsingEntityTypeId( int entityTypeId, string schemaName )
+		{
+			CodeItem code = new CodeItem();
+
+			using ( var context = new EntityContext() )
+			{
+
+				var item = context.Counts_EntityStatistic
+					.FirstOrDefault( s => s.EntityTypeId == entityTypeId
+							&& s.SchemaName.Trim() == schemaName.Trim() );
+				if ( item != null && item.Id > 0 )
+				{
+					//could have an additional check that the returned category is correct - no guarentees though
+					code = new CodeItem
+					{
+						Id = ( int ) item.Id,
+						CategoryId = ( int ) ( item.CategoryId ?? 0 ),
+						Title = item.Title,
+						Description = item.Description,
+						SchemaName = item.SchemaName,
+						Totals = item.Totals ?? 0
+					};
+				}
 			}
 			return code;
 		}
@@ -771,10 +868,10 @@ namespace workIT.Factories
 					enumeration.Items = new List<EnumeratedItem>();
 
 					var results = context.Counts_EntityStatistic
-							.Where( s => s.EntityTypeId == entityTypeId && s.IsActive == true 
-								 && ( getAll || s.Totals > 0 ) 
+							.Where( s => s.EntityTypeId == entityTypeId && s.IsActive == true
+								 && ( getAll || s.Totals > 0 )
 								 )
-							.OrderBy( p => p.SortOrder).ThenBy( p => p.Title )
+							.OrderBy( p => p.SortOrder ).ThenBy( p => p.Title )
 							.ToList();
 
 					if ( results != null && results.Count() > 0 )
@@ -792,7 +889,7 @@ namespace workIT.Factories
 								Value = item.Title,
 								//prototype using same approach as GetAllEntityStatistics
 								//CategoryId = item.CategoryId ?? 0,
-								CategoryId = CodesManager.PROPERTY_CATEGORY_OTHER_FILTERS, 
+								CategoryId = CodesManager.PROPERTY_CATEGORY_OTHER_FILTERS,
 
 								Totals = item.Totals ?? 0,
 								SchemaName = item.SchemaName
@@ -857,110 +954,116 @@ namespace workIT.Factories
 
 		public static Enumeration GetCredentialsConditionProfileTypes( bool getAll = true )
 		{
-			Enumeration entity = new Enumeration();
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "51134689-528f-46b2-b1aa-1c673ddc9a8d", getAll ), () =>
 			{
-				//get the property category
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.Id == CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
+				Enumeration entity = new Enumeration();
 
-				if ( category != null && category.Id > 0 )
+				using ( var context = new EntityContext() )
 				{
-					entity.Id = category.Id;
-					entity.Name = category.Title;
-					entity.Description = category.Description;
+					//get the property category
+					Codes_PropertyCategory category = context.Codes_PropertyCategory
+								.FirstOrDefault( s => s.Id == CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-					entity.SchemaName = category.SchemaName;
-					entity.Url = category.SchemaUrl;
-					entity.Items = new List<EnumeratedItem>();
-
-					EnumeratedItem val = new EnumeratedItem();
-
-					var results = context.Codes_ConditionProfileType
-						.Where( s => s.IsActive == true && s.IsCredentialsConnectionType == true )
-						.OrderBy( p => p.Title )
-						.ToList();
-
-					foreach ( Codes_ConditionProfileType item in results )
+					if ( category != null && category.Id > 0 )
 					{
-						val = new EnumeratedItem();
-						val.Id = item.Id;
-						val.CodeId = item.Id;
-						val.Value = item.Id.ToString();
-						val.Description = item.Description;
-						val.Name = item.Title;
-						val.SchemaName = item.SchemaName;
-						val.Totals = item.CredentialTotals ?? 0;
+						entity.Id = category.Id;
+						entity.Name = category.Title;
+						entity.Description = category.Description;
 
-						if ( getAll || val.Totals > 0 )
-							entity.Items.Add( val );
+						entity.SchemaName = category.SchemaName;
+						entity.Url = category.SchemaUrl;
+						entity.Items = new List<EnumeratedItem>();
+
+						EnumeratedItem val = new EnumeratedItem();
+
+						var results = context.Codes_ConditionProfileType
+							.Where( s => s.IsActive == true && s.IsCredentialsConnectionType == true )
+							.OrderBy( p => p.Title )
+							.ToList();
+
+						foreach ( Codes_ConditionProfileType item in results )
+						{
+							val = new EnumeratedItem();
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.Value = item.Id.ToString();
+							val.Description = item.Description;
+							val.Name = item.Title;
+							val.SchemaName = item.SchemaName;
+							val.Totals = item.CredentialTotals ?? 0;
+
+							if ( getAll || val.Totals > 0 )
+								entity.Items.Add( val );
+						}
+
 					}
-
 				}
-			}
 
-			return entity;
+				return entity;
+			} );
+
 		}
 
 		public static Enumeration GetConnectionTypes( int parentEntityTypeId, bool getAll = true )
 		{
-			Enumeration entity = new Enumeration();
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "9f5a3285-b29a-4bc1-a2d6-453652f3d396", parentEntityTypeId, getAll ), () =>
 			{
-				//get the property category
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.Id == CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
-
-				if ( category != null && category.Id > 0 )
+				Enumeration entity = new Enumeration();
+				using ( var context = new EntityContext() )
 				{
-					entity.Id = category.Id;
-					entity.Name = category.Title;
-					entity.Description = category.Description;
+					//get the property category
+					Codes_PropertyCategory category = context.Codes_PropertyCategory
+								.FirstOrDefault( s => s.Id == CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 
-					entity.SchemaName = category.SchemaName;
-					entity.Url = category.SchemaUrl;
-					entity.Items = new List<EnumeratedItem>();
-
-					EnumeratedItem val = new EnumeratedItem();
-					var results = context.Codes_ConditionProfileType
-							.Where( s => s.IsActive == true &&
-							 (
-								 ( parentEntityTypeId == 1 && s.IsCredentialsConnectionType == true ) ||
-								 ( parentEntityTypeId == 3 && s.IsAssessmentType == true ) ||
-								 ( parentEntityTypeId == 7 && s.IsLearningOpportunityType == true )
-							 )
-							)
-							.OrderBy( p => p.Title )
-							.ToList();
-
-					foreach ( Codes_ConditionProfileType item in results )
+					if ( category != null && category.Id > 0 )
 					{
-						val = new EnumeratedItem();
-						val.Id = item.Id;
-						val.CodeId = item.Id;
-						val.Value = item.Id.ToString();
-						val.Description = item.Description;
-						val.Name = item.ConditionManifestTitle;
-						val.SchemaName = item.SchemaName;
+						entity.Id = category.Id;
+						entity.Name = category.Title;
+						entity.Description = category.Description;
 
-						if ( parentEntityTypeId == 3 )
-							val.Totals = item.AssessmentTotals ?? 0;
-						else if ( parentEntityTypeId == 7 )
-							val.Totals = item.LoppTotals ?? 0;
-						else if ( parentEntityTypeId == 1 )
-							val.Totals = item.CredentialTotals ?? 0;
-						if ( IsDevEnv() )
-							val.Name += string.Format( " ({0})", val.Totals );
+						entity.SchemaName = category.SchemaName;
+						entity.Url = category.SchemaUrl;
+						entity.Items = new List<EnumeratedItem>();
 
-						if ( getAll || val.Totals > 0 )
-							entity.Items.Add( val );
+						EnumeratedItem val = new EnumeratedItem();
+						var results = context.Codes_ConditionProfileType
+								.Where( s => s.IsActive == true &&
+								 (
+									 ( parentEntityTypeId == 1 && s.IsCredentialsConnectionType == true ) ||
+									 ( parentEntityTypeId == 3 && s.IsAssessmentType == true ) ||
+									 ( parentEntityTypeId == 7 && s.IsLearningOpportunityType == true )
+								 )
+								)
+								.OrderBy( p => p.Title )
+								.ToList();
+
+						foreach ( Codes_ConditionProfileType item in results )
+						{
+							val = new EnumeratedItem();
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.Value = item.Id.ToString();
+							val.Description = item.Description;
+							val.Name = item.ConditionManifestTitle;
+							val.SchemaName = item.SchemaName;
+
+							if ( parentEntityTypeId == 3 )
+								val.Totals = item.AssessmentTotals ?? 0;
+							else if ( parentEntityTypeId == 7 )
+								val.Totals = item.LoppTotals ?? 0;
+							else if ( parentEntityTypeId == 1 )
+								val.Totals = item.CredentialTotals ?? 0;
+							if ( IsDevEnv() )
+								val.Name += string.Format( " ({0})", val.Totals );
+
+							if ( getAll || val.Totals > 0 )
+								entity.Items.Add( val );
+						}
 					}
 				}
-			}
 
-			return entity;
+				return entity;
+			} );
 		}
 
 
@@ -1058,82 +1161,121 @@ namespace workIT.Factories
 		#region Codes as Code Items
 		public static List<CodeItem> Codes_EntityTypes_GetAll()
 		{
-			List<CodeItem> list = new List<CodeItem>();
-			CodeItem code;
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "500ba655-8f42-45b6-8542-b9113c898deb" ), () =>
 			{
-				List<Codes_EntityTypes> results = context.Codes_EntityTypes
-					.Where( s => s.IsActive == true )
-					.OrderBy( s => s.Title )
-							.ToList();
+				List<CodeItem> list = new List<CodeItem>();
+				CodeItem code;
 
-				if ( results != null && results.Count > 0 )
+				using ( var context = new EntityContext() )
 				{
+					List<Codes_EntityTypes> results = context.Codes_EntityTypes
+						.Where( s => s.IsActive == true )
+						.OrderBy( s => s.Title )
+								.ToList();
 
-					foreach ( var item in results )
+					if ( results != null && results.Count > 0 )
 					{
-						code = new CodeItem
+						foreach ( var item in results )
 						{
-							Id = ( int )item.Id,
-							Title = item.Title,
-							Description = item.Description,
-							SchemaName = item.SchemaName,
-							Totals = item.Totals ?? 0
-						};
+							code = new CodeItem
+							{
+								Id = ( int ) item.Id,
+								Title = item.Title,
+								Description = item.Description,
+								SchemaName = item.SchemaName,
+								Totals = item.Totals ?? 0
+							};
 
-						list.Add( code );
+							list.Add( code );
+						}
 					}
 				}
-			}
-			return list;
+				return list;
+			} );
 		}
 		public static CodeItem Codes_EntityType_Get( int entityTypeId )
 		{
-			CodeItem code = new CodeItem();
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "5715b3ad-37f0-47ce-99fe-9a9b95f4c374", entityTypeId ), () =>
 			{
-				List<Codes_EntityTypes> results = context.Codes_EntityTypes
-					.Where( s => s.IsActive == true && s.Id == entityTypeId )
-					.OrderBy( s => s.Title )
-							.ToList();
-
-				if ( results != null && results.Count > 0 )
+				CodeItem code = new CodeItem();
+				using ( var context = new EntityContext() )
 				{
+					var results = context.Codes_EntityTypes
+						.Where( s => s.IsActive == true && s.Id == entityTypeId )
+						.OrderBy( s => s.Title )
+								.ToList();
 
-					foreach ( var item in results )
+					if ( results != null && results.Count > 0 )
 					{
-						code = new CodeItem();
-						code.Id = ( int )item.Id;
-						code.Title = item.Title;
-						code.Description = item.Description;
-						code.SchemaName = item.SchemaName;
-						code.Totals = item.Totals ?? 0;
-						//should only have one entry
-						break;
+						foreach ( var item in results )
+						{
+							code = new CodeItem();
+							code.Id = ( int ) item.Id;
+							code.Title = item.Title;
+							code.Description = item.Description;
+							code.SchemaName = item.SchemaName;
+							code.Totals = item.Totals ?? 0;
+							//should only have one entry
+							break;
+						}
 					}
 				}
-			}
-			return code;
-
+				return code;
+			} );
 		}
-		public static string Codes_EntityType_Get( int entityTypeId, string defaultType = "" )
+		public static string Codes_EntityType_Get( int entityTypeId, string defaultType )
 		{
-			var entityType = "";
+			var entityType = string.Empty;
 			using ( var context = new EntityContext() )
 			{
-				List<Codes_EntityTypes> results = context.Codes_EntityTypes
+				var results = context.Codes_EntityTypes
 					.Where( s => s.IsActive == true && s.Id == entityTypeId )
-					.OrderBy( s => s.Title )
-							.ToList();
+					.FirstOrDefault();
 
-				if ( results != null && results.Count > 0 )
+				if ( results != null && results.Id > 0 )
 				{
-					entityType = results[0].Title;
-				}
+					entityType = results.Title;
+				} else
+					entityType = defaultType;
 			}
 			return entityType;
+
+		}
+
+		/// <summary>
+		/// Return the EntityTypeId for the passed CTDL class
+		/// </summary>
+		/// <param name="entityType"></param>
+		/// <returns></returns>
+		public static int Codes_GetEntityTypeId( string entityType )
+		{
+			int entityTypeId = 0;
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Codes_EntityTypes
+					.Where( s => s.IsActive == true && s.SchemaName == entityType )
+					.FirstOrDefault();
+
+				if ( results != null && results.Id > 0 )
+				{
+					entityTypeId = results.Id;
+				}
+				if ( entityTypeId == 0 )
+				{
+					//for now only exception should be credentials
+					var codeItem = GetPropertyBySchema( 2, entityType );
+					if ( codeItem != null && codeItem.Id > 0 )
+						entityTypeId = 1;
+				}
+
+				if ( entityTypeId == 0 )
+				{
+					var codeItem = CodesManager.GetCredentialingActionType( entityType );
+					if ( codeItem != null && codeItem.Id > 0 )
+						entityTypeId = ENTITY_TYPE_CREDENTIALING_ACTION;
+				}
+			}
+			return entityTypeId;
 
 		}
 		#endregion
@@ -1180,56 +1322,59 @@ namespace workIT.Factories
 
 		public static List<CodeItem> Property_GetValues( int categoryId, string categoryTitle, bool insertingSelectTitle = true, bool getAll = true )
 		{
-			List<CodeItem> list = new List<CodeItem>();
-			CodeItem code;
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "0157aac0-95e7-4ce6-8ba8-d2c50d6fc4e3", categoryId, categoryTitle, insertingSelectTitle, getAll ), () =>
 			{
-				List<Codes_PropertyValue> results = context.Codes_PropertyValue
-					.Where( s => s.CategoryId == categoryId
-							&& ( s.IsActive == true )
-							&& ( s.Totals > 0 || getAll ) )
-							.OrderBy( s => s.SortOrder ).ThenBy( s => s.Title )
-							.ToList();
+				List<CodeItem> list = new List<CodeItem>();
+				CodeItem code;
 
-				if ( results != null && results.Count > 0 )
+				using ( var context = new EntityContext() )
 				{
-					if ( insertingSelectTitle )
-					{
-						code = new CodeItem();
-						code.Id = 0;
-						code.Title = "Select " + categoryTitle;
-						code.URL = "";
-						list.Add( code );
-					}
-					foreach ( Codes_PropertyValue item in results )
-					{
-						code = new CodeItem();
-						code.Id = ( int )item.Id;
-						code.Title = item.Title;
-						code.Description = item.Description;
-						code.URL = item.SchemaUrl;
-						code.SchemaName = item.SchemaName;
-						code.ParentSchemaName = item.ParentSchemaName;
-						code.Totals = item.Totals ?? 0;
+					List<Codes_PropertyValue> results = context.Codes_PropertyValue
+						.Where( s => s.CategoryId == categoryId
+								&& ( s.IsActive == true )
+								&& ( s.Totals > 0 || getAll ) )
+								.OrderBy( s => s.SortOrder ).ThenBy( s => s.Title )
+								.ToList();
 
-						list.Add( code );
+					if ( results != null && results.Count > 0 )
+					{
+						if ( insertingSelectTitle )
+						{
+							code = new CodeItem();
+							code.Id = 0;
+							code.Title = "Select " + categoryTitle;
+							code.URL = string.Empty;
+							list.Add( code );
+						}
+						foreach ( var item in results )
+						{
+							code = new CodeItem();
+							code.Id = ( int ) item.Id;
+							code.Title = item.Title;
+							code.Description = item.Description;
+							code.URL = item.SchemaUrl;
+							code.SchemaName = item.SchemaName;
+							code.ParentSchemaName = item.ParentSchemaName;
+							code.Totals = item.Totals ?? 0;
+
+							list.Add( code );
+						}
 					}
 				}
-			}
-			return list;
+				return list;
+			} );
 		}
 
 
 		/// <summary>
 		/// Check if the provided property schema is valid
 		/// </summary>
-		/// <param name="category"></param>
+		/// <param name="categorySchemaName"></param>
 		/// <param name="schemaName"></param>
 		/// <returns></returns>
-		public static bool IsPropertySchemaValid( string categoryCode, ref string schemaName )
+		public static bool IsPropertySchemaValid( string categorySchemaName, ref string schemaName )
 		{
-			CodeItem item = GetPropertyBySchema( categoryCode, schemaName );
+			CodeItem item = GetPropertyBySchema( categorySchemaName, schemaName );
 
 			if ( item != null && item.Id > 0 )
 			{
@@ -1242,9 +1387,9 @@ namespace workIT.Factories
 				return false;
 		}
 
-		public static bool IsPropertySchemaValid( string categoryCode, string schemaName, ref CodeItem item )
+		public static bool IsPropertySchemaValid( string categorySchemaName, string schemaName, ref CodeItem item )
 		{
-			item = GetPropertyBySchema( categoryCode, schemaName );
+			item = GetPropertyBySchema( categorySchemaName, schemaName );
 
 			if ( item != null && item.Id > 0 )
 			{
@@ -1254,107 +1399,90 @@ namespace workIT.Factories
 				return false;
 		}
 		/// <summary>
-		/// Get a single property using the category code, and property schema name
+		/// Get a single property using the category SchemaName, and property schema name
 		/// </summary>
-		/// <param name="category"></param>
-		/// <param name="schemaName"></param>
+		/// <param name="categorySchemaName"></param>
+		/// <param name="propertySchemaName"></param>
 		/// <returns></returns>
-		public static CodeItem GetPropertyBySchema( string categoryCode, string schemaName )
+		public static CodeItem GetPropertyBySchema( string categorySchemaName, string propertySchemaName )
 		{
-			CodeItem code = new CodeItem();
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "2cd2a58a-0f33-48b0-80a7-78b6534c2928", categorySchemaName, propertySchemaName ), () =>
 			{
-				//for the most part, the code schema name should be unique. We may want a extra check on the categoryCode?
-				//TODO - need to ensure the schemas are accurate - and not make sense to check here
-				Codes_PropertyCategory category = context.Codes_PropertyCategory
-							.FirstOrDefault( s => s.SchemaName.ToLower() == categoryCode.ToLower() && s.IsActive == true );
+				CodeItem code = new CodeItem();
 
-				Codes_PropertyValue item = context.Codes_PropertyValue
-					.FirstOrDefault( s => s.SchemaName == schemaName );
-				if ( item != null && item.Id > 0 )
+				using ( var context = new EntityContext() )
 				{
-					//could have an additional check that the returned category is correct - no guarentees though
-					code = new CodeItem();
-					code.Id = ( int )item.Id;
-					code.CategoryId = item.CategoryId;
-					code.Title = item.Title;
-					code.Description = item.Description;
-					code.URL = item.SchemaUrl;
-					code.SchemaName = item.SchemaName;
-					code.ParentSchemaName = item.ParentSchemaName;
-					code.Totals = item.Totals ?? 0;
-				}
-			}
-			return code;
-		}
+					//for the most part, the code schema name should be unique. We may want a extra check on the categoryCode?
+					//TODO - need to ensure the schemas are accurate - and not make sense to check here
+					Codes_PropertyCategory category = context.Codes_PropertyCategory
+								.FirstOrDefault( s => s.SchemaName.ToLower() == categorySchemaName.ToLower() && s.IsActive == true );
 
-		public static CodeItem GetPropertyBySchema( int categoryId, string schemaName )
-		{
-			CodeItem code = new CodeItem();
-
-			using ( var context = new EntityContext() )
-			{
-
-				Codes_PropertyValue item = context.Codes_PropertyValue
-					.FirstOrDefault( s => s.CategoryId == categoryId
-							&& ( s.IsActive == true )
-							&& s.SchemaName.Trim() == schemaName.Trim() );
-				if ( item != null && item.Id > 0 )
-				{
-					//could have an additional check that the returned category is correct - no guarentees though
-					code = new CodeItem
+					Codes_PropertyValue item = context.Codes_PropertyValue
+						.FirstOrDefault( s => s.SchemaName == propertySchemaName );
+					if ( item != null && item.Id > 0 )
 					{
-						Id = ( int )item.Id,
-						CategoryId = item.CategoryId,
-						Title = item.Title,
-						Description = item.Description,
-						URL = item.SchemaUrl,
-						SchemaName = item.SchemaName,
-						ParentSchemaName = item.ParentSchemaName,
-						Totals = item.Totals ?? 0
-					};
-				}
-			}
-			return code;
-		}
-		/// <summary>
-		/// Get a code item by category and title
-		/// </summary>
-		/// <param name="categoryId"></param>
-		/// <param name="title"></param>
-		/// <returns></returns>
-		public static CodeItem Codes_PropertyValue_Get( int categoryId, string title )
-		{
-			CodeItem code = new CodeItem();
-
-			using ( var context = new EntityContext() )
-			{
-				List<Codes_PropertyValue> results = context.Codes_PropertyValue
-					.Where( s => s.CategoryId == categoryId
-							&& ( s.IsActive == true )
-							&& s.Title.ToLower() == title.ToLower() )
-							.ToList();
-
-				if ( results != null && results.Count > 0 )
-				{
-					foreach ( Codes_PropertyValue item in results )
-					{
+						//could have an additional check that the returned category is correct - no guarentees though
 						code = new CodeItem();
-						code.Id = ( int )item.Id;
+						code.Id = ( int ) item.Id;
+						code.CategoryId = item.CategoryId;
 						code.Title = item.Title;
 						code.Description = item.Description;
 						code.URL = item.SchemaUrl;
 						code.SchemaName = item.SchemaName;
 						code.ParentSchemaName = item.ParentSchemaName;
 						code.Totals = item.Totals ?? 0;
-						break;
 					}
 				}
-			}
-			return code;
+				return code;
+			} );
 		}
-		
+
+		public static int GetPropertyIdBySchema( int categoryId, string propertySchemaName )
+		{
+
+			var code = GetPropertyBySchema( categoryId, propertySchemaName );
+			if (code != null && code.Id > 0)
+				return code.Id;
+			else 
+				return 0;
+		}
+		/// <summary>
+		/// Get a single property using the category Id, and property schema name
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="propertySchemaName"></param>
+		/// <returns></returns>
+		public static CodeItem GetPropertyBySchema( int categoryId, string propertySchemaName )
+		{
+			return GetFromCacheOrDB( GetCacheName( "6849484a-39cc-4159-a967-361ca4a6e4c3", categoryId, propertySchemaName ), () =>
+			{
+				CodeItem code = new CodeItem();
+				using ( var context = new EntityContext() )
+				{
+					var item = context.Codes_PropertyValue
+						.FirstOrDefault( s => s.CategoryId == categoryId
+								&& ( s.IsActive == true )
+								&& s.SchemaName.ToLower().Trim() == propertySchemaName.ToLower().Trim() );
+					if ( item != null && item.Id > 0 )
+					{
+						//could have an additional check that the returned category is correct - no guarentees though
+						code = new CodeItem
+						{
+							Id = ( int ) item.Id,
+							CategoryId = item.CategoryId,
+							Title = item.Title,
+							Description = item.Description,
+							URL = item.SchemaUrl,
+							SchemaName = item.SchemaName,
+							ParentSchemaName = item.ParentSchemaName,
+							Totals = item.Totals ?? 0
+						};
+					}
+				}
+				return code;
+			} );
+		}
+
 		/// <summary>
 		/// Get a propertyValue by Schema.
 		/// This is mostly safe, but the next method is better (think delivery type)
@@ -1436,6 +1564,110 @@ namespace workIT.Factories
 			}
 			return code;
 		}
+
+		/// <summary>
+		/// Get a propertyValue by CategoryId, and Schema.
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="schemaName"></param>
+		/// <returns></returns>
+		public static CodeItem GetSchemaById( int categoryId, int Id )
+		{
+			CodeItem code = new CodeItem();
+
+			using ( var context = new EntityContext() )
+			{
+				List<Codes_PropertyValue> results = context.Codes_PropertyValue
+					.Where( s => s.CategoryId == categoryId
+							&& ( s.IsActive == true )
+							&& ( s.Id == Id)
+							)
+							.ToList();
+
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( Codes_PropertyValue item in results )
+					{
+						code = new CodeItem();
+						code.Id = ( int ) item.Id;
+						code.Title = item.Title;
+						code.Description = item.Description;
+						code.URL = item.SchemaUrl;
+						code.SchemaName = item.SchemaName;
+						code.ParentSchemaName = item.ParentSchemaName;
+						code.Totals = item.Totals ?? 0;
+						break;
+					}
+				}
+			}
+			return code;
+		}
+
+		public static CodeItem GetLifeCycleStatus( int categoryId, string schemaName )
+		{
+			return GetFromCacheOrDB( GetCacheName( "952eb575-9401-48e9-b725-3a78fee83ba1", categoryId, schemaName ), () =>
+			{
+				CodeItem code = new CodeItem();
+
+				using ( var context = new EntityContext() )
+				{
+					List<Codes_PropertyValue> results = context.Codes_PropertyValue
+						.Where( s => s.CategoryId == categoryId
+								&& ( s.IsActive == true )
+								&& ( s.SchemaName.ToLower() == schemaName.ToLower() )
+								)
+								.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( Codes_PropertyValue item in results )
+						{
+							code = new CodeItem();
+							code.Id = ( int ) item.Id;
+							code.Title = item.Title;
+							code.Description = item.Description;
+							code.URL = item.SchemaUrl;
+							code.SchemaName = item.SchemaName;
+							code.ParentSchemaName = item.ParentSchemaName;
+							code.Totals = item.Totals ?? 0;
+							break;
+						}
+					}
+				}
+				return code;
+			} );
+		}
+		public static CodeItem GetLifeCycleStatus( int propertyId )
+		{
+			return GetFromCacheOrDB( GetCacheName( "5aef0982-2955-470a-aac8-d641ba5ae9dd", propertyId ), () =>
+			{
+				CodeItem code = new CodeItem();
+
+				using ( var context = new EntityContext() )
+				{
+					List<Codes_PropertyValue> results = context.Codes_PropertyValue
+						.Where( s => s.Id == propertyId )
+								.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( Codes_PropertyValue item in results )
+						{
+							code = new CodeItem();
+							code.Id = ( int ) item.Id;
+							code.Title = item.Title;
+							code.Description = item.Description;
+							code.URL = item.SchemaUrl;
+							code.SchemaName = item.SchemaName;
+							code.ParentSchemaName = item.ParentSchemaName;
+							code.Totals = item.Totals ?? 0;
+							break;
+						}
+					}
+				}
+				return code;
+			} );
+		}
 		public static CodeItem Codes_PropertyValue_Get( int propertyId )
 		{
 			CodeItem code = new CodeItem();
@@ -1465,6 +1697,63 @@ namespace workIT.Factories
 			return code;
 		}
 		#endregion
+
+		public static CodeItem GetCredentialingActionType( int actionTypeId )
+		{
+			return GetFromCacheOrDB( GetCacheName( "06d44f8d-13c7-4b0e-a4d0-7d333426e4d8", actionTypeId ), () =>
+			{
+				CodeItem code = new CodeItem();
+
+				using ( var context = new EntityContext() )
+				{
+					var item = context.Codes_CredentialingActionType
+						.FirstOrDefault( s => s.Id == actionTypeId );
+
+					if ( item != null && item.Id > 0 )
+					{
+						code = new CodeItem
+						{
+							Id = item.Id,
+							Title = item.Name,
+							Description = item.Description,
+							URL = item.SchemaName,
+							SchemaName = item.SchemaName,
+							ParentSchemaName = "",
+							Totals = item.Totals ?? 0
+						};
+					}
+				}
+				return code;
+			} );
+		}
+		public static CodeItem GetCredentialingActionType( string term )
+		{
+			return GetFromCacheOrDB( GetCacheName( "5f0902c3-62b0-4ca3-af70-e0dff14fa785", term ), () =>
+			{
+				CodeItem code = new CodeItem();
+
+				using ( var context = new EntityContext() )
+				{
+					var item = context.Codes_CredentialingActionType
+						.FirstOrDefault( s => s.SchemaName == term );
+
+					if ( item != null && item.Id > 0 )
+					{
+						code = new CodeItem
+						{
+							Id = item.Id,
+							Title = item.Name,
+							Description = item.Description,
+							URL = item.SchemaName,
+							SchemaName = item.SchemaName,
+							ParentSchemaName = "",
+							Totals = item.Totals ?? 0
+						};
+					}
+				}
+				return code;
+			} );
+		}
 
 		#region country, locations, etc
 		public static List<CodeItem> GetExistingCountries()
@@ -1574,7 +1863,7 @@ namespace workIT.Factories
 		{
 			List<CodeItem> list = new List<CodeItem>();
 			CodeItem code;
-			fullRegion = "";
+			fullRegion = string.Empty;
 			boostLevel = 20;
 			using ( var context = new EntityContext() )
 			{
@@ -1712,7 +2001,7 @@ namespace workIT.Factories
 			{
 				//entity.Id = regionTypeId;
 				//entity.Name = "LWIA";
-				//entity.Description = "";
+				//entity.Description = string.Empty;
 				//entity.Items = new List<EnumeratedItem>();
 				var regionType = context.Codes_ReqionType
 						.FirstOrDefault( s => s.Id == regionTypeId && s.IsActive == true );
@@ -1800,9 +2089,9 @@ namespace workIT.Factories
                             val.Name = item.Title;
                             val.Description = item.Description != null ? item.Description : "";
                             val.SortOrder = item.Id;
-                            val.SchemaName = item.SchemaName ?? "";
-                            val.SchemaUrl = item.SchemaName ?? "";
-                            val.Icon = item.ComponentIcon ?? "";
+                            val.SchemaName = item.SchemaName ?? string.Empty;
+                            val.SchemaUrl = item.SchemaName ?? string.Empty;
+                            val.Icon = item.ComponentIcon ?? string.Empty;
                             val.Value = item.Id.ToString();
                             val.Totals = item.Totals ?? 0;
 
@@ -2012,7 +2301,7 @@ namespace workIT.Factories
 				language = "english";
 			}
 			//21-04-05 mp - TODO try to retain the orginal language code with region
-			string altLanguage = "";
+			string altLanguage = string.Empty;
 			if ( language.IndexOf( "-" ) > 1 )
 			{
 				altLanguage = language.Substring( 0, language.IndexOf( "-" ) );
@@ -2042,7 +2331,7 @@ namespace workIT.Factories
 			return val;
 		}
 		#endregion
-		#region SOC
+		#region SOC - not used
 		//may need to handle wild cards? Not yet. If suggested, then consider a job family option
 		public static List<CodeItem> SOC_Get( string code )
 		{
@@ -2050,7 +2339,7 @@ namespace workIT.Factories
 			if ( code.IndexOf( "." ) == -1 )
 			{
 				//if exact is provided, with decimals, use it only, otherwise getall related
-				search = code.Replace( "-", "" );
+				search = code.Replace( "-", string.Empty );
 				search = search.Substring( 0, search.IndexOf( "." ) );
 			}
 			var list = new List<CodeItem>();
@@ -2074,126 +2363,160 @@ namespace workIT.Factories
 			}
 			return list;
 		}
-		public static List<CodeItem> SOC_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+		public static CodeItem IsSOCCode( string code, string name )
 		{
-			List<CodeItem> list = new List<CodeItem>();
-			CodeItem entity = new CodeItem();
-			keyword = ( keyword ?? "" ).Trim();
-			if ( pageSize == 0 )
-				pageSize = 100;
-			int skip = 0;
-			if ( pageNumber > 1 )
-				skip = ( pageNumber - 1 ) * pageSize;
-			string notKeyword = "Except " + keyword;
-
+			string search = code;
+			if ( code.IndexOf( "." ) == -1 )
+			{
+				//if exact is provided, with decimals, use it only, otherwise getall related
+				search = code.Replace( "-", string.Empty );
+				search = search.Substring( 0, search.IndexOf( "." ) );
+			}
+			CodeItem item = new CodeItem();
 			using ( var context = new ViewContext() )
 			{
-				List<ONET_SOC> results = context.ONET_SOC
-					.Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
-						&& ( keyword == ""
-						|| s.OnetSocCode.Contains( keyword )
-						|| s.SOC_code.Contains( keyword )
-						|| ( s.Title.Contains( keyword ) && s.Title.Contains( notKeyword ) == false )
-						)
-						&& ( s.Totals > 0 || getAll )
-						)
-					.OrderBy( s => s.Title )
-					.Skip( skip )
-					.Take( pageSize )
-					.ToList();
 
-				totalRows = context.ONET_SOC
-					.Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
-						&& ( keyword == ""
-						|| s.OnetSocCode.Contains( keyword )
-						|| s.SOC_code.Contains( keyword )
-						|| s.Title.Contains( keyword ) )
-						&& ( s.Totals > 0 || getAll )
-						)
-					.ToList().Count();
+				var record = context.ONET_SOC.FirstOrDefault( s => s.OnetSocCode == code );
 
-				if ( results != null && results.Count > 0 )
+				if ( record != null && record.Id > 0 )
 				{
-					foreach ( ONET_SOC item in results )
-					{
-                        entity = new CodeItem
-                        {
-                            Id = item.Id,
-                            Name = item.Title,// +" ( " + item.OnetSocCode + " )";
-                            Description = item.Description,
-                            URL = item.URL,
-                            Code = item.OnetSocCode,
-                            CodeGroup = item.JobFamily.ToString(),
-                            Totals = item.Totals ?? 0
-                        };
-
-                        list.Add( entity );
-					}
+					item.Id = record.Id;
+					item.Name = record.Title;
+					item.Description = record.Description;
+					item.CodeGroup = record.JobFamily.ToString();
+					item.Code = item.SchemaName = record.OnetSocCode;
+					item.URL = record.URL;
+					return item;
 				}
 			}
-
-			return list;
+			return item;
 		}
+		//public static List<CodeItem> SOC_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
+		//{
+		//	List<CodeItem> list = new List<CodeItem>();
+		//	CodeItem entity = new CodeItem();
+		//	keyword = ( keyword ?? string.Empty ).Trim();
+		//	if ( pageSize == 0 )
+		//		pageSize = 100;
+		//	int skip = 0;
+		//	if ( pageNumber > 1 )
+		//		skip = ( pageNumber - 1 ) * pageSize;
+		//	string notKeyword = "Except " + keyword;
+
+		//	using ( var context = new ViewContext() )
+		//	{
+		//		List<ONET_SOC> results = context.ONET_SOC
+		//			.Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
+		//				&& ( keyword == string.Empty
+		//				|| s.OnetSocCode.Contains( keyword )
+		//				|| s.SOC_code.Contains( keyword )
+		//				|| ( s.Title.Contains( keyword ) && s.Title.Contains( notKeyword ) == false )
+		//				)
+		//				&& ( s.Totals > 0 || getAll )
+		//				)
+		//			.OrderBy( s => s.Title )
+		//			.Skip( skip )
+		//			.Take( pageSize )
+		//			.ToList();
+
+		//		totalRows = context.ONET_SOC
+		//			.Where( s => ( headerId == 0 || s.OnetSocCode.Substring( 0, 2 ) == headerId.ToString() )
+		//				&& ( keyword == string.Empty
+		//				|| s.OnetSocCode.Contains( keyword )
+		//				|| s.SOC_code.Contains( keyword )
+		//				|| s.Title.Contains( keyword ) )
+		//				&& ( s.Totals > 0 || getAll )
+		//				)
+		//			.ToList().Count();
+
+		//		if ( results != null && results.Count > 0 )
+		//		{
+		//			foreach ( ONET_SOC item in results )
+		//			{
+		//                      entity = new CodeItem
+		//                      {
+		//                          Id = item.Id,
+		//                          Name = item.Title,// +" ( " + item.OnetSocCode + " )";
+		//                          Description = item.Description,
+		//                          URL = item.URL,
+		//                          Code = item.OnetSocCode,
+		//                          CodeGroup = item.JobFamily.ToString(),
+		//                          Totals = item.Totals ?? 0
+		//                      };
+
+		//                      list.Add( entity );
+		//			}
+		//		}
+		//	}
+
+		//	return list;
+		//}
 
 
-		public static List<CodeItem> SOC_Categories( string sortField = "Description", bool includeCategoryCode = false )
-		{
-			List<CodeItem> list = new List<CodeItem>();
-			CodeItem code;
+		//public static List<CodeItem> SOC_Categories( string sortField = "Description", bool includeCategoryCode = false )
+		//{
+		//	List<CodeItem> list = new List<CodeItem>();
+		//	CodeItem code;
 
-			using ( var context = new ViewContext() )
-			{
-				var Query = from P in context.ONET_SOC_JobFamily
-							select P;
+		//	using ( var context = new ViewContext() )
+		//	{
+		//		var Query = from P in context.ONET_SOC_JobFamily
+		//					select P;
 
-				if ( sortField == "JobFamilyId" )
-				{
-					Query = Query.OrderBy( p => p.JobFamilyId );
-				}
-				else
-				{
-					Query = Query.OrderBy( p => p.Description );
-				}
-				var count = Query.Count();
-				var results = Query.ToList();
-				//List<ONET_SOC_JobFamily> results2 = context.ONET_SOC_JobFamily
-				//	.OrderBy( s => s.Description )
-				//	.ToList();
+		//		if ( sortField == "JobFamilyId" )
+		//		{
+		//			Query = Query.OrderBy( p => p.JobFamilyId );
+		//		}
+		//		else
+		//		{
+		//			Query = Query.OrderBy( p => p.Description );
+		//		}
+		//		var count = Query.Count();
+		//		var results = Query.ToList();
+		//		//List<ONET_SOC_JobFamily> results2 = context.ONET_SOC_JobFamily
+		//		//	.OrderBy( s => s.Description )
+		//		//	.ToList();
 
-				if ( results != null && results.Count > 0 )
-				{
-					foreach ( ONET_SOC_JobFamily item in results )
-					{
-						code = new CodeItem();
-						code.Id = item.JobFamilyId;
-						if ( includeCategoryCode )
-						{
-							if ( sortField == "JobFamilyId" )
-								code.Title = item.JobFamilyId + " - " + item.Description;
-							else
-								code.Title = item.Description + " (" + item.JobFamilyId + ")";
-						}
-						else
-							code.Title = item.Description;
-						code.Totals = ( int )( item.Totals ?? 0 );
-						code.CategorySchema = "ctdl:SocGroup";
-						list.Add( code );
-					}
-				}
-			}
-			return list;
-		}
+		//		if ( results != null && results.Count > 0 )
+		//		{
+		//			foreach ( ONET_SOC_JobFamily item in results )
+		//			{
+		//				code = new CodeItem();
+		//				code.Id = item.JobFamilyId;
+		//				if ( includeCategoryCode )
+		//				{
+		//					if ( sortField == "JobFamilyId" )
+		//						code.Title = item.JobFamilyId + " - " + item.Description;
+		//					else
+		//						code.Title = item.Description + " (" + item.JobFamilyId + ")";
+		//				}
+		//				else
+		//					code.Title = item.Description;
+		//				code.Totals = ( int )( item.Totals ?? 0 );
+		//				code.CategorySchema = "ctdl:SocGroup";
+		//				list.Add( code );
+		//			}
+		//		}
+		//	}
+		//	return list;
+		//}
 
 		#endregion
 
 		#region NAICS
+		/// <summary>
+		/// look up a NAICS code
+		/// Note the NAICS points to ce_externalData.dbo.Naics table
+		/// </summary>
+		/// <param name="naicsCode"></param>
+		/// <returns></returns>
 		public static CodeItem Naics_Get( string naicsCode )
 		{
 			CodeItem item = new CodeItem();
 			using ( var context = new ViewContext() )
 			{
 				Views.NAIC record = context.NAICS
-				.FirstOrDefault( s => s.NaicsCode == naicsCode );
+					.FirstOrDefault( s => s.NaicsCode == naicsCode );
 
 				if ( record != null && record.Id > 0 )
 				{
@@ -2229,7 +2552,7 @@ namespace workIT.Factories
 		//	{
 		//		List<NAIC> results = context.NAICS
 		//				.Where( s => ( headerId == 0 || s.NaicsCode.Substring( 0, 2 ) == headerId.ToString() )
-		//				&& ( keyword == ""
+		//				&& ( keyword == string.Empty
 		//				|| s.NaicsCode.Contains( keyword )
 		//				|| s.NaicsTitle.Contains( keyword ) )
 		//				&& ( s.Totals > 0 || getAll )
@@ -2240,7 +2563,7 @@ namespace workIT.Factories
 		//			.ToList();
 		//		totalRows = context.NAICS
 		//				.Where( s => ( headerId == 0 || s.NaicsCode.Substring( 0, 2 ) == headerId.ToString() )
-		//				&& ( keyword == ""
+		//				&& ( keyword == string.Empty
 		//				|| s.NaicsCode.Contains( keyword )
 		//				|| s.NaicsTitle.Contains( keyword ) )
 		//				&& ( s.Totals > 0 || getAll )
@@ -2254,7 +2577,7 @@ namespace workIT.Factories
 		//				entity = new CodeItem();
 		//				entity.Id = item.Id;
 		//				entity.Name = item.NaicsTitle;// + " ( " + item.NaicsCode + " )";
-		//				entity.Description = "";// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
+		//				entity.Description = string.Empty;// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
 		//				entity.URL = item.URL;
 		//				entity.Code = item.NaicsCode;
 		//				entity.CodeGroup = item.NaicsGroup.ToString();
@@ -2284,7 +2607,7 @@ namespace workIT.Factories
 		//        List<Entity_FrameworkIndustryCodeSummary> results = context.Entity_FrameworkIndustryCodeSummary
 		//                .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CodedNotation.Contains( keyword )
 		//                || s.Name.Contains( keyword ) )
 		//                && ( s.Totals > 0 )
@@ -2296,7 +2619,7 @@ namespace workIT.Factories
 		//        totalRows = context.Entity_FrameworkIndustryCodeSummary
 		//                .Where( s => ( headerId == 0 || s.CodeGroup == headerId )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CodedNotation.Contains( keyword )
 		//                || s.Name.Contains( keyword ) )
 		//                && ( s.Totals > 0 )
@@ -2310,7 +2633,7 @@ namespace workIT.Factories
 		//                entity = new CodeItem();
 		//                entity.Id = ( int )item.Id;
 		//                entity.Name = item.Name;// + " ( " + item.NaicsCode + " )";
-		//                entity.Description = "";// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
+		//                entity.Description = string.Empty;// 						item.NaicsTitle + " ( " + item.NaicsCode + " )";
 		//                entity.URL = item.TargetNode;
 		//                entity.SchemaName = item.CodedNotation;
 		//                entity.Code = item.CodeGroup.ToString();
@@ -2329,7 +2652,7 @@ namespace workIT.Factories
 		//    CodeItem entity = new CodeItem();
 		//    keyword = keyword.Trim();
 		//    if ( headerId == "0" )
-		//        headerId = "";
+		//        headerId = string.Empty;
 
 		//    if ( pageSize == 0 )
 		//        pageSize = 100;
@@ -2341,10 +2664,10 @@ namespace workIT.Factories
 		//    using ( var context = new ViewContext() )
 		//    {
 		//        List<Entity_ReferenceFramework_Totals> results = context.Entity_ReferenceFramework_Totals
-		//                .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+		//                .Where( s => ( headerId == string.Empty || s.CodeGroup == headerId )
 		//                && ( s.CategoryId == categoryId )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CodedNotation.Contains( keyword )
 		//                || s.Name.Contains( keyword ) )
 		//                && ( s.Totals > 0 )
@@ -2354,9 +2677,9 @@ namespace workIT.Factories
 		//            .Take( pageSize )
 		//            .ToList();
 		//        totalRows = context.Entity_ReferenceFramework_Totals
-		//                .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+		//                .Where( s => ( headerId == string.Empty || s.CodeGroup == headerId )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CodedNotation.Contains( keyword )
 		//                || s.Name.Contains( keyword ) )
 		//                && ( s.Totals > 0 )
@@ -2370,10 +2693,10 @@ namespace workIT.Factories
 		//                entity = new CodeItem();
 		//                entity.Id = ( int )item.ReferenceFrameworkId;
 		//                entity.Name = item.Name;
-		//                entity.Description = "";
+		//                entity.Description = string.Empty;
 		//                entity.URL = item.TargetNode;
 		//                entity.Code = item.CodedNotation;
-		//                entity.CodeGroup = item.CodeGroup ?? "";
+		//                entity.CodeGroup = item.CodeGroup ?? string.Empty;
 		//                entity.Totals = item.Totals ?? 0;
 
 		//                list.Add( entity );
@@ -2395,7 +2718,7 @@ namespace workIT.Factories
 		//	{
 		//		List<NAIC> results = context.NAICS
 		//				.Where( s => ( headerId == 0 || s.NaicsCode.Substring( 0, 2 ) == headerId.ToString() )
-		//				&& ( keyword == ""
+		//				&& ( keyword == string.Empty
 		//				|| s.NaicsCode.Contains( keyword )
 		//				|| s.NaicsTitle.Contains( keyword ) ) )
 		//				.OrderBy( s => s.NaicsCode )
@@ -2500,38 +2823,30 @@ namespace workIT.Factories
 		//}
 		#endregion
 
-		#region CIPS	NOT USED
-		//public static List<CodeItem> CIP_Get( string code )
-		//{
-		//	string search = code;
-		//	//for now, just exact
-		//	//if ( code.IndexOf( "." ) == -1 )
-		//	//{
-		//	//	//if exact is provided, with decimals, use it only, otherwise get all related
-		//	//	search = code.Replace( "-", "" );
-		//	//	search = search.Substring( 0, search.IndexOf( "." ) );
-		//	//}
-		//	var list = new List<CodeItem>();
-		//	CodeItem item = new CodeItem();
-		//	using ( var context = new ViewContext() )
-		//	{
-		//		var records = context.CIPCode2010
-		//		.Where( s => s.CIPCode == search ).ToList();
-		//		foreach ( var record in records )
-		//		{
-		//			if ( record != null && record.Id > 0 )
-		//			{
-		//				item.Id = record.Id;
-		//				item.Name = record.CIPTitle;
-		//				item.Description = record.CIPDefinition;
-		//				item.Code = record.CIPCode;
-		//				item.URL = record.Url;
-		//				list.Add( item );
-		//			}
-		//		}
-		//	}
-		//	return list;
-		//}
+		#region CIPS
+		public static CodeItem CIP_Get( string code )
+		{
+			string search = code;
+			//for now, just exact
+
+			CodeItem item = new CodeItem();
+			using ( var context = new ViewContext() )
+			{
+				var record = context.CIPCode2010
+					.FirstOrDefault( s => s.CIPCode == search );
+				
+				if ( record != null && record.Id > 0 )
+				{
+					item.Id = record.Id;
+					item.Name = record.CIPTitle;
+					item.Description = record.CIPDefinition;
+					item.Code = record.CIPCode;
+					item.URL = record.Url;
+				}
+			
+			}
+			return item;
+		}
 
 		//public static List<CodeItem> CIPS_Search( int headerId, string keyword, int pageNumber, int pageSize, ref int totalRows, bool getAll = true )
 		//      {
@@ -2551,7 +2866,7 @@ namespace workIT.Factories
 		//          {
 		//              List<CIPCode2010> results = context.CIPCode2010
 		//                      .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
-		//                      && ( keyword == ""
+		//                      && ( keyword == string.Empty
 		//                      || s.CIPCode.Contains( keyword )
 		//                      || s.CIPTitle.Contains( keyword )
 		//                      )
@@ -2564,7 +2879,7 @@ namespace workIT.Factories
 
 		//              totalRows = context.CIPCode2010
 		//                      .Where( s => ( headerId == 0 || s.CIPCode.Substring( 0, 2 ) == header )
-		//                      && ( keyword == ""
+		//                      && ( keyword == string.Empty
 		//                      || s.CIPCode.Contains( keyword )
 		//                      || s.CIPTitle.Contains( keyword ) )
 		//                      && ( s.Totals > 0 || getAll )
@@ -2609,7 +2924,7 @@ namespace workIT.Factories
 		//        List<Entity_FrameworkCIPCodeSummary> results = context.Entity_FrameworkCIPCodeSummary
 		//                .Where( s => ( headerId == 0 || s.CodeGroup == header )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CIPCode.Contains( keyword )
 		//                || s.CIPTitle.Contains( keyword )
 		//                )
@@ -2623,7 +2938,7 @@ namespace workIT.Factories
 		//        totalRows = context.Entity_FrameworkCIPCodeSummary
 		//                .Where( s => ( headerId == 0 || s.CodeGroup == header )
 		//                && ( s.EntityTypeId == entityTypeId )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CIPCode.Contains( keyword )
 		//                || s.CIPTitle.Contains( keyword )
 		//                )
@@ -2663,7 +2978,7 @@ namespace workIT.Factories
 		//    {
 		//        List<CIPCode2010> results = context.CIPCode2010
 		//                .Where( s => ( headerId == 0 || s.CIPFamily == headerId.ToString() )
-		//                && ( keyword == ""
+		//                && ( keyword == string.Empty
 		//                || s.CIPTitle.Contains( keyword )
 		//                || s.CIPDefinition.Contains( keyword ) ) )
 		//                .OrderBy( s => s.CIPCode )
@@ -2870,9 +3185,14 @@ namespace workIT.Factories
 							{
 								//what - could just send email, and admin will have to check if legit. If not, then running from menu will either set to correct (or stay the same), or be rejected here if valid!!!!
 								//could do a compare from database?
-								var oldFinder = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
-								EmailManager.NotifyAdmin( "<p>Competency Framework count +3 warning", string.Format( "Competency Framework count updated by 3. Please validate. Old count: {0}, new count: {1}. </p><p><a href='{2}/Admin/Site/UpdateCompetencyFrameworkTotals'>Update count from menu</a></p>", efEntity.Totals, total, oldFinder) );
-								return;
+								//24-04-05 mp - don't recall the original issue that prompted this check. 
+								//				- disabling for now
+								if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" )
+								{
+									//var oldFinder = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
+									//EmailManager.NotifyAdmin( "<p>Competency Framework count +3 warning", string.Format( "Competency Framework count updated by 3. Please validate. Old count: {0}, new count: {1}. </p><p><a href='{2}Admin/Site/UpdateCompetencyFrameworkTotals'>Update count from menu</a></p>", efEntity.Totals, total, oldFinder) );
+									//return;
+								}
 							}
 							efEntity.Totals = total;
 						}
@@ -3045,94 +3365,100 @@ namespace workIT.Factories
         }
 		public static Enumeration GetLearningObjectTypesEnumeration( bool getAll = true )
 		{
-			Enumeration entity = new Enumeration();
-			entity.Id = 3; //why 3 - changed this in PropertyCategory
-			entity.Name = "Learning Types";
-			entity.Description = "Different types of learning opportunities.";
-
-			entity.SchemaName = "";
-			entity.Url = "";
-			entity.Items = new List<EnumeratedItem>();
-
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "3383a79a-f26f-4bae-9f97-2a69b66b0523", getAll ), () =>
 			{
-				var results = context.Codes_EntityTypes
-							.Where( s => s.IsActive == true && ( s.Id == 7 || s.Id == 36 || s.Id == 37 ) )
-							.OrderBy( a => a.Id )
-							.ToList();
-				if ( results != null && results.Count > 0 )
+				Enumeration entity = new Enumeration();
+				entity.Id = 3; //why 3 - changed this in PropertyCategory
+				entity.Name = "Learning Types";
+				entity.Description = "Different types of learning opportunities.";
+
+				entity.SchemaName = string.Empty;
+				entity.Url = string.Empty;
+				entity.Items = new List<EnumeratedItem>();
+
+				using ( var context = new EntityContext() )
 				{
-					EnumeratedItem val = new EnumeratedItem();
-					foreach ( var item in results )
+					var results = context.Codes_EntityTypes
+								.Where( s => s.IsActive == true && ( s.Id == 7 || s.Id == 36 || s.Id == 37 ) )
+								.OrderBy( a => a.Id )
+								.ToList();
+					if ( results != null && results.Count > 0 )
 					{
-						val = new EnumeratedItem();
-						val.CategoryId = 3;
-						val.Id = item.Id;
-						val.CodeId = item.Id;
-						val.ParentId = 0;
-						val.Name = item.Title;
-						val.Description = item.Description != null ? item.Description : "";
-						val.SortOrder = item.Id;
-						val.SchemaName = item.SchemaName ?? "";
-						val.SchemaUrl = item.SchemaName;
-						val.Value = item.Id.ToString();
-						val.Totals = item.Totals ?? 0;
-						if ( IsDevEnv() )
-							val.Name += string.Format( " ({0})", val.Totals );
-						if ( getAll  || item.Totals > 0)
-							entity.Items.Add( val );
+						EnumeratedItem val = new EnumeratedItem();
+						foreach ( var item in results )
+						{
+							val = new EnumeratedItem();
+							val.CategoryId = 3;
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.ParentId = 0;
+							val.Name = item.Title;
+							val.Description = item.Description != null ? item.Description : "";
+							val.SortOrder = item.Id;
+							val.SchemaName = item.SchemaName ?? string.Empty;
+							val.SchemaUrl = item.SchemaName;
+							val.Value = item.Id.ToString();
+							val.Totals = item.Totals ?? 0;
+							if ( IsDevEnv() )
+								val.Name += string.Format( " ({0})", val.Totals );
+							if ( getAll || item.Totals > 0 )
+								entity.Items.Add( val );
+						}
 					}
 				}
-			}
 
-			return entity;
+				return entity;
+			} );
 		}
 
 		public static Enumeration GetOrgSubclasses( bool getAll = true )
 		{
-			Enumeration entity = new Enumeration();
-			entity.Id = 1; //why 1 - changed this in PropertyCategory
-			entity.Name = "Organization Classes";
-			entity.Description = "Different organization classes.";
-
-			entity.SchemaName = "";
-			entity.Url = "";
-			entity.Items = new List<EnumeratedItem>();
-			using ( var context = new EntityContext() )
+			return GetFromCacheOrDB( GetCacheName( "05298c46-96c5-4fa4-9966-8d43d1d54d20", getAll ), () =>
 			{
-				var results = context.Codes_EntityTypes
-							.Where( s => s.IsActive == true 
-								&& ( s.Id == 2 || s.Id == 13 || s.Id == 14 ) 
-								//&& (getAll || s.Totals > 0)
-							)
-							.OrderBy( a => a.Id )
-							.ToList();
-				if ( results != null && results.Count > 0 )
+				Enumeration entity = new Enumeration();
+				entity.Id = 1; //why 1 - changed this in PropertyCategory
+				entity.Name = "Organization Classes";
+				entity.Description = "Different organization classes.";
+
+				entity.SchemaName = string.Empty;
+				entity.Url = string.Empty;
+				entity.Items = new List<EnumeratedItem>();
+				using ( var context = new EntityContext() )
 				{
-					EnumeratedItem val = new EnumeratedItem();
-					foreach ( var item in results )
+					var results = context.Codes_EntityTypes
+								.Where( s => s.IsActive == true
+									&& ( s.Id == 2 || s.Id == 13 || s.Id == 14 )
+								//&& (getAll || s.Totals > 0)
+								)
+								.OrderBy( a => a.Id )
+								.ToList();
+					if ( results != null && results.Count > 0 )
 					{
-						val = new EnumeratedItem();
-						val.CategoryId = 1;
-						val.Id = item.Id;
-						val.CodeId = item.Id;
-						val.ParentId = 0;
-						val.Name = item.Title;
-						val.Description = item.Description != null ? item.Description : "";
-						val.SortOrder = item.Id;
-						val.SchemaName = item.SchemaName ?? "";
-						val.SchemaUrl = item.SchemaName;
-						val.Value = item.Id.ToString();
-						val.Totals = item.Totals ?? 0;
-						if ( IsDevEnv() )
-							val.Name += string.Format( " ({0})", val.Totals );
-						if ( getAll || item.Totals > 0 )
-							entity.Items.Add( val );
+						EnumeratedItem val = new EnumeratedItem();
+						foreach ( var item in results )
+						{
+							val = new EnumeratedItem();
+							val.CategoryId = 1;
+							val.Id = item.Id;
+							val.CodeId = item.Id;
+							val.ParentId = 0;
+							val.Name = item.Title;
+							val.Description = item.Description != null ? item.Description : "";
+							val.SortOrder = item.Id;
+							val.SchemaName = item.SchemaName ?? string.Empty;
+							val.SchemaUrl = item.SchemaName;
+							val.Value = item.Id.ToString();
+							val.Totals = item.Totals ?? 0;
+							if ( IsDevEnv() )
+								val.Name += string.Format( " ({0})", val.Totals );
+							if ( getAll || item.Totals > 0 )
+								entity.Items.Add( val );
+						}
 					}
 				}
-			}
 
-			return entity;
+				return entity;
+			} );
 		}
 
 		public static List<CodeItem> CodeEntity_GetCountsSiteTotals()
@@ -3182,7 +3508,7 @@ namespace workIT.Factories
 			{
 				var results = context.Counts_RegionTotals
 					.Where( a => a.EntityTypeId == entityTypeId 
-						&& (country == "" || a.Country == country))
+						&& (country == string.Empty || a.Country == country))
 							.OrderBy( s => s.Country )
 							.ThenBy( x => x.Region )
 							.ToList();
@@ -3244,6 +3570,69 @@ namespace workIT.Factories
 		}
 
 		#endregion
+
+
+		/// <summary>
+		/// Attempt to get a value from the cache, or if not found, get it from the database and store it in the cache for future use.<br />
+		/// It is critical that the cacheID be globally unique not just to a given method, but also to a particular set of arguments passed to that method (e.g. "SomeMethod(1,2,3)" and "SomeMethod(4,5,6)" should have different cache keys).<br />
+		/// Don't forget to account for otherwise-identical methods in different namespaces when determining the cache key!
+		/// </summary>
+		/// <typeparam name="T">The type of value to get.</typeparam>
+		/// <param name="cacheID">The key for the value. Must be globally unique to a given method and set of argument values (method signature + parameter values passed to the method) in order to ensure the right value is stored/retrieved from the cache.</param>
+		/// <param name="GetFromDBMethod">Method to get a value from the database. Will only be called if the value is not found in the cache.</param>
+		/// <param name="enabled">Indicates whether to enable caching for this call. Intended for debugging slow caching attempts.</param>
+		/// <param name="cacheLifeMinutes">How long the cache for this value should live, in minutes.</param>
+		/// <returns></returns>
+		public static T GetFromCacheOrDB<T>( string cacheID, Func<T> GetFromDBMethod, bool enabled = true, int cacheLifeMinutes = 0 )
+		{
+			if ( !enabled )
+			{
+				return GetFromDBMethod();
+			}
+			if ( cacheLifeMinutes == 0 )
+				cacheLifeMinutes = UtilityManager.GetAppKeyValue( "enumCacheLifetimeMinutes", 60 );
+
+			try
+			{
+				if ( MemoryCache.Default.Contains( cacheID ) )
+				{
+					//By serializing/deserializing the object, we ensure that a brand new object is being returned, in order to avoid issues with the original object being referenced/altered unintentionally afterwards
+					return JsonConvert.DeserializeObject<T>( ( string ) MemoryCache.Default.Get( cacheID ) );
+				}
+				else
+				{
+					var result = GetFromDBMethod();
+					var serialized = JsonConvert.SerializeObject( result, Formatting.None );
+					MemoryCache.Default.Remove( cacheID );
+					MemoryCache.Default.Add( cacheID, serialized, new DateTimeOffset( DateTime.Now.AddMinutes( cacheLifeMinutes ) ) );
+					return result;
+				}
+			}
+			catch ( Exception ex )
+			{
+				return GetFromDBMethod();
+			}
+		}
+		//
+
+		//public static string GetCacheName( MethodBase methodBase, params object[] parameters )
+		//{
+		//	//For some reason getting the MethodInfo is the only way to get the ReturnType
+		//	var methodInfo = ( MethodInfo ) methodBase;
+		//	//ReturnType + containing class + method name +
+		//	return methodInfo.ReturnType.Name + " " + methodInfo.DeclaringType.FullName + "." + methodInfo.Name + ": " +
+		//		//Argument type list +
+		//		//string.Join( ", ", methodInfo.GetParameters().Select( m => m.ParameterType.Name ) ) + 
+		//		//Actual values for the parameters
+		//		" ( " + string.Join( ", ", parameters.Select( m => m?.ToString() ?? "null" ).ToList() ) + " )";
+		//}
+		//
+
+		public static string GetCacheName( string prefix, params object[] parameters )
+		{
+			return prefix + " ( " + string.Join( ", ", parameters.Select( m => m?.ToString() ?? "null" ).ToList() ) + " )";
+		}
+		//
 
 	}
 }

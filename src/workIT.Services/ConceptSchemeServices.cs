@@ -1,30 +1,19 @@
-﻿using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Runtime.Caching;
-using System.Text;
-using System.Threading;
-using System.Web;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
 
 using workIT.Factories;
-using ResourceManager = workIT.Factories.ConceptSchemeManager;
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.Elastic;
-using ElasticHelper = workIT.Services.ElasticServices;
-
-using workIT.Models.Helpers.CompetencyFrameworkHelpers;
 using workIT.Models.Search;
 using workIT.Utilities;
 
+using ElasticHelper = workIT.Services.ElasticServices;
+using APIResourceServices = workIT.Services.API.ConceptSchemeServices;
+using ResourceManager = workIT.Factories.ConceptSchemeManager;
 using ThisResource = workIT.Models.Common.ConceptScheme;
 using ThisResourceSummary = workIT.Models.Common.ConceptSchemeSummary;
+
 namespace workIT.Services
 {
 	public class ConceptSchemeServices
@@ -35,39 +24,50 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisResource entity, ref SaveStatus status )
+		public bool Import( ThisResource input, ref SaveStatus status )
 		{
-			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
+			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + input.Name );
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( input.Id > 0 )
 			{
 				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
 				//var detail = GetDetail( entity.Id );
 			}
-			bool isValid = new ResourceManager().Save( entity, ref status, true );
+			bool isValid = new ResourceManager().Save( input, ref status, true );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
-			{
+			if ( input.Id > 0 )
+			{               
+				//populate entity.cache - need to do before elastic processes
+				var resource = APIResourceServices.GetDetailForAPI( input.Id, true );
+				if ( resource != null && resource.Meta_Id > 0 )
+				{
+					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( input.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
 				{
 					//update cache - not applicable yet
 					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 					//update Elastic
 					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-						ElasticHelper.CompetencyFramework_UpdateIndex( entity.Id );
+						ElasticHelper.CompetencyFramework_UpdateIndex( input.Id );
 					else
 					{
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, entity.Id, 1, ref messages );
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, input.Id, 1, ref messages );
 						if ( messages.Count > 0 )
 							status.AddWarningRange( messages );
 					}
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, input.OrganizationId, 1, ref messages );
 				}
 				else
 				{
 					//since not in elastic, do we need to do this?
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, input.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, input.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}

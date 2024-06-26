@@ -23,7 +23,7 @@ namespace workIT.Factories
 {
     public class Entity_AssertionManager : BaseFactory
     {
-        string thisClassName = "Entity_AssertionManager";
+        static string thisClassName = "Entity_AssertionManager";
 
 		#region Persistance
 		/// <summary>
@@ -323,8 +323,8 @@ namespace workIT.Factories
             int records = maxRecords * 2;
             Guid prevTargetUid = new Guid();
 
-            string prevRoleSource = "";
-            //string currRoleSource = "";
+            string prevRoleSource = string.Empty;
+            //string currRoleSource = string.Empty;
             int prevRoleTypeId = 0;
             Entity agentEntity = EntityManager.GetEntity( 2, orgId );
 
@@ -409,7 +409,7 @@ namespace workIT.Factories
             EnumeratedItem eitem = new EnumeratedItem();
 
             Guid prevTargetUid = new Guid();
-            string prevRoleSource = "";
+            string prevRoleSource = string.Empty;
             int prevRoleTypeId = 0;
             Entity agentEntity = EntityManager.GetEntity( 2, orgId );
 
@@ -529,34 +529,7 @@ namespace workIT.Factories
 				//first check how long this step takes
 				DateTime start = DateTime.Now;
 				LoggingHelper.DoTrace( 8, "FillCountsForOrganizationQAPerformed start" );
-				//List<Views.Organization_CombinedQAPerformed> agentRoles = context.Organization_CombinedQAPerformed
-				//	.Where( s => s.OrgUid == org.RowId
-				//		 && s.IsQARole == true
-				//		 && s.TargetEntityStateId > 1 )
-				//		 .OrderBy( s => s.TargetEntityTypeId )
-				//		 .ThenBy( s => s.TargetOwningOrganizationName )
-				//		 .ThenBy( s => s.TargetEntityName )
-				//		 .ThenBy( s => s.AgentToSourceRelationship )
-				//		 .ThenBy( s => s.roleSource )
-				//	.ToList();
-
-
-
-				//if ( agentRoles != null && agentRoles.Count() > 0 )
-				//{
-				//	//
-				//	totalRecords = agentRoles.Count();
-				//	//may want a fudge factor?
-				//	org.QAPerformedOnCredentialsCount = agentRoles.Where( s => s.TargetEntityTypeId == 1 ).Distinct().Count();
-				//	org.QAPerformedOnOrganizationsCount = agentRoles.Where( s => s.TargetEntityTypeId == 2 ).Distinct().Count();
-				//	org.QAPerformedOnAssessmentsCount = agentRoles.Where( s => s.TargetEntityTypeId == 3 ).Distinct().Count();
-				//	org.QAPerformedOnLoppsCount = agentRoles.Where( s => s.TargetEntityTypeId == 7 ).Distinct().Count();
-
-				//}
 				
-				
-
-
 				var query = from qa in context.Organization_CombinedQAPerformed
 					.Where( s => s.OrgUid == org.RowId
 						 && s.IsQARole == true
@@ -586,6 +559,7 @@ namespace workIT.Factories
 					org.QAPerformedOnOrganizationsCount = results.Where( s => s.TargetEntityTypeId == 2 ).Distinct().Count();
 					org.QAPerformedOnAssessmentsCount = results.Where( s => s.TargetEntityTypeId == 3 && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
 					org.QAPerformedOnLoppsCount = results.Where( s => s.TargetEntityTypeId == 7 && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
+					org.QAPerformedOnTransferValuesCount = results.Where( s => s.TargetEntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE && s.TargetOwningOrganizationId != org.Id ).Distinct().Count();
 
 					DateTime listEnd = DateTime.Now;
 					elasped = listEnd.Subtract( end ).TotalSeconds;
@@ -603,7 +577,7 @@ namespace workIT.Factories
 		//          EnumeratedItem eitem = new EnumeratedItem();
 
 		//          Guid prevTargetUid = new Guid();
-		//          string prevRoleSource = "";
+		//          string prevRoleSource = string.Empty;
 		//          int prevRoleTypeId = 0;
 		//          Entity agentEntity = EntityManager.GetEntity( agentUid );
 		//	if ( UtilityManager.GetAppKeyValue( "environment" ) == "production" )
@@ -772,7 +746,7 @@ namespace workIT.Factories
 		/// <summary>
 		/// Get roles
 		/// 21-06-01 this method seems to be called excessively. For a TVP detail - currently 9 times. Seems wrong
-		/// TODO - this is very slow and will just get worse with more volume. Consider creating a cache table?
+		/// WARNING/TODO - this is very slow and will just get worse with more volume. Consider creating a cache table?
 		///			- the view: Organization_CombinedConnections does a UNION of Entity.AgentRelationships and Entity.Assertions
 		/// </summary>
 		/// <param name="targetEntityTypeId"></param>
@@ -781,6 +755,8 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static List<OrganizationRoleProfile> GetAllCombinedForTarget( int targetEntityTypeId, int recordId, int owningOrgId )
 		{
+			LoggingHelper.DoTrace( LoggingHelper.appMethodEntryTraceLevel, thisClassName + ".GetAllCombinedForTarget - entered." );
+
 			OrganizationRoleProfile orp = new OrganizationRoleProfile();
 			List<OrganizationRoleProfile> list = new List<OrganizationRoleProfile>();
 			//21-03-22 remove requirement for owningOrgId
@@ -791,7 +767,7 @@ namespace workIT.Factories
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
-			string prevRoleSource = "";
+			string prevRoleSource = string.Empty;
 			int prevRoleTypeId = 0;
 			bool includingPublishedBy = false;
 			using ( var context = new ViewContext() )
@@ -971,7 +947,7 @@ namespace workIT.Factories
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
-			string prevRoleSource = "";
+			string prevRoleSource = string.Empty;
 			int prevRoleTypeId = 0;
 			bool includingPublishedBy = false;
 			using ( var context = new EntityContext() )
@@ -1156,7 +1132,7 @@ namespace workIT.Factories
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			Guid prevOrgUid = new Guid();
-			string prevRoleSource = "";
+			string prevRoleSource = string.Empty;
 			int prevRoleTypeId = 0;
 			bool includingPublishedBy = false;
 			using ( var context = new EntityContext() )

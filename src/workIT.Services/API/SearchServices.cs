@@ -27,6 +27,7 @@ namespace workIT.Services.API
 	public partial class SearchServices
 	{
 		//Shouldn't these go in the workit.Services/API/SearchServices_Filters.cs file instead?
+		/* YES - now this class is empty
 		#region FILTERS FOR NEW FINDER
 		static bool includingHistoryFilters = false;
 		public static FilterResponse GetCredentialFilters( bool getAll = false )
@@ -65,6 +66,8 @@ namespace workIT.Services.API
 				var connections = enumServices.GetCredentialConnectionsFilters( EnumerationType.MULTI_SELECT, getAll );
 				var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
 				var qaReceived = enumServices.GetEntityAgentQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+				//var nonQARoles = enumServices.GetEntityAgentNONQAActions( EnumerationType.MULTI_SELECT, entityTypeId, getAll );
+
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
 				//LWIA/address region filter
 				//LWIAs proposed. If to be included, will be first
@@ -77,9 +80,8 @@ namespace workIT.Services.API
 						filters.Filters.Add( filter );
 					}
 				}
-				/* TODO
-				 * handle history
-				 */
+				// TODO  handle history
+				 
 				
 				if( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
@@ -91,6 +93,22 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Credential Type", "credentialType", credentialTypes );
 					filters.Filters.Add( filter );
 				}
+				//owns/offers
+				filters.Filters.Add( GetOwnerFilters( "Owned/Offered By" ) );
+				//if ( nonQARoles != null && nonQARoles.Items.Any() )
+				//{
+				//	filter = ConvertEnumeration( "Owns/Offers", "orgRelationship", nonQARoles, string.Format( "Select the type(s) of organization roles to filter relevant {0}.", labelPlural ) );
+				//	//just in case
+				//	filter.Label = "Org. Relationship";
+				//	filter.URI = "filter:organizationnonqaroles";
+				//	filter.Items.Add( new MSR.FilterItem()
+				//	{
+				//		Label = string.Format( "Optionally, find and select one or more organizations that perform {0} relationships.", label ),
+				//		URI = "interfaceType:TextValue",
+				//		InterfaceType = APIFilter.InterfaceType_Autocomplete
+				//	} );
+				//	filters.Filters.Add( filter );
+				//}
 				//=====QA
 				if ( qaReceived != null && qaReceived.Items.Any() )
 				{
@@ -241,7 +259,7 @@ namespace workIT.Services.API
 					InterfaceType = APIFilter.InterfaceType_Autocomplete
 				} );
 				filters.Filters.Add( filter );
-				*/
+			
 				#endregion
 
 				//
@@ -473,13 +491,14 @@ namespace workIT.Services.API
 
 				//
 				var scoringMethodTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_Scoring_Method, EnumerationType.MULTI_SELECT, false, getAll );
-				/* TODO
-				 */
+		
 				var filter = new MSR.Filter();
 				filters.Filters = new List<Filter>();
 				//
 				if ( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
+
+				filters.Filters.Add( GetOwnerFilters( "Owned/Offered By" ) );
 
 				#region competencies don't have an autocomplete
 				var competencies = new MSR.Filter( "Competencies" )
@@ -629,7 +648,7 @@ namespace workIT.Services.API
 					InterfaceType = APIFilter.InterfaceType_Autocomplete
 				} );
 				filters.Filters.Add( filter );
-				*/
+				
 				#endregion
 				//
 				//=====QA
@@ -750,6 +769,7 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
 					filters.Filters.Add( filter );
 				}
+				filters.Filters.Add( GetOwnerFilters( "Owned/Offered By" ) );
 				//
 				#region competencies don't have an autocomplete
 				var competencies = new MSR.Filter( "Competencies" )
@@ -781,14 +801,14 @@ namespace workIT.Services.API
 					filter = ConvertEnumeration( "Connections", "loppConnections", connections, string.Format( "Select the connection type(s) to filter {0}:", labelPlural ) );
 					filters.Filters.Add( filter );
 				}
-				/* TODO
-				 * QA received accredited, approved, recognized, regulated 
-				 * other filters
-				 * Has any?
-				 *	industry, occupation, 
-				 * Connections
-				 * - ispartof, is prep, etc
-				 */
+				//TODO
+				// * QA received accredited, approved, recognized, regulated 
+				// * other filters
+				// * Has any?
+				// *	industry, occupation, 
+				// * Connections
+				// * - ispartof, is prep, etc
+				// 
 
 				if ( asmtMethodTypes != null && asmtMethodTypes.Items.Any() )
 				{
@@ -827,7 +847,9 @@ namespace workIT.Services.API
 				//check for any collections with lopps. use Occupation as a model
 				//first check if there are any. This will be important initially. 
 				if ( CollectionMemberManager.HasAnyForEntityType( 7 ) )
+				{
 					filters.Filters.Add( GetInCollectionFilters( labelPlural, "loppReport:IsPartOfCollection" ) );
+				}
 				//
 				#region Industries, occupations, and programs
 				filters.Filters.Add( GetIndustryFilters( labelPlural, "loppReport:HasIndustries" ) );
@@ -871,279 +893,6 @@ namespace workIT.Services.API
 			return filters;
 		}
 
-		public static FilterResponse GetPathwayFilters( bool getAll = false )
-		{
-			EnumerationServices enumServices = new EnumerationServices();
-			int entityTypeId = 8;
-			string searchType = "pathway";
-			string labelPlural = "pathways";
-			FilterResponse filters = new FilterResponse( searchType );
-
-			try
-			{
-				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
-				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-				//
-				var filter = new MSR.Filter();
-				filters.Filters = new List<Filter>();
-				if ( includingHistoryFilters )
-					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-
-				//======================================
-
-				filters.Filters.Add( GetSubjectFilters( labelPlural, "pathwayReport:HasSubjects" ) );
-				//
-
-				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
-				{
-					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
-					filters.Filters.Add( filter );
-				}
-				//
-				#region Industries, occupations, and programs
-				filters.Filters.Add( GetIndustryFilters( labelPlural, "pathwayReport:HasIndustries" ) );
-
-				filters.Filters.Add( GetOccupationFilters( labelPlural, "pathwayReport:HasOccupations" ) );
-
-				#endregion
-
-				//
-				if ( otherFilters != null && otherFilters.Items.Any() )
-				{
-					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
-					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
-
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
-			}
-			return filters;
-		}
-		//
-		public static FilterResponse GetTransferValueFilters( bool getAll = false )
-		{
-			EnumerationServices enumServices = new EnumerationServices();
-			int entityTypeId = 26;
-			string searchType = "transfervalue";
-			string labelPlural = "transfer values";
-			FilterResponse filters = new FilterResponse( searchType );
-
-			try
-			{
-				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
-				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-				//
-				var filter = new MSR.Filter();
-				filters.Filters = new List<Filter>();
-				if ( includingHistoryFilters )
-					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-				//
-				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
-				{
-					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
-					filters.Filters.Add( filter );
-				}
-				//
-				if ( otherFilters != null && otherFilters.Items.Any() )
-				{
-					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
-					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
-
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
-			}
-			return filters;
-		}
-		//
-		public static FilterResponse GetCollectionFilters( bool getAll = false, string widgetId = "" )
-		{
-			EnumerationServices enumServices = new EnumerationServices();
-			int entityTypeId = 9;
-			string searchType = "collection";
-			string labelPlural = "collections";
-			FilterResponse filters = new FilterResponse( searchType );
-
-			try
-			{
-				//
-				var collectionTypes = enumServices.GetEnumeration( "collectionCategory", EnumerationType.MULTI_SELECT, false );
-				var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
-
-				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-				//
-				var filter = new MSR.Filter();
-				filters.Filters = new List<Filter>();
-				if ( includingHistoryFilters )
-					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-				//
-				if ( collectionTypes != null && collectionTypes.Items.Count > 1 )
-				{
-					filter = ConvertEnumeration( "Collection Types", "collectionTypes", collectionTypes, "Select the type(s) of Collection." );
-					filters.Filters.Add( filter );
-				}
-				//
-				if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
-				{
-					filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
-					filters.Filters.Add( filter );
-				}
-				//
-				if ( otherFilters != null && otherFilters.Items.Any() )
-				{
-					//filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
-					filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters ) );
-
-				}
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.DoTrace( 1, string.Format( "GetCollectionFilters. {0}", ex.Message ) );
-			}
-			return filters;
-		}
-        //
-        public static FilterResponse GetSupportServiceFilters( bool getAll = false )
-        {
-            EnumerationServices enumServices = new EnumerationServices();
-            int entityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
-            string searchType = "SupportService";
-            string label = "Support Service";
-            string labelPlural = "Support Services";
-            FilterResponse filters = new FilterResponse( searchType );
-
-            try
-            {
-                var accommodationTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_ACCOMMODATION, EnumerationType.MULTI_SELECT, false, getAll );
-                var supportSrvcTypes = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY, EnumerationType.MULTI_SELECT, false, getAll );
-                //
-                var lifeCycleTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, entityTypeId, getAll );
-                //do we need a custom 
-                var deliveryTypes = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, entityTypeId, getAll );
-                var languages = enumServices.GetSiteTotals( EnumerationType.MULTI_SELECT, 65, entityTypeId, getAll );
-                var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-
-                /* TODO
-				 */
-                var filter = new MSR.Filter();
-                filters.Filters = new List<Filter>();
-                //
-                if ( includingHistoryFilters )
-                    filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-
-
-                if ( accommodationTypes != null && accommodationTypes.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Accommodation Type", "accommodationType", accommodationTypes, "Select the type(s) accommodation." );
-                    filters.Filters.Add( filter );
-                }
-                if ( supportSrvcTypes != null && supportSrvcTypes.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Support Service Category", "supportServiceCategory", supportSrvcTypes, "Select the type(s) of support service." );
-                    filters.Filters.Add( filter );
-                }
-                if ( deliveryTypes != null && deliveryTypes.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Delivery Type", "deliverytype", deliveryTypes, "Select the type(s) of delivery method." );
-                    filters.Filters.Add( filter );
-                }
-                if ( lifeCycleTypes != null && lifeCycleTypes.Items.Count > 1 )
-                {
-                    filter = ConvertEnumeration( "Life Cycle Status Types", "lifeCycleTypes", lifeCycleTypes, "Select the type(s) of Life Cycle Status." );
-                    filters.Filters.Add( filter );
-                }
-                //
-                //======================================
-                #region Industries, occupations, and programs
-                filters.Filters.Add( GetOccupationFilters( labelPlural, "asmtReport:HasOccupations" ) );
-                #endregion
-                //
-
-                //
-                if ( languages != null && languages.Items.Count > 0 )
-                {
-                    //filter = ConvertEnumeration( "languages", languages, string.Format( "Select one or more languages to display {0} for those languages.", labelPlural ) );
-                    filters.Filters.Add( GetLanguageFilters( labelPlural, languages ) );
-                }
-
-                //
-                if ( otherFilters != null && otherFilters.Items.Any() )
-                {
-                    //filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
-                    filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters, true ) );
-                }
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.DoTrace( 1, string.Format( "GetSupportServiceFilters. {0}", ex.Message ) );
-            }
-            return filters;
-        }
-        //
-        public static FilterResponse GetScheduledOfferingFilters( bool getAll = false )
-        {
-            EnumerationServices enumServices = new EnumerationServices();
-            int entityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
-            string searchType = "ScheduledOffering";
-            string label = "Scheduled Offering";
-            string labelPlural = "Scheduled Offerings";
-            FilterResponse filters = new FilterResponse( searchType );
-
-            try
-            {
-                var offerFrequencyType = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_OFFER_FREQUENCY, EnumerationType.MULTI_SELECT, false, getAll );
-                //will need to ensure stored separately 
-                var scheduleFrequencyType = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SCHEDULE_FREQUENCY, EnumerationType.MULTI_SELECT, false, getAll );
-                var scheduleTiming = enumServices.GetEnumeration( CodesManager.PROPERTY_CATEGORY_SCHEDULE_TIMING, EnumerationType.MULTI_SELECT, false, getAll );
-                //
-
-                var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
-
-                /* TODO
-				 */
-                var filter = new MSR.Filter();
-                filters.Filters = new List<Filter>();
-                //
-                if ( includingHistoryFilters )
-                    filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-
-
-                if ( offerFrequencyType != null && offerFrequencyType.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Offer Frequency Type", "offerFrequencyType", offerFrequencyType, "Select the type(s) of offer frequency." );
-                    filters.Filters.Add( filter );
-                }
-                if ( scheduleTiming != null && scheduleTiming.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Schedule Timing", "scheduleTiming", scheduleTiming, "Select the type(s) of schedule timing." );
-                    filters.Filters.Add( filter );
-                }
-                if ( scheduleFrequencyType != null && scheduleFrequencyType.Items.Any() )
-                {
-                    filter = ConvertEnumeration( "Schedule Frequency Type", "scheduleFrequencyType", scheduleFrequencyType, "Select the type(s) of schedule frequency." );
-                    filters.Filters.Add( filter );
-                }
-   
-                //
-                //======================================
-
-                //
-                if ( otherFilters != null && otherFilters.Items.Any() )
-                {
-                    //filter = ConvertEnumeration( "otherFilters", otherFilters, string.Format( "Select one of the 'Other' filters that are available. Note these filters are independent (ORs). For example selecting 'Has Cost Profile(s)' and 'Has Financial Aid' will show {0} that have cost profile(s) OR financial assistance.", labelPlural ) );
-                    filters.Filters.Add( GetTheOtherFilters( labelPlural, otherFilters, true ) );
-                }
-            }
-            catch ( Exception ex )
-            {
-                LoggingHelper.DoTrace( 1, string.Format( "GetSupportServiceFilters. {0}", ex.Message ) );
-            }
-            return filters;
-        }
 		//GetOutcomeDataFilters
 		public static FilterResponse GetOutcomeDataFilters( bool getAll = false )
 		{
@@ -1163,21 +912,14 @@ namespace workIT.Services.API
 
 				var otherFilters = enumServices.EntityStatisticGetEnumeration( entityTypeId, EnumerationType.MULTI_SELECT, getAll );
 
-				/* TODO
-				 */
+			
 				var filter = new MSR.Filter();
 				filters.Filters = new List<Filter>();
 				//
 				if ( includingHistoryFilters )
 					filters.Filters.Add( GetHistoryFilters( labelPlural ) );
-
-
-				if ( offerFrequencyType != null && offerFrequencyType.Items.Any() )
-				{
-					filter = ConvertEnumeration( "Offer Frequency Type", "offerFrequencyType", offerFrequencyType, "Select the type(s) of offer frequency." );
-					filters.Filters.Add( filter );
-				}
-
+				//owns/offers
+				filters.Filters.Add( GetOwnerFilters( "Provided By" ) );
 
 				//======================================
 
@@ -1219,34 +961,6 @@ namespace workIT.Services.API
 			}
 			return filters;
 		}
-		public static FilterResponse GetCompetencyFrameworkFilters( bool getAll = false )
-		{
-			EnumerationServices enumServices = new EnumerationServices();
-			int entityTypeId = 10;
-			string searchType = "CompetencyFramework";
-			string label = "Competency Framework";
-			string labelPlural = "Competency Frameworks";
-			FilterResponse filters = new FilterResponse( searchType );
-			var filter = new MSR.Filter();
-			filters.Filters = new List<Filter>();
-
-			try
-			{
-				filter = new MSR.Filter()
-				{
-					Label = "Competency Frameworks",
-					URI = "competencyFrameworks",
-					Description = string.Format( "There are no filters currently available for Competency Frameworks.", labelPlural ),
-				};
-				filters.Filters.Add( filter );
-
-			}
-			catch ( Exception ex )
-			{
-				LoggingHelper.DoTrace( 1, string.Format( "GetPathwayFilters. {0}", ex.Message ) );
-			}
-			return filters;
-		}
 		private static MSR.Filter GetInCollectionFilters( string labelPlural, string hasAnyURI )
 		{
 
@@ -1254,7 +968,7 @@ namespace workIT.Services.API
 			{
 				Id = CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY,
 				Label = "Collections",
-				URI = "filter:CollectionType",
+				URI = "filter:InCollection",
 				Description = string.Format( "Select 'Has Collections' to search for {0} that are part of any collections.", labelPlural ),
 			};
 			filter.Items.Add( new MSR.FilterItem()
@@ -1272,7 +986,31 @@ namespace workIT.Services.API
 
 			return filter;
 		}
+		private static MSR.Filter GetOwnerFilters( string label, string filterType = "filter:organizationnonqaroles" )
+		{
+			int categoryId = CodesManager.PROPERTY_CATEGORY_ORG_OWNS_OFFERS;
+			return GetOwnerFilters( label, categoryId, filterType );
+		}
+		private static MSR.Filter GetOwnerFilters( string label, int categoryId, string filterType  = "filter:organizationnonqaroles" )
+		{
+			//may want to use:	organizationnonqaroles
+			var filter = new MSR.Filter()
+			{
+				//need a unique category id for each different filter type
+				Id = categoryId,
+				Label = label,
+				URI = filterType,		//TBD
+				//Description = string.Format( "Search for and select one or more organizations that perform '{0}' relationships.", label ),
+			};
+			filter.Items.Add( new MSR.FilterItem()
+			{
+				Label = string.Format( "Search for and select one or more organizations that perform '{0}' relationships.", label ),
+				URI = "interfaceType:TextValue",
+				InterfaceType = APIFilter.InterfaceType_Autocomplete
+			} );
 
+			return filter;
+		}
 		private static MSR.Filter GetIndustryFilters( string labelPlural, string hasAnyURI )
 		{
 			var filter = new MSR.Filter()
@@ -1513,7 +1251,7 @@ namespace workIT.Services.API
 		}
 		public static void AddFilterToCache( FilterResponse entity )
 		{
-			int cacheMinutes = 120;
+			int cacheMinutes = 60;
 
 			string key = entity.SearchType + "_queryFilter";
 
@@ -1546,17 +1284,8 @@ namespace workIT.Services.API
 		}
 
 		#endregion
+
+		*/
 	}
 
-	//Shouldn't this go in the workit.Services/API/SearchServices_Filters.cs file instead?
-	public class CachedFilter
-	{
-		public CachedFilter()
-		{
-			lastUpdated = DateTime.Now;
-		}
-		public DateTime lastUpdated { get; set; }
-		public FilterResponse Item { get; set; }
-
-	}
 }

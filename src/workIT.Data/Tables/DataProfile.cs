@@ -22,6 +22,13 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string DataProfileAttributeSummaryJson { get; set; }
         public string DataProfileAttributesJson { get; set; }
+        public Nullable<int> AdministrativeRecordCategoryId { get; set; }
+        public Nullable<int> IncomeDeterminationMethodId { get; set; }
+        public string Adjustment { get; set; }
+        public string EarningsDefinition { get; set; }
+        public string EarningsThreshold { get; set; }
+        public string EmploymentDefinition { get; set; }
+        public string WorkTimeThreshold { get; set; }
     
         public virtual DataSetTimeFrame DataSetTimeFrame { get; set; }
     }

@@ -418,7 +418,7 @@ namespace workIT.Services
 			//TODO	- add caching as only changes daily - especially if not exposing filtering.
 			//		- OR get all and cache
 
-			bool IsDescending = false;
+			//bool IsDescending = false;
 			var filter = "";
 			string OR = "";
 

@@ -131,7 +131,7 @@ namespace workIT.Models.Elastic
         public string RegulatedByResults { get; set; }
 		
 
-		public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
+		//public List<IndexQualityAssurance> QualityAssurance { get; set; } = new List<IndexQualityAssurance>();
 		public bool HasQualityAssurancePerformed { get; set; }
 		public bool HasCredentialsQAPerformed { get; set; }
 		public bool HasOrganizationsQAPerformed { get; set; }

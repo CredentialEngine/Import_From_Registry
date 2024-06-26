@@ -42,7 +42,7 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, "PopulateAllCaches", false );
+                LoggingHelper.LogError( ex, "PopulateAllCaches" );
 
             }
 
@@ -200,7 +200,7 @@ namespace workIT.Factories
 				}
 			} catch (Exception ex )
 			{
-				LoggingHelper.LogError( ex, "PopulateOrgRelatedCaches", false );
+				LoggingHelper.LogError( ex, "PopulateOrgRelatedCaches" );
 
 			}
 
@@ -230,7 +230,7 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, "UpdateCodeTableCounts", false );
+                LoggingHelper.LogError( ex, "UpdateCodeTableCounts" );
 
             }
 			//NOT seeing this!!!!!
@@ -263,7 +263,7 @@ namespace workIT.Factories
 
 						//check if user can update the object
 						//or move these checks to the manager
-						//string status = "";
+						//string status = string.Empty;
 						//if ( !CanUserUpdateCredential( id, user, ref status ) )
 						//	cache.Item.CanEditRecord = false;
 
@@ -333,7 +333,7 @@ namespace workIT.Factories
 						LoggingHelper.DoTrace( 7, string.Format( "%%%CacheManager.IsLearningOpportunityAvailableFromCache === Using cached version of LearningOpportunity, Id: {0}, {1}", cache.Item.Id, cache.Item.Name ) );
 
 						//check if user can update the object
-						//string status = "";
+						//string status = string.Empty;
 						//if ( !CanUserUpdateCredential( id, user, ref status ) )
 						//	cache.Item.CanEditRecord = false;
 
@@ -403,7 +403,7 @@ namespace workIT.Factories
 						LoggingHelper.DoTrace( 7, string.Format( "===CacheManager.IsConditionProfileAvailableFromCache === Using cached version of ConditionProfile, Id: {0}, {1}", cache.Item.Id, cache.Item.ProfileName ) );
 
 						//check if user can update the object
-						//string status = "";
+						//string status = string.Empty;
 						//if ( !CanUserUpdateCredential( id, user, ref status ) )
 						//	cache.Item.CanEditRecord = false;
 

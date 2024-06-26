@@ -23,9 +23,9 @@ namespace workIT.Factories
 		public int Add( ThisEntity entity )
 		{
 			int count = 0;
-			string truncateMsg = "";
+			string truncateMsg = string.Empty;
 			bool isBot = false;
-			string server = UtilityManager.GetAppKeyValue( "serverName", "" );
+			string server = UtilityManager.GetAppKeyValue( "serverName", string.Empty );
 
 			string agent = GetUserAgent( ref isBot );
 			DBEntity efEntity = new DBEntity();
@@ -214,7 +214,7 @@ namespace workIT.Factories
 				if ( HttpContext.Current != null )
 				{
 					ip = HttpContext.Current.Request.ServerVariables[ "HTTP_X_FORWARDED_FOR" ];
-					if ( ip == null || ip == "" || ip.ToLower() == "unknown" )
+					if ( ip == null || ip == string.Empty || ip.ToLower() == "unknown" )
 					{
 						ip = HttpContext.Current.Request.ServerVariables[ "REMOTE_ADDR" ];
 					}
@@ -230,7 +230,7 @@ namespace workIT.Factories
 		} //
 		private static string GetUserReferrer()
 		{
-			string lRefererPage = "";
+			string lRefererPage = string.Empty;
 			try
 			{
 				if ( HttpContext.Current != null )
@@ -254,7 +254,7 @@ namespace workIT.Factories
 		} //
 		public static string GetUserAgent( ref bool isBot )
 		{
-			string agent = "";
+			string agent = string.Empty;
 			isBot = false;
 			try
 			{
@@ -402,7 +402,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "MessageSearch", c ) )
@@ -451,17 +451,17 @@ namespace workIT.Factories
 					item.Created = GetRowColumn( dr, "Created", DateTime.Now );
 
 					item.Application = GetRowColumn( dr, "Application", "CredentialFinder" );
-					item.Activity = GetRowColumn( dr, "Activity", "" );
+					item.Activity = GetRowColumn( dr, "Activity", string.Empty );
 					item.MessageType = GetRowColumn( dr, "MessageType", "MessageType" );
-					item.Message = GetRowColumn( dr, "Message", "" );					
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Message = GetRowColumn( dr, "Message", string.Empty );					
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 					//
 					item.ActionByUserId = GetRowColumn( dr, "ActionByUserId", 0 );
-					item.ActivityObjectId = GetRowColumn( dr, "ActivityObjectId", "" );
-					item.RelatedUrl = GetRowColumn( dr, "RelatedUrl", "" );
+					item.ActivityObjectId = GetRowColumn( dr, "ActivityObjectId", string.Empty );
+					item.RelatedUrl = GetRowColumn( dr, "RelatedUrl", string.Empty );
 					//
-					item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
-					item.SessionId = GetRowColumn( dr, "SessionId", "" );
+					item.IPAddress = GetRowColumn( dr, "IPAddress", string.Empty );
+					item.SessionId = GetRowColumn( dr, "SessionId", string.Empty );
 					
 
 					list.Add( item );

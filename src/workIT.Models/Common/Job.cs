@@ -52,11 +52,7 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string Type { get; set; } = "ceterms:Job";
 
-		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
-
-
-
-		/// <summary>
+			/// <summary>
 		/// IndustryType
 		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
 		/// Best practice in identifying industries for U.S. credentials is to provide the NAICS code using the ceterms:naics property. 
@@ -70,21 +66,23 @@ namespace workIT.Models.Common
 		/// ceterms:keyword
 		/// </summary>
 		//public List<string> Keyword { get; set; }
-		public List<TextValueProfile> Keyword { get; set; }
+		public List<string> Keyword { get; set; }
 
         public List<ResourceSummary> HasOccupation { get; set; } = new List<ResourceSummary>();
         //public List<ResourceSummary> HasSupportService { get; set; } = new List<ResourceSummary>();
         public List<ResourceSummary> HasWorkRole { get; set; } = new List<ResourceSummary>();
         public List<ResourceSummary> HasTask{ get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ProvidesTransferValueFor { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ReceivesTransferValueFrom { get; set; } = new List<ResourceSummary>();
 
 
-        /// <summary>
-        /// OccupationType
-        /// Type of occupation; select from an existing enumeration of such types.
-        ///  For U.S. credentials, best practice is to identify an occupation using a framework such as the O*Net. 
-        ///  Other credentials may use any framework of the class ceterms:OccupationClassification, such as the EU's ESCO, ISCO-08, and SOC 2010.
-        /// </summary>
-        public List<CredentialAlignmentObjectProfile> OccupationType { get; set; } = new List<CredentialAlignmentObjectProfile>();
+		/// <summary>
+		/// OccupationType
+		/// Type of occupation; select from an existing enumeration of such types.
+		///  For U.S. credentials, best practice is to identify an occupation using a framework such as the O*Net. 
+		///  Other credentials may use any framework of the class ceterms:OccupationClassification, such as the EU's ESCO, ISCO-08, and SOC 2010.
+		/// </summary>
+		public List<CredentialAlignmentObjectProfile> OccupationType { get; set; } = new List<CredentialAlignmentObjectProfile>();
 
 		/// <summary>
 		/// Organization(s) that offer this resource
@@ -99,7 +97,7 @@ namespace workIT.Models.Common
 		/// ceterms:sameAs
 		/// </summary>
 		//public List<string> SameAs { get; set; }
-		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+		public List<string> SameAs { get; set; } = new List<string>();
 
 		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
 
@@ -124,7 +122,9 @@ namespace workIT.Models.Common
         public List<int> HasWorkRoleIds { get; set; }
         //public List<int> HasSupportServiceIds { get; set; } = new List<int>();
         public List<Guid> OfferedByList { get; set; }
-        public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
+		public List<int> ProvidesTVForIds { get; set; }
+		public List<int> ReceivesTVFromIds { get; set; }
+		public List<CredentialAlignmentObjectProfile> Occupations { get; set; }
 		public List<CredentialAlignmentObjectProfile> Industries { get; set; }
         #endregion
      

@@ -4,16 +4,16 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Runtime.InteropServices;
-
+using System.Web.UI.WebControls;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Elastic;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using DBEntity = workIT.Data.Tables.Organization;
+using DBResource = workIT.Data.Tables.Organization;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ThisEntity = workIT.Models.Common.Organization;
+using ThisResource = workIT.Models.Common.Organization;
 
 namespace workIT.Factories
 {
@@ -36,7 +36,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -61,7 +61,7 @@ namespace workIT.Factories
 
 					if ( entity.Id > 0 )
 					{
-						DBEntity efEntity = context.Organization
+						DBResource efEntity = context.Organization
 								.SingleOrDefault( s => s.Id == entity.Id );
 
 						if ( efEntity != null && efEntity.Id > 0 )
@@ -175,14 +175,14 @@ namespace workIT.Factories
 			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 			{
 				string message = HandleDBValidationError( dbex, thisClassName + string.Format( ".Save() id: {0}, Name: {1}", entity.Id, entity.Name ), "Organization" );
-				status.AddError( "Error - the save was not successful. " + message );
-				LoggingHelper.LogError( dbex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
+				status.AddError( $"{thisClassName}.Save FAILED. id: {entity.Id}, Name: {entity.Name}, CTID: {entity.CTID} MSG:" + message );
+				LoggingHelper.LogError( dbex, $"{thisClassName}.Save. id: {entity.Id}, Name: {entity.Name}, CTID: {entity.CTID}" );
 			}
 			catch ( Exception ex )
 			{
 				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
-				status.AddError( thisClassName + " Error - the save was not successful. " + message );
+				LoggingHelper.LogError( ex, $"{thisClassName}.Save. id: {entity.Id}, Name: {entity.Name}, CTID: {entity.CTID}" );
+				status.AddError( $"{thisClassName}.Save FAILED. id: {entity.Id}, Name: {entity.Name}, CTID: {entity.CTID} MSG:" + message );
 				isValid = false;
 			}
 
@@ -196,9 +196,9 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		private int Add( ThisEntity entity, ref SaveStatus status )
+		private int Add( ThisResource entity, ref SaveStatus status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			using ( var context = new EntityContext() )
 			{
 				try
@@ -262,7 +262,7 @@ namespace workIT.Factories
 				{
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() Org: " + entity.Name, "Organization" );
 					status.AddError( thisClassName + ".Save() Error - the save was not successful. " + message );
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError(dbex, message);
 				}
 				catch ( Exception ex )
 				{
@@ -281,9 +281,9 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public int AddReferenceOrganization( ThisEntity entity, ref SaveStatus status )
+		public int AddReferenceOrganization( ThisResource entity, ref SaveStatus status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -299,11 +299,14 @@ namespace workIT.Factories
 
 					//only add DB required properties
 					//NOTE - an entity will be created via trigger
+					//23-10-23 - ahh - now reference resources can have a lot of info. maybe just use 
+					MapToDB( entity, efEntity );
 					efEntity.EntityStateId = entity.EntityStateId = 2;
+
 					efEntity.Name = entity.Name.Replace( " &amp; ", " and " ).Replace(" & "," and ");
-					efEntity.Description = entity.Description;
-					efEntity.SubjectWebpage = entity.SubjectWebpage;
-					efEntity.ISQAOrganization = entity.ISQAOrganization;
+					//efEntity.Description = entity.Description;
+					//efEntity.SubjectWebpage = entity.SubjectWebpage;
+					//efEntity.ISQAOrganization = entity.ISQAOrganization;
 					if (entity.ISQAOrganization)
 						efEntity.EntityTypeId = CodesManager.ENTITY_TYPE_QAORGANIZATION;
 					else
@@ -318,10 +321,10 @@ namespace workIT.Factories
 
 					//TODO  - this is to be a list now (some time ago)
 					//prepart for being JSON, by just storing
-					if ( !string.IsNullOrWhiteSpace( entity.AvailabilityListing ) )
-						efEntity.AvailabilityListing = entity.AvailabilityListing;
-					else
-						efEntity.AvailabilityListing = null;
+					//if ( !string.IsNullOrWhiteSpace( entity.AvailabilityListing ) )
+					//	efEntity.AvailabilityListing = entity.AvailabilityListing;
+					//else
+					//	efEntity.AvailabilityListing = null;
 
 					if ( IsValidGuid( entity.RowId ) )
 						efEntity.RowId = entity.RowId;
@@ -330,11 +333,13 @@ namespace workIT.Factories
 					//set to return, just in case
 					entity.RowId = efEntity.RowId;
 					//WHY - could have a reference to a full org - actually full org would always have to exist
-					efEntity.IsThirdPartyOrganization = true;
+					//efEntity.IsThirdPartyOrganization = true;
 					efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 					//set to active 
-					var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+					//23-11-13 - no longer set a default.
+					//	BUT - it is non-null in the database. So leaving. Could suppress for references.
+					var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 					efEntity.LifeCycleStatusTypeId = defStatus.Id;
 
 					context.Organization.Add( efEntity );
@@ -362,10 +367,6 @@ namespace workIT.Factories
 						};
 						new ActivityManager().SiteActivityAdd( sa );
 
-						//if ( erm.Add( entity.SocialMediaPages, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SOCIAL_MEDIA, true ) == false )
-						//{
-						//	//isAllValid = false;
-						//}
 						//call updateParts to handle recent and future additions
 						UpdateParts( entity, ref status );
 						entity.Id = efEntity.Id;
@@ -385,7 +386,7 @@ namespace workIT.Factories
 			}
 			return 0;
 		}
-		public void UpdateEntityCache( ThisEntity document, ref SaveStatus status )
+		public void UpdateEntityCache( ThisResource document, ref SaveStatus status )
 		{
 			EntityCache ec = new EntityCache()
 			{
@@ -404,20 +405,20 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-            //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
-            var ceasedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+			//var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			var ceasedStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
             if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
             {
                 ec.IsActive = false;
             }
-            var statusMessage = "";
+            var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
 		}
 
-		public void AddQAOrgTypeProperty( ThisEntity entity, ref SaveStatus status )
+		public void AddQAOrgTypeProperty( ThisResource entity, ref SaveStatus status )
 		{
 			entity.AgentType = new Enumeration() { Name = "OrgTypes" };
 			
@@ -435,7 +436,7 @@ namespace workIT.Factories
 		}
 		public int AddPendingRecord( Guid entityUid, string ctid, string registryAtId, ref SaveStatus status )
 		{
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -466,7 +467,7 @@ namespace workIT.Factories
 					efEntity.Created = System.DateTime.Now;
 					efEntity.LastUpdated = System.DateTime.Now;
 					//set to active 
-					var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+					var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 					efEntity.LifeCycleStatusTypeId = defStatus.Id;
 
 					context.Organization.Add( efEntity );
@@ -521,7 +522,7 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity efEntity = context.Organization
+					DBResource efEntity = context.Organization
 							.SingleOrDefault( s => s.Id == recordId );
 					if ( efEntity != null && efEntity.Id > 0 )
 					{
@@ -540,23 +541,22 @@ namespace workIT.Factories
 							else
 							{
 								//?no info on error
-								LoggingHelper.LogError( string.Format( "Error - the Json update was not successful for organization: {0}, Id: {1}. But no reason is present.", efEntity.Name, efEntity.Id ), false );
+								LoggingHelper.LogError( string.Format( "Error - the Json update was not successful for organization: {0}, Id: {1}. But no reason is present.", efEntity.Name, efEntity.Id ) );
 								isValid = false;
 							}
 						}
 					}
 					else
 					{
-						LoggingHelper.LogError( string.Format( "Error - UpdateJson failed, as record was not found. recordId: {0}", recordId ), false );
+						LoggingHelper.LogError( string.Format( "Error - UpdateJson failed, as record was not found. recordId: {0}", recordId ) );
 						isValid = false;
 					}
 				}
-
 			}
 			catch ( Exception ex )
 			{
 				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( thisClassName + ".UpdateJson(). Error - the save was not successful. " + message, false );
+				LoggingHelper.LogError( ex, thisClassName + ".UpdateJson(). Error - the save was not successful. " + message );
 				isValid = false;
 			}
 
@@ -564,7 +564,7 @@ namespace workIT.Factories
 		}
 
 
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 
 			bool isAllValid = true;
@@ -606,6 +606,8 @@ namespace workIT.Factories
 				isAllValid = false;
 
 			//contact points (does delete all - check on implications from address manager)
+			//clarify this. The contact point is under the Entity for an address, yet these are being saved under the org?
+			//		- any contacts imported with an empty address, would have been added directly to the org
 			new Entity_ContactPointManager().SaveList( entity.ContactPoint, entity.RowId, ref status );
 
 			//addresses
@@ -645,7 +647,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		public bool UpdateProperties( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public bool UpdateProperties( ThisResource resource, Entity relatedEntity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			//==== convert to entity properties ========================
@@ -654,50 +656,65 @@ namespace workIT.Factories
 			//first clear all propertiesd
 			mgr.DeleteAll( relatedEntity, ref status );
 
-			if ( mgr.AddProperties( entity.AgentType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE, entity.EntityStateId == 3, ref status ) == false )
+			if ( mgr.AddProperties( resource.AgentType, resource.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_TYPE, resource.EntityStateId == 3, ref status ) == false )
 				isAllValid = false;
 
 			//TODO - may want a check to toggle the IsQaOrg property. It is used for other checks
 			// however this would not be dependable, need to query on MapFromDB
 
-			if ( mgr.AddProperties( entity.AgentSectorType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE, false, ref status ) == false )
+			if ( mgr.AddProperties( resource.AgentSectorType, resource.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORGANIZATION_SECTORTYPE, false, ref status ) == false )
 			{
 				isAllValid = false;
 			}
 
 			//using Entity.Property in workIT, rather than Organization.Service
-			if ( mgr.AddProperties( entity.ServiceType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE, false, ref status ) == false )
+			if ( mgr.AddProperties( resource.ServiceType, resource.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_ORG_SERVICE, false, ref status ) == false )
 				isAllValid = false;
-			//
-			//if ( mgr.AddProperties( entity.LifeCycleStatusType, entity.RowId, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status ) == false )
-			//	isAllValid = false;
 
 			//}
 			return isAllValid;
 		}
 
-		public void AddProfiles( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		public void AddProfiles( ThisResource resource, Entity relatedEntity, ref SaveStatus status )
 		{
 			//Identifier
-			new Entity_IdentifierValueManager().SaveList( entity.Identifier, entity.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier, ref status, true );
+			new Entity_IdentifierValueManager().SaveList( resource.Identifier, resource.RowId, Entity_IdentifierValueManager.IdentifierValue_Identifier, ref status, true );
 
-			//ProcessProfile
-			Entity_ProcessProfileManager ppm = new Factories.Entity_ProcessProfileManager();
-			ppm.DeleteAll( relatedEntity, ref status );
-			ppm.SaveList( entity.AdministrationProcess, Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.AppealProcess, Entity_ProcessProfileManager.APPEAL_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.ComplaintProcess, Entity_ProcessProfileManager.COMPLAINT_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.DevelopmentProcess, Entity_ProcessProfileManager.DEV_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.MaintenanceProcess, Entity_ProcessProfileManager.MTCE_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.ReviewProcess, Entity_ProcessProfileManager.REVIEW_PROCESS_TYPE, entity.RowId, ref status );
-			ppm.SaveList( entity.RevocationProcess, Entity_ProcessProfileManager.REVOKE_PROCESS_TYPE, entity.RowId, ref status );
+			try
+			{
+				//ProcessProfile
+				Entity_ProcessProfileManager ppm = new Factories.Entity_ProcessProfileManager();
+				ppm.DeleteAll( relatedEntity, ref status );
+				ppm.SaveList( resource.AdministrationProcess, Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.AppealProcess, Entity_ProcessProfileManager.APPEAL_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.ComplaintProcess, Entity_ProcessProfileManager.COMPLAINT_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.DevelopmentProcess, Entity_ProcessProfileManager.DEV_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.MaintenanceProcess, Entity_ProcessProfileManager.MTCE_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.ReviewProcess, Entity_ProcessProfileManager.REVIEW_PROCESS_TYPE, resource.RowId, ref status );
+				ppm.SaveList( resource.RevocationProcess, Entity_ProcessProfileManager.REVOKE_PROCESS_TYPE, resource.RowId, ref status );
+			} catch (Exception ex)
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				var message = $"{thisClassName}.AddProfiles-Entity_ProcessProfile exception. CTID: {resource.CTID}, Name: {resource.Name}. Msg:" + msg;
+				status.AddError( message );
+				LoggingHelper.LogError( ex, message );
+			}
 
-
-			//JurisdictionProfile 
-			Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
-			//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
-			jpm.DeleteAll( relatedEntity, ref status );
-			jpm.SaveList( entity.Jurisdiction, entity.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			try
+			{
+				//JurisdictionProfile 
+				Entity_JurisdictionProfileManager jpm = new Entity_JurisdictionProfileManager();
+				//do deletes - NOTE: other jurisdictions are added in: UpdateAssertedIns
+				jpm.DeleteAll( relatedEntity, ref status );
+				jpm.SaveList( resource.Jurisdiction, resource.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_SCOPE, ref status );
+			}
+			catch ( Exception ex )
+			{
+				var msg = BaseFactory.FormatExceptions( ex );
+				var message = $"{thisClassName}.AddProfiles-Jurisdiction exception. CTID: {resource.CTID}, Name: {resource.Name}. Msg:" + msg;
+				status.AddError( message );
+				LoggingHelper.LogError( ex, message );
+			}
 
 			//the add is done from the CostManifest import, SO DON'T DO HERE
 			//new ConditionManifestManager().HasConditionManifest_SaveList( entity.ConditionManifestIds, entity.RowId, ref status );
@@ -709,12 +726,15 @@ namespace workIT.Factories
 			//{
 			//handling HasVerificationService
 			// ALSO, may not have the service yet where the org is published first. Do we do pending?
-			new Entity_HasVerificationServiceManager().SaveList( entity.HasVerificationServiceIds, relatedEntity, ref status );
-			//}
-			//else
-			//{
-			//    new Entity_VerificationProfileManager().SaveList( entity.VerificationServiceProfiles, entity.RowId, ref status );
-			//}
+			if ( resource.HasVerificationServiceIds!= null && resource.HasVerificationServiceIds.Any() )
+			{ 
+				new Entity_HasVerificationServiceManager().SaveList( resource.HasVerificationServiceIds, relatedEntity, ref status );
+			}
+			else
+			{
+				//if we run into old orgs being reimported, this should be skipped, as hopefully the new VSP has been published/imported
+				//new Entity_VerificationProfileManager().SaveList( resource.VerificationServiceProfiles, resource.RowId, ref status );
+			}
 
 		}
 
@@ -724,7 +744,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool UpdateAssertedBys( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateAssertedBys( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
@@ -761,7 +781,7 @@ namespace workIT.Factories
 		}
 
 
-		public void UpdateAssertedIns( ThisEntity entity, ref SaveStatus status )
+		public void UpdateAssertedIns( ThisResource entity, ref SaveStatus status )
 		{
 			Entity_JurisdictionProfileManager mgr = new Entity_JurisdictionProfileManager();
 			Entity parent = EntityManager.GetEntity( entity.RowId );
@@ -784,7 +804,7 @@ namespace workIT.Factories
 		  /// <param name="entity"></param>
 		  /// <param name="status"></param>
 		  /// <returns></returns>
-		public bool UpdateProvidesAssertions( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateProvidesAssertions( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AssertionManager mgr = new Entity_AssertionManager();
@@ -836,7 +856,7 @@ namespace workIT.Factories
 		//        try
 		//        {
 		//            //ensure exists
-		//            DBEntity efEntity = context.Organization
+		//            DBResource efEntity = context.Organization
 		//                        .FirstOrDefault( s => s.Id == orgId );
 
 		//            if ( efEntity != null && efEntity.Id > 0 )
@@ -921,7 +941,7 @@ namespace workIT.Factories
 				try
 				{
 					context.Configuration.LazyLoadingEnabled = false;
-					DBEntity efEntity = context.Organization
+					DBResource efEntity = context.Organization
 								.FirstOrDefault( s => s.CTID == ctid );
 
 					if ( efEntity != null && efEntity.Id > 0 )
@@ -1001,7 +1021,7 @@ namespace workIT.Factories
             }
             return isValid;
         }
-        public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+        public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
         {
             status.HasSectionErrors = false;
 
@@ -1015,7 +1035,7 @@ namespace workIT.Factories
 			}
 
 			//
-			var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
 			{
 				profile.LifeCycleStatusTypeId = defStatus.Id;
@@ -1023,7 +1043,7 @@ namespace workIT.Factories
 			else
 			{
 				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
-				CodeItem ci = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
 				if ( ci == null || ci.Id < 1 )
 				{
 					//while this should never happen, should have a default
@@ -1081,16 +1101,16 @@ namespace workIT.Factories
 		#endregion
 
 		#region Retrieval 
-		public static ThisEntity GetDetail( int id )
+		public static ThisResource GetDetail( int id )
 		{
 
 			bool includeCredentials = true;
 			bool includingRoles = true;
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 
 			using ( var context = new Data.Tables.workITEntities() )
 			{
-				DBEntity item = context.Organization.FirstOrDefault( s => s.Id == id );
+				DBResource item = context.Organization.FirstOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -1112,14 +1132,14 @@ namespace workIT.Factories
 
 			return entity;
 		}
-        public static ThisEntity GetDetail( Guid id )
+        public static ThisResource GetDetail( Guid id )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
 
             using ( var context = new Data.Tables.workITEntities() )
             {
                 context.Configuration.LazyLoadingEnabled = false;
-                DBEntity item = context.Organization.FirstOrDefault( s => s.RowId == id );
+                DBResource item = context.Organization.FirstOrDefault( s => s.RowId == id );
 
                 if ( item != null && item.Id > 0 )
                 {
@@ -1129,19 +1149,19 @@ namespace workIT.Factories
 
             return entity;
         }
-        public static ThisEntity GetDetailForAPI( int id, OrganizationRequest request )
+        public static ThisResource GetDetailForAPI( int id, OrganizationRequest request )
 		{
 
 			//bool includeCredentials = true;
 			//bool includingRoles = true;
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			//var request = new OrganizationRequest( 2 );
 			//1=summary, 2=details
 			//bool includingProcessProfileDetails = false;
 			//bool includingVerificationServicesProfileDetails = false;
 			using ( var context = new Data.Tables.workITEntities() )
 			{
-				DBEntity item = context.Organization.FirstOrDefault( s => s.Id == id );
+				DBResource item = context.Organization.FirstOrDefault( s => s.Id == id );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -1155,12 +1175,12 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static ThisEntity GetDetailForAPI( string ctid, OrganizationRequest request )
+		public static ThisResource GetDetailForAPI( string ctid, OrganizationRequest request )
 		{
 
 			//bool includeCredentials = true;
 			//bool includingRoles = true;
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 			//var request = new OrganizationRequest( 2 );
@@ -1169,7 +1189,7 @@ namespace workIT.Factories
 			//bool includingVerificationServicesProfileDetails = false;
 			using ( var context = new Data.Tables.workITEntities() )
 			{
-				DBEntity item = context.Organization.FirstOrDefault( s => s.CTID == ctid );
+				DBResource item = context.Organization.FirstOrDefault( s => s.CTID == ctid );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -1184,16 +1204,16 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static ThisEntity GetSummaryByCtid( string ctid, bool acceptingPendingStatus = true )
+		public static ThisResource GetSummaryByCtid( string ctid, bool acceptingPendingStatus = true )
 		{
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return to;
 			bool includingExternalData = false;
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 				if ( from != null && from.Id > 0 )
@@ -1210,16 +1230,16 @@ namespace workIT.Factories
 			}
 			return to;
 		}
-		public static ThisEntity GetMinimumSummaryByCtid( string ctid, bool fromImport = false )
+		public static ThisResource GetMinimumSummaryByCtid( string ctid, bool fromImport = false )
 		{
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return to;
 
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
 
 				if ( from != null && from.Id > 0 )
@@ -1237,15 +1257,15 @@ namespace workIT.Factories
 		}
 
 		//
-		//public static ThisEntity GetBySubjectWebpage( string swp )
+		//public static ThisResource GetBySubjectWebpage( string swp )
 		//{
-		//	ThisEntity to = new ThisEntity();
+		//	ThisResource to = new ThisResource();
 		//	if ( string.IsNullOrWhiteSpace( swp ) )
 		//		return to;
 		//	using ( var context = new EntityContext() )
 		//	{
 		//		context.Configuration.LazyLoadingEnabled = false;
-		//		DBEntity from = context.Organization
+		//		DBResource from = context.Organization
 		//				.FirstOrDefault( s => s.SubjectWebpage.ToLower() == swp.ToLower() );
 
 		//		if ( from != null && from.Id > 0 )
@@ -1264,12 +1284,12 @@ namespace workIT.Factories
 		/// <param name="name"></param>
 		/// <param name="swp"></param>
 		/// <returns></returns>
-		public static ThisEntity GetByName_SubjectWebpage(string name, string swp)
+		public static ThisResource GetByName_SubjectWebpage(string name, string swp)
 		{
 			//20-12-17 - other checks are allowing searching with a null swp. As this search does partials, continue to not allowing nulls - will need to revisit
 			//21-12-07 - the URL checking should use the domain only, and handle with and without www
 
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 			//truncate the protocal identifier
 			if (string.IsNullOrWhiteSpace(swp))
 				return null;
@@ -1278,77 +1298,137 @@ namespace workIT.Factories
 			bool hasHttps = false;
 			if (swp.ToLower().IndexOf("https:") > -1)
 				hasHttps = true;
-			//
-			name = name.Replace( "&amp;", "and" );
-			name = name.Replace( " & ", " and " );
+			//?? only useful if consistently replaced!
+			var nameMod = name.Replace( "&amp;", "and" );
+			nameMod = nameMod.Replace( " & ", " and " );
 			//swp = swp.Substring( swp.IndexOf( "//" ) + 2 );
 			swp = swp.ToLower().TrimEnd( '/' );
 			var host = new Uri(swp).Host;
 			var domain = host.Substring(host.LastIndexOf('.', host.LastIndexOf('.') - 1) + 1);
 			//
+			var inputLength = name.Length;
+			var namesMustMatchForDuplicateChecks = UtilityManager.GetAppKeyValue( "namesMustMatchForDuplicateChecks", false);
+			//
 			using (var context = new EntityContext())
 			{
-				//s.Name.ToLower() == name.ToLower() && 
+				//do exact first
 				context.Configuration.LazyLoadingEnabled = false;
 				var list = context.Organization
-						.Where(s => s.SubjectWebpage.ToLower().Contains(domain) && s.EntityStateId > 1)
-						.OrderByDescending(s => s.EntityStateId)
-						.ThenBy(s => s.Name)
+						.Where( s => s.EntityStateId > 1 && s.SubjectWebpage.ToLower() == swp 
+							&& (s.Name.ToLower() == name.ToLower() || s.Name.ToLower() == nameMod.ToLower() ) 
+							)
+						.OrderByDescending( s => s.EntityStateId )
+						.ThenBy( s => s.Name )
 						.ToList();
+				if ( list == null || !list.Any() )
+				{
+					list = context.Organization
+						.Where( s => s.EntityStateId > 1 && s.SubjectWebpage.ToLower() == swp )
+						.OrderByDescending( s => s.EntityStateId )
+						.ThenBy( s => s.Name )
+						.ToList();
+				} 
+
+				if ( list == null || !list.Any() )
+				{
+					//just check domain
+					list = context.Organization
+						.Where( s => s.SubjectWebpage.ToLower().Contains( domain ) && s.EntityStateId > 1 )
+						.OrderByDescending( s => s.EntityStateId )
+						.ThenBy( s => s.Name )
+						.ToList();
+				}
 				int cntr = 0;
 
 				ActivityManager amgr = new ActivityManager();
 				if ( list != null && list.Any() )
 				{
+					//any results mean either an exact match on swp or a swp hit on domain
 					foreach ( var from in list )
 					{
 						cntr++;
+						var compareLength = from.Name.Length;
 						//any clean up
-						var nameCheck = from.Name.Replace("&amp;", "and");
+						var nameCheck = from.Name.Replace( "&amp;", "and" );
 						nameCheck = from.Name.Replace( " & ", " and " );
 						//any way to check further?
 						//the full org will be returned first
 						//may want a secondary check and send notifications if additional full orgs found, or even if multiples are found.
-						if ( name.ToLower().Contains( nameCheck.ToLower() ) || nameCheck.ToLower().Contains( name.ToLower() ) )
+
+						if ( from.SubjectWebpage.ToLower() == swp )
 						{
-							//OK, take me
-							if ( cntr == 1 || to.Id == 0 )
+							if ( ( name.ToLower() == from.Name.ToLower() || name.ToLower() == nameCheck.ToLower() ) )
 							{
-								//hmmm if input was https and found http, and a reference, should update to https!
-								if ( hasHttps && from.SubjectWebpage.StartsWith( "http:" ) )
-								{
-
-								}
-								//
+								//any considerations where this record has a CTID? that is are there issues when a ref org matches a non ref org?
+								//	while we do want to do this, what are the risks? An org is probably more reliable than a cred, etc. 
 								MapFromDB_ForSummary( from, to );
-								//why not breaking here? It appears the next would be arbitrarily taken
-								//if ( from.EntityStateId == 3 )
-									break;
+								break;
 							}
-                            //else
-                            //{
-                            //	//21-12-20 mp - skip this now based on improved checks and implementing a merge process
-                            //	if ( from.EntityStateId == 3 )
-                            //	{
-                            //		//could log warning conditions to activity log, and then report out at end of an import?
-                            //amgr.SiteActivityAdd( new SiteActivity()
-                            //{
-                            //    ActivityType = "System",
-                            //    Activity = "Import",
-                            //    Event = $"{EntityType} Reference Check",
-                            //    Comment = $"{Entity_Label} Get by Name and subject webpage. Found additional full {EntityType} for name: {name}, swp: {swp}. First {EntityType}: {entity.Name} ({entity.Id})"
-                            //} );
 
-                            //	}
-                            //	MapFromDB_ForSummary( from, to );
-                            //	break;
-                            //}
-                        } else
-                        {
-							//what can be done if the SWP seems promising but a very different name?
-							//report?
-							//and/or check if there are multiple
-                        }
+							//now if the same swp but different name, then what? 
+							//fall thru could result in dup
+							//could be a swp for an internal site, where all the same?"
+							//might be better to start with begins with
+							if ( name.ToLower().Contains( nameCheck.ToLower() ) || nameCheck.ToLower().Contains( name.ToLower() ) )
+							{
+								//hmm - maybe have check for at least a similar length 
+								int absValue = Math.Abs( inputLength - compareLength );
+								if ( absValue < 10 ) //???
+								{
+									MapFromDB_ForSummary( from, to );
+									break;
+								}
+							}
+						}
+						else
+						{
+							//no exact/reasonable match on swp, but domains are the same
+							//OK, if same name then OK?
+							if ( ( name.ToLower() == from.Name.ToLower() || name.ToLower() == nameCheck.ToLower() ) )
+							{
+								//any considerations where this record has a CTID? that is are there issues when a ref org matches a non ref org?
+								//	while we do want to do this, what are the risks? An org is probably more reliable than a cred, etc. 
+								MapFromDB_ForSummary( from, to );
+								break;
+							}
+							if ( namesMustMatchForDuplicateChecks)
+							{
+								//
+								continue;
+							}
+							//the contains is undependable, like found with IBM
+							if ( name.ToLower().Contains( nameCheck.ToLower() ) || nameCheck.ToLower().Contains( name.ToLower() ) )
+							{
+								int absValue = Math.Abs( inputLength - compareLength );
+								if ( absValue < 10 ) //???
+								{
+									MapFromDB_ForSummary( from, to );
+									break;
+								}
+								//NO other guesses
+								////OK, take me
+								//if ( cntr == 1 || to.Id == 0 )
+								//{
+								//	//hmmm if input was https and found http, and a reference, should update to https!
+								//	if ( hasHttps && from.SubjectWebpage.StartsWith( "http:" ) )
+								//	{
+
+								//	}
+								//	//
+								//	MapFromDB_ForSummary( from, to );
+								//	//why not breaking here? It appears the next would be arbitrarily taken
+								//	//if ( from.EntityStateId == 3 )
+								//	break;
+								//}
+
+							}
+							else
+							{
+								//what can be done if the SWP seems promising but a very different name?
+								//report?
+								//and/or check if there are multiple
+							}
+						}
 					}
 				} else
                 {
@@ -1360,13 +1440,15 @@ namespace workIT.Factories
 			return to;
 		}
 		/// <summary>
-		/// Get a basic org - will not return a pending record
+		/// Get a basic org - will not return a pending record.
+		/// 23-11-17 mparsons - changed includingExternalData to false
 		/// </summary>
 		/// <param name="rowId"></param>
+		/// <param name="includingExternalData"></param>
 		/// <returns></returns>
-		public static ThisEntity GetBasics( Guid rowId, bool includingExternalData = true )
+		public static ThisResource GetBasics( Guid rowId, bool includingExternalData = false )
 		{
-			ThisEntity output = new ThisEntity();
+			ThisResource output = new ThisResource();
 			if ( !IsGuidValid( rowId ) )
 				return output;
 
@@ -1374,7 +1456,7 @@ namespace workIT.Factories
 			{
 				context.Configuration.LazyLoadingEnabled = false;
 				//need to be careful with the entity state check as may be needed for resolution!
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.FirstOrDefault( s => s.RowId == rowId && ( s.EntityStateId ?? 1 ) > 1 );
 
 				if ( from != null && from.Id > 0 )
@@ -1387,17 +1469,17 @@ namespace workIT.Factories
 		}
 
 		//21-05-07 mp noticed this is a duplicate of the above method - except doesn't do the entitystateId check
-		public static ThisEntity GetForSummary( Guid id, bool includingExternalData = false )
+		public static ThisResource GetForSummary( Guid id, bool includingExternalData = false )
 		{
 
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 			if ( ( id == null || id == Guid.Empty ) )
 				return to;
 
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.FirstOrDefault( s => s.RowId == id );
 
 				if ( from != null && from.Id > 0 )
@@ -1417,14 +1499,14 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="rowId"></param>
 		/// <returns></returns>
-		public static ThisEntity Exists( Guid rowId )
+		public static ThisResource Exists( Guid rowId )
 		{
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
 				//need to be careful with the entity state check as may be needed for resolution!
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.FirstOrDefault( s => s.RowId == rowId );
 
 				if ( from != null && from.Id > 0 )
@@ -1440,10 +1522,10 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="includingRoles"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( ref int totalRows, bool includingRoles = false )
+		public static List<ThisResource> GetAll( ref int totalRows, bool includingRoles = false )
 		{
-			List<ThisEntity> list = new List<ThisEntity>();
-			ThisEntity to = new ThisEntity();
+			List<ThisResource> list = new List<ThisResource>();
+			ThisResource to = new ThisResource();
 
 			using ( var context = new EntityContext() )
 			{
@@ -1453,8 +1535,9 @@ namespace workIT.Factories
 				totalRows = results.Count();
 				foreach (var from in results)
 				{
-					to = new ThisEntity();
-					MapFromDB_ForSummary( from, to, true );
+					to = new ThisResource();
+					//24-03-10 mp - changed to NOT include roles
+					MapFromDB_ForSummary( from, to, false );
 					//may want to check org role targets at some point
 					if ( includingRoles )
 					{
@@ -1472,15 +1555,15 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="id"></param>
 		/// <returns></returns>
-		public static ThisEntity GetForSummary( int id, bool includingRoles = false )
+		public static ThisResource GetForSummary( int id, bool includingRoles = false )
 		{
 
-			ThisEntity to = new ThisEntity();
+			ThisResource to = new ThisResource();
 
 			using ( var context = new EntityContext() )
 			{
 				context.Configuration.LazyLoadingEnabled = false;
-				DBEntity from = context.Organization
+				DBResource from = context.Organization
 						.SingleOrDefault( s => s.Id == id );
 
 				if ( from != null && from.Id > 0 )
@@ -1502,9 +1585,9 @@ namespace workIT.Factories
 		{
 			bool autocomplete = true;
 			var results = new List<string>();
-			List<OrganizationSummary> list = MainSearch( pFilter, "", pageNumber, pageSize, ref pTotalRows, false, autocomplete );
+			List<OrganizationSummary> list = MainSearch( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, false, autocomplete );
 
-			string prevName = "";
+			string prevName = string.Empty;
 			foreach ( OrganizationSummary item in list )
 			{
 				//note excluding duplicates may have an impact on selected max terms
@@ -1516,11 +1599,11 @@ namespace workIT.Factories
 			return results;
 		}
 
-		public static List<ThisEntity> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool idsOnly = false, bool autocomplete = false )
+		public static List<ThisResource> Search( string pFilter, string pOrderBy, int pageNumber, int pageSize, ref int pTotalRows, bool idsOnly = false, bool autocomplete = false )
 		{
 			string connectionString = DBConnectionRO();
-			ThisEntity item = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
+			ThisResource item = new ThisResource();
+			List<ThisResource> list = new List<ThisResource>();
 			var result = new DataTable();
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
 			{
@@ -1528,7 +1611,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "OrganizationSearch", c ) )
@@ -1563,18 +1646,18 @@ namespace workIT.Factories
 
 					foreach ( DataRow dr in result.Rows )
 					{
-						item = new ThisEntity();
+						item = new ThisResource();
 						item.Id = GetRowColumn( dr, "Id", 0 );
 						item.Name = GetRowColumn( dr, "Name", "missing" );
 						item.FriendlyName = FormatFriendlyTitle( item.Name );
-						item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
                         item.EntityStateId = GetRowColumn( dr, "EntityStateId", 3 );
 
-                        item.Description = GetRowColumn( dr, "Description", "" );
+                        item.Description = GetRowColumn( dr, "Description", string.Empty );
                         string rowId = GetRowColumn( dr, "RowId" );
                         item.RowId = new Guid( rowId );
 
-                        item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+                        item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
                         if ( idsOnly || autocomplete )
 						{
 							list.Add( item );
@@ -1584,16 +1667,16 @@ namespace workIT.Factories
 						
 						
 						//item.CanEditRecord = GetRowColumn( dr, "CanEditRecord", false );
-						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-						item.Image = GetRowColumn( dr, "ImageUrl", "" );
+						item.Image = GetRowColumn( dr, "ImageUrl", string.Empty );
 						if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
 							item.IsACredentialingOrg = true;
 						item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
 
 						//item.FrameworksOwnedByResults = dr[ "FrameworksOwnedByList" ].ToString();
 
-						//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
+						//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", string.Empty ) );
 
 						//all addressess
 						//int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
@@ -1616,7 +1699,7 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName + ".Search()" );
+					LoggingHelper.LogError( ex, thisClassName + ".Search(). Filter: " + pFilter );
 				}
 				return list;
 
@@ -1635,7 +1718,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[OrganizationSearch]", c ) )
@@ -1679,19 +1762,19 @@ namespace workIT.Factories
 						list.Add( item );
 						continue;
 					}
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
-					item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+					item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-					item.Image = GetRowColumn( dr, "ImageUrl", "" );
+					item.Image = GetRowColumn( dr, "ImageUrl", string.Empty );
 					if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
 						item.IsACredentialingOrg = true;
 					item.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
 
-					//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
+					//item.MainPhoneNumber = PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", string.Empty ) );
 
 					//all addressess
 					int addressess = GetRowPossibleColumn( dr, "AvailableAddresses", 0 );
@@ -1740,10 +1823,12 @@ namespace workIT.Factories
 		#endregion
 
 		#region helpers
-		public static void MapFromDB_ForSummary( DBEntity input, ThisEntity output, bool includingExternalData = true )
+		public static void MapFromDB_ForSummary( DBResource input, ThisResource output, bool includingExternalData = true )
 		{
+			LoggingHelper.DoTrace( LoggingHelper.appMethodEntryTraceLevel, thisClassName + ".MapFromDB_ForSummary - entered." );
+
 			//if ( output == null )
-			//	output = new ThisEntity();
+			//	output = new ThisResource();
 			output.Id = input.Id;
 			output.RowId = input.RowId;
 			output.EntityStateId = ( int ) ( input.EntityStateId ?? 1 );
@@ -1761,25 +1846,29 @@ namespace workIT.Factories
 			output.CTID = input.CTID;
 			//
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
-			if ( output.LifeCycleStatusTypeId > 0 )
+			//suppress for references
+			if ( !string.IsNullOrWhiteSpace( output.CTID ) )
 			{
-				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
-				if ( ct != null && ct.Id > 0 )
+				if ( output.LifeCycleStatusTypeId > 0 )
 				{
-					output.LifeCycleStatus = ct.Title;
+					CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
+					if ( ct != null && ct.Id > 0 )
+					{
+						output.LifeCycleStatus = ct.Title;
+					}
+					//retain example using an Enumeration for by other related tableS??? - old detail page?
+					output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+					output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
 				}
-				//retain example using an Enumeration for by other related tableS??? - old detail page?
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
-			}
-			else
-			{
-				//OLD
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
-				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				else
 				{
+					//OLD
+					output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+					EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+					if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+					{
 
+					}
 				}
 			}
 			//
@@ -1818,12 +1907,13 @@ namespace workIT.Factories
 				output.SameAs = Entity_ReferenceManager.GetAll( input.RowId, CodesManager.PROPERTY_CATEGORY_SAME_AS ); //76;
 																				 
 				//21-03-31 - moved here for performance for summary only 
+				//		WARNING VERY SLOW
 				output.OrganizationRole_Recipient = Entity_AssertionManager.GetAllCombinedForTarget( 2, output.Id, output.Id );
 				
 			}
 		}
 
-		public static void MapFromDB( DBEntity input, Organization output,
+		public static void MapFromDB( DBResource input, Organization output,
 					bool includingProperties,
 					bool includeCredentials,
 					bool includingRoles,
@@ -1844,14 +1934,14 @@ namespace workIT.Factories
 			MapFromDB( input, output, request );
 		}
 
-		public static void MapFromDB( DBEntity input, Organization output, OrganizationRequest request )
+		public static void MapFromDB( DBResource input, Organization output, OrganizationRequest request )
 		{
 
 			DateTime overall = DateTime.Now;
 
 
 			if ( output == null )
-				output = new ThisEntity();
+				output = new ThisResource();
 
 			//21-03-05 - assessing performance of returning everything
 			var saveDuration = new TimeSpan();
@@ -1912,32 +2002,36 @@ namespace workIT.Factories
 
 
 			Entity relatedEntity = EntityManager.GetEntity( output.RowId );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-			{
-				output.EntityId = relatedEntity.Id;
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
-			}
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			//21-07-06 - lastUpdated is set to the envelope lastUpdated date. The latter should be the visible last updated date.
+			//if ( relatedEntity != null && relatedEntity.Id > 0 )
+			output.EntityLastUpdated = output.LastUpdated;  // relatedEntity.LastUpdated;
+															
 			//22-07-10 - LifeCycleStatusTypeId is now on the organization directly
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
-			if ( output.LifeCycleStatusTypeId > 0 )
+			//suppress for references
+			if ( !string.IsNullOrWhiteSpace( output.CTID ) )
 			{
-				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
-				if ( ct != null && ct.Id > 0 )
+				if ( output.LifeCycleStatusTypeId > 0 )
 				{
-					output.LifeCycleStatus = ct.Title;
+					CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
+					if ( ct != null && ct.Id > 0 )
+					{
+						output.LifeCycleStatus = ct.Title;
+					}
+					//retain example using an Enumeration for by other related tableS??? - old detail page?
+					output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+					output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
 				}
-				//retain example using an Enumeration for by other related tableS??? - old detail page?
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
-			}
-			else
-			{
-				//OLD
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
-				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				else
 				{
+					//OLD
+					output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+					EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+					if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+					{
 
+					}
 				}
 			}
 
@@ -1963,6 +2057,10 @@ namespace workIT.Factories
 			output.MissionAndGoalsStatementDescription = input.MissionAndGoalsStatementDescription;
 			output.Supersedes = input.Supersedes;
 			output.SupersededBy = input.SupersededBy;
+
+			output.SupportServiceStatement = input.SupportServiceStatement;
+			output.SupportServiceStatementDescription = input.SupportServiceStatementDescription;
+
 			output.TransferValueStatement = input.TransferValueStatement;
 			output.TransferValueStatementDescription = input.TransferValueStatementDescription;
 
@@ -2070,6 +2168,7 @@ namespace workIT.Factories
 			if ( request.IncludingEntityCounts )
 			{
 				//can this be sped up by getting all and then counting?
+				//		tried more generic, but need actual record to get entityStateId, unless entity_cache is used instead of entity!
 				output.TotalCredentials = Entity_AgentRelationshipManager.CredentialCount_ForOwningOfferingOrg( output.RowId );
 				output.TotalAssessments = Entity_AgentRelationshipManager.AssessmentCount_ForOwningOfferingOrg( output.RowId );
 				output.TotalLopps = Entity_AgentRelationshipManager.LoppCount_ForOwningOfferingOrg( output.RowId );
@@ -2088,14 +2187,19 @@ namespace workIT.Factories
 
                 output.TotalJobs= JobManager.Count_ForOwningOrg( output.RowId );
                 output.TotalOccupations = OccupationManager.Count_ForOwningOrg( output.RowId );
+				output.TotalTasks = TaskManager.Count_ForOwningOrg( output.RowId );
+				output.TotalWorkRoles = WorkRoleManager.Count_ForOwningOrg( output.RowId );
 
-                output.TotalConceptSchemes = ConceptSchemeManager.CountForOwningOrg( output.Id );
+				output.TotalCredentialingActions = CredentialingActionManager.Count_ForOwningOrg( output.RowId );
+				output.TotalRubrics = RubricManager.Count_ForOwningOrg( output.RowId );
+
+				output.TotalConceptSchemes = ConceptSchemeManager.CountForOwningOrg( output.Id );
 				//to get all dataset profiles, should be able to use dsp.DataProvider as having credentials in dsp is not the same as publishing
 				//	although in the proPath example, the dsp is with the cred/ADP, so ????
 				//var dsp = DataSetProfileManager.GetAllDataSetCredentials( output.Id, 500 );
 				//if ( dsp != null )
 				//	output.TotalDataSetProfiles = dsp.Count;
-				output.DataSetProfileCount = DataSetProfileManager.GetCountForDataOwner( output.RowId );
+				output.TotalDataSetProfiles = DataSetProfileManager.GetCountForDataOwner( output.RowId );
 
 
 				//TODO - would be better to do in one call and split on return
@@ -2110,26 +2214,16 @@ namespace workIT.Factories
 				//TODO - only do this if a third party publisher - so how to determine this?
 				//21-07-15 mp - updated these next properties to use the more general method (EntityCount_ForPublishedByOrg) which uses Entity.Cache - monitor. Could also do credential and compare numbers. Might be a way to warn for an issue
 				output.TotalCredentialsPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, 1 );
-				//var oldTotalCredentialsPublishedByThirdParty = Entity_AgentRelationshipManager.CredentialCount_ForPublishedByOrg( output.RowId );
-				//if ( output.TotalCredentialsPublishedByThirdParty != oldTotalCredentialsPublishedByThirdParty )
-				//{
-				//	LoggingHelper.LogError( "Organization.Get", "TotalCredentialsPublishedByThirdParty", "Conflicting totals returned for total credentials published by third party.", string.Format( "OrgId: {0}, New generic method using Entity.Cache: {1}, old specific method: {2}", output.Id, output.TotalCredentialsPublishedByThirdParty, oldTotalCredentialsPublishedByThirdParty ) );
-				//	//more than likely the old method is accurate and cache needs updating
-				//	if ( oldTotalCredentialsPublishedByThirdParty > output.TotalCredentialsPublishedByThirdParty )
-				//		output.TotalCredentialsPublishedByThirdParty = oldTotalCredentialsPublishedByThirdParty;
-				//}
 				output.TotalOrganizationsPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, 2 );
 				output.TotalLoppsPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, 7 );
-				//var oldTotalLoppPublishedByThirdParty = Entity_AgentRelationshipManager.LearningOppCount_ForPublishedByOrg( output.RowId );
-				//if ( output.TotalLoppsPublishedByThirdParty != oldTotalLoppPublishedByThirdParty )
-				//{
-				//}
 				output.TotalAssessmentsPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, 3 );
                 //
                 output.TotalTransferValueProfilesPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE );
                 output.TotalTransferIntermediariesPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY );
-                //-FrameworkCount_ForOwningOrg
-                if ( output.TotalCredentials > 0 )
+				output.TotalDatasetProfilesPublishedByThirdParty = Entity_AgentRelationshipManager.EntityCount_ForPublishedByOrg( output.RowId, CodesManager.ENTITY_TYPE_DATASET_PROFILE );
+
+				//-FrameworkCount_ForOwningOrg
+				if ( output.TotalCredentials > 0 )
 					output.IsACredentialingOrg = true;
 
 				//
@@ -2187,15 +2281,8 @@ namespace workIT.Factories
 			//
 			if ( request.IncludingVerificationProfiles )
 			{
-				//OLD
-				//output.VerificationServiceProfiles = Entity_VerificationProfileManager.GetAll( output.RowId );
-
 				//or should this use Entity.AgentRelationship.OfferedBy?
                 output.VerificationServiceProfiles = VerificationServiceProfileManager.GetAll( output.RowId );
-                //hide until data
-                //TBD on whether this should just be a list (current with includingItems=false) here, with links to a detail page
-                output.ScheduledOffering = ScheduledOfferingManager.GetAll( output.RowId, includingItems:false );
-
                 //
                 saveDuration = DateTime.Now.Subtract( started );
 				//if ( saveDuration.TotalSeconds > 3 )
@@ -2203,15 +2290,7 @@ namespace workIT.Factories
 			}
 			else
 			{
-
-				//if ( UtilityManager.GetAppKeyValue( "usingNewHasVerificationService", false ) )
-				//{
 				output.VerificationServiceProfileCount = VerificationServiceProfileManager.GetAllTotal( output.RowId );
-				//}
-				//else
-				//{
-				//    output.VerificationServiceProfileCount = Entity_VerificationProfileManager.GetAllTotal( output.RowId );
-				//}
 			}
 			//check for owned dataset profiles - realistically need a search or make a postback
 			//includingParts = false,
@@ -2232,7 +2311,7 @@ namespace workIT.Factories
 		}
 		public static string MapEntityType( int entityTypeId )
 		{
-			var entityType = "";
+			var entityType = string.Empty;
 			switch ( entityTypeId )
 			{
 				case 2:
@@ -2247,7 +2326,7 @@ namespace workIT.Factories
 		}
 		public static string MapEntityTypeLabel( int entityTypeId )
 		{
-			var entityType = "";
+			var entityType = string.Empty;
 			switch ( entityTypeId )
 			{
 				case 2:
@@ -2274,7 +2353,7 @@ namespace workIT.Factories
 			}
 			return entityTypeId;
 		}
-		private static void GetOrgRoles( ThisEntity output )
+		private static void GetOrgRoles( ThisResource output )
 		{
 
 			//the parent is the entity, and the 
@@ -2350,7 +2429,7 @@ namespace workIT.Factories
 			Entity_AgentRelationshipManager.AgentRole_GetParentOrganization( output );
 
 		}
-		private static void MapProcessProfiles( DBEntity from, ThisEntity to, bool includingProcessProfileDetails )
+		private static void MapProcessProfiles( DBResource from, ThisResource to, bool includingProcessProfileDetails )
 		{
 			//get all and then split
 			if ( includingProcessProfileDetails )
@@ -2380,10 +2459,8 @@ namespace workIT.Factories
 					{
 						//produce warning where not mapped
 						to.ReviewProcess.Add( item );
-						LoggingHelper.LogError( string.Format( "OrganizationManager.MapProcessProfiles Unexpected ProcessProfile. OrgId: {0}, Type: {1} ", from.Id, item.ProcessTypeId ), true );
+						LoggingHelper.LogError( string.Format( "OrganizationManager.MapProcessProfiles Unexpected ProcessProfile. OrgId: {0}, Type: {1} ", from.Id, item.ProcessTypeId ) );
 					}
-
-
 				}
 			}
 			else
@@ -2394,7 +2471,7 @@ namespace workIT.Factories
 			}
 		}
 
-		public static void MapToDB( ThisEntity input, DBEntity output )
+		public static void MapToDB( ThisResource input, DBResource output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -2437,7 +2514,7 @@ namespace workIT.Factories
 			if ( !string.IsNullOrWhiteSpace( input.FoundingDate ) )
 			{
 				output.FoundingDate = input.FoundingDate;
-				if ( ( output.FoundingDate ?? "" ).Length > 20 )
+				if ( ( output.FoundingDate ?? string.Empty ).Length > 20 )
 				{
 					//status.AddError( "Organization Founding Date error - exceeds 20 characters: " + output.FoundingDate );
 					output.FoundingDate = output.FoundingDate.Substring( 0, 10 );
@@ -2450,6 +2527,9 @@ namespace workIT.Factories
 			output.MissionAndGoalsStatementDescription = GetData( input.MissionAndGoalsStatementDescription );
 			output.Supersedes = GetUrlData( input.Supersedes, null );
 			output.SupersededBy = GetUrlData( input.SupersededBy, null );
+			output.SupportServiceStatement = GetUrlData( input.SupportServiceStatement, null );
+			output.SupportServiceStatementDescription = GetData( input.SupportServiceStatementDescription );
+
 			output.TransferValueStatement = GetUrlData( input.TransferValueStatement, null );
 			output.TransferValueStatementDescription = GetData( input.TransferValueStatementDescription );
 			//output.ServiceTypeOther = input.ServiceTypeOther;

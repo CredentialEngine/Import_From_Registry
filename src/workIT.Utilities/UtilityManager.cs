@@ -236,6 +236,12 @@ namespace workIT.Utilities
 
 			return false;
 		}
+
+		public static bool IsProduction()
+		{
+            return GetAppKeyValue( "environment" ) == "production";
+		} //
+
 		#endregion
 
 		#region === Security related Methods ===
@@ -359,6 +365,27 @@ namespace workIT.Utilities
             return encodedUrl;
         }
 
+		public static string CreateCtidFromString( string keyString )
+		{
+			//assign default, just in case
+			string ctid = "ce-" + Guid.NewGuid().ToString().ToLower();
+			if ( string.IsNullOrWhiteSpace( keyString ) )
+			{
+				return ctid;
+			}
+			string id = GenerateMD5String( keyString );
+			if ( id.Length == 32 )
+			{
+				ctid = "ce-" + id.Substring( 0, 8 ) + "-" + id.Substring( 8, 4 ) + "-" + id.Substring( 12, 4 ) + "-" + id.Substring( 16, 4 ) + "-" + id.Substring( 20, 12 );
+				LoggingHelper.DoTrace( 1, "CreateCtidFromString. Input: " + keyString + ", CTID: " + ctid );
+			}
+			else
+			{
+
+			}
+
+			return ctid;
+		}
 		/// <summary>
 		/// Generate an MD5 hash of a string
 		/// </summary>

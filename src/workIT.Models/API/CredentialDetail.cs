@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System.Collections.Generic;
 
-using MC = workIT.Models.Common;
-using WMA = workIT.Models.API;
+using Newtonsoft.Json;
+
 using ME = workIT.Models.Elastic;
 using MPM = workIT.Models.ProfileModels;
+using WMA = workIT.Models.API;
 using WMS = workIT.Models.Search;
-using MQD = workIT.Models.QData;
 
 namespace workIT.Models.API
 {
@@ -45,7 +39,7 @@ namespace workIT.Models.API
 		public List<string> AvailableOnlineAt { get; set; } 
 
 		public List<string> AvailabilityListing { get; set; }
-
+		public string InCatalog { get; set; }
 		public string CredentialId { get; set; }
 		public string CodedNotation { get; set; }
 		public List<Outline> Collections { get; set; }
@@ -136,6 +130,7 @@ namespace workIT.Models.API
 		public List<LabelLink> Keyword { get; set; } = new List<LabelLink>();
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
 		public LabelLink LatestVersion { get; set; }
+		public LabelLink NextVersion { get; set; } //URL
 
 		public LabelLink PreviousVersion { get; set; }
 		public List<IdentifierValue> VersionIdentifier { get; set; }
@@ -173,7 +168,6 @@ namespace workIT.Models.API
 		public LabelLink ProcessStandards { get; set; }
 
 		//public string ProcessStandardsDescription { get; set; }
-		public LabelLink NextVersion { get; set; } //URL
 		public LabelLink SupersededBy { get; set; } //URL
 		public LabelLink Supersedes { get; set; } //URL
 
@@ -182,5 +176,9 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings RequiresCompetencies { get; set; }
 		public WMS.AJAXSettings TeachesCompetencies { get; set; }
 		public WMS.AJAXSettings AssessesCompetencies { get; set; }
+		public WMS.AJAXSettings ProvidesTransferValueFor { get; set; }
+		public WMS.AJAXSettings ReceivesTransferValueFrom { get; set; }
+		public WMS.AJAXSettings HasRubric { get; set; }
+		public WMS.AJAXSettings RelatedActions { get; set; }
 	}
 }

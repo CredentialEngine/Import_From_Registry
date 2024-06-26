@@ -40,7 +40,12 @@ namespace workIT.Models.API
         }
 
         public List<string> AlternateName { get; set; } = new List<string>();
+        public WMS.AJAXSettings HasChild { get; set; }
+        public WMS.AJAXSettings HasOccupation { get; set; }
         public WMS.AJAXSettings HasJob { get; set; }
+        public WMS.AJAXSettings HasWorkRole { get; set; }
+
+        public string ListId { get; set; }
 
         //public List<IdentifierValue> Identifier { get; set; }
         public List<LabelLink> Keyword { get; set; }

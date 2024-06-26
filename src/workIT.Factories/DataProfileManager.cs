@@ -247,7 +247,7 @@ namespace workIT.Factories
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "DataProfile" );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError(dbex, message);
 				}
 				catch ( Exception ex )
 				{
@@ -424,7 +424,7 @@ namespace workIT.Factories
 
 			output.Id = input.Id;
 			output.RowId = input.RowId;
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 
 			//
 			if ( IsValidDate( input.Created ) )

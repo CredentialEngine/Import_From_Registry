@@ -45,6 +45,10 @@ namespace workIT.Models.API
         //public List<IdentifierValue> Identifier { get; set; }
         public List<LabelLink> Keyword { get; set; }
 
+        public WMS.AJAXSettings HasOccupation { get; set; }
+        public WMS.AJAXSettings HasSupportService { get; set; }
+        public WMS.AJAXSettings HasTask { get; set; }
+
 
         public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
         public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();

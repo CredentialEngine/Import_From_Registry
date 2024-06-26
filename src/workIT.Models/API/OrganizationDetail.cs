@@ -79,6 +79,10 @@ namespace workIT.Models.API
 		/// </summary>
 		public LabelLink TransferValueStatement { get; set; }
 
+		/// <summary>
+		/// Webpage or online document that defines or explains the nature of support services offered by the organization.
+		/// </summary>
+		public LabelLink SupportServiceStatement { get; set; }
 
 		//codes
 		public string DUNS { get; set; }

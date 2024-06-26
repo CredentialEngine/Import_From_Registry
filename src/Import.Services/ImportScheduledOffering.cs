@@ -9,9 +9,9 @@ using workIT.Utilities;
 
 using ResourceServices = workIT.Services.ScheduledOfferingServices;
 using APIResourceServices = workIT.Services.API.ScheduledOfferingServices;
-//using InputEntity = RA.Models.Json.ScheduledOffering;
+//using InputResource = RA.Models.Json.ScheduledOffering;
 
-using InputEntity = RA.Models.JsonV2.ScheduledOffering;
+using InputResource = RA.Models.JsonV2.ScheduledOffering;
 using JsonInput = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
 using ThisResource = workIT.Models.Common.ScheduledOffering;
@@ -28,7 +28,7 @@ namespace Import.Services
         string resourceType = "ScheduledOffering";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        //InputEntity input = new InputEntity();
+        //InputResource input = new InputResource();
         ThisResource output = new ThisResource();
 
         #region custom imports
@@ -114,8 +114,8 @@ namespace Import.Services
                 return false;
             }
             //
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -154,13 +154,9 @@ namespace Import.Services
             LoggingHelper.DoTrace( 7, thisClassName + ".Import - entered." );
             DateTime started = DateTime.Now;
             var saveDuration = new TimeSpan();
-            var dataSetProfiles = new List<JsonInput.QData.DataSetProfile>();
-            var outcomesDTO = new OutcomesDTO();
-
             resourceClass = resourceClass.Replace( "ceterms:", "" );
 
-
-            InputEntity input = new InputEntity();
+            InputResource input = new InputResource();
             var bnodes = new List<BNode>();
             var mainEntity = new Dictionary<string, object>();
 
@@ -180,7 +176,7 @@ namespace Import.Services
                     var main = item.ToString();
                     //may not use this. Could add a trace method
                     mainEntity = RegistryServices.JsonToDictionary( main );
-                    input = JsonConvert.DeserializeObject<InputEntity>( main );
+                    input = JsonConvert.DeserializeObject<InputResource>( main );
                 }
                 else
                 {
@@ -223,12 +219,10 @@ namespace Import.Services
                     LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
                 }
                 helper.currentBaseObject = output;
-
+                output.CTID = input.CTID;
                 output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
                 output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-
-
-                output.CTID = input.CTID;
+                
                 output.CredentialRegistryId = status.EnvelopeId;
 
                 helper.MapOrganizationPublishedBy( output, ref status );
@@ -236,7 +230,7 @@ namespace Import.Services
                 //BYs 
                 output.OfferedByList = helper.MapOrganizationReferenceGuids( $"{resourceType}.OfferedBy", input.OfferedBy, ref status );
                 //add warning?
-                if ( output.OfferedByList == null && output.OfferedByList.Count == 0 )
+                if ( output.OfferedByList == null || output.OfferedByList.Count == 0 )
                 {
                     status.AddWarning( "document doesn't have an offering organization." );
                 }
@@ -273,7 +267,7 @@ namespace Import.Services
                 //		- 
                 bool hasDataSetProfiles = false;
                 List<string> ctidList = new List<string>();
-                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, ref status, ref ctidList );
                 if ( ctidList != null && ctidList.Any() )
                 {
                     //especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
@@ -324,16 +318,7 @@ namespace Import.Services
                 if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
                 {
                     importSuccessfull = mgr.Import( output, ref status );
-                    //start storing the finder api ready version
-                    var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
-                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-                    var statusMsg = "";
-                    if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-                    {
-                        status.AddError( statusMsg );
-                    }
-                  
                 }
                 //
                 saveDuration = DateTime.Now.Subtract( saveStarted );
@@ -359,7 +344,7 @@ namespace Import.Services
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid ), false, $"{resourceType} Import exception" );
+                LoggingHelper.LogError(ex, string.Format(thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid));
             }
             finally
             {

@@ -235,7 +235,7 @@ namespace workIT.Factories
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "Pathway" );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError( dbex, message );
 				}
 				catch ( Exception ex )
 				{
@@ -336,7 +336,14 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var ceasedStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+			if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
+			{
+				ec.IsActive = false;
+			}
+
+
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -366,7 +373,24 @@ namespace workIT.Factories
 			{
 				status.AddWarning( "The Pathway Subject Webpage is invalid. " + commonStatusMessage );
 			}
-
+			var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
+			{
+				profile.LifeCycleStatusTypeId = defStatus.Id;
+			}
+			else
+			{
+				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
+				CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				if ( ci == null || ci.Id < 1 )
+				{
+					//while this should never happen, should have a default
+					status.AddError( string.Format( "A valid LifeCycleStatusType must be included. Invalid: {0}", schemaName ) );
+					profile.LifeCycleStatusTypeId = defStatus.Id;
+				}
+				else
+					profile.LifeCycleStatusTypeId = ci.Id;
+			}
 			return status.WasSectionValid;
 		}
 		public bool Delete( string ctid, ref string statusMessage )
@@ -746,6 +770,24 @@ namespace workIT.Factories
 		}
 		//
 
+		public static ThisEntity GetByIdOrCtid( string idOrCTID, bool includeComponents, bool includeExtra )
+		{
+			var result = new ThisEntity();
+
+			using ( var context = new EntityContext() )
+			{
+				var item = context.Pathway.FirstOrDefault( s => s.Id.ToString() == idOrCTID || s.CTID == idOrCTID );
+				if( item != null )
+				{
+					MapFromDB( item, result, includeComponents, includeExtra );
+					return result;
+				}	
+			}
+
+			return null;
+		}
+		//
+
 
 		public static List<object> Autocomplete( string pFilter, int pageNumber, int pageSize, ref int pTotalRows )
 		{
@@ -753,9 +795,9 @@ namespace workIT.Factories
 			List<object> results = new List<object>();
 			List<string> competencyList = new List<string>();
 			//ref competencyList, 
-			List<ThisEntity> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+			List<ThisEntity> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
 			bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-			string prevName = "";
+			string prevName = string.Empty;
 			foreach ( Pathway item in list )
 			{
 				//note excluding duplicates may have an impact on selected max terms
@@ -782,7 +824,7 @@ namespace workIT.Factories
 		//{
 		//	List<ThisEntity> list = new List<ThisEntity>();
 		//	ThisEntity entity = new ThisEntity();
-		//	keyword = string.IsNullOrWhiteSpace( keyword ) ? "" : keyword.Trim();
+		//	keyword = string.IsNullOrWhiteSpace( keyword ) ? string.Empty : keyword.Trim();
 		//	if ( pageSize == 0 )
 		//		pageSize = 500;
 		//	int skip = 0;
@@ -792,7 +834,7 @@ namespace workIT.Factories
 		//	using ( var context = new EntityContext() )
 		//	{
 		//		var Query = from Results in context.Pathway
-		//				.Where( s => keyword == "" || s.Name.Contains( keyword ) )
+		//				.Where( s => keyword == string.Empty || s.Name.Contains( keyword ) )
 		//				.OrderBy( s => s.Name )
 		//				select Results;
 		//		pTotalRows = Query.Count();
@@ -800,7 +842,7 @@ namespace workIT.Factories
 		//			.ToList();
 
 		//		//List<DBEntity> results = context.Pathway
-		//		//	.Where( s => keyword == "" || s.Name.Contains( keyword ) )
+		//		//	.Where( s => keyword == string.Empty || s.Name.Contains( keyword ) )
 		//		//	.Take( pageSize )
 		//		//	.OrderBy( s => s.Name )
 		//		//	.ToList();
@@ -831,7 +873,7 @@ namespace workIT.Factories
 			ThisEntity item = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
 			var result = new DataTable();
-			string org = "";
+			string org = string.Empty;
 			int orgId = 0;
 			int rowNbr = ( pageNumber - 1 ) * pageSize;
 
@@ -841,7 +883,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[Pathway.ElasticSearch]", c ) )
@@ -891,7 +933,7 @@ namespace workIT.Factories
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.Name = GetRowColumn( dr, "Name", "missing" );
 					item.FriendlyName = FormatFriendlyTitle( item.Name );
-					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 					item.OrganizationId = GetRowColumn( dr, "Id", 0 );
 					//for autocomplete, only need name
 					if ( autocomplete )
@@ -900,18 +942,18 @@ namespace workIT.Factories
 						continue;
 					}
 
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
 
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
 					//
-					//item.Subjects = GetRowColumn( dr, "SubjectAreas", "" );
+					//item.Subjects = GetRowColumn( dr, "SubjectAreas", string.Empty );
 
-					org = GetRowPossibleColumn( dr, "Organization", "" );
+					org = GetRowPossibleColumn( dr, "Organization", string.Empty );
 					orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
 
 
@@ -948,6 +990,12 @@ namespace workIT.Factories
 			output.SubjectWebpage = GetUrlData( input.SubjectWebpage );
 			output.HasProgressionModel = input.ProgressionModelURI;
 
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			output.LatestVersion = GetUrlData( input.LatestVersion, null );
+			output.PreviousVersion = GetUrlData( input.PreviousVersion, null );
+			output.NextVersion = GetUrlData( input.NextVersion, null );
+			output.VersionIdentifier = input.VersionIdentifierJson;
+
 			if ( IsGuidValid( input.PrimaryAgentUID ) )
 			{
 				if ( output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID )
@@ -955,7 +1003,7 @@ namespace workIT.Factories
 					if ( IsGuidValid( output.OwningAgentUid ) )
 					{
 						//need output remove the owner role, or could have been others
-						string statusMessage = "";
+						string statusMessage = string.Empty;
 						new Entity_AgentRelationshipManager().Delete( output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage );
 					}
 				}
@@ -1019,7 +1067,7 @@ namespace workIT.Factories
 			output.Name = input.Name;
 			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			output.CTID = input.CTID;
 			if ( IsGuidValid( input.OwningAgentUid ) )
 			{
@@ -1038,9 +1086,41 @@ namespace workIT.Factories
 				output.Created = ( DateTime )input.Created;
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = ( DateTime )input.LastUpdated;
-            //
-            //Json
-            if ( !string.IsNullOrWhiteSpace( input.Properties ) )
+			//
+			if ( (input.LifeCycleStatusTypeId ?? 0) > 0)
+				output.LifeCycleStatusTypeId = (int)input.LifeCycleStatusTypeId;
+			if ( output.LifeCycleStatusTypeId > 0 )
+			{
+				CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
+				if ( ct != null && ct.Id > 0 )
+				{
+					output.LifeCycleStatus = ct.Title;
+				}
+				//retain example using an Enumeration for by other related tableS??? - old detail page?
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+			}
+			else
+			{
+				//default
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				{
+
+				}
+			}
+			//
+			output.LatestVersion = input.LatestVersion;
+			output.PreviousVersion = input.PreviousVersion;
+			output.NextVersion = input.NextVersion;
+			if ( !string.IsNullOrWhiteSpace( input.VersionIdentifier ) )
+			{
+				output.VersionIdentifier = JsonConvert.DeserializeObject<List<IdentifierValue>>( input.VersionIdentifier );
+			}
+
+			//Json
+			if ( !string.IsNullOrWhiteSpace( input.Properties ) )
             {
                 var pcp = JsonConvert.DeserializeObject<PathwayJSONProperties>( input.Properties );
                 if ( pcp != null )
@@ -1063,12 +1143,19 @@ namespace workIT.Factories
                 var relatedEntity = EntityManager.GetEntity( output.RowId, false );
                 if (relatedEntity != null && relatedEntity.Id > 0)
                     output.EntityLastUpdated = relatedEntity.LastUpdated;
-                //
-                output.ProgressionModelURI = input.HasProgressionModel;
+				//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+				output.EntityLastUpdated = output.LastUpdated;
+				//
+				output.ProgressionModelURI = input.HasProgressionModel;
 				if ( !string.IsNullOrWhiteSpace( output.ProgressionModelURI ) && includingComponents )
 				{
 					//ensure this is not called always from ProgressionModel/CS or will get a stack overflow
-					output.HasProgressionModel = ConceptSchemeManager.GetByCtid( output.ProgressionModelURI );
+					//24-01-11 - check progressionModel first now
+					output.HasProgressionModel = ProgressionModelManager.GetByCtid( output.ProgressionModelURI );					
+                    if ( output.HasProgressionModel== null || output.HasProgressionModel.CTID == null )
+                    {
+						output.HasProgressionModel = ConceptSchemeManager.GetByCtid( output.ProgressionModelURI );
+					}
 				}
 
 				//include conditions

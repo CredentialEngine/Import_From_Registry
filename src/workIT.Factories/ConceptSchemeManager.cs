@@ -45,7 +45,15 @@ namespace workIT.Factories
 					{
 						return false;
 					}
-
+					if ( entity.Id == 0 )
+					{
+						//double check
+						var checkExists = GetByCtid( entity.CTID, false );
+						if ( checkExists != null )
+						{
+							entity.Id = checkExists.Id;
+						}
+					}
 					if ( entity.Id == 0 )
 					{
 						//add
@@ -186,13 +194,52 @@ namespace workIT.Factories
 				OwningOrgId = document.OrganizationId,
 				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
 		}
 
+		/// <summary>
+		/// Do we need to cache these? Probably, so need to add trigger
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="document"></param>
+		/// <param name="status"></param>
+		public void UpdateEntityCacheConcept( ThisResource parent, EM.ConceptScheme_Concept document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT,
+				EntityType = "Concept",
+				EntityStateId = 3,
+				EntityUid = document.RowId,
+				ParentEntityType = "Concept Scheme",
+				ParentEntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT_SCHEME,
+				ParentEntityId = parent.RelatedEntityId,
+				ParentEntityUid = parent.RowId,
+
+				BaseId = document.Id,
+				Description = "Concept",
+				//a list
+				//SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = ( DateTime ) document.Created,
+				LastUpdated = ( DateTime ) document.LastUpdated,
+				Name = document.PrefLabel,
+
+			};
+			if ( IsValidGuid( parent.RowId ) )
+			{
+				ec.OwningAgentUID = parent.PrimaryAgentUID;
+			}
+			var statusMessage = string.Empty;
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.PrefLabel, document.Id, statusMessage ) );
+			}
+		}
 		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
 		{
 			bool isAllValid = true;
@@ -204,7 +251,7 @@ namespace workIT.Factories
 				return false;
 			}
 			mgr.DeleteAll( relatedEntity, ref status );
-			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
+			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.Publisher, ref status );
 
 			return isAllValid;
 		}
@@ -263,6 +310,20 @@ namespace workIT.Factories
 						item.Note = updateConcept.Note;
 						item.LastUpdated = System.DateTime.Now;
 						context.SaveChanges();
+						var concept = GetByConceptCtid( item.CTID );
+						efEntity = new EM.ConceptScheme_Concept
+						{
+							Id = concept.Id,
+							PrefLabel = item.PrefLabel,
+							Definition = item.Definition,
+							Note = item.Note,
+							RowId = Guid.NewGuid(),
+							CTID = item.CTID,
+							IsTopConcept = true,
+							Created = DateTime.Now,
+							LastUpdated = DateTime.Now
+						};
+						UpdateEntityCacheConcept( entity, efEntity, ref status );
 					}
 					//
 					foreach ( var item in newConcepts )
@@ -282,6 +343,7 @@ namespace workIT.Factories
 						};
 						context.ConceptScheme_Concept.Add( efEntity );
 						var count = context.SaveChanges();
+						UpdateEntityCacheConcept(entity, efEntity, ref status );
 
 					} //foreach
 
@@ -413,7 +475,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				DBResource item = context.ConceptScheme
-						.FirstOrDefault( s => s.CTID.ToLower() == ctid );
+						.FirstOrDefault( s => s.CTID.ToLower() == ctid && s.EntityStateId > 1 );
 				if ( item != null && item.Id > 0 )
 				{
 					MapFromDB( item, entity, includingComponents );
@@ -428,7 +490,7 @@ namespace workIT.Factories
 		{
 			using ( var context = new EntityContext() )
 			{
-				var item = context.ConceptScheme.FirstOrDefault( s => s.Id == id );
+				var item = context.ConceptScheme.FirstOrDefault( s => s.Id == id && s.EntityStateId > 1 );
 				if( item != null && item.Id > 0 )
 				{
 					return item.CTID;
@@ -445,7 +507,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				DBResource item = context.ConceptScheme
-						.FirstOrDefault( s => s.Id == id );
+						.FirstOrDefault( s => s.Id == id && s.EntityStateId > 1 );
 
 				if ( item != null && item.Id > 0 )
 				{
@@ -456,7 +518,7 @@ namespace workIT.Factories
 			return entity;
 		}
 
-		public static void MapToDB( ThisResource from, DBResource to )
+		private static void MapToDB( ThisResource from, DBResource to )
 		{
 
 			//want to ensure fields from create are not wiped
@@ -487,7 +549,7 @@ namespace workIT.Factories
 				to.CredentialRegistryId = from.CredentialRegistryId;
 
 			//watch for overwriting these new properties.
-			to.Source = from.Source;
+			to.Source = BaseFactory.FormatListAsDelimitedString( from.Source, "|" );
 			to.PublicationStatusType = from.PublicationStatusType;
 			
 
@@ -498,7 +560,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB( DBResource from, ThisResource to, bool includingComponents = true )
+		private static void MapFromDB( DBResource from, ThisResource to, bool includingComponents = true )
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -519,7 +581,7 @@ namespace workIT.Factories
 
 			to.IsProgressionModel = from.IsProgressionModel == null ? false : (bool)from.IsProgressionModel;
 			to.CTID = from.CTID.ToLower();
-			to.Source = from.Source;
+			to.Source = SplitDelimitedStringToList ( from.Source, '|');
 		
 			to.PublicationStatusType = from.PublicationStatusType;
 			to.CredentialRegistryId = from.CredentialRegistryId;
@@ -590,7 +652,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[ConceptScheme_Search]", c ) )
@@ -620,9 +682,11 @@ namespace workIT.Factories
 						pTotalRows = 0;
 						LoggingHelper.DoTrace( 6, thisClassName + string.Format( ".Search() EXCEPTION. \r\n{0}", ex.Message ) );
 						LoggingHelper.LogError( ex, thisClassName + string.Format( ".Search() - Execute proc, Message: {0} \r\n Filter: {1} \r\n", ex.Message, pFilter ) );
-						item = new ConceptSchemeSummary();
-						item.Name = "Unexpected error encountered. System administration has been notified. Please try again later. ";
-						item.Description = ex.Message;
+						item = new ConceptSchemeSummary
+						{
+							Name = "Unexpected error encountered. System administration has been notified. Please try again later. ",
+							Description = ex.Message
+						};
 						list.Add( item );
 						return list;
 					}
@@ -631,11 +695,13 @@ namespace workIT.Factories
 				foreach ( DataRow dr in result.Rows )
 				{
 					rowNbr++;
-					item = new ConceptSchemeSummary();
-					item.Id = GetRowColumn( dr, "Id", 0 );
-					item.ResultNumber = rowNbr;
-					item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-					var organizationName = GetRowColumn( dr, "OrganizationName", "" );
+					item = new ConceptSchemeSummary
+					{
+						Id = GetRowColumn( dr, "Id", 0 ),
+						ResultNumber = rowNbr,
+						OrganizationId = GetRowColumn( dr, "OrganizationId", 0 )
+					};
+					var organizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 					item.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID" );
 					if ( item.OrganizationId > 0 )
 					{
@@ -645,16 +711,16 @@ namespace workIT.Factories
 					item.FriendlyName = FormatFriendlyTitle( item.Name );
 					item.Description = GetRowColumn( dr, "Description" );
 
-					item.CTID = GetRowColumn( dr, "CTID", "" );
+					item.CTID = GetRowColumn( dr, "CTID", string.Empty );
 					item.IsProgressionModel = GetRowColumn( dr, "IsProgressionModel", false );
 					item.CredentialRegistryId = GetRowColumn( dr, "CredentialRegistryId" );
-					item.Source = GetRowColumn( dr, "Source" );
+					//item.Source = GetRowColumn( dr, "Source" );
 					//=====================================
-					string date = GetRowPossibleColumn( dr, "Created", "" );
+					string date = GetRowPossibleColumn( dr, "Created", string.Empty );
 					if ( DateTime.TryParse( date, out DateTime testdate ) )
 						item.Created = testdate;
 
-					date = GetRowPossibleColumn( dr, "LastUpdated", "" );
+					date = GetRowPossibleColumn( dr, "LastUpdated", string.Empty );
 					if ( DateTime.TryParse( date, out testdate ) )
 						item.LastUpdated = item.EntityLastUpdated = testdate;
 
@@ -706,7 +772,7 @@ namespace workIT.Factories
 
 			return entity;
 		}
-		public static void MapFromDB( EM.ConceptScheme_Concept from, Concept to )
+		private static void MapFromDB( EM.ConceptScheme_Concept from, Concept to )
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -717,7 +783,7 @@ namespace workIT.Factories
 			to.Definition = from.Definition;
 			to.Note = from.Note;
 			to.IsTopConcept = from.IsTopConcept ?? true;
-
+			to.topConceptOf = from.ConceptScheme.CTID;
 			//
 			if ( IsValidDate( from.Created ) )
 				to.Created = ( DateTime )from.Created;

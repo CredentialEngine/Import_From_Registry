@@ -20,18 +20,25 @@ namespace workIT.Data.Tables
         public string Name { get; set; }
         public string Description { get; set; }
         public string CTID { get; set; }
+        public Nullable<System.Guid> PrimaryAgentUid { get; set; }
         public string AbilityEmbodied { get; set; }
         public string Classification { get; set; }
         public string CodedNotation { get; set; }
         public string Comment { get; set; }
         public string Identifier { get; set; }
         public string KnowledgeEmbodied { get; set; }
-        public string ListID { get; set; }
         public string SkillEmbodied { get; set; }
         public string VersionIdentifier { get; set; }
         public string JsonProperties { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public Nullable<System.Guid> PrimaryAgentUid { get; set; }
+        public string EnvironmentalHazardType { get; set; }
+        public string PerformanceLevelType { get; set; }
+        public string PhysicalCapabilityType { get; set; }
+        public string SensoryCapabilityType { get; set; }
+        public string AlternateName { get; set; }
+        public string TargetCompetency { get; set; }
+        public int LifeCycleStatusTypeId { get; set; }
+        public string InCatalog { get; set; }
     }
 }

@@ -22,5 +22,10 @@ namespace workIT.Data.Views
         public Nullable<int> JobFamily { get; set; }
         public string URL { get; set; }
         public Nullable<int> Totals { get; set; }
+        public string VersionCodeWasAdded { get; set; }
+        public string ObsoleteSinceVersion { get; set; }
+        public Nullable<bool> IsNew2018 { get; set; }
+        public Nullable<bool> Obsolete2019 { get; set; }
+        public string NewCode { get; set; }
     }
 }

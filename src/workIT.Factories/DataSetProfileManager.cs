@@ -10,7 +10,7 @@ using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
+using APIM = workIT.Models.API;
 using ThisResource = workIT.Models.QData.DataSetProfile;
 using ThisResourceSummary = workIT.Models.QData.DataSetProfileSummary;
 
@@ -20,6 +20,8 @@ using ViewContext = workIT.Data.Views.workITViews;
 
 using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 
 namespace workIT.Factories
@@ -415,7 +417,7 @@ namespace workIT.Factories
             ThisResource entity = new ThisResource();
             int count = 0;
             DateTime lastUpdated = System.DateTime.Now;
-			var dspCTID = "";
+			var dspCTID = string.Empty;
             try
             {
                 using ( var context = new EntityContext() )
@@ -545,7 +547,7 @@ namespace workIT.Factories
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "DataSetProfile" );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError(dbex, message);
 				}
 				catch ( Exception ex )
 				{
@@ -649,7 +651,7 @@ namespace workIT.Factories
 				OwningAgentUID = document.DataProviderUID,
 				OwningOrgId = document.DataProviderId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache. EntityType{0}, document.CTID: {1}, document.Id: {2}. Failed: {3} ", EntityType, document.CTID, document.Id, statusMessage ) );
@@ -675,7 +677,7 @@ namespace workIT.Factories
 				OwningAgentUID = (Guid)document.DataProviderUID,
 				OwningOrgId = 0
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache. EntityType{0}, document.CTID: {1}, document.Id: {2}. Failed: {3} ", EntityType, document.CTID, document.Id, statusMessage ) );
@@ -708,8 +710,8 @@ namespace workIT.Factories
 			//do deletes - should this be done here, should be no other prior updates?
 			mgr.DeleteAll( resourceEntity, ref status );
 			mgr.SaveList( resourceEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
-			//may need to store owned by for the search
-			//mgr.Save( resourceEntity.Id, entity.DataProviderUID, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref status );
+			//need to store provided by for the search. NEW: ROLE_TYPE_PROVIDED_BY
+			mgr.Save( resourceEntity.Id, entity.DataProviderUID, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDED_BY, ref status );
 
 			//ProcessProfile
 			Entity_ProcessProfileManager ppm = new Factories.Entity_ProcessProfileManager();
@@ -953,7 +955,7 @@ namespace workIT.Factories
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " DataSetProfile. Id: {0}, Ctid: {1}.", efEntity.Id, efEntity.CTID );
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
-						string statusMessage = "";
+						string statusMessage = string.Empty;
 						new EntityManager().Delete( rowId, string.Format( "DataSetProfile: {0}", id ), ref statusMessage );
 
 						//
@@ -1022,7 +1024,7 @@ namespace workIT.Factories
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
 						//need to remove from Entity.
 						//handled by trgDataSetProfileAfterDelete
-						//string statusMessage = "";
+						//string statusMessage = string.Empty;
 						//new EntityManager().Delete( rowId, string.Format( "DataSetProfile: {0}", id ), ref statusMessage );
 
 						//
@@ -1042,7 +1044,7 @@ namespace workIT.Factories
 							} );
 							isValid = true;
 							//delete cache
-							var statusMessage = "";
+							var statusMessage = string.Empty;
 							new EntityManager().EntityCacheDelete( rowId, ref statusMessage );
 						}
 					}
@@ -1334,7 +1336,7 @@ namespace workIT.Factories
 			output.RowId = input.RowId;
 			output.Name = input.Name;
 			output.EntityStateId = input.EntityStateId;
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			output.CTID = input.CTID;
 			output.CredentialRegistryId = input.CredentialRegistryId;
 			output.DataSuppressionPolicy = input.DataSuppressionPolicy;
@@ -1344,6 +1346,8 @@ namespace workIT.Factories
 			var resourceEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( resourceEntity != null && resourceEntity.Id > 0 )
 				output.EntityLastUpdated = resourceEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 			//
 			if ( IsGuidValid( input.DataProviderUID ) )
 			{
@@ -1371,6 +1375,9 @@ namespace workIT.Factories
 			}
 			else
 				output.DataProviderOld = null;
+			//this will get ProvidedBy, which is covered by DataProviderUID, so may not need?
+			//output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
+
 			//
 			output.InstructionalProgramTypes = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_CIP );
 
@@ -1609,7 +1616,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[DataSetProfile.ElasticSearch]", c ) )
@@ -1683,7 +1690,7 @@ namespace workIT.Factories
 						if (string.IsNullOrWhiteSpace(item.Name))
                         {
 							//use description?
-							item.Name = FormatLongLabel( item.Description );
+							item.Name = AssignLimitedString( item.Description );
 						}
 						//item.FriendlyName = FormatFriendlyTitle( item.Name );
 						item.CTID = GetRowColumn( dr, "CTID" );
@@ -1707,6 +1714,23 @@ namespace workIT.Factories
 						{
 							item.DataProviderUID = aUid;
 						}
+						string rowId = GetRowColumn( dr, "RowId" );
+						item.RowId = new Guid( rowId );
+
+
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.DataSetProfile>( resourceDetail );
+								item.ResourceDetail = resource.ToString();
+							}
+						}
+						catch
+						{
+						}
+
 						//for autocomplete, only need name
 						if ( autocomplete )
 						{
@@ -1714,10 +1738,7 @@ namespace workIT.Factories
 							continue;
 						}
 
-						string rowId = GetRowColumn( dr, "RowId" );
-						item.RowId = new Guid( rowId );
 
-						
 						item.Source = dr[ "Source" ].ToString();
 						//
 
@@ -1725,7 +1746,7 @@ namespace workIT.Factories
 
 						DateTime testdate;
 						//=====================================
-						string date = GetRowPossibleColumn( dr, "EntityLastUpdated", "" );
+						string date = GetRowPossibleColumn( dr, "EntityLastUpdated", string.Empty );
 						if ( DateTime.TryParse( date, out testdate ) )
 							item.EntityLastUpdated = testdate;
 
@@ -1734,10 +1755,10 @@ namespace workIT.Factories
 						//=====================================================================
 
 
-						date = GetRowColumn( dr, "Created", "" );
+						date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							item.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							item.LastUpdated = DateTime.Parse( date );
 

@@ -53,7 +53,7 @@ namespace workIT.Models.Elastic
 
         public bool HasSubjects { get; set; }
 
-		public List<EntityReference> Pathways { get; set; } = null;
+		public List<IndexEntityReference> Pathways { get; set; } = null;
 		public bool HasPathwaysCount { get; set; }
 
 		public int ResultNumber { get; set; }

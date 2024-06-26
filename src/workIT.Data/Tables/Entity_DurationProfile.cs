@@ -17,18 +17,18 @@ namespace workIT.Data.Tables
         public int Id { get; set; }
         public Nullable<int> EntityId { get; set; }
         public Nullable<int> TypeId { get; set; }
-        public Nullable<int> FromYears { get; set; }
-        public Nullable<int> FromMonths { get; set; }
-        public Nullable<int> FromWeeks { get; set; }
-        public Nullable<int> FromDays { get; set; }
-        public Nullable<int> FromHours { get; set; }
-        public Nullable<int> FromMinutes { get; set; }
-        public Nullable<int> ToYears { get; set; }
-        public Nullable<int> ToMonths { get; set; }
-        public Nullable<int> ToWeeks { get; set; }
-        public Nullable<int> ToDays { get; set; }
-        public Nullable<int> ToHours { get; set; }
-        public Nullable<int> ToMinutes { get; set; }
+        public Nullable<decimal> FromYears { get; set; }
+        public Nullable<decimal> FromMonths { get; set; }
+        public Nullable<decimal> FromWeeks { get; set; }
+        public Nullable<decimal> FromDays { get; set; }
+        public Nullable<decimal> FromHours { get; set; }
+        public Nullable<decimal> FromMinutes { get; set; }
+        public Nullable<decimal> ToYears { get; set; }
+        public Nullable<decimal> ToMonths { get; set; }
+        public Nullable<decimal> ToWeeks { get; set; }
+        public Nullable<decimal> ToDays { get; set; }
+        public Nullable<decimal> ToHours { get; set; }
+        public Nullable<decimal> ToMinutes { get; set; }
         public string DurationComment { get; set; }
         public Nullable<decimal> TotalHours { get; set; }
         public string FromDuration { get; set; }
@@ -37,6 +37,9 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<int> AverageMinutes { get; set; }
         public string DurationSummary { get; set; }
+        public string TimeRequired { get; set; }
+        public Nullable<decimal> TimeAmount { get; set; }
+        public string TimeUnit { get; set; }
     
         public virtual Entity Entity { get; set; }
     }

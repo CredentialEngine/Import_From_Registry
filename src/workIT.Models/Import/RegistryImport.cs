@@ -57,6 +57,7 @@ namespace workIT.Models
 		public System.DateTime Created { get; set; }
 		//21-10-29 Environment will now contain the community
 		public string Environment { get; set; }
+		public string EnvelopeURL { get; set; }
 		public string DataOwnerCTID { get; set; }
 		public string PublisherCTID { get; set; }
 		public string PublishMethodURI { get; set; }

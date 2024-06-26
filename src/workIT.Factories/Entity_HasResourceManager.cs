@@ -1,36 +1,100 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisResource = workIT.Models.Common.ResourceSummary;
+using workIT.Utilities;
+
 using DBResource = workIT.Data.Tables.Entity_HasResource;
 using EntityContext = workIT.Data.Tables.workITEntities;
+using ThisResourceSummary = workIT.Models.Common.ResourceSummary;
 using ViewContext = workIT.Data.Views.workITViews;
-using RelatedResourceManager = workIT.Factories.EntityManager;
-using workIT.Utilities;
-using CM = workIT.Models.Common;
-
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
 
 namespace workIT.Factories
 {
-    public class Entity_HasResourceManager : BaseFactory
+	public class Entity_HasResourceManager : BaseFactory
     {
         static string thisClassName = "Entity_HasResourceManager";
         static string ResourceType = "Entity_HasResource";
         static string RelatedResourceType = "Resource";
         static string ResourceLabel = "Entity_HasResource";
 
-        //??
-        public RelatedResourceManager relatedResourceManager = new RelatedResourceManager();
+		#region  relationships - keep in sync with [Codes.HasResourceRelationshipType]
+        //be careful to not abuse the ideal intent of HasResource
+        //The type can be typically thought of as the property name!
+        /// <summary>
+        /// Default type
+        /// </summary>
+		public static int HAS_RESOURCE_TYPE_HasResource= 1;
+        /// <summary>
+        /// Occupation has specialization 
+        /// </summary>
+		public static int HAS_RESOURCE_TYPE_HasSpecialization = 2;
+		/// <summary>
+        /// this is an inverse, so should not be storing the 3, rather looking up reverse using 2??
+        /// </summary>
+		public static int HAS_RESOURCE_TYPE_IsSpecializationOf = 3;
+        /// <summary>
+        /// Used with PathwayComponent
+        /// </summary>
+		public static int HAS_RESOURCE_TYPE_HasTargetResource = 4;
+        /// <summary>
+        /// Competencies
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_AbilityEmbodied = 5;
+        public static int HAS_RESOURCE_TYPE_KnowledgeEmbodied = 6;
+        public static int HAS_RESOURCE_TYPE_SkillEmbodied = 7;
+        /// <summary>
+        /// Currently where a Task has a child task
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_HasChild = 8;
+        /// <summary>
+        /// Inverse of HasChild, also not clear whether this should be used
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_IsChildOf = 9;
+
+        /// <summary>
+        /// concept schemes
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_PhysicalCapabilityType = 10;
+        public static int HAS_RESOURCE_TYPE_PerformanceLevelType = 11;
+        public static int HAS_RESOURCE_TYPE_EnvironmentalHazardType = 12;
+        public static int HAS_RESOURCE_TYPE_SensoryCapabiltyType = 13;
+        /// <summary>
+        /// A custom concept scheme
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_Classification = 14;
+        /// <summary>
+        /// A resource is referenced in a transfer value for
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_ProvidesTransferValueFor = 15;
+		/// <summary>
+		/// A resource is referenced in a transfer value from
+		/// </summary>
+		public static int HAS_RESOURCE_TYPE_ReceivesTransferValueFrom = 16;
+        /// <summary>
+        /// A TVP references a resource in transfer value from  
+        /// </summary>
+        public static int HAS_RESOURCE_TYPE_TransferValueFrom = 17;
+		/// <summary>
+		/// A TVP references a resource in transfer value for  
+		/// </summary>
+		public static int HAS_RESOURCE_TYPE_TransferValueFor = 18;
+        #endregion
+        //
         #region Entity Resource Persistance ===================
-        public bool SaveList( Entity parent, int entityTypeId, List<int> list, ref SaveStatus status, int subConnectionTypeId = 0 )
+        /// <summary>
+        /// Save a list of hasResource.
+        /// Caller is responsble to do a delete all before invoking (could be multiple entity types)
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="entityTypeId"></param>
+        /// <param name="list"></param>
+        /// <param name="status"></param>
+        /// <param name="relationshipTypeId"></param>
+        /// <returns></returns>
+        public bool SaveList( Entity parent, int entityTypeId, List<int> list, ref SaveStatus status, int relationshipTypeId )
         {
             if ( parent == null || parent.Id == 0 )
             {
@@ -43,69 +107,64 @@ namespace workIT.Factories
             {
                 updateDate = status.LocalUpdatedDate;
             }
-            //TODO - USE A REPLACE PATTERN.
-            //for now do a delete all
-            var currentEntityList = GetAllEntityType( parent, entityTypeId );
-            bool isAllValid = true;
+			bool isAllValid = true;
+
+			//TODO - USE A REPLACE PATTERN.
+			//for now do a delete all ===> must be done in the caller
+            
             if ( list == null || list.Count == 0 )
             {
-                if ( currentEntityList != null && currentEntityList.Any() )
-                {
-                    //no input, and existing records, delete all for the type
-                    DeleteAllEntityType( parent, entityTypeId, ref status );
-                }
+				//23-10-05 - doing delete all in caller now, so skip
+				//var currentEntityList = GetAllEntityType( parent, entityTypeId );
+
+				//if ( currentEntityList != null && currentEntityList.Any() )
+    //            {
+    //                //no input, and existing records, delete all for the type
+    //                DeleteAllEntityType( parent, entityTypeId, ref status );
+    //            }
                 return true;
             }
-            
-            //may not need this if the new list version works
-            //if ( list.Count == 1 && currentEntityList.Count == 1 )
-            //{
-            //    //One of each, just do update of one
-            //    //NO - can miss changes to targets? OR can get duplicates for alternate conditions!
-            //    var existingConditionProfile = currentConditions[0];
-            //    var entity = list[0];
-            //    entity.Id = existingConditionProfile.Id;
-            //    entity.ConnectionProfileTypeId = conditionTypeId;
-            //    entity.ConditionSubTypeId = subConnectionTypeId;
-            //    if ( existingConditionProfile.AlternativeCondition != null && existingConditionProfile.AlternativeCondition.Any() )
-            //    {
-            //        DeleteAllAlternativeConditions( existingConditionProfile.RowId, ref status );
-            //    }
-            //    Save( entity, parent, updateDate, ref status );
-            //}
-            //else
+
+            foreach ( var item in list )
             {
-
-
-                foreach ( var item in list )
-                {
-                    Add( parent, entityTypeId, item, 1, true, ref status );
-                }
-                //delete any entities with last updated less than updateDate
-                //DeleteAll( parent, ref status, updateDate );
+                Add( parent, entityTypeId, item, relationshipTypeId, ref status );
             }
-            //bool isAllValid = true;
-            //foreach ( ThisEntity item in list )
-            //{
-            //	item.ConnectionProfileTypeId = conditionTypeId;
-            //	item.ConditionSubTypeId = subConnectionTypeId;
-            //	Save( item, parent, ref status );
-            //}
 
             return isAllValid;
         }
 
-        /// <summary>
-        /// Add an Resource to a parent (typically a stub was created, so can be associated before completing the full profile)
-        /// </summary>
-        /// <param name="parentUid"></param>
-        /// <param name="resourceId">The just create lopp</param>
-        /// <param name="messages"></param>
-        /// <returns></returns>
-        public int Add( Entity parent, int entityTypeId,
+		public bool SaveList( Entity parent, List<ResourceSummary> list, ref SaveStatus status, int relationshipTypeId )
+		{
+			if ( parent == null || parent.Id == 0 )
+			{
+				status.AddError( thisClassName + ".SaveList. Error - the provided target parent entity was not provided." );
+				return false;
+			}
+			//
+			bool isAllValid = true;
+
+			if ( list == null || list.Count == 0 )
+			{
+				return true;
+			}
+
+			foreach ( var item in list )
+			{
+				Add( parent, item.EntityTypeId, item.Id, relationshipTypeId, ref status );
+			}
+
+			return isAllValid;
+		}
+		/// <summary>
+		/// Add an Resource to a parent (typically a stub was created, so can be associated before completing the full profile)
+		/// </summary>
+		/// <param name="parentUid"></param>
+		/// <param name="resourceId">The just create lopp</param>
+		/// <param name="messages"></param>
+		/// <returns></returns>
+		public int Add( Entity parent, int entityTypeId,
                     int resourceId, 
                     int relationshipTypeId,
-                    bool allowMultiples,
                     ref SaveStatus status,
                     bool warnOnDuplicate = false
             )
@@ -276,7 +335,7 @@ namespace workIT.Factories
                             .ToList();
                         if ( exists != null && exists.Count() == 1 )
                         {
-                            var statusMsg = "";
+                            var statusMsg = string.Empty;
                             //this method will also add pending request to remove from elastic.
                             //20-12-18 mp - Only done for a reference lopp but what about a full lopp that may now be an orphan? We are not allowing lopps without parent, but will still exist in registry!!!
                             //actually this delete will probably also delete the Entity_HasResource
@@ -295,35 +354,54 @@ namespace workIT.Factories
 
             return isValid;
         }
-        #endregion
+		#endregion
+		public static List<ThisResourceSummary> GetAll( Guid parentUID )
+		{
+            Entity parent = EntityManager.GetEntity( parentUID );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return null;
+			}
+			return GetAllForEntityType( parent, 0 );
+		}
 
-        /// <summary>
-        /// Can be more efficient to just get all of the related records and then split up in the caller
-        /// </summary>
-        /// <param name="parent">Entity related to calling source</param>
-        /// <param name="relationshipTypeId">Not currently used.</param>
-        /// <returns></returns>
-        public static List<ThisResource> GetAll( Entity parent, int relationshipTypeId = 1 )
+		public static List<ThisResourceSummary> GetAll( int entityTypeId, int baseRecordId )
+		{
+			Entity parent = EntityManager.GetEntity( entityTypeId, baseRecordId );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return null;
+			}
+			return GetAllForEntityType( parent, 0 );
+		}
+		/// <summary>
+		/// Can be more efficient to just get all of the related records and then split up in the caller
+		/// </summary>
+		/// <param name="parent">Entity related to calling source</param>
+		/// <returns></returns>
+		public static List<ThisResourceSummary> GetAll( Entity parent )
         {
 
             if ( parent == null || parent.Id == 0 )
             {
                 return null;
             }
-            //note even the summary should include indicator of competencies
-            return GetAllEntityType( parent, 0, relationshipTypeId );
+            return GetAllForEntityType( parent, 0 );
         }
-        /// <summary>
-        /// Get all Resources for the parent
-        /// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
-        /// </summary>
-        /// <param name="parentUid"></param>
-        /// <param name="relationshipTypeId">Not sure if will use this</param>
-        /// <returns></returns>
-        public static List<ThisResource> GetAllEntityType( Entity parent, int entityTypeId, int relationshipTypeId = 1 )
+
+
+		/// <summary>
+		/// Get all Resources for the parent
+		/// Uses the parent Guid to retrieve the related Entity, then uses the EntityId to retrieve the child objects.
+        /// NOTE: this may be preferred, then the caller can filter by relationshipTypeId as needed.
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="relationshipTypeId">Not sure if will use this</param>
+		/// <returns></returns>
+		public static List<ThisResourceSummary> GetAllForEntityType( Entity parent, int entityTypeId )
         {
-            List<ThisResource> list = new List<ThisResource>();
-            ThisResource entity = new ThisResource();
+            List<ThisResourceSummary> list = new List<ThisResourceSummary>();
+            ThisResourceSummary entity = new ThisResourceSummary();
 
             //Entity parent = EntityManager.GetEntity( parentUid );
             if ( parent == null || parent.Id == 0 )
@@ -339,7 +417,7 @@ namespace workIT.Factories
                     var results = context.Entity_HasResourceSummary
                             .Where( s => s.EntityId == parent.Id 
                                 && ( entityTypeId== 0 || s.EntityTypeId == entityTypeId ) 
-                                && (relationshipTypeId == 0 || s.RelationshipTypeId == relationshipTypeId )
+                               // && (relationshipTypeId == 0 || s.RelationshipTypeId == relationshipTypeId )
                                 )
                             .OrderBy( s => s.Name )
                             .ToList();
@@ -348,17 +426,20 @@ namespace workIT.Factories
                     {
                         foreach ( var item in results )
                         {
-                            entity = new ThisResource()
+                            entity = new ThisResourceSummary()
                             {
-                                Id = item.Id,
+                                Id = item.ResourceId ??item.Id,
                                 EntityTypeId = (int)item.EntityTypeId,
                                 Name = item.Name,
                                 Description = item.Description,
                                 CTID = item.CTID,
                                 URI = item.SubjectWebpage,
                                 Type = item.EntityType,
-                                //Organization = item.Organization
-                            };                            
+                                RelationshipTypeId=item.RelationshipTypeId, //for embodies
+								//Organization = item.Organization
+								ResourcePrimaryOrgId = item.ResourceOwningOrgId ?? 0,
+								ResourcePrimaryOrganizationName = item.ResourceOrganizationName
+							};                            
                                
                             list.Add( entity );
                         }
@@ -370,6 +451,235 @@ namespace workIT.Factories
             {
                 LoggingHelper.LogError( ex, $"{thisClassName}.GetAllEntityType: parent:{parent.EntityBaseName}, parentId:{parent.EntityBaseId}, e.EntityTypeId:{parent.EntityTypeId}" );
             }
+            return list;
+        }
+
+        /// <summary>
+        /// Get 
+        /// </summary>
+        /// <param name="parent"></param>
+        /// <param name="entityTypeId"></param>
+        /// <param name="relationshipTypeId"></param>
+        /// <returns></returns>
+		public static List<ThisResourceSummary> GetAllForEntityType( Entity parent, int entityTypeId, int relationshipTypeId )
+		{
+			List<ThisResourceSummary> list = new List<ThisResourceSummary>();
+			ThisResourceSummary entity = new ThisResourceSummary();
+
+			//Entity parent = EntityManager.GetEntity( parentUid );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				using ( var context = new ViewContext() )
+				{
+					var results = context.Entity_HasResourceSummary
+							.Where( s => s.EntityId == parent.Id
+								&& ( entityTypeId == 0 || s.EntityTypeId == entityTypeId )
+								 && (relationshipTypeId == 0 || s.RelationshipTypeId == relationshipTypeId )
+								)
+							.OrderBy( s => s.Name )
+							.ToList();
+
+					if ( results != null && results.Count > 0 )
+					{
+						foreach ( var item in results )
+						{
+							entity = new ThisResourceSummary()
+							{
+								Id = item.ResourceId ?? item.Id,
+								EntityTypeId = ( int ) item.EntityTypeId,
+								Name = item.Name,
+								Description = item.Description,
+								CTID = item.CTID,
+								URI = item.SubjectWebpage,
+								Type = item.EntityType,
+								RelationshipTypeId = item.RelationshipTypeId ,
+                                ResourcePrimaryOrgId = item.ResourceOwningOrgId ?? 0,
+                                ResourcePrimaryOrganizationName = item.ResourceOrganizationName
+							};
+
+							list.Add( entity );
+						}
+					}
+					return list;
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, $"{thisClassName}.GetAllEntityType: parent:{parent.EntityBaseName}, parentId:{parent.EntityBaseId}, e.EntityTypeId:{parent.EntityTypeId}, relationshipTypeId: {relationshipTypeId} " );
+			}
+			return list;
+		}
+
+		/// <summary>
+		/// Get all of the HasResource records for a parent.
+		/// Actually this is very specific, just for where a transfer value is the object of an Entity.HasResource entry.
+		/// </summary>
+		/// <param name="resourceId"></param>
+		/// <returns></returns>
+		public static List<ThisResourceSummary> GetParentsForTVPResourceId(  int resourceId )
+        {
+            List<ThisResourceSummary> list = new List<ThisResourceSummary>();
+            ThisResourceSummary entity = new ThisResourceSummary();
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( resourceId == 0 )
+            {
+                return list;
+            }
+
+            try
+            {
+                using ( var context = new ViewContext() )
+                {
+                    var results = context.Entity_HasResourceSummary
+                             .Where( s => s.ResourceId == resourceId &&
+                                     ( s.RelationshipTypeId == HAS_RESOURCE_TYPE_ProvidesTransferValueFor ||
+                                        s.RelationshipTypeId == HAS_RESOURCE_TYPE_ReceivesTransferValueFrom ) )
+                             .OrderBy( s => s.Name )
+                             .ToList();
+
+                    foreach ( var item in results )
+                    {
+                        entity = new ThisResourceSummary()
+                        {
+                            EntityTypeId = ( int ) item.ParentEntityTypeId,
+                            Name = item.ParentName,
+                            Description = item.ParentDescription,
+                            CTID = item.ParentCTID,
+                            RelationshipTypeId = item.RelationshipTypeId ,
+							ResourcePrimaryOrgId = item.ResourceOwningOrgId ?? 0,
+							ResourcePrimaryOrganizationName = item.ResourceOrganizationName
+						};
+
+                        list.Add( entity );
+                    }
+                    return list;
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, $"{thisClassName}.GetByResourceId: resource:{resourceId}" );
+            }
+            return list;
+        }
+
+        public static List<ThisResourceSummary> GetParentsForResourceId( int resourceId, int entityTypeId )
+        {
+            List<ThisResourceSummary> list = new List<ThisResourceSummary>();
+            ThisResourceSummary entity = new ThisResourceSummary();
+            //Entity parent = EntityManager.GetEntity( parentUid );
+            if ( resourceId == 0 )
+            {
+                return list;
+            }
+
+            try
+            {
+                using ( var context = new ViewContext() )
+                {
+                    var results = context.Entity_HasResourceSummary
+                             .Where( s => s.ResourceId == resourceId && s.RelationshipTypeId== Entity_HasResourceManager.HAS_RESOURCE_TYPE_HasResource && s.EntityTypeId==entityTypeId )
+                             .OrderBy( s => s.Name )
+                             .ToList();
+
+                    foreach ( var item in results )
+                    {
+                        entity = new ThisResourceSummary()
+                        {
+                            EntityTypeId = ( int ) item.ParentEntityTypeId,
+                            Name = item.ParentName,
+                            Description = item.ParentDescription,
+                            CTID = item.ParentCTID,
+                            RelationshipTypeId = item.RelationshipTypeId,
+                            ResourcePrimaryOrgId = item.ResourceOwningOrgId ?? 0,
+                            ResourcePrimaryOrganizationName = item.ResourceOrganizationName
+                        };
+
+                        list.Add( entity );
+                    }
+                    return list;
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, $"{thisClassName}.GetByResourceId: resource:{resourceId}" );
+            }
+            return list;
+        }
+        //This is to get related entities for Embodies,Classification used for Competency Framework, Competency and Concept Scheme
+        public static List<ThisResourceSummary> GetRelatedResource( string ctid, int relatedEntityTypeId )
+        {
+            List<ThisResourceSummary> list = new List<ThisResourceSummary>();
+            ThisResourceSummary entity = new ThisResourceSummary();
+            var results = new List<Data.Views.Entity_HasResourceSummary>();
+            if ( !IsValidCtid(ctid) )
+            {
+                return list;
+            }
+            var entityCache = EntityManager.EntityCacheGetByCTID( ctid );
+            if(entityCache != null )
+			{
+                try
+                {
+                    using ( var context = new ViewContext() )
+                    {
+                        if ( entityCache.EntityTypeId== CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK|| entityCache.EntityTypeId==CodesManager.ENTITY_TYPE_COLLECTION|| entityCache.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT_SCHEME )
+						{
+                            results = context.Entity_HasResourceSummary
+                                                                .Where( s => s.EntityParentUid == entityCache.EntityUid && s.ParentEntityTypeId == relatedEntityTypeId )
+                                                                .GroupBy( s => s.ParentEntityId )
+                                                                .Select( g => g.FirstOrDefault() )
+                                                                .OrderBy( s => s.Name )
+                                                                .ToList();
+                        }else if(entityCache.EntityTypeId==CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY|| entityCache.EntityTypeId==CodesManager.ENTITY_TYPE_COMPETENCY||entityCache.EntityTypeId==CodesManager.ENTITY_TYPE_CONCEPT){
+                            results = context.Entity_HasResourceSummary
+                                                                .Where( s => s.EntityUid == entityCache.EntityUid && s.ParentEntityTypeId == relatedEntityTypeId )
+                                                                .GroupBy( s => s.ParentEntityId )
+                                                                .Select( g => g.FirstOrDefault() )
+                                                                .OrderBy( s => s.Name )
+                                                                .ToList();
+
+						}
+						else
+						{
+                            LoggingHelper.LogError( $"Invalid Type + {thisClassName}.GetByResourceId: resource:{ctid}" );
+                        }
+
+						if ( results.Count > 0 )
+						{
+                            foreach ( var item in results )
+                            {
+                                entity = new ThisResourceSummary()
+                                {
+                                    EntityTypeId = ( int ) item.ParentEntityTypeId,
+                                    Name = item.ParentName,
+                                    Description = item.ParentDescription,
+                                    CTID = item.ParentCTID,
+                                    RelationshipTypeId = item.RelationshipTypeId,
+                                    ResourcePrimaryOrgId = item.ResourceOwningOrgId ?? 0,
+                                    ResourcePrimaryOrganizationName = item.ResourceOrganizationName
+                                };
+
+                                list.Add( entity );
+                            }
+                        }
+                        return list;
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    LoggingHelper.LogError( ex, $"{thisClassName}.GetByResourceId: resource:{ctid}" );
+                }
+            }
+			else
+			{
+                LoggingHelper.LogError( $"This CTID does not exist in the EntityCache {thisClassName}.GetByResourceId: resource:{ctid}" );
+            }
+
             return list;
         }
 

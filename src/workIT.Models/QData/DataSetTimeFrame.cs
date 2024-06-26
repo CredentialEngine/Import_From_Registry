@@ -24,7 +24,7 @@ namespace workIT.Models.QData
 		/// </summary>
 		public List<DataProfile> DataAttributes { get; set; } = new List<DataProfile>();
 		//import only
-		public List<string> DataAttributesList { get; set; } = new List<string>();
+		public List<string> DataAttributesList { get; set; }
 		/// <summary>
 		/// Data Source Coverage Type
 		/// Type of geographic coverage of the subjects.
@@ -37,7 +37,7 @@ namespace workIT.Models.QData
 		///	sourceCoverage:StateOrProvince
 		///	sourceCoverage:UrbanArea
 		/// </summary>
-		public Enumeration DataSourceCoverageType { get; set; } = new Enumeration();
+		public Enumeration DataSourceCoverageType { get; set; }
 		public List<string> DataSourceCoverageTypeList { get; set; } = new List<string>();
 		public string Description { get; set; }
 

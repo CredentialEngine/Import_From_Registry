@@ -60,6 +60,7 @@ namespace workIT.Services.API
 			//actually this can be a list. Set searchType blank at this time
 			output.CollectionType = ServiceHelper.MapPropertyLabelLinks( input.CollectionType, "" );
 			//
+			output.InCatalog = input.InCatalog;
 			output.DateEffective = input.DateEffective;
 			output.ExpirationDate = input.ExpirationDate;
 			//
@@ -73,7 +74,12 @@ namespace workIT.Services.API
 			output.OccupationType = ServiceHelper.MapReferenceFramework( input.OccupationType, searchType, CodesManager.PROPERTY_CATEGORY_SOC );
 			output.InstructionalProgramType = ServiceHelper.MapReferenceFramework( input.InstructionalProgramType, searchType, CodesManager.PROPERTY_CATEGORY_CIP );
 
-			var links = new List<WMA.LabelLink>();
+            output.LatestVersion = ServiceHelper.MapPropertyLabelLink( input.LatestVersion, "Latest Version" );
+            output.NextVersion = ServiceHelper.MapPropertyLabelLink( input.NextVersion, "Next Version" );
+            output.PreviousVersion = ServiceHelper.MapPropertyLabelLink( input.PreviousVersion, "Previous Version" );
+            output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifier, "Version Identifier" );
+
+            var links = new List<WMA.LabelLink>();
             var work = new List<WMA.Outline>();
 
             if ( input.CollectionMemberCounts.Count > 0 )
@@ -81,7 +87,8 @@ namespace workIT.Services.API
 				foreach ( var item in input.CollectionMemberCounts )
 				{
 					//need to disable some searches like competencies
-					ServiceHelper.MapCollectionEntitySearchLink( input.Id, input.Name, item.Totals, "Has {0} {1} Members", item.EntityType, item.EntityTypeId, ref links);
+					if ( item.EntityTypeId != CodesManager.ENTITY_TYPE_COMPETENCY && item.EntityTypeId != CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY )
+						ServiceHelper.MapCollectionEntitySearchLink( input.Id, input.Name, item.Totals, "Has {0} {1} Members", item.EntityType, item.EntityTypeId, ref links);
 				}
 			}
             //

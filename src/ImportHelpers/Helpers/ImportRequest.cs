@@ -16,11 +16,12 @@ namespace ImportHelpers
     public class ImportRequest
     {
 		string thisClassName = "ImportHelpers.ImportRequest";
-		SaveStatus status = new SaveStatus();
+		
         public SaveStatus ImportByEnvelopeId( string envelopeId, bool handlingPendingRecords = false )
         {
             LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by envelopeId: {0}", envelopeId ) );
-            var mgr = new ImportHelperServices();
+			SaveStatus status = new SaveStatus();
+			var mgr = new ImportHelperServices();
             if ( mgr.ImportByEnvelopeId( envelopeId, status ) )
             {
 				if ( handlingPendingRecords )
@@ -35,6 +36,7 @@ namespace ImportHelpers
 		{
             //, bool doPendingTask = false 
             LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by ctid: {0}", ctid ) );
+			SaveStatus status = new SaveStatus();
 			var mgr = new ImportHelperServices();
 			//TODO - update to check for alternate community if not found with the default community
 			if ( mgr.ImportByCtid( ctid, status ))
@@ -47,11 +49,35 @@ namespace ImportHelpers
    
             return status;
 		}
+		/// <summary>
+		/// Could be complicated for multiple types or a large number. Might be better to queue somewhere or kick off a custom batch import
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <param name="handlingPendingRecords"></param>
+		/// <returns></returns>
+		public SaveStatus ImportAllResourcesForOrganization( string ctid, bool handlingPendingRecords = false )
+		{
+			//, bool doPendingTask = false 
+			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import all resources for org ctid: {0}", ctid ) );
+			SaveStatus status = new SaveStatus();
+			var mgr = new ImportHelperServices();
+			//TODO - update to check for alternate community if not found with the default community
+			if ( mgr.ImportByCtid( ctid, status ) )
+			{
+				if ( handlingPendingRecords )
+					new RegistryServices().ImportPending();
+
+				//ElasticServices.UpdateElastic();
+			}
+
+			return status;
+		}
 		//
 		public SaveStatus ImportByURL( string resourceUrl, bool handlingPendingRecords = false )
 		{
 			//, bool doPendingTask = false 
 			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to import entity by resourceUrl: {0}", resourceUrl ) );
+			SaveStatus status = new SaveStatus();
 			var mgr = new ImportHelperServices();
 			//TODO - update to check for alternate community if not found with the default community
 			if ( mgr.ImportByURL( resourceUrl, status ) )
@@ -70,9 +96,9 @@ namespace ImportHelpers
 			//, bool doPendingTask = false 
 			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to purge entity by ctid: {0}", ctid ) );
 			var mgr = new ImportHelperServices();
-			SaveStatus status2 = new SaveStatus();
+			SaveStatus status = new SaveStatus();
 			//TODO - how to handle community
-			if ( mgr.PurgeByCtid( ctid, status2, deleteOnlyNoPurge ) )
+			if ( mgr.PurgeByCtid( ctid, status, deleteOnlyNoPurge ) )
 			{
 				//allow the import to handle elastic- any issues with this?
 				//ElasticServices.UpdateElastic();
@@ -82,7 +108,28 @@ namespace ImportHelpers
             }
 
 
-            return status2;
+            return status;
+		}
+		//
+		public SaveStatus SetVerified( string ctid, bool deleteOnlyNoPurge = false )
+		{
+			//, bool doPendingTask = false 
+			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to set verified ctid: {0}", ctid ) );
+			var mgr = new ImportHelperServices();
+			SaveStatus status = new SaveStatus();
+			//TODO - how to handle community
+			if ( mgr.SetVerified( ctid, status ) )
+			{
+				//allow the import to handle elastic- any issues with this?
+				//ElasticServices.UpdateElastic();
+			}
+			else
+			{
+				//may want to delete record and from elastic regardless?
+			}
+
+
+			return status;
 		}
 		//
 		public SaveStatus SetOrganizationToCeased( string ctid )
@@ -90,16 +137,16 @@ namespace ImportHelpers
 			//, bool doPendingTask = false 
 			LoggingHelper.DoTrace( 6, thisClassName + string.Format( "Request to SetOrganizationToCeased: {0}", ctid ) );
 			var mgr = new ImportHelperServices();
-			SaveStatus status2 = new SaveStatus();
+			SaveStatus status = new SaveStatus();
 			//TODO - how to handle community
-			if ( mgr.SetOrganizationToCeased( ctid, status2 ) )
+			if ( mgr.SetOrganizationToCeased( ctid, status ) )
 			{
 				//allow the import to handle elastic- any issues with this?
 				//ElasticServices.UpdateElastic();
 			}
 			//may want to delete record and from elastic regardless
 
-			return status2;
+			return status;
 		}
 		//
 	}

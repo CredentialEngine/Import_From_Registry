@@ -17,8 +17,8 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public VerificationServiceProfile()
         {
-            this.Entity_UsesVerificationService = new HashSet<Entity_UsesVerificationService>();
             this.Entity_HasVerificationService = new HashSet<Entity_HasVerificationService>();
+            this.Entity_UsesVerificationService = new HashSet<Entity_UsesVerificationService>();
         }
     
         public int Id { get; set; }
@@ -37,8 +37,8 @@ namespace workIT.Data.Tables
         public int EntityStateId { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_UsesVerificationService> Entity_UsesVerificationService { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasVerificationService> Entity_HasVerificationService { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_UsesVerificationService> Entity_UsesVerificationService { get; set; }
     }
 }

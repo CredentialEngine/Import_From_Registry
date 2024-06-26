@@ -17,9 +17,9 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Codes_EntityTypes()
         {
-            this.Entity = new HashSet<Entity>();
-            this.Counts_EntityStatistic = new HashSet<Counts_EntityStatistic>();
             this.Collection_HasMember = new HashSet<Collection_HasMember>();
+            this.Counts_EntityStatistic = new HashSet<Counts_EntityStatistic>();
+            this.Entity = new HashSet<Entity>();
         }
     
         public int Id { get; set; }
@@ -34,10 +34,10 @@ namespace workIT.Data.Tables
         public string Label { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity> Entity { get; set; }
+        public virtual ICollection<Collection_HasMember> Collection_HasMember { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Counts_EntityStatistic> Counts_EntityStatistic { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Collection_HasMember> Collection_HasMember { get; set; }
+        public virtual ICollection<Entity> Entity { get; set; }
     }
 }

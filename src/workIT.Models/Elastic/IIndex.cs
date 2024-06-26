@@ -76,8 +76,9 @@ namespace workIT.Models.Elastic
         /// List of collection ids that a resource is part of
         /// </summary>
         List<int> ResourceForCollection { get; set; }
-        List<int> ResourceInTransferValue { get; set; }
-        List<int> ResourceHasSupportService { get; set; }
+        List<int> ResourceProvidesTransferValues { get; set; }
+		List<int> ResourceReceivesTransferValues { get; set; }
+		List<int> ResourceHasSupportService { get; set; }
         List<IndexSubject> Subjects { get; set; }
 	}
 }

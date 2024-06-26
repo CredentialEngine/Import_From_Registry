@@ -1,16 +1,13 @@
-﻿using Newtonsoft.Json;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-
+using Newtonsoft.Json;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
 using DBResource = workIT.Data.Tables.SupportService;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisResource = workIT.Models.Common.SupportService;
@@ -152,7 +149,7 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
                 string message = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), true );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
                 status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
                 isValid = false;
             }
@@ -237,12 +234,12 @@ namespace workIT.Factories
                     string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "SupportService" );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-                    LoggingHelper.LogError( message, true );
+                    LoggingHelper.LogError( dbex, message );
                 }
                 catch ( Exception ex )
                 {
                     string message = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ), true );
+                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ) );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
                 }
             }
@@ -338,7 +335,7 @@ namespace workIT.Factories
                 OwningAgentUID = document.PrimaryAgentUID,
                 OwningOrgId = document.OrganizationId
             };
-            var statusMessage = "";
+            var statusMessage = string.Empty;
             if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
             {
                 status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -354,7 +351,7 @@ namespace workIT.Factories
                 //status.AddWarning( "An SupportService Description must be entered" );
             }
 
-            var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+            var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
             if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
             {
                 profile.LifeCycleStatusTypeId = defStatus.Id;
@@ -362,7 +359,7 @@ namespace workIT.Factories
             else
             {
                 var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
-                CodeItem ci = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+                CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
                 if ( ci == null || ci.Id < 1 )
                 {
                     //while this should never happen, should have a default
@@ -429,7 +426,7 @@ namespace workIT.Factories
                             } );
                             isValid = true;
                             //delete cache
-                            var statusMessage = "";
+                            var statusMessage = string.Empty;
                             if ( !new EntityManager().EntityCacheDelete( rowId, ref statusMessage ) )
                             {
                                 messages.Add( statusMessage );
@@ -762,9 +759,9 @@ namespace workIT.Factories
             bool autocomplete = true;
             var results = new List<string>();
             //
-            List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+            List<ThisResource> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
             bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-            string prevName = "";
+            string prevName = string.Empty;
             foreach ( var item in list )
             {
                 //note excluding duplicates may have an impact on selected max terms
@@ -790,8 +787,8 @@ namespace workIT.Factories
             ThisResource item = new ThisResource();
             List<ThisResource> list = new List<ThisResource>();
             var result = new DataTable();
-            string temp = "";
-            string org = "";
+            string temp = string.Empty;
+            string org = string.Empty;
             int orgId = 0;
 
             using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -800,7 +797,7 @@ namespace workIT.Factories
 
                 if ( string.IsNullOrEmpty( pFilter ) )
                 {
-                    pFilter = "";
+                    pFilter = string.Empty;
                 }
 
                 using ( SqlCommand command = new SqlCommand( "[SupportService.ElasticSearch]", c ) )
@@ -852,27 +849,27 @@ namespace workIT.Factories
                         continue;
                     }
 
-                    item.Description = GetRowColumn( dr, "Description", "" );
+                    item.Description = GetRowColumn( dr, "Description", string.Empty );
                     string rowId = GetRowColumn( dr, "RowId" );
                     item.RowId = new Guid( rowId );
 
-                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-                    item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+                    item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
 
 
-                    //org = GetRowPossibleColumn( dr, "Organization", "" );
+                    //org = GetRowPossibleColumn( dr, "Organization", string.Empty );
                     //orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
                     //if ( orgId > 0 )
                     //	item.OwningOrganization = new Organization() { Id = orgId, Name = org };
 
                     //
-                    //temp = GetRowColumn( dr, "DateEffective", "" );
+                    //temp = GetRowColumn( dr, "DateEffective", string.Empty );
                     //if ( IsValidDate( temp ) )
                     //	item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
                     //else
-                    //	item.DateEffective = "";
+                    //	item.DateEffective = string.Empty;
 
                     item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
                     item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
@@ -900,21 +897,20 @@ namespace workIT.Factories
             output.Name = GetData( input.Name );
             output.Description = GetData( input.Description );
             output.EntityStateId = input.EntityStateId;
-            if ( input.OwnedByList != null && input.OwnedByList.Any() )
-            {
-                output.PrimaryAgentUid = input.OwnedByList[0];
-            }
-            else
-            if ( input.OfferedByList != null && input.OfferedByList.Any() )
-            {
-                output.PrimaryAgentUid = input.OfferedByList[0];
-            }
-            else
-            {
-                //should not be possible, and is set as not null in db!!
-                output.PrimaryAgentUid = Guid.Empty;
-            }
-            output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			if ( input.OwnedByList != null && input.OwnedByList.Any() )
+			{
+				output.PrimaryAgentUid = input.OwnedByList[ 0 ];
+			}
+			else if ( input.OfferedByList != null && input.OfferedByList.Any() )
+			{
+				output.PrimaryAgentUid = input.OfferedByList[ 0 ];
+			}
+			else
+			{
+				//should not be possible, and is set as not null in db!!
+				output.PrimaryAgentUid = Guid.Empty;
+			}
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
 
 
             output.AvailabilityListing = null;
@@ -923,22 +919,22 @@ namespace workIT.Factories
             output.Keyword = null;
             if ( input.AvailabilityListing != null && input.AvailabilityListing.Count > 0 )
             {
-                output.AvailabilityListing = GetListAsDelimitedString( input.AvailabilityListing, "|" );
+                output.AvailabilityListing = FormatListAsDelimitedString( input.AvailabilityListing, "|" );
                 //output.AvailabilityListing = JsonConvert.SerializeObject( input.AvailabilityListing, JsonHelper.GetJsonSettings(false) );
             }
             if ( input.AvailableOnlineAt != null && input.AvailableOnlineAt.Count > 0 )
             {
-                output.AvailableOnlineAt = GetListAsDelimitedString( input.AvailabilityListing, "|" );
+                output.AvailableOnlineAt = FormatListAsDelimitedString( input.AvailabilityListing, "|" );
                 //output.AvailableOnlineAt = JsonConvert.SerializeObject( input.AvailableOnlineAt, JsonHelper.GetJsonSettings( false ) );
             }
             if ( input.AlternateName != null && input.AlternateName.Count > 0 )
             {
-                output.AlternateName = GetListAsDelimitedString( input.AlternateName, "|" );
+                output.AlternateName = FormatListAsDelimitedString( input.AlternateName, "|" );
                 //output.AlternateName = JsonConvert.SerializeObject( input.AlternateName, JsonHelper.GetJsonSettings( false ) );
             }
             if ( input.Keyword != null && input.Keyword.Count > 0 )
             {
-                output.Keyword = GetListAsDelimitedString( input.Keyword, "|" );
+                output.Keyword = FormatListAsDelimitedString( input.Keyword, "|" );
             }
             if ( IsValidDate( input.DateEffective ) )
                 output.DateEffective = DateTime.Parse( input.DateEffective );
@@ -970,7 +966,7 @@ namespace workIT.Factories
             output.Name = input.Name;
             output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-            output.Description = input.Description == null ? "" : input.Description;
+            output.Description = input.Description == null ? string.Empty : input.Description;
             output.CTID = input.CTID;
             //primary could be owner or offerer if no ownere
             if ( IsGuidValid( input.PrimaryAgentUid ) )
@@ -1002,12 +998,12 @@ namespace workIT.Factories
             if ( IsValidDate( input.DateEffective ) )
                 output.DateEffective = ( ( DateTime ) input.DateEffective ).ToString( "yyyy-MM-dd" );
             else
-                output.DateEffective = "";
+                output.DateEffective = string.Empty;
             //
             if ( IsValidDate( input.ExpirationDate ) )
                 output.ExpirationDate = ( ( DateTime ) input.ExpirationDate ).ToString( "yyyy-MM-dd" );
             else
-                output.ExpirationDate = "";
+                output.ExpirationDate = string.Empty;
 
             if ( IsValidDate( input.Created ) )
                 output.Created = ( DateTime ) input.Created;
@@ -1019,7 +1015,7 @@ namespace workIT.Factories
             int lifeCycleStatusTypeId = input.LifeCycleStatusTypeId != null ? ( int ) input.LifeCycleStatusTypeId : 0;//get active later
             if ( lifeCycleStatusTypeId > 0 )
             {
-                CodeItem ct = CodesManager.Codes_PropertyValue_Get( lifeCycleStatusTypeId );
+                CodeItem ct = CodesManager.GetLifeCycleStatus( lifeCycleStatusTypeId );
                 if ( ct != null && ct.Id > 0 )
                 {
                     //output.LifeCycleStatus = ct.Title;
@@ -1045,10 +1041,10 @@ namespace workIT.Factories
 
             //=====
             var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-            if ( relatedEntity != null && relatedEntity.Id > 0 )
-                output.EntityLastUpdated = relatedEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 
-            if ( !includingProperties )
+			if ( !includingProperties )
                 return;
             //
             if ( !string.IsNullOrWhiteSpace( input.AlternateName ) )

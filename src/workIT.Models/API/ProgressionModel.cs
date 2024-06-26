@@ -18,7 +18,7 @@ namespace workIT.Models.API
             CTDLType = "ceasn:ProgressionModel";
             CTDLTypeLabel = "Progression Model";
         }
-        public string Source { get; set; }
+        public List<string> Source { get; set; }
     }
     public class ProgressionLevel
     {

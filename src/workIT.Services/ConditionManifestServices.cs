@@ -8,12 +8,14 @@ using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
+//using APIResourceServices = workIT.Services.API.ConditionManifestServices;
 
-using ThisEntity = workIT.Models.Common.ConditionManifest;
+using ThisResource = workIT.Models.Common.ConditionManifest;
 
-using EntityMgr = workIT.Factories.ConditionManifestManager;
+using ResourceMgr = workIT.Factories.ConditionManifestManager;
 using workIT.Utilities;
 using workIT.Factories;
+using Newtonsoft.Json;
 
 namespace workIT.Services
 {
@@ -24,24 +26,34 @@ namespace workIT.Services
 		public List<string> messages = new List<string>();
 
 		#region import
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 
-			return EntityMgr.GetByCtid( ctid );
+			return ResourceMgr.GetByCtid( ctid );
 		}
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
-			bool isValid = new EntityMgr().Save( entity, ref status );
-			if ( entity.Id > 0 )
+			bool isValid = new ResourceMgr().Save( resource, ref status );
+			if ( resource.Id > 0 )
 			{
-				//update cache
-				new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+				var statusMsg = "";
+				//not applicable for condition manifests
+				//var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+				//if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+				//{
+				//	var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
 
-                //TODO - will need to update related elastic indices
-                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+				//	if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+				//	{
+				//		status.AddError( statusMsg );
+				//	}
+				//}
+
+				//TODO - will need to update related elastic indices
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OrganizationId, 1, ref messages );
             }
 
             return isValid;

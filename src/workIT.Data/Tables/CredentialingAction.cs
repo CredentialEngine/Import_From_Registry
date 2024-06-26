@@ -12,27 +12,27 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EmploymentOutcomeProfile
+    public partial class CredentialingAction
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
-        public EmploymentOutcomeProfile()
-        {
-            this.Entity_EmploymentOutcomeProfile = new HashSet<Entity_EmploymentOutcomeProfile>();
-        }
-    
         public int Id { get; set; }
         public System.Guid RowId { get; set; }
-        public int EntityStateId { get; set; }
         public string CTID { get; set; }
+        public int EntityStateId { get; set; }
+        public Nullable<int> ActionTypeId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public Nullable<System.DateTime> DateEffective { get; set; }
-        public string Source { get; set; }
-        public string JobsObtainedJson { get; set; }
+        public System.Guid ActingAgentUid { get; set; }
+        public Nullable<int> ActionStatusTypeId { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public string EvidenceOfAction { get; set; }
+        public string ResultingAward { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
+        public string Object { get; set; }
+        public string ImageUrl { get; set; }
     
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
+        public virtual Codes_CredentialingActionType Codes_CredentialingActionType { get; set; }
+        public virtual Codes_PropertyValue Codes_PropertyValue { get; set; }
     }
 }

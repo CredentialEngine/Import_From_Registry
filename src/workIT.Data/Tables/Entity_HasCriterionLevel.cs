@@ -12,16 +12,16 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Reports_SummaryHistory
+    public partial class Entity_HasCriterionLevel
     {
         public int Id { get; set; }
-        public string ReportType { get; set; }
-        public Nullable<System.DateTime> NotificationDate { get; set; }
-        public string Publisher { get; set; }
-        public string PublisherCTID { get; set; }
-        public string Organization { get; set; }
-        public string OrganizationCTID { get; set; }
-        public string EntityType { get; set; }
-        public Nullable<int> Totals { get; set; }
+        public System.Guid RowId { get; set; }
+        public int EntityId { get; set; }
+        public int CriterionLevelId { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<int> CreatedById { get; set; }
+    
+        public virtual Entity Entity { get; set; }
+        public virtual Rubric_CriterionLevel Rubric_CriterionLevel { get; set; }
     }
 }

@@ -1,0 +1,48 @@
+﻿{
+    "search:termGroup":
+    {
+    "ceterms:address": [
+            {
+                "ceterms:addressRegion":
+                {
+                    "en": "Illinois",
+                    "en": "IL"
+                }
+            }
+        ],
+        "ceterms:availableAt": [
+            {
+                "ceterms:addressRegion":
+                {
+                    "en": "Illinois",
+                    "en": "IL"
+                }
+            }
+        ],
+        "ceterms:ownedBy":
+        {
+            "ceterms:address": [
+                {
+                    "ceterms:addressRegion":
+                    {
+                        "en": "Illinois",
+                        "en": "IL"
+                    }
+                }
+            ]
+        },
+        "ceterms:offeredBy":
+        {
+            "ceterms:address": [
+                {
+                    "ceterms:addressRegion":
+                    {
+                        "en": "Illinois",
+                        "en": "IL"
+                    }
+                }
+            ]
+        },
+        "search:operator": "search:orTerms"
+    }
+}

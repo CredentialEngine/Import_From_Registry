@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AccountsSystem\AccountsSystem.cs" />
     <Compile Include="AgentRelationship.cs" />
     <Compile Include="API\Address.cs" />
     <Compile Include="API\AggregateDataProfile.cs" />
@@ -68,6 +69,7 @@
     <Compile Include="API\ConditionProfile.cs" />
     <Compile Include="API\CostManifest.cs" />
     <Compile Include="API\CredentialDetail.cs" />
+    <Compile Include="API\CredentialingAction.cs" />
     <Compile Include="API\DataProfile.cs" />
     <Compile Include="API\DataSetProfile.cs" />
     <Compile Include="API\DataSetTimeFrame.cs" />
@@ -89,6 +91,7 @@
     <Compile Include="API\QuerySummary.cs" />
     <Compile Include="API\RegistrySearchAPI.cs" />
     <Compile Include="API\RevocationProfile.cs" />
+    <Compile Include="API\Rubric.cs" />
     <Compile Include="API\ScheduledOffering.cs" />
     <Compile Include="API\SearchResult.cs" />
     <Compile Include="API\SupportService.cs" />
@@ -113,6 +116,7 @@
     <Compile Include="Common\CostManifest.cs" />
     <Compile Include="Common\Credential.cs" />
     <Compile Include="Common\CredentialAlignmentObject.cs" />
+    <Compile Include="Common\CredentialingAction.cs" />
     <Compile Include="Common\CredentialSummary.cs" />
     <Compile Include="Common\CurrencyCode.cs" />
     <Compile Include="Common\EarningsProfile.cs" />
@@ -144,6 +148,7 @@
     <Compile Include="Common\QuantitativeValue.cs" />
     <Compile Include="Common\ReferenceFramework.cs" />
     <Compile Include="Common\ResourceSummary.cs" />
+    <Compile Include="Common\Rubric.cs" />
     <Compile Include="Common\ScheduledOffering.cs" />
     <Compile Include="Common\SiteMessage.cs" />
     <Compile Include="Common\SupportService.cs" />
@@ -161,6 +166,7 @@
     <Compile Include="Elastic\CompetencyFrameworkIndex.cs" />
     <Compile Include="Elastic\CostManifest.cs" />
     <Compile Include="Elastic\CostProfile.cs" />
+    <Compile Include="Elastic\ElasticTools.cs" />
     <Compile Include="Elastic\IIndex.cs" />
     <Compile Include="Elastic\JurisdictionProfile.cs" />
     <Compile Include="Elastic\LearningOppIndex.cs" />

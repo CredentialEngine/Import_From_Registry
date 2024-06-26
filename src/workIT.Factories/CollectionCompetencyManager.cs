@@ -23,7 +23,7 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "CollectionCompetencyManager";
         string EntityType = "Competency";
-        int EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY; 
+        int EntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY; 
 
         #region Persistance ===================
 
@@ -56,10 +56,10 @@ namespace workIT.Factories
 		/// <summary>
 		/// Add/Update a Collection
 		/// </summary>
-		/// <param name="entity"></param>
+		/// <param name="resource"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( Collection collection, ThisResource entity, DateTime updateDate, ref SaveStatus status )
+		public bool Save( Collection collection, ThisResource resource, DateTime updateDate, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -69,20 +69,24 @@ namespace workIT.Factories
 			{
 				using ( var context = new EntityContext() )
 				{
-
-					if ( ValidateProfile( entity, ref status ) == false )
+					//???? not existance checking
+					if ( ValidateProfile( resource, ref status ) == false )
 					{
 						//return false;
 					}
+					//check 
+					var exists = Get( collection.Id, resource.CTID );
+					if ( exists != null && exists .Id > 0)
+						resource.Id = exists.Id;
 
-					if ( entity.Id == 0 )
+					if ( resource.Id == 0 )
 					{
 						//add
 						efEntity = new DBResource();
-						MapToDB( entity, efEntity );
+						MapToDB( resource, efEntity );
 
-						if ( IsValidDate( entity.Created ) )
-							efEntity.Created = ( DateTime ) entity.Created;
+						if ( IsValidDate( resource.Created ) )
+							efEntity.Created = ( DateTime ) resource.Created;
 						else if ( IsValidDate( status.EnvelopeCreatedDate ) )
 							efEntity.Created = status.LocalCreatedDate;
 						else
@@ -93,8 +97,8 @@ namespace workIT.Factories
 						//if ( IsValidDate( entity.DateModified ) )
 						//	efEntity.DateModified = (DateTime) entity.DateModified;
 
-						if ( IsValidGuid( entity.RowId ) )
-							efEntity.RowId = entity.RowId;
+						if ( IsValidGuid( resource.RowId ) )
+							efEntity.RowId = resource.RowId;
 						else
 							efEntity.RowId = Guid.NewGuid();
 
@@ -102,34 +106,34 @@ namespace workIT.Factories
 
 						count = context.SaveChanges();
 
-						entity.Id = efEntity.Id;
-						entity.RowId = efEntity.RowId;
+						resource.Id = efEntity.Id;
+						resource.RowId = efEntity.RowId;
 						if ( count == 0 )
 						{
-							status.AddWarning( string.Format( "CollectionId: {0}. Unable to add competency: {1} <br\\> ", entity.FrameworkId, string.IsNullOrWhiteSpace( entity.CompetencyText ) ? "no description" : entity.CompetencyText ) );
+							status.AddWarning( string.Format( "CollectionId: {0}. Unable to add competency: {1} <br\\> ", resource.FrameworkId, string.IsNullOrWhiteSpace( resource.CompetencyText ) ? "no description" : resource.CompetencyText ) );
 						}
 						else
 						{
-                            entity.RowId = efEntity.RowId;
-                            entity.Created = ( DateTime ) efEntity.Created;
-                            entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
-                            entity.Id = efEntity.Id;
-                            UpdateEntityCache( collection, entity, ref status );
+                            resource.RowId = efEntity.RowId;
+                            resource.Created = ( DateTime ) efEntity.Created;
+                            resource.LastUpdated = ( DateTime ) efEntity.LastUpdated;
+                            resource.Id = efEntity.Id;
+                            UpdateEntityCache( collection, resource, ref status );
                         }
 					}
 					else
 					{
 
-						efEntity = context.Collection_Competency.FirstOrDefault( s => s.Id == entity.Id );
+						efEntity = context.Collection_Competency.FirstOrDefault( s => s.Id == resource.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
-							entity.RowId = efEntity.RowId;
+							resource.RowId = efEntity.RowId;
 							//update
-							MapToDB( entity, efEntity );
+							MapToDB( resource, efEntity );
 
 							//need to do the date check here, or may not be updated
-							if ( IsValidDate( entity.Created ) )
-								efEntity.Created = ( DateTime ) entity.Created;
+							if ( IsValidDate( resource.Created ) )
+								efEntity.Created = ( DateTime ) resource.Created;
 
 							//if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							//{
@@ -144,8 +148,9 @@ namespace workIT.Factories
 							if ( HasStateChanged( context ) )
 							{
 								count = context.SaveChanges();
-                                entity.LastUpdated = updateDate;
-                                UpdateEntityCache( collection, entity, ref status );
+                                resource.LastUpdated = updateDate;
+								resource.Created = efEntity.Created;
+								UpdateEntityCache( collection, resource, ref status );
                             }
 						}
 					}
@@ -153,41 +158,58 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Save()" );
+				LoggingHelper.LogError( ex, thisClassName + $".Save() collection: {collection.Name}, colCTID: {collection.CTID}, competencyCTID: {resource.CTID}" );
 			}
 
 			return isValid;
 		}
-        public void UpdateEntityCache( Collection parent, ThisResource document, ref SaveStatus status )
+        public void UpdateEntityCache( Collection parent, ThisResource resource, ref SaveStatus status )
         {
-			EntityCache ec = new EntityCache()
+			try
 			{
-				EntityTypeId = EntityTypeId,
-				EntityType = EntityType,
-				EntityStateId = 3,
-				EntityUid = document.RowId,
-				ParentEntityType = "Collection",
-				ParentEntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION,
-				ParentEntityId= parent.RelatedEntityId,
-				ParentEntityUid = parent.RowId,
-                BaseId = document.Id,
-                Description = "Collection Competency",
-                //a list
-                //SubjectWebpage = document.SubjectWebpage,
-                CTID = document.CTID,
-                Created =(DateTime) document.Created,
-                LastUpdated = ( DateTime ) document.LastUpdated,
-                Name = document.CompetencyText,
-                OwningAgentUID = parent.PrimaryAgentUID,
+				EntityCache ec = new EntityCache()
+				{
+					EntityTypeId = EntityTypeId,
+					EntityType = EntityType,
+					EntityStateId = 3,
+					EntityUid = resource.RowId,
+					ParentEntityType = "Collection",
+					ParentEntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION,
+					ParentEntityId = parent.RelatedEntityId,
+					ParentEntityUid = parent.RowId,
+					BaseId = resource.Id,
+					Description = "Collection Competency",
+					//a list
+					//SubjectWebpage = document.SubjectWebpage,
+					CTID = resource.CTID,
+					Name = resource.CompetencyText,
+					OwningAgentUID = parent.PrimaryAgentUID,
 
-            };
+				};
 
-            var statusMessage = "";
-            if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
-            {
-                status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.CompetencyText, document.Id, statusMessage ) );
-            }
-        }
+				if ( IsValidDate( resource.Created ) )
+				{
+					ec.Created = ( DateTime ) resource.Created;
+				}
+				if ( IsValidDate( resource.LastUpdated ) )
+				{
+					ec.LastUpdated = ( DateTime ) resource.LastUpdated;
+				}
+				if ( IsValidGuid( parent.RowId ) )
+				{
+					ec.OwningAgentUID = parent.PrimaryAgentUID;
+				}
+				var statusMessage = string.Empty;
+				if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+				{
+					status.AddError( $"{thisClassName}.UpdateEntityCache() collection: {parent.Name}, colCTID: {parent.CTID}, competencyCTID: {resource.CTID}. Failed: {statusMessage}" );
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + $".UpdateEntityCache() collection: {parent.Name}, colCTID: {parent.CTID}, competencyCTID: {resource.CTID}" );
+			}
+		}
         public bool DeleteAll( int CollectionId, ref SaveStatus status, DateTime? lastUpdated = null )
 		{
 			bool isValid = true;
@@ -286,7 +308,7 @@ namespace workIT.Factories
                                 where ( cm.CollectionId == collectionId )
                                 group new { cm } by new { cm.CollectionId }
                                     into cmgrp
-                                select new { CollectionId = cmgrp.Key.CollectionId, EntityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY, EntityType = "Competency", Count = cmgrp.Count() };
+                                select new { CollectionId = cmgrp.Key.CollectionId, EntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY, EntityType = "Competency", Count = cmgrp.Count() };
 
                     var result = query.OrderBy( m => m.CollectionId ).ThenBy( m => m.EntityType ).ToList();
 
@@ -383,7 +405,7 @@ namespace workIT.Factories
 			output.CompetencyText = input.CompetencyText;
 			output.CompetencyLabel = input.CompetencyLabel;
 			output.CompetencyCategory = input.CompetencyCategory;
-			output.CredentialRegistryURI = input.CtdlId ?? "";
+			output.CredentialRegistryURI = input.CtdlId ?? string.Empty;
 
 			//this will have been serialized in the import step
 			if ( !string.IsNullOrWhiteSpace( input.CompetencyDetailJson ) )
@@ -405,7 +427,7 @@ namespace workIT.Factories
 			output.CompetencyText = input.CompetencyText;
 			output.CompetencyLabel = input.CompetencyLabel;
 			output.CompetencyCategory = input.CompetencyCategory;
-			output.CtdlId = input.CredentialRegistryURI ?? "";
+			output.CtdlId = input.CredentialRegistryURI ?? string.Empty;
 
 			if ( !string.IsNullOrEmpty( output.CompetencyDetailJson ) )
 			{

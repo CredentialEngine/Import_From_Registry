@@ -46,8 +46,8 @@ namespace workIT.Models.ProfileModels
 			//EmbeddedAssessment = new List<AssessmentProfile>();
 			Occupation = new Enumeration();
 			OccupationType = new Enumeration();
-			Industry = new Enumeration();
 			IndustryType = new Enumeration();
+			//IndustryType = new Enumeration();
 			OtherIndustries = new List<TextValueProfile>();
 			OtherOccupations = new List<TextValueProfile>();
 			Region = new List<JurisdictionProfile>();
@@ -64,7 +64,7 @@ namespace workIT.Models.ProfileModels
 
 		public int LearningEntityTypeId { get; set; } = 7;
 		public string LearningEntityType { get; set; }
-		public string LearningEntityTypeLabel { get; set; }
+		//public string CTDLTypeLabel { get; set; }
 		public string LearningTypeSchema { get; set; }
 
 
@@ -122,33 +122,35 @@ namespace workIT.Models.ProfileModels
 		public List<DurationProfile> EstimatedDuration { get; set; }
 		
 		public Enumeration DeliveryType { get; set; }
-        public Enumeration AudienceType { get; set; } = new Enumeration();
-		public CodeItemResult AudienceTypes { get; set; } = new CodeItemResult();
-		public Enumeration AudienceLevelType { get; set; } = new Enumeration();
-		public CodeItemResult AudienceLevelTypes { get; set; } = new CodeItemResult();
-		public CodeItemResult AssessmentMethodTypes { get; set; } = new CodeItemResult();
-
+        public Enumeration AudienceType { get; set; } 
+		public CodeItemResult AudienceTypes { get; set; }
+		public Enumeration AudienceLevelType { get; set; } 
+		public CodeItemResult AudienceLevelTypes { get; set; } 
+		public CodeItemResult AssessmentMethodTypes { get; set; }
+		public CodeItemResult ProvidesTransferValueForElastic { get; set; } = new CodeItemResult();
+		public CodeItemResult ReceivesTransferValueFromElastic { get; set; } = new CodeItemResult();
+		public CodeItemResult ObjectOfActionElastic { get; set; } = new CodeItemResult();
 		//
-		public CodeItemResult DeliveryMethodTypes { get; set; } = new CodeItemResult();
+		public CodeItemResult DeliveryMethodTypes { get; set; } 
         public string DeliveryTypeDescription { get; set; }
 		//public string VerificationMethodDescription { get; set; }
 
-		public Enumeration Industry { get; set; }
-		public Enumeration IndustryType
-		{
-			get
-			{
-				return new Enumeration()
-				{
-					Items = new List<EnumeratedItem>()
-					.Concat( Industry.Items )
-					//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
-					//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) )
-					.ToList()
-				};
-			}
-			set { Industry = value; }
-		} //
+		public Enumeration IndustryType { get; set; }
+		//public Enumeration IndustryType
+		//{
+		//	get
+		//	{
+		//		return new Enumeration()
+		//		{
+		//			Items = new List<EnumeratedItem>()
+		//			.Concat( Industry.Items )
+		//			//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
+		//			//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) )
+		//			.ToList()
+		//		};
+		//	}
+		//	set { Industry = value; }
+		//} //
 		public List<TextValueProfile> OtherIndustries { get; set; }
 		public Enumeration Occupation { get; set; }
 		public Enumeration OccupationType
@@ -207,6 +209,7 @@ namespace workIT.Models.ProfileModels
 		//inverse property not applicable, or is it?
 		public List<LearningOpportunityProfile> TargetLearningOpportunity { get; set; } 
 		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
+		public List<ResourceSummary> RelatedAction { get; set; } = new List<ResourceSummary>();
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 		/// <summary>
@@ -219,8 +222,17 @@ namespace workIT.Models.ProfileModels
 
         public List<ScheduledOffering> HasScheduledOffering { get; set; }
         public List<TopLevelObject> HasSupportService { get; set; } = new List<TopLevelObject>();
+		public List<ResourceSummary> ProvidesTransferValueFor { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ReceivesTransferValueFrom { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasRubric { get; set; } = new List<ResourceSummary>();
+		/// <summary>
+		/// Action related to this resource.
+		/// List of URIs for an existing Action
+		/// ceterms:targetAction
+		/// </summary>
+		public List<ResourceSummary> ObjectOfAction { get; set; } = new List<ResourceSummary>();
 
-        public List<TextValueProfile> Subject { get; set; }
+		public List<TextValueProfile> Subject { get; set; }
         public List<string> Subjects { get; set; } = new List<string>();
 		public string Supersedes { get; set; }
 		public string SupersededBy { get; set; }
@@ -240,7 +252,7 @@ namespace workIT.Models.ProfileModels
 		
 
 		public string AvailabilityListing { get; set; }
-
+		public string InCatalog { get; set; }
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; }
 		public List<Credential> IsPartOfCredential { get; set; }
 		public List<AssessmentProfile> IsPartOfAssessment { get; set; } = new List<AssessmentProfile>();
@@ -266,11 +278,11 @@ namespace workIT.Models.ProfileModels
 
 		public List<JurisdictionProfile> Region { get; set; }
 		public List<JurisdictionProfile> JurisdictionAssertions { get; set; }
-		public Enumeration AssessmentMethodType { get; set; } = new Enumeration();
+		public Enumeration AssessmentMethodType { get; set; }
 
 		public string AssessmentMethodDescription { get; set; }
 		public string LearningMethodDescription { get; set; }
-		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public Enumeration LifeCycleStatusType { get; set; }
 		public string LifeCycleStatus { get; set; }
 		public int LifeCycleStatusTypeId { get; set; }
 
@@ -291,15 +303,20 @@ namespace workIT.Models.ProfileModels
 		public Enumeration OfferFrequencyType { get; set; }
 		#region import 
 		public List<int> HasOfferingIds { get; set; } = new List<int>();
-        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+		public List<int> HasRubricIds { get; set; } = new List<int>();
+
+		public List<int> HasSupportServiceIds { get; set; } = new List<int>();
 
         public List<int> HasPartIds { get; set; }
         public List<int> IsPartOfIds { get; set; }
 		public List<int> PrerequisiteIds { get; set; }
 		public List<int> TargetAssessmentIds { get; set; } = new List<int>();
 		public List<int> TargetLearningOpportunityIds { get; set; } = new List<int>();
+		public List<int> ProvidesTVForIds { get; set; }
+		public List<int> ReceivesTVFromIds { get; set; }
+		public List<int> ObjectOfActionIds { get; set; }
 
-		
+
 		//CostManifestId
 		//hmm, need to create a placeholder CMs
 		public List<int> CostManifestIds { get; set; }
@@ -336,8 +353,12 @@ namespace workIT.Models.ProfileModels
         public AgentRelationshipResult QualityAssurance { get; set; }
         public AgentRelationshipResult Org_QAAgentAndRoles { get; set; } = new AgentRelationshipResult();
 
-        #region CONDITION PROFILES
-        public List<ConditionProfile> Requires { get; set; }
+		//no this would mostly be one off
+		public bool HasCachedAgentRelationships { get; set; }
+		public bool HasCachedResourceDetail { get; set; }
+
+		#region CONDITION PROFILES
+		public List<ConditionProfile> Requires { get; set; }
 		public List<ConditionProfile> Recommends { get; set; }
 
         public List<ConditionProfile> AdvancedStandingFrom { get; set; }

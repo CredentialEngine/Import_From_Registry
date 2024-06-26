@@ -1,28 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Runtime.Caching;
-using System.Text;
-using System.Threading;
-using System.Web;
 
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
 
 using workIT.Factories;
-using ResourceManager = workIT.Factories.ProgressionModelManager;
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.Elastic;
-using ElasticHelper = workIT.Services.ElasticServices;
-
-using workIT.Models.Helpers.CompetencyFrameworkHelpers;
 using workIT.Models.Search;
 using workIT.Utilities;
-
+using APIResourceServices = workIT.Services.API.ProgressionModelServices;
+using ResourceManager = workIT.Factories.ProgressionModelManager;
 using ThisResource = workIT.Models.Common.ProgressionModel;
 using ThisResourceSummary = workIT.Models.Common.ProgressionModelSummary;
 namespace workIT.Services
@@ -35,44 +22,37 @@ namespace workIT.Services
         public int EntityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_MODEL;
         #region import
 
-        public bool Import( ThisResource entity, ref SaveStatus status )
+        public bool Import( ThisResource input, ref SaveStatus status )
         {
-            LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
+            LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + input.Name );
             //do a get, and add to cache before updating
-            if (entity.Id > 0)
+            if (input.Id > 0)
             {
                 //note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
                 //var detail = GetDetail( entity.Id );
             }
-            bool isValid = new ResourceManager().Save( entity, ref status, true );
+            bool isValid = new ResourceManager().Save( input, ref status, true );
             List<string> messages = new List<string>();
-            if (entity.Id > 0)
+            if (input.Id > 0)
             {
-                if (UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false)
-                {
-                    //update cache - not applicable yet
-                    //new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-                    //update Elastic
-                    if (Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ))
-                        ElasticHelper.CompetencyFramework_UpdateIndex( entity.Id );
-                    else
-                    {
-                        new SearchPendingReindexManager().Add( EntityTypeId, entity.Id, 1, ref messages );
-                        if (messages.Count > 0)
-                            status.AddWarningRange( messages );
-                    }
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
-                }
-                else
-                {
-                    //since not in elastic, do we need to do this?
-                    new SearchPendingReindexManager().Add( EntityTypeId, entity.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
-                    if (messages.Count > 0)
-                        status.AddWarningRange( messages );
-                }
-                //no caching needed yet
-                //CacheManager.RemoveItemFromCache( "cframework", entity.Id );
+				//populate entity.cache - need to do before elastic processes
+				var detail = APIResourceServices.GetDetailForAPI( input.Id, true );
+				if ( detail != null && detail.Meta_Id > 0 )
+				{
+					var resourceDetail = JsonConvert.SerializeObject( detail, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( input.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+
+                new SearchPendingReindexManager().Add( EntityTypeId, input.Id, 1, ref messages );
+                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, input.OrganizationId, 1, ref messages );
+                if (messages.Count > 0)
+                    status.AddWarningRange( messages );
+             
+
             }
 
             return isValid;

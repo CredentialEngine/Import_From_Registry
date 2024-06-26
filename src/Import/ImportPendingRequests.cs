@@ -1,27 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-
-using workIT.Utilities;
-using workIT.Factories;
 using Import.Services;
-using RegistryServices=Import.Services.RegistryServices;
+using workIT.Factories;
 using workIT.Models;
 using workIT.Services;
+using workIT.Utilities;
 using ElasticHelper = workIT.Services.ElasticServices;
+using RegistryServices = Import.Services.RegistryServices;
 
 namespace CTI.Import
 {
-	/// <summary>
-	/// Import using Import.PendingRequest - populated from ctdlEditor.RegistryPublishingHistory
-	/// No date checks needed, just get all that have not been imported.
-	/// Will be a partner to the full import. This may be used during prime time, and the full import from 7-8pm to 6am.
-	/// 
-	/// </summary>
-	public class ImportPendingRequests
+    /// <summary>
+    /// Import using Import.PendingRequest - populated from ctdlEditor.RegistryPublishingHistory
+    /// No date checks needed, just get all that have not been imported.
+    /// Will be a partner to the full import. This may be used during prime time, and the full import from 7-8pm to 6am.
+    /// 
+    /// </summary>
+    public class ImportPendingRequests
 	{
 
 		static string thisClassName = "ImportPendingRequests";
@@ -64,7 +61,7 @@ namespace CTI.Import
 				primeTimeSleepSeconds = 10000;
 			int offHoursSleepSeconds = UtilityManager.GetAppKeyValue( "offHoursSleepSeconds", 300 ) * 1000;
 			if ( offHoursSleepSeconds < 1 )
-				offHoursSleepSeconds = 1800000;
+				offHoursSleepSeconds = 1800000; //3 min
 
 			DateTime lastTimeDataFound = DateTime.Now;
 			DateTime lastPendingUpdatesCheck = DateTime.Now;
@@ -155,8 +152,10 @@ namespace CTI.Import
 					{
 						/*--False - will update caches, and elastic on a per record basis,
 							True -store requests in the SearchPendingReindex table, and handle at end of import.	*/
-						if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true ) )
-						{
+						if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", true )
+                            //if doingScheduledElasticUpdates is true, then the updates are done by an external job, so don't do here
+                            && UtilityManager.GetAppKeyValue( "doingScheduledElasticUpdates", false ) == false )
+                        {
 							//update elastic if a elasticSearchUrl exists
 							//May NOT want to do this every minute
 							if ( UtilityManager.GetAppKeyValue( "elasticSearchUrl" ) != "" )
@@ -209,10 +208,10 @@ namespace CTI.Import
 					//if no data found, pause and try again
 					if ( DateTime.Now.Hour < 6 || DateTime.Now.Hour >= 19 )
 					{
-						LoggingHelper.DoTrace( 1, string.Format( "**** ImportPendingRequests - sleeping for {0} seconds. ****", 60 ) );
+						LoggingHelper.DoTrace( 1, string.Format( "**** ImportPendingRequests - sleeping for {0} seconds. ****", offHoursSleepSeconds / 1000 ) );
 						//WARNING - COULD RUN INTO THE NEXT SCHEDULE CAUSING A CONFLIC
 						//this may be too long if using a shorter schedule
-						Thread.Sleep( offHoursSleepSeconds );// 1 minutes
+						Thread.Sleep( offHoursSleepSeconds );// 5+ minutes
 					}
 					else if ( DateTime.Now.Hour >= 6 && DateTime.Now.Hour < 19 )
 					{
@@ -349,7 +348,7 @@ namespace CTI.Import
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, "Import", "Send Import Summary Email", notifyAdmin: false );
+				LoggingHelper.LogError(ex, "Import");
 			}
 
 			string pFilter = string.Format( "convert(varchar(16),Created,120) >= '{0}'", startDate.ToString( "yyyy-MM-dd hh:mm" ) );
@@ -378,7 +377,7 @@ namespace CTI.Import
 			}
 			catch ( Exception ex2 )
 			{
-				LoggingHelper.LogError( ex2, "Import", "Send Message Log Summary", notifyAdmin: false );
+				LoggingHelper.LogError( ex2, "Import", "Send Message Log Summary" );
 			}
 		}
 
@@ -430,6 +429,8 @@ namespace CTI.Import
 		//}
 		/// <summary>
 		/// Get all pending records except organizations
+		/// NOTE: for snhu the trgRegistryPublishingHistoryAfterInsert trigger in sandbox_ctdlEditor will create in a separate database
+		///		An alternate would be to use a default community here and filter the method: SelectAllPendingExceptList with community
 		/// 20-08-11 mparsons - should we have a limit on the number?
 		/// 21-03-07 mparsons - added code to process 100 at a time
 		///						there could be an issue with a large number where the stays inside here beyond the 55 minutes. And the next job could start before this finishes
@@ -441,11 +442,12 @@ namespace CTI.Import
 			//RegistryImport regImporter = new RegistryImport( defaultCommunity );
 			foundData = 0;
 			var maxPendingImportRecords = UtilityManager.GetAppKeyValue( "maxPendingImportRecords", 100 );
-			//var pageNbr = 1;
-			//bool isComplete = false;
-			//while ( pageNbr > 0 && !isComplete )
-			//{
-			//TODO - if the set being imported could be 'tagged', then multiple programs could run. Or split up project and add an async process.
+
+			//this approach would likely only have one type. However there may be a need to customize the except option so a full import could exclude TVP
+			var pendingProcessResourceTypeList = UtilityManager.GetAppKeyValue( "pendingProcessResourceTypeList" );
+			var pendingProcessExcludeResourceTypeList = UtilityManager.GetAppKeyValue( "pendingProcessExcludeResourceTypeList" );
+
+			//TODO - if the set being imported could be 'tagged', then multiple programs could run. Or split up project and add an async process. or parallel processing
 			var list = ImportManager.SelectAllPendingExceptList( "Organization", maxPendingImportRecords );
 			if ( list != null && list.Count() > 0 )
 			{
@@ -456,14 +458,11 @@ namespace CTI.Import
 
 				//pageNbr++;
 			}
-			//	else
-			//		isComplete = true;
-			//}
+			
 		}
 		public static void ImportOrganizations(ref int foundData)
 		{
 			ImportManager imanager = new ImportManager();
-			//RegistryImport regImporter = new RegistryImport( defaultCommunity );
 			foundData = 0;
 			var maxPendingImportRecords = UtilityManager.GetAppKeyValue( "maxPendingImportRecords", 100 );
 
@@ -471,7 +470,23 @@ namespace CTI.Import
 			var list = ImportManager.SelectPendingList( "Organization", maxPendingImportRecords );
 			if ( list != null && list.Count() > 0 )
 			{
-				LoggingHelper.DoTrace( 1, string.Format( "@@@@  ImportOrganizations. Processing: {0} records  ", list.Count() ) );
+				LoggingHelper.DoTrace( 1, string.Format( "@@@@  Import Pending: Organizations. Processing: {0} records  ", list.Count() ) );
+
+				foundData = list.Count();
+				ProcessList( list );
+			}
+		}
+		public static void ImportCredentials( ref int foundData )
+		{
+			ImportManager imanager = new ImportManager();
+			foundData = 0;
+			var maxPendingImportRecords = UtilityManager.GetAppKeyValue( "maxPendingImportRecords", 100 );
+
+			//only get orgs
+			var list = ImportManager.SelectPendingList( "Credential", maxPendingImportRecords );
+			if ( list != null && list.Count() > 0 )
+			{
+				LoggingHelper.DoTrace( 1, string.Format( "@@@@  Import Pending: Credentials. Processing: {0} records  ", list.Count() ) );
 
 				foundData = list.Count();
 				ProcessList( list );
@@ -494,15 +509,15 @@ namespace CTI.Import
 					var ctdlType = "";
 					var community = defaultCommunity;
 					//check for community
-					if (item.Environment.IndexOf(".") > 0)
-					{
-						//not the best approach, may want to add community to the history
-						//21-10-29 - going forward, environment will just contain the community (or perhaps blank for the default community) 
-						community = item.Environment.Substring( item.Environment.IndexOf( "." ) + 1 );
-					}
+					//if (item.Environment.IndexOf(".") > 0)
+					//{
+					//	//not the best approach, may want to add community to the history
+					//	//21-10-29 - going forward, environment will just contain the community (or perhaps blank for the default community) 
+					//	community = item.Environment.Substring( item.Environment.IndexOf( "." ) + 1 );
+					//}
 
 					regImporter = new RegistryImport( community );
-					//note can get the entity type from th
+					//
 					int entityTypeId = MappingHelperV3.GetEntityTypeId( item.PublishingEntityType );
 					if ( entityTypeId > 0 )
 					{
@@ -510,11 +525,22 @@ namespace CTI.Import
 						//21-10-30 - need alter process to check if record is equal to default or alternate community
 						if ( !string.IsNullOrWhiteSpace(item.EntityCtid) && item.EntityCtid.Length == 39 )
 						{
-							var envelope = RegistryServices.GetEnvelope( item.EntityCtid, ref statusMessage, ref ctdlType, community );
+							ReadEnvelope envelope = new ReadEnvelope();
+							//23-12-01 if item contains envelopeURL, use it
+							bool usedEnvelopeURL = false;
+							if ( !string.IsNullOrWhiteSpace( item.EnvelopeURL ) )
+							{
+								envelope = RegistryServices.GetEnvelopeByURL( item.EnvelopeURL, ref statusMessage, ref ctdlType );
+								usedEnvelopeURL=true;
+							} else 
+							{
+								envelope = RegistryServices.GetEnvelope( item.EntityCtid, ref statusMessage, ref ctdlType, community );
+							}
+
 							if ( envelope == null || envelope.DecodedResource == null )
 							{
 								//shouldn't happen in proper environment
-								LoggingHelper.DoTrace( 1, string.Format( " Encountered record that has an envelopeId that was not found. This is unlikely outside of test? Possibly the record has been deleted. EntityName: {0},  EntityCtid: {1}, \r\nmessage: {2}. Setting to handled to avoid endless messages!", item.EntityName, item.EntityCtid, statusMessage ) );
+								LoggingHelper.DoTrace( 1, $"!!! Encountered record that has a CTID that was not found. This is unlikely outside of test? Possibly the record has been deleted. EntityTypeId: {entityTypeId}, EntityName: {item.EntityName},  CTID: {item.EntityCtid}, usedEnvelopeURL: {usedEnvelopeURL} \r\nmessage: {statusMessage}. Setting to handled to avoid endless messages!" );
 								//set handled
 								imanager.SetImport_PendingRequestHandled( item.Id, false );
 							}
@@ -524,7 +550,7 @@ namespace CTI.Import
 								envelope.documentOwnedBy = envelope.documentOwnedBy != null ? envelope.documentOwnedBy : item.DataOwnerCTID;
 								//will we want a download option here? Unlikely
 								isValid = regImporter.ProcessEnvelope( envelope, item.PublishingEntityType, entityTypeId, cntr, false );
-								if ( entityTypeId == 10 || entityTypeId == 17 )
+								if ( entityTypeId == 10 || entityTypeId == 9 )
 									competencyFrameworksHandled++;
 
 								//may need to set completed regardless or we get loops
@@ -578,7 +604,11 @@ namespace CTI.Import
 						//may not matter at this point
 						community = item.Environment.Substring( item.Environment.IndexOf( "." ) + 1 );
 					}
-
+					if ( string.IsNullOrWhiteSpace( item.EntityCtid ) )
+					{
+						var entityMsg = $"CheckForDeletes. Found request without a CTID. Id: {item.Id}, Date: {item.Created}, Method: {item.PublishMethodURI} ";
+						continue;
+					}
 					if (item.PublishMethodURI == BaseFactory.REGISTRY_ACTION_PURGE_ALL)
 					{
 						/*process
@@ -611,7 +641,7 @@ namespace CTI.Import
 							entityMsg = string.Format( "Didn't find EntityType: {0},  EntityCtid: {1}", item.PublishingEntityType, item.EntityCtid );
 
 						LoggingHelper.DoTrace( 1, string.Format( "CheckForDeletes. Error encountered during delete attempt. Entity: {0}, \r\nmessage: {1}. Setting to handled to avoid endless messages!", entityMsg, statusMessage ) );
-						LoggingHelper.LogError( string.Format( "Error encountered during delete attempt. Entity: {0}, \r\nmessage: {1}. Setting to handled to avoid endless messages!", entityMsg, statusMessage ), true, "Import: Error encountered during delete attempt" );
+						LoggingHelper.LogError( string.Format( "Error encountered during delete attempt. Entity: {0}, \r\nmessage: {1}. Setting to handled to avoid endless messages!", entityMsg, statusMessage ) );
 
 						imanager.SetImport_PendingRequestHandled( item.Id, false );
 					}

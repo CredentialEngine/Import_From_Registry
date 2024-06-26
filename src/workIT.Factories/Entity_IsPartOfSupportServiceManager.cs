@@ -166,7 +166,7 @@ namespace workIT.Factories
                     {
                         //delete item
                         deletedCount++;
-                        string statusMessage = "";
+                        string statusMessage = string.Empty;
                         Delete( v.DeleteId, ref statusMessage );
                     }
                 }
@@ -266,7 +266,7 @@ namespace workIT.Factories
                     {
                         //delete item
                         deletedCount++;
-                        string statusMessage = "";
+                        string statusMessage = string.Empty;
                         Delete( v.DeleteId, ref statusMessage );
                     }
                 }

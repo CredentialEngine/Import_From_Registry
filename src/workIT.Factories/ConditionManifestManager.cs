@@ -266,7 +266,7 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -812,7 +812,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[ConditionManifest_Search]", c ) )
@@ -850,12 +850,12 @@ namespace workIT.Factories
 					item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 					item.Name = GetRowColumn( dr, "Name", "missing" );
 					
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
 					item.CTID = GetRowColumn( dr, "CTID" );
-					item.SubjectWebpage = GetRowColumn( dr, "CostDetails", "" );
+					item.SubjectWebpage = GetRowColumn( dr, "CostDetails", string.Empty );
 					
 
 					list.Add( item );
@@ -908,7 +908,7 @@ namespace workIT.Factories
 			output.Name = input.Name;
 			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			
 			output.CTID = input.CTID;
 			output.CredentialRegistryId = input.CredentialRegistryId;
@@ -924,6 +924,9 @@ namespace workIT.Factories
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
 				output.EntityLastUpdated = relatedEntity.LastUpdated;
+
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 			//get common conditions
 			//TODO - determine what to return for edit vs non-edit states
 			//if ( forEditView )

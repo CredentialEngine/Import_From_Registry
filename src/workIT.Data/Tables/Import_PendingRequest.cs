@@ -29,5 +29,6 @@ namespace workIT.Data.Tables
         public string EntityName { get; set; }
         public Nullable<System.DateTime> ImportedDate { get; set; }
         public Nullable<bool> ImportWasSuccessful { get; set; }
+        public string Envelope { get; set; }
     }
 }

@@ -84,6 +84,8 @@ namespace workIT.Factories
 						}
 						else
 						{
+							entity.Created = ( DateTime ) efEntity.Created;
+							entity.LastUpdated = ( DateTime ) efEntity.LastUpdated;
 							if ( addingActivity )
 							{
 								//add log entry
@@ -97,6 +99,7 @@ namespace workIT.Factories
 								};
 								new ActivityManager().SiteActivityAdd( sa );
 							}
+							//24-03-14 mp - why is this being set to something other than that done in the MapToDB?
 							entity.EntityStateId = 3;
 							UpdateEntityCache( entity, ref status );
 
@@ -113,7 +116,8 @@ namespace workIT.Factories
 							entity.RowId = efEntity.RowId;
 							//update
 							MapToDB( entity, efEntity );
-                            if ( efEntity.EntityStateId != 2 )
+							//24-03-14 mp - chg to check for a ctid? It assumes that the value 2 was set correctly?
+                            if ( efEntity.EntityStateId != 2 || IsValidCtid( entity.CTID) )
                                 efEntity.EntityStateId = 3;
                             entity.EntityStateId = efEntity.EntityStateId;
                             //need to do the date check here, or may not be updated
@@ -151,6 +155,8 @@ namespace workIT.Factories
 							}
 
 							entity.LastUpdated = lastUpdated;
+							entity.Created = ( DateTime ) efEntity.Created;
+
 							UpdateEntityCache( entity, ref status );
 
 							if ( !UpdateParts( entity, ref status ) )
@@ -161,7 +167,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, "CompetencyFrameworkManager.Save()" );
+				LoggingHelper.LogError( ex, $"{thisClassName}.Save(ctid: {entity.CTID})" );
 			}
 
 			return isValid;
@@ -231,35 +237,40 @@ namespace workIT.Factories
 				CTID = document.CTID,
 				Created = document.Created,
 				LastUpdated = document.LastUpdated,
-				ImageUrl = document.Image,
+				ImageUrl = "",
 				Name = document.Name,
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId,
 				PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
 			}
 		}
 
-		public bool UpdateParts( ThisResource entity, ref SaveStatus status )
+		public bool UpdateParts( ThisResource resource, ref SaveStatus status )
 		{
 			bool isAllValid = true;
-			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			Entity relatedEntity = EntityManager.GetEntity( resource.RowId );
 			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
 			}
-			entity.RelatedEntityId= relatedEntity.Id;
+			resource.RelatedEntityId= relatedEntity.Id;
 			Entity_AgentRelationshipManager mgr = new Entity_AgentRelationshipManager();
+			//do deletes
+			mgr.DeleteAll( relatedEntity, ref status );
+			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, resource.OwnedByIds, ref status );
 
-			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+			mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
+			//
+			new Entity_IdentifierValueManager().SaveList( resource.VersionIdentifier, resource.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier, ref status, true );
 
-            //update competencies regardless
-            new CompetencyFrameworkCompetencyManager().SaveList( entity, entity.ImportCompetencies, ref status );
+			//update competencies regardless
+			new CompetencyFrameworkCompetencyManager().SaveList( resource, resource.ImportCompetencies, ref status );
 
             return isAllValid;
 		}
@@ -319,7 +330,7 @@ namespace workIT.Factories
 					{
 						//TODO - may need a check for existing alignments
 						Guid rowId = efEntity.RowId;
-						var orgCtid = efEntity.OrganizationCTID ?? "";
+						var orgCtid = efEntity.OrganizationCTID ?? string.Empty;
 						//need to remove from Entity.
 						//-using before delete trigger - verify won't have RI issues
 						string msg = string.Format( " CompetencyFramework Id: {0}, Name: {1}, Ctid: {2}", efEntity.Id, efEntity.Name, efEntity.CTID );
@@ -415,7 +426,7 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
-		public static ThisResource Get(int profileId)
+		public static ThisResource Get(int profileId, bool gettingAllData = true )
 		{
 			ThisResource entity = new ThisResource();
 			if ( profileId == 0 )
@@ -554,25 +565,25 @@ namespace workIT.Factories
 		}
 		//
 
-		public static void MapToDB(ThisResource from, DBResource to)
+		public static void MapToDB(ThisResource input, DBResource output)
 		{
 			//want to ensure fields from create are not wiped
 			//to.Id = from.Id;
 
-			to.Name = from.Name;
-			to.Description = from.Description;
-			to.SourceUrl = from.Source ?? "";
-			to.FrameworkUri = from.FrameworkUri ?? "";
-			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
+			output.Name = input.Name;
+			output.Description = input.Description;
+			output.SourceUrl = input.Source ?? string.Empty;
+			output.FrameworkUri = input.FrameworkUri ?? string.Empty;
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
 			//will want to extract from FrameworkUri (for now)
-			if ( !string.IsNullOrWhiteSpace( from.CTID ) && from.CTID.Length == 39 )
-				to.CTID = from.CTID;
+			if ( !string.IsNullOrWhiteSpace( input.CTID ) && input.CTID.Length == 39 )
+				output.CTID = input.CTID;
 			else
 			{
-				if ( to.FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) > -1
-					|| to.FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) > -1 )
+				if ( output.FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) > -1
+					|| output.FrameworkUri.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) > -1 )
 				{
-					to.CTID = from.FrameworkUri.Substring( from.FrameworkUri.IndexOf( "/ce-" ) + 1 );
+					output.CTID = input.FrameworkUri.Substring( input.FrameworkUri.IndexOf( "/ce-" ) + 1 );
 
 				}
 				//else if ( from.FrameworkUri.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") > -1 )
@@ -580,46 +591,49 @@ namespace workIT.Factories
 				//    to.CTID = from.FrameworkUri.Substring(from.FrameworkUri.IndexOf("/ce-") + 1);
 				//}
 			}
-			if ( !string.IsNullOrWhiteSpace( from.OrganizationCTID ) && from.OrganizationCTID.Length == 39 )
-				to.OrganizationCTID = from.OrganizationCTID;
+			if ( !string.IsNullOrWhiteSpace( input.OrganizationCTID ) && input.OrganizationCTID.Length == 39 )
+				output.OrganizationCTID = input.OrganizationCTID;
 
+            output.LatestVersion = GetUrlData( input.LatestVersion, null );
+            output.PreviousVersion = GetUrlData( input.PreviousVersion, null );
+            output.NextVersion = GetUrlData( input.NextVersion, null );
 
-			//TODO - have to be consistent in having this data
-			//this may done separately. At very least setting false will be done separately
-			//actually the presence of a ctid should only be for registry denizen
-			if ( from.ExistsInRegistry 
-				|| (!string.IsNullOrWhiteSpace(from.CTID) && from.CTID.Length == 39)
-				|| ( !string.IsNullOrWhiteSpace( to.CredentialRegistryId ) && to.CredentialRegistryId.Length == 36 ) 
+            //TODO - have to be consistent in having this data
+            //this may done separately. At very least setting false will be done separately
+            //actually the presence of a ctid should only be for registry denizen
+            if ( input.ExistsInRegistry 
+				|| (!string.IsNullOrWhiteSpace(input.CTID) && input.CTID.Length == 39)
+				|| ( !string.IsNullOrWhiteSpace( output.CredentialRegistryId ) && output.CredentialRegistryId.Length == 36 ) 
 				)
 			{
-				to.EntityStateId = 3;
-				to.ExistsInRegistry = from.ExistsInRegistry;
+				output.EntityStateId = 3;
+				output.ExistsInRegistry = input.ExistsInRegistry;
 			}
 			else
 			{
 				//dont think there is a case to set to 1
-				to.EntityStateId = 2;
-				to.ExistsInRegistry = false;
+				output.EntityStateId = 2;
+				output.ExistsInRegistry = false;
 			}
-			to.TotalCompetencies = from.TotalCompetencies;
-			if ( !string.IsNullOrWhiteSpace( from.ElasticCompentenciesStore ) )
-				to.CompetenciesStore = from.ElasticCompentenciesStore;
+			output.TotalCompetencies = input.TotalCompetencies;
+			if ( !string.IsNullOrWhiteSpace( input.ElasticCompentenciesStore ) )
+				output.CompetenciesStore = input.ElasticCompentenciesStore;
 			else
 			{
 				//ensure we don't reset the store
-				to.CompetenciesStore = null;
+				output.CompetenciesStore = null;
 			}
-			if ( !string.IsNullOrWhiteSpace( from.APIFramework ) )
-				to.CompetencyFrameworkHierarchy = from.APIFramework;
+			if ( !string.IsNullOrWhiteSpace( input.APIFramework ) )
+				output.CompetencyFrameworkHierarchy = input.APIFramework;
 			else
 			{
 				//ensure we don't reset the property
-				to.CompetencyFrameworkHierarchy = null;
+				output.CompetencyFrameworkHierarchy = null;
 			}
 			//20-07-02 mp - just store the (index ready) competencies json, not the whole graph
 			//				- may stop saving this for now?
-			if ( !string.IsNullOrWhiteSpace( from.CompetencyFrameworkGraph ) )
-				to.CompetencyFrameworkGraph = from.CompetencyFrameworkGraph;
+			if ( !string.IsNullOrWhiteSpace( input.CompetencyFrameworkGraph ) )
+				output.CompetencyFrameworkGraph = input.CompetencyFrameworkGraph;
 			else
 			{
 				//ensure we don't reset the graph
@@ -627,45 +641,54 @@ namespace workIT.Factories
 
 		} //
 
-		public static void MapFromDB(DBResource from, ThisResource to)
+		public static void MapFromDB(DBResource input, ThisResource output, bool gettingAllData = true )
 		{
-			to.Id = from.Id;
-			to.RowId = from.RowId;
-			to.EntityStateId = from.EntityStateId;
-			to.Name = from.Name;
-			to.FriendlyName = FormatFriendlyTitle( from.Name );
+			output.Id = input.Id;
+			output.RowId = input.RowId;
+			output.EntityStateId = input.EntityStateId;
+			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			to.Description = from.Description;
-			to.CTID = from.CTID;
-			to.OrganizationCTID = from.OrganizationCTID ?? "";
-			to.Source = from.SourceUrl;
-			to.FrameworkUri = from.FrameworkUri;
-			to.CredentialRegistryId = from.CredentialRegistryId ?? "";
+			output.Description = input.Description;
+			output.CTID = input.CTID;
+			output.OrganizationCTID = input.OrganizationCTID ?? string.Empty;
+			output.Source = input.SourceUrl;
+			output.FrameworkUri = input.FrameworkUri;
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
 
-			to.TotalCompetencies = from.TotalCompetencies;
-			to.ElasticCompentenciesStore = from.CompetenciesStore;
-			to.CompetencyFrameworkGraph = from.CompetencyFrameworkGraph;
+            output.VersionIdentifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
+            output.LatestVersion = input.LatestVersion;
+            output.PreviousVersion = input.PreviousVersion;
+            output.NextVersion = input.NextVersion;
+
+            output.TotalCompetencies = input.TotalCompetencies;
+			output.ElasticCompentenciesStore = input.CompetenciesStore;
+			output.CompetencyFrameworkGraph = input.CompetencyFrameworkGraph;
 
 
-			//this should be replace by presence of CredentialRegistryId
-			if ( from.ExistsInRegistry != null )
-				to.ExistsInRegistry = ( bool )from.ExistsInRegistry;
-			if ( from.Created != null )
-				to.Created = ( DateTime )from.Created;
-			if ( from.LastUpdated != null )
-				to.LastUpdated = ( DateTime )from.LastUpdated;
+			//this should be replace by presence of CredentialRegistryId or realistically a CTID
+			if ( input.ExistsInRegistry != null )
+				output.ExistsInRegistry = ( bool )input.ExistsInRegistry;
+			if ( input.Created != null )
+				output.Created = ( DateTime )input.Created;
+			if ( input.LastUpdated != null )
+				output.LastUpdated = ( DateTime )input.LastUpdated;
 
-			to.APIFramework = from.CompetencyFrameworkHierarchy;
+			if (!gettingAllData )
+				return;
+
+			//
+			output.APIFramework = input.CompetencyFrameworkHierarchy;
 			try
 			{
-				if ( !string.IsNullOrWhiteSpace( to.APIFramework ) )
+				if ( !string.IsNullOrWhiteSpace( output.APIFramework ) )
 				{
 					//Obolete (no longer populated: 22-05-11)
-					to.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( to.APIFramework );
+					output.ApiFramework = JsonConvert.DeserializeObject<ApiFramework>( output.APIFramework );
 				}
 			} catch (Exception ex)
             {
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB. Name: '{0}', CTID: {1} ", to.Name, to.CTID ));
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".MapFromDB. Name: '{0}', CTID: {1} ", output.Name, output.CTID ));
 
 			}
 			//soon to be obsolete
@@ -698,10 +721,12 @@ namespace workIT.Factories
 
 			using ( var context = new EntityContext() )
 			{
+				//24-03-14 mp - was going to change to include frameworks with an entityStateId of 2: there is some inconsistency
+				//	However these are frameworks not the registry, so the framework search would not work, also typically the org CTID is not present
 				var query = ( from entity in context.CompetencyFramework
 							  join org in context.Organization on entity.OrganizationCTID equals org.CTID
 							  where entity.OrganizationCTID.ToLower() == orgCtid.ToLower()
-								   && org.EntityStateId > 1 && entity.EntityStateId == 3
+								   && org.EntityStateId > 1 && entity.EntityStateId > 2
 							  select new
 							  {
 								  entity.CTID
@@ -744,7 +769,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[Competencies_search]", c ) )
@@ -781,21 +806,21 @@ namespace workIT.Factories
 					item.Id = GetRowColumn( dr, "CompetencyFrameworkItemId", 0 );
 					item.TargetNodeName = GetRowColumn( dr, "Competency", "???" );
 					//item.ProfileName = GetRowPossibleColumn( dr, "Competency2", "???" );
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 
 					//don't include credentialId, as will work with source of the search will often be for a credential./ Same for condition profiles for now. 
 					item.SourceParentId = GetRowColumn( dr, "SourceId", 0 );
 					item.SourceEntityTypeId = GetRowColumn( dr, "SourceEntityTypeId", 0 );
 					//item.AlignmentTypeId = GetRowColumn( dr, "AlignmentTypeId", 0 );
-					//item.AlignmentType = GetRowColumn( dr, "AlignmentType", "" );
+					//item.AlignmentType = GetRowColumn( dr, "AlignmentType", string.Empty );
 					//Although the condition profile type may be significant?
 					item.ConnectionTypeId = GetRowColumn( dr, "ConnectionTypeId", 0 );
 					//=== NOTE created and lastUpdated are not relevent here
-					//string date = GetRowPossibleColumn( dr, "Created", "" );
+					//string date = GetRowPossibleColumn( dr, "Created", string.Empty );
 					//if ( DateTime.TryParse( date, out DateTime testdate ) )
 					//	item.Created = testdate;
 
-					//date = GetRowPossibleColumn( dr, "LastUpdated", "" );
+					//date = GetRowPossibleColumn( dr, "LastUpdated", string.Empty );
 					//if ( DateTime.TryParse( date, out testdate ) )
 					//	item.LastUpdated = item.EntityLastUpdated = testdate;
 

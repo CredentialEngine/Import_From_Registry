@@ -76,8 +76,8 @@ namespace workIT.Data.Views
         public virtual DbSet<Entity_ReferenceFramework_Summary> Entity_ReferenceFramework_Summary { get; set; }
         public virtual DbSet<Entity_CacheSummary> Entity_CacheSummary { get; set; }
         public virtual DbSet<Activity_Summary> Activity_Summary { get; set; }
+        public virtual DbSet<Entity_HasResourceSummary> Entity_HasResourceSummary { get; set; }
         public virtual DbSet<Reports_ReferencesFinder> Reports_ReferencesFinder { get; set; }
         public virtual DbSet<Reports_ReferencesPublisher> Reports_ReferencesPublisher { get; set; }
-        public virtual DbSet<Entity_HasResourceSummary> Entity_HasResourceSummary { get; set; }
     }
 }

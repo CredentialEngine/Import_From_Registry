@@ -224,9 +224,10 @@ namespace workIT.Factories
 						//if doing a delete on spec, may not have been any properties
 					}
 				}
-			}catch (Exception ex)
+			}
+			catch (Exception ex)
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".DeleteAll", false );
+				LoggingHelper.LogError( ex, thisClassName + $".DeleteAll Parent: {parent.EntityBaseName} ({parent.EntityType} /{parent.EntityBaseId})" );
 			}
             return isValid;
         }
@@ -311,7 +312,7 @@ namespace workIT.Factories
 			to.TargetNodeName = from.Competency;
 			to.TargetNodeDescription = from.TargetNodeDescription;
 			if ( to.TargetNodeDescription == to.TargetNodeName )
-				to.TargetNodeDescription = "";
+				to.TargetNodeDescription = string.Empty;
 
 			to.AlignmentType = from.Alignment;
 			to.TargetNode = from.TargetNode;
@@ -330,9 +331,9 @@ namespace workIT.Factories
 
 			to.FrameworkName = from.FrameworkName ?? "None";
 			if ( !string.IsNullOrWhiteSpace( from.FrameworkUri ) )
-				to.Framework = from.FrameworkUri ?? "";
+				to.Framework = from.FrameworkUri ?? string.Empty;
 			else
-				to.Framework = from.SourceUrl ?? "";
+				to.Framework = from.SourceUrl ?? string.Empty;
 
 		}       //
 
@@ -360,7 +361,7 @@ namespace workIT.Factories
 			};
 			List<CredentialAlignmentObjectFrameworkProfile> list = new List<CredentialAlignmentObjectFrameworkProfile>();
 			//var frameworksList = new Dictionary<string, RegistryImport>();
-			string viewerUrl = ""; //UtilityManager.GetAppKeyValue( "cassResourceViewerUrl" );
+			string viewerUrl = string.Empty; //UtilityManager.GetAppKeyValue( "cassResourceViewerUrl" );
 			//obsolete, copied from publisher
 			bool hidingFrameworksNotPublished = UtilityManager.GetAppKeyValue( "hideFrameworksNotPublished", false );
 			CredentialAlignmentObjectItem caoItem = new CredentialAlignmentObjectItem();
@@ -382,7 +383,7 @@ namespace workIT.Factories
 							.ToList();
 					if ( results != null && results.Count > 0 )
 					{
-						string prevName = "";
+						string prevName = string.Empty;
 						//this will currently include blank frameworks
 						var frameworks = results.Select( s => s.FrameworkName ).Distinct().ToList();
 						var sortedList = results.OrderByDescending(s => s.FrameworkName).ThenBy(s => s.Created).ToList();
@@ -418,7 +419,7 @@ namespace workIT.Factories
 
 								entity = new CredentialAlignmentObjectFrameworkProfile();
 								//default, and then override as needed
-								entity.Framework = item.FrameworkUrl ?? "";
+								entity.Framework = item.FrameworkUrl ?? string.Empty;
 								entity.FrameworkName = item.FrameworkName;
                                 if ( string.IsNullOrWhiteSpace( item.FrameworkName ) ) 
                                 {
@@ -455,7 +456,7 @@ namespace workIT.Factories
                                     //if ( item.FrameworkUrl.ToLower().IndexOf("credentialengineregistry.org/resources/ce-") == -1 )
                                     //    entity.SourceUrl = item.CompetencyFramework.SourceUrl;
                                     //else
-                                    //    entity.SourceUrl = item.CompetencyFramework.SourceUrl ?? "";
+                                    //    entity.SourceUrl = item.CompetencyFramework.SourceUrl ?? string.Empty;
 
                                     if ( !string.IsNullOrWhiteSpace(item.CompetencyFramework.CTID) )
                                     {
@@ -506,9 +507,9 @@ namespace workIT.Factories
 									//NO - can have anonymous frameworks. what to do for different orders?
 									//		- maybe should sort by framework to have anonymous together?
                                     //entity.FrameworkName = item.FrameworkName;
-                                    //entity.Framework = item.FrameworkUrl ?? "";
+                                    //entity.Framework = item.FrameworkUrl ?? string.Empty;
                                     //should we populate frameworkUri as well?
-                                    //entity.FrameworkUri = item.FrameworkUrl ?? "";
+                                    //entity.FrameworkUri = item.FrameworkUrl ?? string.Empty;
                                 }
                                
 								//Hmmm - see how parent is used
@@ -614,7 +615,7 @@ namespace workIT.Factories
 			to.TargetNodeName = from.TargetNodeName;
 			to.TargetNodeDescription = from.TargetNodeDescription;
 			if ( to.TargetNodeDescription == to.TargetNodeName )
-				to.TargetNodeDescription = "";
+				to.TargetNodeDescription = string.Empty;
 
 			to.TargetNode = from.TargetNode;
 			to.TargetNodeCTID = from.TargetNodeCTID;
@@ -644,7 +645,7 @@ namespace workIT.Factories
 			to.TargetNodeDescription = from.TargetNodeDescription;
 			to.TargetNodeName = from.TargetNodeName;
 			if ( to.TargetNodeDescription == to.TargetNodeName )
-				to.TargetNodeDescription = "";
+				to.TargetNodeDescription = string.Empty;
 
 			to.Weight = ( from.Weight ?? 0M );
 			to.CodedNotation = from.CodedNotation;
@@ -666,7 +667,7 @@ namespace workIT.Factories
             if (!string.IsNullOrWhiteSpace(input.Framework))
 			    output.Framework = input.Framework;
             else
-                output.Framework = "";
+                output.Framework = string.Empty;
             //todo - latter has value, lookup frameworkId
 			//ISSUE - CAN BE A FRAMEWORK OR A COLLECTION
 			if (input.FrameworkIsACollection)
@@ -681,7 +682,7 @@ namespace workIT.Factories
 			output.TargetNodeDescription = input.TargetNodeDescription;
 			output.TargetNodeName = input.TargetNodeName;
 			if ( output.TargetNodeDescription == output.TargetNodeName )
-				output.TargetNodeDescription = "";
+				output.TargetNodeDescription = string.Empty;
 
 			//to.Weight = GetDecimalField(from.Weight);
 			output.Weight = input.Weight;

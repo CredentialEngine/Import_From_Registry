@@ -16,14 +16,23 @@ namespace workIT.Models
 			DetailPageUrl = "";
 			Timezone = TimeZone.CurrentTimeZone;
 		}
-
+		/// <summary>
+		/// Use where want to check if there were resources not imported. So only import if the last updated date is greater than that of the current finder version.
+		/// </summary>
+		public bool OnlyImportIfNewerThanExisting { get; set; }
+		public bool RecordWasSkipped { get; set; } = false;
 		public string ValidationGroup { get; set; }
 		public string Community { get; set; }
 		//public List<string> Communities { get; set; } = new List<string>();
 		public string Ctid { get; set; }
+		//enventually just use this one 
+		public string CTIDList { get; set; }
 		//should not need this, as we have MappingHelperV3.CurrentOwningAgentUid
 		//but could be useful further down the line.
 		public Guid CurrentDataProvider { get; set; }
+		/// <summary>
+		/// Purpose
+		/// </summary>
 		public bool UpdateElasticIndex { get; set; }
 		 
 		public string EnvelopeId { get; set; }
@@ -44,7 +53,7 @@ namespace workIT.Models
 		public string DocumentOwnedBy { get; set; }
 		//
 		public string DetailPageUrl { get; set; }
-		
+		public List<string> DetailPages { get; set; } = new List<string>();	
 		//statistics for actions such as pathway components added/updated, etc.
 		public int RecordsAdded { get; set; }
 		public int RecordsFailed { get; set; }
@@ -128,8 +137,16 @@ namespace workIT.Models
 
 			return messages;
         }
+		public string GetLastMessage()
+		{
+			if ( Messages == null || !Messages.Any() )
+				return "";
 
-        public string GetErrorsAsString(string separator = "\r\n")
+			var message = Messages.Last().Message;
+
+			return message;
+		}
+		public string GetErrorsAsString(string separator = "\r\n")
         {
             if (Messages.Count > 0)
                 return string.Join(separator, GetAllMessages());

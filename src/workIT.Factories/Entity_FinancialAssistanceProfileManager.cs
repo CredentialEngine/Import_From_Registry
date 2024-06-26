@@ -491,9 +491,11 @@ namespace workIT.Factories
 			
 			foreach ( var item in input )
 			{
-				var summary = "";
-				var units = !string.IsNullOrWhiteSpace(item.UnitText) ? item.UnitText : string.Join( ",", item.CreditUnitType.Items.ToArray().Select( m => m.Name));
-				var currencySymbol = "";
+				var summary = string.Empty;
+				var units = !string.IsNullOrWhiteSpace(item.UnitText) ? item.UnitText 
+					: ( item.CreditUnitType != null && item.CreditUnitType.Items?.Count > 0) ? string.Join( ",", item.CreditUnitType.Items.ToArray().Select( m => m.Name)) 
+					: "";
+				var currencySymbol = string.Empty;
 				if ( !string.IsNullOrWhiteSpace( units ) )
 				{
 					if ( units.ToLower() == "usd" )
@@ -507,24 +509,24 @@ namespace workIT.Factories
 						}
 					}
 				}
-
-				if ( item.IsRange )
+                var decimalValue = 0m;
+                if ( item.IsRange )
 				{
 					if ( string.IsNullOrWhiteSpace( currencySymbol ) ) 
-						summary = string.Format( "{0} to {1} {2}", item.MinValue.ToString( "#,##0" ), item.MaxValue.ToString( "#,##0" ), units );
+						summary = string.Format( "{0} to {1} {2}", GetField(item.MinValue).ToString( "#,##0" ), GetField( item.MaxValue).ToString( "#,##0" ), units );
 					else
-						summary = string.Format( "{2} {0} to {2} {1}", item.MinValue.ToString( "#,##0" ), item.MaxValue.ToString( "#,##0" ), currencySymbol );
+						summary = string.Format( "{2} {0} to {2} {1}", GetField( item.MinValue).ToString( "#,##0" ), GetField( item.MaxValue).ToString( "#,##0" ), currencySymbol );
 				}
-				else if ( item.Percentage > 0 )
+				else if ( IsValidDecimal( item.Percentage, ref decimalValue ) )
 				{
-					summary = string.Format( "{0}% {1}", item.Percentage.ToString( "##0" ), units );
+					summary = string.Format( "{0}% {1}", decimalValue.ToString( "##0" ), units );
 				}
-				else if( item.Value > 0 )
+				else if ( IsValidDecimal( item.Value, ref decimalValue ) )
 				{
 					if (string.IsNullOrWhiteSpace( currencySymbol ) )
-						summary = string.Format( "{0} {1}", item.Value.ToString( "#,##0" ), units );
+						summary = string.Format( "{0} {1}", decimalValue.ToString( "#,##0" ), units );
 					else
-						summary = string.Format( "{1} {0}", item.Value.ToString( "#,##0" ), currencySymbol );
+						summary = string.Format( "{1} {0}", decimalValue.ToString( "#,##0" ), currencySymbol );
 				}
 				output.Add( summary );
 			}

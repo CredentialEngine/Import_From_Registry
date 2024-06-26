@@ -1,31 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Runtime.Caching;
-using System.Text;
-using System.Threading;
-using System.Web;
 
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
 
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.Helpers;
-using workIT.Models.Elastic;
-using ElasticHelper = workIT.Services.ElasticServices;
-
 using workIT.Models.Search;
 using workIT.Utilities;
-
+using APIResourceServices = workIT.Services.API.CollectionServices;
+using ElasticHelper = workIT.Services.ElasticServices;
 using EntityMgr = workIT.Factories.CollectionManager;
-using MPM = workIT.Models.ProfileModels;
 using ThisEntity = workIT.Models.Common.Collection;
-using ThisEntitySummary = workIT.Models.Common.Collection;
 
 namespace workIT.Services
 {
@@ -37,37 +23,50 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisEntity resource, ref SaveStatus status )
 		{
-			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
+			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + resource.Name );
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
 				//var detail = GetDetail( entity.Id );
 			}
-			bool isValid = new EntityMgr().Save( entity, ref status );
+			bool isValid = new EntityMgr().Save( resource, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//update cache - not applicable yet
+				//	//update Elastic
+				//	if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				//		ElasticHelper.General_UpdateIndexForCollection( entity.Id );
+				//	else
+				//	{
+				//		new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COLLECTION, entity.Id, 1, ref messages );
+				//		if ( messages.Count > 0 )
+				//			status.AddWarningRange( messages );
+				//	}
+				//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+				//}
+				//else
 				{
-					//update cache - not applicable yet
-					//update Elastic
-					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-						ElasticHelper.General_UpdateIndexForCollection( entity.Id );
-					else
+					var statusMsg = "";
+					//TODO - do we really want all 1000+ members?
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
 					{
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COLLECTION, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
 					}
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
-				}
-				else
-				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COLLECTION, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COLLECTION, resource.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}

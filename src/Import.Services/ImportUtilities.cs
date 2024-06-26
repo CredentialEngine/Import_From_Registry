@@ -13,6 +13,7 @@ namespace Import.Services
 {
     public class ImportUtilities
     {
+		static string thisClassName = "Import.Services.ImportUtilities";
 		public bool HandleDeleteRequest( int cntr, string ctid, string ctdlType, ref string statusMessage )
 		{
 			statusMessage = "";
@@ -125,13 +126,32 @@ namespace Import.Services
 					break;
                 case "scheduledoffering":
                     if ( !new ScheduledOfferingManager().Delete( ctid, ref messages ) )
-                        DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                        DisplayMessages( string.Format( "  Delete failed: {0} ", string.Join( "", messages.ToArray() ) ) );
                     break;
                 case "supportservice":
                     if ( !new SupportServiceManager().Delete( ctid, ref messages ) )
-                        DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                        DisplayMessages( string.Format( "  Delete failed: {0} ", string.Join( "", messages.ToArray() ) ) );
                     break;
-                default:
+				case "rubric":
+					if ( !new RubricManager().Delete( ctid, ref statusMessage ) )
+						DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+					break;
+				case "accreditaction":
+				case "advancedstandingaction":
+				case "approveaction":
+				case "credentialingaction":
+				case "offeraction":
+				case "recognizeaction":
+				case "regulateaction":
+				case "renewaction":
+				case "revokeaction":
+				case "rightsaction":
+				case "workforcedemandaction":
+					var msg = $"Delete of Credential Actions ({ctdlType}) are not handled yet. This should be logged";
+					DisplayMessages( msg );
+					LoggingHelper.LogError( thisClassName + $".HandleDeleteRequest({ctdlType} / {ctid}): " + msg );
+					break;
+				default:
 					//default to credential
 					//DisplayMessages( string.Format( "{0}. Deleting Credential ({1}) by ctid: {2} ", cntr, ctdlType, ctid ) );
 					if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )

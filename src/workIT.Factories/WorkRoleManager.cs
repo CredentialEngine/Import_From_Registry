@@ -3,26 +3,17 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+using Newtonsoft.Json;
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
-using ThisResource = workIT.Models.Common.WorkRole;
 using DBEntity = workIT.Data.Tables.WorkRole;
 using EntityContext = workIT.Data.Tables.workITEntities;
-
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
-using CondProfileMgr = workIT.Factories.Entity_ConditionProfileManager;
-using Newtonsoft.Json;
+using ThisResource = workIT.Models.Common.WorkRole;
 
 namespace workIT.Factories
 {
-	public class WorkRoleManager : BaseFactory
+    public class WorkRoleManager : BaseFactory
 	{
 		static readonly string thisClassName = "WorkRoleManager";
 		static string EntityType = "WorkRole";
@@ -157,7 +148,7 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				string message = FormatExceptions( ex );
-				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), true );
+				LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
 				status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
 				isValid = false;
 			}
@@ -237,19 +228,19 @@ namespace workIT.Factories
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "WorkRole" );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError( dbex, message );
 				}
 				catch ( Exception ex )
 				{
 					string message = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ), true );
+					LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ) );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
 				}
 			}
 
 			return efEntity.Id;
 		}
-		public int AddBaseReference( ThisResource entity, ref SaveStatus status )
+		public int AddReference( ThisResource entity, ref SaveStatus status )
 		{
 			DBEntity efEntity = new DBEntity();
 			try
@@ -264,10 +255,10 @@ namespace workIT.Factories
 
 					//only add DB required properties
 					//NOTE - an entity will be created via trigger
+					//23-10-23 - ahh - now reference resources can have a lot of info. maybe just use 
+					MapToDB( entity, efEntity );
 					efEntity.EntityStateId = entity.EntityStateId = 2;
-					efEntity.Name = entity.Name;
-					efEntity.Description = entity.Description;
-
+					
 					//
 					if ( IsValidGuid( entity.RowId ) )
 						efEntity.RowId = entity.RowId;
@@ -291,18 +282,7 @@ namespace workIT.Factories
 						entity.LastUpdated = efEntity.LastUpdated.Value;
 						UpdateEntityCache( entity, ref status );
 						UpdateParts( entity, ref status );
-						/* handle new parts
-						 * AvailableAt
-						 * CreditValue
-						 * EstimatedDuration
-						 * OfferedBy
-						 * OwnedBy
-						 * assesses
-						 */
-						if ( UpdateParts( entity, ref status ) == false )
-						{
 
-						}
 						return efEntity.Id;
 					}
 
@@ -413,7 +393,12 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var ceasedStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+			if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
+			{
+				ec.IsActive = false;
+			}
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -428,8 +413,26 @@ namespace workIT.Factories
 			{
 				//status.AddWarning( "An WorkRole Description must be entered" );
 			}
+			
 
-
+			var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
+			{
+				profile.LifeCycleStatusTypeId = defStatus.Id;
+			}
+			else
+			{
+				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
+				CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				if ( ci == null || ci.Id < 1 )
+				{
+					//while this should never happen, should have a default
+					status.AddError( string.Format( "A valid LifeCycleStatusType must be included. Invalid: {0}", schemaName ) );
+					profile.LifeCycleStatusTypeId = defStatus.Id;
+				}
+				else
+					profile.LifeCycleStatusTypeId = ci.Id;
+			}
 			if ( string.IsNullOrWhiteSpace( profile.SubjectWebpage ) )
 				status.AddWarning( "Error - A Subject Webpage name must be entered" );
 
@@ -599,34 +602,65 @@ namespace workIT.Factories
 			}
 
 			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
+			eamgr.DeleteAll( relatedEntity, ref status );
+
 			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
 
-            //Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
-            //erfm.DeleteAll( relatedEntity, ref status );
-
-            //if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.WorkRoles, ref status ) == false )
-            //	isAllValid = false;
-            //if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
-            //	isAllValid = false;
+			//treat assertedBy as owner but watch displaying. OR revive ear AssertedBy (currently inactive)
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_AssertedBy, resource.AssertedByList, ref status );
 
 
-            //Entity_ReferenceManager erm = new Entity_ReferenceManager();
-            //erm.DeleteAll( relatedEntity, ref status );
-            //if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_WorkRole_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
-            //	isAllValid = false;
+			//Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
+			//erfm.DeleteAll( relatedEntity, ref status );
 
-            //if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_WorkRole_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
-            //	isAllValid = false;
+			//if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, entity.WorkRoles, ref status ) == false )
+			//	isAllValid = false;
+			//if ( erfm.SaveList( relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, entity.Industries, ref status ) == false )
+			//	isAllValid = false;
 
-            var ehssMgr = new Entity_HasSupportServiceManager();
-            ehssMgr.Update( resource.HasSupportServiceIds, relatedEntity, ref status );
 
-            //Entity_HasResource
-            var eHasResourcesMge = new Entity_HasResourceManager();
-            if ( eHasResourcesMge.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_TASK_PROFILE, resource.HasTask, ref status ) == false )
+			//Entity_ReferenceManager erm = new Entity_ReferenceManager();
+			//erm.DeleteAll( relatedEntity, ref status );
+			//if ( erm.Add( entity.Subject, entity.RowId, CodesManager.ENTITY_TYPE_WorkRole_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
+			//	isAllValid = false;
+
+			//if ( erm.Add( entity.Keyword, entity.RowId, CodesManager.ENTITY_TYPE_WorkRole_PROFILE, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false ) == false )
+			//	isAllValid = false;
+
+
+
+			//Entity_HasResource
+			var eHasResourcesMgr = new Entity_HasResourceManager();
+			//no, doing delete in save method
+			//Ohh, this would be fine if all entity types are known in advance. With KSA, there can be a mix
+			eHasResourcesMgr.DeleteAll( relatedEntity, ref status );
+			if ( eHasResourcesMgr.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_TASK_PROFILE, resource.HasTaskIds, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_HasResource ) == false )
                 isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, resource.HasOccupationIds, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_HasResource ) == false )
+				isAllValid = false;
 
-            return isAllValid;
+			//KSA
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.AbilityEmbodied, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_AbilityEmbodied ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.KnowledgeEmbodied, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_KnowledgeEmbodied ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.SkillEmbodied, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_SkillEmbodied ) == false )
+				isAllValid = false;
+			//concepts
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.PerformanceLevelType, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_PerformanceLevelType ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.PhysicalCapabilityType, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_PhysicalCapabilityType ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.SensoryCapabilityType, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_SensoryCapabiltyType ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.EnvironmentalHazardType, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_EnvironmentalHazardType ) == false )
+				isAllValid = false;
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.Classification, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_Classification ) == false )
+				isAllValid = false;
+			var ehssMgr = new Entity_HasSupportServiceManager();
+			ehssMgr.Update( resource.HasSupportServiceIds, relatedEntity, ref status );
+
+			return isAllValid;
 		}
 
 
@@ -813,9 +847,9 @@ namespace workIT.Factories
 			List<object> results = new List<object>();
 			List<string> competencyList = new List<string>();
 			//ref competencyList, 
-			List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+			List<ThisResource> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
 			bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-			string prevName = "";
+			string prevName = string.Empty;
 			foreach ( var item in list )
 			{
 				//note excluding duplicates may have an impact on selected max terms
@@ -842,8 +876,8 @@ namespace workIT.Factories
 			ThisResource item = new ThisResource();
 			List<ThisResource> list = new List<ThisResource>();
 			var result = new DataTable();
-			string temp = "";
-			string org = "";
+			string temp = string.Empty;
+			string org = string.Empty;
 			int orgId = 0;
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -852,7 +886,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[WorkRole_Search]", c ) )
@@ -904,27 +938,27 @@ namespace workIT.Factories
 						continue;
 					}
 
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
 
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+					item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
 
 
-					//org = GetRowPossibleColumn( dr, "Organization", "" );
+					//org = GetRowPossibleColumn( dr, "Organization", string.Empty );
 					//orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
 					//if ( orgId > 0 )
 					//	item.OwningOrganization = new Organization() { Id = orgId, Name = org };
 
 					//
-					//temp = GetRowColumn( dr, "DateEffective", "" );
+					//temp = GetRowColumn( dr, "DateEffective", string.Empty );
 					//if ( IsValidDate( temp ) )
 					//	item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
 					//else
-					//	item.DateEffective = "";
+					//	item.DateEffective = string.Empty;
 
 					item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
 					item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
@@ -951,7 +985,7 @@ namespace workIT.Factories
 			output.Id = input.Id;
 			output.Name = GetData( input.Name );
 			output.Description = GetData( input.Description );
-			input.EntityStateId = output.EntityStateId;
+			output.EntityStateId = input.EntityStateId;
             output.PrimaryAgentUid = input.PrimaryAgentUID;
 
 
@@ -959,6 +993,11 @@ namespace workIT.Factories
 			output.Comment = GetData( input.CommentJson );
 			output.Identifier = input.IdentifierJson;
 			output.VersionIdentifier = input.VersionIdentifierJson;
+			output.AlternateName = FormatListAsDelimitedString( input.AlternateName, "|" );
+			output.InCatalog = GetUrlData( input.InCatalog );
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			output.TargetCompetency = FormatCAOListAsDelimitedString( input.TargetCompetency, "|" );
+
 
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = input.LastUpdated;
@@ -976,15 +1015,16 @@ namespace workIT.Factories
 			output.Name = input.Name;
 			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			output.CTID = input.CTID;
             if ( IsGuidValid( input.PrimaryAgentUid ) )
             {
                 output.PrimaryAgentUID = ( Guid ) input.PrimaryAgentUid;
                 output.PrimaryOrganization = OrganizationManager.GetBasics( ( Guid ) input.PrimaryAgentUid );
             }
+			output.OrganizationRole = Entity_AgentRelationshipManager.AgentEntityRole_GetAll_ToEnumeration( output.RowId, true );
 
-            if ( IsValidDate( input.Created ) )
+			if ( IsValidDate( input.Created ) )
 				output.Created = ( DateTime )input.Created;
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = ( DateTime )input.LastUpdated;
@@ -1002,7 +1042,35 @@ namespace workIT.Factories
 			{
 				output.VersionIdentifier = JsonConvert.DeserializeObject<List<IdentifierValue>>( input.VersionIdentifier );
 			}
+			output.InCatalog = GetUrlData( input.InCatalog );
+			output.CodedNotation = GetData( input.CodedNotation );
+			output.AlternateName = SplitDelimitedStringToList( input.AlternateName, '|' );
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			if ( output.LifeCycleStatusTypeId > 0 )
+			{
+				CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
+				if ( ct != null && ct.Id > 0 )
+				{
+					output.LifeCycleStatus = ct.Title;
+				}
+				//retain example using an Enumeration for by other related tableS??? - old detail page?
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				output.LifeCycleStatusType.Items.Add( new EnumeratedItem() { Id = output.LifeCycleStatusTypeId, Name = ct.Name, SchemaName = ct.SchemaName } );
+			}
+			else
+			{
+				//OLD
+				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				{
 
+				}
+			}
+			if ( !string.IsNullOrWhiteSpace( input.TargetCompetency ) )
+			{
+				output.TargetCompetency = GetTargetCompetency( SplitDelimitedStringToList( input.TargetCompetency, '|' ) );
+			}
 			//=====
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
             //if ( relatedEntity != null && relatedEntity.Id > 0 )
@@ -1010,10 +1078,58 @@ namespace workIT.Factories
 
             //
             output.HasSupportService = Entity_HasSupportServiceManager.GetAllAsResourceSummary( relatedEntity );
+			var getAll = Entity_HasResourceManager.GetAll( relatedEntity );
+			if ( getAll != null && getAll.Count > 0 )
+			{
+				output.HasOccupation = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE ).ToList();
+				output.HasTask = getAll.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE ).ToList();
+				//Commenting the previous for reference now the competencies are using the GetCompetenices method to reduce the load time. #US285
+				//output.AbilityEmbodiedOutput = MapResourceSummaryToCAOFramework( getAll.Where( r => r.RelationshipTypeId == 5 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList());
+				//output.KnowledgeEmbodiedOutput = MapResourceSummaryToCAOFramework( getAll.Where( r => r.RelationshipTypeId == 6 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList());
+				//output.SkillEmbodiedOutput = MapResourceSummaryToCAOFramework(getAll.Where( r => r.RelationshipTypeId == 7 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList());
+				output.PerformanceLevelType = UpdateConceptResourceSummary( getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_PerformanceLevelType && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList());
+				output.PhysicalCapabilityType = UpdateConceptResourceSummary( getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_PhysicalCapabilityType && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList());
+				output.SensoryCapabilityType = UpdateConceptResourceSummary( getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_SensoryCapabiltyType && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList());
+				output.EnvironmentalHazardType = UpdateConceptResourceSummary( getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_EnvironmentalHazardType && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList());
+				output.Classification = UpdateConceptResourceSummary( getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_Classification && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList());
+				//MapResourceSummaryToCAOFramework( output.KnowledgeEmbodied, output );
+			}
+			var parentsgetAll = Entity_HasResourceManager.GetParentsForResourceId( output.Id, output.EntityTypeId );
+			foreach ( var item in parentsgetAll )
+			{
 
-        } //
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
+				{
+					output.RelatedJob.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+				{
+					output.RelatedOccupation.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE )
+				{
+					output.RelatedTask.Add( item );
+				}
+			}
+			output.RelatedCollection = CollectionMemberManager.GetMemberOfCollections( output.CTID );
+		} //
 
-        #endregion
 
-    }
+		public static ThisResource GetCompetencies( string ctid )
+		{
+			var output = new ThisResource();
+			var relatedEntity = EntityManager.EntityCacheGetByCTID( ctid );
+			var getAll = Entity_HasResourceManager.GetAll( relatedEntity.EntityUid );
+			if ( getAll != null && getAll.Count > 0 )
+			{
+				output.AbilityEmbodiedOutput = MapResourceSummaryToCAOFramework( getAll.Where( r => r.RelationshipTypeId == 5 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList() );
+				output.KnowledgeEmbodiedOutput = MapResourceSummaryToCAOFramework( getAll.Where( r => r.RelationshipTypeId == 6 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList() );
+				output.SkillEmbodiedOutput = MapResourceSummaryToCAOFramework( getAll.Where( r => r.RelationshipTypeId == 7 && ( r.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY || r.EntityTypeId == CodesManager.ENTITY_TYPE_COLLECTION_COMPETENCY ) ).ToList() );
+			}
+			return output;
+		}
+
+		#endregion
+
+	}
 }

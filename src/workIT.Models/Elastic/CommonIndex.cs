@@ -53,7 +53,10 @@ namespace workIT.Models.Elastic
 		public bool IsAvailableOnline { get; set; } = false;
         public string DateEffective { get; set; }
         public string ExpirationDate { get; set; }
-        public bool HasOccupations { get; set; }
+
+		public string StartDate { get; set; }
+		public string EndDate { get; set; }
+		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
 
 		public List<IndexProperty> Properties { get; set; } = new List<IndexProperty>();
@@ -87,12 +90,19 @@ namespace workIT.Models.Elastic
 
 		public int TransferValueFromLoppsCount { get; set; }
 		public int TransferValueHasDevProcessCount { get; set; }
-		//
+		//transfer intermediary
 		public int HasTransferValueProfiles { get; set; }
-        #endregion
+		///// <summary>
+		///// Consider using Connections for generic handling of relationships
+		///// </summary>
+		//public List<Connection> Connections { get; set; } = new List<Connection>();
+
+		public List<IndexEntityReference> TransferValueFor { get; set; } = null;
+		public List<IndexEntityReference> TransferValueFrom { get; set; } = null;
+		#endregion
 
 
-        public List<int> AccommodationTypeIds { get; set; } = new List<int>();
+		public List<int> AccommodationTypeIds { get; set; } = new List<int>();
         public List<int> SupportServiceCategoryIds { get; set; } = new List<int>();
         public List<int> DeliveryMethodTypeIds { get; set; } = new List<int>();
 

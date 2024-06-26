@@ -33,7 +33,7 @@ namespace workIT.Models.API
 		public int? Meta_Id { get; set; }
 		public int? Meta_StateId { get; set; }
 		public string Meta_Language { get; set; } = "en";
-
+		public Guid? Meta_RowId { get; set; }
 		public DateTime EntityLastUpdated { get; set; }
 		public string Meta_LastUpdated
 		{
@@ -50,6 +50,7 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings OfferedBy { get; set; }
 		public WMS.AJAXSettings OwnedOfferedBy { get; set; }
 		public WMS.AJAXSettings Publisher { get; set; }
+		public WMS.AJAXSettings Creator { get; set; }
 		//public int? OrganizationId { get; set; }
 		//public string OrganizationName { get; set; }
 		//public string OrganizationSubjectWebpage { get; set; }
@@ -86,6 +87,8 @@ namespace workIT.Models.API
 		public string Description { get; set; }
 		public string Value { get; set; }
 		public string TestURL { get; set; }
+		public int Meta_Id { get; set; } 
+		public string URI { get; set; }
 		public WMS.MainQuery Query { get; set; }
 	}
 
@@ -97,10 +100,12 @@ namespace workIT.Models.API
 		/// </summary>
 		public string Label { get; set; }
 		public Outline Provider { get; set; }
+		public List<Outline> ProviderList { get; set; }
 		/// <summary>
 		/// If present, format the heading as a link
 		/// </summary>
 		public string URL { get; set; }
+		public string CTID { get; set; }
 		public string Description { get; set; }
 		public string OutlineType { get; set; }
 
@@ -111,6 +116,7 @@ namespace workIT.Models.API
 		public string Image { get; set; }
 		public object ExtraData { get; set; }
 		public int? Meta_Id { get; set; }
+		public int? EntityTypeId { get; set; }
 	}
 	[Serializable]
 	public class ReferenceFramework

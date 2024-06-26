@@ -230,7 +230,7 @@ namespace workIT.Factories
 							.ToList();
 						if ( exists != null && exists.Count() == 1 )
 						{
-							var statusMsg = "";
+							var statusMsg = string.Empty;
 							//this method will also add pending reques to remove from elastic.
 							//actually this delete will probably also delete the Entity_Credential
 							//21-03-31 mp - problem has occurred here. This credential could have been found during import and will be shortly trying to add an entity.credential using this id!!!
@@ -322,6 +322,34 @@ namespace workIT.Factories
 			return list;
 		}//
 
+		public static List<ResourceSummary> GetRelatedActionFromInstrument( int id )
+		{
+			List<ResourceSummary> resourceList = new List<ResourceSummary>();
+			using ( var context = new EntityContext() )
+			{
+				var relatedCredentials = context.Entity_Credential.Where( s => s.CredentialId == id ).ToList();
+				foreach(var credential in relatedCredentials )
+				{
+					Entity parent = EntityManager.GetEntity( credential.EntityId );
+					if ( parent.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION )
+					{
+						var action = CredentialingActionManager.GetBasic( parent.EntityBaseId );
+						if(action != null && action.Id > 0 )
+						{
+							var resource = new ResourceSummary();
+							resource.Name = action.Name;
+							resource.Description = action.Description;
+							resource.EntityTypeId = action.EntityTypeId;
+							resource.CTID = action.CTID;
+							resource.Id = action.Id;
+							resourceList.Add( resource );
+						}
+					}
+				}
+			}
+			return resourceList;
+		}
+
 		//public static void MapToDB( ThisEntity from, DBEntity to )
 		//{
 		//	//want to ensure fields from create are not wiped
@@ -334,7 +362,7 @@ namespace workIT.Factories
 		//	to.CredentialId = from.CredentialId;
 		//	to.RelationshipTypeId = from.RelationshipTypeId;
 		//	to.EntityId = from.ParentId;
-			
+
 		//}
 		public static void MapFromDB( DBEntity from, ThisEntity to, bool isForDetailPageCondition = false )
 		{

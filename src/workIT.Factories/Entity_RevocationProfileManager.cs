@@ -178,7 +178,7 @@ namespace workIT.Factories
 					foreach ( var item in results )
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter,s children!
-						string statusMessage = "";
+						string statusMessage = string.Empty;
 						new EntityManager().Delete( item.RowId, string.Format( "RevocationProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
 						context.Entity_RevocationProfile.Remove( item );
@@ -340,10 +340,10 @@ namespace workIT.Factories
 			if ( IsValidDate( from.DateEffective ) )
 				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
-				to.DateEffective = "";
+				to.DateEffective = string.Empty;
 
 			to.RevocationCriteriaUrl = from.RevocationCriteriaUrl;
-			if ( ( from.Entity.EntityBaseName ?? "" ).Length > 3 )
+			if ( ( from.Entity.EntityBaseName ?? string.Empty ).Length > 3 )
 				to.ParentSummary = from.Entity.EntityBaseName;
 			//not used:
 			to.ProfileSummary = SetEntitySummary( to );

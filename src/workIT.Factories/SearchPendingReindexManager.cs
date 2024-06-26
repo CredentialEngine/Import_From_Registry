@@ -259,14 +259,23 @@ namespace workIT.Factories
             return isValid;
         }
 
-        public bool UpdateAll( int requestTypeId, ref List<String> messages, List<int> entityTypeIds )
+		/// <summary>
+		/// Update SearchPendingReindex
+		/// </summary>
+		/// <param name="requestTypeId">1-update, 2-delete</param>
+		/// <param name="messages"></param>
+		/// <param name="entityTypeIds"></param>
+		/// <returns></returns>
+		public bool UpdateAll( int requestTypeId, ref List<String> messages, List<int> entityTypeIds )
         {
             bool isValid = false;
             int count = 0;
             if ( requestTypeId < 1 || requestTypeId > 2 )
                 return false;
+            var requestEntityIds = string.Join( ",", entityTypeIds );
             try
             {
+                var cntr = 0;
                 //could be a proc
                 using ( var context = new EntityContext() )
                 {
@@ -285,7 +294,9 @@ namespace workIT.Factories
                             efEntity.StatusId = 2;
                             if ( HasStateChanged( context ) )
                             {
-                                efEntity.LastUpdated = System.DateTime.Now;
+                                cntr++;
+
+								efEntity.LastUpdated = System.DateTime.Now;
                                 count = context.SaveChanges();
                                 //can be zero if no data changed
                                 if ( count >= 0 )
@@ -296,17 +307,19 @@ namespace workIT.Factories
                                 {
                                     //?no info on error
                                     messages.Add( string.Format( thisClassName + ".Update Failed. The process appeared to not work, but was not an exception, so we have no message, or no clue. EntityTypeId: {0}, RecordId: {1}", efEntity.EntityTypeId, efEntity.RecordId ) );
-                                    //EmailManager.NotifyAdmin( thisClassName + ". ConditionProfile_Update Failed", message );
-                                }
+                                    isValid = false;
+									//EmailManager.NotifyAdmin( thisClassName + ". ConditionProfile_Update Failed", message );
+								}
                             }
                         }
+                        LoggingHelper.DoTrace( CodesManager.appDebuggingTraceLevel, $"{thisClassName}.UpdateAll(requestTypeId: {requestTypeId}) SearchPendingReindex. Entities: {requestEntityIds}, Updates: {cntr}" );
                     }
 
                 }
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, thisClassName + string.Format( ".UpdateAll. requestTypeId: {0}", requestTypeId ) );
+                LoggingHelper.LogError( ex, $"{thisClassName}.UpdateAll. requestTypeId: {requestTypeId},  Entities: {requestEntityIds}" );
             }
 
 

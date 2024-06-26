@@ -8,6 +8,8 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
+using APIResourceServices = workIT.Services.API.SupportServiceServices;
+using Newtonsoft.Json;
 using ResourceManager = workIT.Factories.SupportServiceManager;
 using ThisResource = workIT.Models.Common.SupportService;
 
@@ -38,8 +40,17 @@ namespace workIT.Services
             if ( resource.Id > 0 )
             {
                 List<string> messages = new List<string>();
-
-                if ( resource.OwningOrganizationId == 0 )
+				var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+				if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+				{
+					var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+				if ( resource.OwningOrganizationId == 0 )
                 {
                     resource = ResourceManager.GetBasic( resource.Id );
                 }

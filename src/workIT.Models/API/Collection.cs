@@ -30,6 +30,7 @@ namespace workIT.Models.API
 		public List<string> Classification { get; set; } = new List<string>();
 
 		public string CodedNotation { get; set; }
+		public string InCatalog { get; set; }
 		public List<LabelLink> CollectionType { get; set; }
 		public string DateEffective { get; set; }
 		public string ExpirationDate { get; set; }
@@ -45,9 +46,14 @@ namespace workIT.Models.API
 		public List<ReferenceFramework> IndustryType { get; set; } = new List<ReferenceFramework>();
 		public List<ReferenceFramework> OccupationType { get; set; } = new List<ReferenceFramework>();
 
-		//searches
-		//these could be a list of search LabelLink
-		public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
+        public LabelLink LatestVersion { get; set; }
+        public LabelLink NextVersion { get; set; } //URL
+
+        public LabelLink PreviousVersion { get; set; }
+        public List<IdentifierValue> VersionIdentifier { get; set; }
+        //searches
+        //these could be a list of search LabelLink
+        public List<LabelLink> Connections { get; set; } = new List<LabelLink>();
 
 	}
 

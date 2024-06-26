@@ -32,7 +32,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "ClassPropertyCountsSearch", c ) )
@@ -78,9 +78,9 @@ namespace workIT.Factories
 				{
 					item = new BenchmarkPropertyTotal();
 					item.DefaultOrder = GetRowColumn( dr, "Id", 0 );
-					item.Label = GetRowColumn( dr, "Label", "" );
-					item.Policy = GetRowColumn( dr, "Policy", "" );
-					item.PropertyGroup = GetRowColumn( dr, "PropertyGroup", "" );
+					item.Label = GetRowColumn( dr, "Label", string.Empty );
+					item.Policy = GetRowColumn( dr, "Policy", string.Empty );
+					item.PropertyGroup = GetRowColumn( dr, "PropertyGroup", string.Empty );
 					item.Total = GetRowColumn( dr, "Total", 0 );
 					item.PercentOfOverallTotal = GetRowPossibleColumn( dr, "PercentOfOverallTotal", 0M );
 					list.Add( item );

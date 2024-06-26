@@ -124,7 +124,7 @@ namespace workIT.Services
 				new GetByType( "Assessment", API.AssessmentServices.GetDetailByCtidForAPI ),
 				new GetByType( "Collection", API.CollectionServices.GetDetailByCtidForAPI ),
 				new GetByType( "CompetencyFramework", API.CompetencyFrameworkServices.GetDetailByCtidForAPI ),
-				new GetByType( "ConceptScheme", API.ConceptSchemeServices.GetConceptSchemeOnlyByCTID ),
+				new GetByType( "ConceptScheme", API.ConceptSchemeServices.GetDetailForAPIByCTID ),
 				new GetByType( "Credential", API.CredentialServices.GetDetailByCtidForAPI ),
 				new GetByType( "LearningOpportunity", API.LearningOpportunityServices.GetDetailByCtidForAPI ),
 				new GetByType( "Organization", API.OrganizationServices.GetDetailByCtidForAPI ),

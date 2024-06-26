@@ -82,7 +82,7 @@ namespace workIT.Factories
 								ve.PropertyName, ve.ErrorMessage );
 						}
 
-						LoggingHelper.LogError( message, true );
+						LoggingHelper.LogError( dbex, message );
 					}
 				}
 				catch ( Exception ex )
@@ -143,7 +143,7 @@ namespace workIT.Factories
 								ve.PropertyName, ve.ErrorMessage );
 						}
 
-						LoggingHelper.LogError( message, true );
+						LoggingHelper.LogError( dbex, message );
 					}
 				}
 				catch ( Exception ex )
@@ -569,7 +569,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "AccountSearch", c ) )
@@ -606,14 +606,14 @@ namespace workIT.Factories
 					item = new AppUser();
 					item.Id = GetRowColumn( dr, "Id", 0 );
 					item.FirstName = GetRowColumn( dr, "FirstName", "missing" );
-					item.LastName = GetRowColumn( dr, "LastName", "" );
+					item.LastName = GetRowColumn( dr, "LastName", string.Empty );
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
 
-					item.Email = GetRowColumn( dr, "Email", "" );
-					item.Roles = GetRowColumn( dr, "Roles", "" );
-					item.OrgMbrs = GetRowColumn( dr, "OrgMbrs", "" );
-                    item.lastLogon = GetRowColumn( dr, "lastLogon", "" );
+					item.Email = GetRowColumn( dr, "Email", string.Empty );
+					item.Roles = GetRowColumn( dr, "Roles", string.Empty );
+					item.OrgMbrs = GetRowColumn( dr, "OrgMbrs", string.Empty );
+                    item.lastLogon = GetRowColumn( dr, "lastLogon", string.Empty );
 					if ( IsValidDate( item.lastLogon ) )
 						item.lastLogon = item.lastLogon.Substring( 0, 10 );
 
@@ -749,7 +749,7 @@ namespace workIT.Factories
 		{
 			bool isValid = true;
 			EM.System_ProxyCodes efEntity = new EM.System_ProxyCodes();
-			//string proxyId = "";
+			//string proxyId = string.Empty;
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -799,7 +799,7 @@ namespace workIT.Factories
 		public string Create_ProxyLoginId( int userId, string proxyType, int expiryDays, ref string statusMessage )
 		{
 			EM.System_ProxyCodes efEntity = new EM.System_ProxyCodes();
-			string proxyId = "";
+			string proxyId = string.Empty;
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -889,7 +889,7 @@ namespace workIT.Factories
 		public bool AddRole( int userId, int roleId, int createdByUserId, ref string statusMessage )
 		{
 			bool isValid = true;
-			string aspNetUserId = "";
+			string aspNetUserId = string.Empty;
 			if ( userId == 0 )
 			{
 				statusMessage = "Error - please provide a valid user";

@@ -3,31 +3,23 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+using Newtonsoft.Json;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.ProfileModels;
-
 using workIT.Utilities;
-
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
 using DBEntity = workIT.Data.Tables.TransferValueProfile;
+using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisResource = workIT.Models.Common.TransferValueProfile;
-
-using Views = workIT.Data.Views;
-
-using EM = workIT.Data.Tables;
-using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
-	public class TransferValueProfileManager : BaseFactory
+    public class TransferValueProfileManager : BaseFactory
 	{
 		static string thisClassName = "TransferValueProfileManager";
 		static string EntityType = "TransferValue";
+		static int tvpNameMaxLength = UtilityManager.GetAppKeyValue( "maxResourceNameLength", 800 );
+
 		#region Persistance ===================
 
 
@@ -157,9 +149,16 @@ namespace workIT.Factories
 					}
 				}
 			}
+			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			{
+				string message = HandleDBValidationError( dbex, thisClassName + $".Save. id: {entity.Id}, CTID: {entity.CTID}", EntityType );
+				LoggingHelper.LogError( dbex, thisClassName, string.Format( "Save for id: {0}, Name: {1}, CTID:{2}", entity.Id, entity.Name, entity.CTID ) );
+				status.AddError( thisClassName + ".Save(). Error - the save was not successful. DbEntityValidationException. " + message );
+				isValid = false;
+			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, "TransferValueProfileManager.Save()" );
+				LoggingHelper.LogError( ex, $"TransferValueProfileManager.Save() CTID: {entity.CTID}, Name: {entity.Name}" );
 			}
 
 			return isValid;
@@ -205,6 +204,11 @@ namespace workIT.Factories
 			//
 			var elom = new Entity_LearningOpportunityManager();
 			elom.DeleteAll( relatedEntity, ref status );
+
+			//NEW start using hasResource
+			var hasResourceMgr = new Entity_HasResourceManager();
+			hasResourceMgr.DeleteAll( relatedEntity, ref status );
+
 			//
 			var etvp = new Entity_TransferValueProfileManager();
 			etvp.DeleteAll( relatedEntity, ref status );
@@ -212,81 +216,191 @@ namespace workIT.Factories
 			foreach ( var item in entity.TransferValueFromImport )
 			{
 				int newId = 0;
-				var from = EntityManager.GetEntity( item, false );
-				if ( from == null || from.Id == 0 )
+				var tvpFromEntity = EntityManager.GetEntity( item, false );
+				if ( tvpFromEntity == null || tvpFromEntity.Id == 0 )
 				{
 					status.AddError( string.Format( "{0}.UpdateParts - TransferValueFromImport. TVP: {1}. An entity was not found for GUID: {2}", thisClassName, entity.Id, item ) );
 					continue;
 				}
-				if ( from.EntityTypeId == 1 )
+				//may only need the hasResource, not sure the others are being used? 
+				//NOTE*** OLDER TVPs will not have HasResource ****
+				newId = hasResourceMgr.Add( relatedEntity, tvpFromEntity.EntityTypeId, tvpFromEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom, ref status );
+				if ( newId > 0 )
 				{
-					//may need to designate for and from later
-					ecm.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, ref newId, ref status );
+					entity.PendingReindexList.Add( new CodeItem()
+					{
+						EntityTypeId = tvpFromEntity.EntityTypeId,
+						Id = tvpFromEntity.EntityBaseId
+					} );
+				}
+
+				///==========================='
+				//TODO - make obsolete
+				if ( tvpFromEntity.EntityTypeId == 1 )
+				{
+					//may need to designate for and fromEntity later
+					ecm.Add( entity.RowId, tvpFromEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, ref newId, ref status );
 					if ( newId > 0 )
 					{
-						entity.CredentialIds.Add( from.EntityBaseId );
-						//eaMgr.Save( relatedEntity.Id, 1, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//what happens with CredentialIds ==> these will be added to elastic pending index in the tvp services 
+						//entity.CredentialIds.Add( from.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpFromEntity.EntityTypeId,
+							Id = tvpFromEntity.EntityBaseId
+						} );
 					}
 				}
-				else if ( from.EntityTypeId == 3 )
+				else if ( tvpFromEntity.EntityTypeId == 3 )
 				{
-					eam.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, true, ref status );
+					newId = eam.Add( entity.RowId, tvpFromEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, true, ref status );
 					if ( newId > 0 )
 					{
-						entity.AssessmentIds.Add( from.EntityBaseId );
-						//eaMgr.Save( relatedEntity.Id, 3, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//entity.AssessmentIds.Add( fromEntity.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpFromEntity.EntityTypeId,
+							Id = tvpFromEntity.EntityBaseId
+						} );
 					}
 				}
-				else if ( from.EntityTypeId == 7 )
+				else if ( tvpFromEntity.EntityTypeId == 7 )
 				{
-					elom.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, true, ref status );
+					newId = elom.Add( entity.RowId, tvpFromEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_IS_PART_OF, true, ref status );
 					if ( newId > 0 )
 					{
-						entity.LearningOpportunityIds.Add( from.EntityBaseId );
-						//eaMgr.Save( relatedEntity.Id, 7, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//entity.LearningOpportunityIds.Add( fromEntity.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpFromEntity.EntityTypeId,
+							Id = tvpFromEntity.EntityBaseId
+						} );
 					}
 				}
+				//else if ( tvpFromEntity.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
+				//{
+				//	//need equiv of RELATIONSHIP_TYPE_IS_PART_OF
+				//	newId = hasResMgr.Add( relatedEntity, CodesManager.ENTITY_TYPE_JOB_PROFILE, tvpFromEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom, ref status );
+				//	if ( newId > 0 )
+				//	{
+				//		entity.PendingReindexList.Add( new CodeItem()
+				//		{
+				//			EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE,
+				//			Id = tvpFromEntity.EntityBaseId
+				//		} );
+				//	}
+				//}
+				//else if ( tvpFromEntity.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+				//{
+				//	newId = hasResMgr.Add( relatedEntity, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, tvpFromEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom, ref status );
+				//	if ( newId > 0 )
+				//	{
+				//		entity.PendingReindexList.Add( new CodeItem()
+				//		{
+				//			EntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE,
+				//			Id = tvpFromEntity.EntityBaseId
+				//		} );
+				//	}
+				//}
 			}
 
 			foreach ( var item in entity.TransferValueForImport )
 			{
 				int newId = 0;
-				var from = EntityManager.GetEntity( item, false );
-				if ( from == null || from.Id == 0 )
+				var tvpForEntity = EntityManager.GetEntity( item, false );
+				if ( tvpForEntity == null || tvpForEntity.Id == 0 )
 				{
 					//??
 					status.AddError( string.Format( "{0}.UpdateParts - TransferValueForImport. TVP: {1}. An entity was not found for GUID: {2}", thisClassName, entity.Id, item ) );
 					continue;
 				}
-				if ( from.EntityTypeId == 1 )
+				//may only need the hasResource, not sure the others are being used? 
+				newId = hasResourceMgr.Add( relatedEntity, tvpForEntity.EntityTypeId, tvpForEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor, ref status );
+				if ( newId > 0 )
 				{
-					ecm.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
+					entity.PendingReindexList.Add( new CodeItem()
+					{
+						EntityTypeId = tvpForEntity.EntityTypeId,
+						Id = tvpForEntity.EntityBaseId
+					} );
+				}
+
+				//============================================
+				//TODO - make obsolete
+				if ( tvpForEntity.EntityTypeId == 1 )
+				{
+					ecm.Add( entity.RowId, tvpForEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, ref newId, ref status );
 					if ( newId > 0 )
 					{
-						entity.CredentialIds.Add( newId );
-						//eaMgr.Save( relatedEntity.Id, 1, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//entity.CredentialIds.Add( tvpForEntity.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpForEntity.EntityTypeId,
+							Id = tvpForEntity.EntityBaseId
+						} );
 					}
 
 				}
-				else if ( from.EntityTypeId == 3 )
+				else if ( tvpForEntity.EntityTypeId == 3 )
 				{
-					newId = eam.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+					newId = eam.Add( entity.RowId, tvpForEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 					if ( newId > 0 )
 					{
-						entity.AssessmentIds.Add( newId );
-						//eaMgr.Save( relatedEntity.Id, 3, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//entity.AssessmentIds.Add( tvpForEntity.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpForEntity.EntityTypeId,
+							Id = tvpForEntity.EntityBaseId
+						} );
 					}
 				}
-				else if ( from.EntityTypeId == 7 )
+				else if ( tvpForEntity.EntityTypeId == 7 )
 				{
-					newId = elom.Add( entity.RowId, from.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
+					newId = elom.Add( entity.RowId, tvpForEntity.EntityBaseId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status );
 					if ( newId > 0 )
 					{
-						entity.LearningOpportunityIds.Add( newId );
-						//eaMgr.Save( relatedEntity.Id, 7, newId, Entity_AgentRelationshipManager.ROLE_TYPE_PROVIDES_OUTCOMES, ref status );
+						//entity.LearningOpportunityIds.Add( tvpForEntity.EntityBaseId );
+						entity.PendingReindexList.Add( new CodeItem()
+						{
+							EntityTypeId = tvpForEntity.EntityTypeId,
+							Id = tvpForEntity.EntityBaseId
+						} );
 					}
 
 				}
+				//else if ( tvpForEntity.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE || tvpForEntity.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+				//{
+				//	newId = hasResMgr.Add( relatedEntity, tvpForEntity.EntityTypeId, tvpForEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor, ref status );
+				//	if ( newId > 0 )
+				//	{
+				//		entity.PendingReindexList.Add( new CodeItem()
+				//		{
+				//			EntityTypeId = tvpForEntity.EntityTypeId,
+				//			Id = tvpForEntity.EntityBaseId
+				//		} );
+				//	}
+				//	//newId = hasResMgr.Add( relatedEntity, CodesManager.ENTITY_TYPE_JOB_PROFILE, tvpForEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor, ref status );
+				//	//if ( newId > 0 )
+				//	//{
+				//	//	entity.PendingReindexList.Add( new CodeItem()
+				//	//	{
+				//	//		EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE,
+				//	//		Id = tvpForEntity.EntityBaseId
+				//	//	} );
+				//	//}
+				//}
+				//else if ( tvpForEntity.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+				//{
+				//	newId = hasResMgr.Add( relatedEntity, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, tvpForEntity.EntityBaseId, Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor, ref status );
+				//	if ( newId > 0 )
+				//	{
+				//		entity.PendingReindexList.Add( new CodeItem()
+				//		{
+				//			EntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE,
+				//			Id = tvpForEntity.EntityBaseId
+				//		} );
+				//	}
+				//}
 			}
 
 			foreach ( var item in entity.DerivedFromForImport )
@@ -312,6 +426,8 @@ namespace workIT.Factories
 			ppm.DeleteAll( relatedEntity, ref status );
 			try
 			{
+				//24-02-29 mp - TVP doesn't have an admin process profile
+				//ppm.SaveList( entity.AdministrationProcess, Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE, entity.RowId, ref status );
 				ppm.SaveList( entity.DevelopmentProcess, Entity_ProcessProfileManager.DEV_PROCESS_TYPE, entity.RowId, ref status );
 			}
 			catch ( Exception ex )
@@ -413,12 +529,12 @@ namespace workIT.Factories
 				OwningOrgId = document.OrganizationId
 			};
             //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
-            var ceasedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+            var ceasedStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
             if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
             {
                 ec.IsActive = false;
             }
-            var statusMessage = "";
+            var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -426,7 +542,7 @@ namespace workIT.Factories
 		}
 
 		/// <summary>
-		/// Do delete based on import of deleted documents
+		/// Do VIRTUAL delete based on import of deleted documents
 		/// </summary>
 		/// <param name="credentialRegistryId">NOT CURRENTLY HANDLED</param>
 		/// <param name="ctid"></param>
@@ -519,20 +635,21 @@ namespace workIT.Factories
 			}
 
 			//
-			var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
 			{
-				profile.LifeCycleStatusTypeId = defStatus.Id;
+				//23-10-06 - no longer defaulting
+				//profile.LifeCycleStatusTypeId = defStatus.Id;
 			}
 			else
 			{
 				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
-				CodeItem ci = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
 				if ( ci == null || ci.Id < 1 )
 				{
 					//while this should never happen, should have a default
 					status.AddError( string.Format( "A valid LifeCycleStatusType must be included. Invalid: {0}", schemaName ) );
-					profile.LifeCycleStatusTypeId = defStatus.Id;
+					//profile.LifeCycleStatusTypeId = defStatus.Id;
 				}
 				else
 					profile.LifeCycleStatusTypeId = ci.Id;
@@ -546,7 +663,7 @@ namespace workIT.Factories
 		#region  retrieval ==================
 
 		/// <summary>
-		/// Get a competency record
+		/// Get a record
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
@@ -560,7 +677,7 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 					DBEntity item = context.TransferValueProfile
-							.SingleOrDefault( s => s.Id == profileId );
+							.FirstOrDefault( s => s.Id == profileId && s.EntityStateId == 3 );
 
 					if ( item != null && item.Id > 0 )
 					{
@@ -595,7 +712,7 @@ namespace workIT.Factories
 					//lookup by SubjectWebpage, or SourceUrl
 					DBEntity item = context.TransferValueProfile
 							.FirstOrDefault( s =>
-								( s.SubjectWebpage != null && s.SubjectWebpage.ToLower() == SubjectWebpage.ToLower() )
+								( s.SubjectWebpage != null && s.SubjectWebpage.ToLower() == SubjectWebpage.ToLower() && s.EntityStateId == 3 )
 							);
 
 					if ( item != null && item.Id > 0 )
@@ -622,7 +739,7 @@ namespace workIT.Factories
 				{
 					//lookup by SubjectWebpage, or SourceUrl
 					DBEntity item = context.TransferValueProfile
-							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() );
+							.FirstOrDefault( s => s.CTID.ToLower() == ctid.ToLower() && s.EntityStateId == 3 );
 
 					if ( item != null && item.Id > 0 )
 					{
@@ -643,7 +760,7 @@ namespace workIT.Factories
 			using ( var context = new EntityContext() )
 			{
 				var results = context.TransferValueProfile
-							.Where( s => s.OwningAgentUid == orgUid && s.EntityStateId == 3 )
+							.Where( s => s.OwningAgentUid == orgUid && s.EntityStateId == 3 && s.EntityStateId == 3 )
 							.ToList();
 
 				if ( results != null && results.Count > 0 )
@@ -675,6 +792,44 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
+		public static List<Credential> GetAllCredentials( int topParentEntityTypeId, int topParentEntityBaseId, int relationshipTypeId )
+		{
+			var list = new List<Credential>();
+			Entity parent = EntityManager.GetEntity( topParentEntityTypeId, topParentEntityBaseId );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				//TODO - start using hasResource 
+				var newList = Entity_HasResourceManager.GetAllForEntityType( parent, 1, relationshipTypeId );
+				if ( newList != null && newList.Any() )
+				{
+					foreach ( var item in newList )
+					{
+						var record = new Credential()
+						{
+							Id = item.Id,
+							Name = item.Name,
+							CTID = item.CTID,
+							Description = item.Description,
+							NamePlusOrganization = item.Name
+						};
+						if ( item.ResourcePrimaryOrganizationName != null )
+							record.NamePlusOrganization += " (" + item.ResourcePrimaryOrganizationName + ")";
+						list.Add( record );
+					}
+				}
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + $".GetAllCredentials, topParentEntityTypeId: {topParentEntityTypeId}" );
+			}
+			return list;
+		}//
 		public static List<AssessmentProfile> GetAllAssessments( int topParentTypeId, int topParentEntityBaseId )
 		{
 			var list = new List<AssessmentProfile>();
@@ -696,11 +851,10 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
-		public static List<LearningOpportunityProfile> GetAllLearningOpportunities( int topParentTypeId, int topParentEntityBaseId )
+		public static List<AssessmentProfile> GetAllAssessments( int topParentEntityTypeId, int topParentEntityBaseId, int relationshipTypeId )
 		{
-			var list = new List<LearningOpportunityProfile>();
-			Entity parent = EntityManager.GetEntity( topParentTypeId, topParentEntityBaseId );
-			//Entity parent = EntityManager.GetEntity( parentUid );
+			var list = new List<AssessmentProfile>();
+			Entity parent = EntityManager.GetEntity( topParentEntityTypeId, topParentEntityBaseId );
 			if ( parent == null || parent.Id == 0 )
 			{
 				return list;
@@ -708,6 +862,51 @@ namespace workIT.Factories
 
 			try
 			{
+				//TODO - start using hasResource 
+				var newList = Entity_HasResourceManager.GetAllForEntityType( parent, 3, relationshipTypeId );
+				if ( newList == null || !newList.Any() )
+				{
+					//back up for older ones?
+					newList = Entity_HasResourceManager.GetAllForEntityType( parent, 3 );
+				}
+				if ( newList != null && newList.Any() )
+				{
+					foreach ( var item in newList )
+					{
+						var record = new AssessmentProfile()
+						{
+							Id = item.Id,
+							Name = item.Name,
+							CTID = item.CTID,
+							Description = item.Description,
+							NamePlusOrganization = item.Name
+						};
+						if ( item.ResourcePrimaryOrganizationName != null )
+							record.NamePlusOrganization += " (" + item.ResourcePrimaryOrganizationName + ")";
+						list.Add( record );
+					}
+				}
+
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + $".GetAllCredentials, topParentEntityTypeId: {topParentEntityTypeId}" );
+			}
+			return list;
+		}//
+		public static List<LearningOpportunityProfile> GetAllLearningOpportunities( int topParentEntityTypeId, int topParentEntityBaseId )
+		{
+			var list = new List<LearningOpportunityProfile>();
+			Entity parent = EntityManager.GetEntity( topParentEntityTypeId, topParentEntityBaseId );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				//TODO - start using hasResource 
+				var newList = Entity_HasResourceManager.GetAll( parent );
 				list = Entity_LearningOpportunityManager.TargetResource_GetAll( parent.EntityUid, true, false,0 );
 			}
 			catch ( Exception ex )
@@ -716,25 +915,73 @@ namespace workIT.Factories
 			}
 			return list;
 		}//
+		public static List<LearningOpportunityProfile> GetAllLearningOpportunities( int topParentEntityTypeId, int topParentEntityBaseId, int relationshipTypeId )
+		{
+			var list = new List<LearningOpportunityProfile>();
+			Entity parent = EntityManager.GetEntity( topParentEntityTypeId, topParentEntityBaseId );
+			if ( parent == null || parent.Id == 0 )
+			{
+				return list;
+			}
+
+			try
+			{
+				//TODO - start using hasResource 
+				var newList = Entity_HasResourceManager.GetAllForEntityType( parent, 7, relationshipTypeId );
+				if ( newList != null && newList.Any() )
+				{
+					foreach ( var item in newList )
+					{
+						var record = new LearningOpportunityProfile() 
+						{ 
+							Id = item.Id,
+							Name = item.Name,
+							CTID = item.CTID,
+							Description = item.Description,
+							NamePlusOrganization = item.Name
+						};
+						if ( item.ResourcePrimaryOrganizationName != null )
+							record.NamePlusOrganization += " (" + item.ResourcePrimaryOrganizationName + ")";
+						list.Add( record );
+					}
+				} 
+				//else
+				//{
+				//	var altList = Entity_HasResourceManager.GetAllForEntityType( parent, 7 );
+				//}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.LogError( ex, thisClassName + $".GetAllLearningOpportunities, topParentEntityTypeId: {topParentEntityTypeId}" );
+			}
+			return list;
+		}//
 		public static void MapToDB( ThisResource input, DBEntity output )
 		{
 			//want to ensure fields from create are not wiped
 			//to.Id = from.Id;
-
-			output.Name = input.Name;
+			output.Name = AssignLimitedString( input.Name, tvpNameMaxLength - 5 );
+			if ( input.Name.Length > tvpNameMaxLength )
+			{
+				//input.Name = input.Name.Substring( 0, tvpNameMaxLength );
+				//log?
+				LoggingHelper.LogError( $"{thisClassName}.MapToDB. CTID:{input.CTID}, Name length is greater than the max." );
+			}
+			
 			//TODO - can't have pending or references
 			output.EntityStateId = 3;
 			output.Description = input.Description;
 			output.CTID = input.CTID;
-			output.SubjectWebpage = input.SubjectWebpage ?? "";
-			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
+			output.SubjectWebpage = input.SubjectWebpage ?? string.Empty;
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
 			output.OwningAgentUid = input.PrimaryAgentUID;
+			//being set in validate profile method
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
 			//need to handle a partial date
 			if ( !string.IsNullOrWhiteSpace( input.StartDate ) )
 			{
 				output.StartDate = input.StartDate;
-				if ( ( output.StartDate ?? "" ).Length > 20 )
+				if ( ( output.StartDate ?? string.Empty ).Length > 20 )
 				{
 					output.StartDate = output.StartDate.Substring( 0, 10 );
 				}
@@ -745,7 +992,7 @@ namespace workIT.Factories
 			if ( !string.IsNullOrWhiteSpace( input.EndDate ) )
 			{
 				output.EndDate = input.EndDate;
-				if ( ( output.EndDate ?? "" ).Length > 20 )
+				if ( ( output.EndDate ?? string.Empty ).Length > 20 )
 				{
 					output.EndDate = output.EndDate.Substring( 0, 10 );
 				}
@@ -756,16 +1003,19 @@ namespace workIT.Factories
             //
             output.SupersededBy = input.SupersededBy;
             output.Supersedes = input.Supersedes;
+			output.InCatalog = GetUrlData( input.InCatalog );
+			//output.CodedNotation = input.CodedNotation;
 
-            //output.LifecycleStatusType = string.IsNullOrWhiteSpace( input.LifecycleStatusType) ? "lifecycle:Active" : input.LifecycleStatusType;
-            //output.CodedNotation = input.CodedNotation;
-
-            //just store the json
-            output.IdentifierJson = input.IdentifierJson;
+			//just store the json
+			output.IdentifierJson = input.IdentifierJson;
 			output.TransferValueJson = input.TransferValueJson;
 			output.TransferValueFromJson = input.TransferValueFromJson;
 			output.TransferValueForJson = input.TransferValueForJson;
-
+			//
+			output.LatestVersion = GetUrlData( input.LatestVersion, null );
+			output.PreviousVersion = GetUrlData( input.PreviousVersion, null );
+			output.NextVersion = GetUrlData( input.NextVersion, null );
+			output.VersionIdentifier = input.VersionIdentifierJson;
 			//output.ProfileGraph = input.ProfileGraph;
 			//ensure we don't reset the graph
 			//if ( !string.IsNullOrWhiteSpace( input.ProfileGraph ) )
@@ -778,7 +1028,7 @@ namespace workIT.Factories
 		//we don't have to store the complete object, such as assessment, lopp, etc.
 		public static string TransferValueActionToJson( List<TopLevelObject> input )
 		{
-			string json = "";
+			string json = string.Empty;
 
 
 			return json;
@@ -813,19 +1063,20 @@ namespace workIT.Factories
 			//
 
 			//get related ....
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
-
+			//var relatedEntity = EntityManager.GetEntity( output.RowId, false );
+			//if ( relatedEntity != null && relatedEntity.Id > 0 )
+			//	output.EntityLastUpdated = relatedEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 			//
 			output.SubjectWebpage = input.SubjectWebpage;
-			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
-
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
+			output.InCatalog = GetUrlData( input.InCatalog );
 			//22-07-10 - LifeCycleStatusTypeId is now on the credential directly
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
 			if ( output.LifeCycleStatusTypeId > 0 )
 			{
-				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
+				CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
 				if ( ct != null && ct.Id > 0 )
 				{
 					output.LifeCycleStatus = ct.Title;
@@ -837,27 +1088,25 @@ namespace workIT.Factories
 			else
 			{
 				//OLD
-				output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
-				EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
-				if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
-				{
+				//output.LifeCycleStatusType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS );
+				//EnumeratedItem statusItem = output.LifeCycleStatusType.GetFirstItem();
+				//if ( statusItem != null && statusItem.Id > 0 && statusItem.Name != "Active" )
+				//{
 
-				}
+				//}
 			}
-            //
-            output.SupersededBy = input.SupersededBy;
-            output.Supersedes = input.Supersedes;
+
             //output.CodedNotation = input.CodedNotation;
             //20-12-16 changed to a string as partial dates are possible
             if ( !string.IsNullOrWhiteSpace( input.StartDate ) )
 				output.StartDate = input.StartDate;
 			else
-				output.StartDate = "";
+				output.StartDate = string.Empty;
 			//
 			if ( !string.IsNullOrWhiteSpace( input.EndDate ) )
 				output.EndDate = input.EndDate;
 			else
-				output.EndDate = "";
+				output.EndDate = string.Empty;
 	
 			//derived from ....
 
@@ -872,21 +1121,54 @@ namespace workIT.Factories
 			if ( !string.IsNullOrWhiteSpace( output.TransferValueJson ) )
 				output.TransferValue = JsonConvert.DeserializeObject<List<ValueProfile>>( output.TransferValueJson );
 
-
+			//
+			output.LatestVersion = input.LatestVersion;
+			output.PreviousVersion = input.PreviousVersion;
+			output.NextVersion = input.NextVersion;
+			if ( !string.IsNullOrWhiteSpace( input.VersionIdentifier ) )
+			{
+				output.VersionIdentifier = JsonConvert.DeserializeObject<List<IdentifierValue>>( input.VersionIdentifier );
+			}
 			if ( !gettingAll )
 				return;
+			//
+			output.SupersededBy = input.SupersededBy;
+			output.Supersedes = input.Supersedes;
 
-			//the top level object may not be enough. First need to confirm if reference lopps and asmts can have detail pages.
+			output.LatestVersionResource = GetResourceFromURL( output.LatestVersion );
+			output.PreviousVersionResource = GetResourceFromURL( output.PreviousVersion );
+			output.NextVersionResource = GetResourceFromURL( output.NextVersion );
+
+			//the top level object may not be enough. First need to confirm if reference lopps and asmts can have detail pages. => Yes they can
+			// the json could be considered a convenience, but should get data from db?
+			//24-02-18 mp - TODO - can we just use Entity.HasResource? Much cleaner
+			var getAllHasResources = Entity_HasResourceManager.GetAll( output.RowId );
+			if ( getAllHasResources != null && getAllHasResources.Count > 0 )
+			{
+				//TBD if used
+				//var tvpForAsmts = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor ).ToList();
+				//var tvpFromAsmts = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom ).ToList();
+				////
+				//var tvpForCreds = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor ).ToList();
+				//var tvpFromCreds = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom ).ToList();
+				////
+				//var tvpForLopps = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFor ).ToList();
+				//var tvpFromLopps = getAllHasResources.Where( r => r.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE && r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_TransferValueFrom ).ToList();
+				//occupations
+
+				//jobs
+			}
+
 			if ( !string.IsNullOrWhiteSpace( output.TransferValueFromJson ) )
 			{
 				output.TransferValueFrom = JsonConvert.DeserializeObject<List<TopLevelObject>>( output.TransferValueFromJson );
 				output.TransferValueFromLopp = new List<LearningOpportunityProfile>();
-				var lopps = output.TransferValueFrom.Where( s => s.EntityTypeId == 7 ).ToList();
+				var lopps = output.TransferValueFrom.Where( s => s.EntityTypeId == 7 || s.EntityTypeId == 36  || s.EntityTypeId == 37 ).ToList();
 				foreach( var item in lopps)
 				{
 					//should exist, but need to handle where it was deleted
 					var lopp =LearningOpportunityManager.GetBasic( item.Id );
-					if (lopp != null && lopp.Id > 0)
+					if (lopp != null && lopp.Id > 0) 
 						output.TransferValueFromLopp.Add( lopp );
 				}
 				var assmts = output.TransferValueFrom.Where( s => s.EntityTypeId == 3 ).ToList();
@@ -907,12 +1189,21 @@ namespace workIT.Factories
 					if ( cred != null && cred.Id > 0 )
 						output.TransferValueFromCredential.Add( cred );
 				}
-			}
+
+				var comps = output.TransferValueFrom.Where( s => s.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY ).ToList();
+				foreach ( var item in comps )
+				{
+					//??
+					var comp = CompetencyFrameworkCompetencyManager.Get( item.Id );
+					if ( comp != null && comp.Id > 0 )
+						output.TransferValueFromCompetency.Add( comp );
+				}
+			}			
 			//
 			if ( !string.IsNullOrWhiteSpace( output.TransferValueForJson ) )
 			{
 				output.TransferValueFor = JsonConvert.DeserializeObject<List<TopLevelObject>>( output.TransferValueForJson );
-				var lopps = output.TransferValueFor.Where( s => s.EntityTypeId == 7 ).ToList();
+				var lopps = output.TransferValueFor.Where( s => s.EntityTypeId == 7 || s.EntityTypeId == 36 || s.EntityTypeId == 37 ).ToList();
 				foreach ( var item in lopps )
 				{
 					var lopp = LearningOpportunityManager.GetBasic( item.Id );
@@ -934,6 +1225,14 @@ namespace workIT.Factories
 					if ( cred != null && cred.Id > 0 )
 						output.TransferValueForCredential.Add( cred );
 				}
+				var comps = output.TransferValueFor.Where( s => s.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY ).ToList();
+				foreach ( var item in comps )
+				{
+					//??
+					var comp = CompetencyFrameworkCompetencyManager.Get( item.Id );
+					if ( comp != null && comp.Id > 0 )
+						output.TransferValueForCompetency.Add( comp );
+				}
 			}
 			//check for presence in transfer intermediaries
 			//
@@ -945,6 +1244,10 @@ namespace workIT.Factories
 			List<ProcessProfile> processes = Entity_ProcessProfileManager.GetAll( output.RowId );
 			foreach ( ProcessProfile item in processes )
 			{
+				//if ( item.ProcessTypeId == Entity_ProcessProfileManager.ADMIN_PROCESS_TYPE )
+				//	output.AdministrationProcess.Add( item );
+
+				//else 
 				if ( item.ProcessTypeId == Entity_ProcessProfileManager.DEV_PROCESS_TYPE )
 					output.DevelopmentProcess.Add( item );
 
@@ -954,9 +1257,62 @@ namespace workIT.Factories
 				}
 			}
 
+			//with the addition of ProvidesTransferValueFor and ReceivesTransferValueFrom, a resource can reference a TVP. This is to get the resources
+			var getAll = Entity_HasResourceManager.GetParentsForTVPResourceId( output.Id );
+			foreach(var item in getAll )
+            {
+                if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
+                {
+					output.RelatedCredential.Add( item );
+                }
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
+				{
+					output.RelatedAssessment.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
+				{
+					output.RelatedLearningOpp.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
+				{
+					output.RelatedJob.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+				{
+					output.RelatedOccupation.Add( item );
+				}
+				if ( item.EntityTypeId == CodesManager.ENTITY_TYPE_COMPETENCY )
+				{
+					output.RelatedCompetency.Add( item );
+				}
+			}
+
 
 		}
+		public static TopLevelObject GetResourceFromURL( string someURL)
+		{
+			if ( string.IsNullOrWhiteSpace( someURL ))
+				return null;
+			//temp
+			var ctid = ExtractCtid( someURL );
+			if ( !IsValidCtid( ctid ) )
+				return null;
 
+			var resource = EntityManager.EntityCacheGetByCTID( ctid );	
+			if ( resource == null || resource.Id == 0 ) 
+				return null;
+			TopLevelObject output = new TopLevelObject()
+			{
+				Id = resource.BaseId,
+				EntityType = resource.EntityType,
+				Name = resource.Name,
+				FriendlyName = FormatFriendlyTitle(resource.Name),
+				Description = resource.Description,
+				SubjectWebpage = resource.SubjectWebpage,
+				CTID = ctid,
+			};
+			return output;
+		}
         #endregion
 
         //public static int Count_ForOwningOrg( string orgCtid )
@@ -994,9 +1350,9 @@ namespace workIT.Factories
             bool autocomplete = true;
             var results = new List<string>();
             //
-            List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+            List<ThisResource> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
             bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-            string prevName = "";
+            string prevName = string.Empty;
             foreach ( var item in list )
             {
                 //note excluding duplicates may have an impact on selected max terms
@@ -1029,7 +1385,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[TransferValue.ElasticSearch]", c ) )
@@ -1039,6 +1395,7 @@ namespace workIT.Factories
 					command.Parameters.Add( new SqlParameter( "@SortOrder", pOrderBy ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
 
 					SqlParameter totalRows = new SqlParameter( "@TotalRows", pTotalRows );
 					totalRows.Direction = ParameterDirection.Output;
@@ -1064,7 +1421,7 @@ namespace workIT.Factories
 				{
 					item = new ThisResource();
 					item.Id = GetRowColumn( dr, "Id", 0 );
-					item.CTID = GetRowColumn( dr, "CTID", "" );
+					item.CTID = GetRowColumn( dr, "CTID", string.Empty );
 					item.Name = GetRowColumn( dr, "Name", "???" );
                     //for autocomplete, only need name
                     if ( autocomplete )
@@ -1072,17 +1429,21 @@ namespace workIT.Factories
                         list.Add( item );
                         continue;
                     }
-                    item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
-					item.Description = GetRowColumn( dr, "Description", "" );
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					//item.CodedNotation = GetRowColumn( dr, "CodedNotation", "" );
-					item.StartDate = GetRowColumn( dr, "StartDate", "" );
-					item.EndDate = GetRowColumn( dr, "EndDate", "" );
-
-					item.IdentifierJson = GetRowColumn( dr, "IdentifierJson", "" );
-					item.TransferValueJson = GetRowColumn( dr, "TransferValueJson", "" );
-					item.TransferValueFromJson = GetRowColumn( dr, "TransferValueFromJson", "" );
-					item.TransferValueForJson = GetRowColumn( dr, "TransferValueForJson", "" );
+                    item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					//item.CodedNotation = GetRowColumn( dr, "CodedNotation", string.Empty );
+					item.SearchTagName = item.Name;
+					item.StartDate = GetRowColumn( dr, "StartDate", string.Empty );
+					item.EndDate = GetRowColumn( dr, "EndDate", string.Empty );
+					if ( !string.IsNullOrWhiteSpace(item.StartDate ) && !string.IsNullOrWhiteSpace(item.EndDate))
+					{
+						item.SearchTagName += $" (Start Date: {item.StartDate}, End Date: {item.EndDate})";
+					}
+					item.IdentifierJson = GetRowColumn( dr, "IdentifierJson", string.Empty );
+					item.TransferValueJson = GetRowColumn( dr, "TransferValueJson", string.Empty );
+					item.TransferValueFromJson = GetRowColumn( dr, "TransferValueFromJson", string.Empty );
+					item.TransferValueForJson = GetRowColumn( dr, "TransferValueForJson", string.Empty );
 					//
 					item.EntityLastUpdated = GetRowColumn( dr, "EntityLastUpdated", System.DateTime.MinValue );
 					item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
@@ -1118,7 +1479,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[TransferValue.ElasticSearch]", c ) )
@@ -1153,19 +1514,19 @@ namespace workIT.Factories
 				{
 					item = new ThisResource();
 					item.Id = GetRowColumn( dr, "Id", 0 );
-					item.CTID = GetRowColumn( dr, "CTID", "" );
+					item.CTID = GetRowColumn( dr, "CTID", string.Empty );
 					item.Name = GetRowColumn( dr, "Name", "???" );
-					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
-					item.Description = GetRowColumn( dr, "Description", "" );
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					//item.CodedNotation = GetRowColumn( dr, "CodedNotation", "" );
-					item.StartDate = GetRowColumn( dr, "StartDate", "" );
-					item.EndDate = GetRowColumn( dr, "EndDate", "" );
+					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					//item.CodedNotation = GetRowColumn( dr, "CodedNotation", string.Empty );
+					item.StartDate = GetRowColumn( dr, "StartDate", string.Empty );
+					item.EndDate = GetRowColumn( dr, "EndDate", string.Empty );
 
-					item.IdentifierJson = GetRowColumn( dr, "IdentifierJson", "" );
-					item.TransferValueJson = GetRowColumn( dr, "TransferValueJson", "" );
-					item.TransferValueFromJson = GetRowColumn( dr, "TransferValueFromJson", "" );
-					item.TransferValueForJson = GetRowColumn( dr, "TransferValueForJson", "" );
+					item.IdentifierJson = GetRowColumn( dr, "IdentifierJson", string.Empty );
+					item.TransferValueJson = GetRowColumn( dr, "TransferValueJson", string.Empty );
+					item.TransferValueFromJson = GetRowColumn( dr, "TransferValueFromJson", string.Empty );
+					item.TransferValueForJson = GetRowColumn( dr, "TransferValueForJson", string.Empty );
 					//
 					item.EntityLastUpdated = GetRowColumn( dr, "EntityLastUpdated", System.DateTime.MinValue );
 					item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );

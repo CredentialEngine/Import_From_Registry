@@ -204,7 +204,14 @@ namespace workIT.Services.API
 			//	output.CTDLType = "ceterms:CredentialOrganization";
 			//	output.CTDLTypeLabel = "Credential Organization";
 			//}
-
+			//
+			if ( string.IsNullOrWhiteSpace( input.CTID ) )
+			{
+				output.IsReferenceVersion = true;
+				output.Name += " [reference]";
+			}
+			else
+				output.IsReferenceVersion = false;
 			//output.CTDLType = record.AgentDomainType;
 			output.AgentSectorType = ServiceHelper.MapPropertyLabelLinks( input.AgentSectorType, "organization" );
 			output.AgentType = ServiceHelper.MapPropertyLabelLinks( input.AgentType, "organization" );
@@ -268,10 +275,9 @@ namespace workIT.Services.API
 			output.Supersedes = ServiceHelper.MapPropertyLabelLink( input.Supersedes, "Supersedes" );
 			output.SupersededBy = ServiceHelper.MapPropertyLabelLink( input.SupersededBy, "Superseded By" );
 
-			//output.TransferValueStatement = ServiceHelper.MapPropertyLabelLink( input.TransferValueStatement, "Transfer Value Statement" );
-			//output.TransferValueStatementDescription = input.TransferValueStatementDescription;
+			//
 			output.TransferValueStatement = ServiceHelper.MapPropertyLabelLink( input.TransferValueStatement, "Transfer Value Statement", input.TransferValueStatementDescription );
-
+			output.SupportServiceStatement = ServiceHelper.MapPropertyLabelLink( input.SupportServiceStatement, "Support Service Statement", input.SupportServiceStatementDescription );
 
 			//input.FriendlyName = HttpUtility.UrlPathEncode ( input.Name );
 			//searches
@@ -303,7 +309,7 @@ namespace workIT.Services.API
 			{
 				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles(s)", "transfervalue", ref links );
 			}
-
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferIntermediaries, "Owns {0} Transfer Intermediaries", "transferintermediary", ref links, "6,7" );
 			if ( input.TotalFrameworks > 0 )
 				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalFrameworks, "Owns {0} Competency Framework(s)", "competencyframework", ref links, "6,7", output.CTID );
 
@@ -317,20 +323,27 @@ namespace workIT.Services.API
             if ( input.TotalJobs > 0 )
                 ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalJobs, "Offers {0} Job(s)", "job", ref links, "6,7" );
             if ( input.TotalOccupations > 0 )
-                ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalOccupations, "Offers {0} Occupation(s)", "occupation", ref links, "6,7" );
+                ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalOccupations, "Asserts {0} Occupation(s)", "occupation", ref links, "3,6,7" );
+			if ( input.TotalWorkRoles > 0 )
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalWorkRoles, "Asserts {0} Work Role(s)", "workrole", ref links, "3,6,7" );
+			if ( input.TotalTasks > 0 )
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTasks, "Asserts {0} Task(s)", "task", ref links, "3,6,7" );
 
-            if ( input.TotalSupportServices > 0 )
+			if ( input.TotalSupportServices > 0 )
                 ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalSupportServices, "Offers {0} Support Service(s)", "supportservice", ref links, "6,7" );
+			if ( input.TotalCredentialingActions > 0 )
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalCredentialingActions, "Offers {0} Quality Assurance Action(s)", "credentialingaction", ref links,"3,6,7");
+			if ( input.TotalRubrics > 0 )
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalRubrics, "Owns {0} Rubric(s)", "rubric", ref links, "6,30" );
 
 
-            ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfiles, "Owns {0} Transfer Value Profiles", "transfervalue", ref links, "6,7" );
-			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferIntermediaries, "Owns {0} Transfer Intermediaries", "transferintermediary", ref links, "6,7" );
+
 			//hmm do these use entity.agentrelationship?
 			//30 but should be 6?
 			//for now, disable any link
-			if ( input.DataSetProfileCount > 0 )
+			if ( input.TotalDataSetProfiles > 0 )
 			{
-				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.DataSetProfileCount, "Provides {0} Outcome Data)", "outcomedata", ref links, "6,7" );
+				ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalDataSetProfiles, "Provides {0} Outcome Data", "outcomedata", ref links, "6,7,8" );
 			}
 			//21-03-10 combining revokes and renews
 			//	- technically should not add together.
@@ -359,6 +372,7 @@ namespace workIT.Services.API
 
 			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferValueProfilesPublishedByThirdParty, "Published {0} Transfer Value Profiles", "transfervalue", ref links, "30" );
 			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalTransferIntermediariesPublishedByThirdParty, "Published {0} Transfer Intermediaries", "transferintermediary", ref links, "30" );
+			ServiceHelper.MapOrganizationEntitySearchLink( input.Id, input.Name, input.TotalDatasetProfilesPublishedByThirdParty, "Published {0} Outcome datasets", "outcomedata", ref links, "30" );
 			//
 			if ( links.Any() )
 				output.Connections = links;
@@ -376,6 +390,9 @@ namespace workIT.Services.API
 
 			if ( input.QAPerformedOnLoppsCount > 0 )
 				ServiceHelper.MapQAPerformedLink( input.Id, input.Name, input.QAPerformedOnLoppsCount, "QA Identified as Performed on {0} Learning Opportunity(ies)", "learningopportunity", ref links );
+			//
+			if ( input.QAPerformedOnTransferValuesCount > 0 )
+				ServiceHelper.MapQAPerformedLink( input.Id, input.Name, input.QAPerformedOnTransferValuesCount, "QA Identified as Performed on {0} Transfer Value Profile(s)", "transfervalue", ref links );
 
 			if ( links.Any() )
 				output.QAPerformed = links;

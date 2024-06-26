@@ -12,20 +12,22 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class EducationFramework
+    public partial class RubricCriterion
     {
         public int Id { get; set; }
-        public string FrameworkName { get; set; }
-        public string CTID { get; set; }
-        public string OrganizationCTID { get; set; }
-        public string FrameworkUri { get; set; }
-        public string SourceUrl { get; set; }
         public System.Guid RowId { get; set; }
-        public Nullable<bool> ExistsInRegistry { get; set; }
+        public int RubricId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string CTID { get; set; }
+        public string CodedNotation { get; set; }
+        public string ListID { get; set; }
+        public string HasProgressionLevel { get; set; }
+        public Nullable<decimal> Weight { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
-        public string CredentialRegistryId { get; set; }
-        public int EntityStateId { get; set; }
-        public string FrameworkUrl { get; set; }
+        public string TargetCompetency { get; set; }
+    
+        public virtual Rubric Rubric { get; set; }
     }
 }

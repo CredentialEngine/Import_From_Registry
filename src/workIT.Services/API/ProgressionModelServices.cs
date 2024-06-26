@@ -12,52 +12,53 @@ namespace workIT.Services.API
 {
 	public class ProgressionModelServices
 	{
-		public static ProgressionModel GetProgressionModelOnlyByID( int id, bool skippincCache = false )
+		public static ProgressionModel GetDetailForAPI( int id, bool skippincCache = false )
 		{
 			var rawData = ProgressionModelManager.Get( id, false );
-			return ConvertCommonModelsProgressionModelToFinderAPIProgressionModel( rawData, "Unable to find concept scheme for ID: " + id );
+			return MapToAPI( rawData, "Unable to find progression model for ID: " + id );
 		}
 		//
 
-		public static ProgressionModel GetProgressionModelOnlyByCTID( string ctid, bool skippingCache = false )
+		public static ProgressionModel GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
 			var rawData = ProgressionModelManager.GetByCtid( ctid, false );
-			return ConvertCommonModelsProgressionModelToFinderAPIProgressionModel( rawData, "Unable to find concept scheme for CTID: " + ctid );
+			return MapToAPI( rawData, "Unable to find progression model for CTID: " + ctid );
 		}
 		//
 
-		public static ProgressionModel ConvertCommonModelsProgressionModelToFinderAPIProgressionModel( MC.ProgressionModel source, string nullErrorMessage = null )
+		public static ProgressionModel MapToAPI( MC.ProgressionModel input, string nullErrorMessage = null )
 		{
 			var result = new ProgressionModel();
 
-			if( source == null || source.Id == 0 )
+			if( input == null || input.Id == 0 )
 			{
-				result.Name = nullErrorMessage ?? "Error: Unable to find concept scheme";
+				result.Name = nullErrorMessage ?? "Error: Unable to find progression model";
 			}
 			else
 			{
 				//Meta properties
-				result.Meta_Id = source.Id;
+				result.Meta_Id = input.Id;
 				result.Meta_Language = "en"; //Need a way to detect this
-				result.EntityLastUpdated = source.LastUpdated;
-				result.Meta_StateId = source.EntityStateId;
-				result.CredentialRegistryURL = source.CredentialRegistryId; //Verify this
-				result.RegistryData = ServiceHelper.FillRegistryData( source.CTID );
-				result.CTDLType = source.EntityType;
-				result.EntityTypeId = source.EntityTypeId;
+				result.EntityLastUpdated = input.LastUpdated;
+				result.Meta_StateId = input.EntityStateId;
+				result.CredentialRegistryURL = input.CredentialRegistryId; //Verify this
+				result.RegistryData = ServiceHelper.FillRegistryData( input.CTID );
+				result.CTDLType = input.EntityType;
+				result.EntityTypeId = input.EntityTypeId;
 
 				//Organization properties
 				//Missing references for creator/publisher
 
 				//Core properties
-				result.CTID = source.CTID;
-				result.Name = source.Name;
-				result.Description = source.Description;
-				result.SubjectWebpage = source.SubjectWebpage; //Not a property of Concept Scheme?
+				result.CTID = input.CTID;
+				result.Name = input.Name;
+				result.Description = input.Description;
+				if ( input.Source  != null & input.Source.Any())
+					result.SubjectWebpage = input.Source[0]; //Not a property of progression model?
 				
 				//Extra properties
-				result.Source = source.Source;
-				result.Meta_FriendlyName = source.FriendlyName;
+				result.Source = input.Source;
+				result.Meta_FriendlyName = input.FriendlyName;
 
 				//Concepts
 				//Missing properties for these

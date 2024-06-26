@@ -197,7 +197,7 @@ namespace workIT.Factories
 				foreach ( var item in results )
 				{
 					//21-03-31 mp - just removing the profile will not remove its entity and the latter,s children!
-					string statusMessage = "";
+					string statusMessage = string.Empty;
 					new EntityManager().Delete( item.RowId, string.Format( "EntityContactPointProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
 					context.Entity_ContactPoint.Remove( item );
@@ -234,10 +234,10 @@ namespace workIT.Factories
 			{
 				//status.AddWarning( "A contact point type must be entered" );
 			}
-			if (profile.SocialMediaPages.Count > 0)
-			{
-				//probable will not initially validate
-			}
+			//if (profile.SocialMediaPages?.Count > 0)
+			//{
+			//	//probable will not initially validate
+			//}
 		
 
 			//make this a method
@@ -269,10 +269,11 @@ namespace workIT.Factories
 			//	hasContent = true;
 			//}
 
-			if ( profile.PhoneNumbers.Count > 0 ||
-				profile.Emails.Count > 0 ||
-				profile.FaxNumber.Count > 0 ||
-				profile.SocialMediaPages.Count > 0 )
+			if ( ( profile.PhoneNumbers!= null && profile.PhoneNumbers?.Count > 0) ||
+				( profile.Emails != null && profile.Emails?.Count > 0 ) ||
+				( profile.FaxNumber != null && profile.FaxNumber?.Count > 0 ) ||
+				( profile.SocialMediaPages != null && profile.SocialMediaPages?.Count > 0 ) 
+				 )
 			{
 				hasContent = true;
 			}
@@ -393,7 +394,7 @@ namespace workIT.Factories
                 if ( !string.IsNullOrWhiteSpace( to.ContactType ) )
                 {
                     to.ProfileName = to.ContactType;
-                    to.ContactType = "";
+                    to.ContactType = string.Empty;
                 }
             }
              

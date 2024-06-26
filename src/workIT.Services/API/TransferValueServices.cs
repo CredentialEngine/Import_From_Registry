@@ -5,7 +5,7 @@ using System.Web;
 using EntityHelper = workIT.Services.TransferValueServices;
 using ThisEntity = workIT.Models.Common.TransferValueProfile;
 using WMA = workIT.Models.API;
-
+using WMC = workIT.Models.Common;
 namespace workIT.Services.API
 {
     public class TransferValueServices
@@ -20,7 +20,7 @@ namespace workIT.Services.API
 		}
 		public static WMA.TransferValueProfile GetDetailByCtidForAPI( string ctid, bool skippingCache = false )
 		{
-			var record = EntityHelper.GetByCtid( ctid );
+			var record = EntityHelper.GetByCtid( ctid, true );
 			return MapToAPI( record );
 		}
 		private static WMA.TransferValueProfile MapToAPI( ThisEntity input )
@@ -46,12 +46,11 @@ namespace workIT.Services.API
 				output.OwnedByLabel = ServiceHelper.MapDetailLink( "Organization", input.OrganizationName, input.OwningOrganizationId, input.PrimaryOrganization.FriendlyName );
 			}
 			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
-
+			output.InCatalog = input.InCatalog;
 			var orgOutline = ServiceHelper.MapToOutline( input.PrimaryOrganization, "organization" );
 			//var work = ServiceHelper.MapOrganizationRoleProfileToOutline( input.OrganizationRole, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER );
 			output.OwnedBy = ServiceHelper.MapOutlineToAJAX( orgOutline, "Owning Organization" );
 			output.EntityLastUpdated = input.EntityLastUpdated;
-			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
 
 			//
 			output.Identifier = ServiceHelper.MapIdentifierValue( input.Identifier );
@@ -85,7 +84,21 @@ namespace workIT.Services.API
 						work.Add( ServiceHelper.MapToOutline( target, target.EntityType ) );
 				}
 			}
-
+			if ( input.TransferValueForCompetency != null && input.TransferValueForCompetency.Any() )
+			{
+				foreach ( var target in input.TransferValueForCompetency )
+				{
+					if ( target != null && !string.IsNullOrWhiteSpace( target.CompetencyText ) )
+					{
+						var compTLO = new WMC.TopLevelObject()
+						{
+							Name = target.CompetencyText,
+							CTID = target.CTID,
+						};
+						work.Add( ServiceHelper.MapToOutline( compTLO, "" ) ); //skip entity type for now
+					}
+				}
+			}
 
 			//foreach ( var target in input.TransferValueFor )
 			//{
@@ -130,6 +143,10 @@ namespace workIT.Services.API
 				output.HasIntermediaryFor = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Intermediary For" );
 			}
 			//
+			//if ( input.AdministrationProcess.Any() )
+			//{
+			//	output.AdministrationProcess = ServiceHelper.MapAJAXProcessProfile( "AdministrationProcess", "", input.AdministrationProcess );
+			//}
 			if ( input.DevelopmentProcess.Any() )
 			{
 				output.DevelopmentProcess = ServiceHelper.MapAJAXProcessProfile( "Development Process", "", input.DevelopmentProcess );
@@ -144,12 +161,38 @@ namespace workIT.Services.API
 					work.Add( ServiceHelper.MapToOutline( target, "" ) );
 			}
 			output.DerivedFrom = ServiceHelper.MapOutlineToAJAX( work, "Includes {0} Derived From" );
+
+			output.RelatedAssessment = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedAssessment, "Assessment" );
+			output.RelatedCredential = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedCredential, "Credential;" );
+			output.RelatedLearningOpp = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedLearningOpp, "LearningOppurtunity" );
+			output.RelatedJob = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedJob, "Job" );
+			output.RelatedOccupation = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedOccupation, "Occupation" );
 			//
 			output.InLanguage = null;
             //
             output.SupersededBy = input.SupersededBy;
             output.Supersedes = input.Supersedes;
-            return output;
+			if ( input.LatestVersionResource != null )
+			{
+				output.LatestVersion = ServiceHelper.MapDetailLink( input.LatestVersionResource.EntityType, input.LatestVersionResource.Name, input.LatestVersionResource.Id, input.LatestVersionResource.FriendlyName );
+			} else 
+				output.LatestVersion = ServiceHelper.MapPropertyLabelLink( input.LatestVersion, "Latest Version" );
+
+			if ( input.NextVersionResource != null )
+			{
+				output.NextVersion = ServiceHelper.MapDetailLink( input.NextVersionResource.EntityType, input.NextVersionResource.Name, input.NextVersionResource.Id, input.NextVersionResource.FriendlyName );
+			}
+			else
+				output.NextVersion = ServiceHelper.MapPropertyLabelLink( input.NextVersion, "Next Version" );
+
+			if ( input.PreviousVersionResource != null )
+			{
+				output.PreviousVersion = ServiceHelper.MapDetailLink( input.PreviousVersionResource.EntityType, input.PreviousVersionResource.Name, input.PreviousVersionResource.Id, input.PreviousVersionResource.FriendlyName );
+			}
+			else
+				output.PreviousVersion = ServiceHelper.MapPropertyLabelLink( input.PreviousVersion, "Previous Version" );
+			output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifier, "Version Identifier" );
+			return output;
 		}
 	}
 }

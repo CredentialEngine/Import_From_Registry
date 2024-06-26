@@ -18,16 +18,30 @@ namespace workIT.Data.Views
         public int EntityId { get; set; }
         public Nullable<int> EntityTypeId { get; set; }
         public Nullable<int> ResourceId { get; set; }
-        public Nullable<int> RelationshipTypeId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
         public string EntityType { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string CTID { get; set; }
         public string SubjectWebpage { get; set; }
-        public Nullable<int> EntityStateId { get; set; }
         public Nullable<int> OwningOrgId { get; set; }
         public string Organization { get; set; }
         public Nullable<int> PublishedByOrgId { get; set; }
+        public Nullable<int> RelationshipTypeId { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
+        public string ParentName { get; set; }
+        public string ParentCTID { get; set; }
+        public string ParentDescription { get; set; }
+        public int ParentEntityTypeId { get; set; }
+        public System.Guid EntityUid { get; set; }
+        public Nullable<int> ResourceOwningOrgId { get; set; }
+        public string ResourceOrganizationName { get; set; }
+        public Nullable<int> ParentEntityStateId { get; set; }
+        public int ParentEntityId { get; set; }
+        public Nullable<int> ParentPrimaryOrganizationId { get; set; }
+        public Nullable<int> ParentPrimaryOrgEntityStateId { get; set; }
+        public string ParentPrimaryOrganizationName { get; set; }
+        public string ParentPrimaryOrganizationDesc { get; set; }
+        public Nullable<System.Guid> EntityParentUid { get; set; }
     }
 }

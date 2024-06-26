@@ -7,8 +7,10 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
+using APIResourceServices = workIT.Services.API.CredentialServices;
+using Newtonsoft.Json;
 using ResourceManager = workIT.Factories.DataSetProfileManager;
-using MP = workIT.Models.Common;
+
 using ThisResource = workIT.Models.QData.DataSetProfile;
 using ThisResourceSummary = workIT.Models.QData.DataSetProfileSummary;
 
@@ -27,78 +29,91 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisResource entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
 
-			bool isValid = new ResourceManager().Save( entity, null, ref status );
+			bool isValid = new ResourceManager().Save( resource, null, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
-				{
-					//update cache - not applicable yet
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//update cache - not applicable yet
 
-					//update Elastic
-					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-					{
-						//ElasticHelper.DataSetProfileProfile_UpdateIndex( entity.Id );
-					}
-					else
-					{
-						new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
-						//also need to reindex the 'About' resource
-					}
-					//also update related org
-					//????????????
-					if ( entity.DataProviderOld != null && entity.DataProviderOld.Id > 0 )
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.DataProviderOld.Id, 1, ref messages );
-				}
-				else
+				//	//update Elastic
+				//	if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				//	{
+				//		//ElasticHelper.DataSetProfileProfile_UpdateIndex( resource.Id );
+				//	}
+				//	else
+				//	{
+				//		new SearchPendingReindexManager().Add( ThisEntityTypeId, resource.Id, 1, ref messages );
+				//		if ( messages.Count > 0 )
+				//			status.AddWarningRange( messages );
+				//		//also need to reindex the 'About' resource
+				//	}
+				//	//also update related org
+				//	//????????????
+				//	if ( resource.DataProviderOld != null && resource.DataProviderOld.Id > 0 )
+				//		new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.DataProviderOld.Id, 1, ref messages );
+				//}
+				//else
 				{
-					//at this time dataset profiles are not in elastic.
-					//new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+					{
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
+					}
+					//
+					new SearchPendingReindexManager().Add( ThisEntityTypeId, resource.Id, 1, ref messages );
 
 					//use about to get any credentials to reindex
-					//var dsp = ResourceManager.Get( entity.Id, false );
-					//if (dsp.AboutOLD != null && dsp.AboutOLD.Count > 0)
-					//{
-					//	foreach (var item in dsp.AboutOLD )
-					//	{
-					//		new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, item.Id, 1, ref messages );
-					//	}
-					//}
-					if (entity.CredentialIds.Count > 0)
+					var dsp = ResourceManager.Get( resource.Id, false );
+					if ( dsp.About != null && dsp.About.Count > 0 )
 					{
-						foreach ( var item in entity.CredentialIds )
+						foreach ( var item in dsp.About )
+						{
+							if ( (item.Meta_Id ?? 0) > 0 )
+								new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, (int)item.Meta_Id, 1, ref messages );
+						}
+					}
+					//obsolete?? Not populated in import
+					if (resource.CredentialIds.Count > 0)
+					{
+						foreach ( var item in resource.CredentialIds )
 						{
 							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, item, 1, ref messages );
 						}
 					}
-					if ( entity.AssessmentIds.Count > 0 )
+					if ( resource.AssessmentIds.Count > 0 )
 					{
-						foreach ( var item in entity.AssessmentIds )
+						foreach ( var item in resource.AssessmentIds )
 						{
 							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, item, 1, ref messages );
 						}
 					}
-					if ( entity.LearningOpportunityIds.Count > 0 )
+					if ( resource.LearningOpportunityIds.Count > 0 )
 					{
-						foreach ( var item in entity.LearningOpportunityIds )
+						foreach ( var item in resource.LearningOpportunityIds )
 						{
 							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, item, 1, ref messages );
 						}
 					}
 
-					if ( entity.DataProviderOld!= null && entity.DataProviderOld.Id > 0 )
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.DataProviderOld.Id, 1, ref messages );
+					if ( resource.DataProviderOld!= null && resource.DataProviderOld.Id > 0 )
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.DataProviderOld.Id, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
 				//no caching needed yet
-				//CacheManager.RemoveItemFromCache( "cframework", entity.Id );
+				//CacheManager.RemoveItemFromCache( "cframework", resource.Id );
 			}
 
 			return isValid;
@@ -175,7 +190,7 @@ namespace workIT.Services
         }
         public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
-			if ( UtilityManager.GetAppKeyValue( "usingElasticOutcomeDataSearch", false ) )
+			if ( UtilityManager.GetAppKeyValue( "usingElasticOutcomeDataSearch", true ) )
 			{
 				return ElasticHelper.GeneralSearch( ThisEntityTypeId, ThisEntityType, data, ref pTotalRows );
 			}

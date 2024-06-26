@@ -19,6 +19,121 @@ namespace workIT.Services
 {
 	public class CompetencyFrameworkServicesV2
 	{
+		public static ComposedSearchResultSet SearchViaRegistryV2( MainSearchInput query, bool asDescriptionSet = false, int descriptionSetPerBranchLimit = 10 )
+		{
+			//Handle keywords, with special handling if the keywords are really a CTID
+			var keywords = Regex.Replace( Regex.Replace( query.Keywords.ToLower().Trim(), "[^a-z0-9-\" ]", " " ), " +", " " );
+			var searchBranches = new List<JObject>();
+			if( keywords.IndexOf( "ce-" ) == 0 && keywords.Length == 39 )
+			{
+				var ctidPart = new JProperty( "ceterms:ctid", new JObject() { { "search:value", keywords }, { "search:matchType", "search:exactMatch" } } );
+				var ctidFilter = new JObject() {
+					{ "search:operator", "search:orTerms" },
+					ctidPart,
+					{ "^ceasn:isPartOf", new JObject(){
+						ctidPart
+					} },
+					{ "ceasn:creator", new JObject(){
+						ctidPart
+					} },
+					{ "ceasn:publisher", new JObject(){
+						ctidPart
+					} }
+				};
+				searchBranches.Add( ctidFilter );
+			}
+			else
+			{
+				var keywordFilter = new JObject() {
+					{ "search:operator", "search:orTerms" },
+					{ "^ceasn:isPartOf", new JObject(){
+						{ "search:operator", "search:orTerms" },
+						{ "ceasn:competencyLabel", keywords },
+						{ "ceasn:competencyText", keywords },
+						{ "ceasn:comment", keywords },
+						{ "ceasn:conceptKeyword", keywords },
+						{ "ceasn:codedNotation", keywords },
+					} },
+					{ "ceasn:creator", new JObject(){
+						{ "ceterms:subjectWebpage", keywords }
+					} },
+					{ "ceasn:publisher", new JObject(){
+						{ "ceterms:subjectWebpage", keywords }
+					} },
+					{ "ceasn:name", keywords },
+					{ "ceasn:description", keywords },
+					{ "ceasn:source", keywords },
+					{ "ceasn:conceptKeyword", keywords },
+				};
+				searchBranches.Add( keywordFilter );
+			}
+
+			//Handle role filters
+			var roleWrapper = new JObject()
+			{
+				{ "search:operator", "search:orTerms" }
+			};
+			var roleOptions = new List<JObject>();
+			var roleFilters = query.FiltersV2?.Where( m => m.Name.ToLower() == "organizationroles" && m.TranslationHelper != null ).ToList();
+			var publisherRoleCTIDs = roleFilters.Select( m => m.TranslationHelper?[ "> ceasn:publisher > ceterms:ctid" ]?.ToString() ).Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList();
+			if ( publisherRoleCTIDs.Count() > 0 )
+			{
+				roleWrapper.Add( "ceasn:publisher", new JObject() { { "ceterms:ctid", new JObject() { { "search:value", JArray.FromObject( publisherRoleCTIDs ) }, { "search:matchType", "search:exactMatch" } } } } );
+			}
+			var creatorRoleCTIDs = roleFilters.Select( m => m.TranslationHelper?[ "> ceasn:creator > ceterms:ctid" ]?.ToString() ).Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList();
+			if ( creatorRoleCTIDs.Count() > 0 )
+			{
+				roleWrapper.Add( "ceasn:creator", new JObject() { { "ceterms:ctid", new JObject() { { "search:value", JArray.FromObject( publisherRoleCTIDs ) }, { "search:matchType", "search:exactMatch" } } } } );
+			}
+			if( publisherRoleCTIDs.Count() > 0 || creatorRoleCTIDs.Count() > 0 )
+			{
+				searchBranches.Add( roleWrapper );
+			}
+
+			//Handle Provider filter
+			var providerFilterCTIDs = query.FiltersV2.Where( m => m.Name.ToLower() == "filter:provider" ).Select( m => m.Values ).Where( m => m.ContainsKey( "TextValue" ) ).Select( m => m["TextValue"] ).ToList();
+			if( providerFilterCTIDs.Count() > 0 )
+			{
+				searchBranches.Add( new JObject()
+				{
+					{ "search:operator", "search:orTerms" },
+					{ "ceasn:creator", new JObject(){ { "ceterms:ctid", new JObject() { { "search:value", JArray.FromObject( providerFilterCTIDs ) }, { "search:matchType", "search:exactMatch" } } } } },
+					{ "ceasn:publisher", new JObject(){ { "ceterms:ctid", new JObject() { { "search:value", JArray.FromObject( providerFilterCTIDs ) }, { "search:matchType", "search:exactMatch" } } } } },
+				} );
+			}
+
+			//Handle contains competency text filter
+			var competencyTextFilter = query.FiltersV2.Where( m => m.Name.ToLower() == "filter:hascompetencywithtext").Select( m => m.Values ).Where( m => m.ContainsKey( "TextValue" ) ).Select( m => m[ "TextValue" ] ).ToList();
+			if( competencyTextFilter.Count() > 0 )
+			{
+				searchBranches.Add( new JObject()
+				{
+					{ "^ceasn:isPartOf", new JObject()
+					{
+						{ "search:operator", "search:orTerms" },
+						{ "ceasn:competencyLabel", JArray.FromObject( competencyTextFilter ) },
+						{ "ceasn:competencyText", JArray.FromObject( competencyTextFilter ) },
+						{ "ceasn:comment", JArray.FromObject( competencyTextFilter ) },
+						{ "ceasn:conceptKeyword", JArray.FromObject( competencyTextFilter ) },
+						{ "ceasn:codedNotation", JArray.FromObject( competencyTextFilter ) },
+					} }
+				} );
+			}
+
+			//Handle skip, take, and sort
+			var skip = query.PageSize * ( query.StartPage - 1 );
+			var take = query.PageSize;
+			var sortOrder =
+				query.SortOrder == "alpha" ? "ceasn:name" :
+				query.SortOrder == "zalpha" ? "^ceasn:name" :
+				query.SortOrder == "newest" ? "^search:recordUpdated" : //Use ceasn:dateModified instead if we want to see newest according to that rather than the Registry record date
+				query.SortOrder == "oldest" ? "search:recordUpdated" :
+				query.SortOrder == "relevance" ? "^search:relevance" :
+				null;
+
+			return RegistryServicesV2.DoRegistrySearch( "ceasn:CompetencyFramework", searchBranches, skip, take, sortOrder, "Finder/Search/CompetencyFramework", true, true, asDescriptionSet, descriptionSetPerBranchLimit );
+		}
+		//
 
 		public static ComposedSearchResultSet SearchViaRegistry( MainSearchInput sourceQuery, bool asDescriptionSet = false, int descriptionSetPerBranchLimit = 10 )
 		{
@@ -188,8 +303,8 @@ namespace workIT.Services
 			var response = new SearchResponse();
 
 			//Get API key and URL
-			var apiKey = ConfigHelper.GetConfigValue( "MyCredentialEngineAPIKey", "" );
-			var apiURL = ConfigHelper.GetConfigValue( "AssistantCTDLJSONSearchAPIUrl", "" );
+			var apiKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey", "" );
+			var apiURL = UtilityManager.GetAppKeyValue( "AssistantCTDLJSONSearchAPIUrl", "" );
 			try
 			{
 				//Format the request

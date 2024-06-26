@@ -1,35 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using workIT.Utilities;
 
-using ResourceServices = workIT.Services.SupportServiceServices;
-using APIResourceServices = workIT.Services.API.SupportServiceServices;
-
-using InputResource = RA.Models.JsonV2.SupportService;
-using JsonInput = RA.Models.JsonV2;
-using BNode = RA.Models.JsonV2.BlankNode;
-using ThisResource = workIT.Models.Common.SupportService;
 using workIT.Factories;
 using workIT.Models;
-using workIT.Models.ProfileModels;
-using FAPI = workIT.Services.API;
 using workIT.Services;
+using workIT.Utilities;
+using APIResourceServices = workIT.Services.API.SupportServiceServices;
+using BNode = RA.Models.JsonV2.BlankNode;
+using InputResource = RA.Models.JsonV2.SupportService;
+using ResourceServices = workIT.Services.SupportServiceServices;
+using ThisResource = workIT.Models.Common.SupportService;
 
 namespace Import.Services
 {
-    public class ImportSupportService
+	public class ImportSupportService
     {
         int EntityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
         string thisClassName = "ImportSupportService";
-        string resourceType = "SupportService";
+        string ResourceType = "SupportService";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        //InputResource input = new InputResource();
         ThisResource output = new ThisResource();
 
         #region custom imports
@@ -115,8 +109,8 @@ namespace Import.Services
                 return false;
             }
             //
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -225,7 +219,7 @@ namespace Import.Services
                 }
                 helper.currentBaseObject = output;
                 //start with language and may use with language maps
-                output.InLanguage = helper.MapInLanguageToTextValueProfile( input.InLanguage, $"{resourceType}.InLanguage. CTID: " + ctid );
+                output.InLanguage = helper.MapInLanguageToTextValueProfile( input.InLanguage, $"{ResourceType}.InLanguage. CTID: " + ctid );
                 if ( input.InLanguage.Count > 0 )
                 {
                     helper.DefaultLanguage = input.InLanguage[0];
@@ -235,19 +229,18 @@ namespace Import.Services
                     //OR set based on the first language
                     helper.SetDefaultLanguage( input.Name, "Name" );
                 }
-                output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+				output.CTID = input.CTID;
+				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
                 output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-
-
-                output.CTID = input.CTID;
+                
                 output.CredentialRegistryId = status.EnvelopeId;
 
                 helper.MapOrganizationPublishedBy( output, ref status );
                 
                 //BYs 
-                output.OfferedByList = helper.MapOrganizationReferenceGuids( $"{resourceType}.OfferedBy", input.OfferedBy, ref status );
+                output.OfferedByList = helper.MapOrganizationReferenceGuids( $"{ResourceType}.OfferedBy", input.OfferedBy, ref status );
                 //note need to set output.OwningAgentUid to the first entry
-                output.OwnedByList = helper.MapOrganizationReferenceGuids( $"{resourceType}.OwnedBy", input.OwnedBy, ref status );
+                output.OwnedByList = helper.MapOrganizationReferenceGuids( $"{ResourceType}.OwnedBy", input.OwnedBy, ref status );
                 if ( output.OwnedByList != null && output.OwnedByList.Count > 0 )
                 {
                     output.PrimaryAgentUID = output.OwnedByList[0];
@@ -256,9 +249,9 @@ namespace Import.Services
                 else
                 {
                     //add warning?
-                    if ( output.OfferedByList == null && output.OfferedByList.Count == 0 )
+                    if ( output.OfferedByList == null || output.OfferedByList.Count == 0 )
                     {
-                        status.AddWarning( $"{resourceType} {output.CTID} doesn't have an owning or offering organization." );
+                        status.AddWarning( $"{ResourceType} {output.CTID} doesn't have an owning or offering organization." );
                     }
                     else
                     {
@@ -293,10 +286,10 @@ namespace Import.Services
 
 
                 if ( input.HasSpecificService != null && input.HasSpecificService.Count > 0 )
-                    output.HasSpecificServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSpecificService", input.HasSpecificService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
+                    output.HasSpecificServiceIds = helper.MapEntityReferences( $"{ResourceType}.HasSpecificService", input.HasSpecificService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
 
                 if ( input.IsSpecificServiceOf != null && input.IsSpecificServiceOf.Count > 0 )
-                    output.IsSpecificServiceOfIds = helper.MapEntityReferences( $"{resourceType}.IsPartOfSupportService", input.IsSpecificServiceOf, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
+                    output.IsSpecificServiceOfIds = helper.MapEntityReferences( $"{ResourceType}.IsPartOfSupportService", input.IsSpecificServiceOf, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
 
                 output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
                 output.OfferedIn = helper.MapToJurisdiction( input.OfferedIn, ref status );
@@ -320,7 +313,7 @@ namespace Import.Services
                 //output.FinancialAssistanceOLD = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
                 output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
                 //
-                var identifierImport = helper.MapIdentifierValueList2( input.Identifier );
+                var identifierImport = helper.MapIdentifierValueListInternal( input.Identifier );
                 if ( identifierImport != null && identifierImport.Count() > 0 )
                 {
                     output.IdentifierJSON = JsonConvert.SerializeObject( identifierImport, MappingHelperV3.GetJsonSettings() );
@@ -351,19 +344,6 @@ namespace Import.Services
                 if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
                 {
                     importSuccessfull = mgr.Import( output, ref status );
-                    //start storing the finder api ready version
-                    //TBD
-                    var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
-                    if (resource != null && resource.Meta_Id > 0 ) 
-                    {
-                        var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
-                        var statusMsg = "";
-                        if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-                        {
-                            status.AddError( statusMsg );
-                        }
-                    }                   
-
                 }
                 //
                 saveDuration = DateTime.Now.Subtract( saveStarted );
@@ -389,7 +369,7 @@ namespace Import.Services
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid ), false, $"{resourceType} Import exception" );
+                LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid ) );
             }
             finally
             {

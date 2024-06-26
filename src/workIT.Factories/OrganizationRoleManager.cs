@@ -100,7 +100,7 @@ namespace workIT.Factories
 			EnumeratedItem eitem = new EnumeratedItem();
 
 			int prevActingAgentId = 0;
-			string prevRoleSource = "";
+			string prevRoleSource = string.Empty;
 			int prevRoleTypeId = 0;
 			//would like to enable this in the sandbox
 			bool includingPublishedBy = UtilityManager.GetAppKeyValue( "displayingPublishedBy", false );
@@ -248,7 +248,7 @@ namespace workIT.Factories
 								Description = entity.ActingAgentDescription,
 								Image = entity.ActingAgentImage,
 								EntityStateId = entity.ActingAgentEntityStateId,
-								CTID = entity.ActingAgentCTID ?? ""
+								CTID = entity.ActingAgentCTID ?? string.Empty
 							};
 							orp.AgentRole.Items = new List<EnumeratedItem>();
 						}
@@ -333,7 +333,17 @@ namespace workIT.Factories
             return GetEntityToOrgQARolesCodes( isOrgToCredentialRole, 1, getAll, parentEntityTypeId );
 
         }
-        private static Enumeration GetEntityToOrgQARolesCodes( bool isInverseRole,
+
+
+		/// <summary>
+		/// Get available QA roles for filtering
+		/// </summary>
+		/// <param name="isInverseRole"></param>
+		/// <param name="qaRoleState"></param>
+		/// <param name="getAll"></param>
+		/// <param name="parentEntityTypeId"></param>
+		/// <returns></returns>
+		public static Enumeration GetEntityToOrgQARolesCodes( bool isInverseRole,
                     int qaRoleState,
                     bool getAll,
                     int parentEntityTypeId )
@@ -542,7 +552,7 @@ namespace workIT.Factories
                             //val.Id = 0;
                             //val.CodeId = val.Id;
                             //val.Name = "Select an Action";
-                            //val.Description = "";
+                            //val.Description = string.Empty;
                             //val.SortOrder = 0;
                             //val.Value = val.Id.ToString();
                             //entity.Items.Add( val );

@@ -5,7 +5,7 @@ using workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-	public class ScheduledOffering : TopLevelObject
+    public class ScheduledOffering : TopLevelObject
     {
         public string Type { get; set; } = "ceterms:ScheduledOffering";
 

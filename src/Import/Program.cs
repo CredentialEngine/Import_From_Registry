@@ -38,6 +38,7 @@ namespace CTI.Import
 				{
 					//consider using args with qualifiers: scheduleType:10, community:xxxx, deleteOnly:true 
 					//		or flags -c community -s schedule -d deleteOnly
+					//		or to indicate only a certain resource type - may start with physically separate jobs, and different config values
 					if ( args.Length >= 1 )
 					{
 						cycleMinutes = args[ 0 ];
@@ -47,7 +48,7 @@ namespace CTI.Import
 						}
 					}
 				}
-				new ImportPendingRequests().Main( stopAfterMinutes );
+				 new ImportPendingRequests().Main( stopAfterMinutes );
 			} else
 			{
 				DoImport( args );
@@ -78,11 +79,19 @@ namespace CTI.Import
 			int recordsDeleted = 0;
 			
 			var credentialRegistryUrl = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+			var mainConnection = BaseFactory.MainConnection();
+			var passwordLocation = mainConnection.IndexOf( "password" );
 			LoggingHelper.DoTrace( 1, string.Format("********* DOING IMPORT FROM {0} *********", credentialRegistryUrl) );
+			//note need to hide any password
+			if ( passwordLocation > -1)
+			{
+				mainConnection = mainConnection.Substring( 0, passwordLocation - 1 );
+			}
+			LoggingHelper.DoTrace( 1, string.Format( "********* Database Connection {0} *********", mainConnection ) );
 
-			string connectionString =BaseFactory.DBConnectionRO();
 			if ( !string.IsNullOrWhiteSpace( credentialRegistryUrl ) )
             {
+				//???????????
 				var parts = credentialRegistryUrl.Split( ';' );
 				var db = parts.FirstOrDefault( s => s.Contains("database"));
 				if ( db != null )
@@ -135,7 +144,7 @@ namespace CTI.Import
 
 			#region  Import Type/ schedule Arguments
 			//consider parameters to override using importPending - especially for deletes
-			if ( args != null )
+			if ( args != null && args.Length > 0 )
 			{
 				//consider using args with qualifiers: scheduleType:10, community:xxxx, deleteOnly:true 
 				//		or flags -c community -s schedule -d deleteOnly
@@ -267,8 +276,7 @@ namespace CTI.Import
 			registryImport.PublishingOrganizationCTID = UtilityManager.GetAppKeyValue( "publishingOrganizationCTID" );
 			//
 			registryImport.ResourceCTIDList = UtilityManager.GetAppKeyValue( "resourcesCTIDList" );
-
-			var hasCustomRun = false;
+            var hasCustomRun = false;
 			if ( registryImport.PublishingOrganizationCTID.Length > 0 || registryImport.OwningOrganizationCTID.Length > 0 || registryImport.ResourceCTIDList.Length > 0 )
 			{
 				hasCustomRun = true;
@@ -400,88 +408,110 @@ namespace CTI.Import
 			//might be better to do last, then can populate placeholders, try first
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_organization", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "organization", 2, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "organization", 2, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
 			if ( UtilityManager.GetAppKeyValue( "importing_competency_framework", true ) )
 			{
 				//🛺🛺🛺importResults = importResults + "<br/>" + new CompetencyFramesworksImport().Import( registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, defaultCommunity, doingDownloadOnly );
 				//
-				importResults = importResults + "<br/>" + registryImport.Import( "competency_framework", CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "competency_framework", CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_concept_scheme", true ) )
 			{
-				importResults = importResults + "<br/>" + registryImport.Import( "concept_scheme", CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "concept_scheme", CodesManager.ENTITY_TYPE_CONCEPT_SCHEME, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
-			if ( UtilityManager.GetAppKeyValue( "importing_collection", true ) )
+            //
+            if (UtilityManager.GetAppKeyValue( "importing_progression_model", true ))
+            {
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "asn_progression_model", CodesManager.ENTITY_TYPE_PROGRESSION_MODEL, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+            }
+            if ( UtilityManager.GetAppKeyValue( "importing_collection", true ) )
 			{
-				importResults = importResults + "<br/>" + registryImport.Import( "collection", CodesManager.ENTITY_TYPE_COLLECTION, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "collection", CodesManager.ENTITY_TYPE_COLLECTION, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
 			//TVP 
 			if ( UtilityManager.GetAppKeyValue( "importing_transfer_value_profile", true ) )
 			{
 				string sortOrder = "asc";//WHY
-				importResults = importResults + "<br/>" + registryImport.Import( "transfer_value_profile", CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "transfer_value_profile", CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
 			}
 			if ( UtilityManager.GetAppKeyValue( "importing_transfer_intermediary", true ) )
 			{
 				string sortOrder = "asc";//WHY
-				importResults = importResults + "<br/>" + registryImport.Import( "transfer_intermediary", CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "transfer_intermediary", CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported, sortOrder );
 			}
 
 			//pathways 
 			//should we try to combine pathways and pathway sets?
 			if ( UtilityManager.GetAppKeyValue( "importing_pathway", true ) )
 			{
-				importResults = importResults + "<br/>" + registryImport.Import( "pathway", CodesManager.ENTITY_TYPE_PATHWAY, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "pathway", CodesManager.ENTITY_TYPE_PATHWAY, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_pathway_set", true ) )
 			{
 				//can't do this until registry fixture is updated.
-				importResults = importResults + "<br/>" + registryImport.Import( "pathway_set", CodesManager.ENTITY_TYPE_PATHWAY_SET, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "pathway_set", CodesManager.ENTITY_TYPE_PATHWAY_SET, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
 
 			//do manifests 
 			if ( UtilityManager.GetAppKeyValue( "importing_condition_manifest_schema", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "condition_manifest_schema", CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_cost_manifest_schema", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "cost_manifest_schema", CodesManager.ENTITY_TYPE_COST_MANIFEST, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
 			//handle assessments
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_assessment_profile", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "assessment_profile", CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 
 			//handle learning opps
 			//21-08-09 include course and learning program
 			if ( UtilityManager.GetAppKeyValue( "importing_learning_opportunity_profile", true ) )
 			{
-				importResults = importResults + "<br/>" + registryImport.Import( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "learning_opportunity_profile", CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 				//
-				importResults = importResults + "<br/>" + registryImport.Import( "learning_program", CodesManager.ENTITY_TYPE_LEARNING_PROGRAM, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "learning_program", CodesManager.ENTITY_TYPE_LEARNING_PROGRAM, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 				//
-				importResults = importResults + "<br/>" + registryImport.Import( "course", CodesManager.ENTITY_TYPE_COURSE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "course", CodesManager.ENTITY_TYPE_COURSE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
 			//datasetprofile
 			if ( UtilityManager.GetAppKeyValue( "importing_qdata_dataset_profile", true ) )
 			{
 				//can't do this until registry fixture is updated.
-				importResults = importResults + "<br/>" + registryImport.Import( "qdata_dataset_profile", CodesManager.ENTITY_TYPE_DATASET_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "qdata_dataset_profile", CodesManager.ENTITY_TYPE_DATASET_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			}
-
-			//handle credentials
-			//
-			if ( UtilityManager.GetAppKeyValue( "importing_credential", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+			//rubric 
+			if ( UtilityManager.GetAppKeyValue( "importing_rubric", true ) )
+			{
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "rubric", CodesManager.ENTITY_TYPE_RUBRIC, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+			}
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_occupation_profile", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "occupation_profile", CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "occupation_profile", CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
 			//
 			if ( UtilityManager.GetAppKeyValue( "importing_job_profile", true ) )
-				importResults = importResults + "<br/>" + registryImport.Import( "job_profile", CodesManager.ENTITY_TYPE_JOB_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
-		}
+				importResults = importResults + "<br/>" + registryImport.ImportOld( "job_profile", CodesManager.ENTITY_TYPE_JOB_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+			//
+            if ( UtilityManager.GetAppKeyValue( "importing_task_profile", true ) )
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "task_profile", CodesManager.ENTITY_TYPE_TASK_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+            //
+            if ( UtilityManager.GetAppKeyValue( "importing_work_role_profile", true ) )
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "work_role_profile", CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+            //
+            if ( UtilityManager.GetAppKeyValue( "importing_scheduled_offering", true ) )
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "scheduled_offering", CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+            //
+            if ( UtilityManager.GetAppKeyValue( "importing_support_service", true ) )
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "support_service", CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+
+            //handle credentials last
+            //
+            if ( UtilityManager.GetAppKeyValue( "importing_credential", true ) )
+                importResults = importResults + "<br/>" + registryImport.ImportOld( "credential", CodesManager.ENTITY_TYPE_CREDENTIAL, registryImport.StartingDate, registryImport.EndingDate, maxImportRecords, doingDownloadOnly, ref recordsImported );
+        }
 
 		public static void PublisherRelatedImport( RegistryImport registryImport, string publishersList, List<string> resourceTypeList )
 		{
@@ -552,8 +582,9 @@ namespace CTI.Import
 				foreach ( var item in importList )
 				{
 					cntr++;
-					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent selected recources for DataOwner Org: {0}  ***************** ", item ) );
+					LoggingHelper.DoTrace( 1, string.Format( "===  *****************  Downloading all recent selected resources for DataOwner Org: {0}  ***************** ", item ) );
 					registryImport.OwningOrganizationCTID = item;
+					//TODO - handling a selection of all
 					foreach ( var resourceType in resourceTypeList )
 					{
 						registryImport.ImportNew( resourceType, eTypeId );
@@ -641,12 +672,10 @@ namespace CTI.Import
 			}
 
 			var registryImport = new RegistryImport( defaultCommunity );
-			//***add constructor or assign here
-			registryImport.GraphSearchQuery = queryFileName;
 
-			LoggingHelper.DoTrace( 1, "********************* WARNING  ********************* " );
-			LoggingHelper.DoTrace( 1, "* The graph search option is still under construction.  *" );
-			LoggingHelper.DoTrace( 1, "********************* WARNING ********************* " );
+			LoggingHelper.DoTrace( 1, "************************** WARNING  ************************** " );
+			LoggingHelper.DoTrace( 1, "* The graph search option is still under construction.       *" );
+			LoggingHelper.DoTrace( 1, "************************** WARNING  ************************** " );
 			//TODO - could provide this in each call. Then can use the current import method but call a different method if a queryFileName is provided?
 			//could add to the constructor for RegistryImport, and then don't have to add to each call to the Import?? 
 
@@ -658,6 +687,8 @@ namespace CTI.Import
 			}
 
 			// Open the file to read from.
+			LoggingHelper.DoTrace( 1, "* Query file:\n " + queryFileName );
+
 			string jsonQuery = File.ReadAllText( queryFileName );
 			if ( string.IsNullOrWhiteSpace( jsonQuery ))
 			{
@@ -667,12 +698,12 @@ namespace CTI.Import
 			}
 			registryImport.GraphSearchQuery = jsonQuery;
 
-			int skip = 0;
-			int take = 50;
-			int pTotalRows = 0;
-			string statusMessage = "";
-			string community = "";
-			string sortOrder = "asc";
+			//int skip = 0;
+			//int take = 50;
+			//int pTotalRows = 0;
+			//string statusMessage = "";
+			//string community = "";
+			//string sortOrder = "asc";
 			var importResults = "";
 			var maxImportRecords = 0;
 			var recordsImported = 0;
@@ -761,7 +792,7 @@ namespace CTI.Import
 						}
 						catch ( Exception ex )
 						{
-							LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), false, "CredentialFinder Import exception" );
+							LoggingHelper.LogError(ex, string.Format("Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier));
 							//importError = ex.Message;
 
 						}
@@ -798,7 +829,7 @@ namespace CTI.Import
 			recordsDeleted = cntr;
 			return importResults;
 		}
-
+		/*
 		/// <summary>
 		/// Moved to ProfileServices for better solution access
 		/// TBD or maybe better to have a clone here for github project?
@@ -824,27 +855,27 @@ namespace CTI.Import
 				case "qacredentialorganization":
 				case "organization":
 					if ( !new OrganizationManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+						RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
 					break;
 
 				case "assessmentprofile":
 				case "assessment":
 					if ( !new AssessmentManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "learningopportunityprofile":
 				case "learningopportunity":
 				case "learningprogram":
 				case "course":
 					if ( !new LearningOpportunityManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "conditionmanifest":
 					if ( !new ConditionManifestManager().Delete( ctid, ref statusMessage ) )
 					{
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					}
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    }
+                    break;
 				case "costmanifest":
 					if ( !new CostManifestManager().Delete( ctid, ref statusMessage ) )
 						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
@@ -852,64 +883,89 @@ namespace CTI.Import
 				case "collection":
 				case "ceterms:collection":
 					if ( !new CollectionManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 
 				case "competencyframework": //CompetencyFramework
 					if ( !new CompetencyFrameworkManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "conceptscheme":
 				case "skos:conceptscheme":
-				case "progressionmodel":
-				case "asn:progressionmodel":
 					if ( !new ConceptSchemeManager().Delete( ctid, ref statusMessage ) )
 						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
 					break;
-				//
-				case "datasetprofile":
+                case "progressionmodel":
+                case "asn:progressionmodel":
+                    if (!new ProgressionModelManager().Delete( ctid, ref statusMessage ))
+                        RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                    break;
+                //
+                case "datasetprofile":
 				case "qdata:datasetprofile":
 					if ( !new DataSetProfileManager().Delete( ctid, ref messages ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				//
 				case "pathway":
 					if ( !new PathwayManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "pathwayset":
 					if ( !new PathwaySetManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
-				case "transfervalueprofile":
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
+                case "scheduledoffering":
+                    if ( !new ScheduledOfferingManager().Delete( ctid, ref messages ) )
+                        RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                    break;
+                case "transfervalueprofile":
 					if ( !new TransferValueProfileManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "transferintermediary":
 					if ( !new TransferIntermediaryManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
-				case "job":
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
+                case "verificationserviceprofile":
+                    if ( !new VerificationServiceProfileManager().Delete( ctid, ref messages ) )
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
+                case "job":
 					if ( !new JobManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "occupation":
 					if ( !new OccupationManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "task":
 					if ( !new TaskManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
 				case "workrole":
 					if ( !new WorkRoleManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
-					break;
-				default:
+                        RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    break;
+                case "supportservice":
+                    if ( !new SupportServiceManager().Delete( ctid, ref messages ) )
+                        RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+                    break;
+                default:
 					//default to credential
 					//RegistryImport.DisplayMessages( string.Format( "{0}. Deleting Credential ({1}) by ctid: {2} ", cntr, ctdlType, ctid ) );
-					if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )
-						RegistryImport.DisplayMessages( string.Format( "  Delete failed: {0} ", statusMessage ) );
+					var resource = EntityManager.EntityCacheGetByCTID(ctid );
+					if ( resource != null && resource.EntityTypeId == 1 )
+					{
+						if ( !new CredentialManager().Delete( ctid, ref statusMessage ) )
+                            RegistryImport.DisplayMessages( $"{ctdlType}  Delete failed: {statusMessage} " );
+                    }
+                    else
+					{
+						statusMessage = $"Program.HandleDelete. The CTDL Type: {ctdlType} is not handled yet. ";
+						RegistryImport.DisplayMessages( statusMessage );
+
+                    }
 					break;
 			}
 
@@ -918,7 +974,7 @@ namespace CTI.Import
 
 			return isValid;
 		}
-
+		*/
 		#region Validation
 		public static bool ValidateSetup()
 		{
@@ -983,7 +1039,7 @@ namespace CTI.Import
 				}
 			} else
             {
-				LoggingHelper.DoTrace( 1, String.Format("Database check using Credential search was successful. Total records: {0} ", pTotalRows) );
+				LoggingHelper.DoTrace( 1, String.Format( "Database check using connection string: workIT_RO was successful. Total records: {0} ", pTotalRows) );
 			}
 
 			var status = "";

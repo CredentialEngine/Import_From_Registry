@@ -3,23 +3,21 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
 using System.Data.SqlClient;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
-using System.Web.Configuration;
 using System.Web;
-
-using workIT.Utilities;
-using EntityContext = workIT.Data.Tables.workITEntities;
+using System.Web.Configuration;
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
 using workIT.Models.Elastic;
+using workIT.Models.ProfileModels;
+using workIT.Utilities;
+using EntityContext = workIT.Data.Tables.workITEntities;
 
 namespace workIT.Factories
 {
-	public class BaseFactory
+    public class BaseFactory
 	{
 		public static string REGISTRY_ACTION_DELETE = "Registry Delete";
 		public static string REGISTRY_ACTION_PURGE = "Registry Purge";
@@ -27,8 +25,9 @@ namespace workIT.Factories
 		public static string REGISTRY_ACTION_TRANSFER = "Transfer of Owner";
 		public static string REGISTRY_ACTION_REMOVE_ORG = "RemoveOrganization";
 		protected static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
-		public string commonStatusMessage = "";
-
+		public string commonStatusMessage = string.Empty;
+		public static int MaxResourceNameLength = UtilityManager.GetAppKeyValue( "maxResourceNameLength", 800 );
+		public static int PortionOfDescriptionToUseForName = UtilityManager.GetAppKeyValue( "portionOfDescriptionToUseForName", 150 );
 		//Has Part is the default, and should be used when parent can only have one relationship
 		//relationships used for TargetCredential: Entity.Credential, TargetLearningOpportunity: Entity.LearningOpp, TargetAssessment: Entity.Assessment, and TargetCompetency: Entity.Competency (actually not used for this)
 		//23-02-01 mp - HasPart is not the same as Target...
@@ -44,13 +43,17 @@ namespace workIT.Factories
 		public static string reactFinderSiteURL = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" );
 		public static string oldCredentialFinderSite = UtilityManager.GetAppKeyValue( "oldCredentialFinderSite" );
 		public static string finderApiSiteURL = UtilityManager.GetAppKeyValue( "finderApiSiteURL" );
-        //default specialTrace to high. Code can be called to lower it
-        public static int specialTrace = UtilityManager.GetAppKeyValue( "appSpecialTraceLevel", 9 );
-        public static int appMethodEntryTraceLevel = UtilityManager.GetAppKeyValue( "appMethodEntryTraceLevel", 7 );
+		//tracing
+		//use of appDefaultTraceLevel would mean to 'always' include as equals the current setting
+		public static int appDefaultTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 5 );
+		public static int appDebuggingTraceLevel = UtilityManager.GetAppKeyValue( "appDebuggingTraceLevel", 6 );
+		public static int appMethodEntryTraceLevel = UtilityManager.GetAppKeyValue( "appMethodEntryTraceLevel", 7 );
         public static int appMethodExitTraceLevel = UtilityManager.GetAppKeyValue( "appMethodExitTraceLevel", 8 );
         public static int appSectionDurationTraceLevel = UtilityManager.GetAppKeyValue( "appSectionDurationTraceLevel", 8 );
-        //
-        public static bool IsDevEnv()
+		//default specialTrace to high. Code can be called to lower it
+		public static int specialTrace = UtilityManager.GetAppKeyValue( "appSpecialTraceLevel", 9 );
+		//
+		public static bool IsDevEnv()
 		{
 
 			if ( UtilityManager.GetAppKeyValue( "environment", "no" ) == "development" )
@@ -80,7 +83,7 @@ namespace workIT.Factories
 
 		//public static string SetLastUpdatedBy( int lastUpdatedById, Data.Account accountModifier )
 		//{
-		//	string lastUpdatedBy = "";
+		//	string lastUpdatedBy = string.Empty;
 		//	if ( accountModifier != null )
 		//	{
 		//		lastUpdatedBy = accountModifier.FirstName + " " + accountModifier.LastName;
@@ -112,11 +115,16 @@ namespace workIT.Factories
 			string conn = WebConfigurationManager.ConnectionStrings[ "MainConnection" ].ConnectionString;
 			return conn;
 		}
-        #endregion
+		public static string ConnectionworkITEntities()
+		{
+			string conn = WebConfigurationManager.ConnectionStrings[ "workITEntities" ].ConnectionString;
+			return conn;
+		}
+		#endregion
 
-        #region Assignments
+		#region Assignments
 
-        public static decimal Assign( decimal input, decimal currentValue, bool doesEntityExist )
+		public static decimal Assign( decimal input, decimal currentValue, bool doesEntityExist )
 		{
 			decimal value = 0;
 			if ( doesEntityExist )
@@ -165,14 +173,145 @@ namespace workIT.Factories
             var list = input.Split( delimiter );
             foreach ( string item in list )
             {
-                if ( string.IsNullOrWhiteSpace( item ))
+                if ( !string.IsNullOrWhiteSpace( item ))
 					output.Add( item.TrimEnd() );
             }
 
             return output;
         }
 
-        public static string GetListAsDelimitedString( List<string> input, string delimiter )
+		public static List<CredentialAlignmentObjectProfile> GetTargetCompetency( List<string> input )
+		{
+			var output = new List<CredentialAlignmentObjectProfile>();
+			foreach ( var item in input )
+			{
+				var competency = CompetencyFrameworkCompetencyManager.GetByCtid( item );
+				var cao = new CredentialAlignmentObjectProfile()
+				{
+					TargetNodeName = competency.CompetencyText,
+					TargetNodeDescription = competency.CompetencyCategory,
+					TargetNodeCTID = competency.CTID,
+					TargetNode = competency.CtdlId,
+					Id = competency.Id
+				};
+				output.Add( cao );
+			}
+
+			return output;
+		}
+		public static List<CredentialAlignmentObjectFrameworkProfile> MapResourceSummaryToCAOFramework( List<ResourceSummary> input )
+		{
+			var output = new List<CredentialAlignmentObjectFrameworkProfile>();
+			foreach ( var item in input )
+			{
+				var competency = new Models.ProfileModels.Competency();
+				var comp = new CredentialAlignmentObjectFrameworkProfile();
+				competency = CompetencyFrameworkCompetencyManager.GetByCtid( item.CTID );
+				if ( competency == null || competency.Id == 0 )
+				{
+					competency = CollectionCompetencyManager.GetByCtid( item.CTID );
+					var collection = CollectionManager.Get( competency.FrameworkId, false );
+					comp.Id = collection.Id;
+					comp.FrameworkName = collection.Name;
+					comp.FrameworkCtid = collection.CTID;
+					comp.Description = collection.Description;
+
+                }
+                else
+                {
+					var framework = CompetencyFrameworkManager.Get( competency.FrameworkId, false );
+					comp.Id = framework.Id;
+					comp.FrameworkName = framework.Name;
+					comp.FrameworkCtid = framework.CTID;
+					comp.Description = framework.Description;
+				}
+				var cao = new CredentialAlignmentObjectItem()
+				{
+					TargetNodeName = competency.CompetencyText,
+					TargetNodeDescription = competency.CompetencyCategory,
+					TargetNodeCTID = competency.CTID,
+					TargetNode = competency.CtdlId,
+					Id = competency.Id
+				};
+				comp.Items.Add( cao );
+				output.Add( comp );
+			}
+			output = output
+		   .GroupBy( c => c.FrameworkCtid )
+		   .Select( group => new CredentialAlignmentObjectFrameworkProfile
+		   {
+			   FrameworkCtid = group.Key,
+			   Id = group.First().Id,
+			   FrameworkName = group.First().FrameworkName,
+			   Description = group.First().Description,
+			   Items = group.SelectMany( c => c.Items ).ToList()
+		   } )
+		   .ToList();
+			return output;
+		}
+		public static ResourceSummary MapPLToResourceSummary( string input )
+		{
+			ResourceSummary output = new ResourceSummary();
+
+			if ( input != null )
+			{
+				var pl = ProgressionModelManager.GetByConceptCtid( input );
+				if ( pl != null && pl.Id > 0 )
+				{
+					output.CTID = pl.CTID;
+					output.Name = pl.PrefLabel;
+					output.Description = pl.Definition;
+					output.Id = pl.Id;
+					output.EntityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_LEVEL;
+				}
+			}
+			return output;
+		}
+
+		public static List<ResourceSummary> UpdateConceptResourceSummary( List<ResourceSummary> input )
+		{
+			//This method adds the concept scheme CTID and concept description needed for the UI
+			List<ResourceSummary> output = new List<ResourceSummary>();
+
+			if ( input != null )
+			{
+				foreach(var resources in input )
+				{
+					var pl = ConceptSchemeManager.GetByConceptCtid( resources.CTID );
+					if ( pl != null && pl.Id > 0 )
+					{
+						var resource = new ResourceSummary();
+						resource.CTID = pl.topConceptOf;
+						resource.Name = pl.PrefLabel;
+						resource.Description = pl.Definition;
+						//resource.Id = pl.Id;
+						resource.EntityTypeId = CodesManager.ENTITY_TYPE_CONCEPT;
+						output.Add( resource );
+					}
+
+				}
+			}
+			return output;
+		}
+
+		public static List<ResourceSummary> MapCLToResourceSummary( List<CriterionLevel> criterionLevels )
+		{
+			List<ResourceSummary> output = new List<ResourceSummary>();
+			foreach ( var cl in criterionLevels )
+			{
+				var input = new ResourceSummary()
+				{
+					Name = cl.BenchmarkLabel,
+					Description = cl.BenchmarkText,
+					RowId = cl.RowId,
+					EntityTypeId = CodesManager.ENTITY_TYPE_RUBRIC_CRITERION_LEVEL
+				};
+				output.Add( input );
+			}
+			return output;
+		}
+
+		public static string FormatListAsDelimitedString( List<string> input, string delimiter )
         {
 			if ( input == null || !input.Any())
 				return null;
@@ -180,9 +319,21 @@ namespace workIT.Factories
 
             return output;
         }
-        protected static CodeItemResult Fill_CodeItemResults( DataRow dr, string fieldName, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
+		public static string FormatCAOListAsDelimitedString( List<CredentialAlignmentObjectProfile> input, string delimiter )
 		{
-			string list = GetRowPossibleColumn( dr, fieldName, "" );
+			if ( input == null || !input.Any() )
+				return null;
+			List<string> ctids= new List<string>();
+			foreach (var cao in input )
+            {
+				ctids.Add( cao.TargetNodeCTID );
+            }
+			return string.Join( delimiter, ctids.ToArray() );
+
+		}
+		protected static CodeItemResult Fill_CodeItemResults( DataRow dr, string fieldName, int categoryId, bool hasSchemaName, bool hasTotals, bool hasAnIdentifer = true )
+		{
+			string list = GetRowPossibleColumn( dr, fieldName, string.Empty );
 			//string list = dr[ fieldName ].ToString();
 			return Fill_CodeItemResults( list, categoryId, hasSchemaName, hasTotals, hasAnIdentifer );
 
@@ -203,15 +354,15 @@ namespace workIT.Factories
 
 			int totals = 0;
 			int id = 0;
-			string title = "";
-			string schema = "";
-			string code = "";
+			string title = string.Empty;
+			string schema = string.Empty;
+			string code = string.Empty;
 
 			var codeGroup = list.Split( '|' );
 			foreach ( string codeSet in codeGroup )
 			{
 				var codes = codeSet.Split( '~' );
-				schema = "";
+				schema = string.Empty;
 				totals = 0;
 				id = 0;
 				if ( hasAnIdentifer )
@@ -225,7 +376,7 @@ namespace workIT.Factories
 						if ( code.IndexOf( "-" ) > -1 || code.IndexOf( ".00" ) > -1 )
 						{ }
 						//note: now passing actual soc code so will not be an integer
-						//code = code.Replace( "-", "" );
+						//code = code.Replace( "-", string.Empty );
 						if ( codes.Length > 1 )
 							title = codes[ 1 ].Trim();
 						if ( codes.Length > 2 && hasSchemaName )
@@ -350,11 +501,11 @@ namespace workIT.Factories
 		/// <param name="creditUnitMaxValue"></param>
 		/// <param name="description"></param>
 		/// <returns></returns>
-		public static QuantitativeValue FormatQuantitiveValue( int creditUnitTypeId, decimal creditUnitValue, decimal creditUnitMaxValue, string description )
+		public static QuantitativeValue FormatQuantitativeValue( int creditUnitTypeId, decimal creditUnitValue, decimal creditUnitMaxValue, string description )
 		{
 			QuantitativeValue qv = new QuantitativeValue()
 			{
-				Description = description ?? ""
+				Description = description ?? string.Empty
 			};
 			if ( creditUnitMaxValue > 0 )
 			{
@@ -379,11 +530,11 @@ namespace workIT.Factories
 			}
 			return qv;
 		}
-		public static QuantitativeValue FormatQuantitiveValue( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description, string creditUnitType = "" )
+		public static QuantitativeValue FormatQuantitativeValue( int? creditUnitTypeId, decimal? creditUnitValue, decimal? creditUnitMaxValue, string description, string creditUnitType = "" )
 		{
 			QuantitativeValue qv = new QuantitativeValue()
 			{
-				Description = description ?? ""
+				Description = description ?? string.Empty
 			};
 			if ( (creditUnitMaxValue ?? 0M) > 0 )
 			{
@@ -407,7 +558,7 @@ namespace workIT.Factories
 				}
 			} else if ( !string.IsNullOrEmpty( creditUnitType ))
 			{
-				creditUnitType = creditUnitType.Replace( "ceterms:", "" );
+				creditUnitType = creditUnitType.Replace( "ceterms:", string.Empty );
 				qv.CreditUnitType = new Enumeration();
 				qv.CreditUnitType.Items.Add( new EnumeratedItem() { SchemaName = creditUnitType });
 				qv.UnitText = creditUnitType;
@@ -429,7 +580,7 @@ namespace workIT.Factories
 		{
 			ValueProfile qv = new ValueProfile()
 			{
-				Description = description ?? ""
+				Description = description ?? string.Empty
 			};
 			if ( ( creditUnitMaxValue ?? 0M ) > 0 )
 			{
@@ -457,7 +608,7 @@ namespace workIT.Factories
 			}
 			else if ( !string.IsNullOrEmpty( creditUnitType ) )
 			{
-				creditUnitType = creditUnitType.Replace( "ceterms:", "" );
+				creditUnitType = creditUnitType.Replace( "ceterms:", string.Empty );
 				qv.CreditUnitType = new Enumeration();
 				qv.CreditUnitType.Items.Add( new EnumeratedItem() { SchemaName = creditUnitType } );
 				///qv.UnitText = creditUnitType;
@@ -465,8 +616,65 @@ namespace workIT.Factories
 			return qv;
 		}
 
+		public static List<ResourceSummary> ConvertToResourceSummary( List<TopLevelObject> input, string property )
+		{
+			if ( input == null || !input.Any() )
+				return null;
+			var output = new List<ResourceSummary>();
+			var resource = new ResourceSummary();
+			foreach ( var item in input )
+			{
+				if ( item == null || string.IsNullOrWhiteSpace( item.Name ) )
+					continue;
+				resource = ConvertToResourceSummary( item, property );
+				if ( resource != null || !string.IsNullOrWhiteSpace( resource.Name ) )
+					output.Add( resource );
+			}
+			return output;
+		}
 
+		public static List<ResourceSummary> ConvertToResourceSummaryList( TopLevelObject input, string property )
+		{
+			if ( input == null || string.IsNullOrWhiteSpace( input.Name ) )
+				return null;
+			var output = new List<ResourceSummary>();
+			var resource = new ResourceSummary
+			{
+				CTID = input.CTID,
+				EntityTypeId = input.EntityTypeId,
+				Type = input.EntityType,
+				Id = input.Id,
+				RowId = input.RowId,
+				Name = input.Name,
+				Description = input.Description,
+				URI = input.SubjectWebpage
+			};
+			if ( resource != null || !string.IsNullOrWhiteSpace( resource.Name ) )
+				output.Add( resource );
 
+			return output;
+		}
+
+		public static ResourceSummary ConvertToResourceSummary( TopLevelObject input, string property )
+		{
+			if (input == null || string.IsNullOrWhiteSpace(input.Name))
+				return null;
+
+			var resource = new ResourceSummary
+			{
+				CTID = input.CTID,
+				EntityTypeId = input.EntityTypeId,
+				Type = input.EntityType,
+				Id = input.Id,
+				RowId = input.RowId,
+				Name = input.Name,
+				Description = input.Description,
+				URI = input.SubjectWebpage
+			};
+			
+		
+			return resource;
+		}
 		#endregion
 		#region data retrieval
 
@@ -563,7 +771,7 @@ namespace workIT.Factories
 						code = new AgentRelationship();
 
 						var codes = codeSet.Split( '~' );
-						//schema = "";
+						//schema = string.Empty;
 
 						id = 0;
 						if ( hasAnIdentifer )
@@ -637,7 +845,7 @@ namespace workIT.Factories
 
 				//code.RelationshipId = i.RelationshipTypeIds.FirstOrDefault();
 				int cntr = -1;
-				string relationship = "";
+				string relationship = string.Empty;
 				foreach (var r in i.RelationshipTypeIds )
 				{
 					cntr++;
@@ -656,7 +864,7 @@ namespace workIT.Factories
 					if ( i.RelationshipTypeIds.Count() == i.Relationships.Count() )
 						relationship = i.Relationships[ cntr ];
 					else
-						relationship = "";
+						relationship = string.Empty;
 					//code.Relationship = i.Relationships[ cntr ];
 					code.Relationship = entityType + " " + relationship;
 					if ( (!selectingQAOnly && nonQAaRoles.IndexOf( r ) > -1 ) 
@@ -765,7 +973,7 @@ namespace workIT.Factories
         #region column retrieval handling not found names
         public static string GetRowColumn( DataRow row, string column, string defaultValue = "" )
 		{
-			string colValue = "";
+			string colValue = string.Empty;
 
 			try
 			{
@@ -783,7 +991,7 @@ namespace workIT.Factories
 				if ( HasMessageBeenPreviouslySent( column ) == false )
 				{
 					string queryString = GetWebUrl();
-					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString );
 				}
 
 				colValue = defaultValue;
@@ -794,7 +1002,7 @@ namespace workIT.Factories
 
 		public static string GetRowPossibleColumn( DataRow row, string column, string defaultValue = "" )
 		{
-			string colValue = "";
+			string colValue = string.Empty;
 			//SKIPPING try /catcvh now, for performance
 			//colValue = row[ column ].ToString();
 			try
@@ -848,7 +1056,7 @@ namespace workIT.Factories
                 if ( HasMessageBeenPreviouslySent( column ) == false )
                 {
                     string queryString = GetWebUrl();
-                    LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+                    LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString );
                 }
                 colValue = defaultValue;
                 //throw ex;
@@ -886,7 +1094,7 @@ namespace workIT.Factories
 				if ( HasMessageBeenPreviouslySent( column ) == false )
 				{
 					string queryString = GetWebUrl();
-					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+					LoggingHelper.LogError( ex, " Exception in GetRowColumn( DataRow row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString );
 				}
 
 
@@ -917,7 +1125,7 @@ namespace workIT.Factories
 				if ( HasMessageBeenPreviouslySent( column ) == false )
 				{
 					string queryString = GetWebUrl();
-					LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, DateTime defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString, true );
+					LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, DateTime defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() + "\r\nLocation: " + queryString );
 				}
 
 
@@ -1043,7 +1251,19 @@ namespace workIT.Factories
 
 			return value;
 		} // end method
-		protected static decimal GetDecimalField( string field, decimal defaultValue = 0 )
+        protected static bool IsValidDecimal( decimal? field, ref decimal output )
+        {
+			if ( field != null ) 
+			{
+				output = ( decimal ) field;
+				return true;
+			}
+			else 
+				return false;
+
+           
+        } // end method
+        protected static decimal GetDecimalField( string field, decimal defaultValue = 0 )
 		{
 			if ( string.IsNullOrWhiteSpace( field ) )
 				return defaultValue;
@@ -1059,7 +1279,20 @@ namespace workIT.Factories
 
 			return value;
 		} // end method
+		protected static DateTime? GetDate( string field )
+		{
+			if ( IsValidDate( field ) )
+				return DateTime.Parse( field );
 
+			return null;
+		} //
+		protected static string GetDate( DateTime? field )
+		{
+			if ( IsValidDate( field ) )
+				return ( ( DateTime ) field ).ToString( "yyyy-MM-dd" ); ;
+
+			return "";
+		} //
 		protected static string GetMessages( List<string> messages )
 		{
 			if ( messages == null || messages.Count == 0 )
@@ -1104,7 +1337,7 @@ namespace workIT.Factories
 		}
 		public static string FormatExternalFinderUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId )
 		{
-			string url = "";
+			string url = string.Empty;
 			if ( string.IsNullOrEmpty( entityCTID ) )
 				url = entitySubjectWebpage;
 			else
@@ -1114,17 +1347,17 @@ namespace workIT.Factories
 		}
 		public static string FormatExternalFinderUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId, string friendlyName )
 		{
-			string url = "";
+			string url = string.Empty;
 			if ( string.IsNullOrEmpty( entityCTID ) )
 				url = entitySubjectWebpage;
 			else
-				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? "" : friendlyName );
+				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? string.Empty : friendlyName );
 
 			return url;
 		}
 		public static string FormatDetailUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId )
 		{
-			string url = "";
+			string url = string.Empty;
 			if ( string.IsNullOrEmpty( entityCTID ) )
 				url = entitySubjectWebpage;
 			else
@@ -1133,11 +1366,11 @@ namespace workIT.Factories
 		}
 		public static string FormatDetailUrl( string entityType, string entityCTID, string entitySubjectWebpage, int recordId, string friendlyName )
 		{
-			string url = "";
+			string url = string.Empty;
 			if ( string.IsNullOrEmpty( entityCTID ) )
 				url = entitySubjectWebpage;
 			else
-				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? "" : friendlyName );
+				url = reactFinderSiteURL + string.Format( "{0}/{1}/{2}", entityType, recordId, string.IsNullOrWhiteSpace( friendlyName ) ? string.Empty : friendlyName );
 			return url;
 		}
 		#endregion
@@ -1208,7 +1441,7 @@ namespace workIT.Factories
 				return false;
 		}
 
-		protected bool IsValidGuid( Guid field )
+		public static bool IsValidGuid( Guid field )
 		{
 			if ( ( field == null || field.ToString() == DEFAULT_GUID ) )
 				return false;
@@ -1250,7 +1483,10 @@ namespace workIT.Factories
 		public static string GetData( string text, string defaultValue = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( text ) == false )
+			{
+				//TODO - should we try to normalize use of & for later compares?
 				return text.Trim();
+			}
 			else
 				return defaultValue;
 		}
@@ -1280,7 +1516,7 @@ namespace workIT.Factories
 		{
 			if ( string.IsNullOrWhiteSpace( text ) == false )
 			{
-				text = text.TrimEnd( '/' );
+				//text = text.TrimEnd( '/' );
 				return text.Trim();
 			}
 			else
@@ -1293,7 +1529,7 @@ namespace workIT.Factories
 		/// <returns></returns>
 		//public static bool IsUrlWellFormed( string url )
 		//{
-		//	string responseStatus = "";
+		//	string responseStatus = string.Empty;
 
 		//	if ( string.IsNullOrWhiteSpace( url ) )
 		//		return true;
@@ -1321,7 +1557,7 @@ namespace workIT.Factories
 		//}
 		public static bool IsUrlValid( string url, ref string statusMessage, bool allowingSchemaLess = false )
 		{
-			statusMessage = "";
+			statusMessage = string.Empty;
 			if ( string.IsNullOrWhiteSpace( url ) )
 				return true;
 
@@ -1451,12 +1687,12 @@ namespace workIT.Factories
 				//		 .ReadToEnd();
 				if ( !treatingRemoteFileNotExistingAsError )
 				{
-					LoggingHelper.LogError( string.Format( "BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}; URL: {2}", url, wex.Message, GetWebUrl() ), true, "SKIPPING - Exception on URL Checking" );
+					LoggingHelper.LogError(wex, string.Format("BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}; URL: {2}", url, wex.Message, GetWebUrl()));
 
 					return true;
 				}
 
-				LoggingHelper.LogError( string.Format( "BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, wex.Message ), true, "Exception on URL Checking" );
+				LoggingHelper.LogError(wex, string.Format("BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, wex.Message));
 				responseStatus = wex.Message;
 				return false;
 			}
@@ -1492,12 +1728,12 @@ namespace workIT.Factories
 				}
 				if ( !treatingRemoteFileNotExistingAsError )
 				{
-					LoggingHelper.LogError( string.Format( "BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, ex.Message ), true, "SKIPPING - Exception on URL Checking" );
+					LoggingHelper.LogError(ex, string.Format("BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, ex.Message));
 
 					return true;
 				}
 
-				LoggingHelper.LogError( string.Format( "BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, ex.Message ), true, "Exception on URL Checking" );
+				LoggingHelper.LogError(ex, string.Format("BaseFactory.DoesRemoteFileExists url: {0}. Exception Message:{1}", url, ex.Message));
 				//Any exception will returns false.
 				responseStatus = ex.Message;
 				return false;
@@ -1581,7 +1817,7 @@ namespace workIT.Factories
         /// <returns></returns>
         public static string ExtractCtid( string registryURL )
 		{
-			string ctid = "";
+			string ctid = string.Empty;
 			if ( string.IsNullOrWhiteSpace( registryURL ) )
 				return "";
 			//check for just URL
@@ -1638,10 +1874,11 @@ namespace workIT.Factories
 			}
 			return identifier;
         }
-        public static string FormatLongLabel( string text, int maxLength = 75 )
+        public static string AssignLimitedString( string text, int maxLength = 75 )
 		{
 			if ( string.IsNullOrWhiteSpace( text ) )
 				return "";
+			text = text.Trim();
 			if ( text.Length > maxLength )
 				return text.Substring( 0, maxLength ) + " ...";
 			else
@@ -1707,21 +1944,21 @@ namespace workIT.Factories
 			//for now allow embedded periods
 			//encodedTitle = encodedTitle.Replace( ".", "-" );
 
-			encodedTitle = encodedTitle.Replace( "'", "" );
+			encodedTitle = encodedTitle.Replace( "'", string.Empty );
 			encodedTitle = encodedTitle.Replace( "&", "-" );
-			encodedTitle = encodedTitle.Replace( "#", "" );
+			encodedTitle = encodedTitle.Replace( "#", string.Empty );
 			encodedTitle = encodedTitle.Replace( "$", "S" );
 			encodedTitle = encodedTitle.Replace( "%", "percent" );
-			encodedTitle = encodedTitle.Replace( "^", "" );
-			encodedTitle = encodedTitle.Replace( "*", "" );
+			encodedTitle = encodedTitle.Replace( "^", string.Empty );
+			encodedTitle = encodedTitle.Replace( "*", string.Empty );
 			encodedTitle = encodedTitle.Replace( "+", "_" );
 			encodedTitle = encodedTitle.Replace( "~", "_" );
 			encodedTitle = encodedTitle.Replace( "`", "_" );
 			encodedTitle = encodedTitle.Replace( "/", "_" );
 			encodedTitle = encodedTitle.Replace( "://", "/" );
-			encodedTitle = encodedTitle.Replace( ":", "" );
-			encodedTitle = encodedTitle.Replace( ";", "" );
-			encodedTitle = encodedTitle.Replace( "?", "" );
+			encodedTitle = encodedTitle.Replace( ":", string.Empty );
+			encodedTitle = encodedTitle.Replace( ";", string.Empty );
+			encodedTitle = encodedTitle.Replace( "?", string.Empty );
 			encodedTitle = encodedTitle.Replace( "\"", "_" );
 			encodedTitle = encodedTitle.Replace( "\\", "_" );
 			encodedTitle = encodedTitle.Replace( "<", "_" );
@@ -1745,7 +1982,7 @@ namespace workIT.Factories
 
 			string str = RemoveAccent( name ).ToLower();
 			// invalid chars           
-			str = Regex.Replace( str, @"[^a-z0-9\s-]", "" );
+			str = Regex.Replace( str, @"[^a-z0-9\s-]", string.Empty );
 			// convert multiple spaces into one space   
 			str = Regex.Replace( str, @"\s+", " " ).Trim();
 			// cut and trim 
@@ -1841,7 +2078,7 @@ namespace workIT.Factories
 			}
 
 
-			keyword = keyword.Replace( "^", "" );
+			keyword = keyword.Replace( "^", string.Empty );
 			return keyword;
 		}
 
@@ -1860,7 +2097,7 @@ namespace workIT.Factories
 						ve.PropertyName, ve.ErrorMessage );
 				}
 
-				LoggingHelper.LogError( message, true );
+				LoggingHelper.LogError( message );
 			}
 
 			return message;

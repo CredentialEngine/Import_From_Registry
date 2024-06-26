@@ -25,21 +25,24 @@ namespace workIT.Factories
 	{
 		static string thisClassName = "Entity_ProcessProfileManager";
 
-
+		/// <summary>
+		/// Process profile types
+		/// 24-02-27 mp - fixed inconsistency between what was in the Codes.ProcessProfileType table and these constants
+		///		Instead of changing the Ids, just set the table contents to match below
+		/// </summary>
 		public static int DEFAULT_PROCESS_TYPE = 1;
 		public static int ADMIN_PROCESS_TYPE = 1;
-		public static int DEV_PROCESS_TYPE = 2; //convert to 2 from 7
-		public static int MTCE_PROCESS_TYPE = 3; //convert to 3 from 8
 
-		public static int APPEAL_PROCESS_TYPE = 4;	//to 4 from 2
-		public static int COMPLAINT_PROCESS_TYPE = 5;	//to 5 from 3
+		public static int DEV_PROCESS_TYPE = 2;         
+		public static int MTCE_PROCESS_TYPE = 3;        
+		public static int APPEAL_PROCESS_TYPE = 4;     
+		public static int COMPLAINT_PROCESS_TYPE = 5;  
 
-		[Obsolete]
-		public static int CRITERIA_PROCESS_TYPE = 6;
 		public static int REVIEW_PROCESS_TYPE = 7;
 		public static int REVOKE_PROCESS_TYPE = 8;
 
-
+		[Obsolete]
+		public static int CRITERIA_PROCESS_TYPE = 6;
 
 
 		#region Entity Persistance ===================
@@ -341,7 +344,8 @@ namespace workIT.Factories
 					foreach ( var item in results )
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
-						string statusMessage = "";
+						//23-12-14 mp - yes, there is a trigger for this!
+						string statusMessage = string.Empty;
 						new EntityManager().Delete( item.RowId, string.Format( "ProcessProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
 						context.Entity_ProcessProfile.Remove( item );
@@ -596,95 +600,95 @@ namespace workIT.Factories
 
 
 		}
-		public static void MapFromDB( DBEntity from, ThisEntity to, bool includingItems, bool getForList )
+		public static void MapFromDB( DBEntity input, ThisEntity output, bool includingItems, bool getForList )
 		{
-			to.Id = from.Id;
-			to.RowId = from.RowId;
+			output.Id = input.Id;
+			output.RowId = input.RowId;
 			//HANDLE PROCESS TYPES
-			if ( from.ProcessTypeId != null && ( int ) from.ProcessTypeId > 0)
-				to.ProcessTypeId = ( int ) from.ProcessTypeId;
+			if ( input.ProcessTypeId != null && ( int ) input.ProcessTypeId > 0)
+				output.ProcessTypeId = ( int ) input.ProcessTypeId;
 			else
-				to.ProcessTypeId = 1;
+				output.ProcessTypeId = 1;
 
-			to.ProfileName = to.ProcessType;
-            //need to distinguish if for detail
-            to.ProcessProfileType = GetProfileType( to.ProcessTypeId );
+			output.ProfileName = output.ProcessType;
+            //need to distinguish if for detail			 
+            output.ProcessProfileType = GetProfileType( output.ProcessTypeId );
 
-            to.Description = from.Description;
-			if ( ( to.Description ?? "" ).Length > 5 )
+            output.Description = input.Description;
+			if ( ( output.Description ?? string.Empty ).Length > 5 )
 			{
                 //this should just be the type now
-                to.ProfileName = GetProfileType( to.ProcessTypeId );
+                output.ProfileName = GetProfileType( output.ProcessTypeId );
 
                 //to.ProfileName = to.Description.Length > 100 ? to.Description.Substring(0,100) + " . . ." : to.Description;
 			}
 
-			if ( from.Entity != null )
-				to.RelatedEntityId = from.Entity.Id;
+			if ( input.Entity != null )
+				output.RelatedEntityId = input.Entity.Id;
 
-			to.ProfileSummary = SetEntitySummary( to );
+			output.ProfileSummary = SetEntitySummary( output );
 
 			//- provide minimum option, for lists
 			if ( getForList )
 				return;
 
-			if ( IsGuidValid( from.ProcessingAgentUid ) )
+			if ( IsGuidValid( input.ProcessingAgentUid ) )
 			{
-				to.ProcessingAgentUid = ( Guid ) from.ProcessingAgentUid;
+				output.ProcessingAgentUid = ( Guid ) input.ProcessingAgentUid;
 
-				to.ProcessingAgent = OrganizationManager.GetBasics( to.ProcessingAgentUid );
+				output.ProcessingAgent = OrganizationManager.GetBasics( output.ProcessingAgentUid );
 			}
 
-			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
+			if ( IsValidDate( input.DateEffective ) )
+				output.DateEffective = ( ( DateTime ) input.DateEffective ).ToString("yyyy-MM-dd");
 			else
-				to.DateEffective = "";
-			to.SubjectWebpage = from.SubjectWebpage;
+				output.DateEffective = string.Empty;
+			output.SubjectWebpage = input.SubjectWebpage;
 
-			to.ProcessFrequency = from.ProcessFrequency;
+			output.ProcessFrequency = input.ProcessFrequency;
 			//to.TargetCompetencyFramework = from.TargetCompetencyFramework;
 			//to.RequiresCompetenciesFrameworks = Entity_CompetencyFrameworkManager.GetAll( to.RowId, "requires" );
 
-			to.ProcessMethod = from.ProcessMethod;
-			to.ProcessMethodDescription = from.ProcessMethodDescription;
+			output.ProcessMethod = input.ProcessMethod;
+			output.ProcessMethodDescription = input.ProcessMethodDescription;
 
-			to.ProcessStandards = from.ProcessStandards;
-			to.ProcessStandardsDescription = from.ProcessStandardsDescription;
+			output.ProcessStandards = input.ProcessStandards;
+			output.ProcessStandardsDescription = input.ProcessStandardsDescription;
 
-			to.ScoringMethodDescription = from.ScoringMethodDescription;
-			to.ScoringMethodExample = from.ScoringMethodExample;
-			to.ScoringMethodExampleDescription = from.ScoringMethodExampleDescription;
-			to.VerificationMethodDescription = from.VerificationMethodDescription;
+			output.ScoringMethodDescription = input.ScoringMethodDescription;
+			output.ScoringMethodExample = input.ScoringMethodExample;
+			output.ScoringMethodExampleDescription = input.ScoringMethodExampleDescription;
+			output.VerificationMethodDescription = input.VerificationMethodDescription;
 
-			if ( IsValidDate( from.DateEffective ) )
-				to.DateEffective = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
+			if ( IsValidDate( input.DateEffective ) )
+				output.DateEffective = ( ( DateTime ) input.DateEffective ).ToString("yyyy-MM-dd");
 			else
-				to.DateEffective = "";
+				output.DateEffective = string.Empty;
 
 			//enumerations
-			to.DataCollectionMethodType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE );
-			to.ExternalInputType = EntityPropertyManager.FillEnumeration( to.RowId, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE );
+			output.DataCollectionMethodType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_DATA_COLLECTION_METHOD_TYPE );
+			output.ExternalInputType = EntityPropertyManager.FillEnumeration( output.RowId, CodesManager.PROPERTY_CATEGORY_EXTERNAL_INPUT_TYPE );
 
 
 
 			if ( includingItems )
 			{
 				
-				to.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( to.RowId );
+				output.Jurisdiction = Entity_JurisdictionProfileManager.Jurisdiction_GetAll( output.RowId );
 				//will only be one, but could model with multiple
-				to.TargetCredential = Entity_CredentialManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
-				to.TargetAssessment = Entity_AssessmentManager.GetAll( to.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
+				output.TargetCredential = Entity_CredentialManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
+				output.TargetAssessment = Entity_AssessmentManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART );
 
-				to.TargetLearningOpportunity = Entity_LearningOpportunityManager.TargetResource_GetAll( to.RowId, true );
-				to.TargetCompetencyFramework = Entity_CompetencyFrameworkManager.GetAll( to.RowId );
+				output.TargetLearningOpportunity = Entity_LearningOpportunityManager.TargetResource_GetAll( output.RowId, true );
+				output.TargetCompetencyFramework = Entity_CompetencyFrameworkManager.GetAll( output.RowId );
 			}
 
 
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime ) from.Created;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime ) input.Created;
 			
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime ) input.LastUpdated;
 		
 		}
 		static string SetEntitySummary( ThisEntity to )

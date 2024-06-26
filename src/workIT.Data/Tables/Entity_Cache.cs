@@ -18,6 +18,8 @@ namespace workIT.Data.Tables
         public int EntityTypeId { get; set; }
         public string EntityType { get; set; }
         public System.Guid EntityUid { get; set; }
+        public Nullable<int> EntityStateId { get; set; }
+        public string CTID { get; set; }
         public Nullable<int> parentEntityId { get; set; }
         public Nullable<System.Guid> parentEntityUid { get; set; }
         public string parentEntityType { get; set; }
@@ -25,14 +27,12 @@ namespace workIT.Data.Tables
         public int BaseId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string CTID { get; set; }
-        public Nullable<System.DateTime> Created { get; set; }
         public string SubjectWebpage { get; set; }
+        public Nullable<int> OwningOrgId { get; set; }
         public string ImageUrl { get; set; }
+        public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<System.DateTime> CacheDate { get; set; }
-        public Nullable<int> EntityStateId { get; set; }
-        public Nullable<int> OwningOrgId { get; set; }
         public Nullable<int> PublishedByOrgId { get; set; }
         public string ResourceDetail { get; set; }
         public string AgentRelationshipsForEntity { get; set; }

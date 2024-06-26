@@ -77,6 +77,12 @@ namespace workIT.Models.PathwayBuilder
         public List<ResourceSummary> OccupationType { get; set; } = new List<ResourceSummary>();
         public List<ResourceSummary> IndustryType { get; set; } = new List<ResourceSummary>();
         public List<ResourceSummary> InstructionalProgramType { get; set; } = new List<ResourceSummary>();
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
+        public string LatestVersion { get; set; }
+        public string VersionIdentifier { get; set; }
+        public string LifeCycleStatusType { get; set; }
+
     }
 	//
 
@@ -106,6 +112,9 @@ namespace workIT.Models.PathwayBuilder
         //[System.ComponentModel.DefaultValueAttribute(1)]
         public int RowNumber{ get; set; }
         public int ColumnNumber { get; set; }
+        public bool IsExternalComponent { get; set; }
+
+        public ResourceSummary FromExternalPathway { get; set; }
         public bool IsPendingComponent { get; set; }
         /// <summary>
         /// this is the relationship to the parent
@@ -157,6 +166,8 @@ namespace workIT.Models.PathwayBuilder
 
         //CTID
         public string ProxyFor { get; set; }
+
+        public List<ResourceSummary> ProxyForList { get; set; }
         public ResourceSummary FinderResource { get; set; }
 
 

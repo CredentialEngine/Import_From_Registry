@@ -27,6 +27,7 @@ namespace workIT.Data.Tables
         public string Name { get; set; }
         public string Description { get; set; }
         public Nullable<int> CredentialTypeId { get; set; }
+        public string CTID { get; set; }
         public string Version { get; set; }
         public Nullable<System.DateTime> EffectiveDate { get; set; }
         public string SubjectWebpage { get; set; }
@@ -37,7 +38,6 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string CredentialRegistryId { get; set; }
         public string AlternateName { get; set; }
-        public string CTID { get; set; }
         public string AvailableOnlineAt { get; set; }
         public string CredentialId { get; set; }
         public string CodedNotation { get; set; }
@@ -56,6 +56,7 @@ namespace workIT.Data.Tables
         public Nullable<System.Guid> PrimaryOrganizationUid { get; set; }
         public int CredentialStatusTypeId { get; set; }
         public Nullable<bool> IsNonCredit { get; set; }
+        public string InCatalog { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Credential_SummaryCache> Credential_SummaryCache { get; set; }

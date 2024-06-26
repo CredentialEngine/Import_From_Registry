@@ -54,7 +54,7 @@ namespace workIT.Factories
 				status.AddError( "Error - the parent entity was not found." );
 				return false;
 			}
-			string schemaName = "";
+			string schemaName = string.Empty;
 			int cntr = 0;
 			using ( var context = new EntityContext() )
 			{
@@ -66,7 +66,7 @@ namespace workIT.Factories
 				foreach (var item in entity.Items )
 				{
 					cntr++;
-					schemaName = "";
+					schemaName = string.Empty;
 					if ( !string.IsNullOrWhiteSpace( item.SchemaName ) )
 						schemaName = item.SchemaName;
 					else if ( !string.IsNullOrWhiteSpace( item.Name ) )
@@ -201,13 +201,15 @@ namespace workIT.Factories
 					foreach ( EntityProperty_Summary prop in results )
 					{
 
-						item = new EnumeratedItem();
-						item.Id = prop.PropertyValueId;
-						item.Value = prop.PropertyValueId.ToString();
-						item.Selected = true;
+						item = new EnumeratedItem
+						{
+							Id = prop.PropertyValueId,
+							Value = prop.PropertyValueId.ToString(),
+							Selected = true,
 
-						item.Name = prop.Property;
-						item.SchemaName = prop.PropertySchemaName;
+							Name = prop.Property,
+							SchemaName = prop.PropertySchemaName
+						};
 						entity.Items.Add( item );
 					}
 				}

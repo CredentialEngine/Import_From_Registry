@@ -134,9 +134,9 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates )
+		private int Add( int parentEntityId, int categoryId, CredentialAlignmentObjectProfile entity, ref SaveStatus status, bool warningOnDuplicates )
 		{
-			var rfm = new Reference_FrameworkItemManager();
+			var rfim = new Reference_FrameworkItemManager();
 
 			DBEntity efEntity = new DBEntity();
 			using ( var context = new EntityContext() )
@@ -144,6 +144,7 @@ namespace workIT.Factories
 				try
 				{
 					//first ensure not a duplicate (until interface/search prevents dups)
+					//the decision was made to delete all and do adds. So check should not be necessary now. 
 					//EnumeratedItem entity = Get( parentEntityId, categoryId, codeID );
 					//if ( entity != null && entity.Id > 0 )
 					//{
@@ -162,7 +163,7 @@ namespace workIT.Factories
 						FrameworkName = entity.FrameworkName,
 					};
 					//add or update, returns rfm.Id if OK
-					if (!rfm.Save( rfi, ref status ))
+					if (!rfim.Save( rfi, ref status ))
 					{
 						return 0;
 					}

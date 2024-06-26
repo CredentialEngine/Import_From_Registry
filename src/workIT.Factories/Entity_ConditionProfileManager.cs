@@ -4,7 +4,7 @@ using System.Linq;
 
 using workIT.Models;
 using workIT.Models.Common;
-using ThisEntity = workIT.Models.ProfileModels.ConditionProfile;
+using ThisResource = workIT.Models.ProfileModels.ConditionProfile;
 using DBEntity = workIT.Data.Tables.Entity_ConditionProfile;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ViewContext = workIT.Data.Views.workITViews;
@@ -35,10 +35,11 @@ namespace workIT.Factories
 		public static int ConnectionProfileType_Corequisite = 10;
 		public static int ConnectionProfileType_EntryCondition = 11;
 
+		public static int ConnectionProfileType_Membership = 14;
 		public static int ConnectionProfileType_CoPrerequisite = 15;
-        public static int ConnectionProfileType_SupportServiceCondition = 16;
+		public static int ConnectionProfileType_SupportServiceCondition = 16;
 
-        public static int ConditionSubType_Basic = 1;
+		public static int ConditionSubType_Basic = 1;
 		public static int ConditionSubType_CredentialConnection = 2;
 		public static int ConditionSubType_Assessment = 3;
 		public static int ConditionSubType_LearningOpportunity = 4;
@@ -48,7 +49,7 @@ namespace workIT.Factories
 
 		#region persistance ==================
 
-		public bool SaveList( List<ThisEntity> list, int conditionTypeId, Guid parentUid, ref SaveStatus status, int subConnectionTypeId = 0 )
+		public bool SaveList( List<ThisResource> list, int conditionTypeId, Guid parentUid, ref SaveStatus status, int subConnectionTypeId = 0 )
 		{
 			//a delete ALL is no longer being done before entering here so need to check for deletes in method
 			if ( !IsValidGuid( parentUid ) )
@@ -103,7 +104,7 @@ namespace workIT.Factories
 				//may need to delete all here, as cannot easily/dependably look up a condition profile
 				if ( currentConditions.Count > 0)
 					DeleteAllForConditionType( parent, conditionTypeId, subConnectionTypeId, ref status );
-				foreach ( ThisEntity item in list )
+				foreach ( ThisResource item in list )
 				{
 					item.ConnectionProfileTypeId = conditionTypeId;
 					item.ConditionSubTypeId = subConnectionTypeId;
@@ -113,7 +114,7 @@ namespace workIT.Factories
 				//DeleteAll( parent, ref status, updateDate );
 			}
 			//bool isAllValid = true;
-			//foreach ( ThisEntity item in list )
+			//foreach ( ThisResource item in list )
 			//{
 			//	item.ConnectionProfileTypeId = conditionTypeId;
 			//	item.ConditionSubTypeId = subConnectionTypeId;
@@ -123,7 +124,7 @@ namespace workIT.Factories
 			return isAllValid;
 		}
 
-		private bool Save( ThisEntity entity, Entity parent, DateTime updateDate, ref SaveStatus status  )
+		private bool Save( ThisResource entity, Entity parent, DateTime updateDate, ref SaveStatus status  )
 		{
 			bool isValid = true;
 			
@@ -209,7 +210,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="statusMessage"></param>
 		/// <returns></returns>
-		private int Add(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
+		private int Add(ThisResource entity, DateTime updateDate, ref SaveStatus status)
 		{
 			DBEntity efEntity = new DBEntity();
 			bool doingUpdateParts = true;
@@ -350,7 +351,7 @@ namespace workIT.Factories
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
 						//NO - handled by trigger - i.e. trgConnectionProfileAfterDelete - or is explicit better?
-						//string statusMessage = "";
+						//string statusMessage = string.Empty;
 						//we have a trigger for this
 						//new EntityManager().Delete( item.RowId, string.Format( "ConditionProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
@@ -412,7 +413,7 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool UpdateParts(ThisEntity entity, DateTime updateDate, ref SaveStatus status)
+		public bool UpdateParts(ThisResource entity, DateTime updateDate, ref SaveStatus status)
 		{
 			bool isAllValid = true;
 			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -428,7 +429,7 @@ namespace workIT.Factories
 				if ( entity.AlternativeCondition != null && entity.AlternativeCondition.Count > 0 )
 				{
 					Entity parent = EntityManager.GetEntity( entity.RowId );
-					foreach ( ThisEntity item in entity.AlternativeCondition )
+					foreach ( ThisResource item in entity.AlternativeCondition )
 					{
 						item.ConnectionProfileTypeId = ConnectionProfileType_Requirement;
 						item.ConditionSubTypeId = ConditionSubType_Alternative;
@@ -536,7 +537,7 @@ namespace workIT.Factories
 			//
 			return isAllValid;
 		}
-		private bool HandleTargets( ThisEntity entity, Entity relatedEntity, ref SaveStatus status )
+		private bool HandleTargets( ThisResource entity, Entity relatedEntity, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 			int newId = 0;
@@ -623,15 +624,36 @@ namespace workIT.Factories
                 LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetOccupationIds. " + ex.Message );
                 status.AddError( ex.Message );
             }
-
-            try
+			try
 			{
-				if ( entity.TargetCompetencies != null && entity.TargetCompetencies.Count > 0 )
+				var jobMgr = new Entity_JobManager();
+				jobMgr.DeleteAll( relatedEntity, ref status );
+				if ( entity.TargetJobIds != null && entity.TargetJobIds.Count > 0 )
+				{
+
+					foreach ( int id in entity.TargetJobIds )
+					{
+						LoggingHelper.DoTrace( 7, thisClassName + string.Format( ".HandleTargets. entity.ParentId: {0}, processing loppId: {1}, entity.RowId: {2}", entity.RelatedEntityId, id, entity.RowId.ToString() ) );
+						//20-12-28 assuming adds here. OK - method checks for existing
+						newId = jobMgr.Add( entity.RowId, id, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, true, ref status, false );
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, thisClassName + ".HandleTargets(). Exception while processing TargetJobIds. " + ex.Message );
+				status.AddError( ex.Message );
+			}
+
+			try
+			{
+				if ( entity.TargetCompetency != null && entity.TargetCompetency.Count > 0 )
 				{
 					Entity_CompetencyManager ecm = new Entity_CompetencyManager();
 					//23-01-08 mp - do delete from entity to handle multiple types
+					//24-01-01 mp - there seems to be issues with timeouts. Look into doing replaces.
 					ecm.DeleteAll( relatedEntity, ref status );
-					ecm.SaveList("Requires", entity.TargetCompetencies, entity.RowId, ref status );
+					ecm.SaveList("Requires", entity.TargetCompetency, entity.RowId, ref status );
 
 				}
 			}
@@ -685,12 +707,12 @@ namespace workIT.Factories
 		//	return isValid;
 		//}
 
-		private bool ValidateProfile( ThisEntity item, ref SaveStatus status)
+		private bool ValidateProfile( ThisResource item, ref SaveStatus status)
 		{
 			status.HasSectionErrors = false;
 			bool isNameRequired = true;
 			
-			string firstEntityName = "";
+			string firstEntityName = string.Empty;
 
 			//TODO - treat connections separately!
 			if ( item.ConnectionProfileType == "AssessmentConnections" )
@@ -764,10 +786,10 @@ namespace workIT.Factories
 			//can only have credit hours properties, or credit unit properties, not both
 			bool hasCreditHourData = false;
 			bool hasCreditUnitData = false;
-			//if ( item.CreditHourValue > 0 || ( item.CreditHourType ?? "" ).Length > 0 )
+			//if ( item.CreditHourValue > 0 || ( item.CreditHourType ?? string.Empty ).Length > 0 )
 			//	hasCreditHourData = true;
 			if (  item.CreditUnitTypeId > 0
-				|| (item.CreditUnitTypeDescription ?? "").Length > 0
+				|| (item.CreditUnitTypeDescription ?? string.Empty).Length > 0
 				|| item.CreditUnitValue > 0)
 				hasCreditUnitData = true;
 
@@ -788,10 +810,10 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="parentUid"></param>
 		/// <returns></returns>
-		public static List<ThisEntity> GetAll( Guid parentUid, bool isForCredentialDetail, bool getMinimumOnly = false )
+		public static List<ThisResource> GetAll( Guid parentUid, bool isForCredentialDetail, bool getMinimumOnly = false )
 		{
-			ThisEntity entity = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
+			ThisResource entity = new ThisResource();
+			List<ThisResource> list = new List<ThisResource>();
 			Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -814,7 +836,7 @@ namespace workIT.Factories
 					{
 						foreach ( DBEntity item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 							MapFromDB( item, entity, true, true, isForCredentialDetail, getMinimumOnly );
 
 							list.Add( entity );
@@ -829,10 +851,10 @@ namespace workIT.Factories
 			return list;
 		}//
 
-		public static List<ThisEntity> GetAllForConditionType( Entity parent, int conditionTypeId, int subConnectionTypeId = 0 )
+		public static List<ThisResource> GetAllForConditionType( Entity parent, int conditionTypeId, int subConnectionTypeId = 0 )
 		{
-			ThisEntity entity = new ThisEntity();
-			List<ThisEntity> list = new List<ThisEntity>();
+			ThisResource entity = new ThisResource();
+			List<ThisResource> list = new List<ThisResource>();
 			//Entity parent = EntityManager.GetEntity( parentUid );
 			if ( parent == null || parent.Id == 0 )
 			{
@@ -855,7 +877,7 @@ namespace workIT.Factories
 					{
 						foreach ( DBEntity item in results )
 						{
-							entity = new ThisEntity();
+							entity = new ThisResource();
 							//??do we need all data? It will be replaced. The main issue will be references to lopps, asmts, etc. 
 							MapFromDB( item, entity, true, true, false, false );
 							list.Add( entity );
@@ -934,7 +956,10 @@ namespace workIT.Factories
 					{
 						foreach ( DBEntity item in results )
 						{
-							list.AddRange( Entity_AssessmentManager.GetAll( item.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART ));
+							if ( item.ConnectionTypeId < 3 )
+							{
+								list.AddRange( Entity_AssessmentManager.GetAll( item.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART ) );
+							}
 						}
 					}
 				}
@@ -994,9 +1019,9 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="rowId"></param>
 		/// <returns></returns>
-		public static ThisEntity GetAs_IsPartOf(Guid rowId, string currentParentName, List<ThisEntity> existingConnections )
+		public static ThisResource GetAs_IsPartOf(Guid rowId, string currentParentName, List<ThisResource> existingConnections )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
             using (var context = new EntityContext())
             {
                 DBEntity efEntity = context.Entity_ConditionProfile
@@ -1007,8 +1032,8 @@ namespace workIT.Factories
 					bool addToConnections = true;
 
 					MapFromDB_Basics( efEntity, entity, true );
-					var relatedName = "";
-					var relatedEntityType = "";
+					var relatedName = string.Empty;
+					var relatedEntityType = string.Empty;
 					if ( efEntity.Entity != null )
 					{
 						if ( efEntity.Entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
@@ -1088,7 +1113,7 @@ namespace workIT.Factories
 		/// <param name="input">Condition Profile</param>
 		/// <param name="relatedName"></param>
 		/// <param name="relatedEntityType"></param>
-		private static void SetInversionConditionType( ThisEntity input, string currentParentName, string relatedName, string relatedEntityType )
+		private static void SetInversionConditionType( ThisResource input, string currentParentName, string relatedName, string relatedEntityType )
 		{
 			switch ( input.ConnectionProfileTypeId)
 			{
@@ -1125,7 +1150,7 @@ namespace workIT.Factories
 			input.Name = string.Format( "Other requirements for '{0}'.", currentParentName );
 			input.Description = string.Format( "'{0}' '{1}' {2} '{3}'", currentParentName, input.ConnectionProfileType, relatedEntityType, relatedName );
 		}
-		private static void MapToDB( ThisEntity input, DBEntity output )
+		private static void MapToDB( ThisResource input, DBEntity output )
 		{
 
 			//want output ensure fields input create are not wiped
@@ -1173,7 +1198,7 @@ namespace workIT.Factories
 
 			//170316 mparsons - ProfileSummary is used in the edit interface for Name
 			if ( string.IsNullOrWhiteSpace( input.ProfileName ) )
-				input.ProfileName = input.ProfileSummary ?? "";
+				input.ProfileName = input.ProfileSummary ?? string.Empty;
 
 			//check for wierd jquery addition
 			int pos2 = input.ProfileName.ToLower().IndexOf( "jquery" );
@@ -1265,7 +1290,7 @@ namespace workIT.Factories
 
 		}
 
-		public static void MapFromDB(DBEntity input, ThisEntity output
+		public static void MapFromDB(DBEntity input, ThisResource output
 				, bool includingProperties
 				, bool incudingResources
 				, bool isForCredentialDetails
@@ -1311,7 +1336,7 @@ namespace workIT.Factories
 			if ( IsValidDate(input.DateEffective))
 				output.DateEffective = ((DateTime)input.DateEffective).ToString("yyyy-MM-dd");
 			else
-				output.DateEffective = "";
+				output.DateEffective = string.Empty;
 			
 
 			output.Condition = Entity_ReferenceManager.GetAll(output.RowId, CodesManager.PROPERTY_CATEGORY_CONDITION_ITEM);
@@ -1337,7 +1362,6 @@ namespace workIT.Factories
 				output.ResidentOf = Entity_JurisdictionProfileManager.Jurisdiction_GetAll(output.RowId, Entity_JurisdictionProfileManager.JURISDICTION_PURPOSE_RESIDENT);
 
 			}
-
 
 			if (incudingResources)
 			{
@@ -1369,12 +1393,12 @@ namespace workIT.Factories
 
                 output.TargetOccupation = Entity_OccupationManager.TargetResource_GetAll( output.RowId, false );
 
-                //output.TargetJob = Entity_JobManager.TargetResource_GetAll( output.RowId, false );
+                output.TargetJob = Entity_JobManager.TargetResource_GetAll( output.RowId, false );
 
             }
         }
 		
-		public static void MapFromDB_Basics( DBEntity from, ThisEntity to, bool isForCredentialDetails )
+		public static void MapFromDB_Basics( DBEntity from, ThisResource to, bool isForCredentialDetails )
 		{
 			to.Id = from.Id;
 			to.RowId = from.RowId;
@@ -1439,7 +1463,7 @@ namespace workIT.Factories
 
 			to.SubjectWebpage = from.SubjectWebpage;
 
-			string parentName = "";
+			string parentName = string.Empty;
 			if ( from.Entity != null && from.Entity.EntityTypeId == 1 )
 				parentName = from.Entity.EntityBaseName;
 			if ( to.ConnectionProfileTypeId > 0)
@@ -1447,7 +1471,7 @@ namespace workIT.Factories
 
 			//TODO - need to have a default for a missing name
 			//17-03-16 mparsons - using ProfileName for the list view, and ProfileSummary for the edit view
-			if ( ( from.Name ?? "" ).Length > 0 )
+			if ( ( from.Name ?? string.Empty ).Length > 0 )
 			{
 				//note could have previously had a name, and no longer shown!
 				to.ProfileName = from.Name;
@@ -1549,7 +1573,7 @@ namespace workIT.Factories
 		public static string GetConditionType(int conditionTypeId)
 		{
 
-			string ctype = "";
+			string ctype = string.Empty;
 			switch ( conditionTypeId )
 			{
 				case 1:
@@ -1599,7 +1623,7 @@ namespace workIT.Factories
 
 			return ctype;
 		}
-		private static void PopulateSubconditions( ThisEntity to, bool isForCredentialDetails )
+		private static void PopulateSubconditions( ThisResource to, bool isForCredentialDetails )
 		{
 			//alternative conditions
 			//all required at this time!
@@ -1692,7 +1716,7 @@ namespace workIT.Factories
 								if ( entity.ConnectionProfileTypeId == ConnectionProfileType_Requirement )
 								{
 									//to.Requires.Add( entity );
-									//to.Requires = new List<ThisEntity>();
+									//to.Requires = new List<ThisResource>();
 									to.Requires= HandleSubConditions( to.Requires, entity, forEditView );
 								}
 								else if ( entity.ConnectionProfileTypeId == ConnectionProfileType_Recommendation )
@@ -1782,7 +1806,7 @@ namespace workIT.Factories
 //									//add to required, for dev only?
 //									if (IsDevEnv())
 //									{
-//										entity.ProfileName = ( entity.ProfileName ?? "" ) + " unexpected condition type of " + entity.ConnectionProfileTypeId.ToString();
+//										entity.ProfileName = ( entity.ProfileName ?? string.Empty ) + " unexpected condition type of " + entity.ConnectionProfileTypeId.ToString();
 //										to.Requires.Add( entity );
 //									}
 //								}
@@ -1803,12 +1827,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="forEditView"></param>
 		/// <returns></returns>
-		private static List<ConditionProfile> HandleSubConditions( List<ConditionProfile> profiles, ThisEntity entity, bool forEditView )
+		private static List<ConditionProfile> HandleSubConditions( List<ConditionProfile> profiles, ThisResource entity, bool forEditView )
 		{
 			profiles.Add( entity );
 			//21-05-19 mp - skip the rest for now and evaluate
 			return profiles;
-			//List<ConditionProfile> list = new List<ThisEntity>();
+			//List<ConditionProfile> list = new List<ThisResource>();
 			//list.AddRange( profiles );
 
 			//foreach ( ConditionProfile item in entity.AlternativeCondition )

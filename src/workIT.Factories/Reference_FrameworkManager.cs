@@ -1,22 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
-
 using workIT.Utilities;
 
+using DBResource = workIT.Data.Tables.Reference_Framework;
 using EntityContext = workIT.Data.Tables.workITEntities;
+using ThisResource = workIT.Models.Common.ReferenceFramework;
 using ViewContext = workIT.Data.Views.workITViews;
-using DBEntity = workIT.Data.Tables.Reference_Framework;
-using ThisEntity = workIT.Models.Common.ReferenceFramework;
 
-
-using EM = workIT.Data.Tables;
 using Views = workIT.Data.Views;
 //
 namespace workIT.Factories
@@ -37,11 +31,36 @@ namespace workIT.Factories
 				return true;
 			}
 
-			ThisEntity entity = new ThisEntity()
+			ThisResource entity = new ThisResource()
 			{
 				CategoryId = categoryId,
 				Name = frameworkName,
 				Framework = framework,
+			};
+
+			return Save( entity, ref status );
+		}
+
+		/// <summary>
+		/// Handle where a framework name is provided but not a URL
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="frameworkName"></param>
+		/// <param name="frameworkId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool GetOrAdd( int categoryId, string frameworkName, ref int frameworkId, ref SaveStatus status )
+		{
+			if ( DoesItemExist( categoryId, frameworkName, ref frameworkId ) )
+			{
+				return true;
+			}
+
+			//should log this for followup
+			ThisResource entity = new ThisResource()
+			{
+				CategoryId = categoryId,
+				Name = frameworkName,
 			};
 
 			return Save( entity, ref status );
@@ -52,12 +71,12 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisEntity entity, ref SaveStatus status )
+		public bool Save( ThisResource entity, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
 
-			DBEntity efEntity = new DBEntity();
+			DBResource efEntity = new DBResource();
 			using ( var context = new EntityContext() )
 			{
 				if ( ValidateProfile( entity, ref status ) == false )
@@ -66,13 +85,14 @@ namespace workIT.Factories
 				if ( entity.Id == 0 )
 				{
 					// - need to check for existance
+					//	already done
 					DoesItemExist( entity );
 				}
 
 				if ( entity.Id == 0 )
 				{
 					// - Add
-					efEntity = new DBEntity();
+					efEntity = new DBResource();
 					MapToDB( entity, efEntity );
 
 
@@ -120,7 +140,7 @@ namespace workIT.Factories
 			bool isOK = true;
 			using ( var context = new EntityContext() )
 			{
-				DBEntity p = context.Reference_Framework.FirstOrDefault( s => s.Id == recordId );
+				DBResource p = context.Reference_Framework.FirstOrDefault( s => s.Id == recordId );
 				if ( p != null && p.Id > 0 )
 				{
 					context.Reference_Framework.Remove( p );
@@ -136,7 +156,7 @@ namespace workIT.Factories
 
 		}
 
-		public bool ValidateProfile( ThisEntity profile, ref SaveStatus status )
+		public bool ValidateProfile( ThisResource profile, ref SaveStatus status )
 		{
 			status.HasSectionErrors = false;
 
@@ -158,12 +178,12 @@ namespace workIT.Factories
 
 		#endregion
 		#region  retrieval ==================
-		public void DoesItemExist( ThisEntity entity )
+		public void DoesItemExist( ThisResource resource )
 		{
 			int frameworkId = 0;
-			if ( DoesItemExist( entity.CategoryId, entity.Name, entity.Framework, ref frameworkId ) )
+			if ( DoesItemExist( resource.CategoryId, resource.Name, resource.Framework, ref frameworkId ) )
 			{
-				entity.Id = frameworkId;
+				resource.Id = frameworkId;
 			}
 		}
 
@@ -172,11 +192,17 @@ namespace workIT.Factories
 		/// <summary>
 		/// Look for existing record or add if not found
 		/// </summary>
-		/// <param name="frameworkUrl"></param>
+		/// <param name="categoryId"></param>
 		/// <param name="frameworkName"></param>
+		/// <param name="framework">framework URL</param>
 		/// <returns></returns>
 		public bool DoesItemExist( int categoryId, string frameworkName, string framework, ref int frameworkId )
 		{
+
+			if ( string.IsNullOrWhiteSpace( framework ) )
+			{
+				return DoesItemExist( categoryId, frameworkName, ref frameworkId );
+			}
 			frameworkId = 0;
 			if ( categoryId == 0
 				|| string.IsNullOrWhiteSpace( frameworkName )
@@ -225,16 +251,76 @@ namespace workIT.Factories
 			}
 		}//
 
-		public static ThisEntity GetByUrl( string frameworkUrl )
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="categoryId"></param>
+		/// <param name="frameworkName"></param>
+		/// <param name="frameworkId"></param>
+		/// <returns></returns>
+		public bool DoesItemExist( int categoryId, string frameworkName, ref int frameworkId )
 		{
-			ThisEntity entity = new ThisEntity();
+			frameworkId = 0;
+			if ( categoryId == 0
+				|| string.IsNullOrWhiteSpace( frameworkName )) 
+				return false;
+			string framework = string.Empty;
+			frameworkName = frameworkName.ToLower();
+			//check for SOC alternatives
+			//https://www.onetcenter.org/taxonomy.html
+			if ( frameworkName.ToLower().IndexOf( "standard occupational classification" ) == 0 )
+			{
+				framework = "https://www.onetcenter.org/taxonomy.html";
+			}
+			else if ( frameworkName.ToLower().IndexOf( "north american industry classification systems" ) == 0 )
+			{
+				framework = "https://www.census.gov/naics";
+			}
+			else if ( frameworkName.ToLower().IndexOf( "classification of instructional programs" ) == 0 )
+			{
+				framework = "https://nces.ed.gov/ipeds/cipcode/Default.aspx?y=56";
+			}
+			using ( var context = new EntityContext() )
+			{
+				var results = context.Reference_Framework
+							.Where( s => s.CategoryId == categoryId
+							&& ( s.FrameworkName.ToLower() == frameworkName.ToLower() || s.Framework.ToLower() == framework.ToLower() )
+							)
+							.OrderBy( p => p.FrameworkName )
+							.ToList();
+				if ( results != null && results.Count > 0 )
+				{
+					//should only have one?
+					foreach ( var item in results )
+					{
+						//consider URL?
+						if ( !string.IsNullOrWhiteSpace( item.Framework ) )
+						{
+							//could have problem with exact matches
+							//may want alternate names
+						}
+						frameworkId = item.Id;
+						break;
+					}
+				}
+
+				if ( frameworkId > 0 )
+					return true;
+				else
+					return false;
+			}
+		}//
+
+		public static ThisResource GetByUrl( string frameworkUrl )
+		{
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( frameworkUrl ) )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.Reference_Framework
+					DBResource item = context.Reference_Framework
 							.FirstOrDefault( s => s.Framework == frameworkUrl );
 
 					if ( item != null && item.Id > 0 )
@@ -249,16 +335,16 @@ namespace workIT.Factories
 			}
 			return entity;
 		}//
-		public static ThisEntity GetByName( string frameworkName )
+		public static ThisResource GetByName( string frameworkName )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( frameworkName ) )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.Reference_Framework
+					DBResource item = context.Reference_Framework
 							.FirstOrDefault( s => s.FrameworkName.ToLower() == frameworkName.ToLower() );
 
 					if ( item != null && item.Id > 0 )
@@ -279,16 +365,16 @@ namespace workIT.Factories
 		/// </summary>
 		/// <param name="profileId"></param>
 		/// <returns></returns>
-		public static ThisEntity Get( int profileId )
+		public static ThisResource Get( int profileId )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( profileId == 0 )
 				return entity;
 			try
 			{
 				using ( var context = new EntityContext() )
 				{
-					DBEntity item = context.Reference_Framework
+					DBResource item = context.Reference_Framework
 							.SingleOrDefault( s => s.Id == profileId );
 
 					if ( item != null && item.Id > 0 )
@@ -364,14 +450,14 @@ namespace workIT.Factories
 		}
 
 
-		public static void MapToDB( ThisEntity from, DBEntity to )
+		public static void MapToDB( ThisResource from, DBResource to )
 		{
 			//want to ensure fields from create are not wiped
 			//to.Id = from.Id;
 
 			to.FrameworkName = from.Name;
 			to.CategoryId = from.CategoryId;
-			to.Framework = ( from.Framework ?? "" );
+			to.Framework = ( from.Framework ?? string.Empty );
 			//if do this, then later ones will not match. Needs to be part of the exists check
 			if ( to.Framework.IndexOf( "www.census.gov/eos/www/naics/" ) > 0 )
 			{
@@ -381,7 +467,7 @@ namespace workIT.Factories
 
 		} //
 
-		public static void MapFromDB( DBEntity from, ThisEntity to )
+		public static void MapFromDB( DBResource from, ThisResource to )
 		{
 			to.Id = from.Id;
 			//to.RowId = from.RowId;

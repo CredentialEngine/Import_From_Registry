@@ -23,6 +23,8 @@ namespace workIT.Models.Common
 		public static int PathwayComponentType_Job = 8;
 		public static int PathwayComponentType_Workexperience = 9;
 		public static int PathwayComponentType_Selection = 10;
+		public static int PathwayComponentType_Multi = 13;
+		public static int PathwayComponentType_Collection = 12;
 
 		public static string AssessmentComponent = "AssessmentComponent";
 		public static string BasicComponent = "BasicComponent";
@@ -34,6 +36,8 @@ namespace workIT.Models.Common
 		public static string JobComponent = "JobComponent";
 		public static string SelectionComponent = "SelectionComponent";
 		public static string WorkExperienceComponent = "WorkExperienceComponent";
+		public static string MultiComponent = "MultiComponent";
+		public static string CollectionComponent = "CollectionComponent";
 		public static string ComponentCondition = "ComponentCondition";
 
 
@@ -232,8 +236,9 @@ namespace workIT.Models.Common
 		public string SourceData { get; set; }
 
         public TopLevelEntityReference ProxyForResource { get; set; } = null;
+		public List<ResourceSummary> ProxyForResourceList { get; set; } = null;
 
-        public TopLevelEntityReference SourceCredential { get; set; } = null;
+		public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 		public TopLevelEntityReference SourceCompetency { get; set; } = null;
@@ -290,6 +295,7 @@ namespace workIT.Models.Common
         //stored in JsonProperties
         public int RowNumber { get; set; }
         public int ColumnNumber { get; set; }
+		public string ExternalPathwayCTID { get; set; }
         #endregion
         public ResourceSummary FinderResource { get; set; }
 
@@ -304,11 +310,13 @@ namespace workIT.Models.Common
         public int RowNumber { get; set; }
         public int ColumnNumber { get; set; }
 
-        /// <summary>
-        /// Label identifying the category to further distinguish one component from another as designated by the promulgating body.
-        /// Examples may include "Required", "Core", "General Education", "Elective", etc.
-        /// </summary>
-        public List<string> ComponentDesignationList { get; set; } = new List<string>();
+		public string ExternalPathwayCTID { get; set; }
+
+		/// <summary>
+		/// Label identifying the category to further distinguish one component from another as designated by the promulgating body.
+		/// Examples may include "Required", "Core", "General Education", "Elective", etc.
+		/// </summary>
+		public List<string> ComponentDesignationList { get; set; } = new List<string>();
 
 		/// <summary>
 		/// CreditValue
@@ -326,7 +334,8 @@ namespace workIT.Models.Common
 		/// </summary>
 		public QuantitativeValue PointValue { get; set; } = new QuantitativeValue();
         public TopLevelEntityReference ProxyForResource { get; set; } = null;
-        public TopLevelEntityReference SourceCredential { get; set; } = null;
+		public List<TopLevelEntityReference> ProxyForResourceList { get; set; } = null;
+		public TopLevelEntityReference SourceCredential { get; set; } = null;
 		public TopLevelEntityReference SourceAssessment { get; set; } = null;
 		public TopLevelEntityReference SourceLearningOpportunity { get; set; } = null;
 		public TopLevelEntityReference SourceCompetency { get; set; } = null;

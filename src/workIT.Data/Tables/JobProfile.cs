@@ -40,6 +40,15 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<System.Guid> PrimaryAgentUID { get; set; }
+        public string Keyword { get; set; }
+        public string AlternateName { get; set; }
+        public string EnvironmentalHazardType { get; set; }
+        public string PerformanceLevelType { get; set; }
+        public string PhysicalCapabilityType { get; set; }
+        public string SensoryCapabilityType { get; set; }
+        public string TargetCompetency { get; set; }
+        public Nullable<int> LifeCycleStatusTypeId { get; set; }
+        public string InCatalog { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Job> Entity_Job { get; set; }

@@ -1,31 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using Newtonsoft.Json;
-
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
-using ThisResource = workIT.Models.Common.PathwayComponent;
-using PC = workIT.Models.Common.PathwayComponent;
 using DBEntity = workIT.Data.Tables.PathwayComponent;
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
 using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
+using EntityContext = workIT.Data.Tables.workITEntities;
+using PC = workIT.Models.Common.PathwayComponent;
+using ThisResource = workIT.Models.Common.PathwayComponent;
 //using System.Security.Policy;
 
 namespace workIT.Factories
 {
-	public class PathwayComponentManager : BaseFactory
+    public class PathwayComponentManager : BaseFactory
 	{
 		static string thisClassName = "PathwayComponentManager";
 		static string EntityType = "PathwayComponent";
@@ -65,8 +55,18 @@ namespace workIT.Factories
 							efEntity.RowId = entity.RowId = Guid.NewGuid();
 						else
 							efEntity.RowId = entity.RowId;
+						if ( entity.CTID != null )
+						{
+							efEntity.CTID = entity.CTID;
+						}
+						else
+						{
+							//can never be null. So will probably fail on save, but don't want to create a new CTID
+							//wow weird major error!!!
+							//efEntity.CTID = "ce-" + efEntity.RowId.ToString().ToLower();
 
-						efEntity.CTID = "ce-" + efEntity.RowId.ToString().ToLower();
+						}
+
 						efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
 
 						context.PathwayComponent.Add( efEntity );
@@ -145,7 +145,7 @@ namespace workIT.Factories
 								ve.PropertyName, ve.ErrorMessage );
 						}
 
-						LoggingHelper.LogError( message, true );
+						LoggingHelper.LogError( message );
 					}
 				}
 				catch ( Exception ex )
@@ -201,7 +201,7 @@ namespace workIT.Factories
 					//may want to add the reference so can get to any components that reference the resource
 					//could use Entity.HasResource. Then creds, etc would need the extra step to call the latter
 
-					hasResourceMgr.Add( relatedEntity, entity.JsonProperties.ProxyForResource.EntityTypeId, entity.JsonProperties.ProxyForResource.Id, BaseFactory.RELATIONSHIP_TYPE_HAS_TARGET_RESOURCE, true, ref status );
+					hasResourceMgr.Add( relatedEntity, entity.JsonProperties.ProxyForResource.EntityTypeId, entity.JsonProperties.ProxyForResource.Id, Entity_HasResourceManager.HAS_RESOURCE_TYPE_HasTargetResource, ref status );
                 }
 
                 //TODO once latter fully implemented, remove the following
@@ -325,7 +325,7 @@ namespace workIT.Factories
 				//this will be derived in save method
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			//not sure if we want to cache these. We don't really treat them as top level
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
@@ -353,7 +353,7 @@ namespace workIT.Factories
 					foreach ( var item in results )
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
-						string statusMessage = "";
+						string statusMessage = string.Empty;
                         Guid rowId = item.RowId;
                         new EntityManager().Delete( item.RowId, string.Format( "PathwayComponent: {0} ({1})", item.Name, item.Id ), ref statusMessage );
 						var id = item.Id;
@@ -611,7 +611,7 @@ namespace workIT.Factories
 				string[] array = input.HasProgressionLevel.Split( '|' );
 				if ( array.Count() > 0 )
 				{
-					output.HasProgressionLevelDisplay = "";
+					output.HasProgressionLevelDisplay = string.Empty;
 
                     foreach ( var i in array )
 					{
@@ -666,6 +666,7 @@ namespace workIT.Factories
 				PathwayComponentProperties pcp = JsonConvert.DeserializeObject<PathwayComponentProperties>( input.Properties );
 				if ( pcp != null )
 				{
+					output.ExternalPathwayCTID = pcp.ExternalPathwayCTID;
 					output.RowNumber = pcp.RowNumber;
 					output.ColumnNumber = pcp.ColumnNumber;
 					//unpack ComponentDesignation
@@ -684,15 +685,15 @@ namespace workIT.Factories
 						output.ProxyForResource = pcp.ProxyForResource;
 						output.FinderResource = new ResourceSummary()
 						{
-							EntityTypeId = pcp.ProxyForResource.EntityTypeId, 
+							EntityTypeId = pcp.ProxyForResource.EntityTypeId,
 							Id = pcp.ProxyForResource.Id,
 							Name = pcp.ProxyForResource.Name,
 							Description = pcp.ProxyForResource.Description,
 							CTID = pcp.ProxyForResource.CTID,
 							URI = finder + "resources/" + output.ProxyForResource.CTID
-                    };
+						};
 
-                    }
+					}
 					else
 					{
 						if (pcp.SourceCredential != null && pcp.SourceCredential.Id > 0)
@@ -700,28 +701,36 @@ namespace workIT.Factories
 							output.SourceCredential = pcp.SourceCredential;
 							output.FinderResource.Name = output.SourceCredential.Name;
 							output.FinderResource.URI = finder + "resources/" + output.SourceCredential.CTID;
-							output.SourceData = "";
+							output.SourceData = string.Empty;
 						}
 						if (pcp.SourceAssessment != null && pcp.SourceAssessment.Id > 0)
 						{
 							output.SourceAssessment = pcp.SourceAssessment;
 							output.FinderResource.Name = output.SourceAssessment.Name;
 							output.FinderResource.URI = finder + "resources/" + output.SourceAssessment.CTID;
-							output.SourceData = "";
+							output.SourceData = string.Empty;
 						}
 						if (pcp.SourceLearningOpportunity != null && pcp.SourceLearningOpportunity.Id > 0)
 						{
 							output.SourceLearningOpportunity = pcp.SourceLearningOpportunity;
 							output.FinderResource.Name = output.SourceLearningOpportunity.Name;
 							output.FinderResource.URI = finder + "resources/" + output.SourceLearningOpportunity.CTID;
-							output.SourceData = "";
+							output.SourceData = string.Empty;
 						}
 						if (pcp.SourceCompetency != null && pcp.SourceCompetency.Id > 0)
 						{
 							output.SourceCompetency = pcp.SourceCompetency;
 							//may want to shorten the competency text?
 							output.FinderResource.Name = output.SourceCompetency.Name;
-							output.SourceData = "";
+							output.SourceData = string.Empty;
+						}
+					}
+					if ( output.ComponentTypeId == 13 )//multicomponent
+                    {
+						if ( pcp.ProxyForResourceList != null && pcp.ProxyForResourceList.Count>0 )
+						{
+							output.ProxyForResourceList =MapTopEntityLevelToResourceSummary(pcp.ProxyForResourceList);
+
 						}
 					}
                 }
@@ -774,7 +783,7 @@ namespace workIT.Factories
 				//not sure if this will just be a URI, or point output a concept
 				//if a concept, would probably need entity.hasConcept
 				//output.HasProgressionLevel = input.HasProgressionLevels;
-				if ( input.HasProgressionLevels.Any() )
+				if ( input.HasProgressionLevel != null && input.HasProgressionLevels.Any() )
 				{
 					output.HasProgressionLevel = string.Join( "|", input.HasProgressionLevels.ToArray() );
 				}
@@ -795,13 +804,30 @@ namespace workIT.Factories
 
 		}
 
+		public static List<ResourceSummary> MapTopEntityLevelToResourceSummary(List<TopLevelEntityReference> input )
+        {
+			var output = new List<ResourceSummary>();
+			foreach(var entity in input )
+            {
+				var resourceSummary = new ResourceSummary
+				{
+					Name = entity.Name,
+					CTID = entity.CTID,
+					Description = entity.Description,
+					Type = "ceterms:" + entity.EntityType + "Component"
+				};
+				output.Add( resourceSummary );
+            }
+			return output;
+        }
+
 		public static int GetComponentTypeId( string componentType )
 		{
 			if ( string.IsNullOrWhiteSpace( componentType ) )
 				return 1;
 
 			int componentTypeId = 0;
-			switch ( componentType.Replace( "ceterms:", "" ).ToLower() )
+			switch ( componentType.Replace( "ceterms:", string.Empty ).ToLower() )
 			{
 				case "assessmentcomponent":
 					componentTypeId = PathwayComponent.PathwayComponentType_Assessment;
@@ -833,6 +859,12 @@ namespace workIT.Factories
 				case "workexperiencecomponent":
 					componentTypeId = PathwayComponent.PathwayComponentType_Workexperience;
 					break;
+				case "multicomponent":
+					componentTypeId = PathwayComponent.PathwayComponentType_Multi;
+					break;
+				case "collectioncomponent":
+					componentTypeId = PathwayComponent.PathwayComponentType_Collection;
+					break;
 				//
 				default:
 					componentTypeId = 0;
@@ -844,7 +876,7 @@ namespace workIT.Factories
 
 		public static string GetComponentType( int componentTypeId )
 		{
-			string componentType = "";
+			string componentType = string.Empty;
 			switch ( componentTypeId )
 			{
 				case 1:
@@ -876,6 +908,12 @@ namespace workIT.Factories
 					break;
 				case 10:
 					componentType = PC.SelectionComponent;
+					break;
+				case 12:
+					componentType = PC.CollectionComponent;
+					break;
+				case 13:
+					componentType = PC.MultiComponent;
 					break;
 				//
 				default:

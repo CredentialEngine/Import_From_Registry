@@ -22,7 +22,7 @@ namespace workIT.Models.ProfileModels
 			//ResidentOf = new List<GeoCoordinates>();
 			ResidentOf = new List<JurisdictionProfile>();
 			//TargetCompetency = new List<Enumeration>();
-			TargetCompetencies = new List<CredentialAlignmentObjectProfile>();
+			TargetCompetency = new List<CredentialAlignmentObjectProfile>();
 			RequiresCompetenciesFrameworks = new List<CredentialAlignmentObjectFrameworkProfile>();
 
 			TargetAssessment = new List<AssessmentProfile>();
@@ -170,10 +170,11 @@ namespace workIT.Models.ProfileModels
 		public List<int> TargetAssessmentIds { get; set; }
 		public List<int> TargetLearningOpportunityIds { get; set; }
         public List<int> TargetOccupationIds { get; set; }
-        #endregion
+		public List<int> TargetJobIds { get; set; }
+		#endregion
 
-        #region Prperties for Display
-        public List<CostProfile> EstimatedCosts { get; set; }
+		#region Prperties for Display
+		public List<CostProfile> EstimatedCosts { get; set; }
 		public List<CostProfile> EstimatedCost { get { return EstimatedCosts; } set { EstimatedCosts = value; } } //Alias
 		public List<CostManifest> CommonCosts { get; set; }
 
@@ -182,7 +183,7 @@ namespace workIT.Models.ProfileModels
 		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 		//IMPORT ?????
-		public List<CredentialAlignmentObjectProfile> TargetCompetencies { get; set; }
+		public List<CredentialAlignmentObjectProfile> TargetCompetency { get; set; }
 		public List<TextValueProfile> Condition { get; set; }
 
 		public string SubmissionOfDescription { get; set; }

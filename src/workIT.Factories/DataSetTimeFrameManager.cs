@@ -1,28 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using System.Data.Entity.Infrastructure;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using workIT.Models;
-using workIT.Models.Common;
-using workIT.Models.ProfileModels;
 using workIT.Utilities;
-
-using ThisResource = workIT.Models.QData.DataSetTimeFrame;
 using DBEntity = workIT.Data.Tables.DataSetTimeFrame;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
-
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
-using System.Data.Entity.Infrastructure;
+using ThisResource = workIT.Models.QData.DataSetTimeFrame;
 
 namespace workIT.Factories
 {
-	public class DataSetTimeFrameManager : BaseFactory
+    public class DataSetTimeFrameManager : BaseFactory
 	{
 		static readonly string thisClassName = "DataSetTimeFrameManager";
 
@@ -253,7 +242,7 @@ namespace workIT.Factories
 					string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "DataSetTimeFrame" );
 					status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-					LoggingHelper.LogError( message, true );
+					LoggingHelper.LogError( dbex, message );
 				}
 				catch ( Exception ex )
 				{
@@ -433,7 +422,7 @@ namespace workIT.Factories
 			output.Id = input.Id;
 			output.RowId = input.RowId;
 			output.Name = input.Name;
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			if ( IsValidDate( input.StartDate ) )
 				output.StartDate = input.StartDate;
 			else
@@ -446,14 +435,16 @@ namespace workIT.Factories
 			if ( input.DataSourceCoverageType != null )
 			{
 				var list = input.DataSourceCoverageType.Split( '|' );
+				output.DataSourceCoverageTypeList = new List<string>();
 				foreach ( var item in list )
 				{
+					//why is this done, not used
 					if ( !string.IsNullOrWhiteSpace( item ) )
 						output.DataSourceCoverageTypeList.Add( item );
 				}
 			}
 			else
-				output.DataSourceCoverageTypeList = new List<string>();
+				output.DataSourceCoverageTypeList = null;
 
 			//
 			if ( IsValidDate( input.Created ) )

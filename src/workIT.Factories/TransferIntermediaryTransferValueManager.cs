@@ -58,7 +58,7 @@ namespace workIT.Factories
 			//actually the LastUpdated may not change?
 			if ( !usingDateCheck )
 			{
-				var requestedList = list.Select( x => ( x.CTID ?? "" ).ToLower() ).Distinct().ToList();
+				var requestedList = list.Select( x => ( x.CTID ?? string.Empty ).ToLower() ).Distinct().ToList();
 				var existing = GetAllTVPCTIDs( transferIntermediaryId );
 				//find existing not in requested
 				//delete records which are not selected 
@@ -80,10 +80,10 @@ namespace workIT.Factories
 		/// Add a TransferIntermediary.TransferValue
 		/// </summary>
 		/// <param name="transferIntermediaryId"></param>
-		/// <param name="entity"></param>
+		/// <param name="transferValue"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public bool Save( int transferIntermediaryId, TopLevelObject entity, ref SaveStatus status )
+		public bool Save( int transferIntermediaryId, TopLevelObject transferValue, ref SaveStatus status )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -94,8 +94,8 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 
-					//hmmm, do need the Entity.Id?
-					var exists = Get( transferIntermediaryId, entity.Id );
+					//check if relationship already exists
+					var exists = Get( transferIntermediaryId, transferValue.Id );
 					if (exists.Id > 0 )
 						return true;
 
@@ -103,7 +103,7 @@ namespace workIT.Factories
 					efEntity = new DBEntity()
 					{
 						TransferIntermediaryId = transferIntermediaryId,
-						TransferValueProfileId = entity.Id
+						TransferValueProfileId = transferValue.Id
 					};
 
 					if ( IsValidDate( status.EnvelopeCreatedDate ) )
@@ -114,18 +114,18 @@ namespace workIT.Factories
 					context.TransferIntermediary_TransferValue.Add( efEntity );
 
 					count = context.SaveChanges();
-
-					entity.Id = efEntity.Id;
-					//entity.RowId = efEntity.RowId;
+					//24-04-18 mp - no wrong Id
+					//transferValue.Id = efEntity.Id;
+					//transferValue.RowId = efEntity.RowId;
 					if ( count == 0 )
 					{
-						status.AddWarning( string.Format( "TransferIntermediaryId Id: {0}. Unable to add TransferIntermediary.TransferValueId: {1}.", transferIntermediaryId, entity.Id ) );
+						status.AddWarning( $"TransferIntermediaryId Id: {transferIntermediaryId}. Unable to add TransferIntermediary.TransferValueId: {transferValue}." );
 					}		
 				}
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Save()" );
+				LoggingHelper.LogError( ex, thisClassName + $".Save(). TransferIntermediaryId Id: {transferIntermediaryId}. Unable to add TransferIntermediary.TransferValueId: {transferValue}." );
 			}
 			return isValid;
 		}
@@ -242,7 +242,7 @@ namespace workIT.Factories
 			if ( existing == null || existing.Count == 0 )
 				return new List<string>();
 
-			var output = existing.Select( x => ( x.TransferValueProfileCTID ?? "" ).ToLower() ).Distinct().ToList();
+			var output = existing.Select( x => ( x.TransferValueProfileCTID ?? string.Empty ).ToLower() ).Distinct().ToList();
 			return output;
 		}//
 

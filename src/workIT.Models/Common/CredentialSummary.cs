@@ -155,6 +155,8 @@ namespace workIT.Models.Common
 
 		public List<Address> Addresses { get; set; }
 		public bool IsAQACredential { get; set; }
+
+		public bool IsNonCredit { get; set; }
 		public bool HasQualityAssurance { get; set; }
 
 		public List<DurationProfile> EstimatedTimeToEarn { get; set; }
@@ -165,13 +167,16 @@ namespace workIT.Models.Common
 
 		//public string ResourceDetail { get; set; }
         public JObject ResourceDetail { get; set; }
+		public CodeItemResult ProvidesTransferValueFor { get; set; } = new CodeItemResult();
+		public CodeItemResult ReceivesTransferValueFrom { get; set; } = new CodeItemResult();
 
-    }
+	}
 	public class CodeItemResult
 	{
 		public CodeItemResult()
 		{
-			HasAnIdentifer = true;
+			//not sure why this was defaulting
+			//HasAnIdentifer = true;
 			Results = new List<CodeItem>();
 		}
 		public int CategoryId { get; set; }
@@ -208,7 +213,8 @@ namespace workIT.Models.Common
 	{
 		public AgentRelationshipResult()
 		{
-			HasAnIdentifer = true;
+			//not sure why this was defaulting
+			//HasAnIdentifer = true;
 			Results = new List<AgentRelationship>();
 		}
 		public int CategoryId { get; set; }
@@ -220,8 +226,9 @@ namespace workIT.Models.Common
     {
         public TargetAssertionResult()
         {
-            HasAnIdentifer = true;
-            Results = new List<TargetAssertion>();
+			//not sure why this was defaulting
+			//HasAnIdentifer = true;
+			Results = new List<TargetAssertion>();
         }
         public int CategoryId { get; set; }
         public bool HasAnIdentifer { get; set; }

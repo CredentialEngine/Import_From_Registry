@@ -85,6 +85,12 @@ namespace workIT.Models.Common
                 ( string.IsNullOrWhiteSpace( PostalCode ) ? "" : PostalCode + " " ) +
                 ( string.IsNullOrWhiteSpace( AddressCountry ) ? "" : AddressCountry );
         }
+
+		/// <summary>
+		/// Check if there is any actual address data.
+		/// Other properties like Name or description don't make sense without an "address"
+		/// </summary>
+		/// <returns></returns>
         public bool HasAddress()
 		{
 			bool hasAddress = true;

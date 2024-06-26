@@ -183,7 +183,7 @@ namespace workIT.Factories
 							.ToList();
 						if ( exists != null && exists.Count() == 1 )
 						{
-							var statusMsg = "";
+							var statusMsg = string.Empty;
 							//this method will also add pending reques to remove from elastic.
 							//20-11-11 mp - BE CLEAR - ONLY DONE FOR A REFERENCE
 							//actually this delete will probably also delete the Entity_Assessment

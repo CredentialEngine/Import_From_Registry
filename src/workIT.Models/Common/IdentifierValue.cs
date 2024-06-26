@@ -8,6 +8,8 @@ namespace workIT.Models.Common
 {
 	//TBD - should this be replaced by PM.Entity_IdentifierValue
 	//		- 21-01-07 mparsons - No. Will be used when storing the JSON in a sql property
+	//		- 23-12-17 mparsons - However the latter should be avoided as lacks ability to customize?
+	//							- may be useful to included date created to ensure sorted by the latter?
 	[Serializable]
     public class IdentifierValue 
 	{
@@ -16,8 +18,6 @@ namespace workIT.Models.Common
 		/// URI
 		/// </summary>
 		public string IdentifierType { get; set; }
-		//22-08-03 MP - NOTE: IS there existing data with Name? May only have been in Address that uses Entity_IdentifierValue
-		//public string Name { get; set; }
 
 		/// <summary>
 		/// Formal name or acronym of the framework, scheme, type, or other organizing principle of this identifier, such as ISBN or ISSN.

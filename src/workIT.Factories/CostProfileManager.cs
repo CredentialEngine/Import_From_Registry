@@ -208,7 +208,7 @@ namespace workIT.Factories
 			{
 				string message = BaseFactory.FormatExceptions( ex );
 				status.AddError( thisClassName + " - Error - the save was not successful. " + message );
-				LoggingHelper.LogError( ex, thisClassName, $".Save(), Parent: {parent.EntityBaseName} (parent type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})", notifyAdmin: true );
+				LoggingHelper.LogError( ex, thisClassName, $".Save(), Parent: {parent.EntityBaseName} (parent type: {parent.EntityTypeId}, Id: {parent.EntityBaseId})" );
 				return false;
 			}
 
@@ -251,7 +251,7 @@ namespace workIT.Factories
 					expectedDeleteCount = results.Count;
 					foreach ( var item in results )
 					{
-						string statusMessage = "";
+						string statusMessage = string.Empty;
 						//we have a trigger for this
 						//new EntityManager().Delete( item.RowId, string.Format("CostProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId), ref statusMessage );
 
@@ -601,12 +601,12 @@ namespace workIT.Factories
 			if ( IsValidDate( from.ExpirationDate ) )
 				to.EndDate = ( ( DateTime ) from.ExpirationDate ).ToString("yyyy-MM-dd");
 			else
-				to.EndDate = "";
+				to.EndDate = string.Empty;
 
 			if ( IsValidDate( from.DateEffective ) )
 				to.StartDate = ( ( DateTime ) from.DateEffective ).ToString("yyyy-MM-dd");
 			else
-				to.StartDate = "";
+				to.StartDate = string.Empty;
 
 			to.CostDetails = from.DetailsUrl;
 			

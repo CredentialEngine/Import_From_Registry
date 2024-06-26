@@ -61,6 +61,7 @@ namespace workIT.Services.API
 			var output = new OutputResource()
 			{
 				Meta_Id = input.Id,
+				Meta_RowId = input.RowId,
 				CTID = input.CTID,
 				Name = input.Name,
 				Description = input.Description,
@@ -137,6 +138,15 @@ namespace workIT.Services.API
 					output.InLanguage.Add( item.TextTitle );
 				}
 			}
+			//
+			if ( string.IsNullOrWhiteSpace( input.CTID ) )
+			{
+				output.IsReferenceVersion = true;
+				output.Name += " [reference]";
+			}
+			else
+				output.IsReferenceVersion = false;
+
 			try
 			{
 				if (input.HasVerificationType_Badge)
@@ -219,6 +229,7 @@ namespace workIT.Services.API
 			//addresses
 			//MapAddress( input, ref output );
 			output.AvailableAt = ServiceHelper.MapAddress( input.Addresses );
+			output.InCatalog = input.InCatalog;
 			//
 			if (input.CollectionMembers != null && input.CollectionMembers.Count > 0)
 			{
@@ -237,8 +248,7 @@ namespace workIT.Services.API
 			//
 			if (input.IsNonCredit != null && input.IsNonCredit == true)
 				output.IsNonCredit = input.IsNonCredit;
-			//
-			output.IsReferenceVersion = input.IsReferenceVersion;
+
 			//
 			if (input.Keyword != null && input.Keyword.Any())
 				output.Keyword = ServiceHelper.MapPropertyLabelLinks( input.Keyword, searchType );
@@ -250,6 +260,9 @@ namespace workIT.Services.API
 			output.AudienceType = ServiceHelper.MapPropertyLabelLinks( input.AudienceType, searchType );
 			output.LearningDeliveryType = ServiceHelper.MapPropertyLabelLinks( input.LearningDeliveryType, searchType );
 
+			output.ProvidesTransferValueFor = ServiceHelper.MapResourceSummaryAJAXSettings( input.ProvidesTransferValueFor, "TransferValue" );
+			output.ReceivesTransferValueFrom = ServiceHelper.MapResourceSummaryAJAXSettings( input.ReceivesTransferValueFrom, "TransferValue" );
+			output.HasRubric = ServiceHelper.MapResourceSummaryAJAXSettings( input.HasRubric, "Rubric" );
 			//
 			//condition profiles
 			try
@@ -567,9 +580,10 @@ namespace workIT.Services.API
 			output.SupersededBy = ServiceHelper.MapPropertyLabelLink( input.SupersededBy, "Superseded By" );
 			//
 			output.TargetPathway = ServiceHelper.MapPathwayToAJAXSettings( input.TargetPathway, "Has {0} Target Pathway(s)" );
+			output.RelatedActions = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedAction, "CredentialingAction" );
 
 			//
-			output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifierList, "Version Identifier" );
+			output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifier, "Version Identifier" );
 			try
 			{
 				MapJurisdictions( input, ref output );
@@ -585,8 +599,6 @@ namespace workIT.Services.API
 					//new
 					output.RenewedBy = ServiceHelper.MapOutlineToAJAX( renewedBy2, "Renewed by {0} Organization(s)" );
 					output.RevokedBy = ServiceHelper.MapOutlineToAJAX( revokedBy2, "Revoked by {0} Organization(s)" );
-
-
 				}
 			}
 			catch ( Exception ex )

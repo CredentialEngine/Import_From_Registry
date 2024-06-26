@@ -34,30 +34,37 @@ namespace workIT.Factories
 			//- look up by CTID
 			//- update last updated
 			//- at end delete records with an older last updated date
+			//24-02-08 Changed to use current date for member lastUpdated and do deletes based on the latter.
 			DateTime updateDate = DateTime.Now;
 			if ( IsValidDate( status.EnvelopeUpdatedDate ) )
 			{
 				//an individual member doesn't have a modified date, for purposes of deletes, maybe this should always be the current date
+				//NOTE: consider if the envelope date is used, then on reimport there will be few updates as the data will not have changed
 				updateDate = status.LocalUpdatedDate;
 			}
 			bool isAllValid = true;
 
-			foreach ( var entity in list )
+			foreach ( var item in list )
 			{
-				entity.CollectionId = collectionId;
-				Save( entity, updateDate, ref status, ref addedMembers );
+				item.CollectionId = collectionId;
+				Save( item, updateDate, ref status, ref addedMembers );
 			}
 			//prep for a bulk means to update pending index
 			if ( addedMembers.Count > 0 )
             {
 
             }
-			var usingDateCheck = false;
+			var usingDateCheck = true;
 			//delete any records with last updated less than updateDate
-			//actually the LastUpdated may not change?
-			if ( !usingDateCheck )
+			//actually the LastUpdated may not change? WHY NOT?
+			if ( usingDateCheck )
 			{
-				var requestedList = list.Select( x => ( x.ProxyFor ?? "" ).ToLower() ).Distinct().ToList();
+				//OR
+				DeleteAll( collectionId, ref status, updateDate );
+			}
+			else
+			{
+				var requestedList = list.Select( x => ( x.ProxyFor ?? string.Empty ).ToLower() ).Distinct().ToList();
 				//TODO - may want to get the type as well, in order to reindex. Although will need to get the Int Id. Can use entity_cache
 				var existing = GetAllCTIDs( collectionId );
 				//find existing not in requested
@@ -68,21 +75,18 @@ namespace workIT.Factories
 					DeleteAll( collectionId, notExisting, ref status );
 				}
 			}
-			else
-			{
-				//OR
-				DeleteAll( collectionId, ref status, updateDate );
-			}
+			
+			
 			return isAllValid;
 		}
 
 		/// <summary>
 		/// Add/Update a CollectionMember
 		/// </summary>
-		/// <param name="entity"></param>
+		/// <param name="resource"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public bool Save( ThisResource entity, DateTime updateDate, ref SaveStatus status, ref List<string> addedMembers )
+		public bool Save( ThisResource resource, DateTime updateDate, ref SaveStatus status, ref List<string> addedMembers )
 		{
 			bool isValid = true;
 			int count = 0;
@@ -93,34 +97,35 @@ namespace workIT.Factories
 				using ( var context = new EntityContext() )
 				{
 
-					if ( ValidateProfile( entity, ref status ) == false )
+					if ( ValidateProfile( resource, ref status ) == false )
 					{
 						//return false;
 					}
-					//just in case
-					if ( entity.Id == 0 )
+
+					//check existance
+					if ( resource.Id == 0 )
 					{
 						//mostly likely will be zero, so do a look up
-						efEntity = context.Collection_CollectionMember.FirstOrDefault( s => s.CollectionId == entity.CollectionId && s.ProxyFor.ToLower() == entity.ProxyFor.ToLower() );
+						efEntity = context.Collection_CollectionMember.FirstOrDefault( s => s.CollectionId == resource.CollectionId && s.ProxyFor.ToLower() == resource.ProxyFor.ToLower() );
 
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							//could have a change in date, etc, so update Id and continue to the update
-							entity.Id = efEntity.Id;
+							resource.Id = efEntity.Id;
 						}
 					}
-					if ( entity.Id == 0 )
+					if ( resource.Id == 0 )
 					{
 						//add
 						efEntity = new DBResource();
-						MapToDB( entity, efEntity );
+						MapToDB( resource, efEntity );
 
 						if ( IsValidDate( status.EnvelopeCreatedDate ) )
 							efEntity.Created = status.LocalCreatedDate;
 						else
 							efEntity.Created = DateTime.Now;
 						//this is not the competency last updated
-						efEntity.LastUpdated = entity.LastUpdated = updateDate;
+						efEntity.LastUpdated = resource.LastUpdated = updateDate;
 						//future handling of last modified
 						//if ( IsValidDate( entity.DateModified ) )
 						//	efEntity.DateModified = (DateTime) entity.DateModified;
@@ -131,36 +136,36 @@ namespace workIT.Factories
 
 						count = context.SaveChanges();
 
-						entity.Id = efEntity.Id;
+						resource.Id = efEntity.Id;
 						//entity.RowId = efEntity.RowId;
 						if ( count == 0 )
 						{
-							status.AddWarning( string.Format( "Collection Id: {0}. Unable to add collection member: {1} <br\\> ", entity.CollectionId, entity.ProxyFor ) );
+							status.AddWarning( string.Format( "Collection Id: {0}. Unable to add collection member: {1} <br\\> ", resource.CollectionId, resource.ProxyFor ) );
 						}
 						else
 						{
 							//TODO - a bulk method? Also a method to reindex using CTID
-							addedMembers.Add( entity.ProxyFor );
+							addedMembers.Add( resource.ProxyFor );
 							//perhaps collect and do at the end?
 							//also may want to initiate the update after a certain number, or doing thousands could be unwieldly?
 							var messages = new List<string>();
-							if ( !string.IsNullOrWhiteSpace( entity.ProxyFor ))
-								new SearchPendingReindexManager().Add( entity.ProxyFor, 1, ref messages );
+							if ( !string.IsNullOrWhiteSpace( resource.ProxyFor ))
+								new SearchPendingReindexManager().Add( resource.ProxyFor, 1, ref messages );
 						}
                     }
 					else
 					{
 						if ( efEntity == null || efEntity.Id == 0 )
-							efEntity = context.Collection_CollectionMember.FirstOrDefault( s => s.Id == entity.Id );
+							efEntity = context.Collection_CollectionMember.FirstOrDefault( s => s.Id == resource.Id );
 						if ( efEntity != null && efEntity.Id > 0 )
 						{
 							//entity.RowId = efEntity.RowId;
 							//update
-							MapToDB( entity, efEntity );
+							MapToDB( resource, efEntity );
 
 							//need to do the date check here, or may not be updated
-							if ( IsValidDate( entity.Created ) )
-								efEntity.Created = ( DateTime ) entity.Created;
+							if ( IsValidDate( resource.Created ) )
+								efEntity.Created = ( DateTime ) resource.Created;
 
 							//if ( IsValidDate( status.EnvelopeCreatedDate ) && status.LocalCreatedDate < efEntity.Created )
 							//{
@@ -170,7 +175,7 @@ namespace workIT.Factories
 							//if ( IsValidDate( entity.DateModified ) )
 							//	efEntity.DateModified = (DateTime) entity.DateModified;
 
-							efEntity.LastUpdated = entity.LastUpdated = updateDate;
+							efEntity.LastUpdated = resource.LastUpdated = updateDate;
 							//has changed?	 - should always chg based on the latter statement
 							//TBD: would be nice not to take the hit on 3K updates???
 							if ( HasStateChanged( context ) )
@@ -181,15 +186,18 @@ namespace workIT.Factories
 								//	efEntity.LastUpdated = DateTime.Now;
 
 								count = context.SaveChanges();
+								//OH - should this be added to entity cache? No, the CTID should already be there for the proxyFor
+                            } else
+							{
 
-                            }
+							}
 						}
 					}
 				}
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Save()" );
+				LoggingHelper.LogError( ex, thisClassName + $".Save() collectionId: {resource.CollectionId}, CollectionMember: {resource.ProxyFor}" );
 			}
 
 			return isValid;
@@ -255,6 +263,7 @@ namespace workIT.Factories
 			}
 			int expectedDeleteCount = 0;
 			var messages = new List<string>();
+			var lastProxyFor = string.Empty;
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -274,7 +283,10 @@ namespace workIT.Factories
 						//if ( record != null )
 						//	new SearchPendingReindexManager().Add( record.EntityTypeId, record.Id, 1, ref messages );
 						if ( !string.IsNullOrWhiteSpace( item.ProxyFor ) )
+						{
+							lastProxyFor = item.ProxyFor;
 							new SearchPendingReindexManager().Add( item.ProxyFor, 1, ref messages );
+						}
 						//now remove
 						context.Collection_CollectionMember.Remove( item );
 						var count = context.SaveChanges();
@@ -288,7 +300,7 @@ namespace workIT.Factories
 			catch ( Exception ex )
 			{
 				var msg = BaseFactory.FormatExceptions( ex );
-				LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".DeleteAll. collectionId: {0},  exception: {1}", collectionId, msg ) );
+				LoggingHelper.DoTrace( 1, thisClassName + $".DeleteAll. collectionId: {collectionId},   last ProxyFor: {lastProxyFor}, exception: {msg}" );
 			}
 			return isValid;
 		}
@@ -398,7 +410,7 @@ namespace workIT.Factories
 			if ( existing == null || existing.Count == 0 )
 				return new List<string>();
 
-			var output = existing.Select( x => ( x.ProxyFor ?? "" ).ToLower() ).Distinct().ToList();
+			var output = existing.Select( x => ( x.ProxyFor ?? string.Empty ).ToLower() ).Distinct().ToList();
 			return output;
 		}//
 

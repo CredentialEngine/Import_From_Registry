@@ -13,6 +13,7 @@ using EM = workIT.Data.Tables;
 using EntityContext = workIT.Data.Tables.workITEntities;
 using ImportMessage = workIT.Data.Tables.Import_Message;
 using ThisEntity = workIT.Models.RegistryImport;
+
 using WM = workIT.Models;
 
 namespace workIT.Factories
@@ -37,7 +38,7 @@ namespace workIT.Factories
 				try
 				{
 					//won't have ctid if encountered exception
-					efEntity.Ctid = entity.Ctid ?? "";
+					efEntity.Ctid = entity.Ctid ?? string.Empty;
 					efEntity.EntityTypedId = entity.EntityTypedId;
 					efEntity.DocumentUpdatedAt = entity.DocumentUpdatedAt;
 					efEntity.EnvelopeId = entity.EnvelopeId;
@@ -122,7 +123,7 @@ namespace workIT.Factories
            
             try
             {
-                string prevCTID = "";
+                string prevCTID = string.Empty;
                 using ( var context = new EntityContext() )
                 {
                     List<DBEntity> search = context.Import_Staging
@@ -284,25 +285,24 @@ namespace workIT.Factories
 				}
 				try
 				{
-
 					foreach ( DataRow dr in result.Rows )
 					{
 						item = new CodeItem();
-						item.EntityType = GetRowColumn( dr, "ActivityType", "" );
-						item.Description = GetRowColumn( dr, "Event", "" );
+						item.EntityType = GetRowColumn( dr, "ActivityType", string.Empty );
+						item.Description = GetRowColumn( dr, "Event", string.Empty );
 						item.Totals = GetRowColumn( dr, "total", 0 );
 						output.Add( item );
 					}
 				}
 				catch ( Exception ex )
 				{
-
-				}
+                    LoggingHelper.LogError(ex, "Unexpected exception");
+                }
 				return true;
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, "ImportPeriodSummary", false );
+				LoggingHelper.LogError( ex, "ImportPeriodSummary" );
 				return false;
 			}
 
@@ -363,13 +363,13 @@ namespace workIT.Factories
                     }
 					else
 					{
-                        if (( referencedAtId ?? "" ).Length == 39)
+                        if (( referencedAtId ?? string.Empty ).Length == 39)
                         {
                             LoggingHelper.DoTrace( 3, thisClassName + string.Format( ".Import_EntityResolutionAdd. Unexpected ctid in referencedAtId: {0}, referencedEntityTypeId: {1}, entityUid: {2} ", referencedAtId, referencedEntityTypeId, entityUid ) );
                         }
                         efEntity.Created = System.DateTime.Now;
                         efEntity.ReferencedId = referencedAtId.Replace("/graph/","/resources").ToLower();
-                        efEntity.ReferencedCtid = ( referencedCtid ?? "" ).ToLower();
+                        efEntity.ReferencedCtid = ( referencedCtid ?? string.Empty ).ToLower();
                         efEntity.ReferencedEntityTypeId = referencedEntityTypeId;
                         efEntity.EntityBaseId = newEntityId;
                         efEntity.EntityUid = entityUid;
@@ -478,7 +478,7 @@ namespace workIT.Factories
             }
             catch (Exception ex)
             {
-                LoggingHelper.LogError( ex, "HandleAllResolvedEntity", false );
+                LoggingHelper.LogError( ex, "HandleAllResolvedEntity" );
 
             }
 
@@ -496,8 +496,8 @@ namespace workIT.Factories
 			{
 				return entity;
 			}
-			//consider, although we already have a ctid lookp fall back
-			string altId = "";
+			//consider, although we already have a ctid lookup fall back
+			string altId = string.Empty;
 			if ( referencedAtId.ToLower().IndexOf( "/graph/ce" ) > -1 )
 				altId = referencedAtId.Replace( "/graph/", "/resources/" );
 			else
@@ -511,7 +511,7 @@ namespace workIT.Factories
 				{
 					entity = context.Import_EntityResolution
 							.FirstOrDefault( s => s.ReferencedId.ToLower() == referencedAtId.ToLower() 
-							|| s.ReferencedCtid.ToLower() == referencedAtId.ToLower() );
+							|| (s.ReferencedCtid ?? string.Empty).ToLower() == referencedAtId.ToLower() );
 
 					if ( entity != null && entity.Id > 0 )
 					{
@@ -526,17 +526,18 @@ namespace workIT.Factories
 						{
 							//not sure now. For ADP: adp gets deleted, the related dsp has entityStateId set to 0 - this will not be reflected in entity.cache. Should it? Results in an inconsistency
 							//	as well, if it is present and entityStateId=0, 
-                            string statusMessage = "";
+                            string statusMessage = string.Empty;
                             Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
                             return new EM.Import_EntityResolution();
                         }
+						//
                         var e = EntityManager.GetEntity( (Guid)entity.EntityUid, false );
 						if (e == null || e.Id == 0)
 						{
 							//21-04-30 - not sure we should be deleting these????
 							//			- this thought occurred after importing Ivy Tech from prod - resulting in all of the owns (credentials etc) being added to pending
-							string statusMessage = "";
+							string statusMessage = string.Empty;
 							Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
 							return new EM.Import_EntityResolution();
@@ -582,7 +583,7 @@ namespace workIT.Factories
                         var ec = EntityManager.EntityCacheGetByCTID( entity.ReferencedCtid );
                         if ( ec != null && !string.IsNullOrWhiteSpace( ec.CTID ) && ec.EntityStateId == 0 )
                         {
-                            string statusMessage = "";
+                            string statusMessage = string.Empty;
                             Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
                             return new EM.Import_EntityResolution();
@@ -591,7 +592,7 @@ namespace workIT.Factories
                         var e = EntityManager.GetEntity( ( Guid )entity.EntityUid, false );
 						if ( e == null || e.Id == 0 )
 						{
-							string statusMessage = "";
+							string statusMessage = string.Empty;
 							Delete_Import_EntityResolution( entity.Id, ref statusMessage );
 
 							return new EM.Import_EntityResolution();
@@ -624,7 +625,7 @@ namespace workIT.Factories
 		/// <param name="entity"></param>
 		/// <param name="messages"></param>
 		/// <returns></returns>
-		public int Import_PendingRequestAdd( WM.Import_PendingRequest entity, ref SaveStatus status )
+		public int Import_PendingRequestAdd( Import_PendingRequest input, ref SaveStatus status )
 		{
 			var efEntity = new DBPendingRequest();
 			//
@@ -634,10 +635,14 @@ namespace workIT.Factories
 				{
 					//typically have only a subset of info 
 					efEntity.Created = System.DateTime.Now;
-					efEntity.EntityCtid = entity.EntityCtid;
-					efEntity.PublishingEntityType = entity.PublishingEntityType;
-					efEntity.PublisherCTID = entity.PublisherCTID;
-					efEntity.DataOwnerCTID = entity.DataOwnerCTID;
+					efEntity.EntityCtid = input.EntityCtid;
+
+					efEntity.EntityName = AssignLimitedString( input.EntityName, MaxResourceNameLength - 5 );
+					//if ( efEntity.EntityName.Length > 500 )
+					//	efEntity.EntityName = efEntity.EntityName.Substring( 0, 490 );
+					efEntity.PublishingEntityType = input.PublishingEntityType;
+					efEntity.PublisherCTID = input.PublisherCTID;
+					efEntity.DataOwnerCTID = input.DataOwnerCTID;
 					efEntity.WasChanged = true;
 					efEntity.Environment = UtilityManager.GetAppKeyValue( "environment" );
 					efEntity.PublishMethodURI = "Unknown-Added to queue";//required field, setting arbitrarily. Max 50char
@@ -648,32 +653,32 @@ namespace workIT.Factories
 					int count = context.SaveChanges();
 					if ( count > 0 )
 					{
-						entity.Id = efEntity.Id;
+						input.Id = efEntity.Id;
 						return efEntity.Id;
 					}
 					else
 					{
 						//?no info on error
 						status.AddError( thisClassName + "Error - the add was not successful. " );
-						string message = string.Format( thisClassName + ".Import_PendingRequestAdd() Failed", "Attempted to add a Import_PendingRequest document. The process appeared to not work, but was not an exception, so we have no message, or no clue. PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid );
+						string message = string.Format( thisClassName + ".Import_PendingRequestAdd() Failed", "Attempted to add a Import_PendingRequest document. The process appeared to not work, but was not an exception, so we have no message, or no clue. PublishingEntityType: {0}; EntityCtid: {1}", input.PublishingEntityType, input.EntityCtid );
 						//EmailManager.NotifyAdmin( thisClassName + ".Import_PendingRequestAdd() Failed", message );
-						LoggingHelper.LogError( thisClassName, "Import_PendingRequestAdd", string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), message );
+						LoggingHelper.LogError( thisClassName, "Import_PendingRequestAdd", string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", input.PublishingEntityType, input.EntityCtid ), message );
 					}
 				}
 				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
 				{
 					string message = HandleDBValidationError( dbex, thisClassName + ".Import_PendingRequestAdd() ", "Import" );
 					status.AddError( "Error - the save was not successful. " + message );
-					LoggingHelper.LogError( dbex, thisClassName, string.Format( "Import_PendingRequestAdd(), DbEntityValidationException PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), true );
+					LoggingHelper.LogError( dbex, thisClassName, string.Format( "Import_PendingRequestAdd(), DbEntityValidationException PublishingEntityType: {0}; EntityCtid: {1}", input.PublishingEntityType, input.EntityCtid ) );
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.LogError( ex, thisClassName, string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", entity.PublishingEntityType, entity.EntityCtid ), true );
+					LoggingHelper.LogError( ex, thisClassName, string.Format( "Import_PendingRequestAdd(), PublishingEntityType: {0}; EntityCtid: {1}", input.PublishingEntityType, input.EntityCtid ) );
 					status.AddError( "Unexpected system error. The site administration has been notified." );
 				}
 			}
 
-			return entity.Id;
+			return input.Id;
 		}//
 
 		/// <summary>
@@ -686,7 +691,7 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public static List<WM.Import_PendingRequest> SelectPendingList(string entityType, int maxRecords = 100 )
 		{
-			WM.Import_PendingRequest entity = new WM.Import_PendingRequest();
+			WM.Import_PendingRequest output = new WM.Import_PendingRequest();
 			List<WM.Import_PendingRequest> list = new List<WM.Import_PendingRequest>();
 			/*
 			 * 
@@ -701,9 +706,11 @@ namespace workIT.Factories
 			 */
 			//may not want to depend upon WasChanged yet!!!
 			bool onlySelectIfWasChanged = UtilityManager.GetAppKeyValue( "onlySelectIfWasChanged", true );
+			var envelopeURLTemplate =  UtilityManager.GetAppKeyValue( "cerEnvelopeURL" );
+			var defaultCommunity = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			try
 			{
-				string prevCTID = "";
+				string prevCTID = string.Empty;
 				using ( var context = new EntityContext() )
 				{
 					var search = context.Import_PendingRequest
@@ -723,7 +730,7 @@ namespace workIT.Factories
 					{
 						foreach ( var item in search )
 						{
-							entity = new WM.Import_PendingRequest
+							output = new WM.Import_PendingRequest
 							{
 								Id = item.Id,
 								EnvelopeId = item.EnvelopeId,
@@ -731,14 +738,24 @@ namespace workIT.Factories
 								EntityName = item.EntityName,
 								EntityCtid = item.EntityCtid,
 								PublishMethodURI = item.PublishMethodURI,
-								 PublishingEntityType = item.PublishingEntityType
+								 PublishingEntityType = item.PublishingEntityType,
+
 								 //EnvelopeLastUpdated = item.EnvelopeLastUpdated
 							};
+							//
+							//NOTE: can be exceptions here, like production
+							//Sigh, this should be concrete based on the current defaultCommunity!
+							if ( item.Environment == "production" )
+								item.Environment = "ce-registry";
+							else if ( item.Environment == "ce-registry-redo" )
+								item.Environment = "ce-registry";
+							//maybe only do this where necessary like fdoe
+							output.EnvelopeURL = string.Format( envelopeURLTemplate, item.Environment, item.EntityCtid );
 							//entity.EntityTypedId = item.EntityTypedId; //derive??
-							if ( prevCTID != entity.EntityCtid.ToLower() )
-								list.Add( entity );
+							if ( prevCTID != output.EntityCtid.ToLower() )
+								list.Add( output );
 
-							prevCTID = entity.EntityCtid.ToLower();
+							prevCTID = output.EntityCtid.ToLower();
 						}
                         list = list.OrderBy( s => s.PublishingEntityType ).ThenBy( c => c.Created ).ToList();
 
@@ -755,7 +772,7 @@ namespace workIT.Factories
 		/// <summary>
 		/// Select pending records except excludeEntityType
 		/// </summary>
-		/// <param name="excludeEntityType"></param>
+		/// <param name="excludeEntityType">NOTE: apparently not handling a list yet!</param>
 		/// <param name="maxRecords"></param>
 		/// <returns></returns>
 		public static List<WM.Import_PendingRequest> SelectAllPendingExceptList(string excludeEntityType, int maxRecords = 100)
@@ -775,13 +792,13 @@ namespace workIT.Factories
 			 */
 			try
 			{
-				string prevCTID = "";
+				string prevCTID = string.Empty;
 				using ( var context = new EntityContext() )
 				{
 					var search = context.Import_PendingRequest
 							.Where( s => s.WasChanged == true
 								&& s.WasProcessed == false
-								&& s.PublishMethodURI != "Registry Delete" && s.PublishMethodURI != "Transfer of Owner"
+								&& s.PublishMethodURI != REGISTRY_ACTION_DELETE && s.PublishMethodURI != REGISTRY_ACTION_PURGE && s.PublishMethodURI != "Transfer of Owner"
 								&& ( s.PublishingEntityType != excludeEntityType ) 
 								)
 							.Take(maxRecords)
@@ -834,7 +851,7 @@ namespace workIT.Factories
 
 			try
 			{
-				string prevCTID = "";
+				string prevCTID = string.Empty;
 				using ( var context = new EntityContext() )
 				{
 					//actually REGISTRY_ACTION_PURGE_ALL should be handled separately
@@ -858,9 +875,10 @@ namespace workIT.Factories
 							entity = new WM.Import_PendingRequest
 							{
 								Id = item.Id,
+								Created = item.Created,
 								EnvelopeId = item.EnvelopeId,
 								Environment = item.Environment,
-								EntityName = item.EntityName,
+								EntityName = item.EntityName,		//NOTE: may be a lang string
 								EntityCtid = item.EntityCtid,
 								PublisherCTID = item.PublisherCTID,
 								PublishMethodURI = item.PublishMethodURI,
@@ -890,7 +908,7 @@ namespace workIT.Factories
 
 			try
 			{
-				string prevPublishingEntityType = "";
+				string prevPublishingEntityType = string.Empty;
 				using ( var context = new EntityContext() )
 				{
 					//actually REGISTRY_ACTION_PURGE_ALL should be handled separately
@@ -937,33 +955,54 @@ namespace workIT.Factories
 		public bool SetImport_PendingRequestHandled( int recordId, bool importWasSuccessful )
 		{
 			bool isValid = false;
-			if ( recordId <= 0 )
+			var statusMessage = string.Empty;
+			if ( recordId < 1 )
 			{
 				return false;
 			}
-			using ( var context = new EntityContext() )
+			DBPendingRequest efEntity = new DBPendingRequest();
+			try
 			{
-				var efEntity = context.Import_PendingRequest
-							.FirstOrDefault( s => s.Id == recordId );
-
-				if ( efEntity != null && efEntity.Id > 0 )
+				using ( var context = new EntityContext() )
 				{
-					efEntity.WasProcessed = true;
-					efEntity.ImportWasSuccessful = importWasSuccessful;
-					if ( importWasSuccessful )
-						efEntity.ImportedDate = DateTime.Now;
-					int count = context.SaveChanges();
-					if ( count >= 0 )
+					efEntity = context.Import_PendingRequest
+								.FirstOrDefault( s => s.Id == recordId );
+
+					if ( efEntity != null && efEntity.Id > 0 )
 					{
-						isValid = true;
+						efEntity.WasProcessed = true;
+						efEntity.ImportWasSuccessful = importWasSuccessful;
+						if ( importWasSuccessful )
+							efEntity.ImportedDate = DateTime.Now;
+						int count = context.SaveChanges();
+						if ( count >= 0 )
+						{
+							isValid = true;
+						}
+					}
+					else
+					{
+						LoggingHelper.LogError( thisClassName + string.Format( ".SetImport_PendingRequestHandled - record was not found. recordId: {0}", recordId ) );
 					}
 				}
-				else
-				{
-					LoggingHelper.LogError( thisClassName + string.Format( ".SetImport_PendingRequestHandled - record was not found. recordId: {0}", recordId ), true );
-				}
 			}
+			catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+			{
+				string message = HandleDBValidationError( dbex, $"{thisClassName}.SetImport_PendingRequestHandled. recordId: {recordId}, importWasSuccessful: {importWasSuccessful}, Request: {efEntity.EntityCtid}, Type: {efEntity.PublishingEntityType}", $"{efEntity.PublishingEntityType}" );
 
+				LoggingHelper.LogError( dbex, thisClassName, $"{thisClassName}.SetImport_PendingRequestHandled. recordId: {recordId}, importWasSuccessful: {importWasSuccessful}, Request: {efEntity.EntityCtid}, Type: {efEntity.PublishingEntityType}" );
+
+				statusMessage = thisClassName + ".SetImport_PendingRequestHandled(). Error - the save was not successful. DbEntityValidationException. " + message;
+				LoggingHelper.DoTrace( 1, statusMessage );
+				isValid = false;
+			}
+			catch ( Exception ex )
+			{
+				string message = FormatExceptions( ex );
+				LoggingHelper.LogError( ex, thisClassName, $"{thisClassName}.SetImport_PendingRequestHandled. recordId: {recordId}, importWasSuccessful: {importWasSuccessful}, Request: {efEntity.EntityCtid}, Type: {efEntity.PublishingEntityType}" );
+				statusMessage = thisClassName + ".SetImport_PendingRequestHandled(). Error - the save was not successful. " + message;
+				isValid = false;
+			}
 			return isValid;
 		}///
 		#endregion

@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using workIT.Models.ProfileModels;
+using workIT.Models.Common;
+using WMP = workIT.Models.ProfileModels;
+
 namespace workIT.Models.Common
 {
 	/// <summary>
@@ -47,14 +49,14 @@ namespace workIT.Models.Common
 
 		public Enumeration OwnerRoles { get; set; } = new Enumeration();
 		//??
-		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
+		public List<WMP.OrganizationRoleProfile> OrganizationRole { get; set; } = new List<WMP.OrganizationRoleProfile>();
 		#endregion
 
 		/// <summary>
 		/// Identifier
 		/// Definition:	Alphanumeric token that identifies this resource and information about the token's originating context or scheme.
 		/// </summary>	
-		public List<Entity_IdentifierValue> Identifier { get; set; } = new List<Entity_IdentifierValue>();
+		public List<WMP.Entity_IdentifierValue> Identifier { get; set; } = new List<WMP.Entity_IdentifierValue>();
 		//or could store this as json
 		public string IdentifierJson { get; set; }
 		//OR
@@ -62,7 +64,18 @@ namespace workIT.Models.Common
 
 		public List<TransferValueProfile> DerivedFrom { get; set; } = new List<TransferValueProfile>();
 
-		public List<ProcessProfile> DevelopmentProcess { get; set; } = new List<ProcessProfile>();
+		public List<ResourceSummary> RelatedAssessment { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> RelatedLearningOpp { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> RelatedCredential { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> RelatedJob { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> RelatedOccupation { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> RelatedCompetency { get; set; } = new List<ResourceSummary>();
+		//
+		//public List<WMP.ProcessProfile> AdministrationProcess { get; set; } = new List<WMP.ProcessProfile>();
+
+		public List<WMP.ProcessProfile> DevelopmentProcess { get; set; } = new List<WMP.ProcessProfile>();
+
+		public string SearchTagName { get; set; }
 
 		/// <summary>
 		/// Date the validity or usefulness of the information in this resource begins.
@@ -73,6 +86,7 @@ namespace workIT.Models.Common
 		/// Date this assertion ends.
 		/// </summary>
 		public string EndDate { get; set; }
+		public string InCatalog { get; set; }
 
 		/// <summary>
 		/// Type of official status of the TransferProfile; select from an enumeration of such types.
@@ -82,8 +96,7 @@ namespace workIT.Models.Common
 		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
 		public string LifeCycleStatus { get; set; }
 		public int LifeCycleStatusTypeId { get; set; }
-		public string SupersededBy { get; set; } //URL
-		public string Supersedes { get; set; } //URL
+
 		/// <summary>
 		/// A suggested or articulated credit- or point-related transfer value.
 		/// OR COULD STORE AS JSON
@@ -99,9 +112,10 @@ namespace workIT.Models.Common
 		public List<TopLevelObject> TransferValueFrom { get; set; } = new List<TopLevelObject>();
 		public string TransferValueFromJson { get; set; }
 
-		public List<AssessmentProfile> TransferValueFromAsmt { get; set; } = new List<AssessmentProfile>();
+		public List<WMP.AssessmentProfile> TransferValueFromAsmt { get; set; } = new List<WMP.AssessmentProfile>();
 		public List<Credential> TransferValueFromCredential { get; set; } = new List<Credential>();
-		public List<LearningOpportunityProfile> TransferValueFromLopp { get; set; } = new List<LearningOpportunityProfile>();
+		public List<WMP.LearningOpportunityProfile> TransferValueFromLopp { get; set; } = new List<WMP.LearningOpportunityProfile>();
+		public List<WMP.Competency> TransferValueFromCompetency { get; set; } = new List<WMP.Competency>();
 
 		/// <summary>
 		///  Resource that accepts the transfer value described by this resource, according to the entity providing this resource.
@@ -110,9 +124,10 @@ namespace workIT.Models.Common
 		/// </summary>
 		public List<TopLevelObject> TransferValueFor { get; set; } = new List<TopLevelObject>();
 		public string TransferValueForJson { get; set; }
-		public List<AssessmentProfile> TransferValueForAsmt { get; set; } = new List<AssessmentProfile>();
+		public List<WMP.AssessmentProfile> TransferValueForAsmt { get; set; } = new List<WMP.AssessmentProfile>();
 		public List<Credential> TransferValueForCredential { get; set; } = new List<Credential>();
-		public List<LearningOpportunityProfile> TransferValueForLopp { get; set; } = new List<LearningOpportunityProfile>();
+		public List<WMP.LearningOpportunityProfile> TransferValueForLopp { get; set; } = new List<WMP.LearningOpportunityProfile>();
+		public List<WMP.Competency> TransferValueForCompetency { get; set; } = new List<WMP.Competency>();
 
 		public List<TopLevelObject> HasTransferIntermediary { get; set; } = new List<TopLevelObject>();
 		///// <summary>
@@ -120,13 +135,34 @@ namespace workIT.Models.Common
 		///// However, at some point we will want to count these so - nevermind
 		///// </summary>
 		////public string ProfileGraph { get; set; }
+		#region version related
+		public string LatestVersion { get; set; }
 
+		public string PreviousVersion { get; set; }
+		public string NextVersion { get; set; }
+
+		public TopLevelObject LatestVersionResource { get; set; }
+		public TopLevelObject PreviousVersionResource { get; set; }
+		public TopLevelObject NextVersionResource { get; set; }
+
+		public string SupersededBy { get; set; } //URL
+		public string Supersedes { get; set; } //URL
+
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string VersionIdentifierJson { get; set; }
+		#endregion
 		#region Import
 		public List<int> DerivedFromForImport { get; set; } 
 
 		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueForImport { get; set; } = new List<Guid>();
 		public List<Guid> TransferValueFromImport { get; set; } = new List<Guid>();
+
+		/// <summary>
+		/// 24-02-16 - changed to use one property - in progress. May not use this approach now
+		/// </summary>
+		public List<CodeItem> PendingReindexList { get; set; } = new List<CodeItem>();
+
 		public List<int> AssessmentIds { get; set; } = new List<int>();
 		public List<int> CredentialIds { get; set; } = new List<int>();
 		public List<int> LearningOpportunityIds { get; set; } = new List<int>();

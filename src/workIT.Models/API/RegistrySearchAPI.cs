@@ -88,6 +88,20 @@ namespace workIT.Models.API.RegistrySearchAPI
 	}
 	//
 
+	//Represents a single key-value pair from a language map
+	public class LanguageMapValue
+	{
+		public LanguageMapValue()
+		{
+			MultiValue = new List<string>();
+		}
+
+		public string LanguageCode { get; set; }
+		public string SingleValue { get; set; }
+		public List<string> MultiValue { get; set; }
+	}
+	//
+
 	//Used to make requests to the API
 	public class SearchQuery
 	{

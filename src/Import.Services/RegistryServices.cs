@@ -127,12 +127,12 @@ namespace Import.Services
 			}
 			catch ( Exception exc )
 			{
-				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri, false );
+				LoggingHelper.LogError( exc, "RegistryServices.Search. Using: " + serviceUri );
 				statusMessage = exc.Message;
 			}
 			return list;
 		}
-
+		/*
 		[Obsolete]
 		public static List<ReadEnvelope> SearchOld( string resourceType, string startingDate, string endingDate, int pageNbr, int pageSize, ref int pTotalRows, ref string statusMessage, string community, string sortOrder = "asc" )
 		{
@@ -214,7 +214,7 @@ namespace Import.Services
 			}
 			return list;
 		}
-
+		*/
 		public static string GetRegistrySearchUrl( string community = "" )
 		{
 			if ( string.IsNullOrWhiteSpace( community ) )
@@ -248,7 +248,7 @@ namespace Import.Services
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
 			}
 			//NOTE: got an error trying to get a resource using the RegistryURL, but worked using the Assistant equivalent?
-			string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
+			string serviceUri = UtilityManager.GetAppKeyValue( "cerEnvelopeURL" );
 
 			string registryEnvelopeUrl = string.Format( serviceUri, community, envelopeId );
 			return registryEnvelopeUrl;
@@ -268,7 +268,7 @@ namespace Import.Services
 		//public static string GetRegistryEnvelopeUrl(string community)
 		//{
 		//	//the app key should be changed to be more meaningful!!
-		//	string serviceUri = UtilityManager.GetAppKeyValue( "cerGetEnvelope" );
+		//	string serviceUri = UtilityManager.GetAppKeyValue( "cerEnvelopeURL" );
 		//	serviceUri = string.Format( serviceUri, community );
 		//	return serviceUri;
 		//}
@@ -359,7 +359,7 @@ namespace Import.Services
 			}
 			catch ( Exception exc )
 			{
-				LoggingHelper.LogError( exc, "RegistryServices.GetDeleted. Using: " + serviceUri, false );
+				LoggingHelper.LogError( exc, "RegistryServices.GetDeleted. Using: " + serviceUri );
 				statusMessage = exc.Message;
 			}
 
@@ -517,6 +517,7 @@ namespace Import.Services
 
 				if ( !rawResults.valid )
 				{
+					statusMessage = rawResults.status;
 					LoggingHelper.DoTrace(1, string.Format( "RegistryServices.Error Performing Search: {0}", rawResults.status ));
 					return results;
 				}
@@ -533,7 +534,14 @@ namespace Import.Services
 					//GraphMainResource
 					var resource = GetGraphMainResource( item.ToString() );
 					statusMessage = "";
+					//unfortunately we need the envelope, so doing the extra get
 					var envelope = GetEnvelopeByCtid( resource.CTID, ref statusMessage, ref ctdlType, community );
+					if ( envelope == null || envelope.DecodedResource == null )
+					{
+						LoggingHelper.DoTrace( 1, $"{thisClassName}.GraphSearch. Envelope not found for CTID: {resource.CTID} " );
+
+						continue;
+					}
 					//if OK
 					results.Add( envelope );
 				}
@@ -555,35 +563,65 @@ namespace Import.Services
 			//Get API key and URL
 			var apiKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey", "" );
 			var apiURL = ConfigHelper.GetConfigValue( "AssistantCTDLJSONSearchAPIUrl", "" );
-
-			//Format the request
-			var queryJSON = JsonConvert.SerializeObject( query, new JsonSerializerSettings() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore } );
-
-			//Do the request
-			var client = new HttpClient();
-			client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
-			client.Timeout = new TimeSpan( 0, 10, 0 );
-			System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
-			var rawResult = client.PostAsync( apiURL, new StringContent( queryJSON, Encoding.UTF8, "application/json" ) ).Result;
-
-			//Process the response
-			if ( !rawResult.IsSuccessStatusCode )
-			{
-				response.valid = false;
-				response.status = rawResult.ReasonPhrase;
-				return response;
-			}
-
 			try
 			{
-				response = JsonConvert.DeserializeObject<SearchResponse>( rawResult.Content.ReadAsStringAsync().Result, new JsonSerializerSettings() { DateParseHandling = DateParseHandling.None } );
+				//Format the request
+				var queryJSON = JsonConvert.SerializeObject( query, new JsonSerializerSettings() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore } );
+
+				//Do the request
+				using ( var client = new HttpClient() )
+				{
+					client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
+					client.Timeout = new TimeSpan( 0, 10, 0 );
+					System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+					var rawResult = client.PostAsync( apiURL, new StringContent( queryJSON, Encoding.UTF8, "application/json" ) ).Result;
+
+					//Process the response
+					if ( !rawResult.IsSuccessStatusCode )
+					{
+						response.valid = false;
+						response.status = rawResult.ReasonPhrase;
+						return response;
+					}
+
+					try
+					{
+						response = JsonConvert.DeserializeObject<SearchResponse>( rawResult.Content.ReadAsStringAsync().Result, new JsonSerializerSettings() { DateParseHandling = DateParseHandling.None } );
+					}
+					catch ( Exception ex )
+					{
+						response.valid = false;
+						var message = BaseFactory.FormatExceptions( ex );
+						response.status = "DoRegistrySearchAPIQuery. Error parsing response: " + message;
+					}
+
+					//Process the response
+					if ( !rawResult.IsSuccessStatusCode )
+					{
+						response.valid = false;
+						response.status = "DoRegistrySearchAPIQuery. Unsuccessful: " + rawResult.ReasonPhrase;
+						return response;
+					}
+
+					try
+					{
+						response = JsonConvert.DeserializeObject<SearchResponse>( rawResult.Content.ReadAsStringAsync().Result, new JsonSerializerSettings() { DateParseHandling = DateParseHandling.None } );
+					}
+					catch ( Exception ex )
+					{
+						response.valid = false;
+						response.status = "Error parsing response: " + ex.Message + ( ex.InnerException != null ? " " + ex.InnerException.Message : "" );
+					}
+				}
 			}
 			catch ( Exception ex )
 			{
 				response.valid = false;
-				response.status = "Error parsing response: " + ex.Message + ( ex.InnerException != null ? " " + ex.InnerException.Message : "" );
+				var message = BaseFactory.FormatExceptions( ex );
+				LoggingHelper.LogError( ex, $"{thisClassName}.DoRegistrySearchAPIQuery. Exception " );
+				response.status = "DoRegistrySearchAPIQuery. Exception: " + message;
 			}
-
+		
 			return response;
 		}
 		
@@ -607,7 +645,7 @@ namespace Import.Services
 			string serviceUri = GetEnvelopeUrl( envelopeId, community );
             //
 			serviceUri = string.Format( serviceUri, envelopeId );
-            //LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope envelopeId: {0}, serviceUri: {1} ", envelopeId, serviceUri ) );
+            LoggingHelper.DoTrace( CodesManager.appDebuggingTraceLevel, $"{thisClassName}.GetEnvelope envelopeId: {envelopeId}, serviceUri: {serviceUri}" );
 			
 			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
 
@@ -618,10 +656,12 @@ namespace Import.Services
 			//need to pass in an override community - eventually
 			if ( string.IsNullOrWhiteSpace( community ) )
 				community = UtilityManager.GetAppKeyValue( "defaultCommunity" );
-			string serviceUri = GetEnvelopeUrl( ctid.Trim(), community );
-			//
-			//serviceUri = string.Format( serviceUri, ctid );
-			//LoggingHelper.DoTrace( 5, string.Format( "RegistryServices.GetEnvelope ctid: {0}, serviceUri: {1} ", ctid, serviceUri ) );
+			ctid = ctid.Trim();
+			if ( ctid.Length > 39 )
+			{
+				ctid = ctid.Substring( 0, 39 );
+			}
+			string serviceUri = GetEnvelopeUrl( ctid, community );
 
 			return GetEnvelopeByURL( serviceUri, ref statusMessage, ref ctdlType );
 
@@ -630,7 +670,7 @@ namespace Import.Services
 		public static ReadEnvelope GetEnvelopeByURL( string envelopeUrl, ref string statusMessage, ref string ctdlType )
 		{
 			string document = "";
-			LoggingHelper.DoTrace( 7, string.Format( "RegistryServices.GetEnvelope envelopeUrl: {0} ", envelopeUrl ) );
+			LoggingHelper.DoTrace( 7, string.Format( "RegistryServices.GetEnvelopeByURL envelopeUrl: {0} ", envelopeUrl ) );
 			ReadEnvelope envelope = new ReadEnvelope();
 			if (System.DateTime.Now.Day == 4  && UtilityManager.GetAppKeyValue( "environment" ) == "development")
             {
@@ -693,12 +733,12 @@ namespace Import.Services
 			{
 				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
 				{
-					statusMessage = string.Format( "RegistryServices.GetEnvelope. Not found for {0}", envelopeUrl );
+					statusMessage = $"{thisClassName}.GetEnvelopeByURL. Not found for " + envelopeUrl;
 					LoggingHelper.DoTrace( 1, statusMessage );
 				}
 				else
 				{
-					LoggingHelper.LogError( exc, "RegistryServices.GetEnvelope: " + envelopeUrl );
+					LoggingHelper.LogError( exc, $"{thisClassName}.GetEnvelopeByURL: " + envelopeUrl );
 					statusMessage = exc.Message;
 				}
 				return null;
@@ -903,6 +943,95 @@ namespace Import.Services
 			return payload;
 		}
 
+		public static string GetNonRegistryResourceByUrl( string resourceUrl, ref string ctdlType, ref string statusMessage )
+		{
+			string payload = "";
+			statusMessage = "";
+			ctdlType = "";
+			//if ( resourceUrl.ToLower().IndexOf( "credentialengineregistry.org/" ) > -1
+			//	)
+			//{
+			//	// no reason to reject
+			//	statusMessage = "Error: the provided URL is not for the credential registry: " + resourceUrl;
+			//	return "";
+			//}
+			try
+			{
+				using ( var client = new HttpClient() )
+				{
+					client.DefaultRequestHeaders.
+						Accept.Add( new MediaTypeWithQualityHeaderValue( "application/json" ) );
+
+					client.DefaultRequestHeaders.Add( "Authorization", "Token " + credentialEngineAPIKey );
+
+					var task = client.GetAsync( resourceUrl );
+					task.Wait();
+					var response1 = task.Result;
+					payload = task.Result.Content.ReadAsStringAsync().Result;
+
+					//just in case, likely the caller knows the context
+					if ( !string.IsNullOrWhiteSpace( payload )
+							&& payload.Length > 100
+							//&& payload.IndexOf("\"errors\":") == -1
+							)
+					{
+						//this doesn't work for an envelope
+						ctdlType = RegistryServices.GetResourceType( payload );
+					}
+					else
+					{
+						//nothing found, or error/not found
+						if ( payload.IndexOf( "401 Unauthorized" ) > -1 )
+						{
+							LoggingHelper.DoTrace( 1, "RegistryServices.GetResourceByUrl. Not authorized to view: " + resourceUrl );
+							statusMessage = "This organization is not authorized to view: " + resourceUrl;
+						}
+						else
+						{
+							LoggingHelper.DoTrace( 1, "RegistryServices.GetResourceByUrl. Did not find: " + resourceUrl );
+							statusMessage = "The referenced resource was not found in the credential registry: " + resourceUrl;
+						}
+						payload = "";
+					}
+					//
+
+				}
+			}
+			catch ( AggregateException ae )
+			{
+				//not sure if this is a red herring?
+				var msg = LoggingHelper.FormatExceptions( ae );
+				LoggingHelper.DoTrace( 1, thisClassName + string.Format( ".GetResourceByUrl AggregateException. URL: {0}, msg: {1}", resourceUrl, msg ) );
+			}
+			catch ( Exception exc )
+			{
+				if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+				{
+					//need to surface these better
+					statusMessage = "The referenced resource was not found in the credential registry: " + resourceUrl;
+				}
+				else
+				{
+					var msg = LoggingHelper.FormatExceptions( exc );
+					if ( msg.IndexOf( "remote name could not be resolved: 'sandbox.credentialengineregistry.org'" ) > 0 )
+					{
+						//retry?
+						statusMessage = "retry";
+					}
+					else if ( msg.IndexOf( "The underlying connection was closed" ) > 0 )
+					{
+						//retry?
+						statusMessage = "The underlying connection was closed: An unexpected error occurred on a send.";
+					}
+					else
+					{
+						LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl: " + resourceUrl );
+						statusMessage = exc.Message;
+					}
+				}
+			}
+			return payload;
+		}
 
 		///// <summary>
 		///// Retrieve a resource from the registry by resourceId
@@ -912,16 +1041,16 @@ namespace Import.Services
 		///// <returns></returns>
 		////[Obsolete]
 		//public static string GetResourceByUrl( string resourceUrl, ref string ctdlType, ref string statusMessage )
-  //      {
-  //          string payload = "";
-  //          //NOTE - getting by ctid means no envelopeid
-  //          try
-  //          {
-  //              // Create a request for the URL.         
-  //              WebRequest request = WebRequest.Create( resourceUrl );
+		//      {
+		//          string payload = "";
+		//          //NOTE - getting by ctid means no envelopeid
+		//          try
+		//          {
+		//              // Create a request for the URL.         
+		//              WebRequest request = WebRequest.Create( resourceUrl );
 
-  //              // If required by the server, set the credentials.
-  //              request.Credentials = CredentialCache.DefaultCredentials;
+		//              // If required by the server, set the credentials.
+		//              request.Credentials = CredentialCache.DefaultCredentials;
 		//		var hdr = new WebHeaderCollection
 		//		{
 		//			{ "Authorization", "Token  " + credentialEngineAPIKey }
@@ -931,39 +1060,39 @@ namespace Import.Services
 		//		//Get the response.
 		//		HttpWebResponse response = ( HttpWebResponse )request.GetResponse();
 
-  //              // Get the stream containing content returned by the server.
-  //              Stream dataStream = response.GetResponseStream();
+		//              // Get the stream containing content returned by the server.
+		//              Stream dataStream = response.GetResponseStream();
 
-  //              // Open the stream using a StreamReader for easy access.
-  //              StreamReader reader = new StreamReader( dataStream );
-  //              // Read the content.
-  //              payload = reader.ReadToEnd();
+		//              // Open the stream using a StreamReader for easy access.
+		//              StreamReader reader = new StreamReader( dataStream );
+		//              // Read the content.
+		//              payload = reader.ReadToEnd();
 
-  //              // Cleanup the streams and the response.
+		//              // Cleanup the streams and the response.
 
-  //              reader.Close();
-  //              dataStream.Close();
-  //              response.Close();
+		//              reader.Close();
+		//              dataStream.Close();
+		//              response.Close();
 
-  //              ctdlType = RegistryServices.GetResourceType( payload );
-  //          }
-  //          catch ( Exception exc )
-  //          {
-  //              if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
-  //              {
-  //                  //need to surface these better
-  //                  statusMessage = "ERROR - resource was not found in registry: " + resourceUrl;
-  //              }
-  //              else
-  //              {
-  //                  LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl" );
-  //                  statusMessage = exc.Message;
-  //              }
-  //          }
-  //          return payload;
-  //      }
+		//              ctdlType = RegistryServices.GetResourceType( payload );
+		//          }
+		//          catch ( Exception exc )
+		//          {
+		//              if ( exc.Message.IndexOf( "(404) Not Found" ) > 0 )
+		//              {
+		//                  //need to surface these better
+		//                  statusMessage = "ERROR - resource was not found in registry: " + resourceUrl;
+		//              }
+		//              else
+		//              {
+		//                  LoggingHelper.LogError( exc, "RegistryServices.GetResourceByUrl" );
+		//                  statusMessage = exc.Message;
+		//              }
+		//          }
+		//          return payload;
+		//      }
 
-        public static string GetCtidFromUnknownEnvelope( ReadEnvelope item )
+		public static string GetCtidFromUnknownEnvelope( ReadEnvelope item )
         {
             string ctid = "";
             //string envelopeId = "";
@@ -1171,7 +1300,7 @@ namespace Import.Services
 		public bool PurgeRequest( string CTID, ref string dataOwnerCtid, ref string entityType, ref string message, string community = "" )
 		{
 			//needs owner
-			var entity = EntityManager.EntityCacheGetByCTID( CTID );
+			var entity = EntityManager.EntityCacheGetByCTIDWithOrganization( CTID );
 			if (entity == null || entity.Id == 0)
 			{
 				message = "Error: a valid CTID must be provided for this function. ";
@@ -1323,7 +1452,7 @@ namespace Import.Services
 		public bool DeleteRequest( string CTID, ref string message, ref string entityType, string community = "" )
 		{
             //needs owner
-            var entity = EntityManager.EntityCacheGetByCTID( CTID );
+            var entity = EntityManager.EntityCacheGetByCTIDWithOrganization( CTID );
             if ( entity == null || entity.Id == 0 )
             {
                 message = "Error: a valid CTID must be provided for this function. ";
@@ -1463,6 +1592,145 @@ namespace Import.Services
 
 
 		#endregion
+
+
+		#region Verify methods
+		/// <summary>
+		/// Request to set the last_verified_on date to today.
+		/// </summary>
+		/// <param name="CTID"></param>
+		/// <param name="message"></param>
+		/// <param name="entityType"></param>
+		/// <param name="community"></param>
+		/// <returns></returns>
+		public bool SetVerifiedRequest( string CTID, ref string message, ref string entityType, string community = "" )
+		{
+			//needs owner
+			var entity = EntityManager.EntityCacheGetByCTIDWithOrganization( CTID );
+			if ( entity == null || entity.Id == 0 )
+			{
+				message = "Error: a valid CTID must be provided for this function. ";
+				return false;
+			}
+			if ( string.IsNullOrWhiteSpace( entity.OwningOrgCTID ) )
+			{
+				//hmm this could mean the owner has been deleted?
+				//	unlikely outside of the sandbox. Should be able to use CE? or some override parameter.
+				entity.OwningOrgCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
+			}
+			entityType = entity.EntityType;
+
+			var CTIDList = new List<string>() { CTID };
+			return SetVerifiedRequest( CTIDList, entity.OwningOrgCTID, entity.EntityType, ref message, community );
+		}
+
+		/// <summary>
+		/// Request to set the last_verified_on date to today for a list of resources
+		/// </summary>
+		/// <param name="CTIDList"></param>
+		/// <param name="dataOwnerCtid"></param>
+		/// <param name="entityType"></param>
+		/// <param name="message"></param>
+		/// <param name="community"></param>
+		/// <returns></returns>
+		public bool SetVerifiedRequest( List<string> CTIDList, string dataOwnerCtid, string entityType, ref string message, string community = "" )
+		{
+			var raResponse = new ValidateResponse();
+			//
+			string serviceUri = UtilityManager.GetAppKeyValue( "registryAssistantApi" );
+			if ( DateTime.Now.Day == 08 && UtilityManager.GetAppKeyValue( "environment" ) == "development" )
+			{
+				//serviceUri = "https://localhost:44312/";
+			}
+	
+			//might use one delete endpoint, as adding code to handle this.
+			//check if the single endpoint is viable to simplify
+			string endpointUrl = serviceUri + "manage/VerifyResource";
+
+			//RAResponse response = new RAResponse();
+			string credentialEngineCTID = UtilityManager.GetAppKeyValue( "credentialEngineCTID" );
+			string apiPublisherIdentifier = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey" );
+			//
+			var dr = new VerifyRequest()
+			{
+				//CTIDList = CTIDList,
+				PublishForOrganizationIdentifier = dataOwnerCtid
+			};
+			community = GetCommunity( community );
+			var label = "";
+			if ( CTIDList.Count == 1 )
+				label = CTIDList[0];
+			else
+				label = string.Format( "Request for {0} CTIDs.", CTIDList.Count );
+
+			foreach ( var ctid in CTIDList )
+			{
+				dr = new VerifyRequest()
+				{
+					CTID = ctid,
+					PublishForOrganizationIdentifier = dataOwnerCtid,
+					Community = community,
+				};
+				//format the payload
+				string postBody = JsonConvert.SerializeObject( dr, JsonHelper.GetJsonSettings() );
+				try
+				{
+					using ( var client = new System.Net.Http.HttpClient() )
+					{
+						client.DefaultRequestHeaders.
+							Accept.Add( new MediaTypeWithQualityHeaderValue( "application/json" ) );
+						client.Timeout = new TimeSpan( 0, 30, 0 );
+						client.DefaultRequestHeaders.Add( "Authorization", "ApiToken " + apiPublisherIdentifier );
+
+						var task = client.PostAsync( endpointUrl, new StringContent( postBody, Encoding.UTF8, "application/json" ) );
+						task.Wait();
+						var result = task.Result;
+						var responseContents = task.Result.Content.ReadAsStringAsync().Result;
+						//
+						if ( result.IsSuccessStatusCode == false )
+						{
+							var contentsJson = JsonConvert.DeserializeObject<ValidateResponse>( responseContents );
+							message = string.Join( "\n", contentsJson.Messages.ToArray() );
+						}
+						else
+						{
+							raResponse = JsonConvert.DeserializeObject<ValidateResponse>( responseContents );
+							//note for list, could be false even if one fails.
+							if ( raResponse.Successful )
+							{
+								LoggingHelper.DoTrace( 5, string.Format( "SetVerifiedRequest successful for requestType:{0}.  CTID: {1}, dataOwnerCtid: {2} ", entityType, ctid, dataOwnerCtid ) );
+							}
+							else
+							{
+								//message = string.Join("", raResponse.Messages );
+								message += string.Join( ",", raResponse.Messages.ToArray() ) + "; ";
+								//this will be displayed by delete step
+								LoggingHelper.DoTrace( 1, thisClassName + " SetVerifiedRequest FAILED. result: " + message );
+
+								//return false;
+							}
+
+						}
+					}
+				}
+				catch ( Exception exc )
+				{
+					LoggingHelper.LogError( exc, string.Format( "SetVerifiedRequest. RequestType:{0}, CTID: {1}", entityType, label ) );
+					message = LoggingHelper.FormatExceptions( exc );
+
+					return false;
+
+				}
+			}
+			if ( message.Length > 0 )
+				return false;
+			else
+				return true;
+		}
+
+
+		#endregion
+
 		public bool SetOrganizationToCeased( string ctid, ref string message, string community = "" )
 		{
 			var raResponse = new RegistryAssistantResponse();
@@ -1749,6 +2017,18 @@ namespace Import.Services
 							Name = RegistryServices.GetFirstItemValue( BaseObject.CompetencyText );
 						}
 					}
+					else if ( CtdlType == "ceasn:Rubric" || CtdlType == "ceasn:RubricCriterion" || CtdlType == "ceasn:RubricLevel" )
+					{
+						if ( BaseObject.CeasnName != null )
+						{
+							Name = RegistryServices.GetFirstItemValue( BaseObject.CeasnName );
+						}
+					}
+					else if ( CtdlType == "ceasn:CriterionLevel" )
+					{
+						//for now, may not really need this
+						Name = "CriterionLevel";
+					}
 					else
 					{
 
@@ -1816,5 +2096,46 @@ namespace Import.Services
 		[JsonProperty( PropertyName = "ceterms:subjectWebpage" )]
 		//public string SubjectWebpage { get; set; }
 		public object SubjectWebpage { get; set; }
+	}
+
+	public class VerifyRequest
+	{
+		/// <summary>
+		/// Identifier for Organization which Owns the data being verified
+		/// </summary>
+		public string PublishForOrganizationIdentifier { get; set; }
+
+		/// <summary>
+		/// The CTID of the resource to be verified.
+		/// </summary>
+		public string CTID { get; set; }
+
+		/// <summary>
+		/// The community/private registry where the resource to be verified is located.
+		/// Optional. If not provided, the default registry will be used. 
+		/// </summary>
+		public string Community { get; set; }
+	}
+
+	public class RegistryAssistantDeleteResponse
+	{
+		public RegistryAssistantDeleteResponse()
+		{
+			Messages = new List<string>();
+		}
+		/// <summary>
+		/// True if delete was successfull, otherwise false
+		/// </summary>
+		public bool Successful { get; set; }
+
+		/// <summary>
+		/// List of error or warning messages
+		/// </summary>
+		public List<string> Messages { get; set; }
+
+	}
+	public class ValidateResponse : RegistryAssistantDeleteResponse
+	{
+
 	}
 }

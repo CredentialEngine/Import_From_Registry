@@ -11,16 +11,16 @@ using workIT.Services;
 using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.ConceptSchemeServices;
+using ResourceServices = workIT.Services.ConceptSchemeServices;
 
 
 using InputConcept = RA.Models.JsonV2.Concept;
-using InputEntity = RA.Models.JsonV2.ConceptScheme;
+using InputResource = RA.Models.JsonV2.ConceptScheme;
 using InputPModel = RA.Models.JsonV2.ProgressionModel;
 using InputPLevel = RA.Models.JsonV2.ProgressionLevel ;
 using InputGraph = RA.Models.JsonV2.GraphContainer;
 using MC = workIT.Models.Common;
-using ThisEntity		= workIT.Models.Common.ConceptScheme;
+using ThisResource		= workIT.Models.Common.ConceptScheme;
 using PModel			= workIT.Models.Common.ConceptScheme;
 namespace Import.Services
 {
@@ -35,7 +35,7 @@ namespace Import.Services
 		string resourceType = "ConceptScheme";
 		ImportManager importManager = new ImportManager();
         InputGraph input = new InputGraph();
-        ThisEntity output = new ThisEntity();
+        ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 		/// <summary>
@@ -55,9 +55,9 @@ namespace Import.Services
 				return false;
 			}
 
-			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
-			string ctdlType = "";
+			string statusMessage = string.Empty;
+			ResourceServices mgr = new ResourceServices();
+			string ctdlType = string.Empty;
 			try
 			{
 				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
@@ -96,9 +96,9 @@ namespace Import.Services
 
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
-			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
-			string ctdlType = "";
+			string statusMessage = string.Empty;
+			ResourceServices mgr = new ResourceServices();
+			string ctdlType = string.Empty;
 			try
 			{
 				//probably always want to get by envelope
@@ -147,13 +147,13 @@ namespace Import.Services
                 return false;
             }
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
-			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
+			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", string.Empty ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
 			}
-			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", string.Empty ).Trim(), out envelopeUpdateDate ) )
 			{
 				status.SetEnvelopeUpdated( envelopeUpdateDate );	
 			}
@@ -163,7 +163,7 @@ namespace Import.Services
             string ctdlType = RegistryServices.GetResourceType( payload );
             string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
             LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCtid + "_ConceptScheme", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCtid + "_ConceptScheme", payload, string.Empty, false );
 
             //just store input for now
             return Import( payload, status, ctdlType );
@@ -194,7 +194,7 @@ namespace Import.Services
 			status.EntityTypeId = entityTypeId;
 			MappingHelperV3 helper = new MappingHelperV3( entityTypeId );
 			bool importSuccessfull = true;
-			var input = new InputEntity();
+			var input = new InputResource();
 			var concept = new InputConcept();
 			var mainEntity = new Dictionary<string, object>();
 			List<InputConcept> concepts = new List<InputConcept>();
@@ -216,12 +216,12 @@ namespace Import.Services
 				RegistryObject mro = new RegistryObject( main );
 				if ( mro.CtdlType == "skos:ConceptScheme" || mro.CtdlType == "ConceptScheme" )
 				{
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				} 
 				else if ( mro.CtdlType == "asn:ProgressionModel" || mro.CtdlType == "ProgressionModel" )
 				{
 					//????????????Should distinguish thios
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else if ( mro.CtdlType == "skos:Concept" || mro.CtdlType == "Concept" )
 				{
@@ -249,15 +249,15 @@ namespace Import.Services
 					
 				//	if ( main.IndexOf( "ConceptScheme" ) > -1 )
 				//	{
-				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//		input = JsonConvert.DeserializeObject<InputResource>( main );
 				//	}		
 				//	else if ( main.IndexOf( "ProgressionModel" ) > -1 )
 				//	{
-				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//		input = JsonConvert.DeserializeObject<InputResource>( main );
 				//	}
 				//	else if ( main.IndexOf( "asn:ProgressionLevel" ) > -1 )
 				//	{
-				//		input = JsonConvert.DeserializeObject<InputEntity>( main );
+				//		input = JsonConvert.DeserializeObject<InputResource>( main );
 				//	}
 				//}
 				//else
@@ -290,10 +290,10 @@ namespace Import.Services
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
 			LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
 
-			string framework = input.Name.ToString();
+			//this will be the primary org based on creator (prime) or publisher
 			var org = new MC.Organization();
-			string orgCTID = "";
-			string orgName = "";
+			string orgCTID = string.Empty;
+			string orgName = string.Empty;
 			try
 			{
 
@@ -310,51 +310,15 @@ namespace Import.Services
 				}
 				helper.currentBaseObject = output;
 				// 
-				//TBD handling of referencing third party publisher
-				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				{
-					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-					var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-					if ( porg != null && porg.Id > 0 )
-					{
-						//TODO - store this in a json blob??????????
-						output.PublishedByThirdPartyOrganizationId = porg.Id;
-						//this will result in being added to Entity.AgentRelationship
-						output.PublishedBy = new List<Guid>() { porg.RowId };
-					}
-					else
-					{
-						//if publisher not imported yet, all publishee stuff will be orphaned
-						var entityUid = Guid.NewGuid();
-						var resPos = status.ResourceURL.IndexOf( "/resources/" );
-						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
-						output.PublishedByThirdPartyOrganizationId = porg.Id;
-						output.PublishedBy = new List<Guid>() { entityUid };
-					}
-				}
-				else
-				{
-					//may need a check for existing published by to ensure not lost
-					if ( output.Id > 0 )
-					{
-						//if ( ef.OrganizationRole != null && ef.OrganizationRole.Any() )
-						//{
-						//	var publishedByList = ef.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-						//	if ( publishedByList != null && publishedByList.Any() )
-						//	{
-						//		var pby = publishedByList[ 0 ].ActingAgentUid;
-						//		ef.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-						//	}
-						//}
-					}
-				}
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "description" );
 				output.CTID = input.CTID;
-				output.PrimaryOrganizationCTID = orgCTID;
+
+				//TBD handling of referencing third party publisher
+				helper.MapOrganizationPublishedBy( output, ref status );
+
 				output.EntityTypeId = entityTypeId;
-				//
+				//publisher should be a list, but need to handle older records as a string
 				var publisherList = new List<string>();
 				var publisher = input.Publisher;
 				if ( publisher != null )
@@ -373,25 +337,28 @@ namespace Import.Services
 						publisherList = new List<string>() { pub };
 					}
 				}
-				//
-				//if ( input.PublisherName != null )
-				//{
-				//	if ( publisher.GetType() == typeof( Newtonsoft.Json.Linq.JArray ) )
-				//	{
-				//		var stringArray = ( Newtonsoft.Json.Linq.JArray ) publisher;
-				//		var list = stringArray.ToObject<List<string>>();
-				//		publisherList.AddRange( list );
-
-				//	}
-				//	else if ( publisher.GetType() == typeof( string ) )
-				//	{
-				//		//we could just force the object back to a string?
-				//		var pub = publisher.ToString();
-				//		publisherList = new List<string>() { pub };
-				//	}
-				//}
-				//
 				output.PublisherUid = helper.MapOrganizationReferencesToGuid( "ConceptScheme.Publisher", publisherList, ref status );
+
+				//WHOA - THIS COULD BE A LanguageMapList?
+				output.PublisherName = new List<string>();
+				var publisherName = input.PublisherName;
+				if ( publisherName != null )
+				{
+					if ( publisherName.GetType() == typeof( Newtonsoft.Json.Linq.JArray ) )
+					{
+						var stringArray = ( Newtonsoft.Json.Linq.JArray ) publisherName;
+						var list = stringArray.ToObject<List<string>>();
+						output.PublisherName.AddRange( list );
+
+					}
+					else if ( publisherName.GetType() == typeof( string ) )
+					{
+						//we could just force the object back to a string?
+						var pub = publisherName.ToString();
+						output.PublisherName = new List<string>() { pub };
+					}
+				}
+				//
 				output.Creator = helper.MapOrganizationReferenceGuids( "ConceptScheme.Creator", input.Creator, ref status );
 				//20-06-11 - need to get creator, publisher, owner where possible
 				//	include an org reference with name, swp, and??
@@ -401,18 +368,24 @@ namespace Import.Services
 					//get org or pending stub
 					//look up org name
 					org = OrganizationManager.Exists( output.Creator[ 0 ] );
-					output.OwnedBy.Add( output.Creator[ 0 ] );
-				}
-				else
-				{
-					if ( output.PublisherUid != Guid.Empty )
+					//output.Publisher.Add( output.Creator[ 0 ] );
+					if (org != null )
 					{
-						//get org or pending stub
-						//look up org name
-						org = OrganizationManager.Exists( output.PublisherUid );
-						output.OwnedBy.Add( output.PublisherUid );
+						orgCTID = org.CTID;
 					}
 				}
+				//
+				if ( output.PublisherUid != Guid.Empty )
+				{
+					output.Publisher.Add( output.PublisherUid );
+					//if no creator, look up org name
+					org = OrganizationManager.Exists( output.PublisherUid );					
+					if ( org != null && string.IsNullOrWhiteSpace( orgCTID ))
+					{
+						orgCTID = org.CTID;
+					}
+				}
+			
 				//
 				if ( org != null && org.Id > 0 )
 				{
@@ -420,7 +393,9 @@ namespace Import.Services
 					output.OrganizationId = org.Id;
 					helper.CurrentOwningAgentUid = org.RowId;
 				}
-				output.ChangeNote = helper.HandleLanguageMapList( input.ChangeNote, output, "ChangeNote" );
+				output.PrimaryOrganizationCTID = orgCTID;
+
+				//output.ChangeNote = helper.HandleLanguageMapList( input.ChangeNote, output, "ChangeNote" );
 				output.ConceptKeyword = helper.HandleLanguageMapList( input.ConceptKeyword, output, "ConceptKeyword" );
 				output.DateCopyrighted = input.DateCopyrighted;
 				output.DateCreated = input.DateCreated;
@@ -428,75 +403,61 @@ namespace Import.Services
 				output.InLanguageCodeList = helper.MapInLanguageToTextValueProfile( input.InLanguage, $"{resourceType}.InLanguage. CTID: " + ctid );
 
 				output.License = input.License;
-				output.PublicationStatusType = input.PublicationStatusType;
+				//remove "https://credreg.net/ctdlasn/vocabs/publicationStatus/"
+				output.PublicationStatusType = (input.PublicationStatusType ?? string.Empty).Replace( "https://credreg.net/ctdlasn/vocabs/publicationStatus/", string.Empty) ;
 				output.Rights = helper.HandleLanguageMap( input.Rights, output, "Rights" );
 
 				if ( input.RightsHolder != null && input.RightsHolder.Any())
 					output.RightsHolder = input.RightsHolder[0];
-				if ( input.Source != null )
-					output.Source = input.Source.ToString();
+                //
+                output.Source = new List<string>();
+                var source = input.Source;
+                if ( source != null )
+                {
+                    if ( source.GetType() == typeof( Newtonsoft.Json.Linq.JArray ) )
+                    {
+                        var stringArray = ( Newtonsoft.Json.Linq.JArray ) source;
+                        var list = stringArray.ToObject<List<string>>();
+                        output.Source.AddRange( list );
 
-				//output.CredentialRegistryId = envelopeIdentifier;
-				output.HasConcepts = new List<MC.Concept>();
-				//if ( entityTypeId == CodesManager.ENTITY_TYPE_PROGRESSION_MODEL )
-				//{
-				//	if ( progressionLevels != null && progressionLevels.Count > 0 )
-				//	{
-				//		output.TotalConcepts = progressionLevels.Count();
-				//		foreach ( var item in progressionLevels )
-				//		{
-				//			var c = new MC.Concept()
-				//			{
-				//				PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
-				//				Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
-				//				Notes = helper.HandleLanguageMapList( item.Note, output ),
-				//				CTID = item.CTID,
-				//			};
-				//			if ( c.Notes != null && c.Notes.Any() )
-				//				c.Note = c.Notes[0];
-				//			output.HasConcepts.Add( c );
-				//		}
-				//	}
-				//}
-				//else
+                    }
+                    else if ( source.GetType() == typeof( string ) )
+                    {
+                        output.Source = new List<string>() { source.ToString() };
+                    }
+                }
+
+                //output.CredentialRegistryId = envelopeIdentifier;
+                output.HasConcepts = new List<MC.Concept>();
+
+				
+				//?store concepts in string?
+				if ( concepts != null && concepts.Count > 0 )
 				{
-					//?store concepts in string?
-					if ( concepts != null && concepts.Count > 0 )
+					output.TotalConcepts = concepts.Count();
+					foreach ( var item in concepts )
 					{
-						output.TotalConcepts = concepts.Count();
-						foreach ( var item in concepts )
+						var c = new MC.Concept()
 						{
-							var c = new MC.Concept()
-							{
-								PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
-								Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
-								Notes = helper.HandleLanguageMapList( item.Note, output ),
-								CTID = item.CTID,
-								SubjectWebpage = item.SubjectWebpage
-							};
-							if ( c.Notes != null && c.Notes.Any() )
-								c.Note = c.Notes[0];
-							output.HasConcepts.Add( c );
-						}
+							PrefLabel = helper.HandleLanguageMap( item.PrefLabel, output, "PrefLabel" ),
+							Definition = helper.HandleLanguageMap( item.Definition, output, "Definition" ),
+							Notes = helper.HandleLanguageMapList( item.Note, output ),
+							CTID = item.CTID,
+							SubjectWebpage = item.SubjectWebpage
+						};
+						if ( c.Notes != null && c.Notes.Any() )
+							c.Note = c.Notes[0];
+						output.HasConcepts.Add( c );
 					}
 				}
+				
 				//20-07-02 just storing the index ready concepts
 				output.ConceptsStore = JsonConvert.SerializeObject( output.HasConcepts, MappingHelperV3.GetJsonSettings() );
 
-				//adding common import pattern
-				if (entityTypeId == CodesManager.ENTITY_TYPE_CONCEPT_SCHEME)
-				{
-					new ConceptSchemeServices().Import( output, ref status );
-                    status.DetailPageUrl = string.Format( "~/conceptscheme/{0}", output.Id );
+				//
+				new ConceptSchemeServices().Import( output, ref status );
+                status.DetailPageUrl = string.Format( "~/conceptscheme/{0}", output.Id );
 
-                }
-    //            else
-				//{
-				//	new ProgressionModelServices().Import( output, ref status );
-    //                status.DetailPageUrl = string.Format( "~/progressionmodel/{0}", output.Id );
-
-    //            }
-                //
                 status.DocumentId = output.Id;
 				status.DocumentRowId = output.RowId;
 				//just in case
@@ -516,7 +477,7 @@ namespace Import.Services
 			catch ( Exception ex )
 			{
 				//activity type: cs, activity: import, event: exception, 
-				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ), false, "Concept Scheme Import exception" );
+				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ) );
 			}
 			finally
 			{
@@ -528,10 +489,10 @@ namespace Import.Services
         }
 
 		//
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
 		{
 			bool exists = false;
-			entity = EntityServices.GetByCtid( ctid );
+			entity = ResourceServices.GetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

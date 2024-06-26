@@ -11,7 +11,9 @@ namespace workIT.Models.Elastic
 	public class BaseIndex
 	{
 		public int EntityTypeId { get; set; }
+		//TODO - this may be top level (i.e. Credential)?
 		public string EntityType { get; set; }
+		public string CTDLType { get; set; }
 		/// <summary>
 		/// Need EntityId for the common index as the unique Id
 		/// </summary>
@@ -20,7 +22,7 @@ namespace workIT.Models.Elastic
 		public Guid RowId { get; set; }
 		public string CTID { get; set; }
 		public int EntityStateId { get; set; }
-		public string CredentialRegistryId { get; set; }
+		//public string CredentialRegistryId { get; set; }
 		public DateTime IndexLastUpdated { get; set; } = DateTime.Now;
 
 		public string NameOrganizationKey { get; set; }
@@ -35,7 +37,6 @@ namespace workIT.Models.Elastic
 
 		public DateTime Created { get; set; }
 		public DateTime LastUpdated { get; set; }
-		public string StatusMessage { get; set; }
 		public List<string> InLanguage { get; set; } = new List<string>();
 
 		public int PrimaryOrganizationId { get; set; }
@@ -44,18 +45,25 @@ namespace workIT.Models.Elastic
 
 		public string PrimaryOrganizationCTID { get; set; }
 		public int PublishedByThirdPartyOrganizationId { get; set; }
+		//??
+		public int? PublishedByOrganizationId { get; set; }
+
+		public string PublishedByOrganizationCTID { get; set; }
 
 		public List<int> AgentRelationships { get; set; } = new List<int>();
+		/// <summary>
+		/// All relationships (owns, offers, QA, etc.)
+		/// </summary>
 		public List<AgentRelationshipForEntity> AgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
+
+		///// <summary>
+		///// The owns/offers etc. relationships
+		///// </summary>
+		//public List<AgentRelationshipForEntity> PrimaryAgentRelationshipsForEntity { get; set; } = new List<AgentRelationshipForEntity>();
 		public List<AgentRelationshipForEntity> OutcomeProvidersForEntity { get; set; } = new List<AgentRelationshipForEntity>();
 
 		public List<string> CodedNotation { get; set; } = new List<string>();
-		//
-		public int? PublishedByOrganizationId { get; set; }
-		//don't include the name, not typically something we would to get filter hits on. 
-		//public string PublishedByOrganizationName { get; set; }
 
-		public string PublishedByOrganizationCTID { get; set; }
 		//
 
 		public List<Address> Addresses { get; set; } = new List<Elastic.Address>();
@@ -73,6 +81,9 @@ namespace workIT.Models.Elastic
 		public List<string> Keyword { get; set; } = new List<string>();
 		//
 		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
+		public List<IndexProperty> ProvidesTransferValueFor { get; set; } = new List<IndexProperty>();
+		public List<IndexProperty> ReceivesTransferValueFrom { get; set; } = new List<IndexProperty>();
+		public List<IndexProperty> ObjectOfAction { get; set; } = new List<IndexProperty>();
 
 		public List<string> Collection { get; set; } = new List<string>();
 		//
@@ -173,8 +184,9 @@ namespace workIT.Models.Elastic
 		public List<IndexWidgetTag> WidgetTags { get; set; } = new List<IndexWidgetTag>();
 
 		public List<int> ResourceForCollection { get; set; } = new List<int>();
-		public List<int> ResourceInTransferValue { get; set; } = new List<int>();
-        public List<int> ResourceHasSupportService { get; set; } = new List<int>();
+		public List<int> ResourceProvidesTransferValues { get; set; } = new List<int>();
+		public List<int> ResourceReceivesTransferValues { get; set; } = new List<int>();
+		public List<int> ResourceHasSupportService { get; set; } = new List<int>();
         
         /// <summary>
         /// Hold all detail for a resource. 

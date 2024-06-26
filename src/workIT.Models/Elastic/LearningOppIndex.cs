@@ -153,6 +153,7 @@ namespace workIT.Models.Elastic
 		public bool HasOccupations { get; set; }
 		public bool HasIndustries { get; set; }
 		public bool HasInstructionalPrograms { get; set; }
+		public bool IsNonCredit { get; set; }
 		#region counts
 		//connections not condition profiles
 		public int RequiresCount { get; set; }

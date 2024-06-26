@@ -103,9 +103,6 @@
       <DependentUpon>Accounts.tt</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tables\Account.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\ActivityLog.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -119,6 +116,9 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Codes_CredentialAgentRelationship.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Codes_CredentialingActionType.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Codes_EntityTypes.cs">
@@ -178,21 +178,6 @@
     <Compile Include="Tables\CostManifest.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Counts_Assessment_Property.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_BenchmarkProperty.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_ConditionManifest_Property.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_CostManifest_Property.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Counts_Credential_Property.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Counts_EntityMonthlyTotals.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
@@ -208,25 +193,22 @@
     <Compile Include="Tables\Credential.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\CredentialingAction.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\Credential_SummaryCache.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\DataProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
+    <Compile Include="Tables\DataProfile_QuantitativeValue.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
     <Compile Include="Tables\DataSetProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\DataSetTimeFrame.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EarningsProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EducationFramework.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\EmploymentOutcomeProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity.cs">
@@ -292,13 +274,10 @@
     <Compile Include="Tables\Entity_DurationProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Entity_EarningsProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_EmploymentOutcomeProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\Entity_FinancialAssistanceProfile.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Entity_HasCriterionLevel.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_HasOffering.cs">
@@ -317,9 +296,6 @@
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_HasVerificationService.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_HoldersProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Entity_IdentifierValue.cs">
@@ -370,16 +346,7 @@
     <Compile Include="Tables\Entity_UsesVerificationService.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Entity_VerificationProfile.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\Entity_VerificationStatus.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
     <Compile Include="Tables\GeoCoordinate.cs">
-      <DependentUpon>workIT.tt</DependentUpon>
-    </Compile>
-    <Compile Include="Tables\HoldersProfile.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\Import_EntityResolution.cs">
@@ -433,10 +400,16 @@
     <Compile Include="Tables\Reports_Duplicates.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Reports_Summary.cs">
+    <Compile Include="Tables\Rubric.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
-    <Compile Include="Tables\Reports_SummaryHistory.cs">
+    <Compile Include="Tables\RubricCriterion.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\RubricLevel.cs">
+      <DependentUpon>workIT.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Tables\Rubric_CriterionLevel.cs">
       <DependentUpon>workIT.tt</DependentUpon>
     </Compile>
     <Compile Include="Tables\ScheduledOffering.cs">

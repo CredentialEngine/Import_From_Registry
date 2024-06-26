@@ -17,49 +17,17 @@ namespace workIT.Models.API
 		public string DurationSummary { get; set; }
 
 		public string Description { get; set; }
-
-		//public DurationItem MinimumDuration { get; set; }
-		//public DurationItem MaximumDuration { get; set; }
-		//public DurationItem ExactDuration { get; set; }
-		//public bool HasData
-		//{
-		//	get
-		//	{
-		//		return (!string.IsNullOrWhiteSpace( DurationSummary )
-		//	  || !string.IsNullOrWhiteSpace( Description ) );
-		//	}
-		//}
-		//public bool HasData
-		//{
-		//	get
-		//	{
-		//		return (
-		//			this.MinimumDuration != null  && this.MaximumDuration != null
-		//	  && ( this.MinimumDuration.HasValue || this.MaximumDuration.HasValue )
-		//	  )
-		//	  || !string.IsNullOrWhiteSpace( DurationSummary )
-		//	  || (ExactDuration.HasValue || !string.IsNullOrWhiteSpace(Description));
-		//	}
-		//}
-		//public bool IsRange
-		//{
-		//	get
-		//	{
-		//		return this.MinimumDuration != null
-		//	  && this.MaximumDuration != null
-		//	  && ( this.MinimumDuration.HasValue || this.MaximumDuration.HasValue );
-		//	}
-		//}
+		public string TimeRequired { get; set; }
 	}
 
 	public class DurationItem
 	{
-		public int Years { get; set; }
-		public int Months { get; set; }
-		public int Weeks { get; set; }
-		public int Days { get; set; }
-		public int Hours { get; set; }
-		public int Minutes { get; set; }
+		public decimal Years { get; set; }
+		public decimal Months { get; set; }
+		public decimal Weeks { get; set; }
+		public decimal Days { get; set; }
+		public decimal Hours { get; set; }
+		public decimal Minutes { get; set; }
 		public bool HasValue { get { return Years + Months + Weeks + Days + Hours + Minutes > 0; } }
 
 		public string Display()

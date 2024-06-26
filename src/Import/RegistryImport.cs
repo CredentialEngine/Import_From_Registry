@@ -1,23 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Net;
 //using System.Net.Http;
 //using System.Net.Http.Headers;
-using System.IO;
-using Newtonsoft.Json;
 using Import.Services;
-
-using EntityServices = workIT.Services.CompetencyFrameworkServices;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Utilities;
 
 namespace CTI.Import
 {
-	public class RegistryImport
+    public class RegistryImport
 	{
 		static string thisClassName = "RegistryImport";
         #region Import Config
@@ -54,6 +46,9 @@ namespace CTI.Import
 		/// </summary>
 		public int MaxImportRecords = 0;
 		public int RecordsImported = 0;
+		/// <summary>
+		/// Graph query in properly formed JSON and CTDL syntax
+		/// </summary>
 		public string GraphSearchQuery { get; set; }
 
 		public static int maxExceptions = UtilityManager.GetAppKeyValue( "maxExceptions", 500 );
@@ -68,9 +63,9 @@ namespace CTI.Import
 		ImportConditionManifests cndManImportMgr = new ImportConditionManifests();
 		ImportCostManifests cstManImportMgr = new ImportCostManifests();
 		ImportCollections cltnImportMgr = new ImportCollections();
-		ImportCompetencyFramesworks cfImportMgr = new ImportCompetencyFramesworks();
+		ImportCompetencyFrameworks cfImportMgr = new ImportCompetencyFrameworks();
 		ImportPathways pathwayImportMgr = new ImportPathways();
-		ImportTransferValue tvpImportMgr = new ImportTransferValue();
+		ImportTransferValueProfile tvpImportMgr = new ImportTransferValueProfile();
 		ImportTransferIntermediary transIntermediaryImportMgr = new ImportTransferIntermediary();
 
 		
@@ -112,6 +107,16 @@ namespace CTI.Import
 			string statusMessage = "";
 			bool isComplete = false;
 			bool importSuccessfull = true;
+			var usingParallelProcessing = UtilityManager.GetAppKeyValue( "usingParallelProcessing", false );
+			//TBD on some tracking 
+			Guid transactionGUID = Guid.NewGuid();
+			//Update the Progress Tracker with the new count and total (this will reset the progress bar client-side) and include a message indicating that this phase has been reached
+			ProgressTrackingManager.UpdateProgressTracker( transactionGUID, true, 50000, tracker =>
+			{
+				tracker.Messages.Add( "Starting import..." );
+				tracker.ProcessedItems = 0;
+				tracker.TotalItems = 50000; //unknown and not important at this time
+			} );
 
 			//will need to handle multiple calls - watch for time outs
 			while ( pageNbr > 0 && !isComplete )
@@ -140,14 +145,14 @@ namespace CTI.Import
 					else if ( pageNbr == 1 )
 					{
 						//importNote = registryEntityType + ": No records where found for date range ";
-						LoggingHelper.DoTrace( 4, registryEntityType + ": No records where found for date range. " );
+						LoggingHelper.DoTrace( 4, registryEntityType + ": No records where found for the selected filters. " );
 					}
 					else if ( cntr < actualTotalRows )
 					{
 						//if no data found and have not processed actual rows, could have been an issue with the search.
 						//perhaps should be an error to ensure followup
 						LoggingHelper.DoTrace( 2, string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ) );
-						LoggingHelper.LogError( string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ), true, "Finder Import Ended Early" );
+						LoggingHelper.LogError( string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ) );
 					}
 					break;
 				}
@@ -156,24 +161,80 @@ namespace CTI.Import
 					actualTotalRows = pTotalRows;
 					LoggingHelper.DoTrace( 2, string.Format( "Import {0} Found {1} records to process.", registryEntityType, pTotalRows ) );
 				}
-
-				foreach ( ReadEnvelope item in list )
+				//
+				if ( usingParallelProcessing )
 				{
-					cntr++;
-					//NOTE: found that older envelopes may not have envelope_ctdl_type, 
-					entityTypeId = MappingHelperV3.GetEntityTypeId( item.EnvelopeCtdlType );
-					if (entityTypeId == 0)
-                    {
-
-                    }
-					importSuccessfull = ProcessEnvelope( item, registryEntityType, entityTypeId, cntr, DoingDownloadOnly );
-
-					if ( MaxImportRecords > 0 && cntr >= MaxImportRecords )
+					//consider reducing page size?
+					//Process the items
+					ProgressTrackingManager.ProcessInParallelAndTrack( transactionGUID, list, ( request, tracker, index ) =>
 					{
-						break;
-					}
-				} //end foreach 
+						cntr++;
+						//rowStart = DateTime.Now;
+						//TimeSpan rowDuration = new TimeSpan();
+						// NOTE: found that older envelopes may not have envelope_ctdl_type,
+						entityTypeId = MappingHelperV3.GetEntityTypeId( request.EnvelopeCtdlType );
+						if ( entityTypeId == 1 && registryEntityType == "qdata_dataset_profile" )
+						{
+							//skip
+						}
+						else
+						{
+							var returnedTask = ProcessEnvelope( request, registryEntityType, entityTypeId, cntr, DoingDownloadOnly );
 
+							//Update the tracker
+							if ( cntr % 100 == 0 )
+							{
+								//TimeSpan currentDuration = DateTime.Now.Subtract( importStart );
+								//var currentAvgRecordsPerSecond = CurrentRowNbr / currentDuration.TotalSeconds;
+								//var currentAvgSecondsPerRecord = currentDuration.TotalSeconds / CurrentRowNbr;
+								//var remainingSeconds = ( ( mTotalRecords - CurrentRowNbr ) * currentAvgSecondsPerRecord ) + 5; //add a fudge factor
+								//LoggingHelper.DoTrace( 1, $"{thisClassName}.ImportInParallel. Record: {CurrentRowNbr} of {mTotalRecords}. Avg Records Per Second: {currentAvgRecordsPerSecond:N2}, Avg Seconds Per Record: {currentAvgSecondsPerRecord:N2}, remainingSeconds: {remainingSeconds:N0} " );
+								//if ( remainingSeconds < 120 )
+								//	tracker.Messages.Add( $"Estimated remaining: {remainingSeconds:N0} seconds." );
+								//else
+								//{
+								//	Decimal minutes = ( decimal ) ( ( remainingSeconds / 60 ) + 1 );
+								//	tracker.Messages.Add( $"Estimated remaining: {minutes:N2} minutes" );
+								//}
+							}
+							tracker.ProcessedItems++;
+						}
+					}, ( request, tracker, index, ex ) =>
+					{
+						//Get the item name and index
+						var itemName = ( string.IsNullOrWhiteSpace( request?.EnvelopeCtid ) ? "Unknown CTID" : request.EnvelopeCtid ) + "/Org: " +
+							( string.IsNullOrWhiteSpace( request?.documentOwnedBy ) ? "Unknown" : request.documentOwnedBy );
+
+						//Update the tracker
+						tracker.Errors.Add( "Error processing item at index #" + index + " (" + itemName + "): " + ex?.Message + ( !string.IsNullOrWhiteSpace( ex?.InnerException?.Message ) ? "; " + ex.InnerException.Message : "" ) );
+
+					}, ( tracker ) => { 
+						//Handle cancelation
+					}, false );
+
+				}
+				else
+				{
+					foreach ( ReadEnvelope item in list )
+					{
+						cntr++;
+						//NOTE: found that older envelopes may not have envelope_ctdl_type, 
+						entityTypeId = MappingHelperV3.GetEntityTypeId( item.EnvelopeCtdlType );
+						if ( entityTypeId == 1 )
+						{
+							if ( registryEntityType == "qdata_dataset_profile" )
+							{
+								continue;
+							}
+						}
+						importSuccessfull = ProcessEnvelope( item, registryEntityType, entityTypeId, cntr, DoingDownloadOnly );
+
+						if ( MaxImportRecords > 0 && cntr >= MaxImportRecords )
+						{
+							break;
+						}
+					} //end foreach 
+				}
 				pageNbr++;
 				if ( ( MaxImportRecords > 0 && cntr >= MaxImportRecords ) )
 				{
@@ -203,7 +264,7 @@ namespace CTI.Import
 			return importResults;
 		}
 
-		public string Import( string registryEntityType, int entityTypeId, string startingDate, string endingDate, int maxRecords, bool downloadOnly, ref int recordsImported, string sortOrder = "asc" )
+		public string ImportOld( string registryEntityType, int entityTypeId, string startingDate, string endingDate, int maxRecords, bool downloadOnly, ref int recordsImported, string sortOrder = "asc" )
 		{
 
 			bool importingThisType = UtilityManager.GetAppKeyValue( "importing_" + registryEntityType, true );
@@ -271,7 +332,7 @@ namespace CTI.Import
 						//if no data found and have not processed actual rows, could have been an issue with the search.
 						//perhaps should be an error to ensure followup
 						LoggingHelper.DoTrace( 2, string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ) );
-						LoggingHelper.LogError( string.Format( "**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows ), true, "Finder Import Ended Early" );
+						LoggingHelper.LogError(string.Format("**************** WARNING -Import for '{0}' didn't find data on this pass, but has only processed {1} of an expected {2} records.", registryEntityType, cntr, actualTotalRows));
 					}
 					break;
 				}
@@ -325,6 +386,7 @@ namespace CTI.Import
 		{
 
 			LoggingHelper.DoTrace( 1, string.Format( "===  *****************  ImportByGraphSearch  ***************** " ) );
+			LoggingHelper.DoTrace( 1, $"Query:\n {GraphSearchQuery}" );
 			//JsonEntity input = new JsonEntity();
 			ReadEnvelope envelope = new ReadEnvelope();
 			List<ReadEnvelope> list = new List<ReadEnvelope>();
@@ -345,7 +407,8 @@ namespace CTI.Import
 			bool importSuccessfull = true;
 			var registryEntityType = "";
 			int entityTypeId = 0;
-			GraphSearchQuery="{\"@type\": \"ceasn:CompetencyFramework\"}";
+			//Q and D test filter
+			//GraphSearchQuery="{\"@type\": \"ceasn:CompetencyFramework\"}";
 			//will need to handle multiple calls - watch for time outs
 			while ( pageNbr > 0 && !isComplete )
 			{
@@ -377,8 +440,8 @@ namespace CTI.Import
 				if ( pageNbr == 1 )
 				{
 					//not handled yet
-					//actualTotalRows = pTotalRows;
-					//LoggingHelper.DoTrace( 2, string.Format( "ImportByGraphSearch Found {0} records to process.", pTotalRows ) );
+					actualTotalRows = pTotalRows;
+					LoggingHelper.DoTrace( 2, string.Format( "ImportByGraphSearch Found {0} records to process.", pTotalRows ) );
 				}
 
 				foreach ( ReadEnvelope item in list )
@@ -419,6 +482,8 @@ namespace CTI.Import
 				//else
 				//	isComplete = true;
 			}
+
+			//there could be multiple types
 			importResults = string.Format( "ImportByGraphSearch {0} - Processed {1} records, with {2} exceptions. \r\n", registryEntityType, cntr, exceptionCtr );
 			LoggingHelper.DoTrace( 2, importResults );
 			if ( !string.IsNullOrWhiteSpace( importNote ) )
@@ -450,7 +515,8 @@ namespace CTI.Import
 			var status = new SaveStatus
 			{
 				DoingDownloadOnly = doingDownloadOnly,
-				ValidationGroup = string.Format( "{0} Import", registryEntityType )
+				ValidationGroup = string.Format( "{0} Import", registryEntityType ),
+				OnlyImportIfNewerThanExisting = UtilityManager.GetAppKeyValue( "OnlyImportIfNewerThanExisting", false ),
 			};
 
 			DateTime started = DateTime.Now;
@@ -530,6 +596,7 @@ namespace CTI.Import
 						//}
 						else
 						{
+							//TODO - indicating skipped?
 							importSuccessfull = credImportMgr.ImportV3( payload, status );
 						}
 
@@ -591,12 +658,11 @@ namespace CTI.Import
 						}
 						break;
 					case 9:    //
-						if (ctdlType == "Collection" || ctdlType == "ceterms:Collection" )
-							importSuccessfull = cltnImportMgr.ProcessEnvelope(item, status);
+						if ( ctdlType == "Collection" || ctdlType == "ceterms:Collection" )
+							importSuccessfull = cltnImportMgr.ProcessEnvelope( item, status );
 
 						break;
 					case 10:
-					case 17:
 						if ( ctdlType.IndexOf( "CompetencyFramework" ) > -1 )
 							importSuccessfull = cfImportMgr.ProcessEnvelope( item, status );
 						else
@@ -608,17 +674,24 @@ namespace CTI.Import
 						}
 
 						break;
-						//what about competency??? ==> use 17. don't have competency only imports, but should have a concrete entry for competencies
+					//what about competency??? ==> use 17. don't have competency only imports, but should have a concrete entry for competencies
 					case 11:    //concept scheme
-					case 12:    //progression model
 						importSuccessfull = new ImportConceptSchemes().ProcessEnvelope( item, status );
 						return true;
-
+					case 12:    //progression model
+						importSuccessfull = new ImportProgressionModels().ProcessEnvelope( item, status );
+						return true;
+					case 15:
+						importSuccessfull = new ImportScheduledOfferings().ProcessEnvelope( item, status );
+						break;
 					case 19:
 						importSuccessfull = cndManImportMgr.ProcessEnvelope( item, status );
 						break;
 					case 20:
 						importSuccessfull = cstManImportMgr.ProcessEnvelope( item, status );
+						break;
+					case 22:
+						importSuccessfull = new ImportCredentialingAction().ProcessEnvelope( item, status );
 						break;
 					case 23:
 						importSuccessfull = new ImportPathwaySets().ProcessEnvelope( item, status );
@@ -646,6 +719,16 @@ namespace CTI.Import
 					case 35:
 						importSuccessfull = new ImportOccupation().ProcessEnvelope( item, status );
 						break;
+					case 38:
+						importSuccessfull = new ImportSupportService().ProcessEnvelope( item, status );
+						break;
+					case 39:
+						importSuccessfull = new ImportRubric().ProcessEnvelope( item, status );
+						break;
+					case 41:
+						importSuccessfull = new ImportVerificationService().ProcessEnvelope( item, status );
+						break;
+
 					default:
 						DisplayMessages( string.Format( "{0}. RegistryImport. Unhandled Entity type encountered: entityTypeId: {1} ", cntr, entityTypeId ) );
 						break;
@@ -660,7 +743,7 @@ namespace CTI.Import
 				}
 				else
 				{
-					LoggingHelper.LogError( ex, string.Format( registryEntityType + " Exception encountered in envelopeId: {0}", item.EnvelopeIdentifier ), true, "CredentialFinder Import exception" );
+					LoggingHelper.LogError( ex, string.Format( registryEntityType + " Exception encountered in ctid: {0}", ctid ) );
 					status.AddError( ex.Message );
 					importError = ex.Message;
 				}
@@ -686,20 +769,26 @@ namespace CTI.Import
 					{
 						importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
 					}
+				} else
+				{
+					//TODO - consider a check for in import pending and set processed if found!
 				}
 				//store document
 				//add indicator of success
-				newImportId = importMgr.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
-				if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+				if ( status.RecordWasSkipped == false )
 				{
-					//add indicator of current recored
-					string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, registryEntityType );
-					//ensure status has info on the current context, so can be include in messages. Or N/A. The message has the Import.Staging record as the parent 
-					importMgr.AddMessages( newImportId, status, ref messages );
-				}
+					newImportId = importMgr.Add( item, entityTypeId, status.Ctid, importSuccessfull, importError, ref messages );
+					if ( newImportId > 0 && status.Messages != null && status.Messages.Count > 0 )
+					{
+						//add indicator of current recored
+						string msg = string.Format( "========= Messages for {4}, EnvelopeIdentifier: {0}, ctid: {1}, Id: {2}, rowId: {3} =========", item.EnvelopeIdentifier, status.Ctid, status.DocumentId, status.DocumentRowId, registryEntityType );
+						//ensure status has info on the current context, so can be include in messages. Or N/A. The message has the Import.Staging record as the parent 
+						importMgr.AddMessages( newImportId, status, ref messages );
+					}
 
-				TimeSpan duration = DateTime.Now.Subtract( started );
-				LoggingHelper.DoTrace( 2, string.Format( "         Total Duration: {0:N2} seconds ", duration.TotalSeconds ) );
+					TimeSpan duration = DateTime.Now.Subtract( started );
+					LoggingHelper.DoTrace( 2, string.Format( "         Total Duration: {0:N2} seconds ", duration.TotalSeconds ) );
+				}
 			} //finally
 
 

@@ -12,12 +12,13 @@ namespace workIT.Models.Common
 	{
 		public string Type { get; set; } = "ceterms:Collection";
 
+
 		/// <summary>
 		/// Category or classification of this resource.
 		/// List of URIs that point to a concept
-		/// NO, the actual concept needs to have been imported and stored appropriately. 
 		/// </summary>
-		public List<string> Classification { get; set; } = new List<string>();
+		//[JsonProperty( "ceterms:classification" )]
+		public List<ResourceSummary> Classification { get; set; } = new List<ResourceSummary>();
 
 		public string CodedNotation { get; set; }
 
@@ -95,17 +96,29 @@ namespace workIT.Models.Common
 		/// <summary>
 		/// Webpage that describes this entity.
 		/// </summary>
-		public new string SubjectWebpage { get; set; } 
-
-
-		#region Import
-		public List<Guid> HasMemberImport { get; set; } = new List<Guid>();
-        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+		public new string SubjectWebpage { get; set; }
+		public string InCatalog { get; set; }
 
         /// <summary>
-        /// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
+        /// Alphanumeric identifier of the version of the resource that is unique within the organizational context of its owner.
         /// </summary>
-        public List<CredentialAlignmentObjectProfile> IndustryTypeList { get; set; }
+        public List<Entity_IdentifierValue> VersionIdentifier { get; set; }
+        public string LatestVersion { get; set; }
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
+        #region Import
+        public List<Guid> HasMemberImport { get; set; } = new List<Guid>();
+        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+		/// <summary>
+		/// Category or classification of this resource.
+		/// List of URIs that point to a concept
+		/// NO, the actual concept needs to have been imported and stored appropriately. 
+		/// </summary>
+		public List<string> ClassificationImport { get; set; } = new List<string>();
+		/// <summary>
+		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
+		/// </summary>
+		public List<CredentialAlignmentObjectProfile> IndustryTypeList { get; set; }
 
 		/// <summary>
 		/// Type of instructional program; select from an existing enumeration of such types.

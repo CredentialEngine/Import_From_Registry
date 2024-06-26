@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 using workIT.Factories;
 using workIT.Models;
+using workIT.Services;
 using workIT.Utilities;
-
 using BNode = RA.Models.JsonV2.BlankNode;
 using EntityServices = workIT.Services.AssessmentServices;
 using InputEntityV3 = RA.Models.JsonV2.AssessmentProfile;
-using ThisEntity = workIT.Models.ProfileModels.AssessmentProfile;
-using FAPI = workIT.Services.API;
+using ThisResource = workIT.Models.ProfileModels.AssessmentProfile;
+
 namespace Import.Services
 {
     public class ImportAssessment
@@ -23,7 +21,7 @@ namespace Import.Services
         string resourceType = "Assessment";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 
 		#region Common Helper Methods
 
@@ -36,9 +34,9 @@ namespace Import.Services
             int pTotalRows = 0;
 
 			SaveStatus status = new SaveStatus();
-			List<ThisEntity> list = AssessmentManager.Search( where, "", 1, 500, ref pTotalRows );
+			List<ThisResource> list = AssessmentManager.Search( where, "", 1, 500, ref pTotalRows );
 			LoggingHelper.DoTrace( 1, string.Format( thisClassName + " - ImportPendingRecords(). Processing {0} records =================", pTotalRows ) );
-			foreach ( ThisEntity item in list )
+			foreach ( ThisResource item in list )
 			{
 				if ( string.IsNullOrWhiteSpace( item.CTID ) )
 				{
@@ -75,7 +73,7 @@ namespace Import.Services
 				catch ( Exception ex )
 				{
 					var msg = thisClassName + string.Format( "Error encountered for pending record: {0} using CTID: {1}. Message: '{2}'", item.Id, item.CTID, ex.Message );
-					LoggingHelper.LogError( msg, "Finder Pending Import" );
+					LoggingHelper.LogError( ex, msg + " Finder Pending Import" );
 					status.AddError( msg );
 					if ( ex.Message.IndexOf( "Path '@context', line 1" ) > 0 )
 					{
@@ -119,8 +117,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -267,55 +265,18 @@ namespace Import.Services
 					//OR set based on the first language
 					helper.SetDefaultLanguage( input.Name, "Name" );
 				}
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-				output.CTID = input.CTID;
+				output.SubjectWebpage = input.SubjectWebpage;
+
 				//TBD handling of referencing third party publisher
 				helper.MapOrganizationPublishedBy( output, ref status );
-				//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				//{
-				//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-				//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-				//	if ( porg != null && porg.Id > 0 )
-				//	{
-				//		//TODO - store this in a json blob??????????
-				//		output.PublishedByThirdPartyOrganizationId = porg.Id;
-				//		//this will result in being added to Entity.AgentRelationship
-				//		output.PublishedBy = new List<Guid>() { porg.RowId };
-				//	}
-				//	else
-				//	{
-				//		//if publisher not imported yet, all publishee stuff will be orphaned
-				//		var entityUid = Guid.NewGuid();
-				//		var statusMsg = "";
-				//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
-				//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-				//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
-				//		output.PublishedByThirdPartyOrganizationId = porg.Id;
-				//		output.PublishedBy = new List<Guid>() { entityUid };
-				//	}
-				//}
-				//else
-				//{
-				//	//may need a check for existing published by to ensure not lost
-				//	if ( output.Id > 0 )
-				//	{
-				//		if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-				//		{
-				//			var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-				//			if ( publishedByList != null && publishedByList.Any() )
-				//			{
-				//				var pby = publishedByList[ 0 ].ActingAgentUid;
-				//				output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-				//			}
-				//		}
-				//	}
-				//}
+			
 				//output.CredentialRegistryId = envelopeIdentifier;
 				output.DateEffective = input.DateEffective;
 				output.ExpirationDate = input.ExpirationDate;
 
-				output.SubjectWebpage = input.SubjectWebpage;
 				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
 
 				//
@@ -367,10 +328,10 @@ namespace Import.Services
 				output.AudienceLevelType = helper.MapCAOListToEnumermation( input.AudienceLevelType );
 
 				//To be looked
-				output.CodedNotation = input.CodedNotation;
+				//output.CodedNotation = input.CodedNotation;
 				//
 				output.Identifier = helper.MapIdentifierValueList( input.Identifier );
-				output.IdentifierImport = helper.MapIdentifierValueList2( input.Identifier );
+				output.IdentifierImport = helper.MapIdentifierValueListInternal( input.Identifier );
 
 				if ( output.IdentifierImport != null && output.IdentifierImport.Count() > 0 )
 				{
@@ -378,7 +339,7 @@ namespace Import.Services
 				}
 				//
 				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
-				output.VersionIdentifierNew = helper.MapIdentifierValueList2( input.VersionIdentifier );
+				output.VersionIdentifierNew = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
 				if ( output.VersionIdentifierNew != null && output.VersionIdentifierNew.Count() > 0 )
 				{
 					output.VersionIdentifierJSON = JsonConvert.SerializeObject( output.VersionIdentifierNew, MappingHelperV3.GetJsonSettings() );
@@ -500,6 +461,11 @@ namespace Import.Services
 				output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
 				output.MaintenanceProcess = helper.FormatProcessProfile( input.MaintenanceProcess, ref status );
 
+				// TransferValue Profile
+				if ( input.ProvidesTransferValueFor != null && input.ProvidesTransferValueFor.Count > 0 )
+					output.ProvidesTVForIds = helper.MapEntityReferences( $"{resourceType}.ProvidesTransferValueFor", input.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+				if ( input.ReceivesTransferValueFrom != null && input.ReceivesTransferValueFrom.Count > 0 )
+					output.ReceivesTVFromIds = helper.MapEntityReferences( $"{resourceType}.ProvidesTransferValueFor", input.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
 				//
 
 				output.AvailableAt = helper.FormatAvailableAtAddresses( input.AvailableAt, ref status );
@@ -519,10 +485,14 @@ namespace Import.Services
                 //
                 if ( input.HasOffering != null && input.HasOffering.Count > 0 )
                     output.HasOfferingIds = helper.MapEntityReferences( $"{resourceType}.HasOffering", input.HasOffering, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING, ref status );
-                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+				if ( input.HasRubric != null && input.HasRubric.Count > 0 )
+					output.HasRubricIds = helper.MapEntityReferences( $"{resourceType}.HasRubric", input.HasRubric, CodesManager.ENTITY_TYPE_RUBRIC, ref status );
+
+				if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
                     output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
 
                 output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+				output.InCatalog = input.InCatalog;
 
 				//INs
 				output.AccreditedIn = helper.MapToJurisdiction( input.AccreditedIn, ref status );
@@ -541,7 +511,7 @@ namespace Import.Services
                 //
                 bool hasDataSetProfiles = false;
                 List<string> ctidList = new List<string>();
-                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, ref status, ref ctidList );
                 if ( ctidList != null && ctidList.Any() )
                 {
                     //especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
@@ -554,7 +524,7 @@ namespace Import.Services
 				//just in case check if entity added since start
 				if ( output.Id == 0 )
 				{
-					ThisEntity entity = EntityServices.GetByCtid( ctid );
+					ThisResource entity = EntityServices.GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 					{
 						output.Id = entity.Id;
@@ -564,17 +534,25 @@ namespace Import.Services
                 if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
                 {
                     importSuccessfull = mgr.Import( output, ref status );
-                    //start storing the finder api ready version
-                    var resource = FAPI.AssessmentServices.GetDetailForAPI( output.Id, true );
-                    //Remove nulls and empty properties
-                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+					//start storing the finder api ready version
+					//               var resource = FAPI.AssessmentServices.GetDetailForAPI( output.Id, true );
+					//               //Remove nulls and empty properties
+					//               var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+					//var eManager = new EntityManager();
+					//var statusMsg = "";
+					//               if ( eManager.EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+					//               {
+					//                   status.AddError( statusMsg );
+					//               }
+					//if ( eManager.EntityCacheUpdateAgentRelationshipsForAssessment( output.RowId.ToString(), ref statusMsg ) == false )
+					//{
+					//	status.AddError( statusMsg );
+					//}
 
-                    var statusMsg = "";
-                    if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-                    {
-                        status.AddError( statusMsg );
-                    }
-                }
+
+					//24-03-25 - use the generic process for blank nodes encountered during import
+					new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+				}
                 status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/assessment/{0}", output.Id );
 				status.DocumentRowId = output.RowId;
@@ -595,7 +573,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".ImportV3", string.Format( "Exception encountered for CTID: {0}", ctid ), false, "Assessment Import exception" );
+				LoggingHelper.LogError(ex, thisClassName + ".ImportV3", string.Format("Exception encountered for CTID: {0}", ctid));
 			}
 			finally
 			{
@@ -606,7 +584,7 @@ namespace Import.Services
 			return importSuccessfull;
         }
 
-        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+        public bool DoesEntityExist( string ctid, ref ThisResource entity )
         {
             bool exists = false;
             entity = EntityServices.GetByCtid( ctid );

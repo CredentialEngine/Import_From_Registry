@@ -9,8 +9,8 @@ using workIT.Models.Common;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
 
-using ThisEntity = workIT.Models.Common.CostManifest;
-using EntityMgr = workIT.Factories.CostManifestManager;
+using ThisResource = workIT.Models.Common.CostManifest;
+using ResourceMgr = workIT.Factories.CostManifestManager;
 using workIT.Utilities;
 using workIT.Factories;
 
@@ -23,24 +23,24 @@ namespace workIT.Services
 		public List<string> messages = new List<string>();
 
 		#region import
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 
-			return EntityMgr.GetByCtid( ctid );
+			return ResourceMgr.GetByCtid( ctid );
 		}
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
-			bool isValid = new EntityMgr().Save( entity, ref status );
-			if ( entity.Id > 0 )
+			bool isValid = new ResourceMgr().Save( resource, ref status );
+			if ( resource.Id > 0 )
 			{
 				//update cache
-				new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+				//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
 
                 //TODO - will need to update related elastic indices
-                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OrganizationId, 1, ref messages );
             }
 
 			return isValid;

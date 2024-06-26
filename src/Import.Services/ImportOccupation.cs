@@ -14,9 +14,9 @@ using workIT.Utilities;
 using BNode = RA.Models.JsonV2.BlankNode;
 using ResourceServices = workIT.Services.OccupationServices;
 using APIResourceServices = workIT.Services.API.OccupationServices;
-using InputEntity = RA.Models.JsonV2.Occupation;
+using InputResource = RA.Models.JsonV2.Occupation;
 using JInput = RA.Models.JsonV2;
-using ThisEntity = workIT.Models.Common.OccupationProfile;
+using ThisResource = workIT.Models.Common.OccupationProfile;
 
 namespace Import.Services
 {
@@ -26,7 +26,7 @@ namespace Import.Services
 		string thisClassName = "ImportOccupations";
         readonly string ResourceType = "Occupation";
         ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 		/// <summary>
@@ -139,8 +139,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -205,7 +205,7 @@ namespace Import.Services
 			bool importSuccessfull = false;
 			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var mainEntity = new Dictionary<string, object>();
 			//
 			Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
@@ -225,7 +225,7 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -281,11 +281,11 @@ namespace Import.Services
 					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
 				}
 				helper.currentBaseObject = output;
-
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
-				output.CTID = input.CTID;
+				
                 //NOTE: there is no asserting org for occupation, etc. It doesn't make sense. Add the data publisher as the primary
 				if ( BaseFactory.IsValidCtid( status.DocumentOwnedBy))
 				{
@@ -296,50 +296,80 @@ namespace Import.Services
 				{
 					//always should be here
 				}
-                //TBD handling of referencing third party publisher
-                helper.MapOrganizationPublishedBy( output, ref status );
+				//now have asserted by 
+				//note need to set output.OwningAgentUid to the first entry
+				output.AssertedByList = helper.MapOrganizationReferenceGuids( $"{ResourceType}.AssertedBy", input.AssertedBy, ref status );
+				if ( output.AssertedByList != null && output.AssertedByList.Count > 0 )
+				{
+					helper.CurrentOwningAgentUid = output.PrimaryAgentUID = output.AssertedByList[ 0 ];
+				}
+				else
+				{
+					//use org from envelope (already done)
+					helper.CurrentOwningAgentUid = output.PrimaryAgentUID;
+				}
+
+				//TBD handling of referencing third party publisher
+				helper.MapOrganizationPublishedBy( output, ref status );
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
-				//AbilityEmbodied - URI to existing:
-				//		Competency, Job, Occupation. Task, WorkRole
-				output.AbilityEmbodied = input.AbilityEmbodied;
-				//output.AbilitiesIds = helper.MapEntityReferences( input.AbilityEmbodied, 0, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
-				output.AbilityEmbodiedUIDs = helper.MapEntityReferenceGuids( "Occupation.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+				output.AlternateName = helper.HandleLanguageMapList( input.AlternateName, output, "AlternateName" );
+
+				#region KSA
+				//		Competency, Job, Occupation, Task, WorkRole
+				//NO
+				//output.AbilityEmbodiedList = helper.MapEntityReferences( $"{ResourceType}.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+				//var abilityEmbodiedUIDs = helper.MapEntityReferenceGuids( $"{ResourceType}.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+				output.AbilityEmbodied = helper.MapEntityCTIDsToResourceSummary( input.AbilityEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
+				output.KnowledgeEmbodied = helper.MapEntityCTIDsToResourceSummary( input.KnowledgeEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
+				output.SkillEmbodied = helper.MapEntityCTIDsToResourceSummary( input.SkillEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
+
+				//
+				output.PhysicalCapabilityType = helper.MapEntityCTIDsToResourceSummary( input.PhysicalCapabilityType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.PerformanceLevelType = helper.MapEntityCTIDsToResourceSummary( input.PerformanceLevelType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.EnvironmentalHazardType = helper.MapEntityCTIDsToResourceSummary( input.EnvironmentalHazardType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.SensoryCapabilityType = helper.MapEntityCTIDsToResourceSummary( input.SensoryCapabilityType, CodesManager.ENTITY_TYPE_CONCEPT );
+				//a concept, but unknown concept scheme?
+				//could be a list of concept short URIs
+				output.Classification = helper.MapEntityCTIDsToResourceSummary( input.Classification, CodesManager.ENTITY_TYPE_CONCEPT );
+
+				#endregion
 
 				output.CodedNotation = input.CodedNotation;
 
-				//a concept, but unknown concept scheme?
-				//output.Classification = input.Classification;
-				//TODO
-				//output.Classification = helper.MapCAOListToEnumermation( input.Classification );
-				//
 				//
 				output.Comment = helper.HandleLanguageMapList( input.Comment, output );
 				if ( output.Comment != null && output.Comment.Count() > 0 )
 				{
 					output.CommentJson = JsonConvert.SerializeObject( output.Comment, MappingHelperV3.GetJsonSettings() );
 				}
-                //HasJob
-
-                //HasSpecialization
-                if (input.HasSpecialization != null && input.HasSpecialization.Count > 0)
+				//HasJob
+				if ( input.HasJob != null && input.HasJob.Count > 0 )
+					output.HasJobIds = helper.MapEntityReferences( $"{ResourceType}.HasJob", input.HasJob, CodesManager.ENTITY_TYPE_JOB_PROFILE, ref status );
+				//HasSpecialization
+				if (input.HasSpecialization != null && input.HasSpecialization.Count > 0)
                     output.HasSpecializationIds = helper.MapEntityReferences( $"{ResourceType}.HasSpecialization", input.HasSpecialization, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
 
                 if (input.IsSpecializationOf != null && input.IsSpecializationOf.Count > 0)
                     output.IsSpecializationOfIds = helper.MapEntityReferences( $"{ResourceType}.IsSpecializationOf", input.IsSpecializationOf, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
                 //
                 //HasTask
-                if (input.HasJob != null && input.HasJob.Count > 0)
-					output.HasJobIds = helper.MapEntityReferences( $"{ResourceType}.HasJob", input.HasJob, CodesManager.ENTITY_TYPE_JOB_PROFILE, ref status );
+                if (input.HasTask != null && input.HasTask.Count > 0)
+					output.HasTaskIds = helper.MapEntityReferences( $"{ResourceType}.HasTask", input.HasTask, CodesManager.ENTITY_TYPE_TASK_PROFILE, ref status );
 
 				//HasWorkRole
 				if (input.HasWorkRole != null && input.HasWorkRole.Count > 0)
                     output.HasWorkRoleIds = helper.MapEntityReferences( $"{ResourceType}.HasWorkRole", input.HasWorkRole, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, ref status );
 
 
-                //
-                output.Identifier = helper.MapIdentifierValueListInternal( input.Identifier );
+				// TransferValue Profile
+				if ( input.ProvidesTransferValueFor != null && input.ProvidesTransferValueFor.Count > 0 )
+					output.ProvidesTVForIds = helper.MapEntityReferences( $"{ResourceType}.ProvidesTransferValueFor", input.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+				if ( input.ReceivesTransferValueFrom != null && input.ReceivesTransferValueFrom.Count > 0 )
+					output.ReceivesTVFromIds = helper.MapEntityReferences( $"{ResourceType}.ProvidesTransferValueFor", input.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+				//
+				output.Identifier = helper.MapIdentifierValueListInternal( input.Identifier );
 				if ( output.Identifier != null && output.Identifier.Count() > 0 )
 				{
 					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
@@ -347,22 +377,21 @@ namespace Import.Services
 				//Industries
 				output.Industries = helper.MapCAOListToCAOProfileList( input.IndustryType );
 
-				//IsSpecializationOf
-
-				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
-				//KnowledgeEmbodied - URI to existing:
-				//		Competency Job Occupation Task WorkRole
-				output.KnowledgeEmbodied = input.KnowledgeEmbodied;
+				//time to simplify this
+				output.Keyword = helper.HandleLanguageMapList( input.Keyword, output, "Keyword" );
+				//
+				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+				//
+				output.TargetCompetency = helper.MapCAOListToCAOProfileList( input.TargetCompetency );
+				output.InCatalog = input.InCatalog;
 
 				//occupations
 				output.Occupations = helper.MapCAOListToCAOProfileList( input.OccupationType );
 				//Requires
 				output.Requires = helper.FormatConditionProfile( input.Requires, ref status );
-				//SameAs URI - need to chg this to json - 
-				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
-				//SkillEmbodied - URI to existing:
-				//		Competency Job Occupation Task WorkRole
-				output.SkillEmbodied = input.SkillEmbodied;
+				//SameAs URI
+				output.SameAs = input.SameAs;
+
 
 
 				//
@@ -372,10 +401,6 @@ namespace Import.Services
 					output.VersionIdentifierJson = JsonConvert.SerializeObject( output.VersionIdentifier, MappingHelperV3.GetJsonSettings() );
 				}
 
-				
-				//may need to save the occupation and then handle components
-				//or do a create pending for hasDestination and any hasChild (actually already done by MapEntityReferenceGuids)
-
 				//=== if any messages were encountered treat as warnings for now
 				if ( messages.Count > 0 )
 					status.SetMessages( messages, true );
@@ -383,19 +408,7 @@ namespace Import.Services
 
 				//adding common import pattern
 				importSuccessfull = mgr.Import( output, ref status );
-				if (importSuccessfull)
-				{
-                    var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
-                    if ( resource != null && resource.Meta_Id > 0 )
-                    {
-                        var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
-                        var statusMsg = "";
-                        if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-                        {
-                            status.AddError( statusMsg );
-                        }
-                    }
-                }
+
 				//
 				status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/occupation/{0}", output.Id );
@@ -419,7 +432,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Occupation Import exception" );
+				LoggingHelper.LogError(ex, $"{thisClassName}. Exception encountered in CTID: {output.CTID}");
 			}
 
 			return importSuccessfull;
@@ -427,7 +440,7 @@ namespace Import.Services
 
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
 		{
 			bool exists = false;
 			entity = ResourceServices.GetMinimumByCtid( ctid );

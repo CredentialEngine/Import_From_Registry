@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Nest;
 
 //using Nest;
 
@@ -11,6 +12,7 @@ using Newtonsoft.Json.Serialization;
 
 using workIT.Factories;
 using workIT.Models;
+using workIT.Models.Common;
 using workIT.Services;
 using workIT.Utilities;
 
@@ -21,13 +23,19 @@ using MCQ = workIT.Models.QData;
 using MJ = RA.Models.JsonV2;
 using MJQ = RA.Models.JsonV2.QData;
 using WPM = workIT.Models.ProfileModels;
+using Import.Services.RegistryModels;
+using System.Text.RegularExpressions;
+//using System.Data.Entity.Validation;
+//using System.Diagnostics;
 
 namespace Import.Services
 {
-    public class MappingHelperV3
+	public class MappingHelperV3
 	{
+		#region Properties
 		static readonly string thisClassName = "Import.Services.MappingHelperV3";
 		public List<BNode> entityBlankNodes = new List<BNode>();
+		public List<BNodeWrapper> ReferenceObjects = new List<BNodeWrapper>();
 		public string DefaultLanguage = "en";
 		public List<MC.EntityLanguageMap> LanguageMaps = new List<MC.EntityLanguageMap>();
 		public MC.EntityLanguageMap LastEntityLanguageMap = new MC.EntityLanguageMap();
@@ -36,9 +44,15 @@ namespace Import.Services
 		public MC.BaseObject currentBaseObject = new MC.BaseObject();
 		//TODO  should change this to CurrentPrimary to make more generic
 		public Guid CurrentOwningAgentUid;
+		public Guid CurrentPublishedByAgentUid;
 		public int CurrentEntityTypeId = 0;
 		public string CurrentEntityCTID = "";
 		public string CurrentEntityName = "";
+		public static string credentialRegistryUrl = UtilityManager.GetAppKeyValue( "credentialRegistryUrl" );
+
+		//TODO
+		public List<TopLevelObject> ResourcesToIndex = new List<TopLevelObject>();
+		#endregion
 		public MappingHelperV3()
 		{
 		}
@@ -49,6 +63,26 @@ namespace Import.Services
 		}
 
 		#region handle blank nodes
+		public BNodeWrapper FormatBlankNode( string blankNode )
+		{
+			if ( string.IsNullOrWhiteSpace( blankNode ) )
+				return null;
+			var resourceOutline = RegistryServices.GetGraphMainResource( blankNode );
+			var bnWrapper = new BNodeWrapper()
+			{
+				BNodeId = resourceOutline.CtdlId,
+				Type = resourceOutline.Type,
+				Resource = blankNode		//??just the string then deserialize when needed?
+			};
+			bnWrapper.EntityTypeId = GetEntityTypeId( bnWrapper.Type );
+			//or just add to ReferenceObjects
+			if ( ReferenceObjects == null )
+				ReferenceObjects = new List<BNodeWrapper>();
+
+			ReferenceObjects.Add(bnWrapper );
+
+			return bnWrapper;
+		}
 		public MJ.BlankNode GetBlankNode( string idurl )
 		{
 			if ( string.IsNullOrWhiteSpace( idurl ) )
@@ -60,52 +94,15 @@ namespace Import.Services
 		{
 			isQAOrgType = false;
 			//replace with this to avoid duplicative+ maintenance
-			int entityTypeId=GetEntityTypeId( node.Type );
-			//one additional check
+			int entityTypeId = GetEntityTypeId( node.Type );
+			//TODO - for lopps, should we use just 7?
+			//	it needs to be saved as course though, so not here
+			//if ( entityTypeId == 37 || entityTypeId == 36 )
+			//	entityTypeId = 7;
+			//
 			//one additional check
 			if ( node.Type.ToLower() == "ceterms:qacredentialorganization" )
 				isQAOrgType = true;
-
-			//switch ( node.Type.ToLower() )
-			//{
-			//	case "ceterms:credentialorganization":
-			//		entityTypeId = 2;
-			//		break;
-			//	case "ceterms:qacredentialorganization":
-			//		//what distinctions do we need for QA orgs?
-			//		entityTypeId = 2;
-			//		isQAOrgType = true;
-
-			//		break;
-			//	case "ceterms:organization":
-			//		entityTypeId = 2;
-			//		break;
-			//	case "ceterms:assessmentprofile":
-			//		entityTypeId = 3;
-			//		break;
-			//	case "ceterms:learningopportunityprofile":
-			//		entityTypeId = 7;
-			//		break;
-			//	case "ceterms:conditionmanifest":
-			//		entityTypeId = 19;
-			//		break;
-			//	case "ceterms:costmanifest":
-			//		entityTypeId = 20;
-			//		break;
-			//	case "ceasn:competencyframework":
-			//		entityTypeId = 10;
-			//		break;
-			//	case "skos:conceptscheme":
-			//		entityTypeId = 11;
-			//		break;
-			//	case "ceterms:transfervalueprofile":
-			//		entityTypeId = 26;
-			//		break;
-			//	default:
-			//		//default to credential
-			//		entityTypeId = 1;
-			//		break;
-			//}
 			return entityTypeId;
 		}
 
@@ -387,7 +384,7 @@ namespace Import.Services
 			}
 
 			return output;
-        }
+		}
 		/// <summary>
 		/// handle a property defined as an object but should be a string or language map list
 		/// </summary>
@@ -397,34 +394,36 @@ namespace Import.Services
 		/// <param name="savingLastEntityMap"></param>
 		/// <param name="languageCode"></param>
 		/// <returns></returns>
-        public List<WPM.TextValueProfile> MapToTextValueProfile( object input, MC.BaseObject bo, string property, bool savingLastEntityMap = true, string languageCode = "en" )
-        {
-            List<WPM.TextValueProfile> output = new List<WPM.TextValueProfile>();
-            lastLanguageMapListString = "";
-            if ( input == null )
-            {
-                return output;
-            }
-   //         if ( input.GetType() == typeof( List<string> ) )
-			//{
-   //             list = input as List<string>;
-			//}
-   //         else 
-			if ( input.GetType() == typeof( string ) )
-            {
-                output.Add( new WPM.TextValueProfile()
+		public List<WPM.TextValueProfile> MapToTextValueProfile( object input, MC.BaseObject bo, string property, bool savingLastEntityMap = true, string languageCode = "en" )
+		{
+			List<WPM.TextValueProfile> output = new List<WPM.TextValueProfile>();
+			lastLanguageMapListString = "";
+			if ( input == null )
+			{
+				return output;
+			}
+
+			try
+			{
+				if ( input.GetType() == typeof( string ) )
 				{
-					TextValue = input.ToString(),
-				} );
-            }
-            else
-            {
-                //language map
-                var lmapList = JsonConvert.DeserializeObject<MJ.LanguageMapList>( input.ToString() );
-				return MapToTextValueProfile( lmapList, bo, property, savingLastEntityMap, languageCode );
-            }
-            return output;
-        }
+					output.Add( new WPM.TextValueProfile()
+					{
+						TextValue = input.ToString(),
+					} );
+				}
+				else
+				{
+					//language map
+					var lmapList = JsonConvert.DeserializeObject<MJ.LanguageMapList>( input.ToString() );
+					return MapToTextValueProfile( lmapList, bo, property, savingLastEntityMap, languageCode );
+				}
+			} catch (Exception ex )
+			{
+				LoggingHelper.DoTrace( 1, $"{thisClassName}.MapToTextValue (object input). Property: {property}. Parent: {bo.CTID} " );
+			}
+			return output;
+		}
 
 		public List<WPM.TextValueProfile> MapToTextValueProfile( MJ.LanguageMapList list, MC.BaseObject bo, string property, bool savingLastEntityMap = true, string languageCode = "en" )
 		{
@@ -631,22 +630,22 @@ namespace Import.Services
 				//should log - although API should not allow this?
 				return output;
 			}
-			output.Value = input.Value != null ? (decimal)input.Value : 0;
+			output.Value = input.Value != null ? ( decimal ) input.Value : 0;
 			output.MinValue = input.MinValue != null ? ( decimal ) input.MinValue : 0;
 			output.MaxValue = input.MaxValue != null ? ( decimal ) input.MaxValue : 0;
-			output.Percentage = input.Percentage != null ? ( decimal )input.Percentage : 0;
+			output.Percentage = input.Percentage != null ? ( decimal ) input.Percentage : 0;
 			output.Description = HandleLanguageMap( input.Description, property );
 			//need to distinguish QV that uses creditvalue
 			if ( isCreditValue )
 			{
 				output.CreditUnitType = MapCAOToEnumermation( input.UnitText );
-				if ( output.CreditUnitType!= null && output.CreditUnitType.HasItems() )
+				if ( output.CreditUnitType != null && output.CreditUnitType.HasItems() )
 				{
 					output.UnitText = output.CreditUnitType.GetFirstItem().Name;
 				}
 			} else
 			{
-				output.UnitText = (input.UnitText ?? new MJ.CredentialAlignmentObject()).TargetNodeName.ToString();
+				output.UnitText = ( input.UnitText ?? new MJ.CredentialAlignmentObject() ).TargetNodeName.ToString();
 			}
 
 			return output;
@@ -654,51 +653,6 @@ namespace Import.Services
 
 		#endregion
 		#region ValueProfile
-		/// <summary>
-		/// Temporary
-		/// Do mapping of ValueProfile to QuantitativeValue 
-		/// </summary>
-		/// <param name="list"></param>
-		/// <param name="property"></param>
-		/// <param name="isCreditValue"></param>
-		/// <returns></returns>
-		public List<MC.QuantitativeValue> HandleValueProfileListToQVList( List<MJ.ValueProfile> list, string property)
-		{
-			var output = new List<MC.QuantitativeValue>();
-			MC.QuantitativeValue profile = new MC.QuantitativeValue();
-			if ( list == null || list.Count == 0 )
-			{
-				return output;
-			}
-
-			foreach ( var input in list )
-			{
-				profile = new MC.QuantitativeValue();
-				//
-				if ( input.Value == 0 && input.MinValue == 0 && input.MaxValue == 0 && input.Percentage == 0
-				&& ( input.Description == null || input.Description.Count() == 0 )
-				)
-				{
-					//should log - although API should not allow this?
-					return null;
-				}
-				profile.Value = input.Value != null ? ( decimal ) input.Value : 0;
-				profile.MinValue = input.MinValue != null ? ( decimal ) input.MinValue : 0;
-				profile.MaxValue = input.MaxValue != null ? ( decimal ) input.MaxValue : 0;
-				profile.Percentage = input.Percentage != null ? ( decimal ) input.Percentage : 0;
-				profile.Description = HandleLanguageMap( input.Description, property );
-				//
-				profile.CreditUnitType = MapCAOListToEnumermation( input.CreditUnitType );
-				//profile.CreditLevelType = MapCAOListToEnumermation( input.CreditLevelType );
-
-				//
-				if ( profile != null )
-					output.Add( profile );
-			}
-
-
-			return output;
-		}
 
 		public List<MC.ValueProfile> HandleQVListToValueProfileList( List<MJ.QuantitativeValue> list, string property )
 		{
@@ -720,7 +674,7 @@ namespace Import.Services
 					//should log - although API should not allow this?
 					return null;
 				}
-				profile.Value = input.Value != null && input.Value > 0 ? (decimal) input.Value : 0;
+				profile.Value = input.Value != null && input.Value > 0 ? ( decimal ) input.Value : 0;
 				profile.MinValue = input.MinValue != null ? ( decimal ) input.MinValue : 0;
 				profile.MaxValue = input.MaxValue != null ? ( decimal ) input.MaxValue : 0;
 				profile.Description = HandleLanguageMap( input.Description, property );
@@ -775,8 +729,13 @@ namespace Import.Services
 			output.Percentage = input.Percentage != null ? ( decimal ) input.Percentage : 0;
 			output.Description = HandleLanguageMap( input.Description, property );
 			//
-			output.CreditUnitType = MapCAOListToEnumermation( input.CreditUnitType );
-			output.CreditLevelType = MapCAOListToEnumermation( input.CreditLevelType );
+			output.CreditUnitType = MapCAOListToEnumermation( input.CreditUnitTypeOLD );
+			output.CreditLevelType = MapCAOListToEnumermation( input.CreditLevelTypeOLD );
+
+			//TODO
+			//output.CreditUnitType = MapConceptURIListToList( input.CreditUnitType );
+			//output.CreditLevelType = MapConceptURIListToList( input.CreditLevelType );
+
 			//why???
 			if ( output.CreditLevelType != null && output.CreditLevelType.HasItems() )
 				output.CreditLevelType.Name = "Credit Level Type";
@@ -826,15 +785,15 @@ namespace Import.Services
 				return "";
 			//assuming these types will only have one entry for now
 			//if more than one, set message
-			if (property.Count > 1)
+			if ( property.Count > 1 )
 			{
 
 			}
 
 			var input = property[ 0 ];
-			
+
 			if ( input.IdentifierTypeName != null )
-				return HandleLanguageMap( input.IdentifierTypeName, "IdentifierTypeName",false ); 
+				return HandleLanguageMap( input.IdentifierTypeName, "IdentifierTypeName", false );
 			//else if ( !string.IsNullOrWhiteSpace( property[ 0 ].IdentifierTypeName ) )
 			//	return property[ 0 ].IdentifierTypeName;
 			else if ( !string.IsNullOrWhiteSpace( input.IdentifierValueCode ) )
@@ -849,23 +808,33 @@ namespace Import.Services
 			if ( property == null || property.Count == 0 )
 				return list;
 			var iv = new WPM.Entity_IdentifierValue();
+			var startingDateTime = DateTime.Now;
 			foreach ( var item in property )
 			{
 				iv = new WPM.Entity_IdentifierValue()
 				{
-					IdentifierType = item.IdentifierType,
+					IdentifierType = item.IdentifierType ?? "",
 					IdentifierValueCode = item.IdentifierValueCode,
-					IdentifierTypeName = HandleLanguageMap( item.IdentifierTypeName, "IdentifierTypeName", false )
-					//Description = HandleLanguageMap( item.Description, currentBaseObject, "IdentifierValue Description", true )
+					IdentifierTypeName = HandleLanguageMap( item.IdentifierTypeName, "IdentifierTypeName", false ),
+					//add the date now as a means of retaining order from registry. Hmm in a lot of cases, the datetime can be the same
+					Created = startingDateTime.AddMilliseconds(1),
 				};
 				list.Add( iv );
 			}
+			//just in case
+			//the display (like for CO WIOA) could do a group by, but shouldn't need anything else here?
+			list = list.OrderBy( s => s.IdentifierType ).ThenBy( s => s.Created ).ToList();
 
 			return list;
 		}
-		//replace latter with 
+		/// <summary>
+		/// Use this method when storing the Identifiers as JSON on a base record. 
+		/// Note: this should only be done for fairly simple uses, where only one or a few identifiers
+		/// </summary>
+		/// <param name="property"></param>
+		/// <returns></returns>
 
-		public List<MC.IdentifierValue> MapIdentifierValueList2( List<MJ.IdentifierValue> property )
+		public List<MC.IdentifierValue> MapIdentifierValueListInternal( List<MJ.IdentifierValue> property )
 		{
 			var list = new List<MC.IdentifierValue>();
 			if ( property == null || property.Count == 0 )
@@ -885,26 +854,6 @@ namespace Import.Services
 			return list;
 		}
 
-		public List<MC.IdentifierValue> MapIdentifierValueListInternal( List<MJ.IdentifierValue> property )
-		{
-			var list = new List<MC.IdentifierValue>();
-			if ( property == null || property.Count == 0 )
-				return list;
-			MC.IdentifierValue iv = new MC.IdentifierValue();
-			foreach ( var item in property )
-			{
-				iv = new MC.IdentifierValue()
-				{
-					IdentifierType = item.IdentifierType,
-					IdentifierValueCode = item.IdentifierValueCode,
-					IdentifierTypeName = HandleLanguageMap( item.IdentifierTypeName, "IdentifierTypeName", false )
-					
-				};
-				list.Add( iv );
-			}
-
-			return list;
-		}
 		#endregion
 
 		#region  TextValueProfile
@@ -923,6 +872,43 @@ namespace Import.Services
 		}
 
 		#endregion
+
+		public MC.Enumeration MapStringListToEnumeration( List<String> input, bool isForConceptScheme = true )
+		{
+			//
+			//TBD = do we need anything for emumeration, or just items?
+			MC.Enumeration output = new workIT.Models.Common.Enumeration();
+			if ( input == null || input.Count == 0 )
+				return output;
+
+			foreach ( var item in input )
+			{
+				if ( item == null )
+					continue;
+				//temp workaround, these would have to be handled very differently (i.e. retrieving from DB)
+				//could add to the Enumeration
+
+				if ( item != null && ( item != null || !string.IsNullOrEmpty( item ) ) )
+				{
+					var ei = new workIT.Models.Common.EnumeratedItem();
+					//do a direct look up of the PropertyValueId using TargetNode. ex: creditUnit:DegreeCredit
+					var codeItem = CodesManager.GetPropertyBySchema( item );
+					if ( codeItem != null && codeItem.Id > 0 )
+					{
+						ei.Id = codeItem.Id;
+						ei.Name = codeItem.Name;
+						ei.Description = codeItem.Description;
+						ei.SchemaName = codeItem.SchemaName;
+						output.Name = codeItem.Category;
+						output.Id = codeItem.CategoryId;
+					}
+					output.Items.Add( ei );
+
+				}
+
+			}
+			return output;
+		}
 
 		#region  CredentialAlignmentObject
 		//
@@ -950,8 +936,9 @@ namespace Import.Services
 						Name = nodeName ?? "",
 						LanguageMapString = lastLanguageMapString
 					};
+					//do a direct look up of the PropertyValueId using TargetNode. ex: creditUnit:DegreeCredit
 					var codeItem = CodesManager.GetPropertyBySchema( item.TargetNode );
-					if (codeItem != null && codeItem.Id > 0)
+					if ( codeItem != null && codeItem.Id > 0 )
 					{
 						ei.Id = codeItem.Id;
 						if ( isForConceptScheme )
@@ -961,7 +948,7 @@ namespace Import.Services
 						}
 					}
 					output.Items.Add( ei );
-					//do a direct look up of the PropertyValueId using TargetNode. ex: creditUnit:DegreeCredit
+					
 				}
 
 			}
@@ -987,7 +974,7 @@ namespace Import.Services
 		{
 			var output = new List<string>();
 			if ( input == null || input.Count == 0 )
-				return output;
+				return null;
 
 			foreach ( MJ.CredentialAlignmentObject item in input )
 			{
@@ -1058,10 +1045,10 @@ namespace Import.Services
 				if ( item == null )
 					continue;
 
-				
+
 				string targetNodeName = HandleLanguageMap( item.TargetNodeName, currentBaseObject, "TargetNodeName", ref lastLanguageMapString, false );
 				//continue as long as there is a name
-				//NOTE: targetNodeName is not required! SO......
+				//NOTE: targetNodeName is not required! 24-03-29 mp - yes the name is required for occupations, etc. 
 				if ( item != null && ( !string.IsNullOrEmpty( targetNodeName ) ) )
 				{
 					entity = new MC.CredentialAlignmentObjectProfile()
@@ -1069,27 +1056,24 @@ namespace Import.Services
 						TargetNode = item.TargetNode ?? "",
 						CodedNotation = item.CodedNotation ?? "",
 						FrameworkName = HandleLanguageMap( item.FrameworkName, currentBaseObject, "FrameworkName" ),
-						FrameworkName_Map= ConvertLanguageMap( item.FrameworkName ),
+						FrameworkName_Map = ConvertLanguageMap( item.FrameworkName ),
 						Weight = item.Weight != null ? ( decimal ) item.Weight : 0
-					//Weight = StringtoDecimal( item.Weight )
-				};
+						//Weight = StringtoDecimal( item.Weight )
+					};
 					entity.TargetNodeCTID = ResolutionServices.ExtractCtid( item.TargetNode );
 
 					//entity.TargetNodeName = HandleLanguageMap( item.ConvertLanguageMap( item.TargetNodeName ), currentBaseObject, "TargetNodeName", false );
 					entity.TargetNodeName = targetNodeName;
 					entity.TargetNodeName_Map = ConvertLanguageMap( item.TargetNodeName );
 					entity.TargetNodeDescription = HandleLanguageMap( item.TargetNodeDescription, currentBaseObject, "TargetNodeDescription", false );
-					entity.TargetNodeDescription_Map = ConvertLanguageMap( item.TargetNodeDescription) ;
+					entity.TargetNodeDescription_Map = ConvertLanguageMap( item.TargetNodeDescription );
 
 					//won't know if url or registry uri, but likely non- registry.
 					if ( !string.IsNullOrWhiteSpace( item.Framework ) )
 					{
 						var isRegistryURL = true;
 						//TODO - need to handle ce-registry/... so communities as well!!
-						if ( item.Framework.ToLower().IndexOf( "credentialengineregistry.org/resources/ce-" ) == -1
-							&& item.Framework.ToLower().IndexOf( "credentialengineregistry.org/graph/ce-" ) == -1
-							&& item.Framework.ToLower().IndexOf( "credentialengineregistry.org/" ) == -1
-							)
+						if ( !IsCredentialRegistryURL( item.Framework ) )
 						{
 							entity.Framework = item.Framework;
 							isRegistryURL = false;
@@ -1101,7 +1085,7 @@ namespace Import.Services
 							entity.Framework = item.Framework;
 						}
 						if ( previousFramework != item.Framework )
-                        {
+						{
 							isFrameworkACollection = false;
 							if ( isACompetencyType )
 							{
@@ -1120,10 +1104,10 @@ namespace Import.Services
 						}
 						previousFramework = item.Framework;
 					} else
-                    {
+					{
 						//how to tell if a collection, if no framework? Would have to look up the competency? But in theory can be in a collection or framework. 
 						//Check for IsMemberOf
-                    }
+					}
 
 					entity.FrameworkIsACollection = isFrameworkACollection;
 					output.Add( entity );
@@ -1187,7 +1171,7 @@ namespace Import.Services
 			return output;
 		}   //
 
-		
+
 		public List<WPM.TextValueProfile> MapCAOListToTextValueProfile( List<MJ.CredentialAlignmentObject> input, int categoryId )
 		{
 			List<WPM.TextValueProfile> list = new List<WPM.TextValueProfile>();
@@ -1224,6 +1208,111 @@ namespace Import.Services
 		} //
 		#endregion
 
+		#region  Concepts (typically short URI)
+		//
+		public List<string> MapConceptURIListToList( object input, string property )
+		{
+			var output = new List<string>();
+			if ( input == null )
+				return null;
+
+			if ( input.GetType() == typeof( string ) )
+			{
+				//??
+				var text = input.ToString();
+			}
+			else if ( input.GetType() == typeof( List<string> ) )
+			{
+				//
+				var list = input as List<string>;
+				if ( list != null && list.Count() > 0 )
+				{
+					foreach ( var item in list )
+					{
+					}
+				}
+
+			}
+			else if ( input.GetType() == typeof( Newtonsoft.Json.Linq.JArray ) )
+			{
+				var stringArray = ( Newtonsoft.Json.Linq.JArray ) input;
+				var list = stringArray.ToObject<List<string>>();
+				//
+				if ( list != null && list.Count() > 0 )
+				{
+					foreach ( var item in list )
+					{
+					}
+				}
+			}
+			else if ( input.GetType() == typeof( List<MJ.CredentialAlignmentObject> ) ) //possible? prob not
+			{
+				//
+				var list = input as List<MJ.CredentialAlignmentObject>;
+				if ( list != null && list.Count() > 0 )
+				{
+					foreach ( var item in list )
+					{
+					}
+				}
+			}
+			else
+			{
+				//what would be the default
+			}
+			//foreach ( var item in input )
+			//{
+			//	if ( item == null )
+			//		continue;
+			//	//look up 
+			//	string nodeName = "";
+			//		//HandleLanguageMap( item.TargetNodeName, currentBaseObject, "TargetNodeName", ref lastLanguageMapString, false );
+
+			//	if ( !string.IsNullOrEmpty( nodeName ) )
+			//	{
+			//		output.Add( nodeName );
+			//	}
+			//}
+			return output;
+		}
+		/// <summary>
+		/// Handling properties that point to concepts of an unknown type/concept scheme
+		/// TODO - handle blank nodes
+		/// ALSO - what/how to store. Just the short uri?
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		public List<string> MapGenericConceptURIListToList( List<string> input, string property, ref SaveStatus status )
+		{
+			var output = new List<string>();
+			if ( input == null || input.Count == 0 )
+				return output;
+			//not sure if isResolved is necessary
+			bool isResolved = false;
+			foreach ( var item in input )
+			{
+				if ( item == null )
+					continue;
+				if ( item.StartsWith( "_:" ) )
+				{
+					var node = GetBlankNode( item );
+					//if type present,can use
+					//return ResolveOrgBlankNodeToGuid( property, node, ref status, ref isResolved );
+				}
+				//look up 
+				string nodeName = "";
+				var concept = CodesManager.GetPropertyBySchema( item );
+
+				if ( !string.IsNullOrEmpty( nodeName ) )
+				{
+					output.Add( nodeName );
+				}
+			}
+			return output;
+		}
+		#endregion
+
 		#region  Addresses, contact point, jurisdiction
 
 		/// <summary>
@@ -1237,7 +1326,6 @@ namespace Import.Services
 		{
 
 			List<MC.Address> list = new List<MC.Address>();
-			MC.Address output = new MC.Address();
 			if ( addresses == null || addresses.Count == 0 )
 				return list;
 
@@ -1245,7 +1333,7 @@ namespace Import.Services
 
 			foreach ( var item in addresses )
 			{
-				output = MapAddress( item );
+				Address output = MapAddress( item );
 
 				if ( item.ContactPoint != null && item.ContactPoint.Count > 0 )
 				{
@@ -1275,52 +1363,6 @@ namespace Import.Services
 			return list;
 		} //
 
-		/// <summary>
-		/// Same as FormatAvailableAtAddresses - removing
-		/// </summary>
-		/// <param name="addresses"></param>
-		/// <param name="status"></param>
-		/// <returns></returns>
-		public List<MC.Address> FormatAddresses( List<InputAddress> addresses, ref SaveStatus status )
-		{
-
-			List<MC.Address> list = new List<MC.Address>();
-			MC.Address output = new MC.Address();
-			if ( addresses == null || addresses.Count == 0 )
-				return list;
-
-			MC.ContactPoint cp = new MC.ContactPoint();
-
-			foreach ( var a in addresses )
-			{
-				output = MapAddress( a );
-
-				if ( a.ContactPoint != null && a.ContactPoint.Count > 0 )
-				{
-					foreach ( var cpi in a.ContactPoint )
-					{
-						cp = new MC.ContactPoint()
-						{
-							Name = HandleLanguageMap( cpi.Name, currentBaseObject, "ContactPointName", false ),
-							Name_Map = lastLanguageMapString,
-							ContactType = HandleLanguageMap( cpi.ContactType, currentBaseObject, "ContactPointContactType", false ),
-							ContactType_Map = lastLanguageMapString
-						};
-						//cp.ContactOption = MapListToString( cpi.ContactOption );
-						cp.PhoneNumbers = cpi.PhoneNumbers;
-						cp.FaxNumber = cpi.FaxNumber;
-						cp.Emails = cpi.Emails;
-						cp.SocialMediaPages = cpi.SocialMediaPages;
-
-						output.ContactPoint.Add( cp );
-					}
-				}
-				list.Add( output );
-
-			}
-
-			return list;
-		} //
 
 		public List<MC.JurisdictionProfile> MapToJurisdiction( List<MJ.JurisdictionProfile> jps, ref SaveStatus status )
 		{
@@ -1396,7 +1438,7 @@ namespace Import.Services
 					foreach ( var item in jp.JurisdictionException )
 					{
 						gc = new MC.GeoCoordinates();
-						
+
 						gc = ResolveGeoCoordinates( item );
 						gc.IsException = true;
 						if ( !string.IsNullOrWhiteSpace( item.PostalCode ) )
@@ -1459,7 +1501,7 @@ namespace Import.Services
 				//can we have different lat/lng for the same geoUri?
 				if ( input.Latitude != null && input.Latitude != 0 )
 				{
-					gc.Latitude = (double)input.Latitude;
+					gc.Latitude = ( double ) input.Latitude;
 					gc.Longitude = ( double ) input.Longitude;
 				}
 
@@ -1474,8 +1516,8 @@ namespace Import.Services
 			MC.Address output = new MC.Address()
 			{
 				PostalCode = input.PostalCode,
-				PostOfficeBoxNumber=input.PostOfficeBoxNumber,
-				Latitude = input.Latitude == null ? 0 : (double) input.Latitude,
+				PostOfficeBoxNumber = input.PostOfficeBoxNumber,
+				Latitude = input.Latitude == null ? 0 : ( double ) input.Latitude,
 				Longitude = input.Longitude == null ? 0 : ( double ) input.Longitude
 			};
 			output.Name = HandleLanguageMap( input.Name, currentBaseObject, "PlaceName", false );
@@ -1499,7 +1541,7 @@ namespace Import.Services
 			if ( output.AddressRegion.Length < 3 )
 			{
 				output.HasShortRegion = true;
-				if ( output.AddressRegion!= null && output.AddressRegion.Length == 2 && !string.IsNullOrWhiteSpace(output.AddressCountry) )
+				if ( output.AddressRegion != null && output.AddressRegion.Length == 2 && !string.IsNullOrWhiteSpace( output.AddressCountry ) )
 				{
 					//should check country? 
 					var fullRegion = "";
@@ -1510,13 +1552,15 @@ namespace Import.Services
 					}
 				}
 			}
-
-			output.IdentifierOLD = MapIdentifierValueList( input.Identifier );
-			if ( output.IdentifierOLD != null && output.IdentifierOLD.Count() > 0 )
+			if ( input.Identifier != null && input.Identifier.Count() > 0 )
 			{
+				output.IdentifierOLD = MapIdentifierValueList( input.Identifier );
 				output.IdentifierJson = JsonConvert.SerializeObject( output.IdentifierOLD, MappingHelperV3.GetJsonSettings() );
+
+				output.Identifier = MapIdentifierValueListInternal( input.Identifier );
+
 			}
-			//now mignt be a better time to do the geo coding?
+
 			return output;
 		}
 
@@ -1578,12 +1622,12 @@ namespace Import.Services
 		}
 		#endregion
 		#region  AggregateDataProfile, Earnings, Holders profile
-		public List<MC.AggregateDataProfile> FormatAggregateDataProfile( string parentCTID, List<MJ.AggregateDataProfile> profiles, List<BNode> bnodes, ref SaveStatus status,  ref List<string> ctidList )
+		public List<MC.AggregateDataProfile> FormatAggregateDataProfile( string parentCTID, List<MJ.AggregateDataProfile> profiles, ref SaveStatus status, ref List<string> ctidList )
 		{
 			if ( profiles == null || profiles.Count == 0 )
 				return null;
-            //ref bool hasDataSetProfiles,
-            //hasDataSetProfiles = false;
+			//ref bool hasDataSetProfiles,
+			//hasDataSetProfiles = false;
 			var output = new List<MC.AggregateDataProfile>();
 			foreach ( var input in profiles )
 			{
@@ -1612,16 +1656,16 @@ namespace Import.Services
 				{
 					profile.JobsObtained = HandleQuantitiveValueList( input.JobsObtained, "AggregateDataProfile.JobsObtained", false );
 				}
-                //handle: RelevantDataSet
-                //TODO - handle previous dsps not in this import - no this is partly a separate one time fix.
-                //23-02-12 mp - need to save the CTID, not the Id. so probably don't have to do the ResolveEntityRegistryAtId
+				//handle: RelevantDataSet
+				//TODO - handle previous dsps not in this import - no this is partly a separate one time fix.
+				//23-02-12 mp - need to save the CTID, not the Id. so probably don't have to do the ResolveEntityRegistryAtId
 				//			- sigh. Sill have need to do the add pending later then
 				//			- next: updated trigger to just do virtual delete
-                profile.RelevantDataSetList = MapEntityReferences( "AggregateData.RelevantDataSet", input.RelevantDataSet, CodesManager.ENTITY_TYPE_DATASET_PROFILE, ref status, ref ctidList );
+				profile.RelevantDataSetList = MapEntityReferences( "AggregateData.RelevantDataSet", input.RelevantDataSet, CodesManager.ENTITY_TYPE_DATASET_PROFILE, ref status, ref ctidList );
 				//if ( profile.RelevantDataSetList != null && profile.RelevantDataSetList.Any() )
 				//	hasDataSetProfiles = true;
 
-                output.Add( profile );
+				output.Add( profile );
 			}
 
 			return output;
@@ -1733,9 +1777,9 @@ namespace Import.Services
 						}
 						//get dataset profile
 						var dspi = outcomesDTO.DataSetProfiles.FirstOrDefault( s => s.CTID == ctid );
-						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID) )
+						if ( dspi == null || string.IsNullOrWhiteSpace( dspi.CTID ) )
 						{
-							status.AddError( string.Format("Error: Unable to find the DataSetProfile for HoldersProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.CTID, ctid ));
+							status.AddError( string.Format( "Error: Unable to find the DataSetProfile for HoldersProfile (HP.CTID: '{0}') using dataSetProfile CTID: '{1}'", input.CTID, ctid ) );
 							continue;
 						}
 						var dspo = FormatDataSetProfile( input.CTID, dspi, ref status );
@@ -1776,7 +1820,7 @@ namespace Import.Services
 				SubjectIdentification = HandleLanguageMap( input.SubjectIdentification, "SubjectIdentification" ),
 			};
 			output.DataProviderUID = MapOrganizationReferenceGuid( "DataSetProfile.DataProvider", input.DataProvider, ref status );
-			if (output.DataProviderUID == null || output.DataProviderUID == Guid.Empty)
+			if ( output.DataProviderUID == null || output.DataProviderUID == Guid.Empty )
 			{
 				output.DataProviderUID = CurrentOwningAgentUid;
 			}
@@ -1793,9 +1837,9 @@ namespace Import.Services
 			}
 
 			output.AdministrationProcess = FormatProcessProfile( input.AdministrationProcess, ref status );
-			if (input.DistributionFile != null && input.DistributionFile.Any() )
+			if ( input.DistributionFile != null && input.DistributionFile.Any() )
 			{
-				foreach(var item in input.DistributionFile)
+				foreach ( var item in input.DistributionFile )
 				{
 					if ( !string.IsNullOrWhiteSpace( item ) )
 						output.DistributionFile.Add( item.Trim() );
@@ -1821,10 +1865,10 @@ namespace Import.Services
 						}
 					}
 
-                    output.DataSetTimePeriodJson = JsonConvert.SerializeObject( output.DataSetTimePeriod, MappingHelperV3.GetJsonSettings() );
+					output.DataSetTimePeriodJson = JsonConvert.SerializeObject( output.DataSetTimePeriod, MappingHelperV3.GetJsonSettings() );
 
-                }
-				
+				}
+
 			}
 			catch ( Exception ex )
 			{
@@ -1836,7 +1880,7 @@ namespace Import.Services
 		public MCQ.DataSetTimeFrame FormatDataSetTimeFrame( string parentCTID, MJ.QData.DataSetTimeFrame input, ref SaveStatus status )
 		{
 			//|| string.IsNullOrWhiteSpace( input.CtdlId )
-			if ( input == null  )
+			if ( input == null )
 				return null;
 
 			LoggingHelper.DoTrace( 7, string.Format( "FormatDataSetTimeFrame. parentCTID: {0}, Name: {1}, ", parentCTID, input.Name ) );
@@ -1851,7 +1895,9 @@ namespace Import.Services
 			};
 			//to avoid more entity types, and/or codes.PropertyCategories, just store list of names (think this should be single
 			//output.DataSourceCoverageType = MapCAOListToEnumermation( input.DataSourceCoverageType );
-			output.DataSourceCoverageTypeList = MapCAOListToList( input.DataSourceCoverageType );
+			//output.DataSourceCoverageTypeList = MapCAOListToList( input.DataSourceCoverageTypeOLD );
+			//TODO handle change from CAO
+			output.DataSourceCoverageTypeList = MapConceptURIListToList( input.DataSourceCoverageType, "DataSourceCoverageType" );
 
 			try
 			{
@@ -1880,24 +1926,19 @@ namespace Import.Services
 		public MCQ.DataProfile FormatDataProfiles( string parentCTID, MJ.QData.DataProfile input, ref SaveStatus status )
 		{
 			//|| string.IsNullOrWhiteSpace( input.CtdlId )
-			if ( input == null  )
+			if ( input == null )
 				return null;
 			MCQ.DataProfileJson qdSummary = new MCQ.DataProfileJson();
 			LoggingHelper.DoTrace( 7, "FormatDataProfiles. parentCTID: " + parentCTID );
 			var output = new MCQ.DataProfile()
 			{
 				//bnID = input.CtdlId,
-				//Adjustment = HandleLanguageMap( input.Adjustment, "Adjustment" ),
 				AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType ),
 				Description = HandleLanguageMap( input.Description, "Description" ),
-				//EarningsDefinition = HandleLanguageMap( input.EarningsDefinition, "EarningsDefinition" ),
-				//EarningsThreshold = HandleLanguageMap( input.EarningsThreshold, "EarningsThreshold" ),
-				//EmploymentDefinition = HandleLanguageMap( input.EmploymentDefinition, "EmploymentDefinition" ),
 				IncomeDeterminationType = MapCAOToEnumermation( input.IncomeDeterminationType ),
-				//WorkTimeThreshold = HandleLanguageMap( input.WorkTimeThreshold, "WorkTimeThreshold" ),
 			};
-			//output.AdministrativeRecordType = MapCAOToEnumermation( input.AdministrativeRecordType );
-			output.AdministrativeRecordTypeList = MapCAOToList( input.AdministrativeRecordType );
+			//??why doing twice and not storing it?
+			//output.AdministrativeRecordTypeList = MapCAOToList( input.AdministrativeRecordType );
 			//
 			try
 			{
@@ -1924,8 +1965,10 @@ namespace Import.Services
 				output.DataProfileAttributes.DemographicEarningsRate = HandleQuantitiveValueList( input.DemographicEarningsRate, "DataProfile.DemographicEarningsRate", "Demographic Earnings Rate", ref qdSummary, false );
 				output.DataProfileAttributes.DemographicEmploymentRate = HandleQuantitiveValueList( input.DemographicEmploymentRate, "DataProfile.DemographicEmploymentRate", "Demographic Employment Rate", ref qdSummary, false );
 				output.DataProfileAttributes.EmploymentRate = HandleQuantitiveValueList( input.EmploymentRate, "DataProfile.EmploymentRate", "Employment Rate", ref qdSummary, false );
-				//
-				output.DataProfileAttributes.FacultyToStudentRatio = input.FacultyToStudentRatio;
+                //
+                output.DataProfileAttributes.EmploymentOutlook = HandleQuantitiveValueList( input.EmploymentOutlook, "DataProfile.EmploymentOutlook", "EmploymentOutlook", ref qdSummary, false );
+                //
+                output.DataProfileAttributes.FacultyToStudentRatio = input.FacultyToStudentRatio;
 
 
 				output.DataProfileAttributes.HoldersInSet = HandleQuantitiveValueList( input.HoldersInSet, "DataProfile.HoldersInSet", "Holders In Set", ref qdSummary, false );
@@ -1973,11 +2016,11 @@ namespace Import.Services
 			if ( profiles == null || !profiles.Any() )
 				return output;
 
-			foreach( var input in profiles )
+			foreach ( var input in profiles )
 			{
 				//what are the minimum properties
 				if ( input == null ||
-					( input.Value == 0 && input.MinValue == 0 && input.MaxValue == 0 ))
+					( input.Value == 0 && input.MinValue == 0 && input.MaxValue == 0 ) )
 				{
 					continue;
 				}
@@ -2018,8 +2061,8 @@ namespace Import.Services
 			foreach ( var item in profiles )
 			{
 				//what are the minimum properties
-				if (item == null || 
-					(item.Median == 0 && item.Percentile10 == 0  && item.Percentile25 == 0 && item.Percentile75 == 0 && item.Percentile90 == 0 ))
+				if ( item == null ||
+					( item.Median == 0 && item.Percentile10 == 0 && item.Percentile25 == 0 && item.Percentile75 == 0 && item.Percentile90 == 0 ) )
 				{
 					continue;
 				}
@@ -2065,7 +2108,7 @@ namespace Import.Services
 				{
 					Name = HandleLanguageMap( input.Name, "Name" ),
 					Description = HandleLanguageMap( input.Description, "Description" ),
-					SubjectValue= HandleQuantitiveValueList( input.SubjectValue, "SubjectProfile.SubjectValue", false )
+					SubjectValue = HandleQuantitiveValueList( input.SubjectValue, "SubjectProfile.SubjectValue", false )
 				};
 				sp.SubjectType = MapCAOListToEnumermation( input.SubjectType, false );
 
@@ -2095,7 +2138,7 @@ namespace Import.Services
 					DateEffective = MapDate( input.DateEffective, "DateEffective", ref status ),
 					//JobsObtained = input.JobsObtained
 				};
-				if ( input.JobsObtained != null && input.JobsObtained.Any())
+				if ( input.JobsObtained != null && input.JobsObtained.Any() )
 				{
 					profile.JobsObtainedList = HandleQuantitiveValueList( input.JobsObtained, "EmploymentOutcomeProfile.JobsObtained", false );
 					if ( profile.JobsObtainedList != null && profile.JobsObtainedList.Any() )
@@ -2150,7 +2193,7 @@ namespace Import.Services
 			if ( string.IsNullOrWhiteSpace( date ) )
 				return null;
 
-			DateTime newDate = new DateTime();
+			DateTime newDate = DateTime.Now;
 
 			if ( DateTime.TryParse( date, out newDate ) )
 			{
@@ -2258,7 +2301,7 @@ namespace Import.Services
 			bool isResolved = false;
 			Guid orgRef = new Guid();
 			List<Guid> orgRefs = new List<Guid>();
-			string registryAtId = "";
+			string inputAtId = "";
 			//var or = new List<RA.Models.Input.OrganizationReference>();
 			if ( input == null || input.Count < 1 )
 				return orgRefs;
@@ -2269,26 +2312,7 @@ namespace Import.Services
 				if ( string.IsNullOrWhiteSpace( target ) )
 					continue;
 
-				//determine if just Id, or base
-				if ( target.StartsWith( "http" ) )
-				{
-					registryAtId = target;
-					if ( registryAtId != registryAtId.ToLower() )
-					{
-						status.AddWarning( string.Format( "Property: {0} Contains Upper case Reference URI: {1} ", property, registryAtId ) );
-					}
-					orgRef = ResolveOrgRegistryAtIdToGuid( registryAtId, ref status, ref isResolved );
-					//break;
-				}
-				else if ( target.StartsWith( "_:" ) )
-				{
-					var node = GetBlankNode( target );
-					orgRef = ResolveOrgBlankNodeToGuid( property, node, ref status, ref isResolved );
-				} else
-				{
-					//unexpected
-					status.AddError( string.Format( "MapOrganizationReferenceGuids: Unhandled target  format found: {0} for property: {1}.", target, property ) );
-				}
+				orgRef = MapOrganizationReferenceGuids( property, target, ref status );
 
 				if ( BaseFactory.IsGuidValid( orgRef ) )
 					orgRefs.Add( orgRef );
@@ -2296,12 +2320,69 @@ namespace Import.Services
 
 			return orgRefs;
 		}
-		private Guid ResolveOrgRegistryAtIdToGuid( string registryAtId, ref SaveStatus status, ref bool isResolved )
+
+		public Guid MapOrganizationReferenceGuids( string property, string target, ref SaveStatus status )
+		{
+			//not sure if isResolved is necessary
+			bool isResolved = false;
+			Guid orgRef = new Guid();
+			List<Guid> orgRefs = new List<Guid>();
+			string inputAtId = "";
+
+				if ( string.IsNullOrWhiteSpace( target ) )
+					return orgRef;
+
+				//determine if just Id, or base
+				if ( target.StartsWith( "http" ) )
+				{
+					inputAtId = target;
+
+					if ( !IsCredentialRegistryURL( target ) )
+					{
+
+					}
+					else
+					{
+						if ( inputAtId != inputAtId.ToLower() )
+						{
+							status.AddWarning( string.Format( "Property: {0} Contains Upper case Reference URI: {1} ", property, inputAtId ) );
+						}
+					}
+
+					orgRef = ResolveOrgRegistryAtIdToGuid( inputAtId, ref status, ref isResolved );
+					//break;
+				}
+				else if ( target.StartsWith( "_:" ) )
+				{
+					var node = GetBlankNode( target );
+					orgRef = ResolveOrgBlankNodeToGuid( property, node, ref status, ref isResolved );
+				}
+				else
+				{
+					//unexpected
+					status.AddError( string.Format( "MapOrganizationReferenceGuids: Unhandled target  format found: {0} for property: {1}.", target, property ) );
+				}
+
+				//if ( BaseFactory.IsGuidValid( orgRef ) )
+				//	orgRefs.Add( orgRef );
+			
+
+			return orgRef;
+		}
+
+		/// <summary>
+		/// Check if the org related uri has already been resolved.
+		/// </summary>
+		/// <param name="inputAtId"></param>
+		/// <param name="status"></param>
+		/// <param name="isResolved"></param>
+		/// <returns></returns>
+		private Guid ResolveOrgRegistryAtIdToGuid( string inputAtId, ref SaveStatus status, ref bool isResolved )
 		{
 			Guid entityRef = new Guid();
-			if ( !string.IsNullOrWhiteSpace( registryAtId ) )
+			if ( !string.IsNullOrWhiteSpace( inputAtId ) )
 			{
-				entityRef = ResolutionServices.ResolveOrgByRegistryAtId( registryAtId, ref status, ref isResolved );
+				entityRef = ResolutionServices.ResolveOrgByRegistryAtId( inputAtId, ref status, ref isResolved );
 			}
 
 			return entityRef;
@@ -2321,32 +2402,126 @@ namespace Import.Services
 			if ( input == null )
 				return entityUid;
 			//20-08-23 update to reuse 'duplicate' method
-			int orgId = ResolveBlankNodeAsOrganization( property, input, ref entityUid, ref status );
+			int orgId = ResolveBlankNodeAsOrganization( property, input, 2, ref entityUid, ref status );
 
 			return entityUid;
-			
+
 		}
 
+		//mapping to an int
+		public List<int> MapOrganizationReferenceToInteger( string property, List<string> input, ref SaveStatus status )
+		{
+			//not sure if isResolved is necessary
+			bool isResolved = false;
+			var orgRef = 0;
+			var orgRefs = new List<int>();
+			string inputAtId = "";
+			//
+			if ( input == null || input.Count < 1 )
+				return null;
 
+			//just take first one
+			foreach ( var target in input )
+			{
+				if ( string.IsNullOrWhiteSpace( target ) )
+					continue;
+
+				//determine if just Id, or base
+				if ( target.StartsWith( "http" ) )
+				{
+					inputAtId = target;
+					if ( !IsCredentialRegistryURL( target ) )
+					{
+
+					}
+					else
+					{
+						if ( inputAtId != inputAtId.ToLower() )
+						{
+							status.AddWarning( string.Format( "Property: {0} Contains Upper case Reference URI: {1} ", property, inputAtId ) );
+						}
+					}
+
+					orgRef = ResolveOrgRegistryAtId(property, inputAtId, ref status, ref isResolved );
+					//break;
+				}
+				else if ( target.StartsWith( "_:" ) )
+				{
+					var node = GetBlankNode( target );
+					orgRef = ResolveOrgBlankNode( property, node, ref status, ref isResolved );
+				}
+				else
+				{
+					//unexpected
+					status.AddError( string.Format( "MapOrganizationReference: Unhandled target  format found: {0} for property: {1}.", target, property ) );
+				}
+
+				if ( orgRef > 0 )
+					orgRefs.Add( orgRef );
+			}
+
+			return orgRefs;
+		}
+
+		/// <summary>
+		/// Check if the org related uri has already been resolved.
+		/// </summary>
+		/// <param name="inputAtId"></param>
+		/// <param name="status"></param>
+		/// <param name="isResolved"></param>
+		/// <returns></returns>
+		private int ResolveOrgRegistryAtId( string property, string inputAtId, ref SaveStatus status, ref bool isResolved )
+		{
+			var entityRef = 0;
+			if ( !string.IsNullOrWhiteSpace( inputAtId ) )
+			{
+				entityRef = ResolutionServices.ResolveEntityByRegistryAtId( property, inputAtId, 2, ref status, ref isResolved );
+			}
+
+			return entityRef;
+		}
+
+		/// <summary>
+		/// Analyze a organization in a blank node: check if exists, by subject webpage. 
+		/// If found return Guid, otherwise create new base
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="status"></param>
+		/// <param name="isResolved"></param>
+		/// <returns></returns>
+		private int ResolveOrgBlankNode( string property, BNode input, ref SaveStatus status, ref bool isResolved )
+		{
+			Guid entityUid = new Guid();
+
+			if ( input == null )
+				return 0;
+			//20-08-23 update to reuse 'duplicate' method
+			int orgId = ResolveBlankNodeAsOrganization( property, input, 2, ref entityUid, ref status );
+
+			return orgId;
+
+		}
+
+		#endregion
 		public void MapOrganizationPublishedBy( MC.TopLevelObject output, ref SaveStatus status )
 		{
 			if ( string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
 			{
-                //unlikely, but return? or check for previous?
+				//unlikely, but return? or check for previous?
 				//if ( output.Id > 0 )
-    //            {
-    //                if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-    //                {
-    //                    var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-    //                    if ( publishedByList != null && publishedByList.Any() )
-    //                    {
-    //                        var pby = publishedByList[0].ActingAgentUid;
-    //                        output.PublishedBy = new List<Guid>() { publishedByList[0].ActingAgentUid };
-    //                    }
-    //                }
-    //            }
-                //NOTE: took approach to only handle a publisher if different than owner? Not sure if this is correct?
-                return;
+				//            {
+				//                if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
+				//                {
+				//                    var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
+				//                    if ( publishedByList != null && publishedByList.Any() )
+				//                    {
+				//                        var pby = publishedByList[0].ActingAgentUid;
+				//                        output.PublishedBy = new List<Guid>() { publishedByList[0].ActingAgentUid };
+				//                    }
+				//                }
+				//            }
+				//NOTE: took approach to only handle a publisher if different than owner? Not sure if this is correct?
+				return;
 			}
 			var swp = "";
 			var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
@@ -2365,17 +2540,17 @@ namespace Import.Services
 				//if publisher not imported yet (because a TPP may not normally publish itself), all publishee stuff will be orphaned
 				var entityUid = Guid.NewGuid();
 				var statusMsg = "";
-				if (!string.IsNullOrWhiteSpace( status.ResourceURL ) )
-                {
+				if ( !string.IsNullOrWhiteSpace( status.ResourceURL ) )
+				{
 					var resPos = status.ResourceURL.IndexOf( "/resources/" );
 					swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-					
+
 				} else
-                {
+				{
 					var registryURL = UtilityManager.GetAppKeyValue( "credentialRegistryResource" );
 					status.Community = status.Community ?? UtilityManager.GetAppKeyValue( "defaultCommunity" );
 					//we have CTID, so make up a URL
-					swp = string.Format(registryURL, status.Community, status.DocumentPublishedBy);
+					swp = string.Format( registryURL, status.Community, status.DocumentPublishedBy );
 					status.ResourceURL = swp;
 				}
 				int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
@@ -2385,54 +2560,84 @@ namespace Import.Services
 			}
 		}
 
-		#endregion
-
 
 		#region  Entities
+		/// <summary>
+		/// Get the EntityTypeId for the provided type.
+		/// TODO - this is not good to have to update this method, should use the code table.
+		/// Confirm if this is typically just the top level classes (i.e. not conditionProfile, etc.)
+		/// </summary>
+		/// <param name="entityType"></param>
+		/// <returns></returns>
 		public static int GetEntityTypeId( string entityType )
 		{
 			int entityTypeId = 0;
 			if ( string.IsNullOrWhiteSpace( entityType ) )
 				return entityTypeId;
+			//or maybe just check credential. The action types will not be in the code.entity or codes.propertyValue tables
+			//OK added a lookup for GetCredentialingActionType
+			entityTypeId = CodesManager.Codes_GetEntityTypeId( entityType );
+			if ( entityTypeId  > 0)
+				return entityTypeId;	
 
 			//OR just remove ceterms etc, to reduce number of checks
 			entityType = entityType.Replace( "ceterms:", "" );
 
-            switch ( entityType.ToLower() )
+			switch ( entityType.ToLower() )
 			{
-				case "credential":			//leave just in case
-                case "apprenticeshipcertificate":
-                case "associatedegree":
-                case "associateofartsdegree":
-                case "associateofsciencedegree":
-                case "associateofappliedartsdegree":
-                case "associateofappliedsciencedegree":
-                case "bachelordegree":
-                case "bachelorofartsdegree":
-                case "bachelorofsciencedegree":
-                case "badge":
-                case "certificate":
-                case "certification":
-                case "certificateofcompletion":
-                case "digitalbadge":
-                case "diploma": 
-                case "doctoraldegree":
-                case "generaleducationdevelopment":
-                case "journeymancertificate":
-                case "license":
-                case "mastercertificate":
-                case "masterdegree":
-                case "masterofartsdegree":
-                case "masterofsciencedegree":
-                case "microcredential":
-                case "openbadge":
-                case "professionaldoctorate":
-                case "qualityassurancecredential":
-                case "researchdoctorate":
-                case "secondaryschooldiploma":
-                case "specialistdegree":
-                    entityTypeId = 1;
+
+				//NOTE: don't have to maintain credentials here, now that using the above look up
+				case "credential":          //leave just in case
+				case "academiccertificate":
+				case "apprenticeshipcertificate":
+				case "associatedegree":
+				case "associateofappliedartsdegree":
+				case "associateofappliedsciencedegree":
+				case "associateofartsdegree":
+				case "associateofsciencedegree":
+				case "bachelordegree":
+				case "bachelorofartsdegree":
+				case "bachelorofsciencedegree":
+				case "badge":
+				case "basictechnicalcertificate":
+				case "certificate":
+				case "certificateofcompletion":
+				case "certificateofparticipation":
+				case "certification":
+				case "digitalbadge":
+				case "diploma":
+				case "doctoraldegree":
+				case "generaleducationdevelopment":
+				case "generaleducationlevel1certificate":
+				case "generaleducationlevel2certificate":
+				case "highereducationlevel1certificate":
+				case "highereducationlevel2certificate":
+				case "journeymancertificate":
+				case "license":
+				case "mastercertificate":
+				case "masterdegree":
+				case "masterofartsdegree":
+				case "masterofsciencedegree":
+				case "microcredential":
+				case "openbadge":
+				case "postbaccalaureatecertificate":
+				case "postmastercertificate":
+				case "preapprenticeshipcertificate":
+				case "professionalcertificate":
+				case "professionaldoctorate":
+				case "proficiencycertificate":
+				case "qualityassurancecredential":
+				case "researchdoctorate":
+				case "secondaryeducationcertificate":
+				case "secondaryschooldiploma":
+				case "specialistdegree":
+				case "technicallevel1certificate":
+				case "technicallevel2certificate":
+				case "technicallevel3certificate":
+				case "workbasedlearningcertificate":
+					entityTypeId = 1;
 					break;
+					//23-12-19 mp - not sure we should use separate entityTypeId for orgs here? But am doing so for lopps?
 				case "ceterms:credentialorganization":
 				case "credentialorganization":
 					entityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION;
@@ -2483,7 +2688,7 @@ namespace Import.Services
 				case "collection":
 					entityTypeId = 9;
 					break;
-				
+
 				case "ceasn:competencyframework":
 				case "competencyframework":
 					//ISSUE - still have references to 17 in places for CaSS competencies
@@ -2497,17 +2702,34 @@ namespace Import.Services
 				case "progressionmodel":
 					entityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_MODEL;
 					break;
-                case "ceterms:scheduledoffering":
-                case "scheduledoffering":
-                    entityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
-                    break;
-                case "ceterms:conditionmanifest":
+				case "ceterms:scheduledoffering":
+				case "scheduledoffering":
+					entityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
+					break;
+				case "ceasn:competency":
+				case "competency":
+					entityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY;
+					break;
+				case "ceterms:conditionmanifest":
 				case "conditionmanifest":
 					entityTypeId = 19;
 					break;
 				case "ceterms:costmanifest":
 				case "costmanifest":
 					entityTypeId = 20;
+					break;
+					//NOTE: need to add these to the codes table
+				case "accreditaction":
+				case "advancedstandingaction":
+				case "approveaction":
+				case "credentialingaction":
+				case "offeraction":
+				case "recognizeaction":
+				case "regulateaction":
+				case "renewaction":
+				case "revokeaction":
+				case "rightsaction":
+					entityTypeId = CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION;
 					break;
 				case "ceterms:pathwayset":
 				case "pathwayset":
@@ -2548,16 +2770,16 @@ namespace Import.Services
 				case "occupation":
 					entityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
 					break;
-                case "ceterms:supportservice":
-                case "supportservice":
-                    entityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
-                    break;
-                case "ceterms:verificationserviceprofile":
-                case "verificationserviceprofile":
-                    entityTypeId = CodesManager.ENTITY_TYPE_VERIFICATION_PROFILE;
-                    break;
-                //renumber these for future removal???
-                case "ceterms:earningsprofile":
+				case "ceterms:supportservice":
+				case "supportservice":
+					entityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
+					break;
+				case "ceterms:verificationserviceprofile":
+				case "verificationserviceprofile":
+					entityTypeId = CodesManager.ENTITY_TYPE_VERIFICATION_PROFILE;
+					break;
+				//renumber these for future removal???
+				case "ceterms:earningsprofile":
 				case "earningsprofile":
 					entityTypeId = CodesManager.ENTITY_TYPE_EARNINGS_PROFILE;
 					break;
@@ -2569,7 +2791,7 @@ namespace Import.Services
 				case "employmentoutcomeprofile":
 					entityTypeId = CodesManager.ENTITY_TYPE_EMPLOYMENT_OUTCOME_PROFILE;
 					break;
-				case "asn:rubric":
+				case "ceasn:rubric":
 				case "rubric":
 					entityTypeId = CodesManager.ENTITY_TYPE_RUBRIC;
 					break;
@@ -2588,9 +2810,11 @@ namespace Import.Services
 		/// - get the type
 		/// - call method to save the blank node as the appropriate type
 		/// </summary>
+		/// <param name="property"></param>
 		/// <param name="input"></param>
 		/// <param name="entityTypeId">If zero, look up by ctid, or </param>
 		/// <param name="status"></param>
+		/// <param name="parentCTID"></param>
 		/// <returns></returns>
 		public List<Guid> MapEntityReferenceGuids( string property, List<string> input, int entityTypeId, ref SaveStatus status, string parentCTID = "" )
 		{
@@ -2611,48 +2835,10 @@ namespace Import.Services
 			{
 				if ( string.IsNullOrWhiteSpace( target ) )
 					continue;
-                entityRef = new Guid();
-                //determine if just Id, or base
-                if ( target.StartsWith( "http" ) )
-				{
-					registryAtId = target;
-					if ( registryAtId != registryAtId.ToLower() )
-					{
-						status.AddWarning( string.Format( "Property: {0} Contains Upper case Reference URI: {1} ", property, registryAtId ) );
-					}
-					//TODO - need to ensure existing reference entities can be updated!!!!!!!!
-					entityRef = ResolveEntityRegistryAtIdToGuid( property, registryAtId, entityTypeId, ref status, parentCTID );
-					//break;
-				}
-				else if ( target.StartsWith( "_:" ) )
-				{
-					//should be a blank node
-					var node = GetBlankNode( target );
-					string name = HandleBNodeLanguageMap( node.Name, "blank node name", true );
-					if ( node == null || string.IsNullOrWhiteSpace( name ) )
-					{
-						status.AddError( string.Format( "A Blank node was not found for bNodeId of: {0}. ", target ) );
-						continue;
-						//return entityRefs;
-					}
-					
-					string desc = HandleBNodeLanguageMap( node.Description, "blank node desc", true );
-					bool isQAOrgType = false;
-					//OR determine a context (ie. property accredited by)
-					//NOTE: currently only called for org where is accredits etc.
-					if ( origEntityTypeId == 0 || origEntityTypeId == 2 )
-						entityTypeId = GetBlankNodeEntityType( node, ref isQAOrgType );
-					//if type present,can use
-					//DUPLICATE ALARM: may want to take approach of deleting existing
-					entityRef = ResolveEntityBaseToGuid( property, node, entityTypeId, isQAOrgType, ref status );
-				} else
-				{
-					//???
-					status.AddError( string.Format( "Unexpected value of '{0}' for EntityReference: '{1}'. The expected value is either a registry URI or a blank node identifier.", target, property ) );
-					return entityRefs;
-				}
 
-				//
+				entityRef= MapEntityReferenceGuid( property, target, entityTypeId, ref status, parentCTID );
+			
+				////
 				if ( BaseFactory.IsGuidValid( entityRef ) )
 					entityRefs.Add( entityRef );
 				else
@@ -2662,6 +2848,73 @@ namespace Import.Services
 			}
 
 			return entityRefs;
+		}
+
+		public Guid MapEntityReferenceGuid( string property, string input, int entityTypeId, ref SaveStatus status, string parentCTID = "" )
+		{
+			Guid entityRef = new Guid();
+			MJ.EntityBase eb = new MJ.EntityBase();
+			string registryAtId = "";
+			if ( string.IsNullOrWhiteSpace( input ))
+				return entityRef;
+			int origEntityTypeId = entityTypeId;
+			if ( entityTypeId == 0 )
+			{
+				//don't always know the type, especially for org accrediting/owning something.
+			}
+
+			//determine if just Id, or base
+			if ( input.StartsWith( "http" ) )
+			{
+				registryAtId = input;
+				if ( registryAtId != registryAtId.ToLower() )
+				{
+					status.AddWarning( string.Format( "Property: {0} Contains Upper case Reference URI: {1} ", property, registryAtId ) );
+				}
+				//TODO - need to ensure existing reference entities can be updated!!!!!!!!
+				//	also these may need to be reindexed!
+				entityRef = ResolveEntityRegistryAtIdToGuid( property, registryAtId, entityTypeId, ref status, parentCTID );
+				//break;
+			}
+			else if ( input.StartsWith( "_:" ) )
+			{
+				//should be a blank node
+				var node = GetBlankNode( input );
+				//temp fix
+				//if ( node.Type == "ceterms:Occupation" && ( System.DateTime.Now.ToString( "yyyy-MM-dd HH" ) == "2023-09-27 17" || System.DateTime.Now.ToString( "yyyy-MM-dd HH" ) == "2023-09-27 18" ) )
+				//{
+				//	node.Type = "ceterms:AssessmentProfile";
+				//}
+				string name = HandleBNodeLanguageMap( node.Name, "blank node name", true );
+				if ( node == null || string.IsNullOrWhiteSpace( name ) )
+				{
+					status.AddError( string.Format( "A Blank node was not found for bNodeId of: {0}. ", input ) );
+					return entityRef;
+					//return entityRefs;
+				}
+
+				string desc = HandleBNodeLanguageMap( node.Description, "blank node desc", true );
+				bool isQAOrgType = false;
+				//OR determine a context (ie. property accredited by)
+				//NOTE: currently only called for org where is accredits etc.
+				if ( origEntityTypeId == 0 || origEntityTypeId == 2 )
+					entityTypeId = GetBlankNodeEntityType( node, ref isQAOrgType );
+				//again no, needs to be saved as a course
+				if ( entityTypeId == 37 || entityTypeId == 36 )
+				{
+					//entityTypeId = 7;
+				}
+				//if type present,can use
+				//DUPLICATE ALARM: may want to take approach of deleting existing
+				entityRef = ResolveBlankNodeToGuid( property, node, entityTypeId, isQAOrgType, ref status );
+			}
+			else
+			{
+				//???
+				status.AddError( string.Format( "Unexpected value of '{0}' for EntityReference: '{1}'. The expected value is either a registry URI or a blank node identifier.", input, property ) );
+				return entityRef;
+			}
+			return entityRef;
 		}
 		private Guid ResolveEntityRegistryAtIdToGuid( string property, string registryAtId, int entityTypeId, ref SaveStatus status, string parentCTID = "" )
 		{
@@ -2675,7 +2928,7 @@ namespace Import.Services
 			return entityUID;
 		}
 
-		private Guid ResolveEntityBaseToGuid( string property, BNode input, int entityTypeId, bool isQAOrgType, ref SaveStatus status )
+		private Guid ResolveBlankNodeToGuid( string property, BNode input, int entityTypeId, bool isQAOrgType, ref SaveStatus status )
 		{
 			Guid entityUID = new Guid();
 			int entityRefId = 0;
@@ -2687,87 +2940,148 @@ namespace Import.Services
 				status.AddError( "Invalid EntityBase/BNode, missing name" );
 			//not always required
 			if ( string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
-				status.AddWarning( string.Format("Invalid bnode. Type: {0}, name: {1}.  missing SubjectWebpage", entityTypeId, name ));
-
+			{
+				//no longer required
+				//status.AddWarning( string.Format( "Invalid bnode. Type: {0}, name: {1}.  missing SubjectWebpage", entityTypeId, name ) );
+			}
 			if ( status.HasSectionErrors )
 				return entityUID;
 			//look up by subject webpage
+			//		==> SWP may not be present
 			//to be strict, we could use EntityStateId = 2. However, we could cover bases and get full if present
 			//NOTE: need to avoid duplicate swp's; so  should combine
 			//if ()
-
-			MC.Entity entity = EntityManager.Entity_Cache_Get( entityTypeId, name, input.SubjectWebpage );
-			if ( entity != null && entity.Id > 0 )
+			if ( entityTypeId > 0 )
 			{
-				//20-12-16 mp - we don't want to return the UID, need to be able to update the reference
-				//					OR ALWAYS DELETE
-				//check what happens if called here
-				if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
-					entityRefId = ResolveBaseEntityAsCredential( input, ref entityUID, ref status );
-				else if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
-					entityRefId = ResolveBlankNodeAsOrganization( property, input, ref entityUID, ref status );
-				else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
-					entityRefId = ResolveBaseEntityAsAssessment( input, ref entityUID, ref status );
-				else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-					entityRefId = ResolveBaseEntityAsLopp( input, ref entityUID, ref status );
-				else
+				//this could be risky
+				var entity = EntityManager.EntityCache_GetReference( entityTypeId, name, input.SubjectWebpage, desc );
+				if ( entity != null && entity.Id > 0 )
 				{
-					//unexpected, should not have entity references for manifests
-					status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+					//20-12-16 mp - we don't want to return the UID, need to be able to update the reference
+					//					OR ALWAYS DELETE
+					//check what happens if called here
+					//23-09-27 mp - this process seems the same as the process for not found.
+					//				- TODO - sync with process for ResolveEntityBaseToInt
+					if ( string.IsNullOrWhiteSpace( entity.ResourceDetail ) )
+					{
+						//should just let it fall thru?
+						//but will it be useful to reindex?
+						TopLevelObject resource = new TopLevelObject()
+						{
+							Id = entity.Id,
+							Name = entity.Name,
+							EntityTypeId = entityTypeId,//AND?
+							RowId = entity.EntityUid,
+							OrganizationId = entity.OwningOrgId,
+						};
+						ResourcesToIndex.Add( resource );
+					}
+					return entity.EntityUid;
+					/*
+					switch ( entityTypeId )
+					{
+						case 1:
+							//if we know found, then should pass the Id, rather than searching again!
+							entityRefId = ResolveBlankNodeAsCredential( input, ref entityUID, ref status );
+							break;
+						case 2:
+						case 13:
+						case 14:
+							entityRefId = ResolveBlankNodeAsOrganization( property, input, entityTypeId, ref entityUID, ref status );
+							break;
+						case 3:
+							entityRefId = ResolveBlankNodeAsAssessment( input, ref entityUID, ref status );
+							break;
+						case 7:
+						case 36:
+						case 37:
+							entityRefId = ResolveBlankNodeAsLopp( input, entityTypeId, ref entityUID, ref status );
+							break;
+						case 17:
+							status.AddError( string.Format( "Error - Competency blank nodes are not currently handled. entityTypeId: {0}, Name: {1}", entityTypeId, input.Name ) );
+							break;
+						case 32:
+							entityRefId = ResolveBlankNodeAsJob( input, ref entityUID, ref status );
+							break;
+						case 33:
+							entityRefId = ResolveBlankNodeAsTask( input, ref entityUID, ref status );
+							break;
+						case 34:
+							entityRefId = ResolveBlankNodeAsWorkRole( input, ref entityUID, ref status );
+							break;
+						case 35:
+							entityRefId = ResolveBlankNodeAsOccupation( input, ref entityUID, ref status );
+							break;
+						default:
+							//unexpected, should not have entity references for manifests
+							status.AddError( string.Format( "Error - unhandled entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+							return new Guid();
+					}
+					*/
+					//
+					//if ( entityRefId > 0 )
+					//	return entity.EntityUid;
 				}
-				//
-				return entity.EntityUid;
 			}
-
 			//if not found, then create
-			if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
-				entityRefId = ResolveBaseEntityAsCredential( input, ref entityUID, ref status );
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
-				entityRefId = ResolveBlankNodeAsOrganization( property, input, ref entityUID, ref status );
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
-				entityRefId = ResolveBaseEntityAsAssessment( input, ref entityUID, ref status );
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-				entityRefId = ResolveBaseEntityAsLopp( input, ref entityUID, ref status );
-
-			//TODO
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
+			//24-03-04 mp - NOTE:entityRefId is assigned but not used, as entityUID is returned from the ref.
+			switch ( entityTypeId )
 			{
-				//entityRefId = ResolveBaseEntityAsOccupation( input, ref entityUID, ref status );
-				status.AddError( string.Format( "Error - OCCUPATION blank nodes are not currently handled. entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+				case 1:
+					//if we know found, then should pass the Id, rather than searching again!
+					entityRefId = ResolveBlankNodeAsCredential( input, ref entityUID, ref status );
+					break;
+				case 2:
+				case 13:
+				case 14:
+					entityRefId = ResolveBlankNodeAsOrganization( property, input, entityTypeId, ref entityUID, ref status );
+					break;
+				case 3:
+					entityRefId = ResolveBlankNodeAsAssessment( input, ref entityUID, ref status );
+					break;
+				case 7:
+				case 36:
+				case 37:
+					entityRefId = ResolveBlankNodeAsLopp( input, entityTypeId, ref entityUID, ref status );
+					break;
+				case 17:
+					status.AddError( string.Format( "Error - Competency blank nodes are not currently handled. entityTypeId: {0}, Name: {1}", entityTypeId, input.Name ) );
+					break;
+				case 32:
+					entityRefId = ResolveBlankNodeAsJob( input, ref entityUID, ref status );
+					break;
+				case 33:
+					entityRefId = ResolveBlankNodeAsTask( input, ref entityUID, ref status );
+					break;
+				case 34:
+					entityRefId = ResolveBlankNodeAsWorkRole( input, ref entityUID, ref status );
+					break;
+				case 35:
+					entityRefId = ResolveBlankNodeAsOccupation( input, ref entityUID, ref status );
+					break;
+				default:
+					//unexpected, should not have entity references for manifests
+					status.AddError( string.Format( "Error - unhandled entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+					return new Guid();
 			}
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
-
-			{
-				//entityRefId = ResolveBaseEntityAsOccupation( input, ref entityUID, ref status );
-				status.AddError( string.Format( "Error - JOB blank nodes are not currently handled. entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
-			}
-			else if ( entityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE )
-
-			{
-				//entityRefId = ResolveBaseEntityAsOccupation( input, ref entityUID, ref status );
-				status.AddError( string.Format( "Error - TASK blank nodes are not currently handled. entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
-			}
-			else
-			{
-				//unexpected, should not have entity references for manifests
-				status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
-			}
+		
 			return entityUID;
-        }
+		}
 
-        /// <summary>
-        /// Map list of EntityBase items to a list of integer Ids.
-        /// These Ids will be used for child records under an Entity
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="entityTypeId"></param>
-        /// <param name="status"></param>
-        /// <returns></returns>
-        public List<int> MapEntityReferences( string property, List<string> input, int entityTypeId, ref SaveStatus status)
-        {
+		/// <summary>
+		/// Map list of EntityBase items to a list of integer Ids.
+		/// These Ids will be used for child records under an Entity,
+		/// ONLY USED WHERE THE EntityTypeId is known
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="entityTypeId"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public List<int> MapEntityReferences( string property, List<string> input, int entityTypeId, ref SaveStatus status )
+		{
 			List<string> ctidList = new List<string>();
 			return MapEntityReferences( property, input, entityTypeId, ref status, ref ctidList );
-        }
+		}
 
 		/// <summary>
 		/// Map list of EntityBase items to a list of integer Ids.
@@ -2796,15 +3110,18 @@ namespace Import.Services
 				{
 					LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityTypeId: {0}, CtdlId: {1} ", entityTypeId, target ) );
 					registryAtId = target;
-                    var ctid = ResolutionServices.ExtractCtid( target.Trim() );
-					if (!string.IsNullOrWhiteSpace(ctid))
-						ctidList.Add( ctid );	
-                    //TODO - what to do with non-registry URIs? For example
-                    // http://dbpedia.com/Stanford_University
-                    entityRef = ResolveEntityRegistryAtId( registryAtId, entityTypeId, ref status );
+					var ctid = ResolutionServices.ExtractCtid( target.Trim() );
+					if ( BaseFactory.IsValidCtid( ctid ) )
+						ctidList.Add( ctid );
+					//TODO - what to do with non-registry URIs? For example
+					// http://dbpedia.com/Stanford_University
+					entityRef = ResolveEntityRegistryAtId( property, registryAtId, entityTypeId, ref status );
 					if ( entityRef == 0 )
 					{
 						LoggingHelper.DoTrace( 5, string.Format( "MappingHelper.MapEntityReferences: FAILED TO RESOLVE EntityTypeId: {0}, target.CtdlId: {1} ", entityTypeId, target ) );
+					} else
+					{
+
 					}
 					//break;
 				}
@@ -2813,7 +3130,7 @@ namespace Import.Services
 					LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityReference EntityTypeId: {0}, target bnode: {1} ", entityTypeId, target ) );
 					var node = GetBlankNode( target );
 					//if type present,can use
-					entityRef = ResolveEntityBaseToInt( property, node, entityTypeId, ref status );
+					entityRef = ResolveBlankNodeToInt( property, node, entityTypeId, ref status );
 				}
 				if ( entityRef > 0 )
 					entityRefs.Add( entityRef );
@@ -2821,43 +3138,53 @@ namespace Import.Services
 
 			return entityRefs;
 		}
-		public int MapEntityReference ( string property, string target, int entityTypeId, ref SaveStatus status, bool allowingBlankNodes = true )
-		{
-			int entityRef = 0;
-			string registryAtId = "";
-			if ( string.IsNullOrWhiteSpace ( target ) )
-				return 0;
 
-			entityRef = 0;
-			//determine if just Id, or base
-			if ( target.StartsWith( "http" ) )
-			{
-				LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityTypeId: {0}, CtdlId: {1} ", entityTypeId, target ) );
-				registryAtId = target;
-				entityRef = ResolveEntityRegistryAtId( registryAtId, entityTypeId, ref status );
-				if ( entityRef == 0 )
-				{
-					LoggingHelper.DoTrace( 6, string.Format( "MappingHelper.MapEntityReferences: FAILED TO RESOLVE EntityTypeId: {0}, target.CtdlId: {1} ", entityTypeId, target ) );
-				}
-				//break;
-			}
-			else if ( target.StartsWith( "_:" ) )
-			{
-				if ( !allowingBlankNodes )
-				{
-					//what to do? log and what - don't necessarily want to send an email
-				}
-				else
-				{
-					LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityReference EntityTypeId: {0}, target bnode: {1} ", entityTypeId, target ) );
-					var node = GetBlankNode( target );
-					//if type present,can use
-					entityRef = ResolveEntityBaseToInt( property, node, entityTypeId, ref status );
-				}
-			}			
+		///// <summary>
+		///// Only use this method where the entity type is known!
+		///// </summary>
+		///// <param name="property"></param>
+		///// <param name="target"></param>
+		///// <param name="entityTypeId"></param>
+		///// <param name="status"></param>
+		///// <param name="allowingBlankNodes"></param>
+		///// <returns></returns>
+		//public int MapEntityReference( string property, string target, int entityTypeId, ref SaveStatus status, bool allowingBlankNodes = true )
+		//{
+		//	int entityRef = 0;
+		//	string registryAtId = "";
+		//	if ( string.IsNullOrWhiteSpace( target ) )
+		//		return 0;
 
-			return entityRef;
-		}
+		//	entityRef = 0;
+		//	//determine if just Id, or base
+		//	if ( target.StartsWith( "http" ) )
+		//	{
+		//		LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityTypeId: {0}, CtdlId: {1} ", entityTypeId, target ) );
+		//		registryAtId = target;
+		//		entityRef = ResolveEntityRegistryAtId(property, registryAtId, entityTypeId, ref status );
+		//		if ( entityRef == 0 )
+		//		{
+		//			LoggingHelper.DoTrace( 6, string.Format( "MappingHelper.MapEntityReferences: FAILED TO RESOLVE EntityTypeId: {0}, target.CtdlId: {1} ", entityTypeId, target ) );
+		//		}
+		//		//break;
+		//	}
+		//	else if ( target.StartsWith( "_:" ) )
+		//	{
+		//		if ( !allowingBlankNodes )
+		//		{
+		//			//what to do? log and what - don't necessarily want to send an email
+		//		}
+		//		else
+		//		{
+		//			LoggingHelper.DoTrace( 7, string.Format( "MappingHelper.MapEntityReferences: EntityReference EntityTypeId: {0}, target bnode: {1} ", entityTypeId, target ) );
+		//			var node = GetBlankNode( target );
+		//			//if type present,can use
+		//			entityRef = ResolveEntityBaseToInt( property, node, entityTypeId, ref status );
+		//		}
+		//	}
+
+		//	return entityRef;
+		//}
 
 		/// <summary>
 		/// Entities will be string, where cannot be a third party reference
@@ -2870,6 +3197,7 @@ namespace Import.Services
 		/// <returns></returns>
 		public List<int> MapEntityReferences( List<string> input, int entityTypeId, int parentEntityTypeId, ref SaveStatus status )
 		{
+			string property= "TODO: need to add from caller";
 			int entityRef = 0;
 			List<int> entityRefs = new List<int>();
 			string registryAtId = "";
@@ -2887,9 +3215,9 @@ namespace Import.Services
 					if ( target.ToLower().StartsWith( "http" ) )
 					{
 						registryAtId = target;
-                        var ctid = ResolutionServices.ExtractCtid( registryAtId.Trim() );
+						var ctid = ResolutionServices.ExtractCtid( registryAtId.Trim() );
 
-                        entityRef = ResolveEntityRegistryAtId( registryAtId, entityTypeId, ref status );
+						entityRef = ResolveEntityRegistryAtId( property, registryAtId, entityTypeId, ref status );
 					}
 					else
 					{
@@ -2910,25 +3238,28 @@ namespace Import.Services
 		/// Confirm the process handles ignoring virtual deletes
 		/// </summary>
 		/// <param name="registryAtId"></param>
-		/// <param name="entityTypeId"></param>
+		/// <param name="entityTypeId">May be zero</param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		private int ResolveEntityRegistryAtId( string registryAtId, int entityTypeId, ref SaveStatus status )
+		private int ResolveEntityRegistryAtId( string property, string registryAtId, int entityTypeId, ref SaveStatus status )
 		{
 			bool isResolved = false;
 			int entityRefId = 0;
 			if ( !string.IsNullOrWhiteSpace( registryAtId ) )
 			{
-				entityRefId = ResolutionServices.ResolveEntityByRegistryAtId( registryAtId, entityTypeId, ref status, ref isResolved );
+				//?? just returning an id is not useful if the entity type is not known
+				entityRefId = ResolutionServices.ResolveEntityByRegistryAtId(property, registryAtId, entityTypeId, ref status, ref isResolved );
 			}
 
 			return entityRefId;
 		}
-		private int ResolveEntityBaseToInt( string property, BNode input, int entityTypeId, ref SaveStatus status )
+		//TODO - need the parent in order to do safer assignments
+		//we have CurrentEntityCTID, but the direct parent could be a condition or process profile, etc. 
+		private int ResolveBlankNodeToInt( string property, BNode input, int entityTypeId, ref SaveStatus status )
 		{
 
 			int entityRefId = 0;
-			Guid entityRef = new Guid();
+			Guid entityUID = new Guid();
 			status.HasSectionErrors = false;
 
 			if ( input.Name.Count() == 0 )
@@ -2944,56 +3275,167 @@ namespace Import.Services
 			//to be strict, we could use EntityStateId = 2. However, we could cover bases and get full if present
 			//NOTE: need to avoid duplicate swp's; so  should combine
 			string name = HandleBNodeLanguageMap( input.Name, "BNode Name for " + input.BNodeId, false );
-			MC.Entity entity = EntityManager.Entity_Cache_Get( entityTypeId, name, input.SubjectWebpage );
-			if ( entity != null && entity.Id > 0 )
-				return entity.EntityBaseId;
+			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", false );
+			//this can be flawed. If an owner is included, should always be used
+			var ownedBy = MapOrganizationReferenceGuids( "AssessmentReference.OwnedBy", input.OwnedBy, ref status );
+			Guid primaryAgentUID = new Guid();
+			if ( ownedBy != null && ownedBy.Any() )
+			{
+				primaryAgentUID = ownedBy[0];
+			}
 
+			//WARNING: not all reference resources need to have a SWP now.
+			//	As well need to watch for hits on top level resources
+			//		So maybe only search for references here???
+			//	May want to include description as is being done in the resolve methods!!
+			//	Could bnodeId be used as the rowId? Confirm how the assistant API creates the bnodeId
+			var entity = EntityManager.EntityCache_GetReference( entityTypeId, name, input.SubjectWebpage, desc );
+			if ( entity != null && entity.Id > 0 )
+			{
+				if ( string.IsNullOrWhiteSpace(entity.ResourceDetail))
+				{
+					//should just let it fall thru?
+					//but will it be useful to reindex?
+					TopLevelObject resource = new TopLevelObject()
+					{
+						Id = entity.Id,
+						Name = entity.Name,
+						EntityTypeId = entityTypeId,//AND?
+						RowId = entity.EntityUid,
+						OrganizationId = entity.OwningOrgId,
+					};
+					ResourcesToIndex.Add( resource );
+				}
+				return entity.BaseId;
+			}
+
+			switch ( entityTypeId )
+			{
+				case 1:
+					entityRefId = ResolveBlankNodeAsCredential( input, ref entityUID, ref status );
+					break;
+				case 2:
+				case 13:
+				case 14:
+					entityRefId = ResolveBlankNodeAsOrganization( property, input, entityTypeId, ref entityUID, ref status );
+					break;
+				case 3:
+					entityRefId = ResolveBlankNodeAsAssessment( input, ref entityUID, ref status );
+					break;
+				case 7:
+				case 36:
+				case 37:
+					entityRefId = ResolveBlankNodeAsLopp( input, entityTypeId, ref entityUID, ref status );
+					break;
+				case 17:
+					status.AddError( string.Format( "Error - Competency blank nodes are not currently handled. entityTypeId: {0}, Name: {1}", entityTypeId, input.Name ) );
+					break;
+				case 32:
+					entityRefId = ResolveBlankNodeAsJob( input, ref entityUID, ref status );
+					break;
+				case 33:
+					entityRefId = ResolveBlankNodeAsTask( input, ref entityUID, ref status );
+					break;
+				case 34:
+					entityRefId = ResolveBlankNodeAsWorkRole( input, ref entityUID, ref status );
+					break;
+				case 35:
+					entityRefId = ResolveBlankNodeAsOccupation( input, ref entityUID, ref status );
+					break;
+				default:
+					//unexpected, should not have entity references for manifests
+					status.AddError( string.Format( "Error - unhandled blank node entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
+					break;
+			}
+
+			/*
 			if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL )
-				entityRefId = ResolveBaseEntityAsCredential( input, ref entityRef, ref status );
+				entityRefId = ResolveBlankNodeAsCredential( input, ref entityRef, ref status );
 
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
-				entityRefId = ResolveBlankNodeAsOrganization( property, input, ref entityRef, ref status );
+				entityRefId = ResolveBlankNodeAsOrganization( property, input, entityTypeId, ref entityRef, ref status );
 
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
-				entityRefId = ResolveBaseEntityAsAssessment( input, ref entityRef, ref status );
+				entityRefId = ResolveBlankNodeAsAssessment( input, ref entityRef, ref status );
 			else if ( entityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-				entityRefId = ResolveBaseEntityAsLopp( input, ref entityRef, ref status );
+				entityRefId = ResolveBlankNodeAsLopp( input, entityTypeId, ref entityRef, ref status );
 
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
-                entityRefId = ResolveBaseEntityAsOccupation( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsOccupation( input, ref entityRef, ref status );
 
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
-                entityRefId = ResolveBaseEntityAsJob( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsJob( input, ref entityRef, ref status );
 
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_TASK_PROFILE )
-                entityRefId = ResolveBaseEntityAsTask( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsTask( input, ref entityRef, ref status );
 
             else if ( entityTypeId == CodesManager.ENTITY_TYPE_WORKROLE_PROFILE )
-                entityRefId = ResolveBaseEntityAsWorkRole( input, ref entityRef, ref status );
+                entityRefId = ResolveBlankNodeAsWorkRole( input, ref entityRef, ref status );
             else
 			{
 				//unexpected, should not have entity references for manifests
 				status.AddError( string.Format( "Error - unexpected entityTypeId: {0}, Name: {1}, SWP: {2}", entityTypeId, input.Name, input.SubjectWebpage ) );
 			}
-
+			*/
 
 			return entityRefId;
 		}
-		private int ResolveBaseEntityAsCredential( BNode input, ref Guid entityUid, ref SaveStatus status )
+		private int ResolveBlankNodeAsCredential( BNode input, ref Guid entityUid, ref SaveStatus status )
 		{
 			int entityRefId = 0;
 			MC.Credential output = new MC.Credential();
 			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
 			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+
 			try
 			{
+				var ownedBy = MapOrganizationReferenceGuids( "CredentialReference.OwnedBy", input.OwnedBy, ref status );
+				Guid primaryAgentUID = new Guid();
+				if ( ownedBy != null && ownedBy.Any())
+				{
+					primaryAgentUID = ownedBy[0];
+				}
 				//get full record for updates
 				//really should limit this so whole record isn't retrieved
-				output = CredentialManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+				if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+					output = CredentialManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
 				if ( output != null && output.Id > 0 )
 				{
+					//20-12-08 mp - combine mapping
+
+				}
+				else
+				{
+					output = CredentialManager.GetByName_CodedNotation_PrimaryAgentUId( name, input.CodedNotation, primaryAgentUID );
+					if ( output != null && output.Id > 0 )
+					{
+
+					}
+					else
+					{
+						//==================================================
+						output = new Credential()
+						{
+							Name = name,
+							SubjectWebpage = input.SubjectWebpage,
+							Description = desc,
+							CredentialTypeSchema = input.Type
+						};
+					}
+				}
+				//WARNING - if the returned resource is a full resource, need to be careful about overwriting, in fact shouldn't continue?
+				//ALSO: if a different owner
+				if ( ServiceHelper.IsValidCtid( output.CTID ) )
+				{
+					//will need to reindex
+					entityUid = output.RowId;
+					entityRefId = output.Id;
+				}
+				else
+				{
 					//need additional check for missing credential type id
-					if ( output.CredentialTypeId == 0 )
+					//???
+					if ( output.Id > 0 && output.CredentialTypeId == 0 )
 					{
 						//need to update!
 						output.CredentialTypeSchema = input.Type;
@@ -3008,68 +3450,74 @@ namespace Import.Services
 					output.EstimatedDuration = FormatDuration( $"Credential.EstimatedDuration", input.EstimatedDuration, ref status );
 					//
 					output.Identifier = MapIdentifierValueList( input.Identifier );
-					if ( output.Identifier != null && output.Identifier.Count() > 0 )
-					{
-						output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
-					}
+					//if ( output.Identifier != null && output.Identifier.Count() > 0 )
+					//{
+					//	output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+					//}
 					output.OfferedBy = MapOrganizationReferenceGuids( "CredentialReference.OfferedBy", input.OfferedBy, ref status );
 					output.OwnedBy = MapOrganizationReferenceGuids( "CredentialReference.OwnedBy", input.OwnedBy, ref status );
 					//
 					output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
 					entityUid = output.RowId;
-					//do update 
-					new CredentialManager().Save( output, ref status );
+					//
+					if ( output.Id > 0 )
+					{
+						new CredentialManager().Save( output, ref status );
+						entityUid = output.RowId;
+						entityRefId = output.Id;
+					}
+					else
+					{
+						if ( new CredentialManager().AddBaseReference( output, ref status ) > 0 )
+						{
+							entityUid = output.RowId;
+							entityRefId = output.Id;
+						}
+					}
+				}
+					
+				
 
-					return output.Id;
-				}
-				output = new workIT.Models.Common.Credential()
-				{
-					Name = name,
-					SubjectWebpage = input.SubjectWebpage,
-					Description = desc,
-					CredentialTypeSchema = input.Type
-				};
-				//
-				output.Addresses = FormatAvailableAtAddresses( input.AvailableAt, ref status );
-				//
-				//output.CodedNotation = input.CodedNotation;
-				//
-				output.EstimatedDuration = FormatDuration( $"Credential.EstimatedDuration", input.EstimatedDuration, ref status );
-				//
-				output.Identifier = MapIdentifierValueList( input.Identifier );
-				if ( output.Identifier != null && output.Identifier.Count() > 0 )
-				{
-					output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
-				}
-				output.OfferedBy = MapOrganizationReferenceGuids( "CredentialReference.OfferedBy", input.OfferedBy, ref status );
-				output.OwnedBy = MapOrganizationReferenceGuids( "CredentialReference.OwnedBy", input.OwnedBy, ref status );
-				//
-				output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-				if ( new CredentialManager().AddBaseReference( output, ref status ) > 0 )
-				{
-					entityUid = output.RowId;
-					entityRefId = output.Id;
-				}
+				//TBD
+				var eManager = new EntityManager();
+				string statusMsg = "";
+				//wrong
+				//will be handled for TVP, what about others? Could add to a queue and process later?
+				//need to do have the parent has been saved and related relationships have been saved
+
+				
+				//if ( eManager.EntityCacheUpdateAgentRelationshipsForCredential( output.RowId.ToString(), ref statusMsg ) == false )
+				//{
+				//	status.AddError( statusMsg );
+				//}
+
+				//24-03-25 mp - add to a queue for generic handling later
+				output.EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL;
+				ResourcesToIndex.Add( output );
+				//need to add to elastic - may need to do this later. TVP is OK, now others
+				//new CredentialServices().UpdatePendingReindex( output, ref status );
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBaseEntityAsCredential(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
+				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBlankNodeAsCredential(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
 				status.AddError( ex.Message );
 				return 0;
 			}
 			return entityRefId;
 		}
-		private int ResolveBlankNodeAsOrganization( string property, BNode input, ref Guid entityUid, ref SaveStatus status )
+		private int ResolveBlankNodeAsOrganization( string property, BNode input, int entityTypeId, ref Guid entityUid, ref SaveStatus status )
 		{
 			int entityRefId = 0;
 			status.HasSectionErrors = false;
 			if ( input == null )
 				return entityRefId;
-			string name = "";
+			string name = string.Empty;
 			try
 			{
 				name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
 				string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+				//no, should only be for compares
+				//name = name.Replace( " &amp; ", " and " ).Replace( " & ", " and " );
 
 				//look up by name, subject webpage
 				//to be strict, we could use EntityStateId = 2. However, we could cover bases and get full if present
@@ -3077,16 +3525,23 @@ namespace Import.Services
 				//Be sure this method will return all properties that could be present in a BN
 				//20-08-23  - add email, address, and availabilityListing
 				//21-12-07 - the URL checking should use the domain only, and handle with and without www
+				//		
 				//22-09-09 - if we have a bnode and a full org exists, there should NOT be an update!
 				//TODO - delete existing references for the org
-				if ( !string.IsNullOrWhiteSpace( name ) )
+				//23-12-04 - with the ACE example, need to consider the full URL now
+				if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )	
 				{
-					name = name.Replace( " &amp; ", " and " ).Replace( " & ", " and " );
+					
+					//maybe include entityTypeId??
+					//now swp is not required. So if not present, just name, and possible desc?
 					var org = OrganizationManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
 					if ( org != null && org.Id > 0 )
 					{
-						if (org.EntityStateId == 3)
-                        {
+						if ( org.EntityStateId == 3 )
+						{
+							org.EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION;
+							entityUid = org.RowId;
+							ResourcesToIndex.Add( org );
 							return org.Id;
 						}
 						//20-07-04 - hmmm - are updates not being done??
@@ -3097,10 +3552,10 @@ namespace Import.Services
 							org.AgentDomainType = input.Type;
 						if ( string.IsNullOrWhiteSpace( org.Description ) )
 							org.Description = desc;
-						else if ( !string.IsNullOrWhiteSpace( desc) )
+						else if ( !string.IsNullOrWhiteSpace( desc ) )
 						{
 							//what now? Take the longer one?
-                        }
+						}
 						//20-08-23 - new additions to org BN
 						org.Addresses = FormatAvailableAtAddresses( input.Address, ref status );
 						//may not be applicable
@@ -3114,7 +3569,8 @@ namespace Import.Services
 						org.Emails = MapToTextValueProfile( input.Email );
 						//do update 
 						new OrganizationManager().Save( org, ref status );
-
+						org.EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION;
+						ResourcesToIndex.Add( org );
 						return org.Id;
 					}
 				}
@@ -3123,6 +3579,7 @@ namespace Import.Services
 				{
 					AgentDomainType = input.Type,
 					Name = name,
+					EntityTypeId = entityTypeId,
 					SubjectWebpage = input.SubjectWebpage,
 					SocialMediaPages = MapToTextValueProfile( input.SocialMedia ),
 					Description = desc,
@@ -3146,123 +3603,162 @@ namespace Import.Services
 				{
 					entityUid = output.RowId;
 					entityRefId = output.Id;
+
+					output.EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION;
+					ResourcesToIndex.Add( output );
 				}
-			} catch (Exception ex)
+			} catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBlankNodeAsOrganization(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID,( name ?? "missing")) );
+				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBlankNodeAsOrganization(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
 				status.AddError( ex.Message );
 				return 0;
 			}
 
 			return entityRefId;
 		}
-		private int ResolveBaseEntityAsAssessment( BNode input, ref Guid entityUid, ref SaveStatus status )
+		private int ResolveBlankNodeAsAssessment( BNode input, ref Guid entityUid, ref SaveStatus status )
 		{
 			int entityRefId = 0;
 			WPM.AssessmentProfile output = new WPM.AssessmentProfile();
-			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
-			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+			string name = HandleBNodeLanguageMap( input.Name, "blank node name", false );
+			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", false );
 			try
 			{
-				output = AssessmentManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+				//this can be flawed. If an owner is included, should always be used
+				var ownedBy = MapOrganizationReferenceGuids( "AssessmentReference.OwnedBy", input.OwnedBy, ref status );
+				Guid primaryAgentUID = new Guid();
+				if ( ownedBy != null && ownedBy.Any() )
+				{
+					primaryAgentUID = ownedBy[0];
+				}
+				if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+					output = AssessmentManager.GetByName_SubjectWebpage( name, input.SubjectWebpage, input.CodedNotation, primaryAgentUID );
 				if ( output != null && output.Id > 0 )
+				{
+					//this is still weak, if just name and SWP could get wrong one
+					//if not changing, don't want to take the hit of resource detail plus indexing!
+				}
+				else
+				{
+					
+					output = AssessmentManager.FindReferenceResource( name, desc, input.CodedNotation, primaryAgentUID );
+					if ( output != null && output.Id > 0 )
+					{
+
+					}
+					else
+					{
+						output = new workIT.Models.ProfileModels.AssessmentProfile()
+						{
+							Name = name,
+							SubjectWebpage = input.SubjectWebpage,
+							Description = desc
+						};
+					}
+				}
+
+
+				//20-07-04 need to handle additional properties
+				//24-03-24 mp - but do NOT allow updates to a resource with a CTID!!!!
+				//	except the context. What is referring to this
+				if ( ServiceHelper.IsValidCtid( output.CTID ) )
+				{
+					//will need to reindex
+					entityUid = output.RowId;
+					entityRefId = output.Id;
+				}
+				else
 				{
 					//20-12-08 mp - combine mapping
 
-				}
-				else
-				{
-					output = new workIT.Models.ProfileModels.AssessmentProfile()
+					output.AssessesCompetencies = MapCAOListToCAOProfileList( input.Assesses, true );
+					output.AssessmentMethodType = MapCAOListToEnumermation( input.AssessmentMethodType );
+
+					output.AssessmentMethodDescription = HandleLanguageMap( input.AssessmentMethodDescription, output, "AssessmentMethodDescription" );
+					output.AvailableAt = FormatAvailableAtAddresses( input.AvailableAt, ref status );
+					//
+					output.CodedNotation = input.CodedNotation;
+					output.CreditValue = HandleValueProfileList( input.CreditValue, "Assessment.CreditValue" );
+					output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
+
+					//get rid of this:
+					//if ( output.CreditValueList != null && output.CreditValueList.Any() )
+					//	output.CreditValue = output.CreditValueList[ 0 ];
+					output.DeliveryType = MapCAOListToEnumermation( input.DeliveryType );
+
+					//
+					output.EstimatedDuration = FormatDuration( $"Asmt.EstimatedDuration", input.EstimatedDuration, ref status );
+					output.DateEffective = input.DateEffective;
+					output.ExpirationDate = input.ExpirationDate;
+					//
+					output.Identifier = MapIdentifierValueList( input.Identifier );
+					if ( output.Identifier != null && output.Identifier.Count() > 0 )
 					{
-						Name = name,
-						SubjectWebpage = input.SubjectWebpage,
-						Description = desc
-					};
-				}
-
-				//20-12-08 mp - combine mapping
-
-				//20-07-04 need to handle additional properties
-
-				/*
-				public List<CredentialAlignmentObject> Assesses { get; set; }
-				public LanguageMap AssessmentMethodDescription { get; set; }
-				public List<Place> AvailableAt { get; set; }
-				public string CodedNotation { get; set; }
-				public List<QuantitativeValue> CreditValue { get; set; } = null;
-				public List<DurationProfile> EstimatedDuration { get; set; }
-				public LanguageMap LearningMethodDescription { get; set; }
-				public List<string> OfferedBy { get; set; }
-				public List<string> OwnedBy { get; set; }
-				public List<CredentialAlignmentObject> Teaches { get; set; }			 
-				 */
-				output.AssessesCompetencies = MapCAOListToCAOProfileList( input.Assesses, true );
-				output.AssessmentMethodType = MapCAOListToEnumermation( input.AssessmentMethodType );
-
-				output.AssessmentMethodDescription = HandleLanguageMap( input.AssessmentMethodDescription, output, "AssessmentMethodDescription" );
-				output.AvailableAt = FormatAvailableAtAddresses( input.AvailableAt, ref status );
-				//
-				output.CodedNotation = input.CodedNotation;
-				//output.QVCreditValueList = HandleValueProfileListToQVList( input.CreditValue, "Assessment.CreditValue" );
-				output.CreditValue = HandleValueProfileList( input.CreditValue, "Assessment.CreditValue" );
-				output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
-
-				//get rid of this:
-				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
-				//	output.CreditValue = output.CreditValueList[ 0 ];
-				output.DeliveryType = MapCAOListToEnumermation( input.DeliveryType );
-
-				//
-				output.EstimatedDuration = FormatDuration( $"Asmt.EstimatedDuration", input.EstimatedDuration, ref status );
-				output.DateEffective = input.DateEffective;
-				output.ExpirationDate = input.ExpirationDate;
-				//
-				output.Identifier = MapIdentifierValueList( input.Identifier );
-				if ( output.Identifier != null && output.Identifier.Count() > 0 )
-				{
-					output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
-				}
-				//
-				output.LearningMethodDescription = HandleLanguageMap( input.LearningMethodDescription, output, "LearningMethodDescription" );
-				output.OfferedBy = MapOrganizationReferenceGuids( "Assessment.OfferedBy", input.OfferedBy, ref status );
-				output.OwnedBy = MapOrganizationReferenceGuids( "Assessment.OwnedBy", input.OwnedBy, ref status );
-				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
-				{
-					output.PrimaryAgentUID = output.OwnedBy[0];
-				}
-				//
-				output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-				//
-				output.Requires = FormatConditionProfile( input.Requires, ref status );
-				output.Recommends = FormatConditionProfile( input.Recommends, ref status );
-				output.EntryCondition = FormatConditionProfile( input.EntryCondition, ref status );
-				output.Corequisite = FormatConditionProfile( input.Corequisite, ref status );
-				//will need to ensure mapping includes new properties - and do parts!
-
-				if ( output.Id > 0 )
-				{
-					new AssessmentManager().Save( output, ref status );
-					entityUid = output.RowId;
-					return output.Id;
-				}
-				else
-				{
-					if ( new AssessmentManager().AddReferenceAssessment( output, ref status ) > 0 )
+						output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+					}
+					//
+					output.LearningMethodDescription = HandleLanguageMap( input.LearningMethodDescription, output, "LearningMethodDescription" );
+					output.OfferedBy = MapOrganizationReferenceGuids( "Assessment.OfferedBy", input.OfferedBy, ref status );
+					output.OwnedBy = MapOrganizationReferenceGuids( "Assessment.OwnedBy", input.OwnedBy, ref status );
+					if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 					{
+						output.PrimaryAgentUID = output.OwnedBy[0];
+					}
+					//
+					output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+					//
+					output.Requires = FormatConditionProfile( input.Requires, ref status );
+					output.Recommends = FormatConditionProfile( input.Recommends, ref status );
+					output.EntryCondition = FormatConditionProfile( input.EntryCondition, ref status );
+					output.Corequisite = FormatConditionProfile( input.Corequisite, ref status );
+					//will need to ensure mapping includes new properties - and do parts!
+
+					if ( output.Id > 0 )
+					{
+						new AssessmentManager().Save( output, ref status );
 						entityUid = output.RowId;
 						entityRefId = output.Id;
 					}
+					else
+					{
+						if ( new AssessmentManager().AddReferenceAssessment( output, ref status ) > 0 )
+						{
+							entityUid = output.RowId;
+							entityRefId = output.Id;
+						}
+					}
 				}
+				//
+				output.EntityTypeId = CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE;
+				ResourcesToIndex.Add( output );
+
+				//var eManager = new EntityManager();
+				//string statusMsg = "";
+
+				//need to add to elastic - may need to do this later. TVP is OK, now others
+				//new AssessmentServices().UpdatePendingReindex( output, ref status );
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBaseEntityAsAssessment(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
+				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBlankNodeAsAssessment(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
 				status.AddError( ex.Message );
 				return 0;
 			}
 			return entityRefId;
 		}
-		private int ResolveBaseEntityAsLopp( BNode input, ref Guid entityUid, ref SaveStatus status )
+
+		/// <summary>
+		/// TODO: need to include more data for existance checks, including:
+		/// - parent (at least type)
+		/// - publishedBy (used where no owner)
+		/// We might be able to create and use a module variable?
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="entityTypeId"></param>
+		/// <param name="entityUid"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		private int ResolveBlankNodeAsLopp( BNode input, int entityTypeId, ref Guid entityUid, ref SaveStatus status )
 		{
 			int entityRefId = 0;
 			WPM.LearningOpportunityProfile output = new WPM.LearningOpportunityProfile();
@@ -3270,10 +3766,20 @@ namespace Import.Services
 			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
 			//if name changes, we will get dups
 			//20-12-15 mp - now a subject webpage may not be required, so we would need something else OR ALWAYS DELETE
-			
+
 			try
 			{
-				output = LearningOpportunityManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+				//this can be flawed. If an owner is included, should always be used
+				var ownedBy = MapOrganizationReferenceGuids( "LearningOpportunityReference.OwnedBy", input.OwnedBy, ref status );
+				Guid primaryAgentUID = new Guid();
+				if ( ownedBy != null && ownedBy.Any())
+				{
+					primaryAgentUID = ownedBy[0];
+				}
+				//probably want one method to handle the variations
+				//sigh could have the same swp and different codedNotation
+				if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+					output = LearningOpportunityManager.GetByName_SubjectWebpage( name, input.SubjectWebpage, input.CodedNotation, primaryAgentUID );
 				if ( output != null && output.Id > 0 )
 				{
 					//20-12-08 mp - combine mapping
@@ -3281,100 +3787,153 @@ namespace Import.Services
 				}
 				else
 				{
-					//==================================================
-					output = new workIT.Models.ProfileModels.LearningOpportunityProfile()
+					//may want to include a description for a tie breaker
+					output = LearningOpportunityManager.FindReferenceResource( name, input.CodedNotation, primaryAgentUID );
+					if ( output != null && output.Id > 0 )
 					{
-						Name = name,
-						SubjectWebpage = input.SubjectWebpage,
-						Description = desc
-					};
-				}
-				//20-12-08 mp - combine mapping
 
-				//20-07-04 need to handle additional properties
-				output.TeachesCompetencies = MapCAOListToCAOProfileList( input.Teaches, true );
-				output.AssessesCompetencies = MapCAOListToCAOProfileList( input.Assesses, true );
-				output.AssessmentMethodType = MapCAOListToEnumermation( input.AssessmentMethodType );
-				output.AssessmentMethodDescription = HandleLanguageMap( input.AssessmentMethodDescription, output, "AssessmentMethodDescription" );
-				output.AvailableAt = FormatAvailableAtAddresses( input.AvailableAt, ref status );
-				//
-				output.CodedNotation = input.CodedNotation;
-				//new
-				//output.QVCreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue" );
-				output.CreditValue = HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
-				output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
-				//output.CreditValueList = HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
-				//get rid of this:
-				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
-				//	output.CreditValue = output.CreditValueList[ 0 ];
-				//old
-
-				//output.CreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue", true );
-				//if ( output.CreditValueList != null && output.CreditValueList.Any() )
-				//	output.CreditValue = output.CreditValueList[ 0 ];
-				//
-				output.EstimatedDuration = FormatDuration( $"Lopp.EstimatedDuration", input.EstimatedDuration, ref status );
-				output.DateEffective = input.DateEffective;
-			
-				output.DeliveryType = MapCAOListToEnumermation( input.DeliveryType );
-				output.LearningMethodType = MapCAOListToEnumermation( input.LearningMethodType );
-				output.LearningMethodDescription = HandleLanguageMap( input.LearningMethodDescription, output, "LearningMethodDescription" );
-
-				output.ExpirationDate = input.ExpirationDate;
-				//
-				output.Identifier = MapIdentifierValueList( input.Identifier );
-				if ( output.Identifier != null && output.Identifier.Count() > 0 )
-				{
-					output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+					}
+					else
+					{
+						//==================================================
+						output = new workIT.Models.ProfileModels.LearningOpportunityProfile()
+						{
+							Name = name,
+							SubjectWebpage = input.SubjectWebpage,
+							Description = desc
+						};
+					}
 				}
-			
-				output.OfferedBy = MapOrganizationReferenceGuids( "LearningOpportunityReference.OfferedBy", input.OfferedBy, ref status );
-				output.OwnedBy = MapOrganizationReferenceGuids( "LearningOpportunityReference.OwnedBy", input.OwnedBy, ref status );
-				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
+
+
+				//WARNING - if the returned resource is a full resource, need to be careful about overwriting, in fact shouldn't continue?
+				//ALSO: if a different owner
+				if ( ServiceHelper.IsValidCtid( output.CTID ) )
 				{
-					output.PrimaryAgentUID = output.OwnedBy[ 0 ];
-				}
-				//
-				output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
-				//
-				output.Requires = FormatConditionProfile( input.Requires, ref status );
-				output.Recommends = FormatConditionProfile( input.Recommends, ref status );
-				output.EntryCondition = FormatConditionProfile( input.EntryCondition, ref status );
-				output.Corequisite = FormatConditionProfile( input.Corequisite, ref status );
-				//
-				if ( output.Id > 0 )
-				{
-					new LearningOpportunityManager().Save( output, ref status );
-					entityUid = output.RowId;
-					return output.Id;
+					//will need to reindex
+					entityRefId = output.Id;
 				}
 				else
 				{
-					if ( new LearningOpportunityManager().AddBaseReference( output, ref status ) > 0 )
+					output.OfferedBy = MapOrganizationReferenceGuids( "LearningOpportunityReference.OfferedBy", input.OfferedBy, ref status );
+					output.OwnedBy = ownedBy;   // MapOrganizationReferenceGuids( "LearningOpportunityReference.OwnedBy", input.OwnedBy, ref status );
+					if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
 					{
+						output.PrimaryAgentUID = output.OwnedBy[0];
+					}
+					else if ( output.OfferedBy != null && output.OfferedBy.Count > 0 )
+					{
+						output.PrimaryAgentUID = output.OfferedBy[0];
+					}
+
+					//20-12-08 mp - combine mapping
+					output.LearningEntityTypeId = output.EntityTypeId = entityTypeId;
+					//20-07-04 need to handle additional properties
+					output.TeachesCompetencies = MapCAOListToCAOProfileList( input.Teaches, true );
+					output.AssessesCompetencies = MapCAOListToCAOProfileList( input.Assesses, true );
+					output.AssessmentMethodType = MapCAOListToEnumermation( input.AssessmentMethodType );
+					output.AssessmentMethodDescription = HandleLanguageMap( input.AssessmentMethodDescription, output, "AssessmentMethodDescription" );
+					output.AvailableAt = FormatAvailableAtAddresses( input.AvailableAt, ref status );
+					//
+					output.CodedNotation = input.CodedNotation;
+					//new
+					//output.QVCreditValueList = HandleValueProfileListToQVList( input.CreditValue, "LearningOpportunity.CreditValue" );
+					output.CreditValue = HandleValueProfileList( input.CreditValue, "LearningOpportunity.CreditValue" );
+					output.CreditValueJson = JsonConvert.SerializeObject( output.CreditValue, MappingHelperV3.GetJsonSettings() );
+
+					output.EstimatedDuration = FormatDuration( $"Lopp.EstimatedDuration", input.EstimatedDuration, ref status );
+					output.DateEffective = input.DateEffective;
+
+					output.DeliveryType = MapCAOListToEnumermation( input.DeliveryType );
+					output.LearningMethodType = MapCAOListToEnumermation( input.LearningMethodType );
+					output.LearningMethodDescription = HandleLanguageMap( input.LearningMethodDescription, output, "LearningMethodDescription" );
+
+					output.ExpirationDate = input.ExpirationDate;
+					//
+					output.Identifier = MapIdentifierValueList( input.Identifier );
+					if ( output.Identifier != null && output.Identifier.Count() > 0 )
+					{
+						output.IdentifierJSON = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+					}
+
+					//
+					output.Subject = MapCAOListToTextValueProfile( input.Subject, CodesManager.PROPERTY_CATEGORY_SUBJECT );
+					//
+					output.Requires = FormatConditionProfile( input.Requires, ref status );
+					output.Recommends = FormatConditionProfile( input.Recommends, ref status );
+					output.EntryCondition = FormatConditionProfile( input.EntryCondition, ref status );
+					output.Corequisite = FormatConditionProfile( input.Corequisite, ref status );
+					//
+					if ( output.Id > 0 )
+					{
+						new LearningOpportunityManager().Save( output, ref status );
 						entityUid = output.RowId;
 						entityRefId = output.Id;
 					}
+					else
+					{
+						if ( new LearningOpportunityManager().AddBaseReference( output, ref status ) > 0 )
+						{
+							entityUid = output.RowId;
+							entityRefId = output.Id;
+						}
+					}
 				}
+				/*
+				 * 24-03-04 mp - what? this wrong!!
+				var eManager = new EntityManager();
+				string statusMsg = "";
+				var resourceDetail = JsonConvert.SerializeObject( output, JsonHelper.GetJsonSettings( false ) );
+				if ( eManager.EntityCacheUpdateResourceDetail( output.RowId, resourceDetail, ref statusMsg ) == 0 )
+				{
+					status.AddError( statusMsg );
+				}
+				if ( eManager.EntityCacheUpdateAgentRelationshipsForLopp( output.RowId.ToString(), ref statusMsg ) == false )
+				{
+					status.AddError( statusMsg );
+				}
+				*/
+
+				//need to add to elastic - may need to do this later
+				//also need to generate the resourceDetail data for use in elastic/export
+				//	although at this point, a TVP may not be available
+				//24-03-01 - for TVPs, the lopps/asmts will be handled after the TVP save.
+				//		Now what about others? Need to generate the resource detail and agent relationships
+				//24-03-25 mp - add to a queue for generic handling later
+				output.EntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+				ResourcesToIndex.Add( output );
+
+				//new LearningOpportunityServices().UpdatePendingReindex( output, ref status );
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBaseEntityAsLopp(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
+				LoggingHelper.LogError( ex, string.Format( "MappingHelperV3.ResolveBlankNodeAsLopp(). CurrentEntityCTID: '{0}', Name: {1}", CurrentEntityCTID, ( name ?? "missing" ) ) );
 				status.AddError( ex.Message );
 				return 0;
 			}
 			return entityRefId;
 		}
 
-		private int ResolveBaseEntityAsOccupation( BNode input, ref Guid entityUid, ref SaveStatus status )
+
+		private int ResolveBlankNodeAsOccupation( BNode input, ref Guid entityUid, ref SaveStatus status )
 		{
 			int entityRefId = 0;
 			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
 			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
 			//don't have a lot to go on for occupation
 			//if name changes, we will get dups
-			//
-			var output = OccupationManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+			//and we may just have a name
+			var output = new MC.OccupationProfile();
+			if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+			{
+				output = OccupationManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+			}
+			else if ( !string.IsNullOrWhiteSpace( desc ) )
+			{
+				output = OccupationManager.GetByNameAndDescription( name, desc );
+			} else
+				output = OccupationManager.GetByName( name );
+
 			if ( output != null && output.Id > 0 )
 			{
 				//
@@ -3404,45 +3963,49 @@ namespace Import.Services
 			//
 			if ( output.Id > 0 )
 			{
-				new OccupationManager().Save( output, ref status );
+				if ( output.EntityStateId < 3 )
+					new OccupationManager().Save( output, ref status );
 				entityUid = output.RowId;
-				return output.Id;
+				entityRefId = output.Id;
 			}
 			else
 			{
-				if ( new OccupationManager().AddBaseReference( output, ref status ) > 0 )
+				if ( new OccupationManager().AddReference( output, ref status ) > 0 )
 				{
 					entityUid = output.RowId;
 					entityRefId = output.Id;
 				}
 			}
+			//
+			output.EntityTypeId = CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE;
+			ResourcesToIndex.Add( output );
 			return entityRefId;
 		}
 
-        private int ResolveBaseEntityAsJob( BNode input, ref Guid entityUid, ref SaveStatus status )
-        {
-            int entityRefId = 0;
-            string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
-            string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
-            //if name changes, we will get dups
-            var output = new MC.Job();
-            if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
-            {
-                output = JobManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
-            }
-            else if ( !string.IsNullOrWhiteSpace( desc ) )
-            {
-                output = JobManager.GetByNameAndDescription( name, desc );
-            }
-            else
-            {
-                output = JobManager.GetByName( name );
-            }
-            if ( output != null && output.Id > 0 )
-            {
+		private int ResolveBlankNodeAsJob( BNode input, ref Guid entityUid, ref SaveStatus status )
+		{
+			int entityRefId = 0;
+			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
+			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+			//if name changes, we will get dups
+			var output = new MC.Job();
+			if ( !string.IsNullOrWhiteSpace( input.SubjectWebpage ) )
+			{
+				output = JobManager.GetByName_SubjectWebpage( name, input.SubjectWebpage );
+			}
+			else if ( !string.IsNullOrWhiteSpace( desc ) )
+			{
+				output = JobManager.GetByNameAndDescription( name, desc );
+			}
+			else
+			{
+				output = JobManager.GetByName( name );
+			}
+			if ( output != null && output.Id > 0 )
+			{
 
 
-            }
+			}
 			else
 			{
 				//==================================================
@@ -3457,84 +4020,93 @@ namespace Import.Services
 			//
 			if ( output.Id > 0 )
 			{
-				new JobManager().Save( output, ref status );
+				if ( output.EntityStateId < 3)
+					new JobManager().Save( output, ref status );
 				entityUid = output.RowId;
-				return output.Id;
+				entityRefId = output.Id;
 			}
 			else
 			{
-				if ( new JobManager().AddBaseReference( output, ref status ) > 0 )
+				if ( new JobManager().AddReference( output, ref status ) > 0 )
 				{
 					entityUid = output.RowId;
 					entityRefId = output.Id;
 				}
 			}
+			//
+			output.EntityTypeId = CodesManager.ENTITY_TYPE_JOB_PROFILE;
+			ResourcesToIndex.Add( output );
+
 			return entityRefId;
-        }
-        private int ResolveBaseEntityAsTask( BNode input, ref Guid entityUid, ref SaveStatus status )
-        {
-            int entityRefId = 0;
-            string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
-            string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
-            //if name changes, we will get dups
-            var output = new MC.Task();
-            if ( !string.IsNullOrWhiteSpace( desc ) )
-            {
-                output = TaskManager.GetByNameAndDescription( name, desc );
-            }
-            else
-            {
-                output = TaskManager.GetByName( name );
-            }
-            if ( output != null && output.Id > 0 )
-            {
+		}
+		private int ResolveBlankNodeAsTask( BNode input, ref Guid entityUid, ref SaveStatus status )
+		{
+			int entityRefId = 0;
+			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
+			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+			//if name changes, we will get dups
+			var output = new MC.Task();
+			if ( !string.IsNullOrWhiteSpace( desc ) )
+			{
+				output = TaskManager.GetByNameAndDescription( name, desc );
+			}
+			else
+			{
+				output = TaskManager.GetByName( name );
+			}
+			if ( output != null && output.Id > 0 )
+			{
 
 
-            }
-            else
-            {
-                //==================================================
-                output = new MC.Task()
-                {
-                    Name = name,
-                    SubjectWebpage = input.SubjectWebpage,
-                    Description = desc
-                };
-            }
+			}
+			else
+			{
+				//==================================================
+				output = new MC.Task()
+				{
+					Name = name,
+					SubjectWebpage = input.SubjectWebpage,
+					Description = desc
+				};
+			}
 
-            //
-            if ( output.Id > 0 )
-            {
-                new TaskManager().Save( output, ref status );
-                entityUid = output.RowId;
-                return output.Id;
-            }
-            else
-            {
-                if ( new TaskManager().AddBaseReference( output, ref status ) > 0 )
-                {
-                    entityUid = output.RowId;
-                    entityRefId = output.Id;
-                }
-            }
-            return entityRefId;
-        }
+			//
+			if ( output.Id > 0 )
+			{
+				if (output.EntityStateId < 3)
+					new TaskManager().Save( output, ref status );
+				entityUid = output.RowId;
+				entityRefId = output.Id;
+			}
+			else
+			{
+				if ( new TaskManager().AddReference( output, ref status ) > 0 )
+				{
+					entityUid = output.RowId;
+					entityRefId = output.Id;
+				}
+			}
+			//
+			output.EntityTypeId = CodesManager.ENTITY_TYPE_TASK_PROFILE;
+			ResourcesToIndex.Add( output );
+			return entityRefId;
+		}
 
-        private int ResolveBaseEntityAsWorkRole( BNode input, ref Guid entityUid, ref SaveStatus status )
-        {
-            int entityRefId = 0;
-            string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
-            string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
+		private int ResolveBlankNodeAsWorkRole( BNode input, ref Guid entityUid, ref SaveStatus status )
+		{
+			int entityRefId = 0;
+			string name = HandleBNodeLanguageMap( input.Name, "blank node name", true );
+			string desc = HandleBNodeLanguageMap( input.Description, "blank node desc", true );
 			//this will be tough with just a name. actually consider decription, especially for successive updates
 			var output = new MC.WorkRole();
 			if ( !string.IsNullOrWhiteSpace( desc ) )
 			{
 				output = WorkRoleManager.GetByNameAndDescription( name, desc );
 			} else
-            {
-                output = WorkRoleManager.GetByName( name );
-            }
-            if ( output != null && output.Id > 0 )
+			{
+				output = WorkRoleManager.GetByName( name );
+			}
+			if ( output != null && output.Id > 0 )
 			{
 
 
@@ -3552,7 +4124,7 @@ namespace Import.Services
 			//not likely to provide much else?
 
 			//
-			output.Identifier = MapIdentifierValueList2( input.Identifier );
+			output.Identifier = MapIdentifierValueListInternal( input.Identifier );
 			if ( output.Identifier != null && output.Identifier.Count() > 0 )
 			{
 				output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
@@ -3561,26 +4133,121 @@ namespace Import.Services
 
 			if ( output.Id > 0 )
 			{
-				new WorkRoleManager().Save( output, ref status );
+				if (output.EntityStateId < 3)
+					new WorkRoleManager().Save( output, ref status );
 				entityUid = output.RowId;
-				return output.Id;
+				entityRefId = output.Id;
 			}
 			else
 			{
-				if ( new WorkRoleManager().AddBaseReference( output, ref status ) > 0 )
+				if ( new WorkRoleManager().AddReference( output, ref status ) > 0 )
 				{
 					entityUid = output.RowId;
 					entityRefId = output.Id;
 				}
 			}
+
+			//
+			output.EntityTypeId = CodesManager.ENTITY_TYPE_WORKROLE_PROFILE;
+			ResourcesToIndex.Add( output );
 			return entityRefId;
-        }
+		}
 
-        #endregion
+		#endregion
 
+		#region Map Entity Guids to Resource summary 
+		public List<ResourceSummary> MapEntityUIDsToResourceSummary( List<Guid> input )
+		{
+			var output = new List<ResourceSummary>();
+			if ( input == null || !input.Any() )
+				return null;
 
-        #region  Condition profiles
-        public List<WPM.ConditionProfile> FormatConditionProfile( List<MJ.ConditionProfile> profiles, ref SaveStatus status )
+			
+			foreach ( var item in input )
+			{
+				//look up entityType
+				var cacheItem = EntityManager.EntityCacheGetByGuid( item );
+				if ( cacheItem != null && cacheItem.Id > 0 )
+				{
+					var resSummary = new ResourceSummary()
+					{
+						Id = cacheItem.Id,
+						Name = cacheItem.Name,
+						CTID = cacheItem.CTID,
+						EntityTypeId = cacheItem.EntityTypeId,
+					};
+					output.Add( resSummary );
+				}
+				else
+				{
+					//error?
+					//any reason not in cache yet?
+				}
+			}
+		
+
+			return output;
+		}
+
+		/// <summary>
+		/// assumes concepts or competency
+		/// </summary>
+		/// <param name="input"></param>
+		/// <param name="EntityTypeId"></param>
+		/// <returns></returns>
+		public List<ResourceSummary> MapEntityCTIDsToResourceSummary( List<string> input, int EntityTypeId )
+		{
+			var output = new List<ResourceSummary>();
+			List<string> inputlist = new List<string>();
+			if ( input == null || !input.Any() )
+				return null;
+			try
+			{
+				foreach ( string url in input )
+				{
+					if ( Regex.IsMatch( url, @"^(https://)" ) )
+					{
+						// Use a regular expression to extract the desired part
+						Match match = Regex.Match( url, @"[^/]+$" );
+						if ( match.Success )
+						{
+							inputlist.Add( match.Value );
+						}
+					}
+				}
+				input = inputlist.Count > 0 ? inputlist : input;
+				foreach ( var item in input )
+				{
+					//look up entityType
+					var cacheItem = EntityManager.EntityCacheGetByCTIDWithOrganization( item );
+					if ( cacheItem != null && cacheItem.Id > 0 )
+					{
+						var resSummary = new ResourceSummary()
+						{
+							Id = cacheItem.BaseId,
+							Name = cacheItem.Name,
+							CTID = cacheItem.CTID,
+							EntityTypeId = cacheItem.EntityTypeId,
+						};
+						output.Add( resSummary );
+					}
+					else
+					{
+						//error?
+						//any reason not in cache yet?
+					}
+				}
+
+			} catch (Exception ex )
+			{
+				LoggingHelper.LogError( ex, $"MappingHelperV3.MapEntityCTIDsToResourceSummary. EntityTypeId: {CurrentEntityTypeId}, CTID: {CurrentEntityCTID}" );
+			}
+			return output;
+		}
+		#endregion
+
+		#region  Condition profiles
+		public List<WPM.ConditionProfile> FormatConditionProfile( List<MJ.ConditionProfile> profiles, ref SaveStatus status )
 		{
 			if ( profiles == null || profiles.Count == 0 )
 				return null;
@@ -3732,9 +4399,14 @@ namespace Import.Services
                     output.TargetOccupationIds = MapEntityReferences( "ConditionProfile.TargetOccupation", input.TargetOccupation, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
 
                 }
+				if ( input.TargetJob != null && input.TargetJob.Count > 0 )
+				{
+					LoggingHelper.DoTrace( 7, "MappingHelper.FormatConditionProfile. Has TargetJob: " + input.TargetJob.Count.ToString() );
+					output.TargetJobIds = MapEntityReferences( "ConditionProfile.TargetJob", input.TargetJob, CodesManager.ENTITY_TYPE_JOB_PROFILE, ref status );
+				}
 
-                //22-08-22 - using true, but the competency can be from a collection, is the latter significant?
-                output.TargetCompetencies = MapCAOListToCAOProfileList( input.TargetCompetency, true );
+				//22-08-22 - using true, but the competency can be from a collection, is the latter significant?
+				output.TargetCompetency = MapCAOListToCAOProfileList( input.TargetCompetency, true );
 				list.Add( output );
 			}
 
@@ -3799,6 +4471,7 @@ namespace Import.Services
                 try
                 {
                     //temp handle where older resources had experience published as a string and not a languageMap.
+					//TODO - this doesn't work unless defined as an object
                     if ( input.Experience != null )
                     {
                         if ( input.Experience.GetType() == typeof( string ) )
@@ -3816,7 +4489,7 @@ namespace Import.Services
                 catch ( Exception ex )
                 {
                     //ignore for now. using try so can continue
-                    LoggingHelper.DoTrace( 5, string.Format( "MappingHelperV3.FormatConditionProfile. Experience exception CTID: {0}, ex: {1}", status.Ctid, ex.Message ) );
+                    LoggingHelper.DoTrace( 5, string.Format( "MappingHelperV3.FormatConditionProfile (OLD). Experience exception CTID: {0}, ex: {1}", status.Ctid, ex.Message ) );
                 }
                 output.MinimumAge = input.MinimumAge;
 				output.YearsOfExperience = input.YearsOfExperience != null ? ( decimal ) input.YearsOfExperience : 0;
@@ -3859,7 +4532,7 @@ namespace Import.Services
 
                 }
                 //22-08-22 - using true, but the competency can be from a collection, is the latter significant?
-                output.TargetCompetencies = MapCAOListToCAOProfileList( input.TargetCompetency, true );
+                output.TargetCompetency = MapCAOListToCAOProfileList( input.TargetCompetency, true );
 
                 list.Add( output );
 			}
@@ -3947,7 +4620,7 @@ namespace Import.Services
 			//
 			return ExpandCosts( list );
 		}
-		public static List<WPM.CostProfile> ExpandCosts( List<WPM.CostProfileMerged> input )
+		public List<WPM.CostProfile> ExpandCosts( List<WPM.CostProfileMerged> input )
 		{
 			var result = new List<WPM.CostProfile>();
 
@@ -4090,6 +4763,7 @@ namespace Import.Services
 			{
 				if ( item.Description == null &&
 					item.ExactDuration == null &&
+					item.TimeRequired == null &&
 					item.MaximumDuration == null &&
 					item.MinimumDuration == null
 					)
@@ -4100,6 +4774,7 @@ namespace Import.Services
 					{
 						RowId = Guid.NewGuid(),
 						ExactDuration = FormatDurationItem( property, item.ExactDuration, ref status ),
+						TimeRequiredImport = FormatDurationItem( property, item.TimeRequired, ref status ),
 						MaximumDuration = FormatDurationItem( property, item.MaximumDuration, ref status ),
 						MinimumDuration = FormatDurationItem( property, item.MinimumDuration, ref status )
 					};
@@ -4124,64 +4799,136 @@ namespace Import.Services
 		{
 			if ( string.IsNullOrEmpty( duration ) )
 				return null;
-			if (duration.IndexOf(".") > 0)
-			{
-				LoggingHelper.DoTrace( 1, $"{thisClassName}.FormatDurationItem. Property: {property} ENCOUNTERED A DECIMAL DURATION. Using workaround!" );
-				try
-				{
-					//workaround until decimals are handled
-					WPM.DurationItemDecimal did = FormatDurationItemAsDecimal( property, duration, ref status );
-					var output2 = new WPM.DurationItem
-					{
-						DurationISO8601 = did.DurationISO8601,
-						Years = Convert.ToInt32( did.Years ),
-						Months = Convert.ToInt32( did.Months ),
-						Weeks = Convert.ToInt32( did.Weeks ),
-						Days = Convert.ToInt32( did.Days ),
-						Hours = Convert.ToInt32( did.Hours ),
-						Minutes = Convert.ToInt32( did.Minutes )
-					};
-					return output2;
-				}
-				catch ( Exception ex )
-				{
-					var msg = BaseFactory.FormatExceptions( ex );
-					LoggingHelper.LogError( ex, $"{thisClassName}.FormatDurationItem. Error exception encountered for Property: {property}, duration: {duration} after FormatDurationItemAsDecimal." );
-					status.AddError( $"{thisClassName}.FormatDurationItem. Error exception encountered for Property: {property}, duration: {duration} after FormatDurationItemAsDecimal. " + msg );
-					return null;
+			//if (duration.IndexOf(".") > 0)
+			//{
+			//	LoggingHelper.DoTrace( 1, $"{thisClassName}.FormatDurationItem. Property: {property} ENCOUNTERED A DECIMAL DURATION. Using workaround!" );
+			//	try
+			//	{
+			//		//workaround until decimals are handled
+			//		WPM.DurationItemDecimal did = FormatDurationItemAsDecimal( property, duration, ref status );
+			//		var output2 = new WPM.DurationItem
+			//		{
+			//			DurationISO8601 = did.DurationISO8601,
+			//			Years = Convert.ToInt32( did.Years ),
+			//			Months = Convert.ToInt32( did.Months ),
+			//			Weeks = Convert.ToInt32( did.Weeks ),
+			//			Days = Convert.ToInt32( did.Days ),
+			//			Hours = Convert.ToInt32( did.Hours ),
+			//			Minutes = Convert.ToInt32( did.Minutes )
+			//		};
+			//		return output2;
+			//	}
+			//	catch ( Exception ex )
+			//	{
+			//		var msg = BaseFactory.FormatExceptions( ex );
+			//		LoggingHelper.LogError( ex, $"{thisClassName}.FormatDurationItem. Error exception encountered for Property: {property}, duration: {duration} after FormatDurationItemAsDecimal." );
+			//		status.AddError( $"{thisClassName}.FormatDurationItem. Error exception encountered for Property: {property}, duration: {duration} after FormatDurationItemAsDecimal. " + msg );
+			//		return null;
 
-				}
-			}
-            int years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
-
+			//	}
+			//}
+			decimal years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
+			var originalDuration = duration;
             try
             {
-				var match = new System.Text.RegularExpressions.Regex( @"^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$" ).Match( duration );
+				duration = originalDuration = duration.Replace( ".00", "" ).Replace( ".0", "" );
+
+				string patternWithDecimals = "^P(?!$)((\\d+Y)|(\\d+\\.\\d+Y$))?((\\d+M)|(\\d+\\.\\d+M$))?((\\d+W)|(\\d+\\.\\d+W$))?((\\d+D)|(\\d+\\.\\d+D$))?(T(?=\\d)((\\d+H)|(\\d+\\.\\d+H$))?((\\d+M)|(\\d+\\.\\d+M$))?(\\d+(\\.\\d+)?S)?)??$";
+				Regex Iso8601DurationRegex2 = new Regex( patternWithDecimals, RegexOptions.Compiled );
+				var match = Iso8601DurationRegex2.Match( duration );
+				//if ( !match.Success )
+				//{
+				//	throw new ArgumentOutOfRangeException( nameof( duration ) );
+				//}
+				//int
+				//var matchI = new System.Text.RegularExpressions.Regex( @"^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$" ).Match( duration );
+
 
 				if (!match.Success)
 				{
 					//23-08-09 - kind of bad to blow up the whole import for this error!
 					//throw new FormatException( "ISO8601 duration format" );
 					status.AddError( $"Property: {property} had a 'bad duration ISO8601 duration format of {duration}" );
-					return null;
+					//perhaps should still save with string
+					//return null;
+					var output2 = new WPM.DurationItem
+					{
+						DurationISO8601 = originalDuration,
+						Years = years,
+						Months = months,
+						Weeks = weeks,
+						Days = days,
+						Hours = hours,
+						Minutes = minutes
+					};
+
+					return output2;
 				}
 
+                if ( duration.ToLower().StartsWith( "p" ) )
+                    duration = duration.Substring( 1 );
 
+                string remainder = "";
+				
+				//if any time, skip the non-time
+				var timePos = duration.ToLower().IndexOf( "t" );
+				if ( timePos > -1 )
+                {
+					//can't have time with other data  (or years, but with awareness of an example with years and hours
+					//just in case
+					remainder = duration.Substring( timePos + 1 );
+
+					hours = SplitDuration( remainder, "H", ref remainder );
+                    minutes = SplitDuration( remainder, "M", ref remainder );
+                    //if anything left, error
+                    if ( !string.IsNullOrEmpty( remainder ) )
+                    {
+                        //di.sec = SplitDuration( remainder, "H", ref remainder );
+                    }
+                }
+                else
+                {
+					years = SplitDuration( duration, "Y", ref remainder );				
+					months = SplitDuration( remainder, "M", ref remainder );
+                    weeks = SplitDuration( remainder, "W", ref remainder );
+                    days = SplitDuration( remainder, "D", ref remainder );
+                }
+                /*
+				//y - 1, 2
 				if (match.Groups[1].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[1].Value, @"\d+" ).Value, out years );
-				if (match.Groups[2].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[2].Value, @"\d+" ).Value, out months );
-				if (match.Groups[3].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[3].Value, @"\d+" ).Value, out weeks );
-				if (match.Groups[4].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[4].Value, @"\d+" ).Value, out days );
-				if (match.Groups[6].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[6].Value, @"\d+" ).Value, out hours );
-				if (match.Groups[7].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[7].Value, @"\d+" ).Value, out minutes );
-				if (match.Groups[8].Success)
-					int.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[8].Value, @"\d+" ).Value, out seconds );
-			}catch (Exception ex)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[1].Value, @"\d+" ).Value, out years );
+				//m-4 0r 5
+				int mthGoup = 4;
+				if (match.Groups[ mthGoup ].Success)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ mthGoup ].Value, @"\d+" ).Value, out months );
+				//7,8
+				int weekGroup = 8;
+				if (match.Groups[ weekGroup ].Success)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ weekGroup ].Value, @"\d+" ).Value, out weeks );
+
+				//10,11
+				int dayGroup = 10;
+				if (match.Groups[ dayGroup ].Success)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ dayGroup ].Value, @"\d+" ).Value, out days );
+				//14,16
+				int hourGroup = 14;
+				if ( match.Groups[ hourGroup ].Success )
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ hourGroup ].Value, @"\d+" ).Value, out hours );
+
+				//17,18?
+				int minGroup = 19;
+				if (match.Groups[ minGroup ].Success)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ minGroup ].Value, @"\d+" ).Value, out minutes );
+
+				//20
+				int secGroup = 19;
+				if (match.Groups[ secGroup ].Success)
+					decimal.TryParse( System.Text.RegularExpressions.Regex.Match( match.Groups[ secGroup ].Value, @"\d+" ).Value, out seconds );
+
+				*/
+
+			}
+			catch (Exception ex)
 			{
 				var msg = BaseFactory.FormatExceptions( ex );
 				LoggingHelper.LogError( ex, $"{thisClassName}.FormatDurationItem. Error exception encountered for Property: {property}, duration: {duration}." );
@@ -4192,7 +4939,7 @@ namespace Import.Services
             }
             var output = new WPM.DurationItem
 			{
-				DurationISO8601 = duration,
+				DurationISO8601 = originalDuration,
 				Years = years,
 				Months = months,
 				Weeks = weeks,
@@ -4203,6 +4950,64 @@ namespace Import.Services
 
 			return output;
 		}
+		/// <summary>
+		/// not clear how to do correctly with regex, so old style
+		/// </summary>
+		/// <param name="duration"></param>
+		/// <param name="letter"></param>
+		/// <param name="remainder"></param>
+		/// <returns></returns>
+        public static decimal SplitDuration( string duration, string letter, ref string remainder )
+        {
+            var value = 0M;
+            if ( string.IsNullOrEmpty( duration ) )
+                return value;
+            if ( duration.ToLower().StartsWith( "p" ) )
+                duration = duration.Substring( 1 );
+			//caller needs to do this?
+            //if ( duration.ToLower().StartsWith( "t" ) )
+            //    duration = duration.Substring( 1 );
+
+            if ( duration.ToLower().IndexOf( letter.ToLower() ) == -1 )
+            {
+                //handle M before or after T
+                //could be OK where caller handles how called
+                remainder = duration;
+				return value;
+            }
+
+            try
+            {
+                var result = duration.Split( letter.ToCharArray() );
+                //not sure
+                if ( result.Length > 0 )
+                {
+                    //have to consider months with minutes though unlikely.
+                    //also have to consider just time
+                    if ( result.Length > 1 )
+                    {
+                        remainder = result[1];
+                        //remainder=string.Join( "", result.ToArray() );
+                    }
+
+                    if ( decimal.TryParse( result[0], out value ) )
+                    {
+                        return value;
+                    }
+                }
+                else
+                {
+
+                }
+            }
+            catch ( Exception ex )
+            {
+                LoggingHelper.LogError( ex, thisClassName + ".SplitDuration" );
+            }
+
+            return value;
+        }
+
         public WPM.DurationItemDecimal FormatDurationItemAsDecimal( string property, string duration, ref SaveStatus status )
         {
             if (string.IsNullOrEmpty( duration ))
@@ -4211,6 +5016,7 @@ namespace Import.Services
 
 			try
 			{
+				//decimal
 				duration = duration.Replace( ".00", "" ).Replace( ".0", "" );
 				var match = new System.Text.RegularExpressions.Regex( @"^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$" ).Match( duration );
 
@@ -4378,7 +5184,7 @@ namespace Import.Services
             //BYs 
             output.OfferedByList = MapOrganizationReferenceGuids( "VerificationServiceProfile.OfferedBy", input.OfferedBy, ref status );
             //add warning?
-            if ( output.OfferedByList == null && output.OfferedByList.Count == 0 )
+            if ( output.OfferedByList == null || output.OfferedByList.Count == 0 )
             {
                 status.AddWarning( "document doesn't have an offering organization." );
             }
@@ -4408,14 +5214,23 @@ namespace Import.Services
 
             return output;
         }
-        #endregion
+		#endregion
 
-
-        public string FormatFinderResourcesURL( string url )
+		public static bool IsCredentialRegistryURL( string url )
 		{
+			if ( url.IndexOf( credentialRegistryUrl ) > -1 )
+			{
+				return true;
+			}
+			else
+				return false;
+		}
+		public string FormatFinderResourcesURL( string url )
+		{
+			var finderUrl = "";
 			var ctid = ResolutionServices.ExtractCtid( url.Trim() );
-
-			var finderUrl = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" ) + "resources/" + ctid;
+			if ( !string.IsNullOrWhiteSpace( ctid))
+				finderUrl = UtilityManager.GetAppKeyValue( "credentialFinderMainSite" ) + "resources/" + ctid;
 
 			return finderUrl;
 		}

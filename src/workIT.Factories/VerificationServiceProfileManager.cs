@@ -136,7 +136,7 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
                 string message = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), true );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
                 status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
                 isValid = false;
             }
@@ -215,12 +215,12 @@ namespace workIT.Factories
                     string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "VerificationServiceProfile" );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-                    LoggingHelper.LogError( message, true );
+                    LoggingHelper.LogError( dbex, message );
                 }
                 catch ( Exception ex )
                 {
                     string message = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", FormatLongLabel(efEntity.Description) ), true );
+                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", AssignLimitedString(efEntity.Description) ) );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
                 }
             }
@@ -316,11 +316,11 @@ namespace workIT.Factories
                 Created = document.Created,
                 LastUpdated = document.LastUpdated,
                 //ImageUrl = document.ImageUrl,
-                Name = FormatLongLabel( document.Description ),
+                Name = AssignLimitedString( document.Description ),
                 OwningAgentUID = document.PrimaryAgentUID,
                 OwningOrgId = document.OrganizationId
             };
-            var statusMessage = "";
+            var statusMessage = string.Empty;
             if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
             {
                 status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -381,7 +381,7 @@ namespace workIT.Factories
                         Guid rowId = efEntity.RowId;
 
                         //need to remove Entity - using before delete trigger 
-                        string msg = string.Format( " VerificationServiceProfile. Id: {0}, Name: {1}, Ctid: {2}.", efEntity.Id, FormatLongLabel( efEntity.Description ), efEntity.CTID );
+                        string msg = string.Format( " VerificationServiceProfile. Id: {0}, Name: {1}, Ctid: {2}.", efEntity.Id, AssignLimitedString( efEntity.Description ), efEntity.CTID );
                         //need to remove from related entities 
                         if (!new Entity_UsesVerificationServiceManager().DeleteAll( efEntity.Id, ref messages ))
                         {
@@ -407,7 +407,7 @@ namespace workIT.Factories
                             } );
                             isValid = true;
                             //delete cache
-                            var statusMessage = "";
+                            var statusMessage = string.Empty;
                             if (!new EntityManager().EntityCacheDelete( rowId, ref statusMessage ))
                             {
                                 messages.Add(statusMessage );
@@ -681,9 +681,9 @@ namespace workIT.Factories
             List<object> results = new List<object>();
             List<string> competencyList = new List<string>();
             //ref competencyList, 
-            List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+            List<ThisResource> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
             bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-            string prevName = "";
+            string prevName = string.Empty;
             foreach ( var item in list )
             {
                 //note excluding duplicates may have an impact on selected max terms
@@ -710,8 +710,8 @@ namespace workIT.Factories
             ThisResource item = new ThisResource();
             List<ThisResource> list = new List<ThisResource>();
             var result = new DataTable();
-            string temp = "";
-            string org = "";
+            string temp = string.Empty;
+            string org = string.Empty;
             int orgId = 0;
 
             using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -720,7 +720,7 @@ namespace workIT.Factories
 
                 if ( string.IsNullOrEmpty( pFilter ) )
                 {
-                    pFilter = "";
+                    pFilter = string.Empty;
                 }
 
                 using ( SqlCommand command = new SqlCommand( "[VerificationServiceProfile_Search]", c ) )
@@ -772,27 +772,27 @@ namespace workIT.Factories
                         continue;
                     }
 
-                    item.Description = GetRowColumn( dr, "Description", "" );
+                    item.Description = GetRowColumn( dr, "Description", string.Empty );
                     string rowId = GetRowColumn( dr, "RowId" );
                     item.RowId = new Guid( rowId );
 
-                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-                    item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+                    item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
 
 
-                    //org = GetRowPossibleColumn( dr, "Organization", "" );
+                    //org = GetRowPossibleColumn( dr, "Organization", string.Empty );
                     //orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
                     //if ( orgId > 0 )
                     //	item.OwningOrganization = new Organization() { Id = orgId, Name = org };
 
                     //
-                    //temp = GetRowColumn( dr, "DateEffective", "" );
+                    //temp = GetRowColumn( dr, "DateEffective", string.Empty );
                     //if ( IsValidDate( temp ) )
                     //	item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
                     //else
-                    //	item.DateEffective = "";
+                    //	item.DateEffective = string.Empty;
 
                     item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
                     item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
@@ -826,12 +826,12 @@ namespace workIT.Factories
             if ( input.VerificationService != null && input.VerificationService.Count > 0 )
             {
                 //json or simple list?
-                output.VerificationService = GetListAsDelimitedString( input.VerificationService, "|" );
+                output.VerificationService = FormatListAsDelimitedString( input.VerificationService, "|" );
                 //output.VerificationService = JsonConvert.SerializeObject( input.VerificationService, JsonHelper.GetJsonSettings( false ) );
             }
             if ( input.VerificationDirectory != null && input.VerificationDirectory.Count > 0 )
             {
-                output.VerificationDirectory = GetListAsDelimitedString( input.VerificationDirectory, "|" );
+                output.VerificationDirectory = FormatListAsDelimitedString( input.VerificationDirectory, "|" );
                 //output.VerificationDirectory = JsonConvert.SerializeObject( input.VerificationDirectory, JsonHelper.GetJsonSettings( false ) );
             }
             output.VerificationMethodDescription = input.VerificationMethodDescription;
@@ -853,10 +853,10 @@ namespace workIT.Factories
         {
             output.Id = input.Id;
             output.RowId = input.RowId;
-            //
-            output.Name = FormatLongLabel( input.Description );
+            //there is no Name property, construct one in case needed
+            output.Name = AssignLimitedString( input.Description );
             output.CTID = input.CTID;
-            output.Description = input.Description == null ? "" : input.Description;
+            output.Description = input.Description == null ? string.Empty : input.Description;
 
             if ( IsValidDate( input.DateEffective ) )
                 output.DateEffective = ( ( DateTime ) input.DateEffective ).ToString( "yyyy-MM-dd" );
@@ -930,14 +930,12 @@ namespace workIT.Factories
             output.TargetCredential = Entity_CredentialManager.GetAll( output.RowId, BaseFactory.RELATIONSHIP_TYPE_HAS_PART, isForDetailPageCredential );
 
 
-            //===== not sure we need this, so skip
-            //var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-            //if ( relatedEntity != null && relatedEntity.Id > 0 )
-            //    output.EntityLastUpdated = relatedEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 
 
 
-        } //
+		} //
 
         #endregion
     }

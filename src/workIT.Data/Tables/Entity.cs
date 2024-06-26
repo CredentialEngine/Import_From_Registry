@@ -25,6 +25,7 @@ namespace workIT.Data.Tables
             this.Entity_CommonCondition = new HashSet<Entity_CommonCondition>();
             this.Entity_CommonCost = new HashSet<Entity_CommonCost>();
             this.Entity_Competency = new HashSet<Entity_Competency>();
+            this.Entity_ComponentCondition = new HashSet<Entity_ComponentCondition>();
             this.Entity_ConditionManifest = new HashSet<Entity_ConditionManifest>();
             this.Entity_ConditionProfile = new HashSet<Entity_ConditionProfile>();
             this.Entity_CostManifest = new HashSet<Entity_CostManifest>();
@@ -32,35 +33,31 @@ namespace workIT.Data.Tables
             this.Entity_Credential = new HashSet<Entity_Credential>();
             this.Entity_DataSetProfile = new HashSet<Entity_DataSetProfile>();
             this.Entity_DurationProfile = new HashSet<Entity_DurationProfile>();
-            this.Entity_EarningsProfile = new HashSet<Entity_EarningsProfile>();
-            this.Entity_EmploymentOutcomeProfile = new HashSet<Entity_EmploymentOutcomeProfile>();
             this.Entity_FinancialAssistanceProfile = new HashSet<Entity_FinancialAssistanceProfile>();
+            this.Entity_HasOffering = new HashSet<Entity_HasOffering>();
             this.Entity_HasPathway = new HashSet<Entity_HasPathway>();
             this.Entity_HasPathwayComponent = new HashSet<Entity_HasPathwayComponent>();
-            this.Entity_HoldersProfile = new HashSet<Entity_HoldersProfile>();
+            this.Entity_HasResource = new HashSet<Entity_HasResource>();
+            this.Entity_HasSupportService = new HashSet<Entity_HasSupportService>();
+            this.Entity_HasVerificationService = new HashSet<Entity_HasVerificationService>();
             this.Entity_IdentifierValue = new HashSet<Entity_IdentifierValue>();
+            this.Entity_IsPartOfSupportService = new HashSet<Entity_IsPartOfSupportService>();
+            this.Entity_Job = new HashSet<Entity_Job>();
             this.Entity_JurisdictionProfile = new HashSet<Entity_JurisdictionProfile>();
             this.Entity_Language = new HashSet<Entity_Language>();
             this.Entity_LearningOpportunity = new HashSet<Entity_LearningOpportunity>();
+            this.Entity_Occupation = new HashSet<Entity_Occupation>();
             this.Entity_Organization = new HashSet<Entity_Organization>();
             this.Entity_ProcessProfile = new HashSet<Entity_ProcessProfile>();
             this.Entity_Property = new HashSet<Entity_Property>();
             this.Entity_Reference = new HashSet<Entity_Reference>();
             this.Entity_ReferenceFramework = new HashSet<Entity_ReferenceFramework>();
             this.Entity_RevocationProfile = new HashSet<Entity_RevocationProfile>();
-            this.Entity_VerificationProfile = new HashSet<Entity_VerificationProfile>();
+            this.Entity_UsesVerificationService = new HashSet<Entity_UsesVerificationService>();
             this.Entity_CompetencyFramework = new HashSet<Entity_CompetencyFramework>();
             this.Entity_ContactPoint = new HashSet<Entity_ContactPoint>();
             this.Entity_TransferValueProfile = new HashSet<Entity_TransferValueProfile>();
-            this.Entity_ComponentCondition = new HashSet<Entity_ComponentCondition>();
-            this.Entity_UsesVerificationService = new HashSet<Entity_UsesVerificationService>();
-            this.Entity_HasOffering = new HashSet<Entity_HasOffering>();
-            this.Entity_HasResource = new HashSet<Entity_HasResource>();
-            this.Entity_HasSupportService = new HashSet<Entity_HasSupportService>();
-            this.Entity_HasVerificationService = new HashSet<Entity_HasVerificationService>();
-            this.Entity_IsPartOfSupportService = new HashSet<Entity_IsPartOfSupportService>();
-            this.Entity_Job = new HashSet<Entity_Job>();
-            this.Entity_Occupation = new HashSet<Entity_Occupation>();
+            this.Entity_HasCriterionLevel = new HashSet<Entity_HasCriterionLevel>();
         }
     
         public int Id { get; set; }
@@ -71,7 +68,6 @@ namespace workIT.Data.Tables
         public string EntityBaseName { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
     
-        public virtual Codes_EntityTypes Codes_EntityTypes { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Address> Entity_Address { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
@@ -89,6 +85,8 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Competency> Entity_Competency { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_ComponentCondition> Entity_ComponentCondition { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ConditionManifest> Entity_ConditionManifest { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ConditionProfile> Entity_ConditionProfile { get; set; }
@@ -103,25 +101,33 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_DurationProfile> Entity_DurationProfile { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_EarningsProfile> Entity_EarningsProfile { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_EmploymentOutcomeProfile> Entity_EmploymentOutcomeProfile { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_FinancialAssistanceProfile> Entity_FinancialAssistanceProfile { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_HasOffering> Entity_HasOffering { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasPathway> Entity_HasPathway { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasPathwayComponent> Entity_HasPathwayComponent { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HoldersProfile> Entity_HoldersProfile { get; set; }
+        public virtual ICollection<Entity_HasResource> Entity_HasResource { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_HasSupportService> Entity_HasSupportService { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_HasVerificationService> Entity_HasVerificationService { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_IdentifierValue> Entity_IdentifierValue { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_IsPartOfSupportService> Entity_IsPartOfSupportService { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Job> Entity_Job { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_JurisdictionProfile> Entity_JurisdictionProfile { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Language> Entity_Language { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_LearningOpportunity> Entity_LearningOpportunity { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Occupation> Entity_Occupation { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Organization> Entity_Organization { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
@@ -135,7 +141,7 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_RevocationProfile> Entity_RevocationProfile { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_VerificationProfile> Entity_VerificationProfile { get; set; }
+        public virtual ICollection<Entity_UsesVerificationService> Entity_UsesVerificationService { get; set; }
         public virtual Entity_Cache Entity_Cache { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_CompetencyFramework> Entity_CompetencyFramework { get; set; }
@@ -143,23 +149,8 @@ namespace workIT.Data.Tables
         public virtual ICollection<Entity_ContactPoint> Entity_ContactPoint { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_TransferValueProfile> Entity_TransferValueProfile { get; set; }
+        public virtual Codes_EntityTypes Codes_EntityTypes { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_ComponentCondition> Entity_ComponentCondition { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_UsesVerificationService> Entity_UsesVerificationService { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HasOffering> Entity_HasOffering { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HasResource> Entity_HasResource { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HasSupportService> Entity_HasSupportService { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_HasVerificationService> Entity_HasVerificationService { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_IsPartOfSupportService> Entity_IsPartOfSupportService { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Job> Entity_Job { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Occupation> Entity_Occupation { get; set; }
+        public virtual ICollection<Entity_HasCriterionLevel> Entity_HasCriterionLevel { get; set; }
     }
 }

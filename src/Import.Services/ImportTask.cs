@@ -14,9 +14,9 @@ using workIT.Utilities;
 using BNode = RA.Models.JsonV2.BlankNode;
 using ResourceServices = workIT.Services.TaskServices;
 using APIResourceServices = workIT.Services.API.TaskServices;
-using InputEntity = RA.Models.JsonV2.Task;
+using InputResource = RA.Models.JsonV2.Task;
 using JInput = RA.Models.JsonV2;
-using ThisEntity = workIT.Models.Common.Task;
+using ThisResource = workIT.Models.Common.Task;
 
 namespace Import.Services
 {
@@ -24,8 +24,10 @@ namespace Import.Services
 	{
 		int entityTypeId = CodesManager.ENTITY_TYPE_TASK_PROFILE;
 		string thisClassName = "ImportTasks";
+		readonly string ResourceType = "Task";
+
 		ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 		/// <summary>
@@ -138,8 +140,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -197,7 +199,7 @@ namespace Import.Services
 			bool importSuccessfull = false;
 			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var mainEntity = new Dictionary<string, object>();
 			//
 			Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
@@ -217,7 +219,7 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -243,7 +245,7 @@ namespace Import.Services
 			MappingHelperV3 helper = new MappingHelperV3( entityTypeId );
 			helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
-			helper.CurrentEntityName = input.Name.ToString();
+			helper.CurrentEntityName = input.Name == null ? input.Description.FirstOrDefault().ToString() : input.Name.ToString();
 
 			status.EnvelopeId = envelopeIdentifier;
 			try
@@ -251,7 +253,7 @@ namespace Import.Services
 				string ctid = input.CTID;
 				status.ResourceURL = input.CtdlId;
 
-				LoggingHelper.DoTrace( 5, "		name: " + input.Name.ToString() );
+				LoggingHelper.DoTrace( 5, "		name: " + helper.CurrentEntityName );
 				LoggingHelper.DoTrace( 5, "		ctid: " + input.CTID );
 				LoggingHelper.DoTrace( 6, "		@Id: " + input.CtdlId );
 				status.Ctid = ctid;
@@ -269,13 +271,13 @@ namespace Import.Services
 				}
 				else
 				{
-					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.Name, input.CTID ) );
+					LoggingHelper.DoTrace( 6, string.Format( thisClassName + ".Import(). Found record: '{0}' using CTID: '{1}'", input.Name==null?input.Description:input.Name , input.CTID ) );
 				}
 				helper.currentBaseObject = output;
-
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-				output.CTID = input.CTID;
+				
                 //NOTE: there is no asserting org for occupation, etc. It doesn't make sense. Add the data publisher as the primary
                 if ( BaseFactory.IsValidCtid( status.DocumentOwnedBy ) )
                 {
@@ -287,19 +289,33 @@ namespace Import.Services
                 {
                     //always should be here
                 }
-                //TBD handling of referencing third party publisher
-                helper.MapOrganizationPublishedBy( output, ref status );
+				//now have asserted by 
+				//note need to set output.OwningAgentUid to the first entry
+				output.OfferedBy = helper.MapOrganizationReferenceGuids( $"{ResourceType}..OfferedBy", input.OfferedBy, ref status );
+
+				output.AssertedByList = helper.MapOrganizationReferenceGuids( $"{ResourceType}.AssertedBy", input.AssertedBy, ref status );
+				if ( output.AssertedByList != null && output.AssertedByList.Count > 0 )
+				{
+					helper.CurrentOwningAgentUid = output.PrimaryAgentUID = output.AssertedByList[0];
+				}
+				else
+				{
+					//use org from envelope (already done)
+					helper.CurrentOwningAgentUid = output.PrimaryAgentUID;
+				}
+				//TBD handling of referencing third party publisher
+				helper.MapOrganizationPublishedBy( output, ref status );
 
 				//warning this gets set to blank if doing a manual import by ctid
 				output.CredentialRegistryId = envelopeIdentifier;
 
-				//AbilityEmbodied - URI to existing:
-				//		Competency Task Occupation Task Task
-				output.AbilityEmbodied = input.AbilityEmbodied;
 				//a concept, but unknown concept scheme?
 				//output.Classification = input.Classification;
 				//output.Classification = helper.MapCAOListToEnumermation( input.Classification );
-
+				//
+				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+				//
+				output.TargetCompetency = helper.MapCAOListToCAOProfileList( input.TargetCompetency );
 				//codeNotation
 				output.CodedNotation = input.CodedNotation;
 				//
@@ -308,6 +324,9 @@ namespace Import.Services
 				{
 					output.CommentJson = JsonConvert.SerializeObject( output.Comment, MappingHelperV3.GetJsonSettings() );
 				}
+				//
+				output.ListId = input.ListID;
+				output.InCatalog = input.InCatalog;
 				//
 				//HasTask
 				//if ( input.HasTask != null && input.HasTask.Count > 0 )
@@ -320,13 +339,51 @@ namespace Import.Services
 					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
 				}
 				//
-				//KnowledgeEmbodied - URI to existing:
-				//		Competency Task Occupation Task Task
-				output.KnowledgeEmbodied = input.KnowledgeEmbodied;
+				#region KSA
+				//		Competency, Job, Occupation, Task, WorkRole
+				output.AbilityEmbodied = helper.MapEntityCTIDsToResourceSummary( input.AbilityEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
+				output.KnowledgeEmbodied = helper.MapEntityCTIDsToResourceSummary( input.KnowledgeEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
+				output.SkillEmbodied = helper.MapEntityCTIDsToResourceSummary( input.SkillEmbodied, CodesManager.ENTITY_TYPE_COMPETENCY );
 				//
-				//SkillEmbodied - URI to existing:
-				//		Competency Task Occupation Task Task
-				output.SkillEmbodied = input.SkillEmbodied;
+				output.PhysicalCapabilityType = helper.MapEntityCTIDsToResourceSummary( input.PhysicalCapabilityType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.PerformanceLevelType = helper.MapEntityCTIDsToResourceSummary( input.PerformanceLevelType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.EnvironmentalHazardType = helper.MapEntityCTIDsToResourceSummary( input.EnvironmentalHazardType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.SensoryCapabilityType = helper.MapEntityCTIDsToResourceSummary( input.SensoryCapabilityType, CodesManager.ENTITY_TYPE_CONCEPT );
+				output.Classification = helper.MapEntityCTIDsToResourceSummary( input.Classification, CodesManager.ENTITY_TYPE_CONCEPT );
+
+				//Haschild
+				if ( input.HasChild != null && input.HasChild.Count > 0 )
+					output.HasChildIds = helper.MapEntityReferences( $"{ResourceType}.HasChild", input.HasChild, CodesManager.ENTITY_TYPE_TASK_PROFILE, ref status );
+
+				if ( input.IsChildOf != null && input.IsChildOf.Count > 0 )
+					output.IsChildOfIds = helper.MapEntityReferences( $"{ResourceType}.IsChildOf", input.IsChildOf, CodesManager.ENTITY_TYPE_TASK_PROFILE, ref status );
+
+				//HasOccupation
+				if ( input.HasOccupation != null && input.HasOccupation.Count > 0 )
+					output.HasOccupationIds = helper.MapEntityReferences( $"{ResourceType}.HasOccupation", input.HasOccupation, CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE, ref status );
+
+				//
+				//HasTask
+				if ( input.HasJob != null && input.HasJob.Count > 0 )
+					output.HasJobIds = helper.MapEntityReferences( $"{ResourceType}.HasJob", input.HasJob, CodesManager.ENTITY_TYPE_JOB_PROFILE, ref status );
+
+				//HasWorkRole
+				if ( input.HasWorkRole != null && input.HasWorkRole.Count > 0 )
+					output.HasWorkRoleIds = helper.MapEntityReferences( $"{ResourceType}.HasWorkRole", input.HasWorkRole, CodesManager.ENTITY_TYPE_WORKROLE_PROFILE, ref status );
+
+				//Rubric
+				if ( input.HasRubric != null && input.HasRubric.Count > 0 )
+					output.HasRubricIds = helper.MapEntityReferences( $"{ResourceType}.HasRubric", input.HasRubric, CodesManager.ENTITY_TYPE_RUBRIC, ref status );
+				//
+				//output.HasChild = helper.MapEntityCTIDsToResourceSummary( input.HasChild, CodesManager.ENTITY_TYPE_TASK_PROFILE );
+				//var abilityEmbodiedUIDs = helper.MapEntityReferenceGuids( $"{ResourceType}.AbilityEmbodied", input.AbilityEmbodied, 0, ref status );
+				//output.AbilityEmbodied = helper.MapEntityUIDsToResourceSummary( abilityEmbodiedUIDs );
+
+				//output.KnowledgeEmbodied = helper.MapEntityUIDsToResourceSummary( helper.MapEntityReferenceGuids( $"{ResourceType}.KnowledgeEmbodied", input.KnowledgeEmbodied, 0, ref status ) );
+
+				//output.SkillEmbodied = helper.MapEntityUIDsToResourceSummary( helper.MapEntityReferenceGuids( $"{ResourceType}.SkillEmbodied", input.SkillEmbodied, 0, ref status ) );
+
+				#endregion
 
 				//
 				output.VersionIdentifier = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
@@ -345,6 +402,21 @@ namespace Import.Services
 
 				//adding common import pattern
 				importSuccessfull = mgr.Import( output, ref status );
+				if ( importSuccessfull )
+				{
+					//var resource = APIResourceServices.GetDetailForElastic( output.Id, true );
+					//if ( resource != null && resource.Meta_Id > 0 )
+					//{
+					//	var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+					//	var statusMsg = "";
+					//	if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+					//	{
+					//		status.AddError( statusMsg );
+					//	}
+					//}
+					//24-03-25 - start using the generic process
+					//new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+				}
 				//
 				status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/task/{0}", output.Id );
@@ -368,7 +440,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in envelopeId: {0}", envelopeIdentifier ), false, "Task Import exception" );
+				LoggingHelper.LogError(ex, $"{thisClassName}. Exception encountered in CTID: {output.CTID}");
 			}
 
 			return importSuccessfull;
@@ -376,7 +448,7 @@ namespace Import.Services
 
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
 		{
 			bool exists = false;
 			entity = ResourceServices.GetMinimumByCtid( ctid );

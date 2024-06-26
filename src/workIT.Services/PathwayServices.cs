@@ -10,10 +10,13 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
-using EntityMgr = workIT.Factories.PathwayManager;
+using APIResourceServices = workIT.Services.API.PathwayServices;
+using PathwaySetResourceServices = workIT.Services.API.PathwaySetServices;
+using Newtonsoft.Json;
+using ResourceMgr = workIT.Factories.PathwayManager;
 using PathwayComponent = workIT.Models.Common.PathwayComponent;
 using PB = workIT.Models.PathwayBuilder;
-using ThisEntity = workIT.Models.Common.Pathway;
+using ThisResource = workIT.Models.Common.Pathway;
 
 namespace workIT.Services
 {
@@ -27,43 +30,54 @@ namespace workIT.Services
 		Entity_PathwayComponentManager epcmgr = new Entity_PathwayComponentManager();
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
                 //need to force caching here
                 //var detail = GetDetail( entity.Id );
                 //clear any existing cache
-                string key = "pathwayWrapperByApi_" + entity.Id.ToString();
+                string key = "pathwayWrapperByApi_" + resource.Id.ToString();
 				ServiceHelper.ClearCacheEntity( key );
             }
-            bool isValid = new EntityMgr().Save( entity, ref status );
+            bool isValid = new ResourceMgr().Save( resource, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
-				HandleComponents( entity, ref status );
+				HandleComponents( resource, ref status );
 
-				CacheManager.RemoveItemFromCache( "pathway", entity.Id );
+				CacheManager.RemoveItemFromCache( "pathway", resource.Id );
 
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//update cache
+				//	new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+				//	//update Elastic
+				//	if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
+				//		ElasticHelper.Pathway_UpdateIndex( entity.Id );
+				//	else
+				//	{
+				//		new SearchPendingReindexManager().Add( 8, entity.Id, 1, ref messages );
+				//		if ( messages.Count > 0 )
+				//			status.AddWarningRange( messages );
+				//	}
+				//}
+				//else
 				{
-					//update cache
-					new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-					//update Elastic
-					if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
-						ElasticHelper.Pathway_UpdateIndex( entity.Id );
-					else
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
 					{
-						new SearchPendingReindexManager().Add( 8, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
 					}
-				}
-				else
-				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY, resource.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -72,7 +86,7 @@ namespace workIT.Services
 			return isValid;
 		}
 
-		public void HandleComponents( ThisEntity pathway, ref SaveStatus status )
+		public void HandleComponents( ThisResource pathway, ref SaveStatus status )
 		{
 			try
 			{
@@ -360,40 +374,46 @@ namespace workIT.Services
 		#endregion
 
 		#region Retrievals
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
 
-			return EntityMgr.GetByCtid( ctid );
+			return ResourceMgr.GetByCtid( ctid );
 		}
-		public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+		public static ThisResource GetDetailByCtid( string ctid, bool skippingCache = false )
 		{
-			ThisEntity entity = new ThisEntity();
+			ThisResource entity = new ThisResource();
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return entity;
-			var record = EntityMgr.GetByCtid( ctid );
+			var record = ResourceMgr.GetByCtid( ctid );
 
 			return GetDetail( record.Id, skippingCache );
 		}
 		//
 
-		public static string GetCTIDFromID( int id )
+		public static ThisResource GetByIdOrCtid( string idOrCTID, bool includeComponents, bool includeExtra )
 		{
-			return EntityMgr.GetCTIDFromID( id );
+			return ResourceMgr.GetByIdOrCtid( idOrCTID, includeComponents, includeExtra );
 		}
 		//
 
-		public static ThisEntity GetBasic( int id )
+		public static string GetCTIDFromID( int id )
 		{
-			ThisEntity entity = EntityMgr.GetBasic( id );
+			return ResourceMgr.GetCTIDFromID( id );
+		}
+		//
+
+		public static ThisResource GetBasic( int id )
+		{
+			ThisResource entity = ResourceMgr.GetBasic( id );
 			return entity;
 		}
-		public static ThisEntity GetDetail( int id, bool skippingCache = false )
+		public static ThisResource GetDetail( int id, bool skippingCache = false )
 		{
 
-			ThisEntity entity = EntityMgr.GetDetails( id );
+			ThisResource entity = ResourceMgr.GetDetails( id );
 
 
 			return entity;
@@ -432,7 +452,7 @@ namespace workIT.Services
 
 		}//
 
-		private static List<ThisEntity> DoPathwaySearch( MainSearchInput data, ref int totalRows )
+		private static List<ThisResource> DoPathwaySearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";
 
@@ -451,9 +471,9 @@ namespace workIT.Services
 
 
 			LoggingHelper.DoTrace( 5, "PathwayServices.Search(). Filter: " + where );
-			return EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			return ResourceMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 		}
-		public static List<ThisEntity> GetPathwaysOwnedByOrg( int orgId, int maxRecords )
+		public static List<ThisResource> GetPathwaysOwnedByOrg( int orgId, int maxRecords )
 		{
 			string where = "";
 			List<string> competencies = new List<string>();
@@ -467,7 +487,7 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "PathwayServices.GetPathwaysOwnedByOrg(). Filter: " + where );
-			return EntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceMgr.Search( where, "", 1, maxRecords, ref totalRows );
 		}
 		//
 		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
@@ -535,7 +555,7 @@ namespace workIT.Services
             }
             DateTime start = DateTime.Now;
 
-            var entity = EntityMgr.GetDetails( id );
+            var entity = ResourceMgr.GetDetails( id );
 			if ( entity == null || entity.Id == 0 )
 			{
 				//or empty might be better
@@ -556,7 +576,7 @@ namespace workIT.Services
 			if ( string.IsNullOrWhiteSpace( ctid ) )
 				return output;
 
-			var pathway = EntityMgr.GetByCtid( ctid );
+			var pathway = ResourceMgr.GetByCtid( ctid );
             if ( pathway == null || pathway.Id == 0 )
             {
                 //or empty might be better
@@ -567,7 +587,7 @@ namespace workIT.Services
                 return output;
             }
             DateTime start = DateTime.Now;
-            var entity = EntityMgr.GetDetails( pathway.Id );
+            var entity = ResourceMgr.GetDetails( pathway.Id );
             if ( entity == null || entity.Id == 0 )
             {
                 //or empty might be better
@@ -684,8 +704,13 @@ namespace workIT.Services
 			output.Pathway.OccupationType = MapToResourceSummary( entity.OccupationTypes );
 			output.Pathway.IndustryType = MapToResourceSummary( entity.IndustryTypes );
 			output.Pathway.InstructionalProgramType = MapToResourceSummary( entity.InstructionalProgramTypes);
-            //
-            if ( entity.HasSupportService != null && entity.HasSupportService.Any() )
+			output.Pathway.PreviousVersion = entity.PreviousVersion;
+			output.Pathway.LatestVersion = entity.LatestVersion;
+			output.Pathway.NextVersion = entity.NextVersion;
+			//output.Pathway.VersionIdentifier = entity.VersionIdentifier;
+			output.Pathway.LifeCycleStatusType = entity.LifeCycleStatus;
+			//
+			if ( entity.HasSupportService != null && entity.HasSupportService.Any() )
             {
                 output.Pathway.HasSupportService = MapFromResourceSummaryList( entity.HasSupportService );
             }
@@ -711,34 +736,42 @@ namespace workIT.Services
         public static void MapToComponent( PB.PathwayWrapper wrapper, PathwayComponent input )
         {
 
-            var output = new PB.PathwayComponent()
-            {
-                //TODO - get schema from PathwayComponent and populate Type
-                Id = input.Id,
-                Type = "ceterms:" + input.PathwayComponentType.Replace( " ", "" ),
-                PathwayComponentTypeId = input.ComponentTypeId,
-                //we are more concerned with the hasRelations not isPartOf relationships!!
-                ComponentRelationshipTypeId = input.ComponentRelationshipTypeId,
-                PathwayCTID = input.PathwayCTID,
-                RowId = input.RowId,
-                Name = input.Name,
-                Description = input.Description,
-                CTID = input.CTID,
-                SubjectWebpage = input.SubjectWebpage,
-                Created = input.Created,
-                LastUpdated = input.LastUpdated,
-                ComponentCategory = input.ComponentCategory,
-                CredentialType = input.CredentialType,
-                ProgramTerm = input.ProgramTerm,
-                ProxyFor = input.ProxyFor,
+			var output = new PB.PathwayComponent()
+			{
+				//TODO - get schema from PathwayComponent and populate Type
+				Id = input.Id,
+				Type = "ceterms:" + input.PathwayComponentType.Replace( " ", "" ),
+				PathwayComponentTypeId = input.ComponentTypeId,
+				//we are more concerned with the hasRelations not isPartOf relationships!!
+				ComponentRelationshipTypeId = input.ComponentRelationshipTypeId,
+				PathwayCTID = input.PathwayCTID,
+				RowId = input.RowId,
+				Name = input.Name,
+				Description = input.Description,
+				CTID = input.CTID,
+				SubjectWebpage = input.SubjectWebpage,
+				Created = input.Created,
+				LastUpdated = input.LastUpdated,
+				ComponentCategory = input.ComponentCategory,
+				CredentialType = input.CredentialType,
+				ProgramTerm = input.ProgramTerm,
+				ProxyFor = input.ProxyFor,
+				ProxyForList=input.ProxyForResourceList,
                 RowNumber = input.RowNumber,
                 ColumnNumber = input.ColumnNumber,
             };
-            var isDestinationComponent = false;
+			var isDestinationComponent = false;
             if ( wrapper.Pathway.HasDestinationComponent == input.CTID )
             {
                 isDestinationComponent = true;
             }
+			if(input.ExternalPathwayCTID != null )
+            {
+				output.IsExternalComponent = true;
+				ResourceSummary ExternalPathway = new ResourceSummary();
+				ExternalPathway.CTID = input.ExternalPathwayCTID;
+				output.FromExternalPathway = ExternalPathway;
+			}
 
             //may want to do this after everything is in the wrapper. For ex, will need to add row/col for a dest comp condition
 			//this was a HACK if no data, should skip now
@@ -1210,36 +1243,48 @@ namespace workIT.Services
 
 
 		#region PathwaySet Retrievals
-		public bool PathwaySetImport( PathwaySet entity, ref SaveStatus status )
+		public bool PathwaySetImport( PathwaySet resource, ref SaveStatus status )
 		{
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				//need to force caching here
 				//var detail = GetDetail( entity.Id );
 			}
-			bool isValid = new PathwaySetManager().Save( entity, ref status );
+			bool isValid = new PathwaySetManager().Save( resource, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//no caching at this time
+				//	//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+				//	//update Elastic
+				//	if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
+				//		ElasticHelper.Pathway_UpdateIndex( entity.Id );
+				//	else
+				//	{
+				//		new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, entity.Id, 1, ref messages );
+				//		if ( messages.Count > 0 )
+				//			status.AddWarningRange( messages );
+				//	}
+				//}
+				//else
 				{
-					//no caching at this time
-					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-					//update Elastic
-					if ( UtilityManager.GetAppKeyValue( "usingElasticPathwaySearch", false ) )
-						ElasticHelper.Pathway_UpdateIndex( entity.Id );
-					else
+					var statusMsg = "";
+					var apiDetail = PathwaySetResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
 					{
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
 					}
-				}
-				else
-				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_PATHWAY_SET, resource.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}

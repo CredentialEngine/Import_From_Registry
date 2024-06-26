@@ -124,6 +124,7 @@ namespace workIT.Models.Common
 			}
 		}
 
+		public List<ContactPoint> ContactPoint { get; set; } = new List<ContactPoint>();
 
 		//public OrganizationExternalProperties OrganizationExternalProperties { get; set; } = new OrganizationExternalProperties();
 		//public string JsonProperties { get; set; }
@@ -232,7 +233,7 @@ namespace workIT.Models.Common
 		public int QAPerformedOnCredentialsCount { get; set; }
 		public int QAPerformedOnLoppsCount { get; set; }
 		public int QAPerformedOnOrganizationsCount { get; set; }
-
+		public int QAPerformedOnTransferValuesCount { get; set; }
 		public List<OrganizationRoleProfile> OrganizationAssertions { get; set; } = new List<OrganizationRoleProfile>();
 
 
@@ -244,36 +245,49 @@ namespace workIT.Models.Common
 		//Identifiers is saved as an OrganizationProperty
 		public Enumeration Identifiers { get; set; }
 
-		public int TotalCredentials { get; set; }
-		public int TotalAssessments { get; set; }
-		public int TotalLopps{ get; set; }
-		public int TotalCollections { get; set; }
-		public int TotalFrameworks { get; set; }
-		public int TotalConceptSchemes { get; set; }
 
-        public int TotalJobs { get; set; }
-        public int TotalOccupations { get; set; }
-        public int TotalSupportServices { get; set; }
-        public int TotalTasks { get; set; }
-        public int TotalWorkRoles { get; set; }
-     
-
-        public int RenewsCredentials { get; set; }
+		public int RenewsCredentials { get; set; }
 		public int RevokesCredentials { get; set; }
 		public int RegulatesCredentials { get; set; }
-		//
-		public int TotalTransferValueProfiles { get; set; }
-        public int TotalTransferIntermediaries { get; set; }
 
-        public int TotalPathways{ get; set; }
+		#region Totals owns/offers/etc.
+
+		//23-12-04 could start using ear.RelationshipTypeId = 8 (providedBy) - only where we do a get all, and then filter!
+
+		//public int TotalDataSetProfiles { get; set; }
+		//shouldn't need TotalDataSetProfiles and DataSetProfileCount
+		public int TotalDataSetProfiles { get; set; }
+		public int TotalAssessments { get; set; }
+		public int TotalCollections { get; set; }
+		public int TotalConceptSchemes { get; set; }
+		public int TotalCredentialingActions { get; set; }
+		public int TotalCredentials { get; set; }
+		public int TotalFrameworks { get; set; }
+		public int TotalJobs { get; set; }
+		public int TotalLopps { get; set; }
+		public int TotalOccupations { get; set; }
 		public int TotalPathwaySets { get; set; }
+		public int TotalPathways { get; set; }
+		public int TotalRubrics { get; set; }
+		public int TotalSupportServices { get; set; }
+		public int TotalTasks { get; set; }
+		public int TotalTransferIntermediaries { get; set; }
+		public int TotalTransferValueProfiles { get; set; }
+		public int TotalWorkRoles { get; set; }
+
+
+		#region Publisher totals
 		public int TotalCredentialsPublishedByThirdParty { get; set; }
 		public int TotalOrganizationsPublishedByThirdParty { get; set; }
 		public int TotalAssessmentsPublishedByThirdParty { get; set; }
 		public int TotalLoppsPublishedByThirdParty { get; set; }
         public int TotalTransferValueProfilesPublishedByThirdParty { get; set; }
         public int TotalTransferIntermediariesPublishedByThirdParty { get; set; }
-        public List<Credential> CreatedCredentials { get; set; }
+		public int TotalDatasetProfilesPublishedByThirdParty { get; set; }
+		#endregion
+		#endregion
+
+		public List<Credential> CreatedCredentials { get; set; }
 		public List<Credential> QACredentials { get; set; }
         public List<AssessmentProfile> OwnedAssessments { get; set; } = new List<AssessmentProfile>();
         public List<LearningOpportunityProfile> OwnedLearningOpportunities { get; set; } = new List<LearningOpportunityProfile>();
@@ -324,7 +338,6 @@ namespace workIT.Models.Common
 
 		public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
 
-		public List<ContactPoint> ContactPoint { get; set; } = new List<ContactPoint>();
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
 		//public List<TextValueProfile> Auto_SameAs { get { return SameAs; } set { SameAs = value; } } //Alias used for publishing
@@ -336,14 +349,25 @@ namespace workIT.Models.Common
 		public string ID_LEICode { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:leiCode" )?.TextValue; } }
 		public string ID_ISICV4 { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:isicv4" )?.TextValue; } }
 		public string ID_NECS { get { return IdentificationCodes.FirstOrDefault( m => m.CodeSchema == "ceterms:ceterms:ncesID" )?.TextValue; } }
-
+		/// <summary>
+		/// not sure this makes sense?
+		/// </summary>
         public int ScheduledOfferingCount { get; set; }
-        public List<ScheduledOffering> ScheduledOffering { get; set; }
 
         public List<TextValueProfile> SocialMediaPages { get; set; } = new List<TextValueProfile>();
 
 		public string SupersededBy { get; set; } //URL
 		public string Supersedes { get; set; } //URL
+
+		/// <summary>
+		/// Webpage or online document that defines or explains the nature of support services offered by the organization.
+		/// </summary>
+		public string SupportServiceStatement { get; set; }
+		/// <summary>
+		/// Description of the nature of support services by the organization.
+		/// </summary>
+		public string SupportServiceStatementDescription { get; set; }
+
 
 		/// <summary>
 		/// Webpage or online document that defines or explains the nature of transfer value handled by the organization.
@@ -355,8 +379,7 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string TransferValueStatementDescription { get; set; }
 
-		//shouldn't need TotalDataSetProfiles and DataSetProfileCount
-		public int DataSetProfileCount { get; set; }
+
 		public List<DataSetProfile> DataSetProfiles { get; set; }
 		#region Process Profiles
 

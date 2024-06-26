@@ -7,9 +7,11 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
-using ThisEntityMgr = workIT.Factories.TransferIntermediaryManager;
+using APIResourceServices = workIT.Services.API.TransferIntermediaryServices;
+using ResourceManager = workIT.Factories.TransferIntermediaryManager;
 using MP = workIT.Models.Common;
-using ThisEntity = workIT.Models.Common.TransferIntermediary;
+using ThisResource = workIT.Models.Common.TransferIntermediary;
+using Newtonsoft.Json;
 
 namespace workIT.Services
 {
@@ -18,45 +20,43 @@ namespace workIT.Services
 		string thisClassName = "TransferIntermediaryServices";
 		ActivityServices activityMgr = new ActivityServices();
 		public List<string> messages = new List<string>();
-		public static int entityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY;
+		public static int EntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY;
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource input, ref SaveStatus status )
 		{
 
-			bool isValid = new ThisEntityMgr().Save( entity, ref status );
+			bool isValid = new ResourceManager().Save( input, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( input.Id > 0 )
 			{
-
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//populate entity.cache - need to do before elastic processes
+				var resource = APIResourceServices.GetDetailForAPI( input.Id, true );
+				if ( resource != null && resource.Meta_Id > 0 )
 				{
-					new SearchPendingReindexManager().Add( entityTypeId, entity.Id, 1, ref messages );
-					if ( messages.Count > 0 )
-						status.AddWarningRange( messages );
-					//also update related org
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
-				}
-				else
-				{
-					new SearchPendingReindexManager().Add( entityTypeId, entity.Id, 1, ref messages );
-					if ( entity.OwningOrganizationId > 0 )
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
-					//Will probably have to update the TVPs to indicate part of a TI
-					if ( entity.IntermediaryFor.Count > 0 )
+					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( input.CTID, resourceDetail, ref statusMsg ) == 0 )
 					{
-						foreach ( var item in entity.IntermediaryFor )
-						{
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, item.Id, 1, ref messages );
-						}
+						status.AddError( statusMsg );
 					}
-					
-					if ( messages.Count > 0 )
-						status.AddWarningRange( messages );
 				}
-				//no caching needed yet
-				//CacheManager.RemoveItemFromCache( "cframework", entity.Id );
+				//
+				new SearchPendingReindexManager().Add( EntityTypeId, input.Id, 1, ref messages );
+				if ( input.OwningOrganizationId > 0 )
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, input.OwningOrganizationId, 1, ref messages );
+				//Will probably have to update the TVPs to indicate part of a TI
+				if ( input.IntermediaryFor.Count > 0 )
+				{
+					foreach ( var item in input.IntermediaryFor )
+					{
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, item.Id, 1, ref messages );
+					}
+				}
+
+				if ( messages.Count > 0 )
+					status.AddWarningRange( messages );
 			}
 
 			return isValid;
@@ -68,11 +68,11 @@ namespace workIT.Services
 		/// <param name="ctid"></param>
 		/// <param name="status"></param>
 		/// <returns></returns>
-		public static ThisEntity HandlingExistingEntity( string ctid, ref SaveStatus status )
+		public static ThisResource HandlingExistingEntity( string ctid, ref SaveStatus status )
 		{
-			var entity = new ThisEntity();
+			var entity = new ThisResource();
 			//warning- 
-			entity = ThisEntityMgr.GetByCtid( ctid );
+			entity = ResourceManager.GetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 			{
 				Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
@@ -88,24 +88,24 @@ namespace workIT.Services
 		}
 		#endregion
 
-		public static ThisEntity GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid )
 		{
-			ThisEntity entity = new ThisEntity();
-			entity = ThisEntityMgr.GetByCtid( ctid );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.GetByCtid( ctid );
 			return entity;
 		}
 
-		public static ThisEntity Get( int id )
+		public static ThisResource Get( int id )
 		{
-			ThisEntity entity = new ThisEntity();
-			entity = ThisEntityMgr.Get( id );
+			ThisResource entity = new ThisResource();
+			entity = ResourceManager.Get( id );
 			return entity;
 		}
 		public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticTransferIntermediarySearch", false ) )
 			{
-				return ElasticHelper.GeneralSearch( entityTypeId, "TransferIntermediary", data, ref pTotalRows );
+				return ElasticHelper.GeneralSearch( EntityTypeId, "TransferIntermediary", data, ref pTotalRows );
 			}
 			else
 			{
@@ -121,7 +121,7 @@ namespace workIT.Services
 						SubjectWebpage = item.SubjectWebpage,
 						PrimaryOrganizationName = item.PrimaryOrganizationName,
 						CTID = item.CTID,
-						EntityTypeId = entityTypeId,
+						EntityTypeId = EntityTypeId,
 						EntityType = "TransferIntermediary"
 					} );
 				}
@@ -130,7 +130,7 @@ namespace workIT.Services
 
 		}//
 
-		public static List<ThisEntity> DoSearch( MainSearchInput data, ref int totalRows )
+		public static List<ThisResource> DoSearch( MainSearchInput data, ref int totalRows )
 		{
 			string where = "";
 
@@ -140,17 +140,17 @@ namespace workIT.Services
 			//SearchServices.HandleCustomFilters( data, 61, ref where );
 
 			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetSubjectsFilter( data, entityTypeId, ref where );
+			//SearchServices.SetSubjectsFilter( data, EntityTypeId, ref where );
 
 			//SetPropertiesFilter( data, ref where );
 			SearchServices.SetRolesFilter( data, ref where );
 			SearchServices.SetBoundariesFilter( data, ref where );
 
 			LoggingHelper.DoTrace( 5, "TransferIntermediaryServices.Search(). Filter: " + where );
-			return ThisEntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			return ResourceManager.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 		}
 
-		public static List<ThisEntity> GetOwnedByOrg( int orgId, int maxRecords )
+		public static List<ThisResource> GetOwnedByOrg( int orgId, int maxRecords )
 		{
 			string where = "";
 			int totalRows = 0;
@@ -163,20 +163,21 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "TransferIntermediaryServices.GetTVPOwnedByOrg(). Filter: " + where );
-			return ThisEntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRecords, ref totalRows );
 		}
 		//
 		//Get tvp for entity
-		public static List<ThisEntity> GetEntityHasTransferIntermediary( string searchType, int recordId, int maxRecords )
+		public static List<ThisResource> GetEntityHasTransferIntermediary( string searchType, int recordId, int maxRecords )
 		{
 			string where = "";
 			int totalRows = 0;
 			if ( recordId == 0 || string.IsNullOrWhiteSpace( searchType ) )
-				return new List<ThisEntity>();
+				return new List<ThisResource>();
 
 			//only target full entities
 			switch ( searchType.ToLower() )
 			{
+				//TODO - bad to use embedded sql here
 				case "credential":
 					where = string.Format( " (  base.id in (Select a.Id from [TransferIntermediary] a inner join entity b on a.RowId = b.EntityUid inner join [Entity.Credential] c ON b.Id = c.EntityId  where c.CredentialId = {0}) ) ", recordId );
 					break;
@@ -189,24 +190,25 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "TransferIntermediaryServices.GetEntityHasTVP(). Filter: " + where );
-			return ThisEntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRecords, ref totalRows );
 		}
-		//
-		public static List<ThisEntity> GetEntitiesForTVP( string searchType, int recordId, int maxRecords )
+		/*
+		public static List<ThisResource> GetEntitiesForTVP( string searchType, int recordId, int maxRecords )
 		{
 			string where = "";
 			int totalRows = 0;
 			if ( recordId == 0 || string.IsNullOrWhiteSpace( searchType ) )
-				return new List<ThisEntity>();
+				return new List<ThisResource>();
 
 			//only target full entities
 			switch ( searchType.ToLower() )
 			{
 				case "credential":
-					var list = TransferIntermediaryManager.GetAllCredentials( entityTypeId, recordId );
+					var list = TransferIntermediaryManager.GetAllCredentials( EntityTypeId, recordId );
 
 					break;
 				case "assessment":
+					//TODO - bad to use embedded sql here
 					where = string.Format( " (  base.id in (Select a.Id from [TransferIntermediary] a inner join entity b on a.RowId = b.EntityUid inner join[Entity.Assessment] c ON b.Id = c.EntityId  where c.CredentialId = {0}) ) ", recordId );
 					break;
 				case "learningopportunity":
@@ -215,8 +217,9 @@ namespace workIT.Services
 			}
 
 			LoggingHelper.DoTrace( 5, "TransferIntermediaryServices.GetEntityHasTVP(). Filter: " + where );
-			return ThisEntityMgr.Search( where, "", 1, maxRecords, ref totalRows );
+			return ResourceManager.Search( where, "", 1, maxRecords, ref totalRows );
 		}
+		*/
 		//
 		private static void SetKeywordFilter( string keywords, bool isBasic, ref string where )
 		{

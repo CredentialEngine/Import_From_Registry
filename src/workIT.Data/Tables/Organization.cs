@@ -48,6 +48,8 @@ namespace workIT.Data.Tables
         public string Supersedes { get; set; }
         public string SupersededBy { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
+        public string SupportServiceStatement { get; set; }
+        public string SupportServiceStatementDescription { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<ConceptScheme> ConceptScheme { get; set; }

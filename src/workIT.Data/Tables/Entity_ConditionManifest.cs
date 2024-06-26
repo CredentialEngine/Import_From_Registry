@@ -19,7 +19,7 @@ namespace workIT.Data.Tables
         public int ConditionManifestId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
-        public virtual ConditionManifest ConditionManifest { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual ConditionManifest ConditionManifest { get; set; }
     }
 }

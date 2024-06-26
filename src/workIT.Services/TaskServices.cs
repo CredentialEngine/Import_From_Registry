@@ -8,7 +8,8 @@ using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
 using ElasticHelper = workIT.Services.ElasticServices;
-
+using APIResourceServices = workIT.Services.API.TaskServices;
+using Newtonsoft.Json;
 using ThisResource = workIT.Models.Common.Task;
 using ResourceManager = workIT.Factories.TaskManager;
 using workIT.Utilities;
@@ -38,8 +39,19 @@ namespace workIT.Services
 			if ( resource.Id > 0 )
 			{
                 List<string> messages = new List<string>();
-                //TODO - will need to update related elastic indices
-                new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TASK_PROFILE, resource.Id, 1, ref messages );
+
+				var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+				if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+				{
+					var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+				//TODO - will need to update related elastic indices
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_TASK_PROFILE, resource.Id, 1, ref messages );
 
                 //	NOTE: not sure if there is an organization
                 new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.PrimaryOrganizationId, 1, ref messages );
@@ -72,30 +84,7 @@ namespace workIT.Services
 
         #endregion
 
-
-        #region search
-        public static List<string> Autocomplete( MainSearchInput query, int maxTerms = 25 )
-        {
-
-            string where = "";
-            int totalRows = 0;
-
-            //if ( UtilityManager.GetAppKeyValue( usingElasticSearch, true ) )
-            //{
-            var keywords = query.Keywords;
-            return ElasticHelper.GeneralAutoComplete( ThisEntityTypeId, ThisEntityType, query, maxTerms, ref totalRows );
-            //}
-            //else
-            //{
-            //    string keywords = ServiceHelper.HandleApostrophes( query.Keywords );
-            //    if ( keywords.IndexOf( "%" ) == -1 )
-            //        keywords = "%" + keywords.Trim() + "%";
-            //    where = string.Format( " (base.name like '{0}') ", keywords );
-
-            //    SetKeywordFilter( keywords, true, ref where );
-            //    return ResourceManager.Autocomplete( where, 1, maxTerms, ref totalRows );
-            //}
-        }
+        #region Search
         public static List<CommonSearchSummary> Search( MainSearchInput data, ref int pTotalRows )
         {
             if ( UtilityManager.GetAppKeyValue( usingElasticSearch, true ) )
@@ -188,5 +177,8 @@ namespace workIT.Services
 
         }
         #endregion
+
+
+
     }
 }

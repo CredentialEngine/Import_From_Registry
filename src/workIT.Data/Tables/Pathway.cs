@@ -33,6 +33,11 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> Created { get; set; }
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public string Properties { get; set; }
+        public Nullable<int> LifeCycleStatusTypeId { get; set; }
+        public string LatestVersion { get; set; }
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
+        public string VersionIdentifier { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasPathway> Entity_HasPathway { get; set; }

@@ -167,30 +167,30 @@ namespace workIT.Factories
 			return isValid;
 		}
 
-		public bool UpdateParts( ThisEntity entity, ref SaveStatus status )
+		public bool UpdateParts( ThisEntity resource, ref SaveStatus status )
 		{
 			bool isAllValid = true;
 			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
-			Entity relatedEntity = EntityManager.GetEntity( entity.RowId );
+			Entity relatedEntity = EntityManager.GetEntity( resource.RowId );
 			if ( relatedEntity == null || relatedEntity.Id == 0 )
 			{
 				status.AddError( "Error - the related Entity was not found." );
 				return false;
 			}
 			eamgr.DeleteAll( relatedEntity, ref status );
-			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, resource.OwnedBy, ref status );
 			//
-			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, entity.PublishedBy, ref status );
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
 
 			//consider storing the class properties as Json!
 
 			//
-			new TransferIntermediaryTransferValueManager().SaveList( entity.Id, entity.IntermediaryFor, ref status );
+			new TransferIntermediaryTransferValueManager().SaveList( resource.Id, resource.IntermediaryFor, ref status );
 
 			//
 			var ecpmanager = new Entity_ConditionProfileManager();
 			//ecpmanager.DeleteAll( relatedEntity, ref status );
-			ecpmanager.SaveList( entity.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, entity.RowId, ref status );
+			ecpmanager.SaveList( resource.Requires, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, resource.RowId, ref status );
 			//
 			Entity_ReferenceManager erm = new Entity_ReferenceManager();
 			erm.DeleteAll( relatedEntity, ref status );
@@ -198,7 +198,7 @@ namespace workIT.Factories
 			//if ( erm.Add( entity.SubjectTVP, entity.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false ) == false )
 			//	isAllValid = false;
 
-            if ( erm.Add( entity.AlternateNames, entity.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME, false ) == false )
+            if ( erm.Add( resource.AlternateNames, resource.RowId, EntitTypeId, ref status, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME, false ) == false )
                 isAllValid = false;
 
 
@@ -224,7 +224,7 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -514,21 +514,21 @@ namespace workIT.Factories
 			output.EntityStateId = 3;
 			output.Description = input.Description;
 			output.CTID = input.CTID;
-			output.SubjectWebpage = input.SubjectWebpage ?? "";
-			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
+			output.SubjectWebpage = input.SubjectWebpage ?? string.Empty;
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
 			output.OwningAgentUid = input.PrimaryAgentUID;
 			//
 			output.CodedNotation = input.CodedNotation;
 			output.CreditValueJson = input.CreditValueJson;
 			output.IntermediaryForJson = input.IntermediaryForJson;
             //
-            output.Subject = GetListAsDelimitedString( input.Subject, "|" );
+            output.Subject = FormatListAsDelimitedString( input.Subject, "|" );
 
         } //
 		  //we don't have to store the complete object, such as assessment, lopp, etc.
 		public static string TransferIntermediaryActionToJson( List<TopLevelObject> input )
 		{
-			string json = "";
+			string json = string.Empty;
 
 
 			return json;
@@ -564,14 +564,14 @@ namespace workIT.Factories
 
 			//get related ....
 			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 
-            //
-            output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
+			//
+			output.AlternateName = Entity_ReferenceManager.GetAllToList( output.RowId, CodesManager.PROPERTY_CATEGORY_ALTERNATE_NAME );
             output.CodedNotation = input.CodedNotation;
 			output.SubjectWebpage = input.SubjectWebpage;
-			output.CredentialRegistryId = input.CredentialRegistryId ?? "";
+			output.CredentialRegistryId = input.CredentialRegistryId ?? string.Empty;
 
 			//get json and expand
 			output.CreditValueJson = input.CreditValueJson;
@@ -617,7 +617,7 @@ namespace workIT.Factories
 						//add output required, for dev only?
 						//if ( IsDevEnv() )
 						//{
-						//	item.ProfileName = ( item.ProfileName ?? "" ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
+						//	item.ProfileName = ( item.ProfileName ?? string.Empty ) + " unexpected condition type of " + item.ConnectionProfileTypeId.ToString();
 						//	output.Requires.Add( item );
 						//}
 					}
@@ -696,7 +696,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[TransferIntermediary.ElasticSearch]", c ) )
@@ -731,16 +731,16 @@ namespace workIT.Factories
 				{
 					item = new ThisEntity();
 					item.Id = GetRowColumn( dr, "Id", 0 );
-					item.CTID = GetRowColumn( dr, "CTID", "" );
+					item.CTID = GetRowColumn( dr, "CTID", string.Empty );
 					item.Name = GetRowColumn( dr, "Name", "???" );
-					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
-					item.Description = GetRowColumn( dr, "Description", "" );
-					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-					item.CodedNotation = GetRowColumn( dr, "CodedNotation", "" );
+					item.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
+					item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+					item.CodedNotation = GetRowColumn( dr, "CodedNotation", string.Empty );
 					//Subject
 
-					item.CreditValueJson = GetRowColumn( dr, "CreditValueJson", "" );
-					item.IntermediaryForJson = GetRowColumn( dr, "IntermediaryForJson", "" );
+					item.CreditValueJson = GetRowColumn( dr, "CreditValueJson", string.Empty );
+					item.IntermediaryForJson = GetRowColumn( dr, "IntermediaryForJson", string.Empty );
 					
 					//
 					item.EntityLastUpdated = item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );

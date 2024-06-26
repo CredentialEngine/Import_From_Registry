@@ -53,19 +53,19 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceterms:ctid" )]
 		public string CTID { get; set; }
 
-		//20-08-05 not sure was ever valid?
-		//[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
-		//public List<string> AltIdentifier { get; set; }
+        //20-08-05 not sure was ever valid?
+        //[JsonProperty( PropertyName = "ceasn:altIdentifier" )]
+        //public List<string> AltIdentifier { get; set; }
 
-		//
-		//
-		/// <summary>
-		/// Text describing a significant change to the concept.
-		/// 20-08-05 no longer on credReg.net
-		/// 22-03-30 apparantly back
-		/// </summary>
-		[JsonProperty( PropertyName = "skos:changeNote" )]
-        public LanguageMapList ChangeNote { get; set; }
+        //
+        ///// <summary>
+        ///// Text describing a significant change to the concept.
+        ///// 20-08-05 no longer on credReg.net
+        ///// 22-03-30 apparantly back
+        ///// And gone again
+        ///// </summary>
+        //[JsonProperty( PropertyName = "skos:changeNote" )]
+        //      public LanguageMapList ChangeNote { get; set; }
 
         [JsonProperty( PropertyName = "ceasn:conceptKeyword" )]
 		public LanguageMapList ConceptKeyword { get; set; }
@@ -127,10 +127,15 @@ namespace RA.Models.JsonV2
 		[JsonProperty( PropertyName = "ceasn:rightsHolder" )]
 		public List<string> RightsHolder { get; set; }
 
-
-		[JsonProperty( PropertyName = "ceasn:source" )]
-        //public object Source { get; set; }
-        public List<string> Source { get; set; }
+        /// <summary>
+        /// Source - URL
+        /// 23-03-23 - Note this used to be single and is now a list. 
+		/// The import and link checker need to still import as an object to handle old data that could be a single string.
+        /// OR - create process to get all old concept schemes where defined as a string and republish
+        /// </summary>
+        [JsonProperty( PropertyName = "ceasn:source" )]
+        public object Source { get; set; }
+        //public List<string> Source { get; set; }
 
         [JsonProperty( PropertyName = "ceterms:supersededBy" )]
         public string SupersededBy { get; set; } //URL

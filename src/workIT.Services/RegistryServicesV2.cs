@@ -228,9 +228,188 @@ namespace workIT.Services
 			catch ( Exception ex )
 			{
 				container.DebugInfo.Add( "Error Composing Results", ex.Message );
+				container.DebugInfo.Add( "Results are null?", results == null );
+				container.DebugInfo.Add( "Tried to compose results", JArray.FromObject( results ?? new List<JObject>() ) );
 			}
 
 			return container;
+		}
+		//
+
+		/// <summary>
+		/// Get a normalized text value from a property. Always returns a LanguageMapValue even if the data is null. This is primarily intended for language maps, but can handle simple string values as well. Note: this will stringify numbers/bools/etc.
+		/// </summary>
+		/// <param name="value">The JToken to process, e.g. someJObjectData["some:value"]</param>
+		/// <param name="defaultValue">Default string value to return if the data would otherwise be null. If this is null, too, then the SingleValue will be null and the MultiValue will be an empty List.</param>
+		/// <param name="overrideLanguageCode">Language codes to look for, in order of preference. Case-sensitive. Defaults to en-US, en-us, en</param>
+		/// <param name="returnFirstValueIfMatchingLanguageNotFound">For language maps, if no value is found for the desired langauges, this will use the first value (from any language) if set to true.</param>
+		/// <param name="HandleArrayValue">Custom handler to translate array values to the SingleValue property. Defaults to joining strings with " | ".</param>
+		/// <returns></returns>
+		public static LanguageMapValue GetTextValue( JToken value, string defaultValue, List<string> overrideLanguageCode = null, bool returnFirstValueIfMatchingLanguageNotFound = true, Func<List<string>, string> HandleArrayValue = null )
+		{
+			//Always return some kind of result
+			var result = new LanguageMapValue()
+			{
+				LanguageCode = "N/A",
+				SingleValue = defaultValue,
+				MultiValue = new List<string>() { defaultValue }
+			};
+
+			//Ensure a handler is set
+			HandleArrayValue = HandleArrayValue != null ? HandleArrayValue : values => string.Join( " | ", values );
+
+			//If the value is not null...
+			if( value != null ) 
+			{
+				//Handle Array values
+				//e.g. { "sample": [ ... ] }
+				if ( value.Type == JTokenType.Array ) 
+				{
+					result.MultiValue = ( ( JArray ) value ).Where( m => m != null && !string.IsNullOrWhiteSpace( m.ToString() ) ).Select( m => m.ToString() ).ToList();
+					result.SingleValue = HandleArrayValue( result.MultiValue );
+				}
+				//Handle Object values - these should only ever be language strings unless something goes very wrong
+				//e.g. { "sample": { "en": "abc", "fr": [ "def", "ghi" ] } }
+				if( value.Type == JTokenType.Object )
+				{
+					//Get the properties of the object
+					var properties = ( ( JObject ) value ).Properties().Where( m => m.Value != null && !string.IsNullOrWhiteSpace( m.Value?.ToString() ) ).ToList();
+
+					//Determine which language codes to look for
+					var languages = overrideLanguageCode ?? new List<string>() { "en-US", "en-us", "en" };
+
+					//Find the first key in the object that matches one of the languages
+					var match = properties.FirstOrDefault( m => languages.Contains( m.Name ) ) ?? ( returnFirstValueIfMatchingLanguageNotFound ? properties.FirstOrDefault() : null );
+
+					//If a match is found...
+					if( match != null )
+					{
+						//Track which language code matched
+						result.LanguageCode = match.Name;
+						
+						//If the value is an array...
+						//e.g. { "en": [ "one", "two" ] }
+						if( match.Value.Type == JTokenType.Array )
+						{
+							result.MultiValue = match.Value.Where( m => m != null && !string.IsNullOrWhiteSpace( m.ToString() ) ).Select( m => m.ToString() ).ToList();
+							result.SingleValue = HandleArrayValue( result.MultiValue );
+						}
+						//If the value is anything else
+						//e.g. { "en": "some text" }
+						else
+						{
+							result.SingleValue = match.Value.ToString();
+							result.MultiValue = new List<string>() { result.SingleValue };
+						}
+					}
+				}
+				//Handle any other kind of value
+				//e.g. { "sample": "text" }
+				else
+				{
+					result.SingleValue = value.ToString();
+					result.MultiValue = new List<string>() { result.SingleValue };
+				}
+			}
+
+			//Ensure the multi-value array doesn't have empty/null things
+			result.MultiValue = result.MultiValue.Where( m => !string.IsNullOrWhiteSpace( m ) ).ToList();
+
+			//Return the value
+			return result;
+		}
+		//
+
+		public static ComposedSearchResultSet DoRegistrySearch( JToken typeFilter, List<JObject> filterItems, int skip, int take, string sort, string loggingSource, bool includeMetadata = false, bool includeDebugInfo = false, bool asDescriptionSet = false, int descriptionSetPerBranchLimit = 10 )
+		{
+			//Hold the response
+			var resultSet = new ComposedSearchResultSet();
+
+			//Hold the query
+			var outerQuery = new SearchQuery()
+			{
+				Skip = skip,
+				Take = take,
+				Sort = sort,
+				IncludeResultsMetadata = includeMetadata,
+				IncludeDebugInfo = includeDebugInfo,
+				DescriptionSetType = asDescriptionSet ? SearchQuery.DescriptionSetTypes.Resource_RelatedURIs_RelatedData : SearchQuery.DescriptionSetTypes.Resource,
+				DescriptionSetRelatedURIsLimit = 10,
+				Community = ConfigHelper.GetConfigValue( "defaultCommunity", "" ),
+				ExtraLoggingInfo = new JObject() { 
+					{ "Source", string.IsNullOrWhiteSpace( loggingSource ) ? "Finder/Search" : loggingSource }, 
+					{ "ClientIP", System.Web.HttpContext.Current?.Request?.UserHostAddress ?? "Unknown" } 
+				}
+			};
+
+			//Construct the outer wrapper
+			outerQuery.Query = new JObject()
+			{
+				{ "@type", typeFilter },
+				{ "search:termGroup", new JObject() {
+					{ "search:value", JArray.FromObject( filterItems ) },
+					{ "search:operator", "search:andTerms" }
+				} }
+			};
+
+			//Debugging Info
+			resultSet.DebugInfo.Add( "Raw Query", JObject.FromObject( outerQuery ) );
+
+			//Do the search via the Accounts System (so that it gets logged)
+			var apiKey = UtilityManager.GetAppKeyValue( "MyCredentialEngineAPIKey", "" );
+			var apiURL = UtilityManager.GetAppKeyValue( "AssistantCTDLJSONSearchAPIUrl", "" );
+			var rawResponse = new SearchResponse();
+			try
+			{
+				//Format the request
+				var queryJSON = JsonConvert.SerializeObject( outerQuery, new JsonSerializerSettings() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore } );
+
+				//Do the request
+				var client = new HttpClient();
+				client.DefaultRequestHeaders.TryAddWithoutValidation( "Authorization", "ApiToken " + apiKey );
+				client.Timeout = new TimeSpan( 0, 10, 0 );
+				System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+				var rawResult = client.PostAsync( apiURL, new StringContent( queryJSON, Encoding.UTF8, "application/json" ) ).Result;
+
+				//Process the response
+				if ( !rawResult.IsSuccessStatusCode )
+				{
+					rawResponse.valid = false;
+					rawResponse.status = rawResult.ReasonPhrase;
+					resultSet.DebugInfo.Add( "Error Performing Search", JObject.FromObject( rawResponse ) );
+					return resultSet;
+				}
+
+				try
+				{
+					rawResponse = JsonConvert.DeserializeObject<SearchResponse>( rawResult.Content.ReadAsStringAsync().Result, new JsonSerializerSettings() { DateParseHandling = DateParseHandling.None } );
+					if ( !rawResponse.valid )
+					{
+						//TODO: float the error up to the surface
+						resultSet.DebugInfo.Add( "CE API Layer Error", JObject.FromObject( rawResponse ) );
+						return resultSet;
+					}
+				}
+				catch ( Exception ex )
+				{
+					rawResponse.valid = false;
+					rawResponse.status = "Error parsing response: " + ex.Message + ( ex.InnerException != null ? " " + ex.InnerException.Message : "" ) + " (from URL: " + apiURL + ")";
+					resultSet.DebugInfo.Add( "Error Performing Search", JObject.FromObject( rawResponse ) );
+					return resultSet;
+				}
+			}
+			catch ( Exception ex )
+			{
+				rawResponse.valid = false;
+				rawResponse.status = "Error on search: " + ex.Message + ( ex.InnerException != null ? " " + ex.InnerException.Message : "" ) + " (from URL: " + apiURL + ")";
+				resultSet.DebugInfo.Add( "Error Performing Search", JObject.FromObject( rawResponse ) );
+			}
+
+			//Compose the results
+			ComposeResults( rawResponse.data, rawResponse.extra.RelatedItems, rawResponse.extra.RelatedItemsMap, rawResponse.extra.ResultsMetadata, rawResponse.extra.TotalResults, resultSet );
+
+			//Return the results
+			return resultSet;
 		}
 		//
 

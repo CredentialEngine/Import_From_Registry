@@ -1,28 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Web.UI;
-using System.Web.UI.WebControls;
 using System.Web.SessionState;
-
+using System.Web.UI.WebControls;
 using workIT.Utilities;
-using MC = workIT.Models.Common;
-using MD = workIT.Models.API;
-using ME = workIT.Models.Elastic;
-using MPM = workIT.Models.ProfileModels;
-using MSR = workIT.Models.Search;
-using workIT.Models.Search;
-using workIT.Factories;
 
 namespace workIT.Services
 {
-	public class ServiceHelper
+    public class ServiceHelper
 	{
 		static string DEFAULT_GUID = "00000000-0000-0000-0000-000000000000";
 		static string thisClassName = "ServiceHelper";
@@ -223,7 +213,21 @@ namespace workIT.Services
 			return result;
 
 		} //end
-        public static bool IsValidCtid( string ctid, ref List<string> messages, bool isRequired = false, bool skippingErrorMessages = true )
+
+		/// <summary>
+		/// Simple check whether the CTID is present and valid.
+		/// Typically the caller will only act on if valid (so can return false if not present)
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <returns></returns>
+		public static bool IsValidCtid( string ctid )
+		{
+			List<string> messages = new List<string>();
+
+			return IsValidCtid( ctid, ref messages, isRequired: false, skippingErrorMessages: true );
+		}
+
+		public static bool IsValidCtid( string ctid, ref List<string> messages, bool isRequired = false, bool skippingErrorMessages = true )
         {
             bool isValid = true;
 
@@ -457,7 +461,7 @@ namespace workIT.Services
 				{
 
 					string exType = ex.GetType().ToString();
-					LoggingHelper.LogError( exType + " Exception in GetRowColumn( DataRow row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+					LoggingHelper.LogError( ex, exType + " Exception in GetRowColumn( DataRow row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				}
 				colValue = defaultValue;
 			}
@@ -488,9 +492,7 @@ namespace workIT.Services
 			}
 			catch ( Exception ex )
 			{
-
-
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 				//throw ex;
 			}
@@ -523,7 +525,7 @@ namespace workIT.Services
 			catch ( Exception ex )
 			{
 
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 				//throw ex;
 			}
@@ -554,14 +556,12 @@ namespace workIT.Services
 			}
 			catch ( Exception ex )
 			{
-
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, System.DateTime defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, System.DateTime defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 			}
 			return colValue;
 
 		} // end method
-
 
 		/// <summary>
 		/// Helper method to retrieve a column from a row while handling invalid values
@@ -587,8 +587,7 @@ namespace workIT.Services
 			}
 			catch ( Exception ex )
 			{
-
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRow row, string column, decimal defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRow row, string column, decimal defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 			}
 			return colValue;
@@ -620,13 +619,11 @@ namespace workIT.Services
 			{
 				//Assuming FormatException means null or invalid value, so can ignore
 				colValue = defaultValue;
-
 			}
 			catch ( Exception ex )
 			{
-
 				string exType = ex.GetType().ToString();
-				LoggingHelper.LogError( exType + " Exception in GetRowColumn( DataRowView row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, exType + " Exception in GetRowColumn( DataRowView row, string column, string defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 			}
 			return colValue;
@@ -653,12 +650,10 @@ namespace workIT.Services
 			{
 				//Assuming FormatException means null or invalid value, so can ignore
 				colValue = defaultValue;
-
 			}
 			catch ( Exception ex )
 			{
-
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRowView row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRowView row, string column, int defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 				//throw ex;
 			}
@@ -686,12 +681,10 @@ namespace workIT.Services
 			{
 				//Assuming FormatException means null or invalid value, so can ignore
 				colValue = defaultValue;
-
 			}
 			catch ( Exception ex )
 			{
-
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRowView row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRowView row, string column, bool defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 				//throw ex;
 			}
@@ -719,11 +712,10 @@ namespace workIT.Services
 			{
 				//Assuming FormatException means null or invalid value, so can ignore
 				colValue = defaultValue;
-
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( "Exception in GetRowColumn( DataRowView row, string column, decimal defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString(), true );
+				LoggingHelper.LogError( ex, "Exception in GetRowColumn( DataRowView row, string column, decimal defaultValue ) for column: " + column + ". \r\n" + ex.Message.ToString() );
 				colValue = defaultValue;
 			}
 			return colValue;

@@ -5,11 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Elasticsearch.Net;
-
+using Newtonsoft.Json;
+using APIServices = workIT.Services.API;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
 using workIT.Utilities;
+//using System.Web.UI.WebControls;
 
 namespace workIT.Services
 {
@@ -33,70 +35,271 @@ namespace workIT.Services
 
 			return list;
 		}
-		public static TopLevelObject GetEntityAsTopLevelObject(Guid uid)
+
+		/// <summary>
+		/// Get any top level resource with a CTID as type TopLevelResource.
+		/// TODO - there is a lot of chafe with this. 
+		/// </summary>
+		/// <param name="uid"></param>
+		/// <returns></returns>
+		public static TopLevelObject GetEntityAsTopLevelObject( Guid uid )
 		{
 			TopLevelObject tlo = new TopLevelObject();
+
+			//
+			//TODO - make this lighter
+			//	can entity cache be used?
+			var resource = EntityManager.EntityCacheGetByGuid( uid );
+			if ( resource != null && resource.Id > 0)
+			{
+				tlo = new TopLevelObject()
+				{
+					EntityType = resource.EntityType,	
+					EntityTypeId = resource.EntityTypeId,
+					Id = resource.BaseId,
+					Name = resource.Name,
+					Description = resource.Description,
+					CTID = resource.CTID,
+					EntityLastUpdated = resource.LastUpdated,
+					EntityStateId = resource.EntityStateId,
+				};
+				return tlo;
+			}
+
 
 			var entity = EntityManager.GetEntity( uid, false );
 			if ( entity == null || entity.Id == 0 )
 				return null;
-			//
-			if (entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL)
+			switch ( entity.EntityTypeId )
 			{
-				//actually should return some type info
-				tlo = CredentialManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION )
-			{
-				tlo = OrganizationManager.GetBasics( entity.EntityUid );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE )
-			{
-				tlo = AssessmentManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE )
-			{
-				tlo = LearningOpportunityManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY )
-			{
-				tlo = PathwayManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_COMPONENT )
-			{
-				tlo = PathwayComponentManager.Get( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_PATHWAY_SET )
-			{
-				tlo = PathwaySetManager.Get( entity.EntityBaseId, false );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE )
-			{
-				//these need to be light versions
-				tlo = TransferValueProfileManager.Get( entity.EntityBaseId, false );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_OCCUPATIONS_PROFILE )
-			{
-				tlo = OccupationManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
-			else if ( entity.EntityTypeId == CodesManager.ENTITY_TYPE_JOB_PROFILE )
-			{
-				tlo = JobManager.GetBasic( entity.EntityBaseId );
-				tlo.EntityTypeId = entity.EntityTypeId;
-			}
+				case 1:
+					//actually should return some type info
+					tlo = CredentialManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 2:
+				case 12:
+				case 13:
+					tlo = OrganizationManager.GetBasics( entity.EntityUid );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 3:
+					tlo = AssessmentManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 7:
+				case 36:
+				case 37:
+					tlo = LearningOpportunityManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 8:
+					tlo = PathwayManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 9:
+					tlo = CollectionManager.Get( entity.EntityBaseId, false );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 10:
+					tlo = CompetencyFrameworkManager.Get( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 15:
+					tlo = ScheduledOfferingManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
+					break;
+				case 22:
+					tlo = CredentialingActionManager.GetBasic( entity.EntityBaseId);
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 23:
+					tlo = PathwaySetManager.Get( entity.EntityBaseId, false );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 24:
+					tlo = PathwayComponentManager.Get( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				
+				case 26:
+					//these need to be light versions
+					tlo = TransferValueProfileManager.Get( entity.EntityBaseId, false );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 28:
+					tlo = TransferIntermediaryManager.Get( entity.EntityBaseId, false );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+
+
+				case 31:
+					tlo = DataSetProfileManager.Get( entity.EntityBaseId, false );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 32:
+					tlo = JobManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 33:
+					tlo = TaskManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 34:
+					tlo = WorkRoleManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 35:
+					tlo = OccupationManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = entity.EntityTypeId;
+					break;
+				case 38:
+					tlo = SupportServiceManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
+					break;
+				case 39:
+					tlo = RubricManager.GetBasic( entity.EntityBaseId );
+					tlo.EntityTypeId = CodesManager.ENTITY_TYPE_RUBRIC;
+					break;
+			} 
+					
+			
+
 			return tlo;
 		}
 
+		#region Helper for indexing reference objects
+		/// <summary>
+		/// Method to prepare and index reference resources 
+		/// </summary>
+		/// <param name="list"></param>
+		/// <param name="status"></param>
+		public void IndexPrepForReferenceResource( List<TopLevelObject> list, ref SaveStatus status )
+		{
+			if ( list == null || !list.Any() )
+				return;
 
+			var eManager = new EntityManager();
+			foreach ( var item in list )
+			{
+				//NOTE need to build the entity.cache.ResourceDetail before updating the index pending request
+				var reindexId = item.EntityTypeId;
+
+				var statusMsg = "";
+				var messages = new List<string>();
+				//do we need a check for CTID? That is, if present skip?
+				switch ( item.EntityTypeId )
+				{
+					case 1:
+						var cred = APIServices.CredentialServices.GetDetailForAPI( item.Id, true );
+						if ( cred != null && cred.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( cred, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( item.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateResourceDetail for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+							if ( eManager.EntityCacheUpdateAgentRelationshipsForCredential( cred.Meta_RowId.ToString(), ref statusMsg ) == false )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateAgentRelationshipsForCredential for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+						}
+						//new SearchPendingReindexManager().Add( item.EntityTypeId, item.Id, 1, ref messages );
+						////what about owner? would have to ensure that it is present.
+						//if ( item.PrimaryOrganizationId > 0 )
+						//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, item.PrimaryOrganizationId, 1, ref messages );
+						break;
+					case 2:
+						var org = APIServices.OrganizationServices.GetDetailForAPI( item.Id, true );
+						if ( org != null && org.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( org, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( item.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateResourceDetail for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+						}
+						//new SearchPendingReindexManager().Add( item.EntityTypeId, item.Id, 1, ref messages );
+						//others?????
+						break;
+					case 3:
+						var asmt = APIServices.AssessmentServices.GetDetailForAPI( item.Id, true );
+						if ( asmt != null && asmt.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( asmt, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( item.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateResourceDetail for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+							if ( eManager.EntityCacheUpdateAgentRelationshipsForAssessment( asmt.Meta_RowId.ToString(), ref statusMsg ) == false )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateAgentRelationshipsForAssessment for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+						}
+						//new SearchPendingReindexManager().Add( item.EntityTypeId, item.Id, 1, ref messages );
+						//if ( item.PrimaryOrganizationId > 0 )
+						//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, item.PrimaryOrganizationId, 1, ref messages );
+						break;
+					case 7:
+					case 36:
+					case 37:
+						reindexId = 7;
+						var lopp = APIServices.LearningOpportunityServices.GetDetailForAPI( item.Id, true );
+						if ( lopp != null && lopp.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( lopp, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( item.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateResourceDetail for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+							if ( eManager.EntityCacheUpdateAgentRelationshipsForLopp( lopp.Meta_RowId.ToString(), ref statusMsg ) == false )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateAgentRelationshipsForLopp for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+						}
+						//new SearchPendingReindexManager().Add( 7, item.Id, 1, ref messages );
+						//if ( item.PrimaryOrganizationId > 0 )
+						//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, item.PrimaryOrganizationId, 1, ref messages );
+
+						
+						break;
+
+					case 35:
+						var occupation = APIServices.OccupationServices.GetDetailForAPI( item.Id, true );
+						if ( occupation != null && occupation.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( occupation, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( item.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( $"{thisClassName}.IndexPrepForReferenceResource-EntityCacheUpdateResourceDetail for: {item.EntityTypeId} failed:" + statusMsg );
+							}
+							
+							//new SearchPendingReindexManager().Add( item.EntityTypeId, item.Id, 1, ref messages );
+							//if ( item.PrimaryOrganizationId > 0 )
+							//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, item.PrimaryOrganizationId, 1, ref messages );
+
+						}
+						break;
+					default:
+						status.AddError( $"{thisClassName}.IndexPrepForReferenceResource Unhandled EntityTypeId encountered: {item.EntityTypeId}." );
+						break;
+				}
+
+				
+				new SearchPendingReindexManager().Add( reindexId, item.Id, 1, ref messages );
+				//what about owner? would have to ensure that it is present.
+				//just in case exclude entitytypeId of 2
+				if ( reindexId !=2 && item.PrimaryOrganizationId > 0 )
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, item.PrimaryOrganizationId, 1, ref messages );
+			}
+
+		}
+		public void IndexPrepForReferenceResource (int entityTypeId)
+		{
+
+
+		}
+		#endregion
 		#region addresses
 		/// <summary>
 		/// Handle addresses missing lat/lng
@@ -106,7 +309,7 @@ namespace workIT.Services
 		{
 			//should we do all?
 			int maxRecords = 0;
-			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".HandleAddressGeoCoding - maxRecords: {0}", maxRecords ) );
+			LoggingHelper.DoTrace( CodesManager.appMethodEntryTraceLevel, thisClassName + string.Format( ".HandleAddressGeoCoding - maxRecords: {0}", maxRecords ) );
 			DateTime started = DateTime.Now;
 			string report = "";
 			string messages = "";

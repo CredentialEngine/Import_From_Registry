@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WMP = workIT.Models.ProfileModels;
 
 namespace workIT.Models.Common
 {
-	public class CredentialingAction
+	public class CredentialingAction : TopLevelObject
 	{
 		/* One of
 		ceterms:AccreditAction
@@ -23,26 +24,29 @@ namespace workIT.Models.Common
 		ceterms:WorkforceDemandAction
 	 */
 		public string Type { get; set; } = "ceterms:CredentialingAction";
-
+		public int ActionTypeId { get; set; }
+		public Enumeration ActionType { get; set; }
 		/// <summary>
 		/// Action Status
 		/// Types of current status of an action.
 		/// Available statuses include ActiveActionStatus, CompletedActionStatus, FailedActionStatus, PotentialActionStatus.
 		/// <see cref="https://credreg.net/ctdl/terms/ActionStatus"/>
 		/// </summary>
-		public string ActionStatusType { get; set; }
-
+		public Enumeration ActionStatusType { get; set; }
+		public int ActionStatusTypeId { get; set; }
 		/// <summary>
 		/// Acting Agent
 		/// Provide the CTID for a participant in the Credential Registry or provide minimum data where not in the registry.
 		/// </summary>
 		public List<ResourceSummary> ActingAgent { get; set; }
 
-		/// <summary>
-		/// Accredit Action Description
-		/// REQUIRED
-		/// </summary>
-		public string Description { get; set; }
+		public List<WMP.OrganizationRoleProfile> OrganizationRole { get; set; }
+
+		///// <summary>
+		///// Accredit Action Description
+		///// REQUIRED
+		///// </summary>
+		//public string Description { get; set; }
 
 
 		/// <summary>
@@ -58,20 +62,19 @@ namespace workIT.Models.Common
 		/// A credential or other instrument whose criteria was applied in executing the action.
 		/// Provide the CTID for a credential in the Credential Registry or provide minimum data for a credential not in the registry.
 		/// </summary>
-		public List<ResourceSummary> Instrument { get; set; }
+		public ResourceSummary Instrument { get; set; } = new ResourceSummary();
 
 		/// <summary>
 		/// Object
 		/// Object upon which the action is carried out, whose state is kept intact or changed.
-		/// An EntityReference for Credentials, AssessmentProfile, or LearningOpportunity Profile
+		/// range: most anything
 		/// </summary>
-		public ResourceSummary Object { get; set; }
+		public TopLevelObject Object { get; set; } = new TopLevelObject();
 
 		/// <summary>
 		/// Participant
 		/// Co-agents that participated in the action indirectly.
 		/// Provide the CTID for a participant in the Credential Registry or provide minimum data where not in the registry.
-		/// LIST????
 		/// </summary>
 		public List<ResourceSummary> Participant { get; set; }
 
@@ -95,6 +98,19 @@ namespace workIT.Models.Common
 		/// </summary>
 		public string EndDate { get; set; }
 
-		public List<JurisdictionProfile> Jurisdiction { get; set; }
+		//public List<JurisdictionProfile> Jurisdiction { get; set; }
+		public List<WMP.AssessmentProfile> ObjectAsmt { get; set; } = new List<WMP.AssessmentProfile>();
+		public List<Credential> ObjectCredential { get; set; } = new List<Credential>();
+		public List<WMP.LearningOpportunityProfile> ObjectLopp { get; set; } = new List<WMP.LearningOpportunityProfile>();
+		public List<Organization> ObjectOrg { get; set; } = new List<Organization>();
+
+		#region import
+		public List<int> InstrumentIds { get; set; }
+		public Guid ObjectUid { get; set; }
+		public string ActionStatusTypeImport { get; set; }
+		public List<Guid> ParticipantList { get; set; }
+		public List<int> ParticipantIds { get; set; }
+		public List<Guid> ActingAgentList { get; set; } = new List<Guid>();
+		#endregion
 	}
 }

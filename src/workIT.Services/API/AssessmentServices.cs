@@ -52,6 +52,7 @@ namespace workIT.Services.API
 			var output = new WMA.AssessmentDetail()
 			{
 				Meta_Id = input.Id,
+				Meta_RowId = input.RowId,
 				CTID = input.CTID,
 				Name = input.Name,
 				Meta_FriendlyName = HttpUtility.UrlPathEncode ( input.Name ),
@@ -139,7 +140,7 @@ namespace workIT.Services.API
 			//
 			//MapAddress( input, ref output );
 			output.AvailableAt = ServiceHelper.MapAddress( input.AvailableAt );
-
+			output.InCatalog = input.InCatalog;
 			//
 			output.AudienceLevelType = ServiceHelper.MapPropertyLabelLinks( input.AudienceLevelType, searchType, false );
 			output.AudienceType = ServiceHelper.MapPropertyLabelLinks( input.AudienceType, searchType, false );
@@ -244,7 +245,14 @@ namespace workIT.Services.API
 			{
 				output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
 			}
-			output.IsReferenceVersion = input.IsReferenceVersion;
+			//
+			if ( string.IsNullOrWhiteSpace( input.CTID ) )
+			{
+				output.IsReferenceVersion = true;
+				output.Name += " [reference]";
+			}
+			else
+				output.IsReferenceVersion = false;
 			//
 			if ( input.Keyword != null && input.Keyword.Any() )
 				output.Keyword = ServiceHelper.MapPropertyLabelLinks( input.Keyword, searchType );
@@ -267,6 +275,9 @@ namespace workIT.Services.API
 			output.LearningMethodDescription = input.LearningMethodDescription;
 			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
 
+			output.ProvidesTransferValueFor = ServiceHelper.MapResourceSummaryAJAXSettings( input.ProvidesTransferValueFor, "TransferValue" );
+			output.ReceivesTransferValueFrom = ServiceHelper.MapResourceSummaryAJAXSettings( input.ReceivesTransferValueFrom, "TransferValue" );
+			output.HasRubric = ServiceHelper.MapResourceSummaryAJAXSettings( input.HasRubric, "Rubric" );
 			//
 			MapProcessProfiles( input, ref output );
 			//
@@ -284,6 +295,7 @@ namespace workIT.Services.API
 
 			output.SameAs = ServiceHelper.MapTextValueProfileTextValue( input.SameAs );
 			output.TargetPathway = ServiceHelper.MapPathwayToAJAXSettings( input.TargetPathway, "Has {0} Target Pathway(s)" );
+			output.RelatedActions = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedAction, "CredentialingAction" );
 			//
 			output.TargetLearningResource = input.TargetLearningResource;
 			//

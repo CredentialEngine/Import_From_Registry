@@ -367,7 +367,7 @@ namespace workIT.Factories
 			to.CityFilters = from.CityFilters;
 			to.IncludeIfAvailableOnline = from.IncludeIfAvailableOnline ?? false;
 
-			if ( ( from.OwningOrganizationIds ?? "" ) == "0" )
+			if ( ( from.OwningOrganizationIds ?? string.Empty ) == "0" )
 				from.OwningOrganizationIds = null;
 			to.OwningOrganizationIds = from.OwningOrganizationIds;
 
@@ -436,7 +436,7 @@ namespace workIT.Factories
 				to.SearchFilters = from.SearchFilters;
 			}
 			//until in interface, do not attempt to map
-			if ( to.AllowsCSVExport == null )
+			if ( to.AllowsCSVExport == null || from.AllowsCSVExport )
 			{
 				to.AllowsCSVExport = from.AllowsCSVExport;
 			}
@@ -463,9 +463,9 @@ namespace workIT.Factories
 
 			//	to.WidgetStylesUrl = from.WidgetStylesUrl;
 
-			//	if ( ( from.OwningOrganizationIds ?? "" ).IndexOf( "workIT.Models" ) > -1 )
+			//	if ( ( from.OwningOrganizationIds ?? string.Empty ).IndexOf( "workIT.Models" ) > -1 )
 			//		from.OwningOrganizationIds = null;
-			//	else if ( ( from.OwningOrganizationIds ?? "" ) == "0" )
+			//	else if ( ( from.OwningOrganizationIds ?? string.Empty ) == "0" )
 			//		from.OwningOrganizationIds = null;
 
 			//	to.OwningOrganizationIds = from.OwningOrganizationIds;

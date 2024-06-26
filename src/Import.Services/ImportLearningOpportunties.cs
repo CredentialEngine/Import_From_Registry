@@ -8,16 +8,19 @@ using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
 using EntityServices = workIT.Services.LearningOpportunityServices;
-//using InputEntity = RA.Models.Json.LearningOpportunityProfile;
+//using InputResource = RA.Models.Json.LearningOpportunityProfile;
 
 using InputEntityV3 = RA.Models.JsonV2.LearningOpportunityProfile;
 using JsonInput = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
-using ThisEntity = workIT.Models.ProfileModels.LearningOpportunityProfile;
+using ThisResource = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.ProfileModels;
 using FAPI = workIT.Services.API;
+using workIT.Models.Common;
+using workIT.Services;
+
 namespace Import.Services
 {
     public class ImportLearningOpportunties
@@ -27,8 +30,8 @@ namespace Import.Services
         string resourceType = "LearningOpportunity";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        //InputEntity input = new InputEntity();
-        ThisEntity output = new ThisEntity();
+        //InputResource input = new InputResource();
+        ThisResource output = new ThisResource();
 
         #region custom imports
         public void ImportPendingRecords()
@@ -37,9 +40,9 @@ namespace Import.Services
             int pTotalRows = 0;
 
             SaveStatus status = new SaveStatus();
-            List<ThisEntity> list = LearningOpportunityManager.Search( where, "", 1, 500, ref pTotalRows );
+            List<ThisResource> list = LearningOpportunityManager.Search( where, "", 1, 500, ref pTotalRows );
             LoggingHelper.DoTrace( 1, string.Format( thisClassName + " - ImportPendingRecords(). Processing {0} records =================", pTotalRows ) );
-            foreach ( ThisEntity item in list )
+            foreach ( ThisResource item in list )
             {
                 status = new SaveStatus();
 				//SWP contains the resource url
@@ -135,8 +138,8 @@ namespace Import.Services
                 return false;
             }
             //
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -300,12 +303,13 @@ namespace Import.Services
 					//OR set based on the first language
 					helper.SetDefaultLanguage( input.Name, "Name" );
 				}
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
 				output.LearningEntityType = learningOppClass;
 
-				output.CTID = input.CTID;
+
 				output.CredentialRegistryId = status.EnvelopeId;
 				//TBD handling of referencing third party publisher
 				helper.MapOrganizationPublishedBy( output, ref status );
@@ -353,6 +357,7 @@ namespace Import.Services
 				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
 
 				//BYs - do owned and offered first
+				//NEW: handling examples with github URIs
 				output.OwnedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.OwnedBy", input.OwnedBy, ref status );
 				output.OfferedBy = helper.MapOrganizationReferenceGuids( "LearningOpp.OfferedBy", input.OfferedBy, ref status );
 				if ( output.OwnedBy != null && output.OwnedBy.Count > 0 )
@@ -362,8 +367,63 @@ namespace Import.Services
 				}
 				else
 				{
+					if ( input.OwnedBy != null && input.OwnedBy.Count > 0 )
+					{
+						//do a get 
+						var ctdlType = "";
+						var statusMessage = "";
+						var resource = RegistryServices.GetNonRegistryResourceByUrl( input.OwnedBy[0], ref ctdlType, ref statusMessage );
+
+						if ( ctdlType  == "Organization" )
+						{
+							var inputOrg = JsonConvert.DeserializeObject<RA.Models.JsonV2.Agent>( resource );
+							var outputOrg = new Organization();
+
+							if (!string.IsNullOrWhiteSpace( inputOrg.CTID) )
+							{
+								var existingOrg = OrganizationServices.GetMinimumSummaryByCtid( input.CTID );
+								if ( existingOrg != null &&  existingOrg.Id > 0 )
+								{
+									output.PrimaryAgentUID = existingOrg.RowId;
+									helper.CurrentOwningAgentUid = existingOrg.RowId;
+								} else
+								{
+									ImportOrganization orgImport = new ImportOrganization();
+									//may want a separate status?
+									if (orgImport.HandleExternalRequest( inputOrg, ref outputOrg, ref status ) || outputOrg.Id > 0)
+									{
+										output.PrimaryAgentUID = outputOrg.RowId;
+										helper.CurrentOwningAgentUid = outputOrg.RowId;
+									} else
+									{
+
+									}
+									/*
+									//either import now, or create a pending record.
+									//orgImport.CommonMapping( inputOrg, helper, ref outputOrg, ref status );	
+									
+									if ( new OrganizationServices().Import( outputOrg, ref status ) || outputOrg .Id > 0)
+									{
+										output.PrimaryAgentUID = outputOrg.RowId;
+										helper.CurrentOwningAgentUid = outputOrg.RowId;
+									} else
+									{
+
+									}
+									*/
+
+								}
+							}
+							
+
+						} else
+						{
+							//invalid type
+							status.AddError( $"{thisClassName}.ImportV3 ({input.CTID}) Encountered a non registry Organization URL that does not reference an organization type: {input.OwnedBy[ 0 ]}" );
+						}
+					}
 					//add warning?
-					if ( output.OfferedBy == null && output.OfferedBy.Count == 0 )
+					if ( output.OfferedBy == null || output.OfferedBy.Count == 0 )
 					{
 						status.AddWarning( "document doesn't have an owning or offering organization." );
 					}
@@ -398,14 +458,15 @@ namespace Import.Services
 				output.CodedNotation = input.CodedNotation;
 				//=========================================
 				output.Identifier = helper.MapIdentifierValueList( input.Identifier );
-				output.IdentifierNew = helper.MapIdentifierValueList2( input.Identifier );
+				output.IdentifierNew = helper.MapIdentifierValueListInternal( input.Identifier );
 
 				if ( output.IdentifierNew != null && output.IdentifierNew.Count() > 0 )
 				{
+					//24-03-05 mp - this not being used yet, so why???
 					output.IdentifierJSON = JsonConvert.SerializeObject( output.IdentifierNew, MappingHelperV3.GetJsonSettings() );
 				}
 				output.VersionIdentifierList = helper.MapIdentifierValueList( input.VersionIdentifier );
-				output.VersionIdentifierNew = helper.MapIdentifierValueList2( input.VersionIdentifier );
+				output.VersionIdentifierNew = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
 				if ( output.VersionIdentifierNew != null && output.VersionIdentifierNew.Count() > 0 )
 				{
 					output.VersionIdentifierJSON = JsonConvert.SerializeObject( output.VersionIdentifierNew, MappingHelperV3.GetJsonSettings() );
@@ -479,6 +540,16 @@ namespace Import.Services
 				output.ScheduleFrequencyType = helper.MapCAOListToEnumermation( input.ScheduleFrequencyType );
 				output.OfferFrequencyType = helper.MapCAOListToEnumermation( input.OfferFrequencyType );
 
+				// TransferValue Profile
+				if ( input.ProvidesTransferValueFor != null && input.ProvidesTransferValueFor.Count > 0 )
+					output.ProvidesTVForIds = helper.MapEntityReferences( $"{resourceType}.ProvidesTransferValueFor", input.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+				if ( input.ReceivesTransferValueFrom != null && input.ReceivesTransferValueFrom.Count > 0 )
+					output.ReceivesTVFromIds = helper.MapEntityReferences( $"{resourceType}.ProvidesTransferValueFor", input.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
+				//
+				//Target Action 
+				if ( input.ObjectOfAction != null && input.ObjectOfAction.Count > 0 )
+					output.ObjectOfActionIds = helper.MapEntityReferences( $"{resourceType}.ObjectOfAction", input.ObjectOfAction, CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION, ref status );
+
 				//output.VerificationMethodDescription = helper.HandleLanguageMap( input.VerificationMethodDescription, output, "VerificationMethodDescription" );
 				//financial assitance
 				output.FinancialAssistance = helper.FormatFinancialAssistance( input.FinancialAssistance, ref status );
@@ -493,7 +564,7 @@ namespace Import.Services
 				//		- 
 				bool hasDataSetProfiles = false;
                 List<string> ctidList = new List<string>();
-                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, bnodes, ref status, ref ctidList );
+                output.AggregateData = helper.FormatAggregateDataProfile( output.CTID, input.AggregateData, ref status, ref ctidList );
 				if ( ctidList != null && ctidList.Any() )
 				{
 					//especially for one-time adhoc imports, may want a reminder to import the dsp as well. Well would be good to have the actual dsp ctid to pass back
@@ -581,11 +652,14 @@ namespace Import.Services
                 //
                 if ( input.HasOffering != null && input.HasOffering.Count > 0 )
                     output.HasOfferingIds = helper.MapEntityReferences( $"{resourceType}.HasOffering", input.HasOffering, CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING, ref status );
-
-                if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
+				if ( input.HasRubric != null && input.HasRubric.Count > 0 )
+					output.HasRubricIds = helper.MapEntityReferences( $"{resourceType}.HasRubric", input.HasRubric, CodesManager.ENTITY_TYPE_RUBRIC, ref status );
+				if ( input.HasSupportService != null && input.HasSupportService.Count > 0 )
                     output.HasSupportServiceIds = helper.MapEntityReferences( $"{resourceType}.HasSupportService", input.HasSupportService, CodesManager.ENTITY_TYPE_SUPPORT_SERVICE, ref status );
 
-                output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+				output.InCatalog = input.InCatalog;
+
+				output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 				//common conditions
 				output.ConditionManifestIds = helper.MapEntityReferences( input.CommonConditions, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, ref status );
@@ -621,7 +695,7 @@ namespace Import.Services
 				//just in case check if entity added since start
 				if ( output.Id == 0 )
 				{
-					ThisEntity entity = EntityServices.GetByCtid( ctid );
+					ThisResource entity = EntityServices.GetByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 					{
 						output.Id = entity.Id;
@@ -633,25 +707,10 @@ namespace Import.Services
                 if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
                 {
                     importSuccessfull = mgr.Import( output, ref status );
-                    //start storing the finder api ready version
-                    var resource = FAPI.LearningOpportunityServices.GetDetailForElastic( output.Id, true );
-                    //var resourceDetail2 = JObject.FromObject( resource );
-                    //or 
-                    var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-                    var statusMsg = "";
-                    var eManager = new EntityManager();
-
-                    if ( eManager.EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-                    {
-                        status.AddError( statusMsg );
-                    }
-                    //realistically, don't have to do this every time
-                    if ( eManager.EntityCacheUpdateLoppAgentRelationships( output.CTID, ref statusMsg ) == false )
-                    {
-                        status.AddError( statusMsg );
-                    }
-                }
+					//24-03-25 - use the generic process for blank nodes encountered during import
+					new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+				}
                 //
                 saveDuration = DateTime.Now.Subtract( saveStarted );
 				if ( saveDuration.TotalSeconds > 5 )
@@ -676,7 +735,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid ), false, "LearningOpportunity Import exception" );
+				LoggingHelper.LogError(ex, string.Format(thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid));
 			}
 			finally
 			{
@@ -689,7 +748,7 @@ namespace Import.Services
         }
 
 
-        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+        public bool DoesEntityExist( string ctid, ref ThisResource entity )
         {
             bool exists = false;
             entity = EntityServices.GetByCtid( ctid );

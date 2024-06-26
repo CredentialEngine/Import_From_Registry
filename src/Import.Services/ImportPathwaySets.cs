@@ -1,29 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using EntityServices = workIT.Services.PathwayServices;
-using JInput = RA.Models.JsonV2;
-using InputEntity = RA.Models.JsonV2.PathwaySet;
-using ThisEntity = workIT.Models.Common.PathwaySet;
-using BNode = RA.Models.JsonV2.BlankNode;
-
-using workIT.Utilities;
 using workIT.Factories;
 using workIT.Models;
-using MC = workIT.Models.Common;
-using Import.Services;
-using workIT.Services;
-using workIT.Data.Accounts;
-using workIT.Models.Common;
-using workIT.Data.Views;
-using System.Web.Hosting;
-using System.IO;
+using workIT.Utilities;
+using BNode = RA.Models.JsonV2.BlankNode;
+using InputResource = RA.Models.JsonV2.PathwaySet;
+using ResourceServices = workIT.Services.PathwayServices;
+using ThisResource = workIT.Models.Common.PathwaySet;
 
 namespace Import.Services
 {
@@ -32,7 +19,7 @@ namespace Import.Services
 		int entityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET;
 		string thisClassName = "ImportPathwaySets";
 		ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 		int thisEntityTypeId = CodesManager.ENTITY_TYPE_PATHWAY_SET;
@@ -62,8 +49,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -103,9 +90,9 @@ namespace Import.Services
 			LoggingHelper.DoTrace( 6, "ImportPathwaySets - entered." );
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var mainEntity = new Dictionary<string, object>();
 			//
 			Dictionary<string, object> dictionary = RegistryServices.JsonToDictionary( payload );
@@ -125,7 +112,7 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -176,11 +163,11 @@ namespace Import.Services
 					output.RowId = Guid.NewGuid();
 				}
 				helper.currentBaseObject = output;
-
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
-				output.CTID = input.CTID;
+				
 				//TBD handling of referencing third party publisher
 				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
 				{
@@ -197,7 +184,6 @@ namespace Import.Services
 					{
 						//if publisher not imported yet, all publishee stuff will be orphaned
 						var entityUid = Guid.NewGuid();
-						var statusMsg = "";
 						var resPos = status.ResourceURL.IndexOf( "/resources/" );
 						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
 						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
@@ -274,7 +260,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "Exception encountered in CTID: {0}", input.CTID ), false, "PathwaySet Import exception" );
+				LoggingHelper.LogError(ex, string.Format("Exception encountered in CTID: {0}", input.CTID));
 			}
 
 			return importSuccessfull;
@@ -282,10 +268,10 @@ namespace Import.Services
 
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
 		{
 			bool exists = false;
-			entity = EntityServices.PathwaySetGetByCtid( ctid );
+			entity = ResourceServices.PathwaySetGetByCtid( ctid );
 			if ( entity != null && entity.Id > 0 )
 				return true;
 

@@ -8,11 +8,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using workIT.Utilities;
 
-using EntityServices = workIT.Services.ConditionManifestServices;
+using ResourceServices = workIT.Services.ConditionManifestServices;
 
 using InputEntityV3 = RA.Models.JsonV2.ConditionManifest;
 using BNodeV3 = RA.Models.JsonV2.BlankNode;
-using ThisEntity = workIT.Models.Common.ConditionManifest;
+using ThisResource = workIT.Models.Common.ConditionManifest;
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.ProfileModels;
@@ -26,7 +26,7 @@ namespace Import.Services
 		ImportManager importManager = new ImportManager();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 
 		#region custom imports
 		/// <summary>
@@ -47,7 +47,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -80,7 +80,7 @@ namespace Import.Services
 
 		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			bool importSuccessfull = ProcessEnvelope( item, status );
 			List<string> messages = new List<string>();
 			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
@@ -102,8 +102,8 @@ namespace Import.Services
 				return false;
 			}
 			//
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -171,7 +171,7 @@ namespace Import.Services
 
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
-            EntityServices mgr = new EntityServices();
+            ResourceServices mgr = new ResourceServices();
             MappingHelperV3 helper = new MappingHelperV3(19);
             helper.entityBlankNodes = bnodes;
 			helper.CurrentEntityCTID = input.CTID;
@@ -282,7 +282,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( "CostManifest ImportV3. Exception encountered for CTID: {0}", ctid ), false, "CostManifest Import exception" );
+				LoggingHelper.LogError(ex, string.Format("CostManifest ImportV3. Exception encountered for CTID: {0}", ctid));
 			}
 			finally
 			{
@@ -291,10 +291,10 @@ namespace Import.Services
 			return importSuccessfull;
         }
         
-        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+        public bool DoesEntityExist( string ctid, ref ThisResource entity )
         {
             bool exists = false;
-            entity = EntityServices.GetByCtid( ctid );
+            entity = ResourceServices.GetByCtid( ctid );
             if ( entity != null && entity.Id > 0 )
                 return true;
 

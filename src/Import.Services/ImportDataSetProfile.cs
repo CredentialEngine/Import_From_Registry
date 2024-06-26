@@ -1,25 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using EntityServices = workIT.Services.DataSetProfileServices;
-using InputEntity = RA.Models.JsonV2.QData.DataSetProfile;
-using ThisEntity = workIT.Models.QData.DataSetProfile;
-using BNode = RA.Models.JsonV2.BlankNode;
-
-using workIT.Utilities;
 using workIT.Factories;
 using workIT.Models;
-using MC = workIT.Models.Common;
-using Import.Services;
 using workIT.Services;
-using workIT.Data.Accounts;
-using workIT.Models.Node;
+using workIT.Utilities;
+using BNode = RA.Models.JsonV2.BlankNode;
+using ResourceServices = workIT.Services.DataSetProfileServices;
+using APIResourceServices = workIT.Services.API.OutcomeDataServices;
+using InputResource = RA.Models.JsonV2.QData.DataSetProfile;
+using ThisResource = workIT.Models.QData.DataSetProfile;
 
 namespace Import.Services
 {
@@ -28,7 +22,7 @@ namespace Import.Services
 		int entityTypeId = CodesManager.ENTITY_TYPE_DATASET_PROFILE;
 		string thisClassName = "ImportDataSetProfile";
 		ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 
@@ -57,8 +51,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -98,9 +92,9 @@ namespace Import.Services
 
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var bnodes = new List<BNode>();
 			var mainEntity = new Dictionary<string, object>();
 			//
@@ -120,7 +114,7 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -149,7 +143,7 @@ namespace Import.Services
 			{
 				//add/updating DataSetProfile
 				//hmm. A little different for direct import, maybe need a mapping version that has dsp as input
-				ThisEntity existing = new ThisEntity();
+				ThisResource existing = new ThisResource();
 				if ( !DoesEntityExist( input.CTID, ref existing, ref status ) )
 				{
 					//set the rowid now, so that can be referenced as needed
@@ -172,7 +166,8 @@ namespace Import.Services
 				//TODO - check if any About have not been downloaded
 				if ( output.AboutUids != null && output.AboutUids.Any() )
 				{
-					foreach( var item in output.AboutUids )
+					output.About = new List<workIT.Models.API.Outline>();
+					foreach ( var item in output.AboutUids )
 					{
 						//we don't know the type, so look up the Entity, or Entity.Cache in order to get state
 						var ec = EntityManager.EntityCacheGetByGuid( item );
@@ -187,6 +182,14 @@ namespace Import.Services
 									PublishingEntityType = ec.EntityType,
 								};
 								importManager.Import_PendingRequestAdd( entity, ref status );
+							} else if ( ec.EntityStateId == 3 )
+							{
+								output.About.Add( new workIT.Models.API.Outline()
+								{
+									Meta_Id = ec.Id,
+									Description = ec.Description,
+									Label = ec.Name
+								} );
 							}
 						}
 					}
@@ -196,6 +199,8 @@ namespace Import.Services
 				output.RowId = existing.RowId;
 
 				//TBD handling of referencing third party publisher
+				helper.MapOrganizationPublishedBy( output, ref status );
+				/*
 				if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
 				{
 					//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
@@ -236,10 +241,14 @@ namespace Import.Services
 					}
 				}
 
-
+				*/
 
 				//
 				importSuccessfull = new DataSetProfileServices().Import( output, ref status );
+					
+				//24-03-25 - use the generic process for blank nodes encountered during import
+				new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+			
 				//
 				status.DocumentId = output.Id;
 				status.DetailPageUrl = string.Format( "~/DataSetProfile/{0}", output.Id );
@@ -261,7 +270,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ), false, "Framework Import exception" );
+				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ) );
 			}
 			finally
 			{
@@ -271,11 +280,11 @@ namespace Import.Services
 		}
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity, ref SaveStatus status )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity, ref SaveStatus status )
 		{
 			bool exists = false;
 			//currently only looks for the full resource, and not EntityStateId >=1
-			entity = EntityServices.HandlingExistingEntity( ctid, ref status );
+			entity = ResourceServices.HandlingExistingEntity( ctid, ref status );
 			if ( entity != null && entity.Id > 0 )
 			{
 				//we know for this type, there will entity.learningopp, entity.assessment and entity.credential relationships, and quick likely blank nodes.

@@ -206,7 +206,7 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			var statusMessage = "";
+			var statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -477,7 +477,7 @@ namespace workIT.Factories
 		//	//skip if an example url
 		//	string filter = string.Format( " ( base.Id in (Select Id from PathwaySet where (SubjectWebpage like '{0}%') )) ", url );
 		//	int ptotalRows = 0;
-		//	var exists = Search( filter, "", 1, 100, ref ptotalRows );
+		//	var exists = Search( filter, string.Empty, 1, 100, ref ptotalRows );
 		//	return exists;
 		//}
 
@@ -499,7 +499,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[PathwaySet.ElasticSearch]", c ) )
@@ -621,7 +621,7 @@ namespace workIT.Factories
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								pw = new Pathway();
-								pw.Name = ( string )child.Attribute( "Pathway" ) ?? "";
+								pw.Name = ( string )child.Attribute( "Pathway" ) ?? string.Empty;
 								pw.Id= int.Parse( child.Attribute( "PathwayId" ).Value );
 
 								item.Pathways.Add( pw );
@@ -632,7 +632,7 @@ namespace workIT.Factories
 
 						DateTime testdate;
 						//=====================================
-						string date = GetRowPossibleColumn( dr, "EntityLastUpdated", "" );
+						string date = GetRowPossibleColumn( dr, "EntityLastUpdated", string.Empty );
 						if ( DateTime.TryParse( date, out testdate ) )
 							item.EntityLastUpdated = testdate;
 
@@ -641,10 +641,10 @@ namespace workIT.Factories
 						//=====================================================================
 
 
-						date = GetRowColumn( dr, "Created", "" );
+						date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							item.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							item.LastUpdated = DateTime.Parse( date );
 
@@ -715,9 +715,8 @@ namespace workIT.Factories
 			if ( IsValidDate( input.LastUpdated ) )
 				output.LastUpdated = ( DateTime )input.LastUpdated;
 
-			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
-			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				output.EntityLastUpdated = relatedEntity.LastUpdated;
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
 
 		}
 		public static void MapToDB( ThisEntity from, DBEntity to )
@@ -739,7 +738,7 @@ namespace workIT.Factories
 			if ( !string.IsNullOrWhiteSpace(from.CredentialRegistryId )) 
 			{
 				//this may not exist if added as pending?
-				to.CredentialRegistryId = from.CredentialRegistryId ?? "";
+				to.CredentialRegistryId = from.CredentialRegistryId ?? string.Empty;
 			}
 			to.EntityStateId = from.EntityStateId > 0 ? from.EntityStateId : 3;
 			to.Description = from.Description;

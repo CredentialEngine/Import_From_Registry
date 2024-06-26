@@ -620,7 +620,7 @@ namespace workIT.Factories
 					//	return true;
 					//foreach ( var item in results )
 					//{
-					//	string statusMessage = "";
+					//	string statusMessage = string.Empty;
 					//	//we have a trigger for this
 					//	new EntityManager().Delete( item.RowId, ref statusMessage );
 

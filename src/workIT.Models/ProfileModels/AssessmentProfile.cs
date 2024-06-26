@@ -169,9 +169,18 @@ namespace workIT.Models.ProfileModels
 		public string SupersededBy { get; set; }
 		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+		/// <summary>
+		/// TVP related to this resource.
+		/// List of URIs for an existing TVP
+		/// </summary>
+		public List<ResourceSummary> ProvidesTransferValueFor { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ReceivesTransferValueFrom { get; set; } = new List<ResourceSummary>();
+		public CodeItemResult ProvidesTransferValueForElastic { get; set; } = new CodeItemResult();
+		public CodeItemResult ReceivesTransferValueFromElastic { get; set; } = new CodeItemResult();
+		public List<ResourceSummary> HasRubric { get; set; } = new List<ResourceSummary>();
 
-        //used by detail page, not the import
-        public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
+		//used by detail page, not the import
+		public List<CredentialAlignmentObjectFrameworkProfile> AssessesCompetenciesFrameworks { get; set; }
 		public List<CredentialAlignmentObjectFrameworkProfile> RequiresCompetenciesFrameworks { get; set; }
 		//used by finderAPI
 		public List<ApiEntity> AssessesFrameworks { get; set; }
@@ -181,7 +190,7 @@ namespace workIT.Models.ProfileModels
 		public string AvailableOnlineAt { get; set; }
 
 
-
+		[Obsolete]
 		public string CodedNotation { get; set; }
 		/// <summary>
 		/// Identifier
@@ -222,7 +231,7 @@ namespace workIT.Models.ProfileModels
             }
         }
         public string AvailabilityListing { get; set; }
-
+		public string InCatalog { get; set; }
 		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
 		public string LifeCycleStatus { get; set; }
 		public int LifeCycleStatusTypeId { get; set; }
@@ -254,11 +263,14 @@ namespace workIT.Models.ProfileModels
 		public List<JurisdictionProfile> RecognizedIn { get; set; }
 
 		public List<JurisdictionProfile> RegulatedIn { get; set; }
+		public List<int> ProvidesTVForIds { get; set; }
+		public List<int> ReceivesTVFromIds { get; set; }
 		#endregion
 		#region Output for detail
 		public List<CostManifest> CommonCosts { get; set; }
 		public List<ConditionManifest> CommonConditions { get; set; }
 		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
+		public List<ResourceSummary> RelatedAction { get; set; } = new List<ResourceSummary>();
 
 		#endregion
 
@@ -431,7 +443,9 @@ namespace workIT.Models.ProfileModels
 
         public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
         public List<int> HasOfferingIds { get; set; } = new List<int>();
-        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+		public List<int> HasRubricIds { get; set; } = new List<int>();
+
+		public List<int> HasSupportServiceIds { get; set; } = new List<int>();
         
 
         #endregion

@@ -17,9 +17,10 @@ namespace workIT.Data.Tables
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public Codes_PropertyValue()
         {
+            this.CredentialingAction = new HashSet<CredentialingAction>();
             this.Entity_CostProfileItem = new HashSet<Entity_CostProfileItem>();
-            this.Entity_Reference = new HashSet<Entity_Reference>();
             this.Entity_Property = new HashSet<Entity_Property>();
+            this.Entity_Reference = new HashSet<Entity_Reference>();
         }
     
         public int Id { get; set; }
@@ -37,10 +38,12 @@ namespace workIT.Data.Tables
     
         public virtual Codes_PropertyCategory Codes_PropertyCategory { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<CredentialingAction> CredentialingAction { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_CostProfileItem> Entity_CostProfileItem { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public virtual ICollection<Entity_Reference> Entity_Reference { get; set; }
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_Property> Entity_Property { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Entity_Reference> Entity_Reference { get; set; }
     }
 }

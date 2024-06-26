@@ -3,22 +3,19 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
+using APIM = workIT.Models.API;
 
+using workIT.Models.ProfileModels;
 using workIT.Utilities;
 
-using EM = workIT.Data.Tables;
-using Views = workIT.Data.Views;
-
-using ThisResource = workIT.Models.Common.Entity;
-using DBResource = workIT.Data.Tables.Entity;
 using DBEntityCache = workIT.Data.Tables.Entity_Cache;
-using ViewContext = workIT.Data.Views.workITViews;
+using DBResource = workIT.Data.Tables.Entity;
+using EM = workIT.Data.Tables;
 using EntityContext = workIT.Data.Tables.workITEntities;
+using Newtonsoft.Json;
 
 namespace workIT.Factories
 {
@@ -35,15 +32,17 @@ namespace workIT.Factories
 	public class EntityManager : BaseFactory
 	{
 		static string thisClassName = "EntityManager";
-        #region persistance
-        /// <summary>
-        /// Resetting an entity by first deleting it, and then readding.
-        /// The purpose of the delete is to remove all children relationships.
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="statusMessage"></param>
-        /// <returns></returns>
-        public bool ResetEntity(Entity entity, ref string statusMessage)
+		//static int MaxResourceNameLength = UtilityManager.GetAppKeyValue( "maxResourceNameLength", 800 );
+
+		#region persistance
+		/// <summary>
+		/// Resetting an entity by first deleting it, and then readding.
+		/// The purpose of the delete is to remove all children relationships.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="statusMessage"></param>
+		/// <returns></returns>
+		public bool ResetEntity(Entity entity, ref string statusMessage)
 		{
 			bool isValid = true; 
 			if (Delete(entity.EntityUid, string.Format("type: {0}, Id: {1}",entity.EntityTypeId, entity.EntityBaseId), ref statusMessage, 2) == false)
@@ -93,7 +92,7 @@ namespace workIT.Factories
 					efEntity.EntityUid = entityUid;
 					efEntity.EntityBaseId = baseId;
 					efEntity.EntityTypeId = entityTypeId;
-					efEntity.EntityBaseName = baseName;
+					efEntity.EntityBaseName = AssignLimitedString( baseName, MaxResourceNameLength - 5 );
 					efEntity.Created = efEntity.LastUpdated = System.DateTime.Now;
 
 					context.Entity.Add( efEntity );
@@ -174,7 +173,7 @@ namespace workIT.Factories
                 else
                 {
                     status.AddError( thisClassName + ".UpdateModifiedDate(). Error - Entity  was not found.");
-                    LoggingHelper.LogError( thisClassName + string.Format( ".UpdateModifiedDate - record was not found. entityUid: {0}", entityUid ), true );
+                    LoggingHelper.LogError( thisClassName + string.Format( ".UpdateModifiedDate - record was not found. entityUid: {0}", entityUid ) );
                 }
             }
 
@@ -192,7 +191,7 @@ namespace workIT.Factories
 		public bool Delete( Guid entityUid, string forTableIdentifer, ref string statusMessage, int attemptsRemaining = 0 )
         {
             bool isValid = false;
-            statusMessage = "";
+            statusMessage = string.Empty;
             if ( !IsValidGuid(entityUid) )
             {
                 statusMessage = "Error - missing a valid identifier for the Entity";
@@ -215,10 +214,11 @@ namespace workIT.Factories
                         if ( count > 0 )
                         {
                             isValid = true;
-                        } else
+                        }
+						else
                         {
                             statusMessage = string.Format( "Entity delete returned count of zero - potential inconsistant state. entityTypeId: {0}, entityUid: {1}", entityTypeId, entityUid );
-                            LoggingHelper.LogError( thisClassName + string.Format( ".Delete - Entity delete returned count of zero - potential inconsistant state. entityTypeId: {0}, entityUid: {1}", entityTypeId, entityUid ), true );
+                            LoggingHelper.LogError( thisClassName + string.Format( ".Delete - Entity delete returned count of zero - potential inconsistant state. entityTypeId: {0}, entityUid: {1}", entityTypeId, entityUid ) );
                         }
                     }
                     else
@@ -307,150 +307,139 @@ namespace workIT.Factories
         public static string GetEntityType( int entityTypeId )
 		{
 			string entityType = "error";
+			var codeItem = CodesManager.Codes_EntityType_Get( entityTypeId );
+			if (codeItem != null && codeItem.Id > 0)
+			{
+				return codeItem.Title;
+
+			} else
+			{
+				LoggingHelper.LogError( string.Format( "{0}.GetEntityType. Invalid Entity type encountered: {1} ", thisClassName, entityTypeId ) );
+
+			}
+			/*
 			switch ( entityTypeId )
 			{
-				case 1:
-					entityType="Credential";
-					break;
-                //org types
-                case 2:
-					entityType = "CredentialOrganization";
-					break;
-                case 13:
-                    entityType = "QACredentialOrganization";
-                    break;
-                case 14:
-                    entityType = "Organization";
-                    break;
-                //
-                case 3:
-					entityType = "AssessmentProfile";
-					break;
-				case 4:
-					entityType = "ConditionProfile";
-					break;
-				case 5:
-					entityType = "CostProfile";
-					break;
-				case 6:
-					entityType = "CostProfileItem";
-					break;
-				//lopp types
-				case 7:
-					entityType = "LearningOpportunity";
-					break;
-				case 36:
-					entityType = "LearningProgram";
-					break;
-				case 37:
-					entityType = "Course";
-					break;
-				//
-				case 8:  
-					entityType = "Pathway";
-					break;
-				case 9:    //
-					entityType = "Collection";
-					break;
-				case 10:
-					entityType = "CompetencyFramework";
-					break;
-				case 11:   
-					entityType = "ConceptScheme";
-					break;
-                case 12:
-                    entityType = "ProgressionModel";
-                    break;
-				//case 13:
-				//case 14: 
+				 case 1:
+                        EntityType = "Credential";
+                        break;
+                    case 2:
+                    case 13:
+                    case 14:
+                        EntityType = "Organization";
+                        break;
+                    case 3:
+                        EntityType = "Assessment";
+                        break;
+                    case 7:
+                        EntityType = "LearningOpportunity";
+                        break;
+                    case 8:
+                        EntityType = "Pathway";
+                        break;
+                    case 9:
+                        EntityType = "Collection";
+                        break;
+                    case 10:
+                        EntityType = "CompetencyFramework";
+                        break;
+                    case 11:
+                        EntityType = "ConceptScheme";
+                        break;
+                    case 12:
+                        EntityType = "ProgressionModel";
+                        break;
+                    case 15:
+                        EntityType = "ScheduledOffering";
+                        break;
+                    case 17:
+                        EntityType = "Competency";
+                        break;
+					case 18:
+						EntityType = "CollectionCompetency";
+						break;
+					case 19:
+                        EntityType = "ConditionManifest";
+                        break;
+                    case 20:
+                        EntityType = "CostManifest";
+                        break;
+                    case 21:
+                        EntityType = "FinancialAssistance";
+                        break;
+					case 22:
+						EntityType = "CredentialingAction";
+						break;
+					case 23:
+                        EntityType = "PathwaySet";
+                        break;
+                    case 24:
+                        EntityType = "PathwayComponent";
+                        break;
+                    case 26:
+                        EntityType = "TransferValue";
+                        break;
+                    case 28:
+                        EntityType = "TransferIntermediary";
+                        break;
+                    case 29:
+                        EntityType = "Concept";
+                        break;
+                    case 30:
+                        EntityType = "ProgressionLevel";
+                        break;
+                    //
+                    case 31:
+                        EntityType = "DataSetProfile";
+                        break;
+                    case 32:
+                        EntityType = "JobProfile";
+                        break;
+                    case 33:
+                        EntityType = "TaskProfile";
+                        break;
+                    case 34:
+                        EntityType = "WorkRoleProfile";
+                        break;
+                    case 35:
+                        EntityType = "Occupation";
+                        break;
+                    case 36:
+                        EntityType = "LearningProgram";
+                        break;
+                    case 37:
+                        EntityType = "Course";
+                        break;
+                    case 38:
+                        EntityType = "SupportService";
+                        break;
+					case 39:
+						EntityType = "Rubric";
+						break;
+					case 41:
+                        EntityType = "VerificationServiceProfile";
+                        break;
+					case 42:
+						EntityType = "ProcessProfile";
+						break;
+					case 43:
+						EntityType = "ContactPoint";
+						break;
+					case 44:
+						EntityType = "RubricCriterion";
+						break;
+					case 45:
+						EntityType = "RubricCriterionLevel";
+						break;
+					case 46:
+						EntityType = "RubricLevel";
+						break;
 
-                case 15:
-                    entityType = "ScheduledOffering";
-                    break;
-                case 16:
-					entityType = "Address Profile";
-					break;
-                case 17:
-                    entityType = "Competency";
-                    break;
-                case 18:
+			 case 50:
 					entityType = "JurisdictionProfile";
 					break;
-				case 19:
-					entityType = "ConditionManifest";
-					break;
-				//
-				case 20:
-					entityType = "CostManifest";
-					break;
-				case 21:
-					entityType = "FinancialAssistanceProfile";
-					break;
-				case 22:
-					entityType = "Accredit Action";
-					break;
-				case 23:
-					entityType = "PathwaySet";
-					break;
-				case 24:
-					entityType = "Pathway Component";
-					break;
-				case 25:
-					entityType = "Component Condition";
-					break;
-				case 26:
-					entityType = "TransferValueProfile";
-					break;
-				case 27:
-					entityType = "AggregateDataProfile";
-					break;
-				case 28:
-					entityType = "TransferIntermediary";
-					break;
-                case 29:
-                    entityType = "Concept";
-                    break;
-				//
-                case 30:
-                    entityType = "ProgressionLevel";
-                    break;
-                case 31:
-					entityType = "DataSet Profile";
-					break;
-				case 32:
-					entityType = "Job";
-					break;
-				case 33:
-					entityType = "Task";
-					break;
-				case 34:
-					entityType = "Work Role";
-					break;
-				case 35:
-					entityType = "Occupation";
-					break;
-                //
-                case 38:
-                    entityType = "SupportService";
-                    break;
-                //
-                case 40:
-                    entityType = "RevocationProfile";
-                    break;
-                case 41:
-                    entityType = "VerificationProfile";
-                    break;
-                case 42:
-                    entityType = "ProcessProfile";
-                    break;
-                case 43:
-                    entityType = "ContactPoint";
-                    break;
-                case 58:
-                    entityType = "Rubric";
-                    break;
-                //obsolete/not used
-                case 55:
+				//obsolete/not used
+				case 55:
 					entityType = "EarningsProfile";
 					break;
 				case 56:
@@ -464,14 +453,14 @@ namespace workIT.Factories
 					LoggingHelper.LogError( string.Format( "{0}.GetEntityType. Invalid Entity type encountered: {1} ", thisClassName, entityTypeId ) );
 					break;
 			}
-
+			*/
 			return entityType;
 		}
         public static int GetEntityTypeId( string entityType, bool getTopLevelType = true )
         {
             int entityTypeId = 0;
 
-            switch ( entityType.Replace( " ", "" ).ToLower() )
+            switch ( entityType.Replace( " ", string.Empty ).ToLower() )
             {
                 case "credential":
                     entityTypeId = 1;
@@ -538,7 +527,12 @@ namespace workIT.Factories
                 case "scheduledoffering":
                     entityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
                     break;
-                case "ceterms:conditionmanifest":
+					//?????
+				case "ceasn:competency":
+				case "competency":
+					entityTypeId = CodesManager.ENTITY_TYPE_COMPETENCY;
+					break;
+				case "ceterms:conditionmanifest":
                 case "conditionmanifest":
                     entityTypeId = 19;
                     break;
@@ -546,7 +540,11 @@ namespace workIT.Factories
                 case "costmanifest":
                     entityTypeId = 20;
                     break;
-                case "ceterms:pathwayset":
+				case "ceterms:credentialingaction":
+				case "credentialingaction":
+					entityTypeId = CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION;
+					break;
+				case "ceterms:pathwayset":
                 case "pathwayset":
                     entityTypeId = 23;
                     break;
@@ -591,7 +589,19 @@ namespace workIT.Factories
                 case "rubric":
                     entityTypeId = CodesManager.ENTITY_TYPE_RUBRIC;
                     break;
-                default:
+				case "asn:rubriccriterion":
+				case "rubriccriterion":
+					entityTypeId = CodesManager.ENTITY_TYPE_RUBRIC_CRITERION;
+					break;
+				case "asn:rubriccriterionlevel":
+				case "rubriccriterionlevel":
+					entityTypeId = CodesManager.ENTITY_TYPE_RUBRIC_CRITERION_LEVEL;
+					break;
+				case "rubriclevel":
+				case "asn:rubriclevel":
+					entityTypeId = CodesManager.ENTITY_TYPE_RUBRIC_CRITERION_LEVEL;
+					break;
+				default:
                     //no default
                     entityTypeId = 0;
                     break;
@@ -622,7 +632,7 @@ namespace workIT.Factories
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
 					entity.Created = ( DateTime ) item.Created;
-
+					entity.LastUpdated = item.LastUpdated != null ? ( DateTime ) item.LastUpdated : entity.Created;
 				}
 				return entity;
 			}
@@ -651,17 +661,17 @@ namespace workIT.Factories
 					entity.EntityBaseId = item.EntityBaseId ?? 0;
 					entity.EntityBaseName = item.EntityBaseName;
 					entity.Created = ( DateTime ) item.Created;
-
+					entity.LastUpdated = item.LastUpdated != null ? ( DateTime ) item.LastUpdated : entity.Created;
 				}
 				return entity;
 			}
-
-
 		}
 
 		//
 		#endregion
 		#region Entity_Cache
+
+		#region Persistence 
 		/// <summary>
 		/// Add record to Entity.cache
 		/// </summary>
@@ -670,7 +680,7 @@ namespace workIT.Factories
 		/// <returns></returns>
 		public int EntityCacheSave( EntityCache input, ref string statusMessage )
 		{
-			LoggingHelper.DoTrace( 6, string.Format( "EntityCacheSave entered. EntityTypeId:{0}, CTID: '{1}', BaseId: {2}, Name: {3}", input.EntityTypeId, input.CTID, input.BaseId, input.Name) );
+			LoggingHelper.DoTrace( BaseFactory.appMethodEntryTraceLevel, string.Format( "EntityCacheSave entered. EntityTypeId:{0}, CTID: '{1}', BaseId: {2}, Name: {3}", input.EntityTypeId, input.CTID, input.BaseId, input.Name) );
 
 			DBEntityCache efEntity = new DBEntityCache();
 			var isActive = true;
@@ -683,12 +693,13 @@ namespace workIT.Factories
 				{
 					input.Id = ec.Id;
 					input.EntityType = ec.EntityType;
-					input.EntityTypeId = ec.EntityTypeId;
+					input.EntityTypeId = ec.EntityTypeId;	
 					input.EntityUid = ec.EntityUid;
 					input.BaseId = ec.EntityBaseId;
 				} else
 				{
 					//if not found, there is no entity, so can't continue
+					//TODO - do have enough info to create now? Prob not as a major issue - or indicates there is no after insert trigger
 					statusMessage = string.Format( "Error - could not find an entity for EntityTypeId:{0}, BaseId:{1} ", input.EntityTypeId, input.BaseId );
 					return 0;
 				}
@@ -713,6 +724,12 @@ namespace workIT.Factories
 			{
 				try
 				{
+					if (input.Name?.Length > MaxResourceNameLength )
+					{
+						input.Name = AssignLimitedString( input.Name, MaxResourceNameLength - 5 );
+						//log? - should have been done for source record
+						//LoggingHelper.LogError( $"EntityCacheSave. Entity: {input.EntityType}, CTID:{input.CTID}, Name length is greater than the max.", true );
+					}
 					efEntity = context.Entity_Cache.FirstOrDefault( s => s.Id == input.Id || s.EntityUid == input.EntityUid );
 					if ( efEntity == null ||  efEntity.Id == 0)
 					{
@@ -725,14 +742,14 @@ namespace workIT.Factories
 							//
 							BaseId = input.BaseId,
 							CTID = input.CTID,
-							Name = input.Name,
+							Name = input.Name ?? "none",
 							EntityStateId = input.EntityStateId,
 							IsActive  = input.IsActive,		//caller will set to false for ceased/deprecated resource
-							Description = input.Description ?? "",
-							SubjectWebpage = input.SubjectWebpage ?? "",
-							ImageUrl = input.ImageUrl ?? ""
+							Description = input.Description ?? string.Empty,
+							SubjectWebpage = input.SubjectWebpage ?? string.Empty,
+							ImageUrl = input.ImageUrl ?? string.Empty
 						};
-						efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
+						efEntity.SubjectWebpage = input.SubjectWebpage ?? string.Empty;
 						efEntity.OwningOrgId = input.OwningOrgId;
 						//PublishedByOrganizationId = input.PublishedByOrganizationId;
 						//not sure we really need this
@@ -741,9 +758,17 @@ namespace workIT.Factories
 						efEntity.parentEntityTypeId = input.ParentEntityTypeId;
 						efEntity.parentEntityUid = input.ParentEntityUid;
 						//unlikely on initial add, but may have a utility to populate
-                        efEntity.ResourceDetail = input.ResourceDetail;
-                        //
-                        if ( input.Created > new DateTime( 1900, 1, 1 ) )
+						if ( !string.IsNullOrWhiteSpace( input.ResourceDetail ) )
+							efEntity.ResourceDetail = input.ResourceDetail ?? string.Empty;
+						//would have to be careful with this. for now only allow if not empty
+						if (!string.IsNullOrWhiteSpace( input.AgentRelationshipsForEntity ) )
+						{
+							efEntity.AgentRelationshipsForEntity = input.AgentRelationshipsForEntity;
+						}
+						
+
+						//
+						if ( input.Created > new DateTime( 1900, 1, 1 ) )
 							efEntity.Created = efEntity.LastUpdated = input.Created;
 						else
 							efEntity.Created = efEntity.LastUpdated = DateTime.Now;
@@ -764,7 +789,8 @@ namespace workIT.Factories
 							EmailManager.NotifyAdmin( "AssessmentManager. Assessment_Add Failed", message );
 							return 0;
 						}
-					} else
+					} 
+					else
 					{	
 						//these cannot be updated - unless null?
 						//efEntity.EntityTypeId = input.EntityTypeId;
@@ -783,9 +809,9 @@ namespace workIT.Factories
 						efEntity.EntityStateId = input.EntityStateId;
 						efEntity.IsActive = input.IsActive;
 
-						efEntity.Description = input.Description ?? "";
-						efEntity.SubjectWebpage = input.SubjectWebpage ?? "";
-						efEntity.ImageUrl = input.ImageUrl ?? "";
+						efEntity.Description = input.Description ?? string.Empty;
+						efEntity.SubjectWebpage = input.SubjectWebpage ?? string.Empty;
+						efEntity.ImageUrl = input.ImageUrl ?? string.Empty;
 						efEntity.OwningOrgId = input.OwningOrgId;
 						//don't over write
 						//efEntity.PublishedByOrganizationId = input.PublishedByOrganizationId > 0 ? input.PublishedByOrganizationId : efEntity.PublishedByOrganizationId;
@@ -799,8 +825,13 @@ namespace workIT.Factories
 						{
 							efEntity.ResourceDetail = input.ResourceDetail;
 						}
-                        //
-                        if ( input.LastUpdated > new DateTime( 1900, 1, 1 ) )
+						//would have to be careful with this. for now only allow if not empty
+						if ( !string.IsNullOrEmpty( input.AgentRelationshipsForEntity ) )
+						{
+							efEntity.AgentRelationshipsForEntity = input.AgentRelationshipsForEntity;
+						}
+						//
+						if ( input.LastUpdated > new DateTime( 1900, 1, 1 ) )
 							efEntity.LastUpdated = input.LastUpdated;
 						else
 							efEntity.LastUpdated = DateTime.Now;
@@ -831,7 +862,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheSave(). Entity_Cache: Type: {0}, Name: {1}, BaseId: {2}", input.EntityType, input.Name, input.BaseId ), statusMessage, false );
+					LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheSave(). Entity_Cache: Type: {0}, Name: {1}, BaseId: {2}", input.EntityType, input.Name, input.BaseId ), statusMessage );
 				}
 			}
 
@@ -905,13 +936,69 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheUpdateLastUpdatedDate(). Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId ), statusMessage, false );
+					LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheUpdateLastUpdatedDate(). Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId ), statusMessage );
 					return false;
 				}
 			}
 			return true;	
 		}
+		public int EntityCacheUpdateResourceDetail( Guid rowid, string input, ref string statusMessage )
+		{
+			DBEntityCache efEntity = new DBEntityCache();
+			if ( string.IsNullOrWhiteSpace( input ) )
+			{
+				statusMessage = $"EntityCacheUpdateResourceDetail Error: for RowId ({rowid}) no ResourceDetail data was provided.";
+				return 0;
+			}
+			using ( var context = new EntityContext() )
+			{
+				try
+				{
+					efEntity = context.Entity_Cache.FirstOrDefault( s => s.EntityUid == rowid );
+					if ( efEntity == null || efEntity.Id == 0 )
+					{
+						//error
+						statusMessage = $"EntityCacheUpdateResourceDetail Error: An Entity.Cache record was not found for RowId: '{rowid}'.";
+						return 0;
+					}
+					else
+					{
+						//
+						efEntity.ResourceDetail = input;
+						//
+						if ( HasStateChanged( context ) )
+						{
+							//not sure if we want to update this date? It relates to the import
+							//efEntity.CacheDate = System.DateTime.Now;
 
+							int count = context.SaveChanges();
+							if ( count >= 0 )
+							{
+								return efEntity.Id;
+							}
+							else
+							{
+								//?no info on error
+								string message = statusMessage = string.Format( thisClassName + ".Save Failed", "Attempted to update an Entity_Cache.ResourceDetail. The process appeared to not work, but was not an exception, so we have no message, or no clue. Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId );
+								EmailManager.NotifyAdmin( thisClassName + ".Save Failed Failed", message );
+							}
+						}
+						return efEntity.Id;
+					}
+				}
+				catch ( System.Data.Entity.Validation.DbEntityValidationException dbex )
+				{
+					string message = HandleDBValidationError( dbex, thisClassName + ".EntityCacheUpdateResourceDetail() ", "Entity" );
+					statusMessage = "Error - the save was not successful. " + message;
+				}
+				catch ( Exception ex )
+				{
+					statusMessage = FormatExceptions( ex );
+					LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheUpdateResourceDetail(). Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId ), statusMessage );
+				}
+			}
+			return 0;
+		}
 		public int EntityCacheUpdateResourceDetail( string ctid, string input, ref string statusMessage )
         {           
 
@@ -970,7 +1057,7 @@ namespace workIT.Factories
                 catch ( Exception ex )
                 {
                     statusMessage = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheUpdateResourceDetail(). Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId ), statusMessage, false );
+                    LoggingHelper.LogError( ex, string.Format( thisClassName + ".EntityCacheUpdateResourceDetail(). Type: {0}, Name: {1}, BaseId: {2}", efEntity.EntityType, efEntity.Name, efEntity.BaseId ), statusMessage );
                 }
             }
             return 0;
@@ -978,10 +1065,10 @@ namespace workIT.Factories
         /// <summary>
         /// /// Update Entity_Cache.AgentRelationshipsForEntity for credential
         /// </summary>
-        /// <param name="ctid"></param>
+        /// <param name="rowId"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool EntityCacheUpdateCredentialAgentRelationships( string ctid,  ref string statusMessage )
+        public bool EntityCacheUpdateAgentRelationshipsForCredential( string rowId,  ref string statusMessage )
         {
 
             string connectionString = MainConnection();
@@ -994,7 +1081,7 @@ namespace workIT.Factories
                     using ( SqlCommand command = new SqlCommand( "[Entity_Cache_PopulateCredentialAgentRelationships]", c ) )
                     {
                         command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.Add( new SqlParameter( "@ResourceCTID", ctid ) );
+                        command.Parameters.Add( new SqlParameter( "@Identifier", rowId ) );
                         command.CommandTimeout = 300;
                         command.ExecuteNonQuery();
                         command.Dispose();
@@ -1006,17 +1093,17 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
 				statusMessage = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, "EntityCacheUpdateCredentialAgentRelationships", false );
+                LoggingHelper.LogError( ex, $"EntityCacheUpdateAgentRelationshipsForCredential. rowId: {rowId}" );
 				return false;
             }
         }
         /// <summary>
         /// Update Entity_Cache.AgentRelationshipsForEntity for learning opp
         /// </summary>
-        /// <param name="ctid"></param>
+        /// <param name="rowId"></param>
         /// <param name="statusMessage"></param>
         /// <returns></returns>
-        public bool EntityCacheUpdateLoppAgentRelationships( string ctid, ref string statusMessage )
+        public bool EntityCacheUpdateAgentRelationshipsForLopp( string rowId, ref string statusMessage )
         {
 
             string connectionString = MainConnection();
@@ -1029,7 +1116,7 @@ namespace workIT.Factories
                     using ( SqlCommand command = new SqlCommand( "[Entity_Cache_PopulateLearningOppAgentRelationships]", c ) )
                     {
                         command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.Add( new SqlParameter( "@ResourceCTID", ctid ) );
+                        command.Parameters.Add( new SqlParameter( "@Identifier", rowId ) );
                         command.CommandTimeout = 300;
                         command.ExecuteNonQuery();
                         command.Dispose();
@@ -1041,11 +1128,71 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
                 statusMessage = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, "EntityCacheUpdateCredentialAgentRelationships", false );
+                LoggingHelper.LogError( ex, $"EntityCacheUpdateLoppAgentRelationships. rowId: {rowId}" );
                 return false;
             }
         }
-        public bool EntityCacheDelete( int entityTypeId, int recordId, ref string statusMessage )
+		public bool EntityCacheUpdateAgentRelationshipsForAssessment( string rowId, ref string statusMessage )
+		{
+
+			string connectionString = MainConnection();
+			try
+			{
+				using ( SqlConnection c = new SqlConnection( connectionString ) )
+				{
+					c.Open();
+
+					using ( SqlCommand command = new SqlCommand( "[Entity_Cache_PopulateAssessmentAgentRelationships]", c ) )
+					{
+						command.CommandType = CommandType.StoredProcedure;
+						command.Parameters.Add( new SqlParameter( "@Identifier", rowId ) );
+						command.CommandTimeout = 300;
+						command.ExecuteNonQuery();
+						command.Dispose();
+						c.Close();
+					}
+				}
+				return true;
+			}
+			catch ( Exception ex )
+			{
+				statusMessage = FormatExceptions( ex );
+				LoggingHelper.LogError( ex, $"EntityCacheUpdateAgentRelationshipsForAssessment. rowId: {rowId}" );
+				return false;
+			}
+		}
+
+		public bool EntityCacheUpdateAgentRelationshipsForTransferValueProfile( string rowId, ref string statusMessage )
+		{
+
+			string connectionString = MainConnection();
+			try
+			{
+				using ( SqlConnection c = new SqlConnection( connectionString ) )
+				{
+					c.Open();
+
+					using ( SqlCommand command = new SqlCommand( "[Entity_Cache_PopulateTransferValueProfileAgentRelationships]", c ) )
+					{
+						command.CommandType = CommandType.StoredProcedure;
+						command.Parameters.Add( new SqlParameter( "@Identifier", rowId ) );
+						command.CommandTimeout = 300;
+						command.ExecuteNonQuery();
+						command.Dispose();
+						c.Close();
+					}
+				}
+				return true;
+			}
+			catch ( Exception ex )
+			{
+				statusMessage = FormatExceptions( ex );
+				LoggingHelper.LogError( ex, $"EntityCacheUpdateAgentRelationshipsForTransferValueProfile. rowId: {rowId}" );
+				return false;
+			}
+		}
+
+		public bool EntityCacheDelete( int entityTypeId, int recordId, ref string statusMessage )
 		{
 
 			DBEntityCache efEntity = new DBEntityCache();
@@ -1113,7 +1260,7 @@ namespace workIT.Factories
 				catch ( Exception ex )
 				{
 					statusMessage = FormatExceptions( ex );
-					LoggingHelper.LogError( ex, string.Format( thisClassName + ".Delete(). Entity_Cache: EntityTypeId: {0}, recordId: {1}", entityTypeId, recordId ), statusMessage, false );
+					LoggingHelper.LogError( ex, string.Format( thisClassName + ".Delete(). Entity_Cache: EntityTypeId: {0}, recordId: {1}", entityTypeId, recordId ), statusMessage );
 				}
 			}
 
@@ -1182,71 +1329,107 @@ namespace workIT.Factories
                 catch ( Exception ex )
                 {
                     statusMessage = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, string.Format( thisClassName + ".Delete(). Entity_Cache: EntityUid: {0}", entityUid ), statusMessage, false );
+                    LoggingHelper.LogError( ex, string.Format( thisClassName + ".Delete(). Entity_Cache: EntityUid: {0}", entityUid ), statusMessage );
                 }
             }
 
             return false;
         }
+		#endregion
 
-        public static EntityCache EntityCacheGetByCTID( string ctid )
+		#region Retrieval 
+		/// <summary>
+		/// Get an entity_cache record by CTID
+		/// This method assumes no parent entity. Use ???? competencies that can have a parent and could be from a framework or collection
+		/// </summary>
+		/// <param name="ctid"></param>
+		/// <returns></returns>
+		public static EntityCache EntityCacheGetByCTID( string ctid )
+		{
+			var output = new EntityCache();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				return output;
+			}
+			using ( var context = new EntityContext() )
+			{
+				EM.Entity_Cache item = context.Entity_Cache
+						.FirstOrDefault( s => s.CTID == ctid );
+
+				if ( item != null && item.Id > 0 )
+				{
+					MapFromDB( item, output );
+				}
+				return output;
+			}
+		}
+
+		public static EntityCache EntityCacheGetByCTIDWithOrganization( string ctid )
 		{
 			var entity = new EntityCache();
+			if ( string.IsNullOrWhiteSpace( ctid ) )
+			{
+				return entity;
+			}
 			using ( var context = new EntityContext() )
 			{
 				//doing a left join just in case the org is missing (most likely in testing)
-                var results = ( from record in context.Entity_Cache
-                                join org in context.Organization on record.OwningOrgId equals org.Id into gj
-                                from subOrg in gj.DefaultIfEmpty()
-                                where record.parentEntityId == 0
-                                && record.CTID == ctid
-                                //&& subOrg.EntityStateId >= 1 && record.EntityStateId == 3
-                                select new
-                                {
-                                    record.Id,
-                                    record.CTID,
-                                    record.BaseId,
-                                    record.EntityType,
-                                    record.EntityTypeId,
-                                    record.EntityUid,
-                                    record.Name,
-                                    record.EntityStateId,
-                                    record.OwningOrgId,
-                                    //TBD
-                                    //Organization = subOrg.Name ?? "",
-                                    OrganizationCTID = subOrg.CTID ?? "",
-                                    record.LastUpdated,
-                                } ).ToList();
+				var results = ( from record in context.Entity_Cache
+								join org in context.Organization on record.OwningOrgId equals org.Id into gj
+								from subOrg in gj.DefaultIfEmpty()
+								where record.CTID == ctid
+								//record.parentEntityTypeId == parentEntityTypeId
+								//&& record.CTID == ctid
+								//&& subOrg.EntityStateId >= 1 && record.EntityStateId == 3
+								select new
+								{
+									record.Id,
+									record.CTID,
+									record.BaseId,
+									record.EntityType,
+									record.EntityTypeId,
+									record.EntityUid,
+									record.Name,
+									record.EntityStateId,
+									record.OwningOrgId,
+									//TBD
+									//Organization = subOrg.Name ?? string.Empty,
+									OrganizationCTID = subOrg.CTID ?? string.Empty,
+									record.LastUpdated,
+									record.AgentRelationshipsForEntity,
+									
+								} ).ToList();
 
-                if ( results != null && results.Count > 0 )
-                {
-                    foreach ( var ec in results )
-                    {
-                        entity = new EntityCache()
-                        {
-                            //Organization = ec.Organization,
-                            OwningOrgCTID = ec.OrganizationCTID,
+				if ( results != null && results.Count > 0 )
+				{
+					foreach ( var ec in results )
+					{
+						entity = new EntityCache()
+						{
+							//Organization = ec.Organization,
+							OwningOrgCTID = ec.OrganizationCTID,
 
-                            Id = ec.Id,
-                            CTID = ec.CTID,
-                            EntityType = ec.EntityType,
-                            EntityTypeId = ec.EntityTypeId,
-                            EntityStateId = ( int ) ec.EntityStateId,
-                            BaseId = ec.BaseId,
-                            Name = ec.Name,
-                            OwningOrgId = ec.OwningOrgId ?? 0,
-                            EntityUid = ec.EntityUid,
-                            LastUpdated = ( DateTime ) ec.LastUpdated
-                        };
-                        break;
-                    }
-                }
-                return entity;
+							Id = ec.Id,
+							CTID = ec.CTID,
+							EntityType = ec.EntityType,
+							EntityTypeId = ec.EntityTypeId,
+							EntityStateId = ( int ) ec.EntityStateId,
+							BaseId = ec.BaseId,
+							Name = ec.Name,
+							OwningOrgId = ec.OwningOrgId ?? 0,
+							EntityUid = ec.EntityUid,
+							LastUpdated = ( DateTime ) ec.LastUpdated,
+							AgentRelationshipsForEntity = ec.AgentRelationshipsForEntity
+						};
+						break;
+					}
+				}
+				return entity;
 			}
 		}
 		public static EntityCache EntityCacheGetByGuid( Guid id )
 		{
-			var ec = new EntityCache();
+			var output = new EntityCache();
 			using ( var context = new EntityContext() )
 			{
 				EM.Entity_Cache item = context.Entity_Cache
@@ -1254,110 +1437,197 @@ namespace workIT.Factories
 
 				if ( item != null && item.Id > 0 )
 				{
-					ec.Id = item.Id;
-					ec.EntityTypeId = item.EntityTypeId;
-					ec.EntityStateId = item.EntityStateId ==  null ? 1 : (int) item.EntityStateId;
-					ec.EntityType = item.EntityType;
-					ec.EntityUid = item.EntityUid;
-					ec.BaseId = item.BaseId;
-					ec.Name = item.Name;
-					ec.CTID = item.CTID ?? "";
-
-					ec.Created = ( DateTime )item.Created;
-					ec.LastUpdated = ( DateTime )item.LastUpdated;
-					if ( (item.parentEntityId ?? 0) > 0 )
-					{
-						//NOTE	- can use the included Entity to get more info
-						//		- although may want to turn off lazy loading
-						//entity.ParentEntity = new ThisResource();
-						ec.ParentEntityId = item.parentEntityId ?? 0;
-						ec.ParentEntityTypeId = item.parentEntityTypeId ?? 0;
-						ec.ParentEntityType = item.parentEntityType;
-						ec.ParentEntityUid = ( Guid )item.parentEntityUid;
-					}
+					MapFromDB( item, output );
 				}
-				return ec;
+				return output;
 			}
 		}
 
 		/// <summary>
 		/// Look up for resolving a third party entity
+		/// 24-03-27 Now will only check for references, to avoid unexpected consequences.
 		/// NOTE: entityTypeId will often be zero (as unknown at time), 
 		/// </summary>
 		/// <param name="entityTypeId"></param>
 		/// <param name="name"></param>
-		/// <param name="subjectWebpage"></param>
+		/// <param name="subjectWebpage">Only use for entities that have a subject webpage</param>
+		/// <param name="description">Now use description for better confidence</param>
 		/// <returns></returns>
-		public static Entity Entity_Cache_Get( int entityTypeId, string name, string subjectWebpage )
+		public static EntityCache EntityCache_GetReference( int entityTypeId, string name, string subjectWebpage, string description )
 		{
-			Entity entity = new Entity();
+			var output = new EntityCache(); 
+			//ignore if no swp
+			if ( entityTypeId== 0 || string.IsNullOrWhiteSpace( subjectWebpage) || string.IsNullOrWhiteSpace( description ) )
+				return output; 
+
+			if ( entityTypeId == 37 || entityTypeId == 36 )
+				entityTypeId = 7;
 			using ( var context = new EntityContext() )
 			{
 				//20-12-16 NOTE: the swp can be null now. It could be a risk to allow just a match on name and type. Could add whether a reference
 				var item = context.Entity_Cache
 						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
-						 && s.Name.ToLower() == (name ?? "").ToLower()
-						 && s.SubjectWebpage == subjectWebpage );
+							&& s.EntityStateId == 2
+							&& s.Name.ToLower() == (name ?? string.Empty).ToLower()
+							&& s.Description.ToLower() == ( description ?? string.Empty ).ToLower()
+							&& s.SubjectWebpage == subjectWebpage );
 
 				if ( item != null && item.Id > 0 )
 				{
-					entity.Id = item.Id;
-					entity.EntityTypeId = item.EntityTypeId;
-					entity.EntityType = item.EntityType;
-					entity.EntityUid = item.EntityUid;
-					entity.EntityBaseId = item.BaseId;
-					entity.EntityBaseName = item.Name;
-					entity.Created = ( DateTime ) item.Created;
-					entity.LastUpdated = ( DateTime ) item.LastUpdated;
-					if ( item.parentEntityId > 0 )
-					{
-						//NOTE	- can use the included Entity to get more info
-						//		- although may want to turn off lazy loading
-						entity.ParentEntity = new ThisResource();
-						entity.ParentEntity.Id = item.parentEntityId ?? 0;
-						entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
-						entity.ParentEntity.EntityType = item.parentEntityType;
-						entity.ParentEntity.EntityUid = ( Guid ) item.parentEntityUid;
-					}
+					MapFromDB( item, output );
 				}
-				return entity;
+				return output;
 			}
 		}
 
-		public static Entity EntityCacheGet( int entityTypeId, int entityBaseId )
+		//public static Entity EntityCacheGet( int entityTypeId, int entityBaseId )
+		//{
+		//	Entity entity = new Entity();
+		//	using ( var context = new EntityContext() )
+		//	{
+		//		var item = context.Entity_Cache
+		//				.FirstOrDefault( s => s.EntityTypeId == entityTypeId
+		//				 && s.BaseId == entityBaseId );
+
+		//		if ( item != null && item.Id > 0 )
+		//		{
+		//			entity.Id = item.Id;
+		//			entity.EntityTypeId = item.EntityTypeId;
+		//			entity.EntityType = item.EntityType;
+		//			entity.EntityUid = item.EntityUid;
+		//			entity.EntityBaseId = item.BaseId;
+		//			entity.EntityBaseName = item.Name;
+		//			entity.Created = ( DateTime )item.Created;
+		//			entity.LastUpdated = ( DateTime )item.LastUpdated;
+		//			if ( item.parentEntityId > 0 )
+		//			{
+		//				//NOTE	- can use the included Entity to get more info
+		//				//		- although may want to turn off lazy loading
+		//				entity.ParentEntity = new ThisResource();
+		//				entity.ParentEntity.Id = item.parentEntityId ?? 0;
+		//				entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
+		//				entity.ParentEntity.EntityType = item.parentEntityType;
+		//				entity.ParentEntity.EntityUid = ( Guid )item.parentEntityUid;
+		//			}
+		//		}
+		//		return entity;
+		//	}
+		//}
+
+		public static void MapFromDB( DBEntityCache item, EntityCache output )
 		{
-			Entity entity = new Entity();
+
+			if ( item != null && item.Id > 0 )
+			{
+				output.Id = item.Id;
+				output.EntityTypeId = item.EntityTypeId;
+				output.EntityType = item.EntityType;
+				output.EntityUid = item.EntityUid;
+				output.EntityStateId = item.EntityStateId ?? 2;
+				output.BaseId = item.BaseId;
+				output.CTID = item.CTID ?? string.Empty;
+
+				output.Name = item.Name;
+				output.Description = item.Description;
+				output.SubjectWebpage = item.SubjectWebpage;
+				output.OwningOrgId = item.OwningOrgId ?? 0;
+				output.PublishedByOrganizationId = item.PublishedByOrgId ?? 0;
+
+				//careful, not really used consistently yet
+				output.IsActive = item.IsActive ?? true;
+				output.Created = ( DateTime ) item.Created;
+				output.LastUpdated = ( DateTime ) item.LastUpdated;
+				output.CacheDate = ( DateTime ) item.CacheDate;
+
+				output.ResourceDetail = item.ResourceDetail ?? string.Empty;
+				output.AgentRelationshipsForEntity = item.AgentRelationshipsForEntity ?? string.Empty;
+
+				output.ParentEntityId = item.parentEntityId ?? 0;
+				output.ParentEntityTypeId = item.parentEntityTypeId ?? 0;
+				output.ParentEntityType = item.parentEntityType;
+				if ( IsGuidValid( item.parentEntityUid ) )
+				{
+					output.ParentEntityUid = ( Guid ) item.parentEntityUid;
+				}
+
+				if (item.Entity != null && item.Entity.Id > 0)
+				{
+
+				}
+			}
+		}
+
+		/// <summary>
+		/// This might only used where don't want owned by or offered by
+		/// </summary>
+		/// <param name="orgId"></param>
+		public static List<CodeItem> GetAllCountsForPrimaryAgent( int orgId )
+		{
+			var output = new List<CodeItem>();
 			using ( var context = new EntityContext() )
 			{
-				var item = context.Entity_Cache
-						.FirstOrDefault( s => s.EntityTypeId == entityTypeId
-						 && s.BaseId == entityBaseId );
+				var result = context.Entity_Cache
+						.Where (e => e.OwningOrgId == orgId)
+						.GroupBy( s => new { s.EntityTypeId } )
+						.Select( g => new CodeItem
+						{ 
+							Totals = g.Count(),
+							EntityTypeId = 	g.Key.EntityTypeId
+						} )
+						.OrderByDescending( s => s.EntityTypeId );
 
-				if ( item != null && item.Id > 0 )
+				if (result != null && result.Any())
 				{
-					entity.Id = item.Id;
-					entity.EntityTypeId = item.EntityTypeId;
-					entity.EntityType = item.EntityType;
-					entity.EntityUid = item.EntityUid;
-					entity.EntityBaseId = item.BaseId;
-					entity.EntityBaseName = item.Name;
-					entity.Created = ( DateTime )item.Created;
-					entity.LastUpdated = ( DateTime )item.LastUpdated;
-					if ( item.parentEntityId > 0 )
+					output = result.ToList().ConvertAll( m =>
+					new CodeItem()
 					{
-						//NOTE	- can use the included Entity to get more info
-						//		- although may want to turn off lazy loading
-						entity.ParentEntity = new ThisResource();
-						entity.ParentEntity.Id = item.parentEntityId ?? 0;
-						entity.ParentEntity.EntityTypeId = item.parentEntityTypeId ?? 0;
-						entity.ParentEntity.EntityType = item.parentEntityType;
-						entity.ParentEntity.EntityUid = ( Guid )item.parentEntityUid;
-					}
+						EntityTypeId = m.EntityTypeId,
+						Totals = m.Totals,
+					} );
 				}
-				return entity;
 			}
+
+			return output;
 		}
 
+		public static LearningOpportunityProfile MapCacheToLopp( EntityCache input )
+		{
+			var output = new LearningOpportunityProfile();
+			if ( input == null || input.Id == 0 )
+				return null; //??
+
+			output.Id = input.BaseId;
+			output.EntityTypeId = input.EntityTypeId;
+			output.EntityType = input.EntityType;
+			output.RowId = input.EntityUid;
+			output.EntityStateId = input.EntityStateId;
+
+			output.CTID = input.CTID ?? string.Empty;
+
+			output.Name = input.Name;
+			output.Description = input.Description;
+			output.SubjectWebpage = input.SubjectWebpage;
+			output.OrganizationId = input.OwningOrgId > 0 ? input.OwningOrgId : 0;
+			
+			output.Created = ( DateTime ) input.Created;
+			output.LastUpdated = ( DateTime ) input.LastUpdated;
+
+			try
+			{
+				var detail = JsonConvert.DeserializeObject<APIM.LearningOpportunityDetail>( input.ResourceDetail );
+				output.CodedNotation = detail.CodedNotation;
+				output.LearningEntityTypeId = detail.LearningEntityTypeId;
+			}
+			catch ( Exception ex )
+			{
+
+			}
+
+
+			return output;
+		}
+
+		#endregion
 		#endregion
 
 	}

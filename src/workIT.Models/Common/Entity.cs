@@ -96,7 +96,10 @@ namespace workIT.Models.Common
                     case 17:
                         EntityType = "Competency";
                         break;
-                    case 19:
+					case 18:
+						EntityType = "CollectionCompetency";
+						break;
+					case 19:
                         EntityType = "ConditionManifest";
                         break;
                     case 20:
@@ -105,7 +108,10 @@ namespace workIT.Models.Common
                     case 21:
                         EntityType = "FinancialAssistance";
                         break;
-                    case 23:
+					case 22:
+						EntityType = "CredentialingAction";
+						break;
+					case 23:
                         EntityType = "PathwaySet";
                         break;
                     case 24:
@@ -148,13 +154,28 @@ namespace workIT.Models.Common
                     case 38:
                         EntityType = "SupportService";
                         break;
-                    case 41:
+					case 39:
+						EntityType = "Rubric";
+						break;
+					case 41:
                         EntityType = "VerificationServiceProfile";
                         break;
-                    case 58:
-                        EntityType = "Rubric";
-                        break;
-                    default:
+					case 42:
+						EntityType = "ProcessProfile";
+						break;
+					case 43:
+						EntityType = "ContactPoint";
+						break;
+					case 44:
+						EntityType = "RubricCriterion";
+						break;
+					case 45:
+						EntityType = "RubricCriterionLevel";
+						break;
+					case 46:
+						EntityType = "RubricLevel";
+						break;
+					default:
 						EntityType = string.Format( "Unexpected EntityTypeId of {0}", _entityTypeId );
 						break;
 				}
@@ -207,6 +228,7 @@ namespace workIT.Models.Common
 		public System.DateTime CacheDate { get; set; }
 
 		public string ResourceDetail { get; set; }
+		public string AgentRelationshipsForEntity { get; set; }
 
 	}
 }

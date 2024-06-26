@@ -11,6 +11,7 @@ using workIT.Models.Search;
 using workIT.Utilities;
 
 using ElasticHelper = workIT.Services.ElasticServices;
+using APIResourceServices = workIT.Services.API.AssessmentServices;
 using ResourceManager = workIT.Factories.AssessmentManager;
 using ThisResource = workIT.Models.ProfileModels.AssessmentProfile;
 
@@ -19,55 +20,86 @@ namespace workIT.Services
 	public class AssessmentServices
     {
 		static string thisClassName = "AssessmentServices";
-
+        static int ThisResourceEntityTypeId = CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE;
 		#region import
 
-		public bool Import( ThisResource entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
         {
             //do a get, and add to cache before updating
-            if ( entity.Id > 0 )
+            if ( resource.Id > 0 )
             {
 				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
 				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
 				{
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-						GetDetail( entity.Id );
+						GetDetail( resource.Id );
 				}
 			}
-            bool isValid = new ResourceManager().Save( entity, ref status );
+            bool isValid = new ResourceManager().Save( resource, ref status );
             List<string> messages = new List<string>();
-            if ( entity.Id > 0 )
+            if ( resource.Id > 0 )
             {
 				if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
-					CacheManager.RemoveItemFromCache( "asmt", entity.Id );
+					CacheManager.RemoveItemFromCache( "asmt", resource.Id );
 
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
-                {
-					//update cache
-					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+    //            {
+				//	//update cache
+				//	ThreadPool.QueueUserWorkItem( UpdateCaches, resource );
 
-					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-                    //update Elastic - this if makes no sense, it is either update elastic immediate or add to pending
-                    //if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-                    //    ElasticHelper.Assessment_UpdateIndex( entity.Id );
-                    //else
-                    //{
-                    //    new SearchPendingReindexManager().Add( 3, entity.Id, 1, ref messages );
-                    //    if ( messages.Count > 0 )
-                    //        status.AddWarningRange( messages );
-                    //}
-                }
-                else
+				//	//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+    //                //update Elastic - this if makes no sense, it is either update elastic immediate or add to pending
+    //                //if ( UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+    //                //    ElasticHelper.Assessment_UpdateIndex( entity.Id );
+    //                //else
+    //                //{
+    //                //    new SearchPendingReindexManager().Add( 3, entity.Id, 1, ref messages );
+    //                //    if ( messages.Count > 0 )
+    //                //        status.AddWarningRange( messages );
+    //                //}
+    //            }
+    //            else
                 {
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, entity.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
-                    if ( messages.Count > 0 )
-                        status.AddWarningRange( messages );
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+					{
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
+					}
+					if ( new EntityManager().EntityCacheUpdateAgentRelationshipsForAssessment( resource.RowId.ToString(), ref statusMsg ) == false )
+					{
+						status.AddError( statusMsg );
+					}
+					UpdatePendingReindex( resource, ref status );
+
                 }
             }
 
             return isValid;
-        }
+		}
+		public void UpdatePendingReindex( ThisResource resource, ref SaveStatus status )
+		{
+            List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+            int orgId = resource.OwningOrganizationId;
+
+			if ( orgId == 0 )
+            {
+                var org = OrganizationManager.GetBasics( resource.PrimaryAgentUID, false );
+                if ( org != null && org.Id > 0)
+				    orgId = org.Id;
+
+			}
+			if ( orgId > 0 )
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
+		}
 		static void UpdateCaches( Object entity )
 		{
 			if ( entity.GetType() != typeof( Models.ProfileModels.AssessmentProfile ) )
@@ -177,7 +209,7 @@ namespace workIT.Services
 
             SetKeywordFilter( data.Keywords, false, ref where );
 
-            SearchServices.SetSubjectsFilter( data, CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, ref where );
+            SearchServices.SetSubjectsFilter( data, ThisResourceEntityTypeId, ref where );
 
             SearchServices.HandleCustomFilters( data, 60, ref where );
 

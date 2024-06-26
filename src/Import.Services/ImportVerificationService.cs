@@ -9,7 +9,7 @@ using workIT.Utilities;
 
 using ResourceServices = workIT.Services.VerificationServiceProfileServices;
 
-using InputEntity = RA.Models.JsonV2.VerificationServiceProfile;
+using InputResource = RA.Models.JsonV2.VerificationServiceProfile;
 using JsonInput = RA.Models.JsonV2;
 using BNode = RA.Models.JsonV2.BlankNode;
 using ThisResource = workIT.Models.ProfileModels.VerificationServiceProfile;
@@ -28,7 +28,7 @@ namespace Import.Services
         string resourceType = "VerificationServiceProfile";
         ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-        //InputEntity input = new InputEntity();
+        //InputResource input = new InputResource();
         ThisResource output = new ThisResource();
 
 
@@ -114,8 +114,8 @@ namespace Import.Services
                 return false;
             }
             //
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -158,7 +158,7 @@ namespace Import.Services
             resourceClass = resourceClass.Replace( "ceterms:", "" );
 
 
-            InputEntity input = new InputEntity();
+            InputResource input = new InputResource();
             var bnodes = new List<BNode>();
             var mainEntity = new Dictionary<string, object>();
 
@@ -178,7 +178,7 @@ namespace Import.Services
                     var main = item.ToString();
                     //may not use this. Could add a trace method
                     mainEntity = RegistryServices.JsonToDictionary( main );
-                    input = JsonConvert.DeserializeObject<InputEntity>( main );
+                    input = JsonConvert.DeserializeObject<InputResource>( main );
                 }
                 else
                 {
@@ -199,7 +199,7 @@ namespace Import.Services
             helper.CurrentEntityName = "VerificationServiceProfile";
             string ctid = input.CTID;
             status.ResourceURL = input.CtdlId;
-            LoggingHelper.DoTrace( 5, "		name: " + BaseFactory.FormatLongLabel( input.Description.ToString() ).ToString() );
+            LoggingHelper.DoTrace( 5, "		name: " + BaseFactory.AssignLimitedString( input.Description.ToString() ).ToString() );
             LoggingHelper.DoTrace( 5, "		@Id: " + input.CtdlId );
             status.Ctid = ctid;
 
@@ -216,7 +216,7 @@ namespace Import.Services
                 }
                 else
                 {
-                    LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", BaseFactory.FormatLongLabel( output.Description ), input.CTID ) );
+                    LoggingHelper.DoTrace( 1, string.Format( thisClassName + ".ImportV3(). Found record: '{0}' using CTID: '{1}'", BaseFactory.AssignLimitedString( output.Description ), input.CTID ) );
                 }
                 helper.currentBaseObject = output;
                 //just??
@@ -224,7 +224,7 @@ namespace Import.Services
                 //BYs 
                 output.OfferedByList = helper.MapOrganizationReferenceGuids( $"{resourceType}.OfferedBy", input.OfferedBy, ref status );
                 //add warning?
-                if ( output.OfferedByList == null && output.OfferedByList.Count == 0 )
+                if ( output.OfferedByList == null || output.OfferedByList.Count == 0 )
                 {
                     status.AddWarning( "document doesn't have an offering organization." );
                 }
@@ -244,7 +244,7 @@ namespace Import.Services
                 //BYs 
                 output.OfferedByList = helper.MapOrganizationReferenceGuids( $"{resourceType}.OfferedBy", input.OfferedBy, ref status );
                 //add warning?
-                if ( output.OfferedByList == null && output.OfferedByList.Count == 0 )
+                if ( output.OfferedByList == null || output.OfferedByList.Count == 0 )
                 {
                     status.AddWarning( "document doesn't have an offering organization." );
                 }
@@ -325,7 +325,7 @@ namespace Import.Services
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid ), false, "LearningOpportunity Import exception" );
+                LoggingHelper.LogError(ex, string.Format(thisClassName + ".ImportV3 . Exception encountered for CTID: {0}", ctid));
             }
             finally
             {

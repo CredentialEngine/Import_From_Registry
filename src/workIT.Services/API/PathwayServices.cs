@@ -74,6 +74,12 @@ namespace workIT.Services.API
 				output.Keyword = ServiceHelper.MapPropertyLabelLinks( input.Keyword, searchType );
 			if ( input.Subject != null && input.Subject.Any() )
 				output.Subject = ServiceHelper.MapPropertyLabelLinks( input.Subject, searchType );
+
+			output.LifeCycleStatusType = ServiceHelper.MapPropertyLabelLink( input.LifeCycleStatusType, searchType );
+			output.LatestVersion = ServiceHelper.MapPropertyLabelLink( input.LatestVersion, "Latest Version" );
+			output.NextVersion = ServiceHelper.MapPropertyLabelLink( input.NextVersion, "Next Version" );
+			output.PreviousVersion = ServiceHelper.MapPropertyLabelLink( input.PreviousVersion, "Previous Version" );
+			output.VersionIdentifier = ServiceHelper.MapIdentifierValue( input.VersionIdentifier, "Version Identifier" );
 			//
 			//var meta_HasPart = ServiceHelper.MapToOutline( input.HasPart );
 			output.Meta_HasPart = MapPathwayComponentToAJAXSettings( input.HasPart, "Has Part(s)" );

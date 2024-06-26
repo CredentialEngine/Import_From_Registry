@@ -237,7 +237,7 @@ namespace workIT.Factories
 					{
 						//21-03-31 mp - just removing the profile will not remove its entity and the latter's children!
 						//21-04-22 mp - we have a trigger for this
-						//string statusMessage = "";
+						//string statusMessage = string.Empty;
 						//delete the entity in order to remove Entity.DatasetProfile - but the datasetProfile doesn't get removed!
 						//new EntityManager().Delete( item.RowId, string.Format( "AggregateDataProfile: {0} for EntityType: {1} ({2})", item.Id, parent.EntityTypeId, parent.EntityBaseId ), ref statusMessage );
 
@@ -492,9 +492,9 @@ namespace workIT.Factories
 		{
 			output.Id = input.Id;
 			output.RowId = input.RowId;
-			output.Name = input.Name == null ? "" : input.Name;
-			output.Description = input.Description == null ? "" : input.Description;
-			output.DemographicInformation = input.DemographicInformation == null ? "" : input.DemographicInformation;
+			output.Name = input.Name == null ? string.Empty : input.Name;
+			output.Description = input.Description == null ? string.Empty : input.Description;
+			output.DemographicInformation = input.DemographicInformation == null ? string.Empty : input.DemographicInformation;
 			//assuming properly formatted in db
 			if ( !string.IsNullOrWhiteSpace( input.DateEffective ) )
 			{
@@ -572,8 +572,8 @@ namespace workIT.Factories
 
 			Entity parent = EntityManager.GetEntity( parentUid );
 			LoggingHelper.DoTrace( 8, string.Format( thisClassName + ".GetAll: parentUid:{0} entityId:{1}, e.EntityTypeId:{2}", parentUid, parent.Id, parent.EntityTypeId ) );
-			var summary = "";
-			var lineBreak = "";
+			var summary = string.Empty;
+			var lineBreak = string.Empty;
 			try
 			{
 				using ( var context = new EntityContext() )
@@ -593,7 +593,7 @@ namespace workIT.Factories
 							entity = new ThisEntity();
 							if ( item != null  )
 							{
-								var itemSummary = "";
+								var itemSummary = string.Empty;
 								if ( !string.IsNullOrWhiteSpace( item.Name ) )
 								{
 									summary += item.Name;
@@ -644,17 +644,17 @@ namespace workIT.Factories
 		}
 		private static string SummarizeJobsObtained( string jobsObtainedJson, string itemDescription)
 		{
-			string summary = "";
+			string summary = string.Empty;
 			var jobsObtained = JsonConvert.DeserializeObject<List<QuantitativeValue>>( jobsObtainedJson );
 			if ( jobsObtained != null )
 			{
 				//just handle one at this time
 				var jo = jobsObtained[ 0 ];
-				var desc = jo.Description ?? "";
+				var desc = jo.Description ?? string.Empty;
 				if ( desc == itemDescription || itemDescription.IndexOf( desc ) != -1 )
 				{
 					//skip
-					desc = "";
+					desc = string.Empty;
 				}
 				if ( !string.IsNullOrWhiteSpace( jo.UnitText ) )
 				{
@@ -665,18 +665,20 @@ namespace workIT.Factories
 						//currencySymbol = code.HtmlCodes;
 					}
 				}
-				if ( jo.Percentage != 0 )
+                var decimalValue =0m;
+                if ( IsValidDecimal( jo.Percentage, ref decimalValue ) )
 				{
-					summary += string.Format( " {0}", jo.Percentage );
+					summary += string.Format( " {0}", decimalValue );
 					if( desc.IndexOf("%") != 0)
 					{
 						summary += "% "; 
 					}
 				}
-				if ( jo.Value != 0 )
-					summary += string.Format( " {0} ", jo.Value.ToString( "#,##0" ) );
-				if ( jo.MinValue != 0 && jo.MaxValue != 0 )
-					summary += string.Format( " {0} to {1} ", jo.MinValue.ToString( "#,##0" ), jo.MaxValue.ToString( "#,##0" ) );
+                if ( IsValidDecimal( jo.Value , ref decimalValue ))
+					summary += string.Format( " {0} ", decimalValue.ToString( "#,##0" ) );
+
+				if ( jo.MinValue != null && jo.MinValue != 0 && jo.MaxValue  != null && jo.MaxValue != 0 )
+					summary += string.Format( " {0} to {1} ", jo.MinValue?.ToString( "#,##0" ), jo.MaxValue?.ToString( "#,##0" ) );
 
 				//skip description if the same or similar to jo desc?
 				if (desc == itemDescription || itemDescription.IndexOf(desc) != -1)

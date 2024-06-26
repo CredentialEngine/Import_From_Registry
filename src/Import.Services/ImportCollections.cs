@@ -34,7 +34,7 @@ namespace Import.Services
 		int thisEntityTypeId = CodesManager.ENTITY_TYPE_COLLECTION;
 		string thisClassName = "ImportCollections";
         string resourceType = "Collection";
-        string CurrentCollection = "";
+        string CurrentCollection = string.Empty;
 		ImportManager importManager = new ImportManager();
 		InputGraph input = new InputGraph();
         ThisResource output = new ThisResource();
@@ -57,9 +57,9 @@ namespace Import.Services
 				return false;
 			}
 
-			string statusMessage = "";
+			string statusMessage = string.Empty;
             ResourceServices mgr = new ResourceServices();
-			string ctdlType = "";
+			string ctdlType = string.Empty;
 			try
 			{
 				ReadEnvelope envelope = RegistryServices.GetEnvelope( envelopeId, ref statusMessage, ref ctdlType );
@@ -98,9 +98,9 @@ namespace Import.Services
 
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
-			string statusMessage = "";
+			string statusMessage = string.Empty;
             ResourceServices mgr = new ResourceServices();
-			string ctdlType = "";
+			string ctdlType = string.Empty;
 			try
 			{
 				//probably always want to get by envelope
@@ -148,13 +148,13 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
-			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
+			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", string.Empty ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
 			}
-			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out envelopeUpdateDate ) )
+			if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", string.Empty ).Trim(), out envelopeUpdateDate ) )
 			{
 				status.SetEnvelopeUpdated( envelopeUpdateDate );
 			}
@@ -177,10 +177,10 @@ namespace Import.Services
 
 			string envelopeUrl = RegistryServices.GetEnvelopeUrl( envelopeIdentifier );
 			LoggingHelper.DoTrace( 5, "		envelopeUrl: " + envelopeUrl );
-			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCtid + "_Collection", payload, "", false );
+			LoggingHelper.WriteLogFile( UtilityManager.GetAppKeyValue( "logFileTraceLevel", 5 ), item.EnvelopeCtid + "_Collection", payload, string.Empty, false );
 			//input = JsonConvert.DeserializeObject<InputGraph>( item.DecodedResource.ToString() );
 
-			//InputEntity framework = GetFramework( input.Graph );
+			//InputResource framework = GetFramework( input.Graph );
 			//LoggingHelper.DoTrace( 5, "		framework Name: " + framework.Name.ToString() );
 			status.EnvelopeId = envelopeIdentifier;
 			//just store input for now
@@ -214,6 +214,7 @@ namespace Import.Services
 			//not sure if these will actually be possible, may just use hasMember for others
 			var jobMembers = new List<RJ.Job>();
 			var loppMembers = new List<RJ.LearningOpportunityProfile>();
+			var occupationMembers = new List<RJ.Occupation>();
 			//used for resources to exclude from hasMember MapEntityReferenceGuids method 
 			//CTIDs or URIs??
 			var hasMemberExcludeList = new List<string>();
@@ -286,8 +287,9 @@ namespace Import.Services
 						case "ceterms:Occupation":
 						case "Occupation":
 							{
-								break;
-							}
+							occupationMembers.Add( JsonConvert.DeserializeObject<RJ.Occupation>( child ) );
+							break;
+						}
 						case "ceterms:Task":
 						case "Task":
 							{
@@ -325,8 +327,8 @@ namespace Import.Services
 				LoggingHelper.DoTrace( 5, "		Name: " + input.Name.ToString() );
 
 				var org = new MC.Organization();
-				string orgCTID = "";
-				string orgName = "";
+				string orgCTID = string.Empty;
+				string orgName = string.Empty;
 				List<string> publisher = input.OwnedBy;
 				//20-06-11 - need to get publisher, owner where possible
 				//	include an org reference with Name, swp, and??
@@ -361,11 +363,13 @@ namespace Import.Services
 
 				//store graph???
 				output.CollectionGraph = glist;
-
+				
+				output.CTID = input.CTID;
 				CurrentCollection = output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
 				output.SubjectWebpage = input.SubjectWebpage;
-				output.CTID = input.CTID;
+
+
 				if ( org != null && org.Id > 0 )
 				{
 					orgName = org.Name;
@@ -391,7 +395,6 @@ namespace Import.Services
 					{
 						//if publisher not imported yet, all publishee stuff will be orphaned
 						var entityUid = Guid.NewGuid();
-						var statusMsg = "";
 						var resPos = status.ResourceURL.IndexOf( "/resources/" );
 						var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
 						int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
@@ -437,15 +440,20 @@ namespace Import.Services
 					//add warning?
 				}
 				status.CurrentDataProvider = helper.CurrentOwningAgentUid;
+				//TODO - not handled
 				//list of concepts, that may or may not be from registry
-				output.Classification = input.Classification;
+				output.ClassificationImport = input.Classification;
 				//resolve now or in the manager?
-				if ( output.Classification!= null && output.Classification.Count > 0)
+				if ( output.ClassificationImport!= null && output.ClassificationImport.Count > 0)
                 {
 
                 }
+				//or if we knew they must exist 
+				output.Classification = helper.MapEntityCTIDsToResourceSummary( input.Classification, CodesManager.ENTITY_TYPE_CONCEPT );
+
 				output.CodedNotation = input.CodedNotation;
 				output.CollectionType = helper.MapCAOListToEnumermation( input.CollectionType );
+				output.InCatalog = input.InCatalog;
 
 				output.DateEffective = input.DateEffective;
 				output.ExpirationDate = input.ExpirationDate;
@@ -460,16 +468,25 @@ namespace Import.Services
 				//InstructionalProgramTypes
 				output.InstructionalProgramType = helper.MapCAOListToCAOProfileList( input.InstructionalProgramType );				
 				output.OccupationType = helper.MapCAOListToCAOProfileList( input.OccupationType );
-				//Note if competencies are present, then we may not need this?
-				//maybe want a variation to check against a list of CTIDs or URIs?
-				//same for collectionMembers
-				if (nodeCount != input.HasMember?.Count)
+
+                output.VersionIdentifier = helper.MapIdentifierValueList( input.VersionIdentifier );
+                //would this have to have a CTID? that is can an external URL be provided
+                output.LatestVersion = input.LatestVersion ?? string.Empty;
+                output.PreviousVersion = input.PreviousVersion ?? string.Empty;
+                output.NextVersion = input.NextVersion ?? string.Empty;
+
+                //Note if competencies are present, then we may not need this?
+                //maybe want a variation to check against a list of CTIDs or URIs?
+                //same for collectionMembers
+                if (nodeCount != input.HasMember?.Count)
                 {
 					//action:
 					//if there are no collection members, then need to process HasMember as collection members 
 					//or where a registry URL, and not bnode URI
+					//var urlList = input.HasMember.Where( w => w.StartsWith("_:") == false ).ToList();	
                 }
 
+				//this approach assumes collections are homogenous only
 				if ( competencies.Count == input.HasMember?.Count )
 				{
 					//just competencies, can skip
@@ -477,15 +494,16 @@ namespace Import.Services
 				else if ( collectionMembers.Count == input.HasMember?.Count )
 				{
 					//just collectionMembers, can skip hasMember
-					//dangerous? 
 				}
 				else
 				{
 					//could be thousands of members of an ETPL
 					//may want the CTIDs here and store in collection member
 					//should not be blank nodes, but could have a mix of hasMember and collection member. What about mixed collections?
-					//23-03-14 MP - note that com???
-					output.HasMemberImport = helper.MapEntityReferenceGuids( "Collection.HasMember", input.HasMember, 0, ref status );
+					//23-03-14 MP - note only want non-blank nodes
+					var urlList = input.HasMember.Where( w => w.StartsWith( "_:" ) == false ).ToList();
+
+					output.HasMemberImport = helper.MapEntityReferenceGuids( "Collection.HasMember", urlList, 0, ref status );
 					if ( output.HasMemberImport?.Count > 0 )
 					{
 						foreach ( var item in output.HasMemberImport )
@@ -494,7 +512,7 @@ namespace Import.Services
 							var cacheItem = EntityManager.EntityCacheGetByGuid( item );
 							if ( cacheItem != null && cacheItem.Id > 0 )
 							{
-								output.EntityTypeId = cacheItem.EntityTypeId;
+								//output.EntityTypeId = cacheItem.EntityTypeId;
 								var cmbr = new OutputCollectionMember()
 								{
 									Name = cacheItem.Name,
@@ -526,11 +544,12 @@ namespace Import.Services
 							ProxyFor = ResolutionServices.ExtractCtid( item.ProxyFor ) //might be good to get the type!
 						};
 						//check if it exists
+						//whoa why the double hit, a look up is also done in the manager
 						if (output.Id > 0)
                         {
-							var cmbrExists = CollectionMemberManager.Get( output.Id, cmbr.ProxyFor );
-							if ( cmbrExists != null && cmbrExists.Id > 0)
-								cmbr.Id = cmbrExists.Id;
+							//var cmbrExists = CollectionMemberManager.Get( output.Id, cmbr.ProxyFor );
+							//if ( cmbrExists != null && cmbrExists.Id > 0)
+							//	cmbr.Id = cmbrExists.Id;
                         }
 						output.CollectionMember.Add( cmbr );
                     }
@@ -539,6 +558,17 @@ namespace Import.Services
 				if ( UtilityManager.GetAppKeyValue( "importingFullCompetencies", true ) )
 				{
 					ImportCompetencies( output, competencies, helper, ref status );
+				}
+
+				if (loppMembers.Any() || occupationMembers.Any() || jobMembers.Any() || bnodes.Any() )
+				{
+					var msg = "Found: " + (loppMembers.Any() ? $" Lopps: {loppMembers.Count};" : string.Empty);
+					msg += ( jobMembers.Any() ? $" Jobs: {jobMembers.Count};" : string.Empty );
+					msg += ( occupationMembers.Any() ? $" Occupations: {occupationMembers.Count};" : string.Empty );
+					msg += ( bnodes.Any() ? $" Blank nodes: {bnodes.Count};" : string.Empty );
+
+					LoggingHelper.LogError( thisClassName, "Collection Import", "Extra entity types included in a collection",  $"Unhandled entity types were encountered in Collection: {output.Name} ({output.CTID}). {msg} ", true );
+
 				}
 				//mapping duration
 				TimeSpan duration = DateTime.Now.Subtract( started );
@@ -602,7 +632,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ), false, "Framework Import exception" );
+				LoggingHelper.LogError(ex, thisClassName + ".Import", string.Format("Exception encountered for CTID: {0}", ctid));
 			}
 			finally
 			{
@@ -644,7 +674,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName, "ImportCompetencies", false );
+				LoggingHelper.LogError( ex, thisClassName, "ImportCompetencies" );
 
 			}
 		}

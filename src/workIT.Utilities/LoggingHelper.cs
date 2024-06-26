@@ -1,38 +1,31 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Net.NetworkInformation;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
 
-using DBEntity = workIT.Data.Tables.MessageLog;
+using DBResource = workIT.Data.Tables.MessageLog;
 using EntityContext = workIT.Data.Tables.workITEntities;
-using ThisEntity = workIT.Models.MessageLog;
+using ThisResource = workIT.Models.MessageLog;
 
 namespace workIT.Utilities
 {
     public class LoggingHelper
     {
         const string thisClassName = "LoggingHelper";
-
-        public LoggingHelper() { }
+		//default specialTrace to high. Code can be called to lower it
+		public static int appSpecialTraceLevel = UtilityManager.GetAppKeyValue( "appSpecialTraceLevel", 9 );
+		//using this means show with whatever the trace level is
+		public static int appTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 5 );
+		public static int appDebuggingTraceLevel = UtilityManager.GetAppKeyValue( "appDebuggingTraceLevel", 7 );
+		public static int appMethodEntryTraceLevel = UtilityManager.GetAppKeyValue( "appMethodEntryTraceLevel", 7 );
+		public static int appMethodExitTraceLevel = UtilityManager.GetAppKeyValue( "appMethodExitTraceLevel", 8 );
+		public static int appSectionDurationTraceLevel = UtilityManager.GetAppKeyValue( "appSectionDurationTraceLevel", 8 );
+		public LoggingHelper() { }
 
 
         #region Error Logging ================================================
-        /// <summary>
-        /// Format an exception and message, and then log it
-        /// </summary>
-        /// <param name="ex">Exception</param>
-        /// <param name="message">Additional message regarding the exception</param>
-        public static void LogError( Exception ex, string message, string subject = "" )
-        {
-			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
-			if (string.IsNullOrWhiteSpace( subject ) )
-            {
-				subject = application + " Exception encountered";
-			}
-			bool notifyAdmin = false;
-            LogError( ex, message, notifyAdmin, subject );
-		}
 
 		/// <summary>
 		/// Format an exception and message, and then log it
@@ -40,13 +33,10 @@ namespace workIT.Utilities
 		/// <param name="ex">Exception</param>
 		/// <param name="message">Additional message regarding the exception</param>
 		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
-		public static void LogError( Exception ex, string activity, string summary, bool notifyAdmin, string subject = "" )
+		public static void LogError( Exception ex, string activity, string summary )
 		{
 			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
-			if ( string.IsNullOrWhiteSpace( subject ) )
-			{
-				subject = application + " Exception encountered";
-			}
+			
 			if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
 			{
 				var message = FormatExceptions( ex );
@@ -55,11 +45,11 @@ namespace workIT.Utilities
 				if ( IsADuplicateRequest( mcheck ) )
 				{
 					//just write to file
-					LoggingHelper.LogError( mcheck, false );
+					LoggingHelper.LogError( mcheck );
 					return;
 				}
 					
-				var messageLog = new ThisEntity()
+				var messageLog = new ThisResource()
 				{
 					Application = application,
 					Activity = activity,
@@ -70,9 +60,17 @@ namespace workIT.Utilities
 				StoreLastError( mcheck );
 			}
 			else
-				LoggingHelper.LogError( ex, activity + "--"+ summary, notifyAdmin, subject );
+				LoggingHelper.LogError( ex, activity + "--"+ summary );
 		}
 
+		/// <summary>
+		/// A custom error with detail useful for an email
+		/// </summary>
+		/// <param name="activity">Often the source class</param>
+		/// <param name="summary">Method or activity in the class</param>
+		/// <param name="message"></param>
+		/// <param name="details"></param>
+		/// <param name="notifyAdmin"></param>
 		public static void LogError( string activity, string summary, string message, string details, bool notifyAdmin = false )
 		{
 			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
@@ -84,17 +82,17 @@ namespace workIT.Utilities
 				if ( IsADuplicateRequest( mcheck ) )
 				{
 					//just write to file
-					mcheck += "\r\n" + details ?? "";
-					LoggingHelper.LogError( mcheck, false );
+					mcheck += "\r\n" + details ?? string.Empty;
+					LoggingHelper.LogError( mcheck );
 					return;
 				}
 
-				var messageLog = new ThisEntity()
+				var messageLog = new ThisResource()
 				{
 					Application = application,
-					Activity = activity,
+					Activity = activity + "-" + summary,
 					Message = message,
-					Description = details ?? ""
+					Description = details ?? string.Empty
 				};
 				AddMessage( messageLog );
 				StoreLastError( mcheck );
@@ -102,7 +100,7 @@ namespace workIT.Utilities
 			else
 			{
 				var mcheck = activity + "-" + summary + "-" + message;
-				mcheck += "\r\n" + details ?? "";
+				mcheck += "\r\n" + details ?? string.Empty;
 				LoggingHelper.LogError( mcheck );
 			}
 		}
@@ -113,61 +111,39 @@ namespace workIT.Utilities
 		/// <param name="ex">Exception</param>
 		/// <param name="message">Additional message regarding the exception</param>
 		/// <param name="notifyAdmin">If true, an email will be sent to admin</param>
-		public static void LogError( Exception ex, string message, bool notifyAdmin, string subject = "Credential Finder Exception encountered" )
+		public static void LogError( Exception ex, string message )
         {
 			var application = UtilityManager.GetAppKeyValue( "application", "CredentialFinder" );
 
-			//string userId = "";
+			//string userId = string.Empty;
 			string sessionId = "unknown";
             string remoteIP = "unknown";
             string path = "unknown";
-            string queryString = "unknown";
             string url = "unknown";
-            string parmsString = "";
-            string lRefererPage= "";
+            string lRefererPage= string.Empty;
 
             try
             {
-                if ( UtilityManager.GetAppKeyValue( "notifyOnException", "no" ).ToLower() == "yes" )
-                    notifyAdmin = true;
-
 				if ( HttpContext.Current != null )
 				{
 					if ( HttpContext.Current.Session != null )
-						sessionId = HttpContext.Current.Session.SessionID.ToString();
+						sessionId = HttpContext.Current.Session.SessionID;
 					remoteIP = HttpContext.Current.Request.ServerVariables[ "REMOTE_HOST" ];
 
 					if ( HttpContext.Current.Request.UrlReferrer != null )
 					{
-						lRefererPage = HttpContext.Current.Request.UrlReferrer.ToString();
+						lRefererPage = HttpContext.Current.Request.UrlReferrer.AbsoluteUri;
 					}
 					string serverName = UtilityManager.GetAppKeyValue( "serverName", HttpContext.Current.Request.ServerVariables[ "LOCAL_ADDR" ] );
 					path = serverName + HttpContext.Current.Request.Path;
-
-					if ( FormHelper.IsValidRequestString() == true )
-					{
-						queryString = HttpContext.Current.Request.Url.AbsoluteUri.ToString();
-						//url = GetPublicUrl( queryString );
-
-						url = HttpContext.Current.Server.UrlDecode( queryString );
-						//if ( url.IndexOf( "?" ) > -1 )
-						//{
-						//    parmsString = url.Substring( url.IndexOf( "?" ) + 1 );
-						//    url = url.Substring( 0, url.IndexOf( "?" ) );
-						//}
-					}
-					else
-					{
-						url = "suspicious url encountered!!";
-					}
-					//????
-					//userId = WUM.GetCurrentUserid();
+                    url = HttpContext.Current.Request.Url.AbsoluteUri;
 				}
 			}
-            catch
+            catch (Exception e)
             {
-				//eat any additional exception
+				LogError(e, "Unexpected exception");
             }
+
 			string errMsg = message;
 			
             try
@@ -183,25 +159,17 @@ namespace workIT.Utilities
                     "\r\nStack Trace: " + ex.StackTrace?.ToString() +
                     "\r\nServer\\Template: " + path +
                     "\r\nUrl: " + url;
-
-
-
-                //if ( parmsString.Length > 0 )
-                //    errMsg += "\r\nParameters: " + parmsString;
-
-
             }
-            catch
+            catch (Exception e)
             {
-                //eat any additional exception
+                LogError(e, "Unexpected exception");
             }
 
             try
             {
-
                 if ( UtilityManager.GetAppKeyValue( "loggingErrorsToDatabase", false ) )
                 {
-                    var messageLog = new ThisEntity()
+                    var messageLog = new ThisResource()
                     {
                         Application = application,
                         Activity = message,
@@ -210,40 +178,17 @@ namespace workIT.Utilities
                     };
                     AddMessage( messageLog );
                     //also log to file system without notify
-                    LoggingHelper.LogError( errMsg, false, subject );
+                    LoggingHelper.LogError(errMsg);
                 }
                 else
-                    LoggingHelper.LogError( errMsg, notifyAdmin, subject );
+                    LoggingHelper.LogError( errMsg );
             }
-            catch
+            catch (Exception e)
             {
-                //eat any additional exception
+                LogError(e, "Unexpected exception");
             }
-        } //
+        }
 
-
-
-		/// <summary>
-		/// Write the message to the log file.
-		/// </summary>
-		/// <remarks>
-		/// The message will be appended to the log file only if the flag "logErrors" (AppSetting) equals yes.
-		/// The log file is configured in the web.config, appSetting: "error.log.path"
-		/// </remarks>
-		/// <param name="message">Message to be logged.</param>
-		public static void LogError( string message, string subject = "Credential Finder Exception encountered" )
-        {
-
-            if ( UtilityManager.GetAppKeyValue( "notifyOnException", "no" ).ToLower() == "yes" )
-            {
-                LogError( message, true, subject );
-            }
-            else
-            {
-                LogError( message, false, subject );
-            }
-
-        } //
         /// <summary>
         /// Write the message to the log file.
         /// </summary>
@@ -252,8 +197,7 @@ namespace workIT.Utilities
         /// The log file is configured in the web.config, appSetting: "error.log.path"
         /// </remarks>
         /// <param name="message">Message to be logged.</param>
-        /// <param name="notifyAdmin"></param>
-        public static void LogError( string message, bool notifyAdmin, string subject = "Credential Finder Exception encountered" )
+        public static void LogError( string message )
         {
             if ( UtilityManager.GetAppKeyValue( "logErrors" ).ToString().Equals( "yes" ) )
             {
@@ -261,9 +205,9 @@ namespace workIT.Utilities
                 {
                     //would like to limit number, just need a means to overwrite the first time used in a day
                     //- check existance, then if for a previous day, overwrite
-                    string datePrefix1 = System.DateTime.Today.ToString("u").Substring(0, 10);
-                    string datePrefix = System.DateTime.Today.ToString("yyyy-dd");
-                    string logFile = UtilityManager.GetAppKeyValue("path.error.log", "");
+                    string datePrefix1 = DateTime.Today.ToString("u").Substring(0, 10);
+                    string datePrefix = DateTime.Today.ToString("yyyy-dd");
+                    string logFile = UtilityManager.GetAppKeyValue("path.error.log", string.Empty);
 					if ( !string.IsNullOrWhiteSpace( logFile ) )
 					{
 						string outputFile = logFile.Replace( "[date]", datePrefix );
@@ -274,24 +218,16 @@ namespace workIT.Utilities
 						}
 						else
 						{
-							System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
+							FileInfo f = new FileInfo( outputFile );
 							f.Directory.Create(); // If the directory already exists, this method does nothing.
 						}
 
 						StreamWriter file = File.AppendText( outputFile );
 						file.WriteLine( DateTime.Now + ": " + message );
+						Trace.TraceError(message);
 						file.WriteLine( "---------------------------------------------------------------------" );
 						file.Close();
 					}
-
-					if (notifyAdmin)
-                    {
-                        if (ShouldMessagesBeSkipped(message) == false && !IsADuplicateRequest( message ) )
-                            EmailManager.NotifyAdmin(subject, message);
-
-						StoreLastError( message );
-					}
-                   
                 }
                 catch ( Exception ex )
                 {
@@ -299,23 +235,14 @@ namespace workIT.Utilities
                     DoTrace( 5, thisClassName + ".LogError(string message, bool notifyAdmin). Exception while logging. \r\nException: " + ex.Message + ".\r\n Original message: " + message );
                 }
             }
-        } //
+        }
 
-
-		private static int AddMessage( ThisEntity entity )
+		private static int AddMessage( ThisResource entity )
 		{
 			int count = 0;
-			string truncateMsg = "";
-			DBEntity efEntity = new DBEntity();
+			string truncateMsg = string.Empty;
+			DBResource efEntity = new DBResource();
 			MapToDB( entity, efEntity );
-
-			//================================
-			//if ( IsADuplicateRequest( efEntity.Description ) )
-			//	return 0;
-
-			//StoreLastRequest( efEntity.Description );
-
-			//----------------------------------------------
 
 			if ( efEntity.RelatedUrl != null && efEntity.RelatedUrl.Length > 600 )
 			{
@@ -325,15 +252,16 @@ namespace workIT.Utilities
 
 
 			//the following should not be necessary but getting null related exceptions
-			if ( efEntity.ActionByUserId == null )
+			if (efEntity.ActionByUserId == null)
+			{
 				efEntity.ActionByUserId = 0;
-
+			}
 
 			using ( var context = new EntityContext() )
 			{
 				try
 				{
-					efEntity.Created = System.DateTime.Now;
+					efEntity.Created = DateTime.Now;
 					if ( string.IsNullOrEmpty(efEntity.MessageType) || efEntity.MessageType.Length < 5 )
 						efEntity.MessageType = "Error";
 
@@ -354,13 +282,14 @@ namespace workIT.Utilities
 				catch ( Exception ex )
 				{
 					var message = FormatExceptions( ex );
-					LoggingHelper.LogError( thisClassName + ".MessageLogAdd(MessageLog) Exception: \n\r" + message + "\n\r" + ex.StackTrace.ToString(), false );
+					LoggingHelper.LogError( thisClassName + ".MessageLogAdd(MessageLog) Exception: \n\r" + message + "\n\r" + ex.StackTrace.ToString() );
 
 					return count;
 				}
 			}
-		} //
-		private static void MapToDB( ThisEntity input, DBEntity output )
+		}
+
+		private static void MapToDB( ThisResource input, DBResource output )
 		{
 			output.Id = input.Id;
 
@@ -383,11 +312,16 @@ namespace workIT.Utilities
 			output.IPAddress = input.IPAddress;
 
 			if ( output.SessionId == null || output.SessionId.Length < 10 )
+			{
 				output.SessionId = GetCurrentSessionId();
+			}
 
 			if ( output.IPAddress != null && output.IPAddress.Length > 50 )
+			{
 				output.IPAddress = output.IPAddress.Substring( 0, 50 );
+			}
 		}
+
 		/// <summary>
 		/// Format an exception handling inner exceptions as well
 		/// </summary>
@@ -484,22 +418,7 @@ namespace workIT.Utilities
 
 
 		#region === Application Trace Methods ===
-		/// <summary>
-		/// IsTestEnv - determines if the current environment is a testing/development
-		/// </summary>
-		/// <returns>True if localhost - implies testing</returns>
-		//public static bool IsTestEnv()
-		//{
-		//    string host = HttpContext.Current.Request.Url.Host.ToString();
-
-		//    if ( host.ToLower() == "localhost" )
-		//        return true;
-		//    else
-		//        return false;
-
-		//} //
-
-
+		
 		/// <summary>
 		/// Handle trace requests - typically during development, but may be turned on to track code flow in production.
 		/// </summary>
@@ -514,19 +433,25 @@ namespace workIT.Utilities
             DoTrace( appTraceLevel, message, true );
         }
 
+		public static void DoTrace( int level, List<string> message )
+		{
+			//
+			foreach ( var item in message )
+			{
+				DoTrace( level, item );
+			}
+		}
 
-        /// <summary>
-        /// Handle trace requests - with addition of a log prefix to enable a custom log file
-        /// </summary>
-        /// <param name="level"></param>
-        /// <param name="message"></param>
-        /// <param name="logPrefix">If present, will be prefixed to logfile name after the date.</param>
-        public static void DoTrace(int level, string message, string logPrefix)
+		/// <summary>
+		/// Handle trace requests - with addition of a log prefix to enable a custom log file
+		/// </summary>
+		/// <param name="level"></param>
+		/// <param name="message"></param>
+		/// <param name="logPrefix">If present, will be prefixed to logfile name after the date.</param>
+		public static void DoTrace(int level, string message, string logPrefix)
         {
-
             DoTrace( level, message, true, logPrefix );
         }
-
 
 		/// <summary>
 		/// Handle trace requests - typically during development, but may be turned on to track code flow in production.
@@ -536,70 +461,85 @@ namespace workIT.Utilities
 		/// <param name="showingDatetime">If true, precede message with current date-time, otherwise just the message> The latter is useful for data dumps</param>
 		public static void DoTrace( int level, string message, bool showingDatetime = true, string logPrefix = "")
 		{
-			//TODO: Future provide finer control at the control level
-			string msg = "";
+			Trace.TraceInformation(message);
+
+            //TODO: Future provide finer control at the control level
+            string msg = string.Empty;
 			int appTraceLevel = UtilityManager.GetAppKeyValue( "appTraceLevel", 6 );
-			//bool useBriefFormat = true;
 			const int NumberOfRetries = 4;
 			const int DelayOnRetry = 1000;
 			if ( showingDatetime )
-				msg = "\n " + System.DateTime.Now.ToString() + " - " + message;
+			{
+				msg = "\n " + DateTime.Now.ToString() + " - " + message;
+			}
 			else
+			{
 				msg = "\n " + message;
-			string datePrefix1 = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
-			string datePrefix = System.DateTime.Today.ToString( "yyyy-dd" );
-			string logFile = UtilityManager.GetAppKeyValue( "path.trace.log", "" );
+			}
+
+			string datePrefix1 = DateTime.Today.ToString( "u" ).Substring( 0, 10 );
+			string datePrefix = DateTime.Today.ToString( "yyyy-dd" );
+			string logFile = UtilityManager.GetAppKeyValue( "path.trace.log", string.Empty );
 			if ( !string.IsNullOrWhiteSpace( logPrefix ) )
+			{
 				datePrefix += "_" + logPrefix;
+			}
+
 			//Allow if the requested level is <= the application thresh hold
 			if ( string.IsNullOrWhiteSpace( logFile ) || level > appTraceLevel )
 			{
 				return;
 			}
-			string outputFile = "";
+			
+			string outputFile = string.Empty;
             if (message.IndexOf( "UPPER CASE URI" ) > -1 || message.IndexOf( "GRAPH URI" ) > -1 )
             {
                 logFile = logFile.Replace( "[date]", "[date]_URI_ISSUES" );
             }
+
 			//added retries where log file is in use
 			for ( int i = 1; i <= NumberOfRetries; ++i )
 			{
 				try
 				{
-					outputFile = logFile.Replace( "[date]", datePrefix + ( i < 3 ? "" : "_" + i.ToString() ) );
+					outputFile = logFile.Replace( "[date]", datePrefix + ( i < 3 ? string.Empty : "_" + i.ToString() ) );
 
 					if ( File.Exists( outputFile ) )
 					{
 						if ( File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month )
+						{ 
 							File.Delete( outputFile );
+						}
 					}
 					else
 					{
-						System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
-						f.Directory.Create(); // If the directory already exists, this method does nothing.
-											 
+						FileInfo f = new FileInfo( outputFile );
+						f.Directory.Create(); // If the directory already exists, this method does nothing.											 
 					}
 
 					StreamWriter file = File.AppendText( outputFile );
-
 					file.WriteLine( msg );
 					file.Close();
                     if ( level > 0)
+					{
 					    Console.WriteLine( msg );
+					}
 					break;
 				}
 				catch ( IOException e ) when ( i <= NumberOfRetries )
 				{
-					// You may check error code to filter some exceptions, not every error
-					// can be recovered.
-					Thread.Sleep( DelayOnRetry );
+                    // You may check error code to filter some exceptions, not every error
+                    // can be recovered.
+                    LogError(e, string.Format("Unexpected exception. Delaying retry by {0}ms", DelayOnRetry) );
+                    Task.Delay( DelayOnRetry ).Wait();
 				}
 				catch ( Exception ex )
 				{
-					//ignore errors
+					LogError(ex, "Unexpected exception");
 				}
 			}
 		}
+
 		public static void WriteLogFileForReason( int level, string reason, string filename, string message,
 			string datePrefixOverride = "", bool appendingText = true, int cacheForHours = 2 )
 		{
@@ -608,9 +548,10 @@ namespace workIT.Utilities
 				AddMessageToCache( reason, cacheForHours );
 				WriteLogFile( level, filename, message, datePrefixOverride, appendingText );
 				if ( reason.Length > 10 )
-					LoggingHelper.LogError( reason, true, "Finder: CredentialSearch Elastic error" );
+                    LoggingHelper.LogError(reason);
 			}
 		}
+
 		public static void WriteLogFile( int level, string filename, string message, 
 			string datePrefixOverride = "", 
 			bool appendingText = true )
@@ -624,11 +565,11 @@ namespace workIT.Utilities
 				//Allow if the requested level is <= the application thresh hold
 				if ( level <= appTraceLevel )
 				{					
-					string datePrefix = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
+					string datePrefix = DateTime.Today.ToString( "u" ).Substring( 0, 10 );
 					if ( !string.IsNullOrWhiteSpace( datePrefixOverride ) )
 						datePrefix = datePrefixOverride;
 					else if ( datePrefixOverride == " " )
-						datePrefix = "";
+						datePrefix = string.Empty;
 					filename = filename.Replace( ":", "-" );
 					string logFile = UtilityManager.GetAppKeyValue( "path.log.file", "C:\\LOGS.txt" );
 					string outputFile = logFile.Replace( "[date]", datePrefix ).Replace( "[filename]", filename );
@@ -668,6 +609,7 @@ namespace workIT.Utilities
 			}
 
 		}
+
 		public static bool IsMessageInCache( string message )
 		{
 			if ( string.IsNullOrWhiteSpace( message ) )
@@ -691,6 +633,7 @@ namespace workIT.Utilities
 
 			return false;
 		}
+
 		public static void AddMessageToCache( string message, int cacheForHours = 2 )
 		{
 			string key = UtilityManager.GenerateMD5String( message );
@@ -703,10 +646,11 @@ namespace workIT.Utilities
 				}
 				else
 				{
-					System.Web.HttpRuntime.Cache.Insert( key, message, null, DateTime.Now.AddHours( cacheForHours ), TimeSpan.Zero );
+					HttpRuntime.Cache.Insert( key, message, null, DateTime.Now.AddHours( cacheForHours ), TimeSpan.Zero );
 				}
 			}		
 		}
+
 		public static bool IsADuplicateRecentSessionMessage( string message )
 		{
 			string sessionKey = UtilityManager.GenerateMD5String(message);
@@ -732,6 +676,7 @@ namespace workIT.Utilities
 			}
 			return isDup;
 		}
+
 		public static void StoreSessionMessage( string message )
 		{
 			string sessionKey = UtilityManager.GenerateMD5String( message );
@@ -750,55 +695,11 @@ namespace workIT.Utilities
 			catch
 			{
 			}
-
-		} //
-		//public static void DoBotTrace( int level, string message )
-		//{
-		//	string msg = "";
-		//	int appTraceLevel = 0;
-
-		//	try
-		//	{
-		//		appTraceLevel = UtilityManager.GetAppKeyValue( "botTraceLevel", 5 );
-
-		//		//Allow if the requested level is <= the application thresh hold
-		//		if ( level <= appTraceLevel )
-		//		{
-		//			msg = "\n " + System.DateTime.Now.ToString() + " - " + message;
-
-  //                  string datePrefix1 = System.DateTime.Today.ToString( "u" ).Substring( 0, 10 );
-  //                  string datePrefix = System.DateTime.Today.ToString( "yyyy-dd" );
-  //                  string logFile = UtilityManager.GetAppKeyValue( "path.botTrace.log", "" );
-  //                  if (!string.IsNullOrWhiteSpace( logFile ))
-  //                  {
-  //                      string outputFile = logFile.Replace( "[date]", datePrefix );
-  //                      if (File.Exists( outputFile ))
-  //                      {
-  //                          if (File.GetLastWriteTime( outputFile ).Month != DateTime.Now.Month)
-  //                              File.Delete( outputFile );
-  //                      }
-		//				else
-		//				{
-		//					System.IO.FileInfo f = new System.IO.FileInfo( outputFile );
-		//					f.Directory.Create(); // If the directory already exists, this method does nothing.
-		//				}
-
-		//				StreamWriter file = File.AppendText( outputFile );
-
-  //                      file.WriteLine( msg );
-  //                      file.Close();
-  //                  }
-  //              }
-		//	}
-		//	catch
-		//	{
-		//		//ignore errors
-		//	}
-  //      } //
-
+		}
 
         #endregion
     }
+
 	public class CachedItem
 	{
 		public CachedItem()
@@ -808,6 +709,7 @@ namespace workIT.Utilities
 		public DateTime lastUpdated { get; set; }
 
 	}
+
 	public class RecentMessage : CachedItem
 	{
 		public string Message { get; set; }

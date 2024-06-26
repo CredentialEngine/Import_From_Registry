@@ -152,7 +152,7 @@ namespace workIT.Factories
             catch ( Exception ex )
             {
                 string message = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ), true );
+                LoggingHelper.LogError( ex, thisClassName + string.Format( ".Save. id: {0}, Name: {1}", entity.Id, entity.Name ) );
                 status.AddError( thisClassName + ".Save(). Error - the save was not successful. " + message );
                 isValid = false;
             }
@@ -234,12 +234,12 @@ namespace workIT.Factories
                     string message = HandleDBValidationError( dbex, thisClassName + ".Add() ", "ScheduledOffering" );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. " + message );
 
-                    LoggingHelper.LogError( message, true );
+                    LoggingHelper.LogError( dbex, message );
                 }
                 catch ( Exception ex )
                 {
                     string message = FormatExceptions( ex );
-                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ), true );
+                    LoggingHelper.LogError( ex, thisClassName + string.Format( ".Add(), Name: {0}\r\n", efEntity.Name ) );
                     status.AddError( thisClassName + ".Add(). Error - the save was not successful. \r\n" + message );
                 }
             }
@@ -266,7 +266,7 @@ namespace workIT.Factories
                 OwningAgentUID = document.PrimaryAgentUID,
                 OwningOrgId = document.OrganizationId
             };
-            var statusMessage = "";
+            var statusMessage = string.Empty;
             if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
             {
                 status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -346,7 +346,7 @@ namespace workIT.Factories
                             } );
                             isValid = true;
                             //delete cache
-                            var statusMessage = "";
+                            var statusMessage = string.Empty;
                             if (!new EntityManager().EntityCacheDelete( rowId, ref statusMessage ))
                             {
                                 messages.Add(statusMessage );
@@ -672,9 +672,9 @@ namespace workIT.Factories
             List<object> results = new List<object>();
             List<string> competencyList = new List<string>();
             //ref competencyList, 
-            List<ThisResource> list = Search( pFilter, "", pageNumber, pageSize, ref pTotalRows, autocomplete );
+            List<ThisResource> list = Search( pFilter, string.Empty, pageNumber, pageSize, ref pTotalRows, autocomplete );
             bool appendingOrgNameToAutocomplete = UtilityManager.GetAppKeyValue( "appendingOrgNameToAutocomplete", false );
-            string prevName = "";
+            string prevName = string.Empty;
             foreach ( ScheduledOffering item in list )
             {
                 //note excluding duplicates may have an impact on selected max terms
@@ -701,8 +701,8 @@ namespace workIT.Factories
             ThisResource item = new ThisResource();
             List<ThisResource> list = new List<ThisResource>();
             var result = new DataTable();
-            string temp = "";
-            string org = "";
+            string temp = string.Empty;
+            string org = string.Empty;
             int orgId = 0;
 
             using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -711,7 +711,7 @@ namespace workIT.Factories
 
                 if ( string.IsNullOrEmpty( pFilter ) )
                 {
-                    pFilter = "";
+                    pFilter = string.Empty;
                 }
 
                 using ( SqlCommand command = new SqlCommand( "[ScheduledOffering.ElasticSearch]", c ) )
@@ -763,27 +763,27 @@ namespace workIT.Factories
                         continue;
                     }
 
-                    item.Description = GetRowColumn( dr, "Description", "" );
+                    item.Description = GetRowColumn( dr, "Description", string.Empty );
                     string rowId = GetRowColumn( dr, "RowId" );
                     item.RowId = new Guid( rowId );
 
-                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
-                    item.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+                    item.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+                    item.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+                    item.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
 
 
-                    //org = GetRowPossibleColumn( dr, "Organization", "" );
+                    //org = GetRowPossibleColumn( dr, "Organization", string.Empty );
                     //orgId = GetRowPossibleColumn( dr, "OrgId", 0 );
                     //if ( orgId > 0 )
                     //	item.OwningOrganization = new Organization() { Id = orgId, Name = org };
 
                     //
-                    //temp = GetRowColumn( dr, "DateEffective", "" );
+                    //temp = GetRowColumn( dr, "DateEffective", string.Empty );
                     //if ( IsValidDate( temp ) )
                     //	item.DateEffective = DateTime.Parse( temp ).ToString("yyyy-MM-dd");
                     //else
-                    //	item.DateEffective = "";
+                    //	item.DateEffective = string.Empty;
 
                     item.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
                     item.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
@@ -826,17 +826,17 @@ namespace workIT.Factories
             output.AlternateName = null;
             if ( input.AvailabilityListing != null && input.AvailabilityListing.Count > 0 )
             {
-                output.AvailabilityListing = GetListAsDelimitedString( input.AvailabilityListing, "|" );
+                output.AvailabilityListing = FormatListAsDelimitedString( input.AvailabilityListing, "|" );
                 //output.AvailabilityListing = JsonConvert.SerializeObject( input.AvailabilityListing, JsonHelper.GetJsonSettings(false) );
             }
             if ( input.AvailableOnlineAt != null && input.AvailableOnlineAt.Count > 0 )
             {
-                output.AvailableOnlineAt = GetListAsDelimitedString( input.AvailabilityListing, "|" );
+                output.AvailableOnlineAt = FormatListAsDelimitedString( input.AvailabilityListing, "|" );
                 //output.AvailableOnlineAt = JsonConvert.SerializeObject( input.AvailableOnlineAt, JsonHelper.GetJsonSettings( false ) );
             }
             if ( input.AlternateName != null && input.AlternateName.Count > 0 )
             {
-                output.AlternateName = GetListAsDelimitedString( input.AlternateName, "|" );
+                output.AlternateName = FormatListAsDelimitedString( input.AlternateName, "|" );
                 //output.AlternateName = JsonConvert.SerializeObject( input.AlternateName, JsonHelper.GetJsonSettings( false ) );
             }
             output.DeliveryTypeDescription = GetData( input.DeliveryTypeDescription );
@@ -854,7 +854,7 @@ namespace workIT.Factories
             output.Name = input.Name;
             output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-            output.Description = input.Description == null ? "" : input.Description;
+            output.Description = input.Description == null ? string.Empty : input.Description;
             output.CTID = input.CTID;
             //no owner, just offered by 
             if ( IsGuidValid( input.OfferedBy ) )

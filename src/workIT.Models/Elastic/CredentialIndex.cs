@@ -86,6 +86,8 @@ namespace workIT.Models.Elastic
 
 		public bool IsAQACredential { get; set; }
 
+		public bool IsNonCredit { get; set; }
+
 		//public bool HasQualityAssurance { get; set; }
 		public int AssessmentsCompetenciesCount { get; set; }
 		public int LearningOppsCompetenciesCount { get; set; }

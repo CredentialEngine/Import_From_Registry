@@ -273,6 +273,58 @@ select 84, 38, LifeCycleStatusTypeId, cpv.title, count(*) as  Totals
  inner join  [Codes.PropertyValue] cpv on a.LifeCycleStatusTypeId = cpv.Id
   where a.EntityStateId = 3 AND  cpv.IsActive = 1
   group by LifeCycleStatusTypeId, cpv.title
+   -- Job
+    INSERT INTO [dbo].[Counts.SiteTotals]
+           ([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals])
+
+select 84, 32, LifeCycleStatusTypeId, cpv.title, count(*) as  Totals
+  from JobProfile a
+ inner join  [Codes.PropertyValue] cpv on a.LifeCycleStatusTypeId = cpv.Id
+  where a.EntityStateId = 3 AND  cpv.IsActive = 1
+  group by LifeCycleStatusTypeId, cpv.title
+  --occupation
+    INSERT INTO [dbo].[Counts.SiteTotals]
+           ([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals])
+
+select 84, 35, LifeCycleStatusTypeId, cpv.title, count(*) as  Totals
+  from OccupationProfile a
+ inner join  [Codes.PropertyValue] cpv on a.LifeCycleStatusTypeId = cpv.Id
+  where a.EntityStateId = 3 AND  cpv.IsActive = 1
+  group by LifeCycleStatusTypeId, cpv.title
+  --workrole
+    INSERT INTO [dbo].[Counts.SiteTotals]
+           ([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals])
+
+select 84, 34, LifeCycleStatusTypeId, cpv.title, count(*) as  Totals
+  from WorkRole a
+ inner join  [Codes.PropertyValue] cpv on a.LifeCycleStatusTypeId = cpv.Id
+  where a.EntityStateId = 3 AND  cpv.IsActive = 1
+  group by LifeCycleStatusTypeId, cpv.title
+  --task
+    INSERT INTO [dbo].[Counts.SiteTotals]
+           ([CategoryId]
+           ,[EntityTypeId]
+		   ,[CodeId]
+           ,[Title]
+           ,[Totals])
+
+select 84, 33, LifeCycleStatusTypeId, cpv.title, count(*) as  Totals
+  from TaskProfile a
+ inner join  [Codes.PropertyValue] cpv on a.LifeCycleStatusTypeId = cpv.Id
+  where a.EntityStateId = 3 AND  cpv.IsActive = 1
+  group by LifeCycleStatusTypeId, cpv.title
 
 
 -- =======================

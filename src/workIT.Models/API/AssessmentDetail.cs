@@ -50,7 +50,7 @@ namespace workIT.Models.API
 		public List<string> AvailableOnlineAt { get; set; } = new List<string>();
 
 		public List<string> AvailabilityListing { get; set; }
-
+		public string InCatalog { get; set; }
 		public List<WMA.CostManifest> CommonCosts { get; set; }
 
 		public List<ValueProfile> CreditValue { get; set; }
@@ -162,6 +162,9 @@ namespace workIT.Models.API
 
 		#endregion
 
-
+		public WMS.AJAXSettings ProvidesTransferValueFor { get; set; }
+		public WMS.AJAXSettings ReceivesTransferValueFrom { get; set; }
+		public WMS.AJAXSettings HasRubric { get; set; }
+		public WMS.AJAXSettings RelatedActions { get; set; }
 	}
 }

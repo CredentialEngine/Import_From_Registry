@@ -12,21 +12,21 @@ namespace workIT.Services.API
 {
 	public class ConceptSchemeServices
 	{
-		public static ConceptScheme GetConceptSchemeOnlyByID( int id, bool skippincCache = false )
+		public static ConceptScheme GetDetailForAPI( int id, bool skippincCache = false )
 		{
 			var rawData = ConceptSchemeManager.Get( id, false );
-			return ConvertCommonModelsConceptSchemeToFinderAPIConceptScheme( rawData, "Unable to find concept scheme for ID: " + id );
+			return MapToAPI( rawData, "Unable to find concept scheme for ID: " + id );
 		}
 		//
 
-		public static ConceptScheme GetConceptSchemeOnlyByCTID( string ctid, bool skippingCache = false )
+		public static ConceptScheme GetDetailForAPIByCTID( string ctid, bool skippingCache = false )
 		{
 			var rawData = ConceptSchemeManager.GetByCtid( ctid, false );
-			return ConvertCommonModelsConceptSchemeToFinderAPIConceptScheme( rawData, "Unable to find concept scheme for CTID: " + ctid );
+			return MapToAPI( rawData, "Unable to find concept scheme for CTID: " + ctid );
 		}
 		//
 
-		public static ConceptScheme ConvertCommonModelsConceptSchemeToFinderAPIConceptScheme( MC.ConceptScheme source, string nullErrorMessage = null )
+		public static ConceptScheme MapToAPI( MC.ConceptScheme source, string nullErrorMessage = null )
 		{
 			var result = new ConceptScheme();
 
@@ -56,7 +56,8 @@ namespace workIT.Services.API
 				result.SubjectWebpage = source.SubjectWebpage; //Not a property of Concept Scheme?
 				
 				//Extra properties
-				result.Source = source.Source;
+				if ( source.Source != null && source.Source .Any())
+					result.Source = source.Source[0];
 				result.Meta_FriendlyName = source.FriendlyName;
 
 				//Concepts

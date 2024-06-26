@@ -94,7 +94,10 @@ namespace workIT.Factories
 
 					MapToDB( entity, efEntity );
 					efEntity.EntityId = parent.Id;
-					efEntity.Created = System.DateTime.Now;
+					if ( entity.Created == DateTime.MinValue )
+						efEntity.Created = System.DateTime.Now;
+					else 
+						efEntity.Created = entity.Created;
 
 					context.Entity_IdentifierValue.Add( efEntity );
 
@@ -190,8 +193,9 @@ namespace workIT.Factories
 				{
 					List<DBResource> results = context.Entity_IdentifierValue
 							.Where( s => s.EntityId == parent.Id && s.IdentityValueTypeId == identityValueTypeId )
-							.OrderBy( s => s.Name )
-							.ToList();
+								.OrderBy( s => s.IdentifierType ) //nulls?
+								.ThenBy( s => s.Created )    //may want created order
+								.ToList();
 
 					if ( results != null && results.Count > 0 )
 					{

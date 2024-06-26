@@ -53,5 +53,10 @@ namespace workIT.Models.API
 		public List<WMA.ConditionProfile> Requires { get; set; } = new List<ConditionProfile>();
 
         public List<string> SameAs { get; set; }
-    }
+		public WMS.AJAXSettings HasTask { get; set; }
+		public WMS.AJAXSettings HasSpecialization { get; set; }
+		public WMS.AJAXSettings HasWorkRole { get; set; }
+		public WMS.AJAXSettings ProvidesTransferValueFor { get; set; }
+		public WMS.AJAXSettings ReceivesTransferValueFrom { get; set; }
+	}
 }

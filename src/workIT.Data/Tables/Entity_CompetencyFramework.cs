@@ -19,7 +19,7 @@ namespace workIT.Data.Tables
         public int CompetencyFrameworkId { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
-        public virtual CompetencyFramework CompetencyFramework { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual CompetencyFramework CompetencyFramework { get; set; }
     }
 }

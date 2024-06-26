@@ -1,20 +1,21 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
+using workIT.Services;
 using workIT.Utilities;
-
 using BNodeV3 = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.OrganizationServices;
+using ResourceServices = workIT.Services.OrganizationServices;
 using FAPI = workIT.Services.API;
 using InputEntityV3 = RA.Models.JsonV2.Agent;
-using ThisEntity = workIT.Models.Common.Organization;
+using RMJ = RA.Models.JsonV2;
+using ThisResource = workIT.Models.Common.Organization;
 namespace Import.Services
 {
 	public class ImportOrganization
@@ -23,7 +24,7 @@ namespace Import.Services
 		string thisClassName = "ImportOrganization";
 		ImportManager importManager = new ImportManager();
         ImportServiceHelpers importHelper = new ImportServiceHelpers();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 
 		#region custom imports
 		public void ImportPendingRecords()
@@ -99,7 +100,7 @@ namespace Import.Services
 		/// <returns></returns>
 		public bool CustomProcessRequest( ReadEnvelope item, SaveStatus status )
 		{
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			bool importSuccessfull = ProcessEnvelope( item, status );
 			List<string> messages = new List<string>();
 			string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
@@ -122,7 +123,7 @@ namespace Import.Services
 		/// <returns></returns>
 		public bool CustomProcessEnvelope( ReadEnvelope item, SaveStatus status )
 		{
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
             bool importSuccessfull = ProcessEnvelope( item, status );
             List<string> messages = new List<string>();
             string importError = string.Join( "\r\n", status.GetAllMessages().ToArray() );
@@ -144,8 +145,8 @@ namespace Import.Services
 				return false;
 			}
             //
-            DateTime createDate = new DateTime();
-            DateTime envelopeUpdateDate = new DateTime();
+            DateTime createDate = DateTime.Now;
+            DateTime envelopeUpdateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
             {
                 status.SetEnvelopeCreated( createDate );
@@ -219,7 +220,7 @@ namespace Import.Services
   
             List<string> messages = new List<string>();
             bool importSuccessfull = false;
-            EntityServices mgr = new EntityServices();
+            ResourceServices mgr = new ResourceServices();
 			MappingHelperV3 helper = new MappingHelperV3( 2 ) { };
             helper.entityBlankNodes = bnodes;
             helper.CurrentEntityCTID = input.CTID;
@@ -253,76 +254,7 @@ namespace Import.Services
 				helper.currentBaseObject = output;
 				helper.CurrentOwningAgentUid = output.RowId;
 
-				output.AgentDomainType = input.Type;
-				output.EntityTypeId = OrganizationManager.MapEntityTypeId( input.Type );
-
-				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
-				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-				//map from idProperty to url
-				output.SubjectWebpage = input.SubjectWebpage;
-				output.CTID = input.CTID;
-				//TBD handling of referencing third party publisher
-				helper.MapOrganizationPublishedBy( output, ref status );
-				//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-				//{
-				//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-				//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-				//	if ( porg != null && porg.Id > 0 )
-				//	{
-				//		//TODO - store this in a json blob??????????
-				//		output.PublishedByThirdPartyOrganizationId = porg.Id;
-				//		//output.PublishedByOrganizationName = porg.Name;
-				//		//this will result in being added to Entity.AgentRelationship
-				//		output.PublishedBy = new List<Guid>() { porg.RowId };
-				//	}
-				//	else
-				//	{
-				//		//if publisher not imported yet, all publishee stuff will be orphaned
-				//		var entityUid = Guid.NewGuid();
-				//		var statusMsg = "";
-				//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
-				//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-				//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
-				//		output.PublishedBy = new List<Guid>() { entityUid };
-				//	}
-				//}
-				//else
-				//{
-				//	//may need a check for existing published by to ensure not lost
-				//	if ( output.Id > 0 )
-				//	{
-				//		if ( output.OrganizationRole_Recipient != null && output.OrganizationRole_Recipient.Any() )
-				//		{
-				//			var publishedByList = output.OrganizationRole_Recipient.Where( s => s.RoleTypeId == 30 ).ToList();
-				//			if ( publishedByList != null && publishedByList.Any() )
-				//			{
-				//				var pby = publishedByList[ 0 ].ActingAgentUid;
-				//				output.PublishedBy = new List<Guid>() { publishedByList[ 0 ].ActingAgentUid };
-				//			}
-				//		}
-				//	}
-				//}
-
-				output.CredentialRegistryId = status.EnvelopeId; ;
-				output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
-				output.Image = input.Image;
-				output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
-
-				output.AgentPurpose = input.AgentPurpose;
-				output.AgentPurposeDescription = helper.HandleLanguageMap( input.AgentPurposeDescription, output, "AgentPurposeDescription" );
-
-				output.FoundingDate = input.FoundingDate;
-				
-				//future prep
-				output.AvailabilityListings = input.AvailabilityListing;
-				//consider JSON
-				//output.AvailabilityListing = JsonConvert.SerializeObject( input.AvailabilityListing, MappingHelperV3.GetJsonSettings() );
-				output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
-				//
-				output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
-				output.MissionAndGoalsStatementDescription = helper.HandleLanguageMap( input.MissionAndGoalsStatementDescription, output, "MissionAndGoalsStatementDescription" );
-
-				output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
+				CommonMapping( input, helper, ref output, ref status );
 				//21-12-21 - start storing JSON in one line. Also remove inheritance to exclude properties like Created/LastUpdates
 				if ( output.Addresses != null && output.Addresses.Any() )
 					output.AddressesJson = JsonConvert.SerializeObject( output.Addresses, MappingHelperV3.GetJsonSettings() );
@@ -335,14 +267,16 @@ namespace Import.Services
 						LoggingHelper.DoTrace( 2, string.Format( "		***Skipping org# {0}, {1} as it has no addresses and this is a special run.", output.Id, output.Name ) );
 						return true;
 					}
-				} else if ( UtilityManager.GetAppKeyValue( "skipOrgImportIfNoShortRegions", false ) )
+				}
+				else if ( UtilityManager.GetAppKeyValue( "skipOrgImportIfNoShortRegions", false ) )
 				{
 					if ( output.Addresses.Count == 0 )
 					{
 						//skip
 						LoggingHelper.DoTrace( 2, string.Format( "		***Skipping org# {0}, {1} as it has no addresses and this is a special run.", output.Id, output.Name ) );
 						return true;
-					} else if (output.HasAnyShortRegions == false)
+					}
+					else if ( output.HasAnyShortRegions == false )
 					{
 						//skip
 						LoggingHelper.DoTrace( 2, string.Format( "		***Skipping org# {0}, {1} as it has no addresses with short regions and this is a special run.", output.Id, output.Name ) );
@@ -350,144 +284,6 @@ namespace Import.Services
 					}
 				}
 
-				//agent type, map to enumeration
-				output.AgentType = helper.MapCAOListToEnumermation( input.AgentType );
-				output.SupersededBy = input.SupersededBy ?? "";
-				output.Supersedes = input.Supersedes ?? "";
-				if ( output.SupersededBy.ToLower().IndexOf( "/resources/ce-" ) > -1 )
-				{
-					//????
-					output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); //ResolutionServices.ExtractCtid( output.SupersededBy.Trim() );
-				}
-				if ( output.Supersedes.ToLower().IndexOf( "/resources/ce-" ) > -1 )
-				{
-					output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); //ResolutionServices.ExtractCtid( output.Supersedes.Trim() );
-				}
-				output.TransferValueStatement = input.TransferValueStatement;
-				output.TransferValueStatementDescription = helper.HandleLanguageMap( input.TransferValueStatementDescription, output, "TransferValueStatementDescription" );
-
-				//Manifests
-				output.ConditionManifestIds = helper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
-				output.CostManifestIds = helper.MapEntityReferences( input.HasCostManifest, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
-
-                //hasVerificationService. just do both for now. will need to handle import of old data at some point
-                //if ( UtilityManager.GetAppKeyValue( "usingNewHasVerificationService", false ) )
-                    output.HasVerificationServiceIds = helper.MapVerificationServiceReferences( input.HasVerificationService, "HasVerificationService", output.CTID, ref status );
-				//else 
-					//output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status );
-                
-
-                // output.targetc
-                //other enumerations
-                //	serviceType, AgentSectorType
-                output.ServiceType = helper.MapCAOListToEnumermation( input.ServiceType );
-				output.AgentSectorType = helper.MapCAOListToEnumermation( input.AgentSectorType );
-
-				//Industries
-				//output.Industry = helper.MapCAOListToEnumermation( input.IndustryType );
-				output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
-				//naics
-				//should check for duplicates in Naics, IndustryTypes, then remove from Naics
-				//output.Naics = input.Naics;
-				if ( input.Naics != null )
-                {
-					foreach (var item in input.Naics )
-                    {
-						var exists = output.IndustryTypes.FirstOrDefault( i => i.CodedNotation == item );
-						if ( exists == null || string.IsNullOrWhiteSpace(exists.CodedNotation))
-							output.Naics.Add( item );
-                    }
-                }
-				//keywords
-				output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
-
-				//duns, Fein.  IpedsID, opeID
-				if ( !string.IsNullOrWhiteSpace( input.DUNS ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:duns", TextValue = input.DUNS } );
-				if ( !string.IsNullOrWhiteSpace( input.FEIN ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:fein", TextValue = input.FEIN } );
-
-				if ( !string.IsNullOrWhiteSpace( input.IpedsID ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ipedsID", TextValue = input.IpedsID } );
-
-				if ( !string.IsNullOrWhiteSpace( input.OPEID ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
-				if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
-				//
-				if ( !string.IsNullOrWhiteSpace( input.NcesID ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ncesID", TextValue = input.NcesID } );
-				//
-				if ( !string.IsNullOrWhiteSpace( input.ISICV4 ) )
-					output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:isicV4", TextValue = input.ISICV4 } );
-
-				//alternativeidentifier - should just be added to IdentificationCodes
-				//output.AlternativeIdentifier = helper.MapIdentifierValueListToString( input.AlternativeIdentifier );
-				//output.AlternativeIdentifierList = helper.MapIdentifierValueList( input.AlternativeIdentifier );
-				//20-10-31 - replacing AlternativeIdentifier with Identifier
-				output.Identifier = helper.MapIdentifierValueList( input.Identifier );
-				if ( output.Identifier != null && output.Identifier.Count() > 0 )
-				{
-					output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
-				}
-
-				//email
-
-				output.Emails = helper.MapToTextValueProfile( input.Email );
-				//contact point
-				//output.ContactPoint = helper.FormatContactPoints( input.ContactPoint, ref status );
-				//Jurisdiction
-				output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
-
-				//SameAs URI
-				output.SameAs = helper.MapToTextValueProfile( input.SameAs );
-				//Social media
-				output.SocialMediaPages = helper.MapToTextValueProfile( input.SocialMedia );
-
-				//departments
-				//not sure - MP - want to change how depts, and subs are handled
-				output.ParentOrganization = helper.MapOrganizationReferenceGuids( "Organization.ParentOrganization", input.ParentOrganization, ref status );
-				output.Departments = helper.MapOrganizationReferenceGuids( "Organization.Department", input.Department, ref status );
-				output.SubOrganizations = helper.MapOrganizationReferenceGuids( "Organization.SubOrganization", input.SubOrganization, ref status );
-
-				//output.OrganizationRole_Subsidiary = helper.FormatOrganizationReferences( input.SubOrganization );
-
-				//Process profiles
-				output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
-				output.MaintenanceProcess = helper.FormatProcessProfile( input.MaintenanceProcess, ref status );
-				output.ComplaintProcess = helper.FormatProcessProfile( input.ComplaintProcess, ref status );
-				output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
-				output.RevocationProcess = helper.FormatProcessProfile( input.RevocationProcess, ref status );
-				output.ReviewProcess = helper.FormatProcessProfile( input.ReviewProcess, ref status );
-				output.AppealProcess = helper.FormatProcessProfile( input.AppealProcess, ref status );
-
-				//BYs
-				output.AccreditedBy = helper.MapOrganizationReferenceGuids( "Organization.AccreditedBy", input.AccreditedBy, ref status );
-				output.ApprovedBy = helper.MapOrganizationReferenceGuids( "Organization.ApprovedBy", input.ApprovedBy, ref status );
-				output.RecognizedBy = helper.MapOrganizationReferenceGuids( "Organization.RecognizedBy", input.RecognizedBy, ref status );
-				output.RegulatedBy = helper.MapOrganizationReferenceGuids( "Organization.RegulatedBy", input.RegulatedBy, ref status );
-				//INs
-				output.AccreditedIn = helper.MapToJurisdiction( "Organization.AccreditedIn", input.AccreditedIn, ref status );
-				output.ApprovedIn = helper.MapToJurisdiction( "Organization.ApprovedIn", input.ApprovedIn, ref status );
-				output.RecognizedIn = helper.MapToJurisdiction( "Organization.RecognizedIn", input.RecognizedIn, ref status );
-				output.RegulatedIn = helper.MapToJurisdiction( "Organization.RegulatedIn", input.RegulatedIn, ref status );
-
-				//Asserts
-				//the entity type is not known
-				output.Accredits = helper.MapEntityReferenceGuids( "Organization.Accredits", input.Accredits, 0, ref status );
-				output.Approves = helper.MapEntityReferenceGuids( "Organization.Approves", input.Approves, 0, ref status );
-				if ( output.Approves.Count > 0 )
-				{
-
-				}
-				output.Offers = helper.MapEntityReferenceGuids( "Organization.Offers", input.Offers, 0, ref status );
-				output.Owns = helper.MapEntityReferenceGuids( "Organization.Owns", input.Owns, 0, ref status );
-				output.Renews = helper.MapEntityReferenceGuids( "Organization.Renews", input.Renews, 0, ref status );
-				output.Revokes = helper.MapEntityReferenceGuids( "Organization.Revokes", input.Revokes, 0, ref status );
-				output.Recognizes = helper.MapEntityReferenceGuids( "Organization.Recognizes", input.Recognizes, 0, ref status );
-				output.Regulates = helper.MapEntityReferenceGuids( "Organization.Regulates", input.Regulates, 0, ref status );
-
-				//  
 
 				TimeSpan duration = DateTime.Now.Subtract( started );
 				if ( duration.TotalSeconds > 5 )
@@ -500,7 +296,7 @@ namespace Import.Services
 				//just in case check if entity added since start
 				if ( output.Id == 0 )
 				{
-					ThisEntity entity = EntityServices.GetSummaryByCtid( ctid );
+					ThisResource entity = ResourceServices.GetSummaryByCtid( ctid );
 					if ( entity != null && entity.Id > 0 )
 					{
 						output.Id = entity.Id;
@@ -512,17 +308,9 @@ namespace Import.Services
 				if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
 				{
 					importSuccessfull = mgr.Import( output, ref status );
-					//confirm the third parameter of getting all
-					var resource = FAPI.OrganizationServices.GetDetailForAPI( output.Id, true, true );
-					//var resourceDetail2 = JObject.FromObject( resource );
-					//or 
-					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
 
-					var statusMsg = "";
-					if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
-					{
-						status.AddError( statusMsg );
-					}
+					//24-03-25 - use the generic process for blank nodes encountered during import
+					new ProfileServices().IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
 				}
                 
 				saveDuration = DateTime.Now.Subtract( saveStarted );
@@ -590,7 +378,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, string.Format( thisClassName + ".ImportV3. Exception encountered in CTID: {0}", input.CTID ), false, "Organization Import exception" );
+				LoggingHelper.LogError( ex, $"{thisClassName}.ImportV3 Exception encountered in CTID: {output.CTID}" );
 			}
 			finally
 			{
@@ -600,12 +388,285 @@ namespace Import.Services
 
 			}
 			return importSuccessfull;
-        }
+		}
 
-        public bool DoesEntityExist( string ctid, ref ThisEntity entity )
+		public bool HandleExternalRequest( InputEntityV3 input, ref ThisResource output, ref SaveStatus status )
+		{
+			ResourceServices mgr = new ResourceServices();
+			MappingHelperV3 helper = new MappingHelperV3( 2 ) { };
+			var importSuccessfull = true;
+			//TODO on blank nodes
+			//the github examples are currently resources, need to include checks for id type
+			//TBD on just doing everything
+			//so far just for use case where sample data from github may have been used
+
+			output.RowId = Guid.NewGuid();
+			try
+			{
+				CommonMapping( input, helper, ref output, ref status );
+
+				if ( UtilityManager.GetAppKeyValue( "writingToFinderDatabase", true ) )
+				{
+					importSuccessfull = mgr.Import( output, ref status );
+					//confirm the third parameter of getting all
+					var resource = FAPI.OrganizationServices.GetDetailForAPI( output.Id, true, true );
+					//var resourceDetail2 = JObject.FromObject( resource );
+					//or 
+					var resourceDetail = JsonConvert.SerializeObject( resource, JsonHelper.GetJsonSettings( false ) );
+
+					var statusMsg = "";
+					if ( new EntityManager().EntityCacheUpdateResourceDetail( output.CTID, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+				}
+			} catch (Exception ex)
+			{
+				importSuccessfull = false;
+				LoggingHelper.LogError(ex, string.Format(thisClassName + ".HandleExternalRequest. Exception encountered in CTID: {0}", input.CTID));
+
+			}
+			return importSuccessfull;
+		}
+
+		public void CommonMapping( InputEntityV3 input, MappingHelperV3 helper, ref ThisResource output, ref SaveStatus status )
+		{
+
+			output.AgentDomainType = input.Type;
+			output.EntityTypeId = OrganizationManager.MapEntityTypeId( input.Type );
+			output.CTID = input.CTID;
+
+			output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
+			output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
+			//map from idProperty to url
+			output.SubjectWebpage = input.SubjectWebpage;
+
+			//TBD handling of referencing third party publisher
+			helper.MapOrganizationPublishedBy( output, ref status );
+
+			output.CredentialRegistryId = status.EnvelopeId; ;
+			output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
+			output.Image = input.Image;
+			output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+
+			output.AgentPurpose = input.AgentPurpose;
+			output.AgentPurposeDescription = helper.HandleLanguageMap( input.AgentPurposeDescription, output, "AgentPurposeDescription" );
+			output.Emails = helper.MapToTextValueProfile( input.Email );
+
+			output.FoundingDate = input.FoundingDate;
+			//future prep
+			output.AvailabilityListings = input.AvailabilityListing;
+			//consider JSON
+			//output.AvailabilityListing = JsonConvert.SerializeObject( input.AvailabilityListing, MappingHelperV3.GetJsonSettings() );
+			output.AvailabilityListing = helper.MapListToString( input.AvailabilityListing );
+			//
+			output.MissionAndGoalsStatement = input.MissionAndGoalsStatement;
+			output.MissionAndGoalsStatementDescription = helper.HandleLanguageMap( input.MissionAndGoalsStatementDescription, output, "MissionAndGoalsStatementDescription" );
+
+			output.Addresses = helper.FormatAvailableAtAddresses( input.Address, ref status );
+			//handle addresses with just contact points
+			foreach (var item in output.Addresses )
+			{
+				if (item.HasAddress() == false && item.HasContactPoints() )
+				{
+					output.ContactPoint = item.ContactPoint;
+				}
+			}
+			//now just get the addresses with an address 
+			output.Addresses = output.Addresses.Where( x => x.HasAddress() ).ToList();	
+
+			//agent type, map to enumeration
+			output.AgentType = helper.MapCAOListToEnumermation( input.AgentType );
+			output.SupersededBy = input.SupersededBy ?? "";
+			output.Supersedes = input.Supersedes ?? "";
+			if ( output.SupersededBy.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				//????
+				output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); //ResolutionServices.ExtractCtid( output.SupersededBy.Trim() );
+			}
+			if ( output.Supersedes.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); //ResolutionServices.ExtractCtid( output.Supersedes.Trim() );
+			}
+			output.SupportServiceStatement = input.SupportServiceStatement;
+			output.SupportServiceStatementDescription = helper.HandleLanguageMap( input.SupportServiceStatementDescription, output, "SupportServiceStatementDescription" );
+
+			output.TransferValueStatement = input.TransferValueStatement;
+			output.TransferValueStatementDescription = helper.HandleLanguageMap( input.TransferValueStatementDescription, output, "TransferValueStatementDescription" );
+
+			//hasVerificationService. just do both for now. will need to handle import of old data at some point
+			//if ( UtilityManager.GetAppKeyValue( "usingNewHasVerificationService", false ) )
+			if ( input.HasVerificationService != null )
+			{
+				var list = new List<string>();
+				//NO will not be typeof( List<string> )
+				//if ( input.HasVerificationService.GetType() == typeof( List<string> ) )
+				//{
+				//	list = input.HasVerificationService as List<string>;
+				//	output.HasVerificationServiceIds = helper.MapVerificationServiceReferences( list, "HasVerificationService", output.CTID, ref status );
+
+				//}
+				//else 
+				if ( input.HasVerificationService.GetType() == typeof( Newtonsoft.Json.Linq.JArray ) )
+				{
+					var jarray = ( Newtonsoft.Json.Linq.JArray ) input.HasVerificationService;
+					if ( input.HasVerificationService.ToString().IndexOf( "ceterms:VerificationServiceProfile" ) > 0 )
+					{
+						//old style
+						try
+						{
+
+							var vsp = JsonConvert.DeserializeObject<List<RMJ.VerificationServiceProfile>>( input.HasVerificationService.ToString() );
+							//will basically ignore
+							output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( vsp, ref status );
+
+						}
+						catch ( Exception ex )
+						{
+
+						}
+					}
+					else
+					{
+						list = jarray.ToObject<List<string>>();
+						output.HasVerificationServiceIds = helper.MapVerificationServiceReferences( list, "HasVerificationService", output.CTID, ref status );
+					}
+				}
+				else if ( input.HasVerificationService.GetType() == typeof( Newtonsoft.Json.Linq.JObject ) )
+				{
+					//only possibility should be the VSP, and only on import of older orgs
+					try
+					{
+						var vsp = JsonConvert.DeserializeObject<List<RMJ.VerificationServiceProfile>>( input.HasVerificationService.ToString() );
+
+						output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( vsp, ref status );
+
+					}
+					catch ( Exception ex )
+					{
+
+					}
+				}
+				//else 
+				//output.VerificationServiceProfiles = helper.MapVerificationServiceProfiles( input.VerificationServiceProfiles, ref status );
+			}
+
+			// output.targetc
+			//other enumerations
+			//	serviceType, AgentSectorType
+			output.ServiceType = helper.MapCAOListToEnumermation( input.ServiceType );
+			output.AgentSectorType = helper.MapCAOListToEnumermation( input.AgentSectorType );
+
+			//Industries
+			//output.Industry = helper.MapCAOListToEnumermation( input.IndustryType );
+			output.IndustryTypes = helper.MapCAOListToCAOProfileList( input.IndustryType );
+			//naics
+			//should check for duplicates in Naics, IndustryTypes, then remove from Naics
+			//output.Naics = input.Naics;
+			if ( input.Naics != null )
+			{
+				foreach ( var item in input.Naics )
+				{
+					var exists = output.IndustryTypes.FirstOrDefault( i => i.CodedNotation == item );
+					if ( exists == null || string.IsNullOrWhiteSpace( exists.CodedNotation ) )
+						output.Naics.Add( item );
+				}
+			}
+			//keywords
+			output.Keyword = helper.MapToTextValueProfile( input.Keyword, output, "Keyword" );
+
+			//duns, Fein.  IpedsID, opeID
+			if ( !string.IsNullOrWhiteSpace( input.DUNS ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:duns", TextValue = input.DUNS } );
+			if ( !string.IsNullOrWhiteSpace( input.FEIN ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:fein", TextValue = input.FEIN } );
+
+			if ( !string.IsNullOrWhiteSpace( input.IpedsID ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ipedsID", TextValue = input.IpedsID } );
+
+			if ( !string.IsNullOrWhiteSpace( input.OPEID ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:opeID", TextValue = input.OPEID } );
+			if ( !string.IsNullOrWhiteSpace( input.LEICode ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:leiCode", TextValue = input.LEICode } );
+			//
+			if ( !string.IsNullOrWhiteSpace( input.NcesID ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:ncesID", TextValue = input.NcesID } );
+			//
+			if ( !string.IsNullOrWhiteSpace( input.ISICV4 ) )
+				output.IdentificationCodes.Add( new workIT.Models.ProfileModels.TextValueProfile { CodeSchema = "ceterms:isicV4", TextValue = input.ISICV4 } );
+
+			//alternativeidentifier - should just be added to IdentificationCodes
+			//20-10-31 - replacing AlternativeIdentifier with Identifier
+			output.Identifier = helper.MapIdentifierValueList( input.Identifier );
+			if ( output.Identifier != null && output.Identifier.Count() > 0 )
+			{
+				output.IdentifierJson = JsonConvert.SerializeObject( output.Identifier, MappingHelperV3.GetJsonSettings() );
+			}
+			//contact point
+			//output.ContactPoint = helper.FormatContactPoints( input.ContactPoint, ref status );
+			//Jurisdiction
+			output.Jurisdiction = helper.MapToJurisdiction( input.Jurisdiction, ref status );
+
+			//SameAs URI
+			output.SameAs = helper.MapToTextValueProfile( input.SameAs );
+			//Social media
+			output.SocialMediaPages = helper.MapToTextValueProfile( input.SocialMedia );
+
+			//departments
+			//not sure - MP - want to change how depts, and subs are handled
+			output.ParentOrganization = helper.MapOrganizationReferenceGuids( "Organization.ParentOrganization", input.ParentOrganization, ref status );
+			output.Departments = helper.MapOrganizationReferenceGuids( "Organization.Department", input.Department, ref status );
+			output.SubOrganizations = helper.MapOrganizationReferenceGuids( "Organization.SubOrganization", input.SubOrganization, ref status );
+
+			//output.OrganizationRole_Subsidiary = helper.FormatOrganizationReferences( input.SubOrganization );
+
+			//Process profiles
+			output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
+			output.MaintenanceProcess = helper.FormatProcessProfile( input.MaintenanceProcess, ref status );
+			output.ComplaintProcess = helper.FormatProcessProfile( input.ComplaintProcess, ref status );
+			output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
+			output.RevocationProcess = helper.FormatProcessProfile( input.RevocationProcess, ref status );
+			output.ReviewProcess = helper.FormatProcessProfile( input.ReviewProcess, ref status );
+			output.AppealProcess = helper.FormatProcessProfile( input.AppealProcess, ref status );
+
+			//BYs
+			output.AccreditedBy = helper.MapOrganizationReferenceGuids( "Organization.AccreditedBy", input.AccreditedBy, ref status );
+			output.ApprovedBy = helper.MapOrganizationReferenceGuids( "Organization.ApprovedBy", input.ApprovedBy, ref status );
+			output.RecognizedBy = helper.MapOrganizationReferenceGuids( "Organization.RecognizedBy", input.RecognizedBy, ref status );
+			output.RegulatedBy = helper.MapOrganizationReferenceGuids( "Organization.RegulatedBy", input.RegulatedBy, ref status );
+			//INs
+			output.AccreditedIn = helper.MapToJurisdiction( "Organization.AccreditedIn", input.AccreditedIn, ref status );
+			output.ApprovedIn = helper.MapToJurisdiction( "Organization.ApprovedIn", input.ApprovedIn, ref status );
+			output.RecognizedIn = helper.MapToJurisdiction( "Organization.RecognizedIn", input.RecognizedIn, ref status );
+			output.RegulatedIn = helper.MapToJurisdiction( "Organization.RegulatedIn", input.RegulatedIn, ref status );
+
+			//Asserts
+			//the entity type is not known
+			output.Accredits = helper.MapEntityReferenceGuids( "Organization.Accredits", input.Accredits, 0, ref status );
+			output.Approves = helper.MapEntityReferenceGuids( "Organization.Approves", input.Approves, 0, ref status );
+			if ( output.Approves.Count > 0 )
+			{
+
+			}
+			output.Offers = helper.MapEntityReferenceGuids( "Organization.Offers", input.Offers, 0, ref status );
+			output.Owns = helper.MapEntityReferenceGuids( "Organization.Owns", input.Owns, 0, ref status );
+			output.Renews = helper.MapEntityReferenceGuids( "Organization.Renews", input.Renews, 0, ref status );
+			output.Revokes = helper.MapEntityReferenceGuids( "Organization.Revokes", input.Revokes, 0, ref status );
+			output.Recognizes = helper.MapEntityReferenceGuids( "Organization.Recognizes", input.Recognizes, 0, ref status );
+			output.Regulates = helper.MapEntityReferenceGuids( "Organization.Regulates", input.Regulates, 0, ref status );
+
+			//Manifests
+			output.ConditionManifestIds = helper.MapEntityReferences( input.HasConditionManifest, CodesManager.ENTITY_TYPE_CONDITION_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
+			output.CostManifestIds = helper.MapEntityReferences( input.HasCostManifest, CodesManager.ENTITY_TYPE_COST_MANIFEST, CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, ref status );
+
+
+
+		}
+
+		public bool DoesEntityExist( string ctid, ref ThisResource entity )
         {
             bool exists = false;
-            entity = EntityServices.GetMinimumSummaryByCtid( ctid );
+            entity = ResourceServices.GetMinimumSummaryByCtid( ctid );
             if ( entity != null && entity.Id > 0 )
                 return true;
 

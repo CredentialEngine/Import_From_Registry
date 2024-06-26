@@ -1,21 +1,15 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Runtime.Caching;
-using System.IO;
+using workIT.Models.API;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
-using CF = workIT.Factories;
 using workIT.Models.Common;
 using workIT.Models.Search;
-using workIT.Models.API;
-using System.Text.RegularExpressions;
 using workIT.Utilities;
+using CF = workIT.Factories;
 
 namespace workIT.Services.API
 {
@@ -94,6 +88,12 @@ namespace workIT.Services.API
 				case "assessment":
 				case "learningopportunity":
 				TranslateLocations( sourceResult, result, "AvailableAt" );
+				break;
+
+				case "transfervalue":
+				case "transfervalueprofile":
+				AddIfPresent( sourceResult.Properties, "StartDate", result, "StartDate" );
+				AddIfPresent( sourceResult.Properties, "EndDate", result, "EndDate" );
 				break;
 
 				default: break;
@@ -420,45 +420,45 @@ namespace workIT.Services.API
 			switch ( rawData.Method?.ToLower() ?? "" )
 			{
 				case "link":
-				foreach ( var item in rawData.EntityTagItems )
-				{
-					if( string.IsNullOrWhiteSpace(item.TargetFriendlyName))
-						item.TargetFriendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
-
-					result.Add( new Models.API.TagItem()
+					foreach ( var item in rawData.EntityTagItems )
 					{
-						Label = item.TargetEntityName,
-						URL = credentialFinderMainSite + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId + "/" + item.TargetFriendlyName
-					} );
-				}
-				break;
+						if( string.IsNullOrWhiteSpace(item.TargetFriendlyName))
+							item.TargetFriendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
+
+						result.Add( new Models.API.TagItem()
+						{
+							Label = item.TargetEntityName,
+							URL = credentialFinderMainSite + item.TargetEntityType.ToLower() + "/" + item.TargetEntityBaseId + "/" + item.TargetFriendlyName
+						} );
+					}
+					break;
 
 				case "direct":
-				foreach( var item in rawData.Items )
-				{
-					var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.Label );
-					result.Add( new Models.API.TagItem()
+					foreach( var item in rawData.Items )
 					{
-						Label = item.Label,
-						URL = credentialFinderMainSite + request.SearchType + "/" + request.RecordId + "/" + friendlyName
-					} );
-				}
-				break;
+						var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.Label );
+						result.Add( new Models.API.TagItem()
+						{
+							Label = item.Label,
+							URL = credentialFinderMainSite + request.SearchType + "/" + request.RecordId + "/" + friendlyName
+						} );
+					}
+					break;
 
 				case "qaperformed":
-				foreach( var item in rawData.QAItems )
-				{
-						//21-10-18 mp - this is wrong. If always from org search, then link is to the target
-						var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
-						result.Add( new Models.API.TagItem()
+					foreach( var item in rawData.QAItems )
 					{
-						//Label = item.AgentToTargetRelationship + " by " + item.TargetEntityName, //TODO: Verify that this is the right combination
-						//Label = item.AgentToTargetRelationship + item.TargetEntityName, //TargetEntityType
-						Label = item.AgentToTargetRelationship + " '" + item.TargetEntityName + "' ", //TargetEntityType
-						URL = credentialFinderMainSite + item.TargetEntityType + "/" + item.TargetEntityBaseId + "/" + friendlyName
-						} );
-				}
-				break;
+							//21-10-18 mp - this is wrong. If always from org search, then link is to the target
+							var friendlyName = CF.BaseFactory.FormatFriendlyTitle( item.TargetEntityName );
+							result.Add( new Models.API.TagItem()
+						{
+							//Label = item.AgentToTargetRelationship + " by " + item.TargetEntityName, //TODO: Verify that this is the right combination
+							//Label = item.AgentToTargetRelationship + item.TargetEntityName, //TargetEntityType
+							Label = item.AgentToTargetRelationship + " '" + item.TargetEntityName + "' ", //TargetEntityType
+							URL = credentialFinderMainSite + item.TargetEntityType + "/" + item.TargetEntityBaseId + "/" + friendlyName
+							} );
+					}
+					break;
 
 				default: break;
 			}
@@ -491,9 +491,15 @@ namespace workIT.Services.API
 		}
 		//
 
+		/// <summary>
+		/// TODO - normalize the values so the same everywhere
+		/// NOTE: Same transformation that happens in SearchV2.cshtml, so keep in sync for now
+		/// </summary>
+		/// <param name="targetType"></param>
+		/// <returns></returns>
 		private static Services.SearchServices.TagTypes TranslateNewTargetTypeToOldTargetType( string targetType )
 		{
-			//Same transformation that happens in SearchV2.cshtml
+			//
 			switch ( ( targetType ?? "" ).ToLower() )
 			{
 				case "assessment": return Services.SearchServices.TagTypes.ASSESSMENT;
@@ -509,10 +515,16 @@ namespace workIT.Services.API
 				case "has_lopp": return Services.SearchServices.TagTypes.HAS_LOPP;
 				case "hastransfervalue": return Services.SearchServices.TagTypes.HASTRANSFERVALUE;
 
-				case "tvphascredential": return Services.SearchServices.TagTypes.TVPHASCREDENTIAL;
-				case "tvphasassessment": return Services.SearchServices.TagTypes.TVPHASASSESSMENT;
-				case "tvphaslopp": return Services.SearchServices.TagTypes.TVPHASLOPP;
-				case "tvphaslearningopportunity": return Services.SearchServices.TagTypes.TVPHASLOPP;
+				//case "tvphascredential": return Services.SearchServices.TagTypes.TVPHasCredentialFor;
+				case "tvphascredentialfor": return Services.SearchServices.TagTypes.TVPHasCredentialFor;
+				case "tvphascredentialfrom": return Services.SearchServices.TagTypes.TVPHasCredentialFrom;
+				case "tvphasassessmentfor": return Services.SearchServices.TagTypes.TVPHasAssessmentFor;
+				case "tvphasassessmentfrom": return Services.SearchServices.TagTypes.TVPHasAssessmentFrom;
+				//case "tvphaslopp": return Services.SearchServices.TagTypes.TVPHASLOPP;
+				//case "tvphaslearningopportunity": return Services.SearchServices.TagTypes.TVPHasLearningOpportunityFor;
+				case "tvphaslearningopportunityfor": return Services.SearchServices.TagTypes.TVPHasLearningOpportunityFor;
+				case "tvphaslearningopportunityfrom": return Services.SearchServices.TagTypes.TVPHasLearningOpportunityFrom;
+
 				case "tvphastransferintermediary": return Services.SearchServices.TagTypes.TVPHASTRANSFERINTERMEDIARY;
 				case "learningopportunityprofile": return Services.SearchServices.TagTypes.LEARNINGOPPORTUNITY;
 

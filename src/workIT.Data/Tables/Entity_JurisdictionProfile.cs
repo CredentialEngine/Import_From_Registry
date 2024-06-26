@@ -33,9 +33,9 @@ namespace workIT.Data.Tables
         public Nullable<System.Guid> AssertedByAgentUid { get; set; }
         public Nullable<int> AssertedInTypeId { get; set; }
     
-        public virtual Codes_AssertionType Codes_AssertionType { get; set; }
         public virtual Entity Entity { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<GeoCoordinate> GeoCoordinate { get; set; }
+        public virtual Codes_AssertionType Codes_AssertionType { get; set; }
     }
 }

@@ -5,11 +5,13 @@ using workIT.Models;
 using workIT.Models.Common;
 using workIT.Models.Search;
 using workIT.Utilities;
+using APIResourceServices = workIT.Services.API.TransferValueServices;
 
 using ElasticHelper = workIT.Services.ElasticServices;
 using ResourceManager = workIT.Factories.TransferValueProfileManager;
 using MP = workIT.Models.Common;
 using ThisResource = workIT.Models.Common.TransferValueProfile;
+using Newtonsoft.Json;
 
 namespace workIT.Services
 {
@@ -17,7 +19,7 @@ namespace workIT.Services
 	{
 		static string thisClassName = "TransferValueServices";
 		static string ThisEntityType = "TransferValue";
-        static int ThisEntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE;
+        static int ThisResourceEntityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE;
 
         ActivityServices activityMgr = new ActivityServices();
 		public List<string> messages = new List<string>();
@@ -25,67 +27,86 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisResource entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
 
-			bool isValid = new ResourceManager().Save( entity, ref status );
+			bool isValid = new ResourceManager().Save( resource, ref status );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
-
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				var statusMsg = "";
+				var eManager = new EntityManager();
+				//prep cache properties
+				var detail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+				if ( detail != null && detail.Meta_Id > 0 )
 				{
-					//update cache - not applicable yet
+					var resourceDetail = JsonConvert.SerializeObject( detail, JsonHelper.GetJsonSettings( false ) );
+					if ( eManager.EntityCacheUpdateResourceDetail( resource.RowId, resourceDetail, ref statusMsg ) == 0 )
+					{
+						status.AddError( statusMsg );
+					}
+					//realistically, don't have to do this every time
+					//TODO: should now do in JSON so don't need the stored proc. OR see what can be derived from resourceDetail
 
-					//update Elastic
-					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+					if ( eManager.EntityCacheUpdateAgentRelationshipsForTransferValueProfile( resource.RowId.ToString(), ref statusMsg ) == false )
 					{
-						ElasticHelper.General_UpdateIndexForTVP( entity.Id );
+						status.AddError( statusMsg );
 					}
-					else
-					{
-						new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
-					}
-					//also update related org
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
 				}
-				else
+				
+				new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+				if ( resource.OwningOrganizationId  > 0)
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
+				/*
+					* now don't do this, use common method
+				if ( resource.CredentialIds.Count > 0 )
 				{
-					new SearchPendingReindexManager().Add( ThisEntityTypeId, entity.Id, 1, ref messages );
-					if ( entity.OwningOrganizationId  > 0)
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
-					//
-					if ( entity.CredentialIds.Count > 0 )
+					foreach ( var item in resource.CredentialIds )
 					{
-						foreach ( var item in entity.CredentialIds )
-						{
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, item, 1, ref messages );
-						}
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, item, 1, ref messages );
 					}
-					if ( entity.AssessmentIds.Count > 0 )
-					{
-						foreach ( var item in entity.AssessmentIds )
-						{
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, item, 1, ref messages );
-						}
-					}
-					if ( entity.LearningOpportunityIds.Count > 0 )
-					{
-						foreach ( var item in entity.LearningOpportunityIds )
-						{
-							new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, item, 1, ref messages );
-						}
-					}
-					if ( messages.Count > 0 )
-						status.AddWarningRange( messages );
 				}
+				if ( resource.AssessmentIds.Count > 0 )
+				{
+					foreach ( var item in resource.AssessmentIds )
+					{
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_ASSESSMENT_PROFILE, item, 1, ref messages );
+					}
+				}
+				if ( resource.LearningOpportunityIds.Count > 0 )
+				{
+					foreach ( var item in resource.LearningOpportunityIds )
+					{
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, item, 1, ref messages );
+					}
+				}
+				*/
+				if ( messages.Count > 0 )
+					status.AddWarningRange( messages );
+				
 				//no caching needed yet
 				//CacheManager.RemoveItemFromCache( "cframework", entity.Id );
 			}
 
 			return isValid;
+		}
+		public void UpdatePendingReindex( ThisResource resource, ref SaveStatus status )
+		{
+			List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+			int orgId = resource.OwningOrganizationId;
+
+			if ( orgId == 0 )
+			{
+				var org = OrganizationManager.GetBasics( resource.PrimaryAgentUID, false );
+				if ( org != null && org.Id > 0 )
+					orgId = org.Id;
+
+			}
+			if ( orgId > 0 )
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
 		}
 
 		/// <summary>
@@ -124,10 +145,10 @@ namespace workIT.Services
 		}
 		#endregion
 
-		public static ThisResource GetByCtid( string ctid )
+		public static ThisResource GetByCtid( string ctid, bool gettingAll = false )
 		{
 			ThisResource entity = new ThisResource();
-			entity = ResourceManager.GetByCtid( ctid );
+			entity = ResourceManager.GetByCtid( ctid, gettingAll );
 			return entity;
 		}
 
@@ -147,7 +168,7 @@ namespace workIT.Services
             if ( UtilityManager.GetAppKeyValue( "usingElasticSupportServiceSearch", false ) )
             {
                 var keywords = query.Keywords;
-                return ElasticHelper.GeneralAutoComplete( ThisEntityTypeId, ThisEntityType, query, maxTerms, ref totalRows );
+                return ElasticHelper.GeneralAutoComplete( ThisResourceEntityTypeId, ThisEntityType, query, maxTerms, ref totalRows );
             }
             else
             {
@@ -164,8 +185,8 @@ namespace workIT.Services
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticTransferValueSearch", false ) )
 			{
-				//var results = ElasticHelper.GeneralSearch( ThisEntityTypeId, data, ref pTotalRows );
-				return ElasticHelper.GeneralSearch( ThisEntityTypeId, ThisEntityType, data, ref pTotalRows );
+				//var results = ElasticHelper.GeneralSearch( ThisResourceEntityTypeId, data, ref pTotalRows );
+				return ElasticHelper.GeneralSearch( ThisResourceEntityTypeId, ThisEntityType, data, ref pTotalRows );
 			}
 			else
 			{
@@ -181,7 +202,7 @@ namespace workIT.Services
 						SubjectWebpage = item.SubjectWebpage,
 						PrimaryOrganizationName = item.PrimaryOrganizationName,
 						CTID = item.CTID,
-						EntityTypeId = ThisEntityTypeId,
+						EntityTypeId = ThisResourceEntityTypeId,
 						EntityType = ThisEntityType
                     } );
 				}
@@ -200,7 +221,7 @@ namespace workIT.Services
 			//SearchServices.HandleCustomFilters( data, 61, ref where );
 
 			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetSubjectsFilter( data, ThisEntityTypeId, ref where );
+			//SearchServices.SetSubjectsFilter( data, ThisResourceEntityTypeId, ref where );
 
 			//SetPropertiesFilter( data, ref where );
 			SearchServices.SetRolesFilter( data, ref where );
@@ -220,7 +241,7 @@ namespace workIT.Services
 			//SearchServices.HandleCustomFilters( data, 61, ref where );
 
 			SetKeywordFilter( data.Keywords, false, ref where );
-			//SearchServices.SetSubjectsFilter( data, ThisEntityTypeId, ref where );
+			//SearchServices.SetSubjectsFilter( data, ThisResourceEntityTypeId, ref where );
 
 			//SetPropertiesFilter( data, ref where );
 			SearchServices.SetRolesFilter( data, ref where );

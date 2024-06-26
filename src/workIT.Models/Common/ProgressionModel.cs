@@ -9,9 +9,9 @@ namespace workIT.Models.Common
 	public class ProgressionModel : ConceptScheme
 	{
 
+		//public new string Source { get; set; }
 
 
-		
 	}
 	public class ProgressionModelSummary : ProgressionModel
 	{

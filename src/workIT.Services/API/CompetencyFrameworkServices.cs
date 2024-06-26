@@ -119,7 +119,7 @@ namespace workIT.Services.API
 			result.CTID = source.CTID;
 			result.Name = source.Name;
 			result.Description = source.Description;
-			result.SubjectWebpage = source.SubjectWebpage; //Not a property of Competency Framework?
+			result.SubjectWebpage = source.SubjectWebpage; //Not a property of Competency Framework==> uses Source
 
 			//Extra properties
 			result.Source = source.Source;
@@ -486,6 +486,8 @@ namespace workIT.Services.API
 						Name = frameworkName,
 						HasTopChild = convertedCompetencies.Select( m => m.CredentialRegistryURL ).ToList(),
 						Meta_HasPart = convertedCompetencies,
+						CTID = !string.IsNullOrEmpty( source.FrameworkCtid ) ? source.FrameworkCtid : null,
+						Description = !string.IsNullOrEmpty( source.Description ) ? source.Description : null
 					};
 
 					return convertedFramework;

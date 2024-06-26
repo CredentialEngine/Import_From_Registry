@@ -28,7 +28,7 @@ namespace workIT.Models.Common
 			HasPartIds = new List<int>();
 			
 			Id = 0;
-			Industry = new Enumeration();
+			IndustryType = new Enumeration();
 			IsPartOf = new List<Credential>();
 			IsPartOfIds = new List<int>();
 
@@ -38,7 +38,7 @@ namespace workIT.Models.Common
 			Keyword = new List<TextValueProfile>();
 			MilitaryOccupation = new Enumeration();
 			Name = "";
-			Occupation = new Enumeration();
+			OccupationType = new Enumeration();
 			OrganizationRole = new List<OrganizationRoleProfile>();
 			OfferedByOrganizationRole = new List<OrganizationRoleProfile>();
 			OfferedByOrganization = new List<Organization>();
@@ -74,8 +74,8 @@ namespace workIT.Models.Common
 			LearningOpportunityEstimatedCosts = new List<CostProfile>();
 
 			Naics = new List<string>();
-			OtherIndustries = new List<TextValueProfile>();
-			OtherOccupations = new List<TextValueProfile>();
+			//OtherIndustries = new List<TextValueProfile>();
+			//OtherOccupations = new List<TextValueProfile>();
 
 			CredentialProcess = new List<ProcessProfile>();
 			AdministrationProcess = new List<ProcessProfile>();
@@ -88,7 +88,7 @@ namespace workIT.Models.Common
 
             InLanguageCodeList = new List<TextValueProfile>();
 
-			VersionIdentifierList = new List<Entity_IdentifierValue>();
+			VersionIdentifier = new List<Entity_IdentifierValue>();
 		}
 
 		//public DateTime RegistryLastUpdated { get; set; }
@@ -130,7 +130,10 @@ namespace workIT.Models.Common
 		public string AvailableOnlineAt { get; set; }
 		
 		public string AvailabilityListing { get; set; }
-		
+		/// <summary>
+		/// An inventory or listing of resources that includes this resource.
+		/// </summary>
+		public string InCatalog { get; set; }
 		//public string Image { get; set; } //image URL
 		/// <summary>
 		/// ISIC Revision 4 Code
@@ -174,6 +177,8 @@ namespace workIT.Models.Common
 		public List<Credential> IsPartOf { get; set; } //pseudo-"parent" credentials that this credential is a part of or included with (could be multiple)
 		public List<int> HasPartIds { get; set; }
 		public List<int> IsPartOfIds { get; set; }
+		public List<int> ProvidesTVForIds { get; set; }
+		public List<int> ReceivesTVFromIds { get; set; }
 		public List<ConditionProfile> IsPartOfConditionProfile { get; set; } = new List<ConditionProfile>();
 		//21-09-08 mp - not clear if this is needed anymore - hold over from publisher?
 		public List<Credential> IsPartOfCredential { get; set; }
@@ -213,38 +218,38 @@ namespace workIT.Models.Common
         //public List<EmploymentOutcomeProfile> EmploymentOutcome { get; set; }
         //public List<HoldersProfile> Holders { get; set; }
 
-        public Enumeration Industry { get; set; }
-		public Enumeration IndustryType
-		{
-			get
-			{
-				return new Enumeration()
-				{
-					Items = new List<EnumeratedItem>()
-					.Concat( Industry.Items )
-					//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
-					.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) ).ToList()
-				};
-			}
-			set { Industry = value; }
-		} //used by detail page
-		public List<TextValueProfile> OtherIndustries { get; set; }
-		public Enumeration Occupation { get; set; }
-		public Enumeration OccupationType
-		{
-			get
-			{
-				return new Enumeration()
-				{
-					Items = new List<EnumeratedItem>()
-					.Concat( Occupation.Items )
-					//.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
-					.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) ).ToList()
-				};
-			}
-			set { Occupation = value; }
-		} //Used for publishing
-		public List<TextValueProfile> OtherOccupations { get; set; }
+        public Enumeration IndustryType { get; set; }
+		//public Enumeration IndustryTypeOld
+		//{
+		//	get
+		//	{
+		//		return new Enumeration()
+		//		{
+		//			Items = new List<EnumeratedItem>()
+		//			.Concat( Industry.Items )
+		//			//.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
+		//			.Concat( OtherIndustries.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) ).ToList()
+		//		};
+		//	}
+		//	set { Industry = value; }
+		//} //used by detail page
+		//public List<TextValueProfile> OtherIndustries { get; set; }
+		public Enumeration OccupationType { get; set; }
+		//public Enumeration OccupationTypeOld
+		//{
+		//	get
+		//	{
+		//		return new Enumeration()
+		//		{
+		//			Items = new List<EnumeratedItem>()
+		//			.Concat( OccupationType.Items )
+		//			//.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextTitle, Description = m.TextValue } ) ).ToList()
+		//			.Concat( OtherOccupations.ConvertAll( m => new EnumeratedItem() { Name = m.TextValue } ) ).ToList()
+		//		};
+		//	}
+		//	set { OccupationType = value; }
+		//} //Used for publishing
+		//public List<TextValueProfile> OtherOccupations { get; set; }
 
 		public Enumeration InstructionalProgramType { get; set; } = new Enumeration();
 		//only used for display
@@ -262,6 +267,14 @@ namespace workIT.Models.Common
 		public List<Organization> OfferedByOrganization { get; set; }
 
 		public List<TextValueProfile> SameAs { get; set; } = new List<TextValueProfile>();
+
+		/// <summary>
+		/// TVP related to this resource.
+		/// List of URIs for an existing TVP
+		/// </summary>
+		public List<ResourceSummary> ProvidesTransferValueFor { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ReceivesTransferValueFrom { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> HasRubric { get; set; } = new List<ResourceSummary>();
 
 		public List<VerificationServiceProfile> UsesVerificationService { get; set; } = new List<VerificationServiceProfile>();
         #region Import Profiles
@@ -283,6 +296,7 @@ namespace workIT.Models.Common
 		public List<Guid> RevokedBy { get; set; }
 
 		public List<Guid> RenewedBy { get; set; }
+		public List<Guid> RegisteredBy { get; set; }
 		//public List<Guid> PublishedBy { get; set; }
 		//INs
 		public List<JurisdictionProfile> AccreditedIn { get; set; }
@@ -355,7 +369,6 @@ namespace workIT.Models.Common
 		//public int OwnerOrganizationId { get; set; }
 		//public int ManagingOrgId { get; set; }
 		public string CredentialId { get; set; }
-		public string CodedNotation { get; set; }
 
 		/// <summary>
 		/// Identifier
@@ -365,16 +378,21 @@ namespace workIT.Models.Common
 		//not stored yet
 		public List<IdentifierValue> IdentifierNew { get; set; } = new List<IdentifierValue>();
 		//or could store this as json
-		//not stored yet
+		//not stored yet - unlikely with scenarios like Colorado
 		public string IdentifierJSON { get; set; }
 
 		/// <summary>
 		/// Also doing import of list
+		/// TODO - merge processing only one property!!
 		/// </summary>
-		public List<Entity_IdentifierValue> VersionIdentifierList { get; set; }
-		public List<IdentifierValue> VersionIdentifierNew { get; set; }
+		public List<Entity_IdentifierValue> VersionIdentifier { get; set; }
+		///// <summary>
+		///// NOT actually stored, so ???
+		///// This is meant to be a lighter version without the debt from inheritance and used to store as JSON
+		///// </summary>
+		//public List<IdentifierValue> VersionIdentifierNew { get; set; }
 		//not stored yet
-		public string VersionIdentifierJSON { get; set; }
+		//public string VersionIdentifierJSON { get; set; }
 
 		public List<TextValueProfile> Keyword { get; set; }
 		public List<TextValueProfile> Subject { get; set; }
@@ -456,6 +474,7 @@ namespace workIT.Models.Common
 
 		public List<Pathway> TargetPathway { get; set; } = new List<Pathway>();
 
+		public List<ResourceSummary> RelatedAction { get; set; } = new List<ResourceSummary>();
 
 		public Dictionary<string, RegistryImport> FrameworkPayloads = new Dictionary<string, RegistryImport>();
         /// <summary>
@@ -486,7 +505,8 @@ namespace workIT.Models.Common
 
         public List<int> CostManifestIds { get; set; }
         public List<int> ConditionManifestIds { get; set; }
-        public List<int> HasSupportServiceIds { get; set; } = new List<int>();
+		public List<int> HasRubricIds { get; set; } = new List<int>();
+		public List<int> HasSupportServiceIds { get; set; } = new List<int>();
         public List<int> TargetPathwayIds { get; set; } = new List<int>();
 
         public List<int> VerificationServiceProfileIds { get; set; }

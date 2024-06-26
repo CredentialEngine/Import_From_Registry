@@ -154,7 +154,7 @@ namespace workIT.Factories
 			catch (Exception ex)
 			{
 				string message = FormatExceptions(ex);
-				LoggingHelper.LogError(ex, thisClassName + string.Format(".Save. id: {0}, Name: {1}", entity.Id, entity.Name), true);
+				LoggingHelper.LogError(ex, thisClassName + string.Format(".Save. CTID: {0}, Name: {1}", entity.CTID, entity.Name));
 				status.AddError(thisClassName + ".Save(). Error - the save was not successful. " + message);
 				isValid = false;
 			}
@@ -162,170 +162,6 @@ namespace workIT.Factories
 
 			return isValid;
 		}
-
-
-		public bool UpdateParts(ThisResource resource, ref SaveStatus status)
-		{
-			bool isAllValid = true;
-			var relatedEntity = EntityManager.GetEntity(resource.RowId);
-			if (relatedEntity == null || relatedEntity.Id == 0)
-			{
-				status.AddError("Error - the related Entity was not found.");
-				return false;
-			}
-			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
-			resource.RelatedEntityId= relatedEntity.Id;
-			//do deletes - should this be done here, should be no other prior updates?
-			eamgr.DeleteAll(relatedEntity, ref status);
-			eamgr.SaveList(relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, resource.OwnedBy, ref status);
-			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
-
-
-			EntityPropertyManager mgr = new EntityPropertyManager();
-			//first clear all properties
-			mgr.DeleteAll(relatedEntity, ref status);
-			//TODO - delete this once fully implemented 
-			if (mgr.AddProperties(resource.LifeCycleStatusType, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status) == false)
-				isAllValid = false;
-
-			if (mgr.AddProperties(resource.CollectionType, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY, false, ref status) == false)
-				isAllValid = false;
-
-			//clear all
-			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
-			erfm.DeleteAll(relatedEntity, ref status);
-
-			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, resource.OccupationType, ref status) == false)
-				isAllValid = false;
-			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, resource.IndustryType, ref status) == false)
-				isAllValid = false;
-
-			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, resource.InstructionalProgramType, ref status) == false)
-				isAllValid = false;
-			//
-			Entity_ReferenceManager erm = new Entity_ReferenceManager();
-			erm.DeleteAll(relatedEntity, ref status);
-			if (erm.Add(resource.Subject, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false) == false)
-				isAllValid = false;
-
-			if (erm.Add(resource.Keyword, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false) == false)
-				isAllValid = false;
-
-			erm.AddLanguages(resource.InLanguageCodeList, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_LANGUAGE);
-			//
-			//ConditionProfile =======================================
-			Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
-			//emanager.DeleteAll( relatedEntity, ref status );
-
-			emanager.SaveList(resource.MembershipCondition, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, resource.RowId, ref status);
-
-            var ehssMgr = new Entity_HasSupportServiceManager();
-            ehssMgr.Update( resource.HasSupportServiceIds, relatedEntity, ref status );
-
-            //TBD
-            //Classification
-
-            //collectionMember
-            new CollectionMemberManager().SaveList( resource.Id, resource.CollectionMember, ref status );
-
-			//HasMember
-
-			//competencies
-			//these were gathered separately in the import, but also part of HasMember????
-			//update competencies
-			//22-06-07 mp NOTE: plan to use Entity.Competency instead of cloning CompetencyFrameworkCompetencyManager.
-			new CollectionCompetencyManager().SaveList( resource, resource.ImportCompetencies, ref status );
-
-
-
-			return isAllValid;
-		}
-
-		public static void MapToDB(ThisResource input, DBResource output)
-		{
-
-			//want output ensure fields input create are not wiped
-			if (output.Id == 0)
-			{
-				output.CTID = input.CTID;
-			}
-			if (!string.IsNullOrWhiteSpace(input.CredentialRegistryId))
-				output.CredentialRegistryId = input.CredentialRegistryId;
-
-			output.Id = input.Id;
-			output.Name = GetData(input.Name);
-			output.EntityStateId = input.EntityStateId;
-			output.CodedNotation = GetData(input.CodedNotation);
-			output.CollectionGraph = input.CollectionGraph;
-			output.CredentialRegistryId = input.CredentialRegistryId;
-			output.Description = GetData( input.Description );
-			output.License = input.License;
-			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
-			output.SubjectWebpage = input.SubjectWebpage;
-
-			if (IsGuidValid(input.PrimaryAgentUID))
-			{
-				if (output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID)
-				{
-					if (IsGuidValid(output.OwningAgentUid))
-					{
-						//need output remove the owner role, or could have been others
-						string statusMessage = "";
-						new Entity_AgentRelationshipManager().Delete(output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage);
-					}
-				}
-				output.OwningAgentUid = input.PrimaryAgentUID;
-				//get for use to add to elastic pending
-				input.PrimaryOrganization = OrganizationManager.GetForSummary(input.PrimaryAgentUID);
-				//input.OwningOrganizationId = org.Id;
-			}
-			else
-			{
-				//always have output have an owner
-				//output.OwningAgentUid = null;
-			}
-
-			//======================================================================
-
-
-
-			if (IsValidDate(input.DateEffective))
-				output.DateEffective = DateTime.Parse(input.DateEffective);
-			else
-				output.DateEffective = null;
-			if (IsValidDate(input.ExpirationDate))
-				output.ExpirationDate = DateTime.Parse(input.ExpirationDate);
-			else
-				output.ExpirationDate = null;
-
-
-			if (IsValidDate(input.LastUpdated))
-				output.LastUpdated = input.LastUpdated;
-		}
-		public int Lookup_OR_Add( string frameworkUri, string frameworkName )
-		{
-			if ( string.IsNullOrWhiteSpace( frameworkUri ) )
-				return 0;
-
-			var ctid = ExtractCtid( frameworkUri );
-			//*** no data for frameworkURL, just frameworkUri or sourceUrl
-			ThisResource entity = GetByCTID( ctid );
-			if ( entity != null && entity.Id > 0 )
-				return entity.Id;
-			//skip if no name
-			if ( string.IsNullOrWhiteSpace( frameworkName ) || string.IsNullOrWhiteSpace( ctid ) )
-				return 0;
-			SaveStatus status = new SaveStatus();
-			entity.Name = frameworkName;
-			entity.CTID = ctid;
-			//
-			Save( entity, ref status );
-			if ( entity.Id > 0 )
-				return entity.Id;
-
-			return 0;
-		}//
-		
 
 		private int Add(ThisResource entity, ref SaveStatus status)
 		{
@@ -395,7 +231,7 @@ namespace workIT.Factories
 					string message = HandleDBValidationError(dbex, thisClassName + ".Add() ", "Collection");
 					status.AddError(thisClassName + ".Add(). Error - the save was not successful. " + message);
 
-					LoggingHelper.LogError(message, true);
+					LoggingHelper.LogError(dbex, message);
 				}
 				catch (Exception ex)
 				{
@@ -407,6 +243,183 @@ namespace workIT.Factories
 
 			return efEntity.Id;
 		}
+
+		public bool UpdateParts(ThisResource resource, ref SaveStatus status)
+		{
+			bool isAllValid = true;
+			var relatedEntity = EntityManager.GetEntity(resource.RowId);
+			if (relatedEntity == null || relatedEntity.Id == 0)
+			{
+				status.AddError("Error - the related Entity was not found.");
+				return false;
+			}
+			Entity_AgentRelationshipManager eamgr = new Entity_AgentRelationshipManager();
+			resource.RelatedEntityId= relatedEntity.Id;
+			//do deletes - should this be done here, should be no other prior updates?
+			eamgr.DeleteAll(relatedEntity, ref status);
+			eamgr.SaveList(relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, resource.OwnedBy, ref status);
+			eamgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_PUBLISHEDBY, resource.PublishedBy, ref status );
+
+
+			EntityPropertyManager mgr = new EntityPropertyManager();
+			//first clear all properties
+			mgr.DeleteAll(relatedEntity, ref status);
+			//TODO - delete this once fully implemented 
+			//if (mgr.AddProperties(resource.LifeCycleStatusType, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, false, ref status) == false)
+			//	isAllValid = false;
+
+			if (mgr.AddProperties(resource.CollectionType, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY, false, ref status) == false)
+				isAllValid = false;
+
+			//clear all
+			Entity_ReferenceFrameworkManager erfm = new Entity_ReferenceFrameworkManager();
+			erfm.DeleteAll(relatedEntity, ref status);
+
+			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_SOC, resource.OccupationType, ref status) == false)
+				isAllValid = false;
+			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_NAICS, resource.IndustryType, ref status) == false)
+				isAllValid = false;
+
+			if (erfm.SaveList(relatedEntity.Id, CodesManager.PROPERTY_CATEGORY_CIP, resource.InstructionalProgramType, ref status) == false)
+				isAllValid = false;
+			//
+			Entity_ReferenceManager erm = new Entity_ReferenceManager();
+			erm.DeleteAll(relatedEntity, ref status);
+			if (erm.Add(resource.Subject, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_SUBJECT, false) == false)
+				isAllValid = false;
+
+			if (erm.Add(resource.Keyword, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_KEYWORD, false) == false)
+				isAllValid = false;
+
+			erm.AddLanguages(resource.InLanguageCodeList, resource.RowId, CodesManager.ENTITY_TYPE_COLLECTION, ref status, CodesManager.PROPERTY_CATEGORY_LANGUAGE);
+			//
+			//ConditionProfile =======================================
+			Entity_ConditionProfileManager emanager = new Entity_ConditionProfileManager();
+			//emanager.DeleteAll( relatedEntity, ref status );
+
+			emanager.SaveList(resource.MembershipCondition, Entity_ConditionProfileManager.ConnectionProfileType_Requirement, resource.RowId, ref status);
+
+            var ehssMgr = new Entity_HasSupportServiceManager();
+            ehssMgr.Update( resource.HasSupportServiceIds, relatedEntity, ref status );
+
+			//TBD
+			//Classification
+			//Entity_HasResource
+			var eHasResourcesMgr = new Entity_HasResourceManager();
+			eHasResourcesMgr.DeleteAll( relatedEntity, ref status );
+			if ( eHasResourcesMgr.SaveList( relatedEntity, resource.Classification, ref status, Entity_HasResourceManager.HAS_RESOURCE_TYPE_Classification ) == false )
+				isAllValid = false;
+            //Identifiers - do **delete for first one** and then assign
+            //VersionIdentifier (do delete in SaveList)
+            new Entity_IdentifierValueManager().SaveList( resource.VersionIdentifier, resource.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier, ref status, true );
+
+            //collectionMember
+            new CollectionMemberManager().SaveList( resource.Id, resource.CollectionMember, ref status );
+
+			//HasMember
+
+			//competencies
+			//these were gathered separately in the import, but also part of HasMember????
+			//update competencies
+			//22-06-07 mp NOTE: plan to use Entity.Competency instead of cloning CompetencyFrameworkCompetencyManager.
+			new CollectionCompetencyManager().SaveList( resource, resource.ImportCompetencies, ref status );
+
+
+
+			return isAllValid;
+		}
+
+		public static void MapToDB(ThisResource input, DBResource output)
+		{
+
+			//want output ensure fields input create are not wiped
+			if (output.Id == 0)
+			{
+				output.CTID = input.CTID;
+			}
+			if (!string.IsNullOrWhiteSpace(input.CredentialRegistryId))
+				output.CredentialRegistryId = input.CredentialRegistryId;
+
+			output.Id = input.Id;
+			output.Name = GetData(input.Name);
+			output.EntityStateId = input.EntityStateId;
+			output.CodedNotation = GetData(input.CodedNotation);
+			output.CollectionGraph = input.CollectionGraph;
+			output.CredentialRegistryId = input.CredentialRegistryId;
+			output.Description = GetData( input.Description );
+			output.License = input.License;
+			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
+			output.SubjectWebpage = input.SubjectWebpage;
+			output.InCatalog = GetUrlData( input.InCatalog );
+
+            output.LatestVersion = GetUrlData( input.LatestVersion, null );
+            output.PreviousVersion = GetUrlData( input.PreviousVersion, null );
+            output.NextVersion = GetUrlData( input.NextVersion, null );
+
+            if (IsGuidValid(input.PrimaryAgentUID))
+			{
+				if (output.Id > 0 && output.OwningAgentUid != input.PrimaryAgentUID)
+				{
+					if (IsGuidValid(output.OwningAgentUid))
+					{
+						//need output remove the owner role, or could have been others
+						string statusMessage = string.Empty;
+						new Entity_AgentRelationshipManager().Delete(output.RowId, output.OwningAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage);
+					}
+				}
+				output.OwningAgentUid = input.PrimaryAgentUID;
+				//get for use to add to elastic pending
+				input.PrimaryOrganization = OrganizationManager.GetForSummary(input.PrimaryAgentUID);
+				//input.OwningOrganizationId = org.Id;
+			}
+			else
+			{
+				//always have output have an owner
+				//output.OwningAgentUid = null;
+			}
+
+			//======================================================================
+
+
+
+			if (IsValidDate(input.DateEffective))
+				output.DateEffective = DateTime.Parse(input.DateEffective);
+			else
+				output.DateEffective = null;
+			if (IsValidDate(input.ExpirationDate))
+				output.ExpirationDate = DateTime.Parse(input.ExpirationDate);
+			else
+				output.ExpirationDate = null;
+
+
+			if (IsValidDate(input.LastUpdated))
+				output.LastUpdated = input.LastUpdated;
+		}
+		public int Lookup_OR_Add( string frameworkUri, string frameworkName )
+		{
+			if ( string.IsNullOrWhiteSpace( frameworkUri ) )
+				return 0;
+
+			var ctid = ExtractCtid( frameworkUri );
+			//*** no data for frameworkURL, just frameworkUri or sourceUrl
+			ThisResource entity = GetByCTID( ctid );
+			if ( entity != null && entity.Id > 0 )
+				return entity.Id;
+			//skip if no name
+			if ( string.IsNullOrWhiteSpace( frameworkName ) || string.IsNullOrWhiteSpace( ctid ) )
+				return 0;
+			SaveStatus status = new SaveStatus();
+			entity.Name = frameworkName;
+			entity.CTID = ctid;
+			//
+			Save( entity, ref status );
+			if ( entity.Id > 0 )
+				return entity.Id;
+
+			return 0;
+		}//
+		
+
 		public void UpdateEntityCache(ThisResource document, ref SaveStatus status)
 		{
 			EntityCache ec = new EntityCache()
@@ -427,18 +440,18 @@ namespace workIT.Factories
 				OwningOrgId = document.OrganizationId
 			};
             //var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
-            var ceasedStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
+            var ceasedStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_CEASED );
             if ( document.LifeCycleStatusTypeId > 0 && document.LifeCycleStatusTypeId == ceasedStatus.Id )
             {
                 ec.IsActive = false;
             }
-            var statusMessage = "";
+            var statusMessage = string.Empty;
 			if (new EntityManager().EntityCacheSave(ec, ref statusMessage) == 0)
 			{
 				status.AddError(thisClassName + string.Format(".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage));
 			}
 		}
-		public static void MapFromDB(DBResource input, ThisResource output)
+		public static void MapFromDB(DBResource input, ThisResource output, bool gettingAllData = true)
 		{
 			//var isForDetail = (request.IsForAPIRequest || request.IsForDetailView);
 
@@ -448,7 +461,7 @@ namespace workIT.Factories
 			output.RowId = input.RowId;
 			output.EntityStateId = input.EntityStateId;
 			output.FriendlyName = FormatFriendlyTitle(input.Name);
-			output.Description = input.Description == null ? "" : input.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 			//
 			output.SubjectWebpage = input.SubjectWebpage;
 			if ( IsGuidValid( input.OwningAgentUid ) )
@@ -465,16 +478,15 @@ namespace workIT.Factories
             var relatedEntity = EntityManager.GetEntity( output.RowId, false );
             //if ( relatedEntity != null && relatedEntity.Id > 0 )
             output.EntityLastUpdated = output.LastUpdated;  // relatedEntity.LastUpdated;
-            output.HasSupportService = Entity_HasSupportServiceManager.GetAllSummary( relatedEntity );
 
-            output.EntityLastUpdated = output.LastUpdated;  
+			output.EntityLastUpdated = output.LastUpdated;  
 			//probably want get away from enumerations
 			output.CollectionType = EntityPropertyManager.FillEnumeration(output.RowId, CodesManager.PROPERTY_CATEGORY_COLLECTION_CATEGORY);
 			//22-07-10 - LifeCycleStatusTypeId is now on the credential directly
 			output.LifeCycleStatusTypeId = input.LifeCycleStatusTypeId;
 			if ( output.LifeCycleStatusTypeId > 0 )
 			{
-				CodeItem ct = CodesManager.Codes_PropertyValue_Get( output.LifeCycleStatusTypeId );
+				CodeItem ct = CodesManager.GetLifeCycleStatus( output.LifeCycleStatusTypeId );
 				if ( ct != null && ct.Id > 0 )
 				{
 					output.LifeCycleStatus = ct.Title;
@@ -493,18 +505,28 @@ namespace workIT.Factories
 
 				}
 			}
+			output.CodedNotation = input.CodedNotation;
+			output.CredentialRegistryId = input.CredentialRegistryId;
+
+			if ( !gettingAllData )
+			{
+				return;
+			}
+
+			output.HasSupportService = Entity_HasSupportServiceManager.GetAllSummary( relatedEntity );
+			output.InCatalog = GetUrlData( input.InCatalog );
 			//or format an outline upfront
 
 			//var outline = new WMA.Outline()
 			//{
 			//	Label = output.Name,
-			//	Description = output.Description ?? "",
+			//	Description = output.Description ?? string.Empty,
 			//	//Provider
 			//};
 			//if ( output.CollectionType != null && output.CollectionType.HasItems() )
 			//{
 			//	//kind of ugly to do this now.
-			//	//outline.Tags.AddRange( MapPropertyLabelLinks( output.CollectionType, "" ) );
+			//	//outline.Tags.AddRange( MapPropertyLabelLinks( output.CollectionType, string.Empty ) );
 			//}
 			//if ( output.OwningOrganization != null && output.OwningOrganization.Id > 0 )
 			//{
@@ -518,10 +540,15 @@ namespace workIT.Factories
 			//}
 
 			//
-			output.CodedNotation = input.CodedNotation;
+
 			//what to do about Classification??
+			var getAll = Entity_HasResourceManager.GetAll( relatedEntity );
+			if ( getAll != null && getAll.Count > 0 )
+			{
+				output.Classification = getAll.Where( r => r.RelationshipTypeId == Entity_HasResourceManager.HAS_RESOURCE_TYPE_Classification && r.EntityTypeId == CodesManager.ENTITY_TYPE_CONCEPT ).ToList();
+			}
+
 			output.CollectionGraph = input.CollectionGraph;
-			output.CredentialRegistryId = input.CredentialRegistryId;
 			//New
 			output.OccupationType = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_SOC );
 			output.IndustryType = Reference_FrameworkItemManager.FillCredentialAlignmentObject( output.RowId, CodesManager.PROPERTY_CATEGORY_NAICS );
@@ -538,12 +565,12 @@ namespace workIT.Factories
 			if (IsValidDate(input.DateEffective))
 				output.DateEffective = ((DateTime)input.DateEffective).ToString("yyyy-MM-dd");
 			else
-				output.DateEffective = "";
+				output.DateEffective = string.Empty;
 			//
 			if (IsValidDate(input.ExpirationDate))
 				output.ExpirationDate = ((DateTime)input.ExpirationDate).ToString("yyyy-MM-dd");
 			else
-				output.ExpirationDate = "";
+				output.ExpirationDate = string.Empty;
 
 
 			//multiple languages, now in entity.reference
@@ -552,8 +579,12 @@ namespace workIT.Factories
 			output.Subject = Entity_ReferenceManager.GetAll(output.RowId, CodesManager.PROPERTY_CATEGORY_SUBJECT);
 
 			output.Keyword = Entity_ReferenceManager.GetAll(output.RowId, CodesManager.PROPERTY_CATEGORY_KEYWORD);
+            output.VersionIdentifier = Entity_IdentifierValueManager.GetAll( output.RowId, Entity_IdentifierValueManager.IdentifierValue_VersionIdentifier );
+            output.LatestVersion = input.LatestVersion;
+            output.PreviousVersion = input.PreviousVersion;
+            output.NextVersion = input.NextVersion;
 
-			try
+            try
 			{
 				//get condition profiles - only one type. Equivalent to required I suppose.
 				output.MembershipCondition = Entity_ConditionProfileManager.GetAll(output.RowId, false);
@@ -662,7 +693,7 @@ namespace workIT.Factories
 
 		#region Retrievals
 
-		public static ThisResource Get(int id)
+		public static ThisResource Get(int id, bool gettingAllData = true )
 		{
 
 			var entity = new ThisResource();
@@ -679,7 +710,7 @@ namespace workIT.Factories
 
 				if (item != null && item.Id > 0)
 				{
-					MapFromDB(item, entity);
+					MapFromDB(item, entity, gettingAllData );
 
 					//Other parts
 				}
@@ -786,7 +817,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[Collection.ElasticSearch]", c ) )
@@ -814,7 +845,7 @@ namespace workIT.Factories
 					catch ( Exception ex )
 					{
 						LoggingHelper.DoTrace( 2, "Search - Exception:\r\n " + ex.Message );
-						LoggingHelper.LogError( ex, "Search", true, thisClassName + ".Search Error" );
+						LoggingHelper.LogError( ex, "Search" );
 						output = new ThisResource();
 						output.Name = "EXCEPTION ENCOUNTERED";
 						output.Description = ex.Message;
@@ -830,19 +861,19 @@ namespace workIT.Factories
 					output = new ThisResource();
 					output.ResultNumber = rowNbr;
 					output.Id = GetRowColumn( dr, "Id", 0 );
-					output.CTID = GetRowColumn( dr, "CTID", "" );
+					output.CTID = GetRowColumn( dr, "CTID", string.Empty );
 					output.Name = GetRowColumn( dr, "Name", "???" );
 					//
 					var organizationEntityStateId = GetRowColumn( dr, "OrganizationEntityStateId", 0 );
 					if ( organizationEntityStateId > 1 )
 					{
-						output.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						output.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						output.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						output.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						output.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 					}
-					output.Description = GetRowColumn( dr, "Description", "" );
+					output.Description = GetRowColumn( dr, "Description", string.Empty );
 					//needs to be a list. Just store first one
-					var subjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+					var subjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 					//if ( !string.IsNullOrWhiteSpace( subjectWebpage ) )
 					//{
 					//	//do a split
@@ -852,9 +883,9 @@ namespace workIT.Factories
 					//		output.SubjectWebpage.Add(item.Trim());
 					//	}
 					//}
-					output.CodedNotation = GetRowColumn( dr, "CodedNotation", "" );
-					output.DateEffective = GetRowColumn( dr, "DateEffective", "" );
-					output.ExpirationDate = GetRowColumn( dr, "ExpirationDate", "" );
+					output.CodedNotation = GetRowColumn( dr, "CodedNotation", string.Empty );
+					output.DateEffective = GetRowColumn( dr, "DateEffective", string.Empty );
+					output.ExpirationDate = GetRowColumn( dr, "ExpirationDate", string.Empty );
 
 
 					//Actuallu LastUpdated is the correct last updated
@@ -893,7 +924,7 @@ namespace workIT.Factories
 			}
 
 			//
-			var defStatus = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
+			var defStatus = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS_ACTIVE );
 			if ( profile.LifeCycleStatusType == null || profile.LifeCycleStatusType.Items == null || profile.LifeCycleStatusType.Items.Count == 0 )
 			{
 				profile.LifeCycleStatusTypeId = defStatus.Id;
@@ -901,7 +932,7 @@ namespace workIT.Factories
 			else
 			{
 				var schemaName = profile.LifeCycleStatusType.GetFirstItem().SchemaName;
-				CodeItem ci = CodesManager.Codes_PropertyValue_GetBySchema( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
+				CodeItem ci = CodesManager.GetLifeCycleStatus( CodesManager.PROPERTY_CATEGORY_LIFE_CYCLE_STATUS, schemaName );
 				if ( ci == null || ci.Id < 1 )
 				{
 					//while this should never happen, should have a default

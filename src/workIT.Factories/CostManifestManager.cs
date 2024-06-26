@@ -333,7 +333,7 @@ namespace workIT.Factories
 				OwningAgentUID = document.PrimaryAgentUID,
 				OwningOrgId = document.OrganizationId
 			};
-			string statusMessage = "";
+			string statusMessage = string.Empty;
 			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
 			{
 				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -776,8 +776,8 @@ namespace workIT.Factories
 			ThisEntity item = new ThisEntity();
 			List<ThisEntity> list = new List<ThisEntity>();
 			var result = new DataTable();
-			string temp = "";
-			string org = "";
+			string temp = string.Empty;
+			string org = string.Empty;
 			int orgId = 0;
 
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -786,7 +786,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[CostManifest_Search]", c ) )
@@ -824,12 +824,12 @@ namespace workIT.Factories
 					item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
 					item.Name = GetRowColumn( dr, "Name", "missing" );
 
-					item.Description = GetRowColumn( dr, "Description", "" );
+					item.Description = GetRowColumn( dr, "Description", string.Empty );
 
 					string rowId = GetRowColumn( dr, "RowId" );
 					item.RowId = new Guid( rowId );
 					item.CTID = GetRowColumn( dr, "CTID" );
-					item.CostDetails = GetRowColumn( dr, "CostDetails", "" );
+					item.CostDetails = GetRowColumn( dr, "CostDetails", string.Empty );
 
 
 					list.Add( item );
@@ -869,49 +869,53 @@ namespace workIT.Factories
 
 
 		}
-		public static void MapFromDB( DBEntity from, ThisEntity to )
+		public static void MapFromDB( DBEntity input, ThisEntity output )
 		{
-			to.Id = from.Id;
-			to.RowId = from.RowId;
-			to.EntityStateId = ( int ) ( from.EntityStateId ?? 1 );
+			output.Id = input.Id;
+			output.RowId = input.RowId;
+			output.EntityStateId = ( int ) ( input.EntityStateId ?? 1 );
 
-			to.OrganizationId =(int) (from.OrganizationId ?? 0);
+			output.OrganizationId =(int) (input.OrganizationId ?? 0);
 
-			if ( to.OrganizationId > 0 )
+			if ( output.OrganizationId > 0 )
 			{
-				to.PrimaryOrganization = OrganizationManager.GetForSummary( to.OrganizationId );
-				if ( to.PrimaryOrganization != null && to.PrimaryOrganization.Id > 0 )
-					to.PrimaryAgentUID = to.PrimaryOrganization.RowId;
+				output.PrimaryOrganization = OrganizationManager.GetForSummary( output.OrganizationId );
+				if ( output.PrimaryOrganization != null && output.PrimaryOrganization.Id > 0 )
+					output.PrimaryAgentUID = output.PrimaryOrganization.RowId;
 			}
 
-			to.Name = from.Name;
-			to.FriendlyName = FormatFriendlyTitle( from.Name );
+			output.Name = input.Name;
+			output.FriendlyName = FormatFriendlyTitle( input.Name );
 
-			to.Description = from.Description == null ? "" : from.Description;
+			output.Description = input.Description == null ? string.Empty : input.Description;
 
-			to.CTID = from.CTID;
-			to.CredentialRegistryId = from.CredentialRegistryId;
+			output.CTID = input.CTID;
+			output.CredentialRegistryId = input.CredentialRegistryId;
 
-			to.CostDetails = from.CostDetails;
+			output.CostDetails = input.CostDetails;
 
-			if ( IsValidDate( from.Created ) )
-				to.Created = ( DateTime ) from.Created;
+			if ( IsValidDate( input.Created ) )
+				output.Created = ( DateTime ) input.Created;
 			
-			if ( IsValidDate( from.LastUpdated ) )
-				to.LastUpdated = ( DateTime ) from.LastUpdated;
+			if ( IsValidDate( input.LastUpdated ) )
+				output.LastUpdated = ( DateTime ) input.LastUpdated;
 			//=====
-			var relatedEntity = EntityManager.GetEntity( to.RowId, false );
+			var relatedEntity = EntityManager.GetEntity( output.RowId, false );
 			if ( relatedEntity != null && relatedEntity.Id > 0 )
-				to.EntityLastUpdated = relatedEntity.LastUpdated;
-			if ( IsValidDate( from.StartDate ) )
-				to.StartDate = ( ( DateTime ) from.StartDate ).ToString("yyyy-MM-dd");
-			else
-				to.StartDate = "";
+				output.EntityLastUpdated = relatedEntity.LastUpdated;
 
-			if ( IsValidDate( from.EndDate ) )
-				to.EndDate = ( ( DateTime ) from.EndDate ).ToString("yyyy-MM-dd");
+			//NOTE: EntityLastUpdated should really be the last registry update now. Check how LastUpdated is assigned on import
+			output.EntityLastUpdated = output.LastUpdated;
+
+			if ( IsValidDate( input.StartDate ) )
+				output.StartDate = ( ( DateTime ) input.StartDate ).ToString("yyyy-MM-dd");
 			else
-				to.EndDate = "";
+				output.StartDate = string.Empty;
+
+			if ( IsValidDate( input.EndDate ) )
+				output.EndDate = ( ( DateTime ) input.EndDate ).ToString("yyyy-MM-dd");
+			else
+				output.EndDate = string.Empty;
 			//get common Costs
 			//TODO - determine what to return for edit vs non-edit states
 			//if ( forEditView )
@@ -921,7 +925,7 @@ namespace workIT.Factories
 
 			//get Costs
 			//List<CostProfile> list = new List<CostProfile>();
-			to.EstimatedCost = CostProfileManager.GetAll( to.RowId );
+			output.EstimatedCost = CostProfileManager.GetAll( output.RowId );
 
 
 		}

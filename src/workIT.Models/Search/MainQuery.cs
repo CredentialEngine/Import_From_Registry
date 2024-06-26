@@ -53,6 +53,7 @@ namespace workIT.Models.Search
 	public class AutoCompleteResponse
 	{
 		public List<FilterItem> Items { get; set; }
+		public JObject DebugInfo { get; set; }
 	}
 
 	//

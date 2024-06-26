@@ -25,8 +25,17 @@ namespace workIT.Models.Common
 			StatusMessage = "";
 		}
 		public int Id { get; set; }
+		//24-05-01 mp - moved CTID and Name from TopLevelObject. Need to be aware of any impact.
+		public string CTID { get; set; }
+		/// <summary>
+		/// name
+		/// </summary>
+		public string Name { get; set; }
 		public string FriendlyName { get; set; }
-
+		/// <summary>
+		/// Used to append organization name to the name in summaries or pill results
+		/// </summary>
+		public string NamePlusOrganization { get; set; }
 		public bool IsReferenceVersion { get; set; }
 		[JsonIgnore]
 		public Guid RowId { get; set; }
@@ -57,25 +66,28 @@ namespace workIT.Models.Common
 
 	}
 	//
+	/// <summary>
+	/// Purpose is to have a common summary object. 
+	/// However, the inheritance results in a lot of chafe.
+	/// </summary>
 	[Serializable]
 	public class TopLevelObject : BaseObject
 	{
-		/// <summary>
-		/// name
-		/// </summary>
-		public string Name { get; set; }
-		public LanguageMap Name_Map { get; set; }
+
+		//public LanguageMap Name_Map { get; set; }
 
 		public string Description { get; set; }
-		public LanguageMap Description_Map { get; set; }
+		//public LanguageMap Description_Map { get; set; }
 		public int EntityStateId { get; set; }
 		private int _entityTypeId { get; set; }
-        /// <summary>
-        /// NEED TO SYNC WITH:
-        ///		EntityManager.EntityTypeId 
-        ///		Entity.EntityTypeId 
-        /// </summary>
-        public int EntityTypeId
+
+		public string CodedNotation { get; set; }
+		/// <summary>
+		/// NEED TO SYNC WITH:
+		///		EntityManager.EntityTypeId 
+		///		Entity.EntityTypeId 
+		/// </summary>
+		public int EntityTypeId
 		{
 			get { return _entityTypeId; }
 			set
@@ -120,7 +132,9 @@ namespace workIT.Models.Common
 					case 20:
 						EntityType = "CostManifest";
 						break;
-
+					case 22:
+						EntityType = "CredentialingAction";
+						break;
 					case 23:
 						EntityType = "PathwaySet";
 						break;
@@ -167,14 +181,20 @@ namespace workIT.Models.Common
                     case 38:
                         EntityType = "SupportService";
                         break;
-                    case 41:
+					case 39:
+						EntityType = "Rubric";
+						break;
+					case 41:
                         EntityType = "VerificationServiceProfile";
                         break;
-                    case 58:
-                        EntityType = "Rubric";
-                        break;
-                    //OBSOLETE
-                    case 55:
+					case 44:
+						EntityType = "RubricCriterion";
+						break;
+					case 45:
+						EntityType = "RubricCriterionLevel";
+						break;
+					//OBSOLETE
+					case 55:
 						EntityType = "EarningsProfile";
 						break;
 					case 56:
@@ -191,9 +211,16 @@ namespace workIT.Models.Common
 			}
 		}
 		public string EntityType { get; set; }
+		/// <summary>
+		/// User friendly content
+		/// </summary>
 		public string EntityTypeLabel { get; set; }
 		public string EntityTypeSchema { get; set; }
-		public string CTID { get; set; }
+		/// <summary>
+		/// Seems a duplicate of EntityTypeLabel, but need a display label for subtypes
+		/// </summary>
+		public string CTDLTypeLabel { get; set; }
+		
 		public bool IsReferenceEntity
 		{
 			get
@@ -257,6 +284,10 @@ namespace workIT.Models.Common
 		//this would appear to be a duplicate of the latter
 		//determine if can remove it.
 		//public string OwningOrgDisplay { get; set; }
+
+		/// <summary>
+		/// this is functionally the same as PrimaryOrganizationId. Need to remove it to avoid confusion
+		/// </summary>
 		public int OwningOrganizationId
 		{
 			get
@@ -296,6 +327,8 @@ namespace workIT.Models.Common
 
 		//public string PublishedByOrganizationCTID { get; set; }
 		public List<Guid> PublishedBy { get; set; }
+
+		public List<Organization> OfferedBy { get; set; } = new List<Organization>();
 
 		#endregion
 

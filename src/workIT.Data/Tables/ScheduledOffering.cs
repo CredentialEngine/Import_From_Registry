@@ -26,14 +26,14 @@ namespace workIT.Data.Tables
         public int EntityStateId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public Nullable<System.Guid> OfferedBy { get; set; }
         public string SubjectWebpage { get; set; }
         public string DeliveryTypeDescription { get; set; }
         public string AvailableOnlineAt { get; set; }
         public string AvailabilityListing { get; set; }
+        public string AlternateName { get; set; }
         public System.DateTime Created { get; set; }
         public System.DateTime LastUpdated { get; set; }
-        public string AlternateName { get; set; }
-        public Nullable<System.Guid> OfferedBy { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_HasOffering> Entity_HasOffering { get; set; }

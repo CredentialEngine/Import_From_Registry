@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using System;
 using System.Collections.Generic;
@@ -17,19 +18,24 @@ using ElasticHelper = workIT.Services.ElasticServices;
 using EntityMgr = workIT.Factories.LearningOpportunityManager;
 using ThisResource = workIT.Models.ProfileModels.LearningOpportunityProfile;
 using WMA = workIT.Models.API;
-//using System.Web.UI.WebControls;
-//using Nest;
-//using static workIT.Models.Search.ThirdPartyApiModels.GoogleGeocoding;
-//using Nest;
+using FAPI = workIT.Services.API;
+
 
 namespace workIT.Services
 {
     public class LearningOpportunityServices
     {
         static string thisClassName = "LearningOpportunityServices";
-        #region import
-
-        public bool Import( ThisResource resource, ref SaveStatus status )
+		static int ThisResourceEntityTypeId = CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE;
+		#region import
+		/// <summary>
+		/// Handle import of record.
+		/// On success, populate the entity_cache properties: resource detail and AgentRelationshipsForEntity
+		/// </summary>
+		/// <param name="resource"></param>
+		/// <param name="status"></param>
+		/// <returns></returns>
+		public bool Import( ThisResource resource, ref SaveStatus status )
         {
             LoggingHelper.DoTrace( 7, thisClassName + ".Import - entered" );
             //do a get, and add to cache before updating
@@ -38,8 +44,8 @@ namespace workIT.Services
                 //note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
                 if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
                 {
-                    if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-                        GetDetail( resource.Id );
+                    //if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
+                    //    GetDetail( resource.Id, true );
                 }
                 string key = "lopp_" + resource.Id.ToString();
                 ServiceHelper.ClearCacheEntity( key );
@@ -51,14 +57,23 @@ namespace workIT.Services
                 if ( UtilityManager.GetAppKeyValue( "learningOppCacheMinutes", 0 ) > 0 )
                     CacheManager.RemoveItemFromCache( "lopp_", resource.Id );
 
-                //TBD where to save this? Could be directly on resource, or a separate table
-                //have to take into account properties dependent on external changes
-                if ( UtilityManager.GetAppKeyValue( "usingNewLoppElasticProcess", false ) )
-                {
-                    var lopp = API.LearningOpportunityServices.GetDetailForElastic( resource.Id, true );
-                }
+				//start storing the finder api ready version
+				var detail = FAPI.LearningOpportunityServices.GetDetailForAPI( resource.Id, true );
+				var resourceDetail = JsonConvert.SerializeObject( detail, JsonHelper.GetJsonSettings( false ) );
 
-                if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				var statusMsg = "";
+				var eManager = new EntityManager();
+				if ( eManager.EntityCacheUpdateResourceDetail( resource.RowId, resourceDetail, ref statusMsg ) == 0 )
+				{
+					status.AddError( "EntityCacheUpdateResourceDetail Error: " + statusMsg );
+				}
+				//realistically, don't have to do this every time
+				if ( eManager.EntityCacheUpdateAgentRelationshipsForLopp( resource.RowId.ToString(), ref statusMsg ) == false )
+				{
+					status.AddError( "EntityCacheUpdateAgentRelationshipsForLopp Error: " + statusMsg );
+				}
+
+				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
                 {
                     //update cache
                     ThreadPool.QueueUserWorkItem( UpdateCaches, resource );
@@ -68,16 +83,32 @@ namespace workIT.Services
                 }
                 else
                 {
-                    new SearchPendingReindexManager().Add( resource.LearningEntityTypeId, resource.Id, 1, ref messages );
-                    new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
-                    if ( messages.Count > 0 )
-                        status.AddWarningRange( messages );
+					UpdatePendingReindex( resource, ref status );
+
                 }
             }
 
             return isValid;
         }
-        static void UpdateCaches( Object entity )
+		public void UpdatePendingReindex( ThisResource resource, ref SaveStatus status )
+		{
+			List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+			int orgId = resource.OwningOrganizationId;
+
+			if ( orgId == 0 )
+			{
+				var org = OrganizationManager.GetBasics( resource.PrimaryAgentUID, false );
+				if ( org != null && org.Id > 0 )
+					orgId = org.Id;
+
+			}
+			if ( orgId > 0 )
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
+		}
+		static void UpdateCaches( Object entity )
         {
             if ( entity.GetType() != typeof( Models.ProfileModels.LearningOpportunityProfile ) )
                 return;
@@ -511,7 +542,7 @@ namespace workIT.Services
 
                     DateTime getDetailStarted = DateTime.Now;
                     //actually an alternate may be to populate from factory and then call API mapping method
-                    var lopp = API.LearningOpportunityServices.GetDetailForElastic( index.Id, true );
+                    var lopp = API.LearningOpportunityServices.GetDetailForAPI( index.Id, true );
                     DateTime getDetailCompleted = DateTime.Now;
                     var getDuration = getDetailCompleted.Subtract( getDetailStarted ).TotalSeconds;
                     

@@ -55,19 +55,35 @@ namespace workIT.Models.Common
         public List<CredentialAlignmentObjectProfile> IndustryTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
         public List<CredentialAlignmentObjectProfile> InstructionalProgramTypes { get; set; } = new List<CredentialAlignmentObjectProfile>();
 
+		/// <summary>
+		/// Type of official status of the record; select from an enumeration of such types.
+		/// URI to a concept
+		/// </summary>
+		public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
+		public string LifeCycleStatus { get; set; }
+		public int LifeCycleStatusTypeId { get; set; }
 
-        //TODO these should be simplified. Can they just be stored in a JSON blob?
-        public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
+		//TODO these should be simplified. Can they just be stored in a JSON blob?
+		public List<TextValueProfile> Keyword { get; set; } = new List<TextValueProfile>();
 		public List<TextValueProfile> Subject { get; set; } = new List<TextValueProfile>();
         
         public PathwayJSONProperties Properies { get; set; } = new PathwayJSONProperties();
 
 		//fake properties used by detail page
 		public string AvailabilityListing { get; set; }
-        //public PathwaySet PathwaySet { get; set; } = new PathwaySet();
+		//public PathwaySet PathwaySet { get; set; } = new PathwaySet();
 
-        #region Import
-        public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
+		#region version related
+		public string LatestVersion { get; set; }
+
+		public string PreviousVersion { get; set; }
+		public string NextVersion { get; set; }
+		//TBD
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string VersionIdentifierJson { get; set; }
+		#endregion
+		#region Import
+		public List<TextValueProfile> AlternateNames { get; set; } = new List<TextValueProfile>();
 
         public List<int> HasSupportServiceIds { get; set; } = new List<int>();
 

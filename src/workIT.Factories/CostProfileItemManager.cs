@@ -316,7 +316,7 @@ namespace workIT.Factories
 		private int GetCodeItemId( Enumeration entity, ref SaveStatus status )
 		{
 			int codeId = 0;
-			string schemaName = "";
+			string schemaName = string.Empty;
 			foreach ( var item in entity.Items )
 			{
 				if ( !string.IsNullOrWhiteSpace( item.SchemaName ) )
@@ -417,7 +417,7 @@ namespace workIT.Factories
 
 				if ( string.IsNullOrEmpty( pFilter ) )
 				{
-					pFilter = "";
+					pFilter = string.Empty;
 				}
 
 				using ( SqlCommand command = new SqlCommand( "[CostProfileItems_search]", c ) )
@@ -460,18 +460,18 @@ namespace workIT.Factories
 					item = new ThisEntity();
 					item.Id = GetRowColumn( dr, "Entity_CostProfileId", 0 );
 					//include parent entity type somewhere
-					item.ParentEntityType = GetRowColumn( dr, "EntityType", "" );
+					item.ParentEntityType = GetRowColumn( dr, "EntityType", string.Empty );
 
 					item.ProfileName = GetRowColumn( dr, "CostProfileName", "Cost Profile" );
 					//need means to sort this, with aggregate last
-					item.CostTypeName = GetRowColumn( dr, "CostType", "" );
+					item.CostTypeName = GetRowColumn( dr, "CostType", string.Empty );
 					
-					item.Currency = GetRowColumn( dr, "Currency", "" );
-					item.CurrencySymbol = GetRowColumn( dr, "CurrencySymbol", "" );
+					item.Currency = GetRowColumn( dr, "Currency", string.Empty );
+					item.CurrencySymbol = GetRowColumn( dr, "CurrencySymbol", string.Empty );
 					item.Price = GetRowPossibleColumn( dr, "Price", 0M );
 					//
 					if ( item.Price <= 0)
-						item.CostDescription = GetRowColumn( dr, "CostDescription", "" );
+						item.CostDescription = GetRowColumn( dr, "CostDescription", string.Empty );
 					list.Add( item );
 				}
 				return list;

@@ -61,78 +61,57 @@ namespace workIT.Models.ProfileModels
 		//[JsonProperty( "ceasn:alignFrom" )]
 		public List<string> AlignFrom { get; set; }
 
-		//[JsonProperty( "ceasn:alignTo" )]
 		public List<string> AlignTo { get; set; }
 
-		//[JsonProperty( "ceasn:altIdentifier" )]
 		public List<string> AltIdentifier { get; set; }
 
-		//[JsonProperty( "@author" )]
 		public List<string> Author { get; set; }
 
 
-		//[JsonProperty( "ceasn:conceptKeyword" )]
 		//public LanguageMapList conceptKeyword { get; set; }
 
-		//[JsonProperty( "ceasn:conceptTerm" )]
 		public List<string> ConceptTerm { get; set; }
 
-		//[JsonProperty( "ceasn:creator" )]
 		public List<string> Creator { get; set; }
 
-		//[JsonProperty( "ceasn:dateCopyrighted" )]
 		public string DateCopyrighted { get; set; }
 
 		/// <summary>
 		/// Only allow date (yyyy-mm-dd), no time
 		/// </summary>
-		//[JsonProperty( "ceasn:dateCreated" )]
 		public string DateCreated { get; set; }
 
-		//[JsonProperty( "ceasn:dateModified" )]
 		public string DateModified { get; set; }
 
-		//[JsonProperty( "ceasn:dateValidFrom" )]
 		public string DateValidFrom { get; set; }
 
-		//[JsonProperty( "ceasn:dateValidUntil" )]
 		public string DateValidUntil { get; set; }
 
 		//single per https://github.com/CredentialEngine/CompetencyFrameworks/issues/66
-		//[JsonProperty( "ceasn:derivedFrom" )]
 		public string DerivedFrom { get; set; }
 
-		//[JsonProperty( "ceasn:educationLevelType" )]
 		public List<string> educationLevelType { get; set; }
 
 		/// <summary>
 		/// Top-level child competency of a competency framework.
 		/// </summary>
-		//[JsonProperty( "ceasn:hasTopChild" )]
 		public List<string> HasTopChild { get; set; }
 
-		//[JsonProperty( "ceasn:identifier" )]
 		public List<string> Identifier { get; set; } = new List<string>();
 
-		//[JsonProperty( "ceasn:inLanguage" )]
 		public List<string> inLanguage { get; set; }
 
 		//[JsonProperty( "ceasn:license" )]
 		public string License { get; set; }
 
-		//[JsonProperty( "ceasn:localSubject" )]
 		//public LanguageMapList localSubject { get; set; }
 
-		//[JsonProperty( "ceasn:publicationStatusType" )]
 		public string PublicationStatusType { get; set; }//
-		//[JsonProperty( "ceasn:publisher" )]
 		public List<string> Publisher { get; set; }
 
-		//[JsonProperty( "ceasn:publisherName" )]
 		//public LanguageMapList publisherName { get; set; }
 		//
 
-		//[JsonProperty( "ceasn:repositoryDate" )]
 		public string RepositoryDate { get; set; }
 
 		/// <summary>
@@ -146,24 +125,29 @@ namespace workIT.Models.ProfileModels
 
 		//[JsonProperty( "ceasn:rightsHolder" )]
 		public string RightsHolder { get; set; }
+		public List<Entity_IdentifierValue> VersionIdentifier { get; set; }
+        public string LatestVersion { get; set; }
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
+        //public List<string> source { get; set; }
 
-		//[JsonProperty( "ceasn:source" )]
-		//public List<string> source { get; set; }
+        //
+        //public LanguageMap tableOfContents { get; set; }
 
-		//
-		//[JsonProperty( "ceasn:tableOfContents" )]
-		//public LanguageMap tableOfContents { get; set; }
+        //public List<CredentialAlignmentObject> OccupationType { get; set; }
 
-		////[JsonProperty( "ceterms:occupationType" )]
-		//public List<CredentialAlignmentObject> OccupationType { get; set; }
+        //public List<CredentialAlignmentObject> IndustryType { get; set; }
+        public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
 
-		////[JsonProperty( "ceterms:industryType" )]
-		//public List<CredentialAlignmentObject> IndustryType { get; set; }
-		public List<IndexCompetency> Competencies { get; set; } = new List<IndexCompetency>();
-
-		//OR
+		#region import 
+		public List<Guid> OwnedByIds { get; set; } = new List<Guid>();
+		public Guid AuthorId { get; set; }
+		public List<Guid> CreatedByIds { get; set; } = new List<Guid>();
+		public List<Guid> PublisherIds { get; set; } = new List<Guid>();
 
 		public List<Competency> ImportCompetencies { get; set; } = new List<Competency>();
+
+		#endregion
 	}
 
 	public class CompetencyFrameworkSummary : CompetencyFramework
@@ -207,9 +191,57 @@ namespace workIT.Models.ProfileModels
 		public string LastUpdatedDisplay { get { return LastUpdated == null ? "" : ( ( DateTime ) LastUpdated ).ToShortDateString(); } }
 		//public DateTime EntityLastUpdated { get; set; }
 
+		/// <summary>
+		/// Environmental Hazard Type
+		/// Type of condition in the physical work performance environment that entails risk exposures requiring mitigating processes; 
+		/// select from an existing enumeration of such types.
+		/// skos:Concept
+		/// Blank nodes!
+		/// </summary>
+		public List<ResourceSummary> EnvironmentalHazardType { get; set; } = new List<ResourceSummary>();
+
+		/// <summary>
+		/// Type of required or expected human performance level; select from an existing enumeration of such types.
+		/// skos:Concept
+		/// Blank nodes!
+		/// </summary>
+		public List<ResourceSummary> PerformanceLevelType { get; set; } = new List<ResourceSummary>();
+
+		/// <summary>
+		/// Type of physical activity required or expected in performance; select from an existing enumeration of such types.
+		/// skos:Concept
+		/// Blank nodes!
+		/// </summary>
+		public List<ResourceSummary> PhysicalCapabilityType { get; set; } = new List<ResourceSummary>();
+
+		/// <summary>
+		/// Type of required or expected sensory capability; select from an existing enumeration of such types.
+		/// skos:Concept
+		/// Blank nodes!
+		/// </summary>
+		public List<ResourceSummary> SensoryCapabilityType { get; set; } = new List<ResourceSummary>();
+
+		public List<Entity_IdentifierValue> VersionIdentifier { get; set; }
+
 		public CompetencyDetail CompetencyDetail { get; set; }
 
 		public string CompetencyDetailJson { get; set; }
+
+		#region Import
+
+		public List<int> SubstantiatingCredentialIds { get; set; }
+		public List<int> SubstantiatingCompetencyFrameworkIds { get; set; }
+		public List<int> SubstantiatingJobIds { get; set; }
+		public List<int> SubstantiatingOccupationIds { get; set; }
+		public List<int> SubstantiatingOrganizationIds { get; set; }
+		public List<int> SubstantiatingTaskIds { get; set; }
+		/// <summary>
+		/// these can be anything, so would not be an int. Probably a guid? Or as may use HasResource, would need the type and Id?
+		/// </summary>
+		public List<int> SubstantiatingResourceIds { get; set; }
+		public List<int> SubstantiatingWorkroleIds { get; set; }
+
+		#endregion
 	}
 	public class CompetencyDetail
 	{

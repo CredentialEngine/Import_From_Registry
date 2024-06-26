@@ -6,7 +6,7 @@
     <edmx:StorageModels>
     <Schema Namespace="workITViewModels.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Activity_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Activity_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Activity_Summary">
           <Key>
             <PropertyRef Name="Id" />
@@ -43,7 +43,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Activity_Summary' does not h
           <Property Name="IsBot" Type="bit" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Agent_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Agent_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Agent_Summary">
           <Key>
             <PropertyRef Name="AgentRowId" />
@@ -80,15 +80,15 @@ warning 6002: The table/view 'credFinder_github.dbo.Agent_Summary' does not have
           <Property Name="LastUpdated" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Assessment_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Assessment_Summary">
           <Key>
             <PropertyRef Name="Id" />
             <PropertyRef Name="Name" />
+            <PropertyRef Name="CTID" />
             <PropertyRef Name="OrgId" />
             <PropertyRef Name="Organization" />
             <PropertyRef Name="OwningOrganizationCtid" />
-            <PropertyRef Name="CTID" />
             
             <PropertyRef Name="LifeCycleStatusTypeId" />
             <PropertyRef Name="RowId" />
@@ -108,14 +108,14 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
           <Property Name="Id" Type="int" Nullable="false" />
           <Property Name="Name" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="Description" Type="varchar(max)" />
+          <Property Name="EntityStateId" Type="int" />
+          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="OrgId" Type="int" Nullable="false" />
           <Property Name="Organization" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="OwningOrganizationCtid" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="OwningAgentUid" Type="uniqueidentifier" />
           <Property Name="DateEffective" Type="datetime" />
           <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
-          <Property Name="EntityStateId" Type="int" />
-          <Property Name="CTID" Type="varchar" MaxLength="50" Nullable="false" />
           <Property Name="CredentialRegistryId" Type="nvarchar" MaxLength="50" />
           <Property Name="cerEnvelopeUrl" Type="varchar" MaxLength="1" Nullable="false" />
           <Property Name="LifeCycleStatusTypeId" Type="int" Nullable="false" />
@@ -141,10 +141,10 @@ warning 6002: The table/view 'credFinder_github.dbo.Assessment_Summary' does not
           <Property Name="PreparationFromCount" Type="int" Nullable="false" />
           <Property Name="ConnectionsList" Type="nvarchar(max)" Nullable="false" />
           <Property Name="CredentialsList" Type="nvarchar(max)" Nullable="false" />
-          <Property Name="Org_QAAgentAndRoles" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="Org_QAAgentAndRoles" Type="varchar" MaxLength="1" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.CIPCode2010' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.CIPCode2010' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="CIPCode2010">
           <Key>
             <PropertyRef Name="Id" />
@@ -162,7 +162,7 @@ warning 6002: The table/view 'credFinder_github.dbo.CIPCode2010' does not have a
           <Property Name="Url" Type="varchar" MaxLength="300" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.CIPCode2010.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.CIPCode2010.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="CIPCode2010_JobFamily">
           <Key>
             <PropertyRef Name="CIPFamily" />
@@ -175,7 +175,7 @@ warning 6002: The table/view 'credFinder_github.dbo.CIPCode2010.JobFamily' does 
           <Property Name="Url" Type="varchar" MaxLength="300" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Codes.Countries' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Codes.Countries' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Codes_Countries">
           <Key>
             <PropertyRef Name="Id" />
@@ -205,7 +205,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Codes.Countries' does not ha
           <Property Name="FlagImage" Type="varchar" MaxLength="100" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Codes.Currency' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Codes.Currency' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Codes_Currency">
           <Key>
             <PropertyRef Name="NumericCode" />
@@ -221,7 +221,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Codes.Currency' does not hav
           <Property Name="HtmlCodes" Type="varchar" MaxLength="50" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Codes.Language' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Codes.Language' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Codes_Language">
           <Key>
             <PropertyRef Name="Id" />
@@ -237,7 +237,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Codes.Language' does not hav
           <Property Name="HasSublanguage" Type="bit" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.CodesProperty.Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.CodesProperty.Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="CodesProperty_Summary">
           <Key>
             <PropertyRef Name="PK" />
@@ -261,7 +261,7 @@ warning 6002: The table/view 'credFinder_github.dbo.CodesProperty.Summary' does 
           <Property Name="Totals" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.CodesProperty_Counts_ByEntity' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.CodesProperty_Counts_ByEntity' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="CodesProperty_Counts_ByEntity">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -283,7 +283,7 @@ warning 6002: The table/view 'credFinder_github.dbo.CodesProperty_Counts_ByEntit
           <Property Name="EntityPropertyCount" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.CostProfile_SummaryForSearch' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.CostProfile_SummaryForSearch' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="CostProfile_SummaryForSearch">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -315,7 +315,7 @@ warning 6002: The table/view 'credFinder_github.dbo.CostProfile_SummaryForSearch
           <Property Name="condProfParentEntityBaseId" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Credential_Assets' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Credential_Assets' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Credential_Assets">
           <Key>
             <PropertyRef Name="CredentialEntityId" />
@@ -337,7 +337,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Credential_Assets' does not 
           <Property Name="Name" Type="nvarchar" MaxLength="300" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Credential_Assets_AgentRelationship_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Credential_Assets_AgentRelationship_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Credential_Assets_AgentRelationship_Totals">
           <Key>
             <PropertyRef Name="CredentialEntityId" />
@@ -367,7 +367,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Credential_Assets_AgentRelat
           <Property Name="RenewedCount" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity.AgentRelationshipIdCSV' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity.AgentRelationshipIdCSV' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_AgentRelationshipIdCSV">
           <Key>
             <PropertyRef Name="EntityId" />
@@ -399,7 +399,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity.AgentRelationshipIdCS
           <Property Name="AgentContextRoles" Type="varchar" MaxLength="1" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkCIPCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity.FrameworkCIPCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_FrameworkCIPCodeSummary">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -413,7 +413,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkCIPCodeSumma
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkIndustryCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity.FrameworkIndustryCodeSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_FrameworkIndustryCodeSummary">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -429,7 +429,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkIndustryCode
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkItemSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity.FrameworkItemSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_FrameworkItemSummary">
           <Key>
             <PropertyRef Name="Id" />
@@ -466,13 +466,19 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity.FrameworkItemSummary'
           <Property Name="URL" Type="varchar" MaxLength="300" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity.HasResourceSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity.HasResourceSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_HasResourceSummary">
           <Key>
             <PropertyRef Name="Id" />
             <PropertyRef Name="EntityId" />
             <PropertyRef Name="Name" />
             <PropertyRef Name="Description" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="ResourceOrganizationName" />
+            <PropertyRef Name="ParentEntityTypeId" />
+            <PropertyRef Name="ParentEntityId" />
+            <PropertyRef Name="ParentName" />
+            <PropertyRef Name="ParentDescription" />
             <PropertyRef Name="Organization" />
           </Key>
           <Property Name="Id" Type="int" Nullable="false" />
@@ -482,17 +488,31 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity.HasResourceSummary' d
           <Property Name="RelationshipTypeId" Type="int" />
           <Property Name="Created" Type="datetime" />
           <Property Name="EntityType" Type="varchar" MaxLength="100" />
-          <Property Name="Name" Type="nvarchar" MaxLength="600" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="900" Nullable="false" />
           <Property Name="Description" Type="nvarchar(max)" Nullable="false" />
           <Property Name="CTID" Type="varchar" MaxLength="50" />
           <Property Name="SubjectWebpage" Type="varchar" MaxLength="600" />
           <Property Name="EntityStateId" Type="int" />
+          <Property Name="EntityUid" Type="uniqueidentifier" Nullable="false" />
+          <Property Name="ResourceOwningOrgId" Type="int" />
           <Property Name="OwningOrgId" Type="int" />
-          <Property Name="Organization" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="ResourceOrganizationName" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="PublishedByOrgId" Type="int" />
+          <Property Name="ParentEntityTypeId" Type="int" Nullable="false" />
+          <Property Name="ParentEntityStateId" Type="int" />
+          <Property Name="ParentEntityId" Type="int" Nullable="false" />
+          <Property Name="ParentName" Type="nvarchar" MaxLength="900" Nullable="false" />
+          <Property Name="ParentCTID" Type="varchar" MaxLength="50" />
+          <Property Name="ParentDescription" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="ParentPrimaryOrganizationId" Type="int" />
+          <Property Name="ParentPrimaryOrgEntityStateId" Type="int" />
+          <Property Name="ParentPrimaryOrganizationName" Type="varchar" MaxLength="500" />
+          <Property Name="Organization" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="ParentPrimaryOrganizationDesc" Type="varchar(max)" />
+          <Property Name="EntityParentUid" Type="uniqueidentifier" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_Assertion_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_Assertion_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_Assertion_Summary">
           <Key>
             <PropertyRef Name="EntityAssertionId" />
@@ -539,7 +559,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Assertion_Summary' do
           <Property Name="Created" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_CacheSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_CacheSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_CacheSummary">
           <Key>
             <PropertyRef Name="Organization" />
@@ -557,7 +577,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_CacheSummary' does no
           <Property Name="EntityType" Type="varchar" MaxLength="100" />
           <Property Name="CTDLType" Type="varchar" MaxLength="200" />
           <Property Name="BaseId" Type="int" Nullable="false" />
-          <Property Name="Name" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="Name" Type="nvarchar" MaxLength="600" Nullable="false" />
           <Property Name="LastUpdated" Type="datetime" />
           <Property Name="Description" Type="nvarchar(max)" Nullable="false" />
           <Property Name="CTID" Type="varchar" MaxLength="50" />
@@ -568,7 +588,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_CacheSummary' does no
           <Property Name="CacheDate" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_LearningOpportunity_IsPartOfSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_LearningOpportunity_IsPartOfSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_LearningOpportunity_IsPartOfSummary">
           <Key>
             <PropertyRef Name="Id" />
@@ -593,7 +613,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_LearningOpportunity_I
           <Property Name="ParentUrl" Type="varchar" MaxLength="600" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_Reference_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_Reference_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_Reference_Summary">
           <Key>
             <PropertyRef Name="PK" />
@@ -621,7 +641,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Reference_Summary' do
           <Property Name="PropertySchema" Type="varchar" MaxLength="100" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_ReferenceFramework_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_ReferenceFramework_Summary">
           <Key>
             <PropertyRef Name="Id" />
@@ -651,7 +671,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Su
           <Property Name="Framework" Type="varchar" MaxLength="600" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_ReferenceFramework_Totals' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_ReferenceFramework_Totals">
           <Key>
             <PropertyRef Name="CategoryId" />
@@ -668,7 +688,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_ReferenceFramework_To
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_Relationship_AgentSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_Relationship_AgentSummary">
           <Key>
             <PropertyRef Name="EntityAgentRelationshipId" />
@@ -676,6 +696,8 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSum
             <PropertyRef Name="EntityId" />
             <PropertyRef Name="SourceEntityUid" />
             <PropertyRef Name="SourceEntityTypeId" />
+            <PropertyRef Name="SourceEntityDescription" />
+            
             <PropertyRef Name="RelationshipTypeId" />
             <PropertyRef Name="SourceToAgentRelationship" />
             <PropertyRef Name="ActingAgentUid" />
@@ -687,7 +709,6 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSum
             <PropertyRef Name="EntityStateId" />
             <PropertyRef Name="SourceEntityBaseId" />
             <PropertyRef Name="SourceEntityName" />
-            <PropertyRef Name="SourceEntityDescription" />
             <PropertyRef Name="AgentToSourceRelationship" />
             <PropertyRef Name="SchemaTag" />
           </Key>
@@ -698,12 +719,12 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSum
           <Property Name="SourceEntityTypeId" Type="int" Nullable="false" />
           <Property Name="SourceEntityType" Type="varchar" MaxLength="100" />
           <Property Name="SourceEntityBaseId" Type="int" Nullable="false" />
-          <Property Name="SourceEntityName" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="SourceEntityName" Type="nvarchar" MaxLength="800" Nullable="false" />
           <Property Name="SourceEntityDescription" Type="nvarchar(max)" Nullable="false" />
           <Property Name="SourceEntityUrl" Type="varchar" MaxLength="600" />
-          <Property Name="SourceEntityImageUrl" Type="varchar" MaxLength="600" />
+          <Property Name="SourceEntityImageUrl" Type="varchar" MaxLength="600" Nullable="false" />
           <Property Name="SourceEntityStateId" Type="int" />
-          <Property Name="SourceOwningOrganizationName" Type="varchar" MaxLength="300" />
+          <Property Name="SourceOwningOrganizationName" Type="varchar" MaxLength="500" />
           <Property Name="SourceOwningOrganizationId" Type="int" />
           <Property Name="RelationshipTypeId" Type="int" Nullable="false" />
           <Property Name="IsInverseRole" Type="bit" />
@@ -717,7 +738,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSum
           <Property Name="ActingAgentUid" Type="uniqueidentifier" Nullable="false" />
           <Property Name="ActingAgentTypeId" Type="int" Nullable="false" />
           <Property Name="ActingAgentEntityType" Type="varchar" MaxLength="12" Nullable="false" />
-          <Property Name="AgentName" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="AgentName" Type="varchar" MaxLength="500" Nullable="false" />
           <Property Name="AgentRelativeId" Type="int" Nullable="false" />
           <Property Name="AgentDescription" Type="varchar(max)" />
           <Property Name="AgentUrl" Type="varchar" MaxLength="600" />
@@ -728,7 +749,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Relationship_AgentSum
           <Property Name="LastUpdated" Type="datetime" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Entity_Subjects' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Entity_Subjects' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Entity_Subjects">
           <Key>
             <PropertyRef Name="EntityId" />
@@ -747,7 +768,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Entity_Subjects' does not ha
           <Property Name="ReferenceBaseId" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.EntityCompetencyFramework_Items_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.EntityCompetencyFramework_Items_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="EntityCompetencyFramework_Items_Summary">
           <Key>
             <PropertyRef Name="EntityId" />
@@ -784,7 +805,7 @@ warning 6002: The table/view 'credFinder_github.dbo.EntityCompetencyFramework_It
           <Property Name="ConditionEntityBaseId" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.EntityProperty_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.EntityProperty_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="EntityProperty_Summary">
           <Key>
             <PropertyRef Name="EntityId" />
@@ -817,7 +838,7 @@ warning 6002: The table/view 'credFinder_github.dbo.EntityProperty_Summary' does
           <Property Name="IsSubType1" Type="bit" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ExistingCountries_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ExistingCountries_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ExistingCountries_list">
           <Key>
             <PropertyRef Name="CountryNumber" />
@@ -827,7 +848,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ExistingCountries_list' does
           <Property Name="Country" Type="nvarchar" MaxLength="100" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ExistingCountryRegions_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ExistingCountryRegions_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ExistingCountryRegions_list">
           <Key>
             <PropertyRef Name="CountryNumber" />
@@ -839,7 +860,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ExistingCountryRegions_list'
           <Property Name="Region" Type="nvarchar" MaxLength="200" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ExistingRegionCities_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ExistingRegionCities_list' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ExistingRegionCities_list">
           <Key>
             <PropertyRef Name="CountryNumber" />
@@ -853,7 +874,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ExistingRegionCities_list' d
           <Property Name="City" Type="nvarchar" MaxLength="200" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.NAICS' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.NAICS' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="NAICS">
           <Key>
             <PropertyRef Name="Id" />
@@ -872,7 +893,7 @@ warning 6002: The table/view 'credFinder_github.dbo.NAICS' does not have a prima
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.NAICS.NaicsGroup' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.NAICS.NaicsGroup' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="NAICS_NaicsGroup">
           <Key>
             <PropertyRef Name="NaicsGroup" />
@@ -884,7 +905,7 @@ warning 6002: The table/view 'credFinder_github.dbo.NAICS.NaicsGroup' does not h
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ONET_SOC' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ONET_SOC' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ONET_SOC">
           <Key>
             <PropertyRef Name="Id" />
@@ -900,9 +921,14 @@ warning 6002: The table/view 'credFinder_github.dbo.ONET_SOC' does not have a pr
           <Property Name="JobFamily" Type="int" />
           <Property Name="URL" Type="varchar" MaxLength="200" />
           <Property Name="Totals" Type="int" />
+          <Property Name="VersionCodeWasAdded" Type="varchar" MaxLength="50" />
+          <Property Name="ObsoleteSinceVersion" Type="varchar" MaxLength="50" />
+          <Property Name="IsNew2018" Type="bit" />
+          <Property Name="Obsolete2019" Type="bit" />
+          <Property Name="NewCode" Type="varchar" MaxLength="500" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ONET_SOC.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ONET_SOC.JobFamily' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ONET_SOC_JobFamily">
           <Key>
             <PropertyRef Name="JobFamilyId" />
@@ -914,7 +940,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ONET_SOC.JobFamily' does not
           <Property Name="Totals" Type="int" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Organization_CombinedConnections' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Organization_CombinedConnections' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Organization_CombinedConnections">
           <Key>
             <PropertyRef Name="roleSource" />
@@ -955,7 +981,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Organization_CombinedConnect
           <Property Name="IsOwnerAgentRole" Type="bit" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Organization_CombinedQAPerformed' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Organization_CombinedQAPerformed' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Organization_CombinedQAPerformed">
           <Key>
             <PropertyRef Name="roleSource" />
@@ -998,7 +1024,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Organization_CombinedQAPerfo
           <Property Name="IsOwnerAgentRole" Type="bit" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Query_IndianaCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Query_IndianaCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Query_IndianaCredentials">
           <Key>
             <PropertyRef Name="Id" />
@@ -1020,7 +1046,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Query_IndianaCredentials' do
           <Property Name="OwnedBy" Type="varchar" MaxLength="93" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Query_IndianapolisCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Query_IndianapolisCredentials' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Query_IndianapolisCredentials">
           <Key>
             <PropertyRef Name="Id" />
@@ -1042,7 +1068,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Query_IndianapolisCredential
           <Property Name="OwnedBy" Type="varchar" MaxLength="93" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_CredentialOrgsWithoutOwnsOrOffers' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_CredentialOrgsWithoutOwnsOrOffers' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_CredentialOrgsWithoutOwnsOrOffers">
           <Key>
             <PropertyRef Name="Id" />
@@ -1063,7 +1089,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_CredentialOrgsWithou
           <Property Name="IsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_CredentialType' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_CredentialType' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_CredentialType">
           <Key>
             <PropertyRef Name="Name" />
@@ -1081,11 +1107,11 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_CredentialType' does
           <Property Name="CredentialTypeId" Type="int" />
           <Property Name="DataOwner" Type="varchar" MaxLength="500" />
           <Property Name="DataOwnerCTID" Type="varchar" MaxLength="50" />
-          <Property Name="Publisher" Type="varchar" MaxLength="200" />
+          <Property Name="Publisher" Type="varchar" MaxLength="500" />
           <Property Name="PublisherCTID" Type="varchar" MaxLength="50" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateAsmtsNameDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateAsmtsNameDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateAsmtsNameDescSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1106,7 +1132,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateAsmtsNameDe
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateAsmtsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateAsmtsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateAsmtsNameSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1127,7 +1153,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateAsmtsNameSW
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateCredentialsOrgCredentialDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateCredentialsOrgCredentialDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateCredentialsOrgCredentialDescSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1151,7 +1177,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateCredentials
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateCredentialsOrgCredentialSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateCredentialsOrgCredentialSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateCredentialsOrgCredentialSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1174,7 +1200,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateCredentials
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateLoppsNameDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateLoppsNameDescSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateLoppsNameDescSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1196,7 +1222,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateLoppsNameDe
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateLoppsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateLoppsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateLoppsNameSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1219,7 +1245,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateLoppsNameSW
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateOrgsName' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateOrgsName' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateOrgsName">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1237,7 +1263,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateOrgsName' d
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateOrgsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_DuplicateOrgsNameSWP' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_DuplicateOrgsNameSWP">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1255,7 +1281,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_DuplicateOrgsNameSWP
           <Property Name="ExistsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_ReferencesFinder' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_ReferencesFinder' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_ReferencesFinder">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -1274,7 +1300,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_ReferencesFinder' do
           <Property Name="Source" Type="varchar" MaxLength="6" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_ReferencesPublisher' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_ReferencesPublisher' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_ReferencesPublisher">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -1293,7 +1319,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_ReferencesPublisher'
           <Property Name="Source" Type="varchar" MaxLength="9" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.Reports_ResourceType' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.Reports_ResourceType' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="Reports_ResourceType">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1314,7 +1340,7 @@ warning 6002: The table/view 'credFinder_github.dbo.Reports_ResourceType' does n
           <Property Name="Description" Type="nvarchar(max)" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.ResourceCurrency_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.ResourceCurrency_Summary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="ResourceCurrency_Summary">
           <Key>
             <PropertyRef Name="Organization" />
@@ -1346,7 +1372,7 @@ warning 6002: The table/view 'credFinder_github.dbo.ResourceCurrency_Summary' do
           <Property Name="IsInPublisher" Type="int" Nullable="false" />
         </EntityType>
         <!--Errors Found During Generation:
-warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
+warning 6002: The table/view 'sandbox_credFinder.dbo.SiteTotalsSummary' does not have a primary key defined. The key has been inferred and the definition was created as a read-only table/view.-->
         <EntityType Name="SiteTotalsSummary">
           <Key>
             <PropertyRef Name="Id" />
@@ -1419,14 +1445,14 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Assessment_Summary].[Id] AS [Id], 
     [Assessment_Summary].[Name] AS [Name], 
     [Assessment_Summary].[Description] AS [Description], 
+    [Assessment_Summary].[EntityStateId] AS [EntityStateId], 
+    [Assessment_Summary].[CTID] AS [CTID], 
     [Assessment_Summary].[OrgId] AS [OrgId], 
     [Assessment_Summary].[Organization] AS [Organization], 
     [Assessment_Summary].[OwningOrganizationCtid] AS [OwningOrganizationCtid], 
     [Assessment_Summary].[OwningAgentUid] AS [OwningAgentUid], 
     [Assessment_Summary].[DateEffective] AS [DateEffective], 
     [Assessment_Summary].[SubjectWebpage] AS [SubjectWebpage], 
-    [Assessment_Summary].[EntityStateId] AS [EntityStateId], 
-    [Assessment_Summary].[CTID] AS [CTID], 
     [Assessment_Summary].[CredentialRegistryId] AS [CredentialRegistryId], 
     [Assessment_Summary].[cerEnvelopeUrl] AS [cerEnvelopeUrl], 
     [Assessment_Summary].[LifeCycleStatusTypeId] AS [LifeCycleStatusTypeId], 
@@ -1692,9 +1718,23 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [Entity_HasResourceSummary].[CTID] AS [CTID], 
     [Entity_HasResourceSummary].[SubjectWebpage] AS [SubjectWebpage], 
     [Entity_HasResourceSummary].[EntityStateId] AS [EntityStateId], 
+    [Entity_HasResourceSummary].[EntityUid] AS [EntityUid], 
+    [Entity_HasResourceSummary].[ResourceOwningOrgId] AS [ResourceOwningOrgId], 
     [Entity_HasResourceSummary].[OwningOrgId] AS [OwningOrgId], 
+    [Entity_HasResourceSummary].[ResourceOrganizationName] AS [ResourceOrganizationName], 
+    [Entity_HasResourceSummary].[PublishedByOrgId] AS [PublishedByOrgId], 
+    [Entity_HasResourceSummary].[ParentEntityTypeId] AS [ParentEntityTypeId], 
+    [Entity_HasResourceSummary].[ParentEntityStateId] AS [ParentEntityStateId], 
+    [Entity_HasResourceSummary].[ParentEntityId] AS [ParentEntityId], 
+    [Entity_HasResourceSummary].[ParentName] AS [ParentName], 
+    [Entity_HasResourceSummary].[ParentCTID] AS [ParentCTID], 
+    [Entity_HasResourceSummary].[ParentDescription] AS [ParentDescription], 
+    [Entity_HasResourceSummary].[ParentPrimaryOrganizationId] AS [ParentPrimaryOrganizationId], 
+    [Entity_HasResourceSummary].[ParentPrimaryOrgEntityStateId] AS [ParentPrimaryOrgEntityStateId], 
+    [Entity_HasResourceSummary].[ParentPrimaryOrganizationName] AS [ParentPrimaryOrganizationName], 
     [Entity_HasResourceSummary].[Organization] AS [Organization], 
-    [Entity_HasResourceSummary].[PublishedByOrgId] AS [PublishedByOrgId]
+    [Entity_HasResourceSummary].[ParentPrimaryOrganizationDesc] AS [ParentPrimaryOrganizationDesc], 
+    [Entity_HasResourceSummary].[EntityParentUid] AS [EntityParentUid]
     FROM [dbo].[Entity.HasResourceSummary] AS [Entity_HasResourceSummary]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="Entity_Assertion_Summary" EntityType="Self.Entity_Assertion_Summary" store:Type="Views" store:Schema="dbo">
@@ -1976,7 +2016,12 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
     [ONET_SOC].[SOC_code] AS [SOC_code], 
     [ONET_SOC].[JobFamily] AS [JobFamily], 
     [ONET_SOC].[URL] AS [URL], 
-    [ONET_SOC].[Totals] AS [Totals]
+    [ONET_SOC].[Totals] AS [Totals], 
+    [ONET_SOC].[VersionCodeWasAdded] AS [VersionCodeWasAdded], 
+    [ONET_SOC].[ObsoleteSinceVersion] AS [ObsoleteSinceVersion], 
+    [ONET_SOC].[IsNew2018] AS [IsNew2018], 
+    [ONET_SOC].[Obsolete2019] AS [Obsolete2019], 
+    [ONET_SOC].[NewCode] AS [NewCode]
     FROM [dbo].[ONET_SOC] AS [ONET_SOC]</DefiningQuery>
           </EntitySet>
           <EntitySet Name="ONET_SOC_JobFamily" EntityType="Self.ONET_SOC_JobFamily" store:Type="Views" store:Schema="dbo" store:Name="ONET_SOC.JobFamily">
@@ -2366,6 +2411,11 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="JobFamily" Type="Int32" />
           <Property Name="URL" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
           <Property Name="Totals" Type="Int32" />
+          <Property Name="VersionCodeWasAdded" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="ObsoleteSinceVersion" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="IsNew2018" Type="Boolean" />
+          <Property Name="Obsolete2019" Type="Boolean" />
+          <Property Name="NewCode" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityContainer Name="workITViews" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Codes_Currency" EntityType="Self.Codes_Currency" />
@@ -2419,9 +2469,9 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySet Name="Entity_ReferenceFramework_Summary" EntityType="workITViewModels.Entity_ReferenceFramework_Summary" />
           <EntitySet Name="Entity_CacheSummary" EntityType="workITViewModels.Entity_CacheSummary" />
           <EntitySet Name="Activity_Summary" EntityType="workITViewModels.Activity_Summary" />
+          <EntitySet Name="Entity_HasResourceSummary" EntityType="workITViewModels.Entity_HasResourceSummary" />
           <EntitySet Name="Reports_ReferencesFinder" EntityType="workITViewModels.Reports_ReferencesFinder" />
           <EntitySet Name="Reports_ReferencesPublisher" EntityType="workITViewModels.Reports_ReferencesPublisher" />
-          <EntitySet Name="Entity_HasResourceSummary" EntityType="workITViewModels.Entity_HasResourceSummary" />
         </EntityContainer>
         <EntityType Name="CIPCode2010">
           <Key>
@@ -2640,7 +2690,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="PreparationFromCount" Type="Int32" Nullable="false" />
           <Property Name="ConnectionsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="CredentialsList" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Org_QAAgentAndRoles" Type="String" Nullable="false" MaxLength="1" FixedLength="false" Unicode="false" />
           <Property Name="OwningAgentUid" Type="Guid" />
           <Property Name="OwningOrganizationCtid" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
           <Property Name="LifeCycleStatusType" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="false" />
@@ -2756,17 +2806,17 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
             <PropertyRef Name="CTID" />
             <PropertyRef Name="EntityStateId" />
           </Key>
-          <Property Name="EntityAgentRelationshipId" Type="Int32" Nullable="false" />
+           <Property Name="EntityAgentRelationshipId" Type="Int32" Nullable="false" />
           <Property Name="RowId" Type="Guid" Nullable="false" />
           <Property Name="EntityId" Type="Int32" Nullable="false" />
           <Property Name="SourceEntityUid" Type="Guid" Nullable="false" />
           <Property Name="SourceEntityTypeId" Type="Int32" Nullable="false" />
           <Property Name="SourceEntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="SourceEntityBaseId" Type="Int32" Nullable="false" />
-          <Property Name="SourceEntityName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="SourceEntityName" Type="String" Nullable="false" MaxLength="800" FixedLength="false" Unicode="true" />
           <Property Name="SourceEntityDescription" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="SourceEntityUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="SourceEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="SourceEntityImageUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="RelationshipTypeId" Type="Int32" Nullable="false" />
           <Property Name="IsInverseRole" Type="Boolean" />
           <Property Name="SourceToAgentRelationship" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="false" />
@@ -2779,7 +2829,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="ActingAgentUid" Type="Guid" Nullable="false" />
           <Property Name="ActingAgentTypeId" Type="Int32" Nullable="false" />
           <Property Name="ActingAgentEntityType" Type="String" Nullable="false" MaxLength="12" FixedLength="false" Unicode="false" />
-          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="AgentName" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="AgentRelativeId" Type="Int32" Nullable="false" />
           <Property Name="AgentDescription" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="AgentUrl" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
@@ -2789,7 +2839,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="EntityStateId" Type="Int32" Nullable="false" />
           <Property Name="SourceEntityStateId" Type="Int32" />
-          <Property Name="SourceOwningOrganizationName" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="SourceOwningOrganizationName" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="SourceOwningOrganizationId" Type="Int32" />
         </EntityType>
         <EntityType Name="Credential_Assets_AgentRelationship_Totals">
@@ -3328,7 +3378,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="CredentialTypeId" Type="Int32" />
           <Property Name="DataOwner" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="DataOwnerCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="Publisher" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Publisher" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
           <Property Name="PublisherCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
         </EntityType>
         <EntityType Name="Reports_DuplicateLoppsNameDescSWP">
@@ -3509,7 +3559,7 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="CTDLType" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
           <Property Name="BaseId" Type="Int32" Nullable="false" />
-          <Property Name="Name" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="600" FixedLength="false" Unicode="true" />
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
           <Property Name="CTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
@@ -3554,6 +3604,50 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="Referrer" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
           <Property Name="IsBot" Type="Boolean" />
         </EntityType>
+        <EntityType Name="Entity_HasResourceSummary">
+          <Key>
+            <PropertyRef Name="Id" />
+            <PropertyRef Name="EntityId" />
+            <PropertyRef Name="Name" />
+            <PropertyRef Name="Description" />
+            <PropertyRef Name="Organization" />
+            <PropertyRef Name="ParentName" />
+            <PropertyRef Name="ParentDescription" />
+            <PropertyRef Name="ParentEntityTypeId" />
+            <PropertyRef Name="EntityUid" />
+            <PropertyRef Name="ResourceOrganizationName" />
+            <PropertyRef Name="ParentEntityId" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" />
+          <Property Name="EntityId" Type="Int32" Nullable="false" />
+          <Property Name="EntityTypeId" Type="Int32" />
+          <Property Name="ResourceId" Type="Int32" />
+          <Property Name="Created" Type="DateTime" Precision="3" />
+          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Name" Type="String" Nullable="false" MaxLength="900" FixedLength="false" Unicode="true" />
+          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="CTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="SubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
+          <Property Name="OwningOrgId" Type="Int32" />
+          <Property Name="Organization" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="PublishedByOrgId" Type="Int32" />
+          <Property Name="RelationshipTypeId" Type="Int32" />
+          <Property Name="EntityStateId" Type="Int32" />
+          <Property Name="ParentName" Type="String" Nullable="false" MaxLength="900" FixedLength="false" Unicode="true" />
+          <Property Name="ParentCTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="ParentDescription" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="ParentEntityTypeId" Type="Int32" Nullable="false" />
+          <Property Name="EntityUid" Type="Guid" Nullable="false" />
+          <Property Name="ResourceOwningOrgId" Type="Int32" />
+          <Property Name="ResourceOrganizationName" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="ParentEntityStateId" Type="Int32" />
+          <Property Name="ParentEntityId" Type="Int32" Nullable="false" />
+          <Property Name="ParentPrimaryOrganizationId" Type="Int32" />
+          <Property Name="ParentPrimaryOrgEntityStateId" Type="Int32" />
+          <Property Name="ParentPrimaryOrganizationName" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="ParentPrimaryOrganizationDesc" Type="String" MaxLength="Max" FixedLength="false" Unicode="false" />
+          <Property Name="EntityParentUid" Type="Guid" />
+        </EntityType>
         <EntityType Name="Reports_ReferencesFinder">
           <Key>
             <PropertyRef Name="EntityTypeId" />
@@ -3587,30 +3681,6 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <Property Name="URL" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
           <Property Name="LastUpdated" Type="DateTime" Precision="3" />
           <Property Name="Source" Type="String" Nullable="false" MaxLength="9" FixedLength="false" Unicode="false" />
-        </EntityType>
-        <EntityType Name="Entity_HasResourceSummary">
-          <Key>
-            <PropertyRef Name="Id" />
-            <PropertyRef Name="EntityId" />
-            <PropertyRef Name="Name" />
-            <PropertyRef Name="Description" />
-            <PropertyRef Name="Organization" />
-          </Key>
-          <Property Name="Id" Type="Int32" Nullable="false" />
-          <Property Name="EntityId" Type="Int32" Nullable="false" />
-          <Property Name="EntityTypeId" Type="Int32" />
-          <Property Name="ResourceId" Type="Int32" />
-          <Property Name="RelationshipTypeId" Type="Int32" />
-          <Property Name="Created" Type="DateTime" Precision="3" />
-          <Property Name="EntityType" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
-          <Property Name="Name" Type="String" Nullable="false" MaxLength="600" FixedLength="false" Unicode="true" />
-          <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" FixedLength="false" Unicode="true" />
-          <Property Name="CTID" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <Property Name="SubjectWebpage" Type="String" MaxLength="600" FixedLength="false" Unicode="false" />
-          <Property Name="EntityStateId" Type="Int32" />
-          <Property Name="OwningOrgId" Type="Int32" />
-          <Property Name="Organization" Type="String" Nullable="false" MaxLength="500" FixedLength="false" Unicode="false" />
-          <Property Name="PublishedByOrgId" Type="Int32" />
         </EntityType>
     
       </Schema>
@@ -3661,6 +3731,11 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
           <EntitySetMapping Name="ONET_SOC">
             <EntityTypeMapping TypeName="workITViewModels.ONET_SOC">
               <MappingFragment StoreEntitySet="ONET_SOC">
+                <ScalarProperty Name="NewCode" ColumnName="NewCode" />
+                <ScalarProperty Name="Obsolete2019" ColumnName="Obsolete2019" />
+                <ScalarProperty Name="IsNew2018" ColumnName="IsNew2018" />
+                <ScalarProperty Name="ObsoleteSinceVersion" ColumnName="ObsoleteSinceVersion" />
+                <ScalarProperty Name="VersionCodeWasAdded" ColumnName="VersionCodeWasAdded" />
                 <ScalarProperty Name="Id" ColumnName="Id" />
                 <ScalarProperty Name="OnetSocCode" ColumnName="OnetSocCode" />
                 <ScalarProperty Name="Title" ColumnName="Title" />
@@ -4617,6 +4692,41 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
+          <EntitySetMapping Name="Entity_HasResourceSummary">
+            <EntityTypeMapping TypeName="workITViewModels.Entity_HasResourceSummary">
+              <MappingFragment StoreEntitySet="Entity_HasResourceSummary">
+                <ScalarProperty Name="EntityParentUid" ColumnName="EntityParentUid" />
+                <ScalarProperty Name="ParentPrimaryOrganizationDesc" ColumnName="ParentPrimaryOrganizationDesc" />
+                <ScalarProperty Name="ParentPrimaryOrganizationName" ColumnName="ParentPrimaryOrganizationName" />
+                <ScalarProperty Name="ParentPrimaryOrgEntityStateId" ColumnName="ParentPrimaryOrgEntityStateId" />
+                <ScalarProperty Name="ParentPrimaryOrganizationId" ColumnName="ParentPrimaryOrganizationId" />
+                <ScalarProperty Name="ParentEntityId" ColumnName="ParentEntityId" />
+                <ScalarProperty Name="ParentEntityStateId" ColumnName="ParentEntityStateId" />
+                <ScalarProperty Name="ResourceOrganizationName" ColumnName="ResourceOrganizationName" />
+                <ScalarProperty Name="ResourceOwningOrgId" ColumnName="ResourceOwningOrgId" />
+                <ScalarProperty Name="EntityUid" ColumnName="EntityUid" />
+                <ScalarProperty Name="ParentEntityTypeId" ColumnName="ParentEntityTypeId" />
+                <ScalarProperty Name="ParentDescription" ColumnName="ParentDescription" />
+                <ScalarProperty Name="ParentCTID" ColumnName="ParentCTID" />
+                <ScalarProperty Name="ParentName" ColumnName="ParentName" />
+                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
+                <ScalarProperty Name="RelationshipTypeId" ColumnName="RelationshipTypeId" />
+                <ScalarProperty Name="PublishedByOrgId" ColumnName="PublishedByOrgId" />
+                <ScalarProperty Name="Organization" ColumnName="Organization" />
+                <ScalarProperty Name="OwningOrgId" ColumnName="OwningOrgId" />
+                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
+                <ScalarProperty Name="CTID" ColumnName="CTID" />
+                <ScalarProperty Name="Description" ColumnName="Description" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
+                <ScalarProperty Name="Created" ColumnName="Created" />
+                <ScalarProperty Name="ResourceId" ColumnName="ResourceId" />
+                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
+                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
           <EntitySetMapping Name="Reports_ReferencesFinder">
             <EntityTypeMapping TypeName="workITViewModels.Reports_ReferencesFinder">
               <MappingFragment StoreEntitySet="Reports_ReferencesFinder">
@@ -4642,27 +4752,6 @@ warning 6002: The table/view 'credFinder_github.dbo.SiteTotalsSummary' does not 
                 <ScalarProperty Name="Id" ColumnName="Id" />
                 <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
                 <ScalarProperty Name="EntityType" ColumnName="EntityType" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="Entity_HasResourceSummary">
-            <EntityTypeMapping TypeName="workITViewModels.Entity_HasResourceSummary">
-              <MappingFragment StoreEntitySet="Entity_HasResourceSummary">
-                <ScalarProperty Name="PublishedByOrgId" ColumnName="PublishedByOrgId" />
-                <ScalarProperty Name="Organization" ColumnName="Organization" />
-                <ScalarProperty Name="OwningOrgId" ColumnName="OwningOrgId" />
-                <ScalarProperty Name="EntityStateId" ColumnName="EntityStateId" />
-                <ScalarProperty Name="SubjectWebpage" ColumnName="SubjectWebpage" />
-                <ScalarProperty Name="CTID" ColumnName="CTID" />
-                <ScalarProperty Name="Description" ColumnName="Description" />
-                <ScalarProperty Name="Name" ColumnName="Name" />
-                <ScalarProperty Name="EntityType" ColumnName="EntityType" />
-                <ScalarProperty Name="Created" ColumnName="Created" />
-                <ScalarProperty Name="RelationshipTypeId" ColumnName="RelationshipTypeId" />
-                <ScalarProperty Name="ResourceId" ColumnName="ResourceId" />
-                <ScalarProperty Name="EntityTypeId" ColumnName="EntityTypeId" />
-                <ScalarProperty Name="EntityId" ColumnName="EntityId" />
-                <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

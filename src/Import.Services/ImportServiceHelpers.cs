@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using workIT.Utilities;
 using workIT.Models;
 
-using ThisEntity = workIT.Models.RegistryImport;
+using ThisResource = workIT.Models.RegistryImport;
 using EntityMgr = workIT.Factories.ImportManager;
 
 namespace Import.Services
@@ -41,12 +41,12 @@ namespace Import.Services
         public int Add( ReadEnvelope item, int entityTypeId, string ctid, bool importSuccessfull,
             string importErrorMsg, ref List<string> messages )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             entity.EntityTypedId = entityTypeId;
             entity.EnvelopeId = item.EnvelopeIdentifier;
             entity.Ctid = ctid;
             entity.ResourcePublicKey = item.ResourcePublicKey;
-            DateTime updateDate = new DateTime();
+            DateTime updateDate = DateTime.Now;
             if ( DateTime.TryParse( item.NodeHeaders.UpdatedAt.Replace( "UTC", "" ).Trim(), out updateDate ) )
             {
                 entity.DocumentUpdatedAt = updateDate;

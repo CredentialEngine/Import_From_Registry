@@ -22,7 +22,10 @@ namespace workIT.Models.Search
 			ElasticConfigs = new List<ElasticSearchFilterConfig>();
 			OriginalQuery = new MainQuery();
 		}
-		public MainQuery OriginalQuery { get; set; } //Makes it easier to selectively skip translation for certain things while we make changes
+		/// <summary>
+		/// Makes it easier to selectively skip translation for certain things while we make changes
+		/// </summary>
+		public MainQuery OriginalQuery { get; set; } 
 		public int WidgetId { get; set; }
 		//should generalize collection like id where mutually exclusive?
 		public int CollectionId { get; set; }
@@ -33,7 +36,12 @@ namespace workIT.Models.Search
 		public string SearchType { get; set; }
 		public int StartPage { get; set; }
 		public int PageSize { get; set; }
+
+		/// <summary>
+		/// OK, this would be useful, how is it set?
+		/// </summary>
 		public bool IncludingReferenceObjects { get; set; }
+
 		public string Keywords { get; set; }
 		public string CompetenciesKeywords { get; set; }
 		public string SortOrder { get; set; }
@@ -42,6 +50,9 @@ namespace workIT.Models.Search
 		/// </summary>
 		public bool UseSimpleSearch { get; set; }
 		public bool UseSPARQL { get; set; }
+		/// <summary>
+		/// confirm only used by old searches?
+		/// </summary>
 		public List<MainSearchFilter> Filters { get; set; }
 		public List<MainSearchFilterV2> FiltersV2 { get; set; }
 		//yes, need to make this more general
@@ -55,7 +66,11 @@ namespace workIT.Models.Search
 		/// The search method can only handle 'known' filter types. At least one must be present, otherwise ignored
 		/// </summary>
 		public List<string> CustomSearchInFields { get; set; } = new List<string>();
-		public List<ElasticSearchFilterConfig> ElasticConfigs { get; set; } //Used to tweak elasticsearch filters/boosting configs. Development only.
+
+		/// <summary>
+		/// Used to tweak elasticsearch filters/boosting configs. Development only.
+		/// </summary>
+		public List<ElasticSearchFilterConfig> ElasticConfigs { get; set; }
 
 		public List<string> GetFilterValues_Strings( string name )
 		{
@@ -108,9 +123,48 @@ namespace workIT.Models.Search
 		public bool IsExportMode { get; set; }
 
 		public int Results { get; set; }
+		public bool HasKeywords
+		{
+			get
+			{
+				//need to watch for any defaults in filters
+				if ( ( Keywords != null && Keywords.Any() ) )
+				{
+					return true;
+				}
+				else
+				{ return false; }
+
+			}
+		}
+		public bool HasFilters
+		{
+			get
+			{
+				//need to watch for any defaults in filters
+				if ( ( Keywords!= null && Keywords.Any())
+					||( FiltersV2 != null && FiltersV2.Any())
+					|| ( Filters != null && Filters.Any() )
+					//CustomSearchInFields - used with widgets, which are less likely to have references?
+					)
+				{
+					return true;
+				}
+				else
+				{ return false; }
+
+			}
+		}
 	}
 	//
-
+	/// <summary>
+	/// Need to clarify how these types are used/defined:
+	/// CODE:
+	/// TEXT:
+	/// FRAMEWORK:
+	/// MAP
+	/// CUSTOM:
+	/// </summary>
 	public enum MainSearchFilterV2Types { CODE, TEXT, FRAMEWORK, MAP, CUSTOM }
 	public class MainSearchFilterV2
 	{
@@ -308,15 +362,23 @@ namespace workIT.Models.Search
 		{
 			try
 			{
-				return new CodeItem()
+				var codeItem = new CodeItem()
 				{
 					RelationshipId = GetValueOrDefault( "RelationshipId", 0 ),
 					AssertionId = GetValueOrDefault( "AssertionId", 0 ),
 					CategoryId = GetValueOrDefault( "CategoryId", 0 ),
 					Id = GetValueOrDefault( "CodeId", 0 ),
 					SchemaName = GetValueOrDefault( "SchemaName", "" ),
-					Name = GetValueOrDefault( "Name", "" )
+					Name = GetValueOrDefault( "Name", "" ),
+					//TBD
+					EntityTypeId = GetValueOrDefault( "EntityTypeId", 0 ),
+					//TextValue = GetValueOrDefault( "TextValue", "" )
 				};
+				if (string.IsNullOrWhiteSpace( codeItem.Name ))
+				{
+					codeItem.Name = GetValueOrDefault( "TextValue", "" );
+				}
+				return codeItem;	
 			}
 			catch
 			{

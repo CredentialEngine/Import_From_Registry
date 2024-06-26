@@ -39,7 +39,7 @@ namespace workIT.Factories
 			{
 				item.JProfilePurposeId = jProfilePurposeId;
 				item.ParentEntityUid = parentUid;
-				Add( item, "", ref status );
+				Add( item, string.Empty, ref status );
 			}
 
 			return isAllValid;
@@ -57,7 +57,7 @@ namespace workIT.Factories
 				item.JProfilePurposeId = JURISDICTION_PURPOSE_OFFERREDIN;
 				item.ParentEntityUid = parentUid;
 				item.AssertedInTypeId = assertedInTypeId;
-				Add( item, "", ref status );
+				Add( item, string.Empty, ref status );
 			}
 
 			return isAllValid;
@@ -210,7 +210,7 @@ namespace workIT.Factories
 			}
 			//need to have a main jurisdiction, or is global
 			if ( profile.MainJurisdiction != null
-				&& (profile.MainJurisdiction.GeoURI ?? "").Length > 0
+				&& (profile.MainJurisdiction.GeoURI ?? string.Empty).Length > 0
 				&& profile.MainJurisdiction.Name != "Earth" )
 			{
 				//should not have global
@@ -453,7 +453,7 @@ namespace workIT.Factories
 			//TODO - if a main jurisdiction exists, then global should be false
 			//may not be available
 			if ( from.MainJurisdiction != null
-				&& ( from.MainJurisdiction.GeoURI ?? "" ).Length > 0
+				&& ( from.MainJurisdiction.GeoURI ?? string.Empty ).Length > 0
 				&& from.MainJurisdiction.Name != "Earth" )
 				to.IsGlobalJurisdiction = false;
 
@@ -473,7 +473,7 @@ namespace workIT.Factories
 					if ( IsGuidValid( to.AssertedByAgentUid ) )
 					{
 						//need to remove the previous roles on change of asserted by
-						//string statusMessage = "";
+						//string statusMessage = string.Empty;
 						//new Entity_AgentRelationshipManager().Delete( to.RowId, to.AssertedByAgentUid, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, ref statusMessage );
 					}
 				}
@@ -510,8 +510,8 @@ namespace workIT.Factories
 
 			}
 
-			if ( (from.Description ?? "") == "Auto-saved Jurisdiction" )
-				to.Description = "";
+			if ( (from.Description ?? string.Empty) == "Auto-saved Jurisdiction" )
+				to.Description = string.Empty;
 			else
 				to.Description = from.Description;
 
@@ -558,7 +558,7 @@ namespace workIT.Factories
 			{
 				to.AssertedInTypeId = (int)from.AssertedInTypeId;
 				to.AssertedInType = from.Codes_AssertionType.Title;
-				to.AssertedInType = ( to.AssertedInType ?? "" ).Replace( " By", " In" );
+				to.AssertedInType = ( to.AssertedInType ?? string.Empty ).Replace( " By", " In" );
 				Enumeration ja = new Enumeration() { Name = "Jurisdiction Assertions"};
 				EnumeratedItem ei = new EnumeratedItem() { Id = to.AssertedInTypeId, Name = to.AssertedInType };
 				to.JurisdictionAssertion.Items.Add(ei);

@@ -56,6 +56,8 @@ namespace workIT.Models
         public int RelationshipId { get; internal set; }
         public int AssertionId { get; internal set; }
         public string CodeTitle { get; set; }
+		//need  to be careful with the use of this
+		//public string TextValue { get; set; }
 		public List<int> IdsList { get; set; } = new List<int>();
 		public string ItemList { get; set; } 
 

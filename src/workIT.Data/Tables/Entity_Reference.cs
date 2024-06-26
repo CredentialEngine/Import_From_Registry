@@ -29,9 +29,9 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> LastUpdated { get; set; }
         public Nullable<int> PropertyValueId { get; set; }
     
-        public virtual Codes_PropertyValue Codes_PropertyValue { get; set; }
         public virtual Entity Entity { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Entity_ReferenceConnection> Entity_ReferenceConnection { get; set; }
+        public virtual Codes_PropertyValue Codes_PropertyValue { get; set; }
     }
 }

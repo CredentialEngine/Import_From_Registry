@@ -1,20 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
-using workIT.Models.Common;
-
-using MC = workIT.Models.Common;
 using WMS = workIT.Models.Search;
 
 namespace workIT.Models.API
 {
-	[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
+    [JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
 
 	public class Pathway : BaseAPIType
 	{
@@ -69,6 +61,10 @@ namespace workIT.Models.API
 
 		public List<LabelLink> Subject { get; set; } = new List<LabelLink>();
 
+		public LabelLink LatestVersion { get; set; }
+		public LabelLink NextVersion { get; set; } //URL
+		public LabelLink PreviousVersion { get; set; }
+		public List<IdentifierValue> VersionIdentifier { get; set; }
 
 	}
 	public class PathwayComponent : BaseAPIType

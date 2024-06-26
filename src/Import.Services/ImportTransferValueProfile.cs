@@ -9,20 +9,19 @@ using workIT.Factories;
 using workIT.Models;
 using workIT.Services;
 using workIT.Utilities;
-
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.TransferValueServices;
-using InputEntity = RA.Models.JsonV2.TransferValueProfile;
-using ThisEntity = workIT.Models.Common.TransferValueProfile;
+using ResourceServices = workIT.Services.TransferValueServices;
+using InputResource = RA.Models.JsonV2.TransferValueProfile;
+using ThisResource = workIT.Models.Common.TransferValueProfile;
 
 namespace Import.Services
 {
-    public class ImportTransferValue
+	public class ImportTransferValueProfile
 	{
 		int entityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE;
 		string thisClassName = "ImportTransferValue";
 		ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 
 		#region Common Helper Methods
@@ -45,7 +44,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -86,7 +85,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -137,8 +136,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -173,14 +172,14 @@ namespace Import.Services
 		} //
 		#endregion
 
-		public bool Import( string payload, SaveStatus status )
+		private bool Import( string payload, SaveStatus status )
 		{
 			
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var bnodes = new List<BNode>();
 			var mainEntity = new Dictionary<string, object>();
 			//
@@ -200,12 +199,13 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
 					var bn = item.ToString();
 					//20-07-02 need to handle the enhanced bnodes
+					//need to get the type and then deserialize appropriately?
 					bnodes.Add( JsonConvert.DeserializeObject<BNode>( bn ) );
 				}
 
@@ -234,58 +234,15 @@ namespace Import.Services
 				output.RowId = Guid.NewGuid();
 			}
 			helper.currentBaseObject = output;
-
+			output.CTID = input.CTID;
 			output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 			//output.AlternateNames = helper.MapToTextValueProfile( input.AlternateName, output, "AlternateName" );
 
 			output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-			output.CTID = input.CTID;
+
 			//TBD handling of referencing third party publisher
 			helper.MapOrganizationPublishedBy( output, ref status );
 
-			//if ( !string.IsNullOrWhiteSpace( status.DocumentPublishedBy ) )
-			//{
-			//	//output.PublishedByOrganizationCTID = status.DocumentPublishedBy;
-			//	var porg = OrganizationManager.GetSummaryByCtid( status.DocumentPublishedBy );
-			//	if ( porg != null && porg.Id > 0 )
-			//	{
-			//		//TODO - store this in a json blob??????????
-			//		output.PublishedByThirdPartyOrganizationId = porg.Id;
-
-			//		//this will result in being added to Entity.AgentRelationship
-			//		output.PublishedBy = new List<Guid>() { porg.RowId };
-			//	}
-			//	else
-			//	{
-			//		//if publisher not imported yet, all publishee stuff will be orphaned
-			//		var entityUid = Guid.NewGuid();
-			//		var resPos = status.ResourceURL.IndexOf( "/resources/" );
-			//		var swp = status.ResourceURL.Substring( 0, ( resPos + "/resources/".Length ) ) + status.DocumentPublishedBy;
-			//		int orgId = new OrganizationManager().AddPendingRecord( entityUid, status.DocumentPublishedBy, swp, ref status );
-			//		output.PublishedByThirdPartyOrganizationId = porg.Id;
-
-			//		output.PublishedBy = new List<Guid>() { entityUid };
-			//	}
-			//}
-			//else
-			//{
-			//	//may need a check for existing published by to ensure not lost
-			//	if ( output.Id > 0 )
-			//	{
-			//		if ( output.OrganizationRole != null && output.OrganizationRole.Any() )
-			//		{
-			//			var publishedByList = output.OrganizationRole.Where( s => s.RoleTypeId == 30 ).ToList();
-			//			if ( publishedByList != null && publishedByList.Any() )
-			//			{
-			//				var pby = publishedByList[0].ActingAgentUid;
-			//				//???
-			//				//output.PublishedByOrganizationId = porg.Id;
-
-			//				output.PublishedBy = new List<Guid>() { publishedByList[0].ActingAgentUid };
-			//			}
-			//		}
-			//	}
-			//}
 			//output.CredentialRegistryId = envelopeIdentifier;
 			output.SubjectWebpage = input.SubjectWebpage;
 			//****owner missing 
@@ -298,7 +255,9 @@ namespace Import.Services
 
 			//
 			output.DerivedFromForImport = helper.MapEntityReferences( "TransferValue.DerivedFrom", input.DerivedFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, ref status );
-			//
+			//N/A
+			//output.AdministrationProcess = helper.FormatProcessProfile( input.AdministrationProcess, ref status );
+
 			output.DevelopmentProcess = helper.FormatProcessProfile( input.DevelopmentProcess, ref status );
 
 
@@ -316,22 +275,55 @@ namespace Import.Services
 			output.StartDate = input.StartDate;
 			output.EndDate = input.EndDate;
 			//
-			//output.LifecycleStatusType = helper.MapCAOToString( input.LifeCycleStatusType );
+			//23-10-06 - this is optional, and no longer want to default to active
 			output.LifeCycleStatusType = helper.MapCAOToEnumermation( input.LifeCycleStatusType );
+			//TODO - if these contain a CTID, then should a credential finder URL be stored? 
+			output.LatestVersion = input.LatestVersion ?? "";
+			if (!string.IsNullOrWhiteSpace( output.LatestVersion ) )
+			{
+
+			}
+			output.PreviousVersion = input.PreviousVersion ?? "";
+			output.NextVersion = input.NextVersion ?? "";
 
 			output.SupersededBy = input.SupersededBy ?? "";
 			output.Supersedes = input.Supersedes ?? "";
+
+			//if same as current version/ctid, hide
+			if ( output.LatestVersion.ToLower().IndexOf( ctid.ToLower() ) > -1 )
+			{
+				output.LatestVersion = "";
+			}
+			else if ( output.LatestVersion.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				//should format as a finder/resources/ url, as should exist in the finder
+				output.LatestVersion = helper.FormatFinderResourcesURL( output.LatestVersion );
+				//ResolutionServices.ExtractCtid( output.LatestVersion.Trim() );
+			}
+			if ( output.PreviousVersion.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				//should format as a finder/resources/ url, as should exist in the finder
+				output.PreviousVersion = helper.FormatFinderResourcesURL( output.PreviousVersion );
+			}
+			if ( output.NextVersion.ToLower().IndexOf( "/resources/ce-" ) > -1 )
+			{
+				output.NextVersion = helper.FormatFinderResourcesURL( output.NextVersion ); 
+			}
 			if ( output.SupersededBy.ToLower().IndexOf( "/resources/ce-" ) > -1 )
 			{
-				//????
-				output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); //ResolutionServices.ExtractCtid( output.SupersededBy.Trim() );
+				output.SupersededBy = helper.FormatFinderResourcesURL( output.SupersededBy ); 
 			}
 			if ( output.Supersedes.ToLower().IndexOf( "/resources/ce-" ) > -1 )
 			{
-				//????
-				output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); //ResolutionServices.ExtractCtid( output.Supersedes.Trim() );
+				output.Supersedes = helper.FormatFinderResourcesURL( output.Supersedes ); 
 			}
 			//
+			output.InCatalog = input.InCatalog;
+			output.VersionIdentifier = helper.MapIdentifierValueListInternal( input.VersionIdentifier );
+			if ( output.VersionIdentifier != null && output.VersionIdentifier.Count() > 0 )
+			{
+				output.VersionIdentifierJson = JsonConvert.SerializeObject( output.VersionIdentifier, MappingHelperV3.GetJsonSettings() );
+			}
 
 			output.TransferValue = helper.HandleValueProfileList( input.TransferValue, "TransferValueProfile.TransferValue" );
 			if ( output.TransferValue != null && output.TransferValue.Count() > 0 )
@@ -363,12 +355,14 @@ namespace Import.Services
 				//get all object as 
 				output.TransferValueForJson = JsonConvert.SerializeObject( output.TransferValueFor, MappingHelperV3.GetJsonSettings() );
 			}
-			output.TransferValueFromImport = helper.MapEntityReferenceGuids( "TransferValue.TransferValueFrom", input.TransferValueFrom, 0, ref status );
+			output.TransferValueFromImport = helper.MapEntityReferenceGuids( "TransferValue.TransferValueFrom", input.TransferValueFrom, 0, ref status, output.CTID );
 			if ( output.TransferValueFromImport != null && output.TransferValueFromImport.Count() > 0 )
 			{
 				//TransferValueFromImport is a list of guids which could reference a blank node
 				foreach ( var item in output.TransferValueFromImport )
 				{
+					//NOTE may no longer be a top level object
+					//	actually OK, as references are included
 					var tlo = ProfileServices.GetEntityAsTopLevelObject( item );
 					if ( tlo != null && tlo.Id > 0 )
 						output.TransferValueFrom.Add( tlo );
@@ -381,7 +375,95 @@ namespace Import.Services
 				output.TransferValueFromJson = JsonConvert.SerializeObject( output.TransferValueFrom, MappingHelperV3.GetJsonSettings() );
 			}
 
-			importSuccessfull=new TransferValueServices().Import( output, ref status );
+			importSuccessfull= mgr.Import( output, ref status );
+			//start storing the finder api ready version
+			var eManager = new EntityManager();
+			if ( importSuccessfull || output.Id > 0 )
+			{
+
+				//TODO - need to handle any reference resources: setting resourceDetail and updating elastic.
+				//	consider a queue/db table that can be used generically for all classes rather individual calls from every class
+				//??
+				//TODO - be sure to remove any related code from MappingHelperV3
+				var profileServices = new ProfileServices();
+
+				//24-03-25 - use the generic process for blank nodes encountered during import
+				profileServices.IndexPrepForReferenceResource( helper.ResourcesToIndex, ref status );
+
+				/*
+				foreach ( var item in output.TransferValueFrom )
+				{
+					statusMsg = "";
+					if ( item.EntityTypeId == 3 )
+					{
+						var asmt = APIServices.AssessmentServices.GetDetailForAPI( item.Id, true );
+						if ( asmt != null && asmt.Meta_Id > 0 )
+						{
+							var resourceDetail = JsonConvert.SerializeObject( asmt, JsonHelper.GetJsonSettings( false ) );
+							if ( eManager.EntityCacheUpdateResourceDetail( output.RowId, resourceDetail, ref statusMsg ) == 0 )
+							{
+								status.AddError( statusMsg );
+							}
+							if ( eManager.EntityCacheUpdateAgentRelationshipsForAssessment( asmt.Meta_RowId.ToString(), ref statusMsg ) == false )
+							{
+								status.AddError( statusMsg );
+							}
+							new SearchPendingReindexManager().Add( 3, item.Id, 1, ref messages );
+							//new AssessmentServices().UpdatePendingReindex( output, ref status );
+						}
+					}
+				}
+				foreach ( var item in output.TransferValueFor )
+				{
+					statusMsg = "";
+					switch ( item.EntityTypeId )
+					{
+						case 3:
+							var asmt = APIServices.AssessmentServices.GetDetailForAPI( item.Id, true );
+							if ( asmt != null && asmt.Meta_Id > 0 )
+							{
+								var resourceDetail = JsonConvert.SerializeObject( asmt, JsonHelper.GetJsonSettings( false ) );
+								if ( eManager.EntityCacheUpdateResourceDetail( output.RowId, resourceDetail, ref statusMsg ) == 0 )
+								{
+									status.AddError( statusMsg );
+								}
+								if ( eManager.EntityCacheUpdateAgentRelationshipsForAssessment( asmt.Meta_RowId.ToString(), ref statusMsg ) == false )
+								{
+									status.AddError( statusMsg );
+								}
+								new SearchPendingReindexManager().Add( 3, item.Id, 1, ref messages );
+								//new AssessmentServices().UpdatePendingReindex( output, ref status );
+							}
+							break;
+						case 7:
+						case 36:
+						case 37:
+							var lopp = APIServices.LearningOpportunityServices.GetDetailForAPI( output.Id, true );
+							if ( lopp != null && lopp.Meta_Id > 0 )
+							{
+								var resourceDetail = JsonConvert.SerializeObject( lopp, JsonHelper.GetJsonSettings( false ) );
+								if ( eManager.EntityCacheUpdateResourceDetail( output.RowId, resourceDetail, ref statusMsg ) == 0 )
+								{
+									status.AddError( statusMsg );
+								}
+								if ( eManager.EntityCacheUpdateAgentRelationshipsForLopp( lopp.Meta_RowId.ToString(), ref statusMsg ) == false )
+								{
+									status.AddError( statusMsg );
+								}
+								new SearchPendingReindexManager().Add( 7, item.Id, 1, ref messages );
+								//new AssessmentServices().UpdatePendingReindex( output, ref status );
+							}
+							break;
+						default:
+							//default to credential??? - NO
+							//20-04-09 mp - no longer can do this with addition of navy data
+							entityTypeId = 0;
+							break;
+					}
+					
+				}
+				*/
+			}
 			//
 			status.DocumentId = output.Id;
 			status.DetailPageUrl = string.Format( "~/transfervalue/{0}", output.Id );
@@ -405,10 +487,10 @@ namespace Import.Services
 		}
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity, ref SaveStatus status )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity, ref SaveStatus status )
 		{
 			bool exists = false;
-			entity = EntityServices.HandlingExistingEntity( ctid, ref status );
+			entity = ResourceServices.HandlingExistingEntity( ctid, ref status );
 			if ( entity != null && entity.Id > 0 )
 			{
 				//we know for this type, there will entity.learningopp, entity.assessment and entity.credential relationships, and quick likely blank nodes.

@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Import.Services</RootNamespace>
     <AssemblyName>Import.Services</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
@@ -58,12 +58,13 @@
   <ItemGroup>
     <Compile Include="ExternalServices.cs" />
     <Compile Include="ImportCollections.cs" />
-    <Compile Include="ImportCompetencyFramesworks.cs" />
     <Compile Include="Envelope.cs" />
     <Compile Include="ImportAssessment.cs" />
+    <Compile Include="ImportCompetencyFrameworks.cs" />
     <Compile Include="ImportConceptScheme.cs" />
     <Compile Include="ImportConditionManifests.cs" />
     <Compile Include="ImportCostManifests.cs" />
+    <Compile Include="ImportCredentialingAction.cs" />
     <Compile Include="ImportDataSetProfile.cs" />
     <Compile Include="ImportJob.cs" />
     <Compile Include="ImportLearningOpportunties.cs" />
@@ -73,23 +74,26 @@
     <Compile Include="ImportPathways.cs" />
     <Compile Include="ImportPathwaySets.cs" />
     <Compile Include="ImportProgressionModel.cs" />
+    <Compile Include="ImportRubric.cs" />
     <Compile Include="ImportScheduledOffering.cs" />
     <Compile Include="ImportServiceHelpers.cs" />
     <Compile Include="ImportSupportService.cs" />
     <Compile Include="ImportTask.cs" />
     <Compile Include="ImportTransferIntermediary.cs" />
-    <Compile Include="ImportTransferValue.cs" />
+    <Compile Include="ImportTransferValueProfile.cs" />
     <Compile Include="ImportUtilities.cs" />
     <Compile Include="ImportVerificationService.cs" />
     <Compile Include="ImportWorkRole.cs" />
     <Compile Include="MappingHelperV3.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RegistryModels\BNodeWrapper.cs" />
     <Compile Include="RegistryModels\CredentialDescriptionSet.cs" />
     <Compile Include="RegistryModels\DeleteRequest.cs" />
     <Compile Include="RegistryModels\JsonV2\Agent.cs" />
     <Compile Include="RegistryModels\JsonV2\AggregateDataProfile.cs" />
     <Compile Include="RegistryModels\JsonV2\AssessmentBlankNode.cs" />
     <Compile Include="RegistryModels\JsonV2\AssessmentProfile.cs" />
+    <Compile Include="RegistryModels\JsonV2\BaseEmploymentToWorkObject.cs" />
     <Compile Include="RegistryModels\JsonV2\BlankNode.cs" />
     <Compile Include="RegistryModels\JsonV2\ceasn\ConceptScheme.cs" />
     <Compile Include="RegistryModels\JsonV2\ceasn\ProgressionModel.cs" />

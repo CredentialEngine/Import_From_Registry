@@ -1,31 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Web.Script.Serialization;
 using System.Web;
 
+
+using workIT.Factories;
 using workIT.Models;
 using workIT.Models.Common;
-using MCD=workIT.Models.API;
 using workIT.Models.Search;
-using ElasticHelper = workIT.Services.ElasticServices;
-using ThisEntity = workIT.Models.Common.Credential;
-using ThisSearchEntity = workIT.Models.Common.CredentialSummary;
-using EntityMgr = workIT.Factories.CredentialManager;
-
 using workIT.Utilities;
-using workIT.Factories;
+using APIResourceServices = workIT.Services.API.CredentialServices;
+using Newtonsoft.Json;
+using ElasticHelper = workIT.Services.ElasticServices;
+using ResourceMgr = workIT.Factories.CredentialManager;
+using ThisResource = workIT.Models.Common.Credential;
+using ThisResourceSummary = workIT.Models.Common.CredentialSummary;
 
 namespace workIT.Services
 {
 	public class CredentialServices
 	{
 		static string thisClassName = "CredentialServices";
-
+		static int ThisResourceEntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIAL;
 		public List<string> messages = new List<string>();
 
 		public CredentialServices()
@@ -33,46 +30,61 @@ namespace workIT.Services
 		}
 
 		#region import
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				//no need to get and cache if called from batch import - maybe during day, but likelihood of issues is small?
 				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )
 				{
 					if ( System.DateTime.Now.Hour > 7 && System.DateTime.Now.Hour < 18 )
-						GetDetail( entity.Id );
+						GetDetail( resource.Id );
 				}
-                string key = "credentialapi_" + entity.Id.ToString();
+                string key = "credentialapi_" + resource.Id.ToString();
                 ServiceHelper.ClearCacheEntity( key );
             }
-			bool isValid = new EntityMgr().Save( entity, ref status );
+			bool isValid = new ResourceMgr().Save( resource, ref status );
 			List<string> messages = new List<string>();
 
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				if ( UtilityManager.GetAppKeyValue( "credentialCacheMinutes", 0 ) > 0 )
-					CacheManager.RemoveItemFromCache( "credential", entity.Id );
+					CacheManager.RemoveItemFromCache( "credential", resource.Id );
 
 				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
 				{
-					ThreadPool.QueueUserWorkItem( UpdateCaches, entity );
+					ThreadPool.QueueUserWorkItem( UpdateCaches, resource );
 
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
 				else
 				{
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
+					{
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+						
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
+					}
+					if ( new EntityManager().EntityCacheUpdateAgentRelationshipsForCredential( resource.RowId.ToString(), ref statusMsg ) == false )
+					{
+						status.AddError( statusMsg );
+					}
 					//only update elatic if has apparent relevent changes
 					if (status.UpdateElasticIndex)
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OwningOrganizationId, 1, ref messages );
+						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL, resource.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OwningOrganizationId, 1, ref messages );
 					//check for embedded items
 					//has part
-					AddCredentialsToPendingReindex( entity.HasPartIds );
-					AddCredentialsToPendingReindex( entity.IsPartOfIds );
+					AddCredentialsToPendingReindex( resource.HasPartIds );
+					AddCredentialsToPendingReindex( resource.IsPartOfIds );
 
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
@@ -80,6 +92,42 @@ namespace workIT.Services
 			}
 
 			return isValid;
+		}
+		public void UpdatePendingReindex( ThisResource resource, ref SaveStatus status )
+		{
+			List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+			int orgId = resource.OwningOrganizationId;
+
+			if ( orgId == 0 )
+			{
+				var org = OrganizationManager.GetBasics( resource.PrimaryAgentUID, false );
+				if ( org != null && org.Id > 0 )
+					orgId = org.Id;
+
+			}
+			if ( orgId > 0 )
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
+		}
+		public void UpdatePendingReindex( ThisResourceSummary resource, ref SaveStatus status )
+		{
+			List<string> messages = new List<string>();
+			new SearchPendingReindexManager().Add( ThisResourceEntityTypeId, resource.Id, 1, ref messages );
+			int orgId = resource.OwnerOrganizationId;
+
+			if ( orgId == 0 )
+			{
+				var org = OrganizationManager.GetForSummary( resource.OwnerOrganizationId, false );
+				if ( org != null && org.Id > 0 )
+					orgId = org.Id;
+
+			}
+			if ( orgId > 0 )
+				new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, orgId, 1, ref messages );
+			if ( messages.Count > 0 )
+				status.AddWarningRange( messages );
 		}
 		static void UpdateCaches( Object entity )
 		{
@@ -205,7 +253,7 @@ namespace workIT.Services
 		/// <param name="data"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		public static List<ThisSearchEntity> Search( MainSearchInput data, ref int pTotalRows )
+		public static List<ThisResourceSummary> Search( MainSearchInput data, ref int pTotalRows )
 		{
 			if ( UtilityManager.GetAppKeyValue( "usingElasticCredentialSearch", false ) || data.Elastic )
 			{
@@ -223,7 +271,7 @@ namespace workIT.Services
 		/// <param name="data"></param>
 		/// <param name="pTotalRows"></param>
 		/// <returns></returns>
-		private static List<ThisSearchEntity> DoSearch( MainSearchInput data, ref int pTotalRows )
+		private static List<ThisResourceSummary> DoSearch( MainSearchInput data, ref int pTotalRows )
 		{
 			string where = "";
 			DateTime start = DateTime.Now;
@@ -290,7 +338,7 @@ namespace workIT.Services
 			TimeSpan timeDifference = start.Subtract( DateTime.Now );
 			LoggingHelper.DoTrace( 5, thisClassName + string.Format( ".Search(). Filter: {0}, elapsed: {1} ", where, timeDifference.TotalSeconds ) );
 
-			List<ThisSearchEntity> list = EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
+			List<ThisResourceSummary> list = ResourceMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref pTotalRows );
 
 			//stopwatch.Stop();
 			timeDifference = start.Subtract( DateTime.Now );
@@ -661,20 +709,20 @@ namespace workIT.Services
 		#endregion
 
 		#region Retrievals
-		public static ThisEntity GetMinimumByCtid( string ctid )
+		public static ThisResource GetMinimumByCtid( string ctid )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
 
-            return EntityMgr.GetMinimumByCtid( ctid );
+            return ResourceMgr.GetMinimumByCtid( ctid );
         }
-        public static ThisEntity GetDetailByCtid( string ctid, bool skippingCache = false )
+        public static ThisResource GetDetailByCtid( string ctid, bool skippingCache = false )
         {
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
             if ( string.IsNullOrWhiteSpace( ctid ) )
                 return entity;
-            var credential = EntityMgr.GetMinimumByCtid( ctid );
+            var credential = ResourceMgr.GetMinimumByCtid( ctid );
             
             return GetDetail( credential.Id, skippingCache );
             
@@ -687,7 +735,7 @@ namespace workIT.Services
 		/// <param name="user"></param>
 		/// <param name="skippingCache">If true, do not use the cached version</param>
 		/// <returns></returns>
-		public static ThisEntity GetDetail( int id, bool skippingCache = false )
+		public static ThisResource GetDetail( int id, bool skippingCache = false )
 		{
 			CredentialRequest cr = new CredentialRequest();
 			cr.IsDetailRequest();
@@ -704,7 +752,7 @@ namespace workIT.Services
         /// <param name="user"></param>
         /// <param name="skippingCache">If true, do not use the cached version</param>
         /// <returns></returns>
-        public static ThisEntity GetDetail( int id, CredentialRequest cr, bool skippingCache = false )
+        public static ThisResource GetDetail( int id, CredentialRequest cr, bool skippingCache = false )
         {
             //
             string statusMessage = "";
@@ -741,7 +789,7 @@ namespace workIT.Services
             //CredentialRequest cr = new CredentialRequest();
             //cr.IsDetailRequest();
 
-            ThisEntity entity = CredentialManager.GetForDetail( id, cr );
+            ThisResource entity = CredentialManager.GetForDetail( id, cr );
 
             DateTime end = DateTime.Now;
 			var elasped = end.Subtract( start ).TotalSeconds;
@@ -791,7 +839,7 @@ namespace workIT.Services
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public static ThisEntity GetCredentialForCompare( int id )
+        public static ThisResource GetCredentialForCompare( int id )
         {
             //not clear if checks necessary, as interface only allows selection of those to which the user has access.
             AppUser user = AccountServices.GetCurrentUser();
@@ -802,7 +850,7 @@ namespace workIT.Services
             string statusMessage = "";
             string key = "credentialCompare_" + id.ToString();
 
-            ThisEntity entity = new ThisEntity();
+            ThisResource entity = new ThisResource();
 
             if ( CacheManager.IsCredentialAvailableFromCache( id, key, ref entity ) )
             {

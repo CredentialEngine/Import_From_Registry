@@ -40,6 +40,10 @@ namespace workIT.Data.Tables
         public Nullable<System.DateTime> DateEffective { get; set; }
         public Nullable<System.DateTime> ExpirationDate { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
+        public string InCatalog { get; set; }
+        public string LatestVersion { get; set; }
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Collection_CollectionMember> Collection_CollectionMember { get; set; }

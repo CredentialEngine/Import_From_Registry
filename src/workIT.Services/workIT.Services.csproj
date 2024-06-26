@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>workIT.Services</RootNamespace>
     <AssemblyName>workIT.Services</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
@@ -60,11 +60,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccountServices.cs" />
+    <Compile Include="AccountsSystemServices.cs" />
     <Compile Include="ActivityServices.cs" />
     <Compile Include="API\AssessmentServices.cs" />
     <Compile Include="API\CollectionServices.cs" />
     <Compile Include="API\CompetencyFrameworkServices.cs" />
     <Compile Include="API\ConceptSchemeServices.cs" />
+    <Compile Include="API\CredentialingActionServices.cs" />
     <Compile Include="API\CredentialServices.cs" />
     <Compile Include="API\JobServices.cs" />
     <Compile Include="API\LearningOpportunityServices.cs" />
@@ -74,6 +76,7 @@
     <Compile Include="API\PathwaySetServices.cs" />
     <Compile Include="API\ProfileServices.cs" />
     <Compile Include="API\ProgressionModelServices.cs" />
+    <Compile Include="API\RubricServices.cs" />
     <Compile Include="API\ScheduledOfferingServices.cs" />
     <Compile Include="API\ServiceHelper.cs" />
     <Compile Include="API\OrganizationServices.cs" />
@@ -93,10 +96,12 @@
     <Compile Include="ConceptSchemeServices.cs" />
     <Compile Include="ConditionManifestServices.cs" />
     <Compile Include="CostManifestServices.cs" />
+    <Compile Include="CredentialingActionServices.cs" />
     <Compile Include="CredentialServices.cs" />
     <Compile Include="DataSetProfileServices.cs" />
     <Compile Include="DescriptionSetServices.cs" />
     <Compile Include="ElasticServices.cs" />
+    <Compile Include="ElasticServicesV2.cs" />
     <Compile Include="EnumerationServices.cs" />
     <Compile Include="FileReferenceServices.cs" />
     <Compile Include="JobServices.cs" />
@@ -108,10 +113,10 @@
     <Compile Include="ProfileServices.cs" />
     <Compile Include="ProgressionModelServices.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="QueryFilters.cs" />
     <Compile Include="RegistryServices.cs" />
     <Compile Include="RegistryServicesV2.cs" />
     <Compile Include="ReportServices.cs" />
+    <Compile Include="RubricServices.cs" />
     <Compile Include="ScheduledOfferingServices.cs" />
     <Compile Include="SearchServices.cs" />
     <Compile Include="ServiceHelper.cs" />
@@ -120,6 +125,7 @@
     <Compile Include="ThirdPartyApiServices.cs" />
     <Compile Include="TransferIntermediaryServices.cs" />
     <Compile Include="TransferValueServices.cs" />
+    <Compile Include="QueryFilters.cs" />
     <Compile Include="VerificationServiceProfileServices.cs" />
     <Compile Include="WidgetServices.cs" />
     <Compile Include="WorkRoleServices.cs" />
@@ -149,7 +155,7 @@
       <Version>7.11.1</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
-      <Version>13.0.3</Version>
+      <Version>13.0.1</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

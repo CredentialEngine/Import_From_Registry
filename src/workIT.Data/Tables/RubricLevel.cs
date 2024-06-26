@@ -12,14 +12,19 @@ namespace workIT.Data.Tables
     using System;
     using System.Collections.Generic;
     
-    public partial class Entity_EmploymentOutcomeProfile
+    public partial class RubricLevel
     {
         public int Id { get; set; }
-        public int EntityId { get; set; }
-        public int EmploymentOutcomeProfileId { get; set; }
+        public System.Guid RowId { get; set; }
+        public int RubricId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string ListID { get; set; }
+        public string CodedNotation { get; set; }
+        public string HasProgressionLevel { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
+        public Nullable<System.DateTime> LastUpdated { get; set; }
     
-        public virtual EmploymentOutcomeProfile EmploymentOutcomeProfile { get; set; }
-        public virtual Entity Entity { get; set; }
+        public virtual Rubric Rubric { get; set; }
     }
 }

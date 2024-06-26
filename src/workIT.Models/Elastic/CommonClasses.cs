@@ -80,7 +80,7 @@ namespace workIT.Models.Elastic
         public int EntityStateId { get; set; }
 
     }
-	public class EntityReference
+	public class IndexEntityReference
 	{
 		public int EntityStateId { get; set; }
 		public int EntityTypeId { get; set; }
@@ -88,6 +88,8 @@ namespace workIT.Models.Elastic
 		public int EntityBaseId { get; set; }
 		public string EntityName { get; set; }
 
+		public string OrganizationName { get; set; }
+		public int OrganizationId { get; set; }
 	}
 	public class AgentRelationshipForEntity
 	{

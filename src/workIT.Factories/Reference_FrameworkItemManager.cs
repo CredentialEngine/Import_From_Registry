@@ -1,23 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using workIT.Models;
 using workIT.Models.Common;
-using workIT.Models.ProfileModels;
-
 using workIT.Utilities;
 
-using EntityContext = workIT.Data.Tables.workITEntities;
-using ViewContext = workIT.Data.Views.workITViews;
 using DBEntity = workIT.Data.Tables.Reference_FrameworkItem;
+using EntityContext = workIT.Data.Tables.workITEntities;
 using ThisEntity = workIT.Models.Common.ReferenceFrameworkItem;
-using ThisEntityItem = workIT.Models.Common.Entity_ReferenceFramework;
-
-
-using EM = workIT.Data.Tables;
+using ViewContext = workIT.Data.Views.workITViews;
 using Views = workIT.Data.Views;
 //
 namespace workIT.Factories
@@ -25,7 +17,17 @@ namespace workIT.Factories
 	public class Reference_FrameworkItemManager : BaseFactory
 	{
 		static string thisClassName = "Reference_FrameworkItemManager";
-		
+		static string onetFrameworkName = UtilityManager.GetAppKeyValue( "onetFrameworkName" );
+		static string onetFrameworkURL = UtilityManager.GetAppKeyValue( "onetFrameworkURL" );
+		static string onetCodeTemplateURL = UtilityManager.GetAppKeyValue( "onetCodeTemplateURL" );
+		//
+		static string naicsFrameworkName = UtilityManager.GetAppKeyValue( "naicsFrameworkName" );
+		static string naicsFrameworkURL = UtilityManager.GetAppKeyValue( "naicsFrameworkURL" );
+		static string naicsCodeTemplateURL = UtilityManager.GetAppKeyValue( "naicsCodeTemplateURL" );
+		//
+		static string cipFrameworkName = UtilityManager.GetAppKeyValue( "cipFrameworkName" );
+		static string cipFrameworkURL = UtilityManager.GetAppKeyValue( "cipFrameworkURL" );
+		static string cipCodeTemplateURL = UtilityManager.GetAppKeyValue( "cipCodeTemplateURL" );
 		#region Persistance ===================
 
 		/// <summary>
@@ -49,11 +51,64 @@ namespace workIT.Factories
 				if ( entity.ReferenceFrameworkId == 0 )
 				{
 					int frameworkId = 0;
-					if ( !string.IsNullOrWhiteSpace( entity.FrameworkName ) && !string.IsNullOrWhiteSpace( entity.Framework ) )
+					//TODO handle common frameworks without a URL
+					//	&& !string.IsNullOrWhiteSpace( entity.Framework )
+					if ( !string.IsNullOrWhiteSpace( entity.FrameworkName )  )
 					{
 						if ( new Reference_FrameworkManager().GetOrAdd( entity.CategoryId, entity.FrameworkName, entity.Framework, ref frameworkId, ref status ) )
 						{
 							entity.ReferenceFrameworkId = frameworkId;
+						}
+					} 
+					else
+					{
+						if ( !string.IsNullOrWhiteSpace( entity.CodedNotation))
+						{
+							if ( entity.CategoryId == 11 )
+							{
+								var result = CodesManager.IsSOCCode( entity.CodedNotation, entity.Name );
+								if ( result != null && result.Name == entity.Name )
+								{
+									//is it safe to tag this as a SOC?
+									entity.FrameworkName = onetFrameworkName;
+									entity.Framework = onetFrameworkURL;
+									if ( new Reference_FrameworkManager().GetOrAdd( entity.CategoryId, entity.FrameworkName, entity.Framework, ref frameworkId, ref status ) )
+									{
+										entity.ReferenceFrameworkId = frameworkId;
+										//hmm should set targetNode as well
+										entity.TargetNode = result.URL;
+									}
+								}
+							} else if ( entity.CategoryId == 10 )
+							{
+								var result = CodesManager.Naics_Get( entity.CodedNotation );
+								if ( result != null && result.Name == entity.Name )
+								{
+									//is it safe to tag this as a SOC?
+									entity.FrameworkName = naicsFrameworkName;
+									entity.Framework = naicsFrameworkURL;
+									if ( new Reference_FrameworkManager().GetOrAdd( entity.CategoryId, entity.FrameworkName, entity.Framework, ref frameworkId, ref status ) )
+									{
+										entity.ReferenceFrameworkId = frameworkId;
+										entity.TargetNode = result.URL;
+									}
+								}
+							}
+							else if ( entity.CategoryId == 23 )
+							{
+								var result = CodesManager.CIP_Get( entity.CodedNotation );
+								if ( result != null && result.Name == entity.Name )
+								{
+									//is it safe to tag this as a SOC?
+									entity.FrameworkName = cipFrameworkName;
+									entity.Framework = cipFrameworkURL;
+									if ( new Reference_FrameworkManager().GetOrAdd( entity.CategoryId, entity.FrameworkName, entity.Framework, ref frameworkId, ref status ) )
+									{
+										entity.ReferenceFrameworkId = frameworkId;
+										entity.TargetNode = result.URL;
+									}
+								}
+							}
 						}
 					}
 				}
@@ -61,6 +116,7 @@ namespace workIT.Factories
 				if ( entity.Id == 0 )
 				{
 					// - need to check for existance. May want to resolve framework first
+					//24-04-01 - also need to handle where a framework was not initially found, but now one is assigned
 					DoesItemExist( entity );
 				}
 
@@ -186,7 +242,7 @@ namespace workIT.Factories
 			var codedNotation = !string.IsNullOrWhiteSpace( entity.CodedNotation ) ? entity.CodedNotation.ToLower() : "";
 			var name = entity.Name.ToLower();
 			//22-05-20 - now frameworkId will be present if found
-			var frameworkName = string.IsNullOrWhiteSpace( entity.FrameworkName ) ? "" : entity.FrameworkName.ToLower();
+			var frameworkName = string.IsNullOrWhiteSpace( entity.FrameworkName ) ? string.Empty : entity.FrameworkName.ToLower();
 			
 			using ( var context = new EntityContext() )
 			{
@@ -219,7 +275,7 @@ namespace workIT.Factories
 					foreach ( var item in query )
 					{
 						//may not be necessary to check if the query is correct
-						if ( codedNotation == (item.CodedNotation ?? "") )
+						if ( codedNotation == (item.CodedNotation ?? string.Empty) )
 						{
 							entity.Id = item.Id;
 						}
@@ -257,7 +313,7 @@ namespace workIT.Factories
 				return false;
 
 			name = name.ToLower();
-			frameworkName = string.IsNullOrWhiteSpace(frameworkName) ? "" : frameworkName.ToLower();
+			frameworkName = string.IsNullOrWhiteSpace(frameworkName) ? string.Empty : frameworkName.ToLower();
 
 			if ( string.IsNullOrWhiteSpace( codedNotation ) )
 			{
@@ -268,7 +324,7 @@ namespace workIT.Factories
 					var results = context.Reference_FrameworkItem
 								.Where( s => s.CategoryId == categoryId
 								&& ( s.Name.ToLower() == name.ToLower() )
-								&& ( frameworkName== "" || 
+								&& ( frameworkName== string.Empty || 
 									( s.Reference_Framework != null && s.Reference_Framework.FrameworkName == frameworkName )  )
 								)
 								.OrderBy( p => p.Name )
@@ -386,7 +442,7 @@ namespace workIT.Factories
 
 				using ( var context = new ViewContext() )
 				{
-					List<Views.Entity_ReferenceFramework_Summary> results = context.Entity_ReferenceFramework_Summary
+					var results = context.Entity_ReferenceFramework_Summary
 						.Where( s => s.EntityUid == parentUid
 							&& s.CategoryId == categoryId )
 						.OrderBy( s => s.Name )
@@ -547,18 +603,18 @@ namespace workIT.Factories
 
 			to.Name = from.Name;
 			to.CategoryId = from.CategoryId;
-			to.CodedNotation = ( from.CodedNotation ?? "" );
+			to.CodedNotation = ( from.CodedNotation ?? string.Empty );
 
 			if ( !string.IsNullOrWhiteSpace( from.CodedNotation ) && from.CodedNotation.Length > 1 )
 			{
 				to.CodeGroup = from.CodedNotation.Substring( 0, 2 );
 				if ( !int.TryParse( to.CodeGroup, out int familyId ) )
 				{
-					to.CodeGroup = "";
+					to.CodeGroup = string.Empty;
 				}
 			}
 			to.Description = from.Description;
-			to.TargetNode = from.TargetNode ?? "";
+			to.TargetNode = from.TargetNode ?? string.Empty;
 			if ( to.TargetNode.IndexOf( "www.census.gov/cgi-bin/sssd/naics/naicsrch" ) > 0)
             {
 				//to.TargetNode = to.TargetNode.Replace( "https://www.census.gov/cgi-bin/sssd/naics/naicsrch?code=", "https://www.census.gov/naics/?input=" );

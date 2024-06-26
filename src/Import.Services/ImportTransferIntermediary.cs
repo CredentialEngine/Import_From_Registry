@@ -11,9 +11,9 @@ using workIT.Services;
 using workIT.Utilities;
 
 using BNode = RA.Models.JsonV2.BlankNode;
-using EntityServices = workIT.Services.TransferIntermediaryServices;
-using InputEntity = RA.Models.JsonV2.TransferIntermediary;
-using ThisEntity = workIT.Models.Common.TransferIntermediary;
+using ResourceServices = workIT.Services.TransferIntermediaryServices;
+using InputResource = RA.Models.JsonV2.TransferIntermediary;
+using ThisResource = workIT.Models.Common.TransferIntermediary;
 
 using InputTVP = RA.Models.JsonV2.TransferValueProfile;
 using TVPEntity = workIT.Models.Common.TransferValueProfile;
@@ -24,7 +24,7 @@ namespace Import.Services
 		int entityTypeId = CodesManager.ENTITY_TYPE_TRANSFER_INTERMEDIARY;
 		string thisClassName = "ImportTransferIntermediary";
 		ImportManager importManager = new ImportManager();
-		ThisEntity output = new ThisEntity();
+		ThisResource output = new ThisResource();
 		ImportServiceHelpers importHelper = new ImportServiceHelpers();
 		#region Common Helper Methods
 		/// <summary>
@@ -45,7 +45,7 @@ namespace Import.Services
 			}
 
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -86,7 +86,7 @@ namespace Import.Services
 			//this is currently specific, assumes envelop contains a credential
 			//can use the hack for GetResourceType to determine the type, and then call the appropriate import method
 			string statusMessage = "";
-			//EntityServices mgr = new EntityServices();
+			//ResourceServices mgr = new ResourceServices();
 			string ctdlType = "";
 			try
 			{
@@ -137,8 +137,8 @@ namespace Import.Services
 				return false;
 			}
 
-			DateTime createDate = new DateTime();
-			DateTime envelopeUpdateDate = new DateTime();
+			DateTime createDate = DateTime.Now;
+			DateTime envelopeUpdateDate = DateTime.Now;
 			if ( DateTime.TryParse( item.NodeHeaders.CreatedAt.Replace( "UTC", "" ).Trim(), out createDate ) )
 			{
 				status.SetEnvelopeCreated( createDate );
@@ -176,9 +176,9 @@ namespace Import.Services
 		{
 			List<string> messages = new List<string>();
 			bool importSuccessfull = false;
-			EntityServices mgr = new EntityServices();
+			ResourceServices mgr = new ResourceServices();
 			//
-			InputEntity input = new InputEntity();
+			InputResource input = new InputResource();
 			var bnodes = new List<BNode>();
 			var tvProfiles = new List<InputTVP>();
 			var mainEntity = new Dictionary<string, object>();
@@ -199,7 +199,7 @@ namespace Import.Services
 					var main = item.ToString();
 					//may not use this. Could add a trace method
 					mainEntity = RegistryServices.JsonToDictionary( main );
-					input = JsonConvert.DeserializeObject<InputEntity>( main );
+					input = JsonConvert.DeserializeObject<InputResource>( main );
 				}
 				else
 				{
@@ -247,10 +247,10 @@ namespace Import.Services
 					output.RowId = Guid.NewGuid();
 				}
 				helper.currentBaseObject = output;
-
+				output.CTID = input.CTID;
 				output.Name = helper.HandleLanguageMap( input.Name, output, "Name" );
 				output.Description = helper.HandleLanguageMap( input.Description, output, "Description" );
-				output.CTID = input.CTID;
+				
 				//TBD handling of referencing third party publisher
 				helper.MapOrganizationPublishedBy( output, ref status );
 
@@ -327,7 +327,7 @@ namespace Import.Services
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ), false, "TransferIntermediary Import exception" );
+				LoggingHelper.LogError( ex, thisClassName + ".Import", string.Format( "Exception encountered for CTID: {0}", ctid ) );
 			}
 			finally
 			{
@@ -339,10 +339,10 @@ namespace Import.Services
 		}
 
 		//currently 
-		public bool DoesEntityExist( string ctid, ref ThisEntity entity, ref SaveStatus status )
+		public bool DoesEntityExist( string ctid, ref ThisResource entity, ref SaveStatus status )
 		{
 			bool exists = false;
-			entity = EntityServices.HandlingExistingEntity( ctid, ref status );
+			entity = ResourceServices.HandlingExistingEntity( ctid, ref status );
 			if ( entity != null && entity.Id > 0 )
 			{
 				return true;

@@ -168,7 +168,7 @@ namespace workIT.Factories
                         {
                             //delete item
                             deletedCount++;
-                            string statusMessage = "";
+                            string statusMessage = string.Empty;
                             Delete( v.DeleteId, ref statusMessage );
                         }
                     }
@@ -269,7 +269,7 @@ namespace workIT.Factories
                     {
                         //delete item
                         deletedCount++;
-                        string statusMessage = "";
+                        string statusMessage = string.Empty;
                         Delete( v.DeleteId, ref statusMessage );
                     }
                 }
@@ -643,8 +643,8 @@ namespace workIT.Factories
                                        cache.EntityStateId,
                                        cache.OwningOrgId,
                                        //TBD
-                                       Organization = subOrg.Name ?? "",
-                                       OrganizationCTID = subOrg.CTID ?? "",
+                                       Organization = subOrg.Name ?? string.Empty,
+                                       OrganizationCTID = subOrg.CTID ?? string.Empty,
                                        cache.LastUpdated,
                                    }).ToList();
 

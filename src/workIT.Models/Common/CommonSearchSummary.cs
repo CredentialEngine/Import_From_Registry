@@ -56,7 +56,9 @@ namespace workIT.Models.Common
 
         public string DateEffective { get; set; }
         public string ExpirationDate { get; set; }
-        public List<string> Keyword { get; set; } = new List<string>();
+		public string StartDate { get; set; }
+		public string EndDate { get; set; }
+		public List<string> Keyword { get; set; } = new List<string>();
         public Enumeration LifeCycleStatusType { get; set; } = new Enumeration();
         public string LifeCycleStatus { get; set; }
         public int LifeCycleStatusTypeId { get; set; }
@@ -64,6 +66,8 @@ namespace workIT.Models.Common
 		//public List<ResourceSummary> AboutResources { get; set; } = new List<ResourceSummary>();
 		public CodeItemResult AboutCredentials { get; set; } = new CodeItemResult();
 		public CodeItemResult AboutLearningOpportunities { get; set; } = new CodeItemResult();
+		public CodeItemResult ProvidesTransferValueFor { get; set; } = new CodeItemResult();
+		public CodeItemResult ReceivesTransferValueFrom { get; set; } = new CodeItemResult();
 
 		//
 		public List<int> ReportFilters { get; set; } = new List<int>();
@@ -107,5 +111,5 @@ namespace workIT.Models.Common
         public int IsPartOfSupportServiceCount { get; set; }
         public JObject ResourceDetail { get; set; }
 
-    }
+	}
 }

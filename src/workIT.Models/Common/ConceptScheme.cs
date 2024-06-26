@@ -13,13 +13,17 @@ namespace workIT.Models.Common
 
 		public Guid PublisherUid { get; set; }
 		public List<Guid> Creator { get; set; } = new List<Guid>();
-		public List<Guid> OwnedBy { get; set; } = new List<Guid>();
+		public List<Guid> Publisher { get; set; } = new List<Guid>();
 		public List<OrganizationRoleProfile> OrganizationRole { get; set; } = new List<OrganizationRoleProfile>();
 		public List<string> ChangeNote { get; set; } = new List<string>();
 		public List<string> ConceptKeyword { get; set; } = new List<string>();
 		public List<string> PublisherName { get; set; } = new List<string>();
 
-		public string Source { get; set; }
+		/// <summary>
+		/// Source
+		/// List of URLs
+		/// </summary>
+		public List<string> Source { get; set; } = new List<string>();
 		public bool IsProgressionModel { get; set; }
 		public string PublicationStatusType { get; set; } = "Published";
 		public string Rights { get; set; }
@@ -106,6 +110,12 @@ namespace workIT.Models.Common
 
 		public string Properties { get; set; }
 
+
+		#region Import
+		public List<Guid> HasPrecededByList { get; set; } = new List<Guid>();
+		public List<Guid> HasPrecedesList { get; set; } = new List<Guid>();
+
+		#endregion
 	}
 
 

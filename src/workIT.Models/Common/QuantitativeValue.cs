@@ -12,22 +12,23 @@ namespace workIT.Models.Common
 		//public int EntityId { get; set; }
 
 		//Used for QV related to credits. Will not use for financial
-		public Enumeration CreditUnitType { get; set; } = new Enumeration();
+		public Enumeration CreditUnitType { get; set; } = null;
 		public int CreditTypeId { get; set; }
 
 		public string UnitText { get; set; }
 		public string Label { get; set; }
-		public decimal Value { get; set; }
-		public decimal MinValue { get; set; }
-		public decimal MaxValue { get; set; }
-		public decimal Percentage { get; set; }
+		public decimal? Value { get; set; }
+		public decimal? MinValue { get; set; }
+		public decimal? MaxValue { get; set; }
+		public decimal? Percentage { get; set; }
 		
 		public string Description { get; set; }
 		//helper
 		public bool IsRange {
 			get
 			{
-				if ( MinValue > 0 && MaxValue > 0 )
+				//have to consider if minValue could be zero?
+				if ( MinValue >= 0 && MaxValue > 0 )
 					return true;
 				else
 					return false;

@@ -246,7 +246,7 @@ namespace workIT.Factories
             }
             catch ( Exception ex )
             {
-                LoggingHelper.LogError( ex, "PopulateReportsDuplicates", false );
+                LoggingHelper.LogError( ex, "PopulateReportsDuplicates" );
             }
         }
 
@@ -1168,7 +1168,7 @@ namespace workIT.Factories
                         {
                             if ( item.FilterURI == "filter:ResourceType" )
                             {
-                                if ( item.Values[0] == "" )
+                                if ( item.Values[0] == string.Empty )
                                     continue;
                                 if ( IsInteger( item.Values[0] ) )
                                 {
@@ -1316,7 +1316,7 @@ namespace workIT.Factories
                     {
                         if ( item.FilterURI == "filter:ResourceType" )
                         {
-                            if ( item.Values[0] == "" )
+                            if ( item.Values[0] == string.Empty )
                                 continue;
                             if ( IsInteger( item.Values[0] ) )
                             {
@@ -1546,13 +1546,14 @@ namespace workIT.Factories
         }
 
         #endregion
-		/*
+
         #region LinkChecker
+        /*
         public static List<QuerySummary> LinkcheckerSearch( Query request )
         {
             var output = new List<QuerySummary>();
             var entity = new QuerySummary();
-            var filterType = "";
+            var filterType = string.Empty;
             int pTotalRow = 0;
             request.OrderBy = "PublisherName,OrganizationName,EntityName";
 
@@ -1580,7 +1581,7 @@ namespace workIT.Factories
             if ( !string.IsNullOrWhiteSpace( entityTypeId ) )
             {
                 entityTypeId = entityTypeId == "credential" ? "1" : entityTypeId;
-                filterType = filterType == "" ? "( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + " )" : filterType + "AND ( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + ")";
+                filterType = filterType == string.Empty ? "( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + " )" : filterType + "AND ( EntityTypeId = " + Convert.ToInt32( entityTypeId ) + ")";
             }
             //Handle LinkType
             var linkType = request.GetFilterValue( "filter:LinkType" )?.ToLower();
@@ -1588,12 +1589,12 @@ namespace workIT.Factories
             {
                 if ( linkType == "reference" )
                 {
-                    filterType = filterType == "" ? "(Property LIKE '%-reference resource%' AND IsInPublisher LIKE 'true')" : filterType + "AND (Property LIKE '%-reference resource%'AND IsInPublisher LIKE 'true')";
+                    filterType = filterType == string.Empty ? "(Property LIKE '%-reference resource%' AND IsInPublisher LIKE 'true')" : filterType + "AND (Property LIKE '%-reference resource%'AND IsInPublisher LIKE 'true')";
                 }
                 else
                 {
                     int type = linkType == "registry" ? 1 : 0;
-                    filterType = filterType == "" ? "( IsRegistryUrl =" + type + ")" : filterType + "AND ( IsRegistryUrl =" + type + ")";
+                    filterType = filterType == string.Empty ? "( IsRegistryUrl =" + type + ")" : filterType + "AND ( IsRegistryUrl =" + type + ")";
                 }
 
             }
@@ -1602,14 +1603,14 @@ namespace workIT.Factories
             var nameText = request.GetFilterValue( "filter:NameText" );
             if ( !string.IsNullOrWhiteSpace( nameText ) )
             {
-                filterType = filterType == "" ? "( EntityName LIKE '%" + nameText + "%' )" : filterType + "AND ( EntityName LIKE '%" + nameText + "%' )";
+                filterType = filterType == string.Empty ? "( EntityName LIKE '%" + nameText + "%' )" : filterType + "AND ( EntityName LIKE '%" + nameText + "%' )";
             }
 
             //Handle Status Filter
             var statusType = request.GetFilterValue( "filter:StatusType" );
             if ( !string.IsNullOrWhiteSpace( statusType ) && statusType != "All" )
             {
-                filterType = filterType == "" ? "( statusSummary LIKE '%" + statusType + "%' )" : filterType + "AND ( statusSummary LIKE '%" + statusType + "%' )";
+                filterType = filterType == string.Empty ? "( statusSummary LIKE '%" + statusType + "%' )" : filterType + "AND ( statusSummary LIKE '%" + statusType + "%' )";
             }
             var results = LinkCheckerServices.LinkCheckerServices.Search( filterType, request.OrderBy, request.Skip, request.Take, ref pTotalRow );
 
@@ -1655,7 +1656,7 @@ namespace workIT.Factories
         {
             var output = new List<QuerySummary>();
             var entity = new QuerySummary();
-            var filterType = "";
+            var filterType = string.Empty;
             int pTotalRow = 0;
             var results= new List<LinkCheckerServices.Models.OrganizationTotalsSummary>();
             var  OrgNameText = request.GetFilterValue( "filter:OrgNameText" );
@@ -1688,14 +1689,14 @@ namespace workIT.Factories
 				if ( IsForPublishingRecipients( request ) )
 				{
 					var joinString = "( PublisherCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
-					filterType = filterType == "" ? joinString : filterType + "AND " + joinString;
-					//filterType = filterType == "" ? "(  PublisherCTID='" + organizationCTID + "' )" : filterType + "AND  ( PublisherCTID = '" + organizationCTID + "' )";
+					filterType = filterType == string.Empty ? joinString : filterType + "AND " + joinString;
+					//filterType = filterType == string.Empty ? "(  PublisherCTID='" + organizationCTID + "' )" : filterType + "AND  ( PublisherCTID = '" + organizationCTID + "' )";
 				}
 				else
 				{
 					var joinString = "( OrganizationCTID IN (" + string.Join( ",", organizationCTIDs.Select( m => "'" + m + "'" ).ToList() ) + ") )";
-					filterType = filterType == "" ? joinString : filterType + "AND " + joinString;
-					//filterType = filterType == "" ? "(  OrganizationCTID='" + organizationCTID + "' )" : filterType + "AND  ( OrganizationCTID = '" + organizationCTID + "' )";
+					filterType = filterType == string.Empty ? joinString : filterType + "AND " + joinString;
+					//filterType = filterType == string.Empty ? "(  OrganizationCTID='" + organizationCTID + "' )" : filterType + "AND  ( OrganizationCTID = '" + organizationCTID + "' )";
 				}
 			}
 
@@ -1730,12 +1731,13 @@ namespace workIT.Factories
             }
             return output;
         }
-        //public static string DeleteBrokenWebpageLink( string[] CTIDs )
-        //{
-        //    return LinkCheckerServices.LinkCheckerServices.DeleteExistingRecord( CTIDs );
-        //}
+        public static string DeleteBrokenWebpageLink( string[] CTIDs )
+        {
+            return LinkCheckerServices.LinkCheckerServices.DeleteExistingRecord( CTIDs );
+        }
+        */
         #endregion
-		*/
+
         #region CredentialType
         public static List<QuerySummary> CredentialType( Query request )
         {
@@ -2230,7 +2232,7 @@ namespace workIT.Factories
         {
             string publishMethodURI = "reporting:GeneralServices";
             string thisClassName = "ServicesController";
-            string entityType = "";
+            string entityType = string.Empty;
             APIRequestValidationResponse response = new APIRequestValidationResponse();
             //not sure if can cache, give some thought though
             string key = "validationKey_" + publisherApikey + "_" + dataOwnerCTID + "_" + publishMethodURI;
@@ -2241,7 +2243,7 @@ namespace workIT.Factories
 
 
             //get Org
-            var password = UtilityManager.GetAppKeyValue( "CEAccountSystemStaticPassword", "" );
+            var password = UtilityManager.GetAppKeyValue( "CEAccountSystemStaticPassword", string.Empty );
             var url = UtilityManager.GetAppKeyValue( "ceAccountValidateRegistryRequest" );
             var accountsApiUrl = string.Format( url, dataOwnerCTID, publishMethodURI, password, entityType );
             try

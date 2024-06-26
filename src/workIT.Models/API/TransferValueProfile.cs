@@ -25,6 +25,15 @@ namespace workIT.Models.API
 
 		public WMS.AJAXSettings DerivedFrom { get; set; }
 
+		public WMS.AJAXSettings RelatedAssessment { get; set; }
+		public WMS.AJAXSettings RelatedLearningOpp { get; set; }
+		public WMS.AJAXSettings RelatedCredential { get; set; }
+		public WMS.AJAXSettings RelatedJob { get; set; }
+		public WMS.AJAXSettings RelatedOccupation { get; set; }
+
+		//TVP doesn't have AdministrationProcess
+		//public WMS.AJAXSettings AdministrationProcess { get; set; }
+
 		public WMS.AJAXSettings DevelopmentProcess { get; set; } 
 
 		/// <summary>
@@ -54,5 +63,11 @@ namespace workIT.Models.API
 		public WMS.AJAXSettings TransferValueFor { get; set; }
 
 		public WMS.AJAXSettings HasIntermediaryFor { get; set; }
+
+		public LabelLink LatestVersion { get; set; }
+		public LabelLink NextVersion { get; set; } //URL
+		public LabelLink PreviousVersion { get; set; }
+		public List<IdentifierValue> VersionIdentifier { get; set; }
+		public string InCatalog { get; set; }
 	}
 }

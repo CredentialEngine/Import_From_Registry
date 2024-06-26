@@ -23,7 +23,7 @@ namespace workIT.Data.Tables
         public Nullable<bool> IsPending { get; set; }
         public Nullable<System.DateTime> Created { get; set; }
     
-        public virtual Codes_AssertionType Codes_AssertionType { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual Codes_AssertionType Codes_AssertionType { get; set; }
     }
 }

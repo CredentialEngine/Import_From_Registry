@@ -62,26 +62,30 @@ namespace workIT.Models.Common
         /// ceterms:hasSpecialization
         public List<ResourceSummary> HasSpecialization { get; set; } = new List<ResourceSummary>();
 
-
-        /// <summary>
-        /// Work Role related to this resource.
-        /// List of URIs for an existing WorkRole
-        /// ceterms:hasWorkRole
-        /// </summary>
-        public List<ResourceSummary> HasWorkRole { get; set; } = new List<ResourceSummary>();
-        
+		public List<ResourceSummary> HasTask { get; set; } = new List<ResourceSummary>();
 
 
 
-        /// <summary>
-        /// IndustryType
-        /// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
-        /// Best practice in identifying industries for U.S. credentials is to provide the NAICS code using the ceterms:naics property. 
-        /// Other credentials may use the ceterms:industrytype property and any framework of the class ceterms:IndustryClassification.
-        /// ceterms:industryType
-        /// </summary>
-        //public Enumeration IndustryType { get; set; }
-        public List<CredentialAlignmentObjectProfile> IndustryType { get; set; }
+		/// <summary>
+		/// Work Role related to this resource.
+		/// List of URIs for an existing WorkRole
+		/// ceterms:hasWorkRole
+		/// </summary>
+		public List<ResourceSummary> HasWorkRole { get; set; } = new List<ResourceSummary>();
+
+		public List<ResourceSummary> ProvidesTransferValueFor { get; set; } = new List<ResourceSummary>();
+		public List<ResourceSummary> ReceivesTransferValueFrom { get; set; } = new List<ResourceSummary>();
+
+
+		/// <summary>
+		/// IndustryType
+		/// Type of industry; select from an existing enumeration of such types such as the SIC, NAICS, and ISIC classifications.
+		/// Best practice in identifying industries for U.S. credentials is to provide the NAICS code using the ceterms:naics property. 
+		/// Other credentials may use the ceterms:industrytype property and any framework of the class ceterms:IndustryClassification.
+		/// ceterms:industryType
+		/// </summary>
+		//public Enumeration IndustryType { get; set; }
+		public List<CredentialAlignmentObjectProfile> IndustryType { get; set; }
         /// <summary>
         /// Less specialized profession, trade, or career field that encompasses the one being described.
         /// List of URIs for an existing Occupation
@@ -94,8 +98,7 @@ namespace workIT.Models.Common
         /// Keyword or key phrase describing relevant aspects of an entity.
         /// ceterms:keyword
         /// </summary>
-        //public List<string> Keyword { get; set; }
-        public List<WMP.TextValueProfile> Keyword { get; set; }
+        public List<string> Keyword { get; set; }
 
 		/// <summary>
 		/// OccupationType
@@ -112,16 +115,20 @@ namespace workIT.Models.Common
 		/// List of URIs
 		/// ceterms:sameAs
 		/// </summary>
-		//public List<string> SameAs { get; set; }
-		public List<WMP.TextValueProfile> SameAs { get; set; } = new List<WMP.TextValueProfile>();
+		public List<string> SameAs { get; set; }
 
 
 		#region import
+		public List<Guid> AssertedByList { get; set; } = new List<Guid>();
 
 		public List<Guid> TasksIds { get; set; } = new List<Guid>();
         public List<int> HasWorkRoleIds { get; set; }
         public List<int> HasJobIds { get; set; }
-        public List<int> HasSpecializationIds { get; set; }
+		public List<int> HasTaskIds { get; set; }
+		public List<int> ProvidesTVForIds { get; set; }
+		public List<int> ReceivesTVFromIds { get; set; }
+
+		public List<int> HasSpecializationIds { get; set; }
         public List<int> IsSpecializationOfIds { get; set; }
         //
         public List<CredentialAlignmentObjectProfile> Occupations { get; set; }

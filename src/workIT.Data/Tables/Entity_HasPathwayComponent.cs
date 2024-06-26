@@ -20,8 +20,8 @@ namespace workIT.Data.Tables
         public int ComponentRelationshipTypeId { get; set; }
         public System.DateTime Created { get; set; }
     
-        public virtual Codes_PathwayComponentRelationship Codes_PathwayComponentRelationship { get; set; }
         public virtual Entity Entity { get; set; }
+        public virtual Codes_PathwayComponentRelationship Codes_PathwayComponentRelationship { get; set; }
         public virtual PathwayComponent PathwayComponent { get; set; }
     }
 }

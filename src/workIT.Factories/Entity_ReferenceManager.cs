@@ -418,8 +418,8 @@ namespace workIT.Factories
                 isEmpty = true;
                 return true;
             }
-            profile.TextTitle = ( profile.TextTitle ?? "" );
-            profile.TextValue = ( profile.TextValue ?? "" );
+            profile.TextTitle = ( profile.TextTitle ?? string.Empty );
+            profile.TextValue = ( profile.TextValue ?? string.Empty );
             //16-07-22 mparsons - changed to, for now, let user enter one or the other (except for urls), this gives flexibility to the interface choosing which to show or require
             //ultimately, we will make the profile configurable
             if ( profile.CategoryId == CodesManager.PROPERTY_CATEGORY_REFERENCE_URLS )
@@ -443,7 +443,7 @@ namespace workIT.Factories
 				 )
 			{
 
-                if ( ( profile.TextValue ?? "" ).Length > maxReferenceUrlLength )
+                if ( ( profile.TextValue ?? string.Empty ).Length > maxReferenceUrlLength )
                 {
                     status.AddWarning( string.Format( "The Url is too long. It must be less than {0} characters", maxReferenceUrlLength ) );
 
@@ -453,7 +453,7 @@ namespace workIT.Factories
                     //status.AddWarning( string.Format( "The Url is invalid: {0}. {1}", profile.TextValue, commonStatusMessage ) );
                 }
 
-                profile.TextValue = ( profile.TextValue ?? "" ).TrimEnd( '/' );
+                profile.TextValue = ( profile.TextValue ?? string.Empty ).TrimEnd( '/' );
             }
             else
             if ( profile.CategoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
@@ -729,7 +729,7 @@ namespace workIT.Factories
             }
             try
             {
-                string prevSubject = "";
+                string prevSubject = string.Empty;
                 using ( var context = new ViewContext() )
                 {
                     List<Entity_Subjects> results = context.Entity_Subjects
@@ -801,7 +801,7 @@ namespace workIT.Factories
                                           on ear.AgentUid equals org.RowId      // 
                                   join codes in context.Codes_CredentialAgentRelationship on ear.RelationshipTypeId equals 30
                                   where entity.EntityTypeId == entityTypeId && item.CategoryId == 34 && org.Id == orgId
-                                              && ( keyword == "" || item.TextValue.Contains( keyword ) )
+                                              && ( keyword == string.Empty || item.TextValue.Contains( keyword ) )
 
                                   select new
                                   {
@@ -824,7 +824,7 @@ namespace workIT.Factories
 
                     //if ( results != null && results.Count > 0 )
                     //{
-                    //    string prev = "";
+                    //    string prev = string.Empty;
 
                     //    foreach ( Entity_Subjects item in results )
                     //    {
@@ -864,7 +864,7 @@ namespace workIT.Factories
             //if ( maxTerms == 0 ) 
                 maxTerms = 50;
 
-            if ( headerId == "0" ) headerId = "";
+            if ( headerId == "0" ) headerId = string.Empty;
             if (keyword.Length == 2 && IsInteger( keyword ) )
             {
                 headerId = keyword.Substring( 0, 2 );
@@ -881,7 +881,7 @@ namespace workIT.Factories
             //also if no org relationships, use current filter
             if ( query != null && orgId > 0 )
             {
-                var coded = keyword.Replace( "-", "" ).Replace( " ", "" );
+                var coded = keyword.Replace( "-", string.Empty ).Replace( " ", string.Empty );
 
                 //actually only need to store the org, if has target relationship
                 var targetRelationships = new List<int>() { 6, 7, 30 };
@@ -913,10 +913,10 @@ namespace workIT.Factories
                                     join org in context.Organization
                                             on ear.AgentUid equals org.RowId      // 
                                     join codes in context.Codes_CredentialAgentRelationship on ear.RelationshipTypeId equals 30
-                                    let cn = refFrameworkItem.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
+                                    let cn = refFrameworkItem.CodedNotation.Replace( "-", string.Empty ).Replace( " ", string.Empty )
                                     where entity.EntityTypeId == entityTypeId && item.CategoryId == categoryId && org.Id == orgId  
-                                                && ( headerId == "" || refFrameworkItem.CodeGroup == headerId )
-                                                && ( keyword == ""
+                                                && ( headerId == string.Empty || refFrameworkItem.CodeGroup == headerId )
+                                                && ( keyword == string.Empty
                                                 || refFrameworkItem.CodedNotation.Contains( keyword )
                                                 || cn.Contains( coded )
                                                 || refFrameworkItem.Name.Contains( keyword ) )
@@ -930,7 +930,7 @@ namespace workIT.Factories
                         var results = list1.OrderBy( m => m.Name ).ToList();
                         results.ForEach( x =>
                         {
-                            var cd = "";
+                            var cd = string.Empty;
                             if ( !string.IsNullOrEmpty( x.CodedNotation ) )
                                 cd = string.Format( " ({0})", x.CodedNotation );
 
@@ -955,11 +955,11 @@ namespace workIT.Factories
                         }
 
                         var results = ( from rf in context.Entity_ReferenceFramework_Summary
-                                         let cn = rf.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
-                                        where ( headerId == "" || rf.CodeGroup == headerId )
+                                         let cn = rf.CodedNotation.Replace( "-", string.Empty ).Replace( " ", string.Empty )
+                                        where ( headerId == string.Empty || rf.CodeGroup == headerId )
                                                 && ( rf.CategoryId == categoryId )
                                                 && ( rf.EntityTypeId == entityTypeId )
-                                                && ( keyword == ""
+                                                && ( keyword == string.Empty
                                                 || rf.CodedNotation.Contains( keyword )
                                                 || cn.Contains( coded )
                                                 || rf.Name.Contains( keyword ) )
@@ -968,7 +968,7 @@ namespace workIT.Factories
                                         select rf ).Distinct().Take( maxTerms ).ToList();
                         results.ForEach( x =>
                         {
-                            var cd = "";
+                            var cd = string.Empty;
                             if ( !string.IsNullOrEmpty( x.CodedNotation ) )
                                 cd = string.Format( " ({0})", x.CodedNotation );
 
@@ -981,16 +981,16 @@ namespace workIT.Factories
             else
             {
 
-                var coded = keyword.Replace( "-", "" ).Replace( " ", "" );
+                var coded = keyword.Replace( "-", string.Empty ).Replace( " ", string.Empty );
 
                 using ( var context = new ViewContext() )
                 {
                     var results = ( from rf in context.Entity_ReferenceFramework_Totals
-                                    let cn = rf.CodedNotation.Replace( "-", "" ).Replace( " ", "" )
-                                    where ( headerId == "" || rf.CodeGroup == headerId )
+                                    let cn = rf.CodedNotation.Replace( "-", string.Empty ).Replace( " ", string.Empty )
+                                    where ( headerId == string.Empty || rf.CodeGroup == headerId )
                                             && ( rf.CategoryId == categoryId )
                                             && ( rf.EntityTypeId == entityTypeId )
-                                            && ( keyword == ""
+                                            && ( keyword == string.Empty
                                             || rf.CodedNotation.Contains( keyword )
                                             || cn.Contains( coded )
                                             || rf.Name.Contains( keyword ) )
@@ -1000,7 +1000,7 @@ namespace workIT.Factories
 
                     results.ForEach( x =>
                     {
-                        var cd = "";
+                        var cd = string.Empty;
                         if ( !string.IsNullOrEmpty( x.CodedNotation ) )
                             cd = string.Format( " ({0})", x.CodedNotation );
 
@@ -1008,10 +1008,10 @@ namespace workIT.Factories
                     } );
                     list = list.Distinct().Take( actualTerms ).ToList();
                     //list = context.Entity_ReferenceFramework_Totals
-                    //        .Where( s => ( headerId == "" || s.CodeGroup == headerId )
+                    //        .Where( s => ( headerId == string.Empty || s.CodeGroup == headerId )
                     //        && ( s.CategoryId == categoryId )
                     //        && ( s.EntityTypeId == entityTypeId )
-                    //        && ( keyword == ""
+                    //        && ( keyword == string.Empty
                     //        || s.CodedNotation.Contains( keyword )
                     //        || s.Name.Contains( keyword ) )
                     //        && ( s.Totals > 0 ) )
@@ -1060,7 +1060,7 @@ namespace workIT.Factories
                 else
                 {
                     //should ignore to.Title
-                    to.Title = "";
+                    to.Title = string.Empty;
                 }
                 to.TextValue = from.TextValue;
             }
@@ -1089,7 +1089,7 @@ namespace workIT.Factories
         {
             to.Id = from.Id;
             to.RelatedEntityId = from.EntityId;
-            to.TextTitle = from.Title ?? "";
+            to.TextTitle = from.Title ?? string.Empty;
             to.CategoryId = from.CategoryId;
             if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_PHONE_TYPE )
             {
@@ -1111,12 +1111,12 @@ namespace workIT.Factories
                 to.ProfileSummary = to.TextValue;
             else
                 to.ProfileSummary = to.TextTitle + " - " + to.TextValue;
-            to.CodeTitle = "";
-            to.CodeSchema = "";
+            to.CodeTitle = string.Empty;
+            to.CodeSchema = string.Empty;
             if ( from.Codes_PropertyValue != null && from.Codes_PropertyValue.Id > 0 )
             {
                 to.CodeTitle = from.Codes_PropertyValue.Title;
-                to.CodeSchema = from.Codes_PropertyValue.SchemaName ?? "";
+                to.CodeSchema = from.Codes_PropertyValue.SchemaName ?? string.Empty;
             }
             if ( from.Entity != null && from.Entity.Id > 0 )
             {
@@ -1137,7 +1137,7 @@ namespace workIT.Factories
             to.Id = from.EntityReferenceId;
             to.EntityId = from.EntityId;
 
-            to.TextTitle = from.Title ?? "";
+            to.TextTitle = from.Title ?? string.Empty;
             to.CategoryId = from.CategoryId;
             if ( to.CategoryId == CodesManager.PROPERTY_CATEGORY_PHONE_TYPE )
                 to.TextValue = PhoneNumber.DisplayPhone( from.TextValue );
@@ -1146,7 +1146,7 @@ namespace workIT.Factories
 
             to.CodeId = ( int )( from.PropertyValueId ?? 0 );
             to.CodeTitle = from.PropertyValue;
-            to.CodeSchema = from.PropertySchema ?? "";
+            to.CodeSchema = from.PropertySchema ?? string.Empty;
 
             to.ProfileSummary = to.TextTitle + " - " + to.TextValue;
 

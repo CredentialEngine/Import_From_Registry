@@ -103,7 +103,7 @@ namespace workIT.Models.QData
 	}
 	public class DataSetProfileSummary : DataSetProfile
 	{
-
+		public string ResourceDetail { get; set; }
 	}
 
     public class Entity_DataSetProfile

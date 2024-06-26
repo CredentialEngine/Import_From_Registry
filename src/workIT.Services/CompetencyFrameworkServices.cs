@@ -18,14 +18,14 @@ using workIT.Models.Common;
 using workIT.Models.Helpers;
 using workIT.Models.Elastic;
 using ElasticHelper = workIT.Services.ElasticServices;
-
+using APIResourceServices = workIT.Services.API.CredentialServices;
 using workIT.Models.Helpers.CompetencyFrameworkHelpers;
 using workIT.Models.Search;
 using workIT.Utilities;
 
-using EntityMgr = workIT.Factories.CompetencyFrameworkManager;
+using ResourceMgr = workIT.Factories.CompetencyFrameworkManager;
 using MPM = workIT.Models.ProfileModels;
-using ThisEntity = workIT.Models.ProfileModels.CompetencyFramework;
+using ThisResource = workIT.Models.ProfileModels.CompetencyFramework;
 
 namespace workIT.Services
 {
@@ -37,38 +37,49 @@ namespace workIT.Services
 
 		#region import
 
-		public bool Import( ThisEntity entity, ref SaveStatus status )
+		public bool Import( ThisResource resource, ref SaveStatus status )
 		{
-			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + entity.Name );
+			LoggingHelper.DoTrace( 5, thisClassName + "Import entered. " + resource.Name );
 			//do a get, and add to cache before updating
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
 				//note could cause problems verifying after an import (i.e. shows cached version. Maybe remove from cache after completion.
 				//var detail = GetDetail( entity.Id );
 			}
-			bool isValid = new EntityMgr().Save( entity, ref status, true );
+			bool isValid = new ResourceMgr().Save( resource, ref status, true );
 			List<string> messages = new List<string>();
-			if ( entity.Id > 0 )
+			if ( resource.Id > 0 )
 			{
-				if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//if ( UtilityManager.GetAppKeyValue( "delayingAllCacheUpdates", false ) == false )
+				//{
+				//	//update cache - not applicable yet
+				//	//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
+				//	//update Elastic
+				//	if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
+				//		ElasticHelper.CompetencyFramework_UpdateIndex( entity.Id );
+				//	else
+				//	{
+				//		new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
+				//		if ( messages.Count > 0 )
+				//			status.AddWarningRange( messages );
+				//	}
+				//	new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+				//}
+				//else
 				{
-					//update cache - not applicable yet
-					//new CacheManager().PopulateEntityRelatedCaches( entity.RowId );
-					//update Elastic
-					if ( Utilities.UtilityManager.GetAppKeyValue( "updatingElasticIndexImmediately", false ) )
-						ElasticHelper.CompetencyFramework_UpdateIndex( entity.Id );
-					else
+					var statusMsg = "";
+					var apiDetail = APIResourceServices.GetDetailForAPI( resource.Id, true );
+					if ( apiDetail != null && apiDetail.Meta_Id > 0 )
 					{
-						new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
-						if ( messages.Count > 0 )
-							status.AddWarningRange( messages );
+						var resourceDetail = JsonConvert.SerializeObject( apiDetail, JsonHelper.GetJsonSettings( false ) );
+
+						if ( new EntityManager().EntityCacheUpdateResourceDetail( resource.CTID, resourceDetail, ref statusMsg ) == 0 )
+						{
+							status.AddError( statusMsg );
+						}
 					}
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
-				}
-				else
-				{
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, entity.Id, 1, ref messages );
-					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, entity.OrganizationId, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_COMPETENCY_FRAMEWORK, resource.Id, 1, ref messages );
+					new SearchPendingReindexManager().Add( CodesManager.ENTITY_TYPE_CREDENTIAL_ORGANIZATION, resource.OrganizationId, 1, ref messages );
 					if ( messages.Count > 0 )
 						status.AddWarningRange( messages );
 				}
@@ -156,7 +167,7 @@ namespace workIT.Services
 			SearchServices.SetBoundariesFilter( data, ref where );
 
 			LoggingHelper.DoTrace( 6, "CompetencyFrameworkServices.DoFrameworksSearch(). Filter: " + where );
-			//return EntityMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
+			//return ResourceMgr.Search( where, data.SortOrder, data.StartPage, data.PageSize, ref totalRows );
 			return ElasticManager.CompetencyFramework_SearchForElastic( where, data.StartPage, data.PageSize, ref pTotalRows );
 		}
 		//

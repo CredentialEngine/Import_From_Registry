@@ -29,8 +29,8 @@ namespace workIT.Data.Tables
         public Nullable<int> CollectionId { get; set; }
         public string Alignment { get; set; }
     
-        public virtual CompetencyFramework CompetencyFramework { get; set; }
         public virtual Entity Entity { get; set; }
         public virtual Collection Collection { get; set; }
+        public virtual CompetencyFramework CompetencyFramework { get; set; }
     }
 }

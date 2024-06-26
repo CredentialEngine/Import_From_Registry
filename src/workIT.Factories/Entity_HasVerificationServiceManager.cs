@@ -146,6 +146,41 @@ namespace workIT.Factories
             return isValid;
         }
 
+
+        public bool DeleteAll( int verificationServiceId, ref SaveStatus status )
+        {
+            bool isValid = true;
+            int count = 0;
+            try
+            {
+                using ( var context = new EntityContext() )
+                {
+                    var results = context.Entity_HasVerificationService
+                                .Where( s => s.VerificationServiceId == verificationServiceId )
+                                .ToList();
+                    if ( results == null || results.Count == 0 )
+                        return true;
+
+                    foreach ( var item in results )
+                    {
+                        context.Entity_HasVerificationService.Remove( item );
+                        count = context.SaveChanges();
+                        if ( count > 0 )
+                        {
+
+                        }
+                    }
+                }
+            }
+            catch ( Exception ex )
+            {
+                var msg = FormatExceptions( ex );
+                LoggingHelper.LogError( ex, thisClassName + $".DeleteAll failed for VerificationServiceId: {verificationServiceId}" );
+                isValid = false;
+            }
+            return isValid;
+        }
+
         /// <summary>
         /// Get all of the vsps for a credential.
         /// Not sure how much detail is needed yet.
@@ -203,38 +238,6 @@ namespace workIT.Factories
             return output;
         }
 
-        public bool DeleteAll( int verificationServiceId, ref SaveStatus status )
-        {
-            bool isValid = true;
-            int count = 0;
-            try
-            {
-                using ( var context = new EntityContext() )
-                {
-                    var results = context.Entity_HasVerificationService
-                                .Where( s => s.VerificationServiceId == verificationServiceId )
-                                .ToList();
-                    if ( results == null || results.Count == 0 )
-                        return true;
 
-                    foreach ( var item in results )
-                    {
-                        context.Entity_HasVerificationService.Remove( item );
-                        count = context.SaveChanges();
-                        if ( count > 0 )
-                        {
-
-                        }
-                    }
-                }
-            }
-            catch ( Exception ex )
-            {
-                var msg = FormatExceptions( ex );
-                LoggingHelper.LogError( ex, thisClassName + $".DeleteAll failed for VerificationServiceId: {verificationServiceId}" );
-                isValid = false;
-            }
-            return isValid;
-        }
     }
 }

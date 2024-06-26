@@ -13,7 +13,7 @@ using workIT.Models.Elastic;
 using workIT.Models.Search;
 using workIT.Utilities;
 using APIM = workIT.Models.API;
-using CM = workIT.Models.Common;
+using MC = workIT.Models.Common;
 using ManyInOneIndex = workIT.Models.Elastic.GenericIndex;
 using PM = workIT.Models.ProfileModels;
 
@@ -21,11 +21,16 @@ namespace workIT.Factories
 {
 	public class ElasticManager : BaseFactory
 	{
-		static string thisClassName = "ElasticManager";
+		static readonly string thisClassName = "ElasticManager";
+		static readonly string illinoisLWIAIdentityType = "illinois:LWIA";
+		static readonly string illinoisEDRIdentityType = "illinois:EDR";
+		static readonly string LWIAIdentityType = "identifier:LWIA";
+		//may wan to make this a config value
+		static readonly string DefaultSearchOrder = "newest";
 		#region Common Elastic Index
-		public static List<CM.CommonSearchSummary> CommonIndex_MapFromElastic( List<ManyInOneIndex> searchResults, int entityTypeId, int pageNbr, int pageSize )
+		public static List<MC.CommonSearchSummary> CommonIndex_MapFromElastic( List<ManyInOneIndex> searchResults, int entityTypeId, int pageNbr, int pageSize )
 		{
-			var list = new List<CM.CommonSearchSummary>();
+			var list = new List<MC.CommonSearchSummary>();
 			int rowNbr = ( pageNbr - 1 ) * pageSize;
 
 
@@ -33,7 +38,7 @@ namespace workIT.Factories
 			{
 				rowNbr++;
 
-				var index = new CM.CommonSearchSummary
+				var index = new MC.CommonSearchSummary
 				{
 					Id = item.Id,
 					ResultNumber = rowNbr,
@@ -52,7 +57,6 @@ namespace workIT.Factories
 					//FrameworkUri = oi.FrameworkUri,
 					//CredentialRegistryId = item.CredentialRegistryId,
 					EntityStateId = item.EntityStateId,
-					DateEffective = item.DateEffective,
 					Created = item.Created,
 					LastUpdated = item.LastUpdated,
                     CostProfilesCount = item.CostProfilesCount,
@@ -61,7 +65,16 @@ namespace workIT.Factories
                     FinancialAidCount = item.FinancialAidCount,
 
                 };
-				
+				if ( string.IsNullOrWhiteSpace( index.Name ) )
+				{
+					if ( !string.IsNullOrWhiteSpace(item.Description))
+					{
+						index.Name = item.Description?.Length < PortionOfDescriptionToUseForName ? item.Description : item.Description.Substring(0, PortionOfDescriptionToUseForName) + " ...";
+					} else
+					{
+						index.Name = item.EntityType;
+					}
+				}
 				if ( string.IsNullOrWhiteSpace( index.FriendlyName ) )
 					index.FriendlyName = FormatFriendlyTitle( index.Name );
 				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
@@ -74,6 +87,17 @@ namespace workIT.Factories
 				if ( IsValidDate( item.LastUpdated ) )
 					index.LastUpdated = item.LastUpdated;
 
+				if ( IsValidDate( item.StartDate ) )
+					index.StartDate = DateTime.Parse( item.StartDate ).ToString( "yyyy-MM-dd" );
+				if ( IsValidDate( item.EndDate ) )
+					index.EndDate = DateTime.Parse( item.EndDate ).ToString( "yyyy-MM-dd" );
+
+				if ( IsValidDate( item.DateEffective ) )
+					index.DateEffective = DateTime.Parse( item.DateEffective ).ToString( "yyyy-MM-dd" );
+				if ( IsValidDate( item.ExpirationDate ) )
+					index.ExpirationDate = DateTime.Parse( item.ExpirationDate ).ToString( "yyyy-MM-dd" );
+
+
 				if ( item.Industries != null && item.Industries.Count > 0 )
 					index.IndustryResults = Fill_CodeItemResults( item.Industries.Where( x => x.CategoryId == 10 ).ToList(), CodesManager.PROPERTY_CATEGORY_NAICS, false, false );
 
@@ -81,7 +105,8 @@ namespace workIT.Factories
 					index.OccupationResults = Fill_CodeItemResults( item.Occupations.Where( x => x.CategoryId == 11 ).ToList(), CodesManager.PROPERTY_CATEGORY_SOC, false, false );
 				//
 				index.Subjects = item.SubjectAreas;
-				//tvp specific - which is moving away from generic
+
+				#region transfer value specific - which is moving away from generic
 				index.TransferValueForCredentialsCount = item.TransferValueForCredentialsCount;
 				index.TransferValueFromCredentialsCount = item.TransferValueFromCredentialsCount;
 
@@ -92,8 +117,16 @@ namespace workIT.Factories
 				index.TransferValueFromLoppsCount = item.TransferValueFromLoppsCount;
 
 				index.TransferIntermediariesFor = item.TransferIntermediariesFor != null ? item.TransferIntermediariesFor.Count : 0;
+				//
+				if (item.ProvidesTransferValueFor.Count>0 ) 
+					index.ProvidesTransferValueFor = Fill_CodeItemResults( item.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
+				if ( item.ReceivesTransferValueFrom.Count > 0 )
+					index.ReceivesTransferValueFrom = Fill_CodeItemResults( item.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				#endregion
+
 				//support service
-                index.AccommodationTypes = Fill_CodeItemResults( item.Properties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_ACCOMMODATION ).ToList(), CodesManager.PROPERTY_CATEGORY_ACCOMMODATION, false, false );
+				index.AccommodationTypes = Fill_CodeItemResults( item.Properties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_ACCOMMODATION ).ToList(), CodesManager.PROPERTY_CATEGORY_ACCOMMODATION, false, false );
                 index.SupportServiceCategories = Fill_CodeItemResults( item.Properties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY ).ToList(), CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_CATEGORY, false, false );
                 index.DeliveryMethodTypes = Fill_CodeItemResults( item.Properties.Where( x => x.CategoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE, false, false );
 				//
@@ -103,11 +136,19 @@ namespace workIT.Factories
 					index.AboutCredentials = Fill_CodeItemResults( item.AboutCredentialList, CodesManager.ENTITY_TYPE_CREDENTIAL, false, false );
 				else if ( !string.IsNullOrWhiteSpace( item.AboutLoppList ) )
 					index.AboutLearningOpportunities = Fill_CodeItemResults( item.AboutLoppList, CodesManager.ENTITY_TYPE_LEARNING_OPP_PROFILE, false, false );
+
+				//
+				//credentialing action
+				//reuse about
+				if ( !string.IsNullOrWhiteSpace( item.AboutCredentialList ) )
+					index.AboutCredentials = Fill_CodeItemResults( item.AboutCredentialList, CodesManager.ENTITY_TYPE_CREDENTIAL, false, false );
 				//
 				if ( item.ResourceDetail != null )
-                    index.ResourceDetail = item.ResourceDetail;
+				{
+					index.ResourceDetail = item.ResourceDetail;
+				}
                 //addresses
-                index.AvailableAt = item.Addresses.Select( x => new CM.Address
+                index.AvailableAt = item.Addresses.Select( x => new MC.Address
                 {
                     Latitude = x.Latitude,
                     Longitude = x.Longitude,
@@ -157,7 +198,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 
@@ -180,7 +221,7 @@ namespace workIT.Factories
 					catch ( Exception ex )
 					{
 						LoggingHelper.DoTrace( 2, "Credential_SearchForElastic - Exception:\r\n " + ex.Message );
-						LoggingHelper.LogError( ex, "Credential_SearchForElastic", true, "Credential Search For Elastic Error" );
+						LoggingHelper.LogError( ex, "Credential_SearchForElastic" );
 						index = new CredentialIndex();
 						index.Name = "EXCEPTION ENCOUNTERED";
 						index.Description = ex.Message;
@@ -221,7 +262,7 @@ namespace workIT.Factories
 
 					}
 					Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-					index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+					index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
 					if ( !string.IsNullOrWhiteSpace( dr[ "AlternateName" ].ToString() ) )
 						index.AlternateNames.Add( dr[ "AlternateName" ].ToString() );
@@ -229,7 +270,7 @@ namespace workIT.Factories
 					index.FriendlyName = FormatFriendlyTitle( index.Name );
 
 					index.SubjectWebpage = dr[ "SubjectWebpage" ].ToString();
-					index.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
+					index.ImageURL = GetRowColumn( dr, "ImageUrl", string.Empty );
 
 					string rowId = dr[ "EntityUid" ].ToString();
 					index.RowId = new Guid( rowId );
@@ -272,7 +313,7 @@ namespace workIT.Factories
 					//index.CredentialRegistryId = dr[ "CredentialRegistryId" ].ToString();
 					try
 					{
-						var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+						var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                         if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                         {
                             var resource = JsonConvert.DeserializeObject<APIM.CredentialDetail>( resourceDetail );
@@ -281,36 +322,98 @@ namespace workIT.Factories
                             //addresses and QA would be a good start
 
                             HandleResourceHasSupportService( index, resource.HasSupportService );
+							if(resource.ProvidesTransferValueFor != null )
+                            {
+								index.ProvidesTransferValueFor = HandleResource( resource.ProvidesTransferValueFor );
 
-                        }
+							}
+							if ( resource.ReceivesTransferValueFrom != null )
+							{
+								index.ReceivesTransferValueFrom = HandleResource( resource.ReceivesTransferValueFrom );
+
+							}
+
+						}
                     }
-					catch 
-					{ 
-					}
-                    //
-                    string date = GetRowColumn( dr, "DateEffective", "" );
+                    catch ( Exception ex )
+                    {
+                        LoggingHelper.LogError( ex, string.Format( "Credential_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                    }
+					//
+					//#region TransferValues 
+					//string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+					//if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+					//{
+					//	if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+					//	{
+					//		providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+					//	}
+					//	providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+					//	var xDoc = new XDocument();
+					//	xDoc = XDocument.Parse( providesTransferValueFor );
+					//	foreach ( var child in xDoc.Root.Elements() )
+					//	{
+					//		var property = new IndexProperty
+					//		{
+					//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+					//			Id = ( int ) child.Attribute( "ResourceId" )
+					//		};
+
+					//		index.ProvidesTransferValueFor.Add( property );
+					//	}
+					//}
+					//string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+					//if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+					//{
+					//	if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+					//	{
+					//		receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+					//	}
+					//	receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+					//	var xDoc = new XDocument();
+					//	xDoc = XDocument.Parse( receivesTransferValueFor );
+					//	foreach ( var child in xDoc.Root.Elements() )
+					//	{
+					//		var property = new IndexProperty
+					//		{
+					//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+					//			Id = ( int ) child.Attribute( "ResourceId" )
+					//		};
+
+					//		index.ReceivesTransferValueFrom.Add( property );
+					//	}
+					//}
+					//#endregion
+					//
+					string date = GetRowColumn( dr, "DateEffective", string.Empty );
 					if ( IsValidDate( date ) )
 						index.DateEffective = ( DateTime.Parse( date ).ToString( "yyyy-MM-dd" ) );
 					
-					date = GetRowColumn( dr, "Created", "" );
+					date = GetRowColumn( dr, "Created", string.Empty );
 					if ( IsValidDate( date ) )
 						index.Created = DateTime.Parse( date );
-					date = GetRowColumn( dr, "LastUpdated", "" );
+					date = GetRowColumn( dr, "LastUpdated", string.Empty );
 					if ( IsValidDate( date ) )
 						index.LastUpdated = DateTime.Parse( date );
 					//define LastUpdated to be EntityLastUpdated
 					//TODO - add means to skip this for mass updates
-					//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+					//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 					//if ( IsValidDate( date ) )
 					//	index.LastUpdated = DateTime.Parse( date );
 
 					index.AvailableOnlineAt = dr[ "AvailableOnlineAt" ].ToString();
 					//AverageMinutes is a rough approach to sorting. If present, get the duration profiles
 
-					index.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
+					//index.EstimatedTimeToEarn = GetRowPossibleColumn( dr, "AverageMinutes", 0 );
 					//index.EstimatedTimeToEarn = Int32.Parse( dr[ "AverageMinutes" ].ToString() );
 					index.IsAQACredential = GetRowColumn( dr, "IsAQACredential", false );
-
+					index.IsNonCredit = GetRowColumn( dr, "IsNonCredit", false );
+					if ( index.IsNonCredit )
+					{
+						index.Keyword.Add( "IsNonCredit" );
+						index.Keyword.Add( "Is Non-Credit" );
+					}
+					#region counts 
 					index.RequiresCompetenciesCount = Int32.Parse( dr[ "RequiresCompetenciesCount" ].ToString() );
 					index.LearningOppsCompetenciesCount = Int32.Parse( dr[ "LearningOppsCompetenciesCount" ].ToString() );
 					index.AssessmentsCompetenciesCount = Int32.Parse( dr[ "AssessmentsCompetenciesCount" ].ToString() );
@@ -363,7 +466,7 @@ namespace workIT.Factories
 						index.AggregateDataProfileSummary = string.Format( "Outcome data is available for '{0}'.", index.Name );
 					}
 					index.JurisdictionProfilesCount = GetRowPossibleColumn( dr, "JurisdictionProfilesCount", 0 );
-
+					#endregion
 					//
 					//21-03-29 - skipping holders, earnings and employment now
 					//index.HoldersProfileCount = Int32.Parse( dr[ "HoldersProfileCount" ].ToString() );
@@ -379,7 +482,50 @@ namespace workIT.Factories
 					//	index.EmploymentOutcomeProfileSummary = Entity_EmploymentOutcomeProfileManager.GetSummary( index.RowId );
 
 					//
+					//#region TransferValues
+					//string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+					//if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+					//{
+					//	if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+					//	{
+					//		providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+					//	}
+					//	providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+					//	var xDoc = new XDocument();
+					//	xDoc = XDocument.Parse( providesTransferValueFor );
+					//	foreach ( var child in xDoc.Root.Elements() )
+					//	{
+					//		var competency = new IndexProperty
+					//		{
+					//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+					//			Id = ( int ) child.Attribute( "ResourceId" )
+					//		};
 
+					//		index.ProvidesTransferValueFor.Add( competency );
+					//	}
+					//}
+					//string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+					//if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+					//{
+					//	if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+					//	{
+					//		receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+					//	}
+					//	receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+					//	var xDoc = new XDocument();
+					//	xDoc = XDocument.Parse( receivesTransferValueFor );
+					//	foreach ( var child in xDoc.Root.Elements() )
+					//	{
+					//		var competency = new IndexProperty
+					//		{
+					//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+					//			Id = ( int ) child.Attribute( "ResourceId" )
+					//		};
+
+					//		index.ReceivesTransferValueFrom.Add( competency );
+					//	}
+					//}
+					//#endregion
 
 					// 8~Is Preparation For~ceterms:isPreparationFor~2
 					index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
@@ -402,7 +548,7 @@ namespace workIT.Factories
 						foreach ( var child in xDoc.Root.Elements() )
 						{
 							conn = new Connection();
-							conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+							conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? string.Empty;
 							conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
 							//do something with counts for this type
@@ -411,24 +557,24 @@ namespace workIT.Factories
 							if ( conn.CredentialId > 0 )
 							{
 								//add credential
-								conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+								conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? string.Empty;
 								//??????
 								conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-								conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+								conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? string.Empty;
 							}
 							conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
 							if ( conn.AssessmentId > 0 )
 							{
-								conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+								conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? string.Empty;
 								conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-								conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+								conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? string.Empty;
 							}
 							conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
 							if ( conn.LoppId > 0 )
 							{
-								conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+								conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? string.Empty;
 								conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-								conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+								conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? string.Empty;
 							}
 
 							index.Connections.Add( conn );
@@ -437,8 +583,30 @@ namespace workIT.Factories
 
 
 					#region QualityAssurance and org relationships
-
-					HandleAgentRelationshipsForEntity( dr, index );
+					//relationships 
+					//may need a fall back to populate the entity cache if no data
+					//or only do if a small number or maybe single implying simple reindex
+					string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
+					if ( string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
+					{
+						if ( result.Rows.Count == 1 && index.EntityStateId == 3 )
+						{
+							//NOTE: may want to disable this once everything rebuilt:
+							//plus this could always be called, and never updated if there is no owner
+							string statusMessage = string.Empty;
+							if ( new EntityManager().EntityCacheUpdateAgentRelationshipsForCredential( index.RowId.ToString(), ref statusMessage ) )
+							{
+								var ec = EntityManager.EntityCacheGetByGuid( index.RowId );
+								if ( ec != null && ec.Id > 1 && !string.IsNullOrWhiteSpace( ec.AgentRelationshipsForEntity ) )
+								{
+									HandleAgentRelationshipsForEntity( ec.AgentRelationshipsForEntity, index );
+								}
+							}
+						}
+					}
+					else
+						HandleAgentRelationshipsForEntity( dr, index );
+					
 					//handle QA asserted by a third party (versus by the owner)
 					HandleDirectAgentRelationshipsForEntity( dr, index );
 
@@ -656,7 +824,7 @@ namespace workIT.Factories
 									//?? what is this?
 									//AddTextValue( index, textValue.Value );
 									//if ( textValue.Value.IndexOf( "-" ) > -1 )
-									//	AddTextValue( index, textValue.Value.Replace( "-", "" ) );
+									//	AddTextValue( index, textValue.Value.Replace( "-", string.Empty ) );
 
 									if ( categoryId == 35 ) //
 										index.Keyword.Add( textValue.Value );
@@ -670,8 +838,8 @@ namespace workIT.Factories
 									index.CodedNotation.Add( codeNotation.Value );
 									//AddTextValue( index, codeNotation.Value );
 									if ( codeNotation.Value.IndexOf( "-" ) > -1 ) {
-										//AddTextValue( index, codeNotation.Value.Replace( "-", "" ) );
-										index.CodedNotation.Add( codeNotation.Value.Replace( "-", "" ) );
+										//AddTextValue( index, codeNotation.Value.Replace( "-", string.Empty ) );
+										index.CodedNotation.Add( codeNotation.Value.Replace( "-", string.Empty ) );
 									}
 								}
 							}
@@ -732,8 +900,8 @@ namespace workIT.Factories
 						{
 							var competency = new IndexCompetency
 							{
-								Name = ( string )child.Attribute( "Name" ) ?? "",
-								Description = ( string )child.Attribute( "Description" ) ?? ""
+								Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+								Description = ( string )child.Attribute( "Description" ) ?? string.Empty
 							};
 
 							index.Competencies.Add( competency );
@@ -754,10 +922,10 @@ namespace workIT.Factories
 						//	{
 						//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 						//		ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
-						//		Name = ( string )child.Attribute( "Name" ) ?? "",
-						//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-						//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-						//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+						//		Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+						//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? string.Empty,
+						//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? string.Empty,
+						//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? string.Empty,
 						//	};
 
 
@@ -791,9 +959,10 @@ namespace workIT.Factories
 
 					}
 
-                    #endregion
-                    #region Widgets, collections
-                    HandleMemberOfTransferValue( index, dr );
+					#endregion
+					#region Widgets, collections
+					//24-03-14 mp - check if this is right. The proc references [Entity.TransferValueProfile], which has no data!
+					HandleMemberOfTransferValue( index, dr );
                     HandleCollectionSelections( index, dr );
 					HandleWidgetSelections( index, dr, "CredentialFilters" );
 					//string resourceForWidget = GetRowPossibleColumn( dr, "ResourceForWidget" );
@@ -805,7 +974,7 @@ namespace workIT.Factories
 					//	{
 					//		var widgetId = int.Parse( child.Attribute( "WidgetId" ).Value );
 					//		//future 
-					//		var widgetSection = ( string )child.Attribute( "WidgetSection" ) ?? "";
+					//		var widgetSection = ( string )child.Attribute( "WidgetSection" ) ?? string.Empty;
 					//		if ( widgetId > 0 && widgetSection == "CredentialFilters" )
 					//			index.ResourceForWidget.Add( widgetId );
 					//	}//
@@ -822,7 +991,13 @@ namespace workIT.Factories
 					}
 					else if ( GetPropertyId( 58, "credReport:IsNotInRegistry", ref propertyId ) )
 						index.ReportFilters.Add( propertyId );
-
+					//
+					if ( index.IsNonCredit )
+					{
+						if ( GetPropertyId( 58, "credReport:IsNonCredit", ref propertyId ) )
+							index.ReportFilters.Add( propertyId );
+					}
+					//
 					index.HasTransferValueProfilesCount = GetRowColumn( dr, "HasTransferValueProfileCount", 0 );
 					AddReportProperty( index, index.HasTransferValueProfilesCount, 58, "Has Transfer Values", "credReport:HasTransferValues" );
 
@@ -871,7 +1046,13 @@ namespace workIT.Factories
 					//						
 					var DurationProfileCount = GetRowPossibleColumn( dr, "HasDurationCount", 0 );
 					AddReportProperty( index, DurationProfileCount, 58, "Has Duration Profile", "credReport:HasDurationProfile" );
-					//if ( DurationProfileCount > 0 )
+					//
+					if ( index.ProvidesTransferValueFor.Count > 0 )
+						if ( GetPropertyId( 58, "credReport:ProvidesTransferValueFor", ref propertyId ) )
+							index.ReportFilters.Add( propertyId );
+					if ( index.ReceivesTransferValueFrom.Count > 0 )
+						if ( GetPropertyId( 58, "credReport:ReceivesTransferValueFrom", ref propertyId ) )
+							index.ReportFilters.Add( propertyId );
 					#endregion
 
 					list.Add( index );
@@ -879,7 +1060,7 @@ namespace workIT.Factories
 			}
 			catch ( Exception ex )
 			{
-				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last Row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				LoggingHelper.DoTrace( 2, string.Format( "Credential_SearchForElastic. Last row: {0}, CredentialId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 			}
 			finally
 			{
@@ -903,10 +1084,10 @@ namespace workIT.Factories
 			if ( index.Addresses == null || !index.Addresses.Any() )
 				return;
 			//
-			var entity = new CM.CredentialExternalProperties();
+			var entity = new MC.CredentialExternalProperties();
 			foreach ( var item in index.Addresses )
 			{
-				CM.Address adr = new CM.Address()
+				MC.Address adr = new MC.Address()
 				{
 					StreetAddress = item.StreetAddress,
 					//Address2 = item.Address2,
@@ -925,9 +1106,9 @@ namespace workIT.Factories
 			new CredentialManager().UpdateJson( index.Id, json );
 		}
 
-		public static List<CM.CredentialSummary> Credential_MapFromElastic( List<CredentialIndex> credentials, int pageNbr, int pageSize )
+		public static List<MC.CredentialSummary> Credential_MapFromElastic( List<CredentialIndex> credentials, int pageNbr, int pageSize )
 		{
-			var list = new List<CM.CredentialSummary>();
+			var list = new List<MC.CredentialSummary>();
 			LoggingHelper.DoTrace( 6, "ElasticManager.Credential_MapFromElastic - entered" );
 			var currencies = CodesManager.GetCurrencies();
 			var costTypes = CodesManager.GetEnumeration( CodesManager.PROPERTY_CATEGORY_CREDENTIAL_ATTAINMENT_COST );
@@ -935,10 +1116,10 @@ namespace workIT.Factories
 			int rowNbr = (pageNbr - 1) * pageSize;
 			foreach ( var item in credentials )
 			{
-				var index = new CM.CredentialSummary();
+				var index = new MC.CredentialSummary();
 				rowNbr++;
 				//avgMinutes = 0;
-				index = new CM.CredentialSummary
+				index = new MC.CredentialSummary
 				{
 					Id = item.Id,
 					ResultNumber = rowNbr,
@@ -963,6 +1144,7 @@ namespace workIT.Factories
 					TotalCost = item.TotalCost,
 					CostProfileCount = item.CostProfileCount,
 					IsAQACredential = item.IsAQACredential,
+					IsNonCredit=item.IsNonCredit,
 					LearningOppsCompetenciesCount = item.LearningOppsCompetenciesCount,
 					AssessmentsCompetenciesCount = item.AssessmentsCompetenciesCount,
 					RequiresCompetenciesCount = item.RequiresCompetenciesCount,
@@ -1010,8 +1192,13 @@ namespace workIT.Factories
 				{
 					index.Name += " [reference]";
 				}
-                if ( item.ResourceDetail != null )
-                    index.ResourceDetail = item.ResourceDetail;
+				if ( item.ResourceDetail != null )
+				{
+					index.ResourceDetail = item.ResourceDetail;
+				} else
+				{
+					//TODO - fake out something, or skip
+				}
 				
                 if ( item.ResourceForCollection.Count > 0 )
 				{
@@ -1046,6 +1233,12 @@ namespace workIT.Factories
 					}
 					//index.Org_QAAgentAndRoles.Results.AddRange( qa.Results );
 				}
+				//t
+				if ( item.ProvidesTransferValueFor.Count > 0 )
+					index.ProvidesTransferValueFor = Fill_CodeItemResults( item.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
+				if ( item.ReceivesTransferValueFrom.Count > 0 )
+					index.ReceivesTransferValueFrom = Fill_CodeItemResults( item.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
 				//
 				index.ConnectionsList = Fill_CodeItemResults( item.ConnectionsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE, true, true );
 				if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
@@ -1094,7 +1287,7 @@ namespace workIT.Factories
 
 				//addressess                
 
-				index.Addresses = item.Addresses.Select( x => new CM.Address
+				index.Addresses = item.Addresses.Select( x => new MC.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -1140,7 +1333,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -1188,53 +1381,57 @@ namespace workIT.Factories
 						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						index.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 2 );
 						index.EntityType = OrganizationManager.MapEntityType( index.EntityTypeId );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						if ( string.IsNullOrWhiteSpace( index.CTID ) )
+							index.Name += " [reference]";
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						
 						//add helpers
 						index.PrimaryOrganizationCTID = index.CTID;
 						index.PrimaryOrganizationId = index.Id;
 						index.PrimaryOrganizationName = index.Name;
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 
-						index.ImageURL = GetRowColumn( dr, "ImageUrl", "" );
+						index.ImageURL = GetRowColumn( dr, "ImageUrl", string.Empty );
 						if ( GetRowColumn( dr, "CredentialCount", 0 ) > 0 )
 							index.IsACredentialingOrg = true;
 						index.ISQAOrganization = GetRowColumn( dr, "IsAQAOrganization", false );
-                        //index.MainPhoneNumber = CM.PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", "" ) );
+                        //index.MainPhoneNumber = MC.PhoneNumber.DisplayPhone( GetRowColumn( dr, "MainPhoneNumber", string.Empty ) );
                         try
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );							
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );							
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.OrganizationDetail>( resourceDetail );
                                 index.ResourceDetail = JObject.FromObject( resource );
                             }                       
                         }
-                        catch
+                        catch( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "Organization_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
                         index.OwnedByResults = dr[ "OwnedByList" ].ToString();
 
@@ -1305,9 +1502,9 @@ namespace workIT.Factories
 								if ( textValue != null )
 								{
 									//if ( textValue.Value.IndexOf( "-" ) > -1 )
-									//	index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+									//	index.TextValues.Add( textValue.Value.Replace( "-", string.Empty ) );
 
-									if ( categoryId == 35 )
+									if ( categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
 										index.Keyword.Add( textValue.Value );
 									//else
 									//	index.TextValues.Add( textValue.Value );
@@ -1321,7 +1518,7 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( alternatesNames );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? "";
+								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? string.Empty;
 								if ( !string.IsNullOrWhiteSpace( textValue ) )
 								{
 									index.AlternateNames.Add( textValue );
@@ -1336,18 +1533,18 @@ namespace workIT.Factories
 							var xDoc = XDocument.Parse( identifiers );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string title = ( string )( child.Attribute( "Title" ) ) ?? "";
-								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? "";
+								string title = ( string )( child.Attribute( "Title" ) ) ?? string.Empty;
+								string textValue = ( string )( child.Attribute( "TextValue" ) ) ?? string.Empty;
 								if ( !string.IsNullOrWhiteSpace( title ) && !string.IsNullOrWhiteSpace( textValue ) )
 								{
-									index.CodedNotation.Add( title + " " + textValue.Replace( "-", "" ) );
-									//index.TextValues.Add( title + " " + textValue.Replace( "-", "" ) );
+									index.CodedNotation.Add( title + " " + textValue.Replace( "-", string.Empty ) );
+									//index.TextValues.Add( title + " " + textValue.Replace( "-", string.Empty ) );
 								}
 							}
 						}
 
 						////properties to add to textvalues
-						//string url = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+						//string url = GetRowPossibleColumn( dr, "AvailabilityListing", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( url ) )
 						//	index.TextValues.Add( url );
 						//if ( !string.IsNullOrWhiteSpace( index.CredentialRegistryId ) )
@@ -1441,10 +1638,10 @@ namespace workIT.Factories
 								{
 									CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 									ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? ""
+									Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+									CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? string.Empty,
+									SchemaName = ( string )child.Attribute( "SchemaName" ) ?? string.Empty,
+									CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? string.Empty
 								};
 
 								if ( framework.CategoryId == 10 )
@@ -1488,8 +1685,8 @@ namespace workIT.Factories
 
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								string targetName = ( string )child.Attribute( "TargetEntityName" ) ?? "";
-								string entityStatId = ( string )child.Attribute( "TargetEntityStateId" ) ?? "";
+								string targetName = ( string )child.Attribute( "TargetEntityName" ) ?? string.Empty;
+								string entityStatId = ( string )child.Attribute( "TargetEntityStateId" ) ?? string.Empty;
 								var entityStateId = 0;
 								int.TryParse( entityStatId, out entityStateId );
 								if ( entityStateId > 1 )
@@ -1504,7 +1701,7 @@ namespace workIT.Factories
 										TargetEntityBaseId = int.Parse( child.Attribute( "TargetEntityBaseId" ).Value ),
 										TargetEntityTypeId = int.Parse( child.Attribute( "TargetEntityTypeId" ).Value ),
 										AssertionTypeIds = assertions,
-										TargetEntityName = ( string )child.Attribute( "TargetEntityName" ) ?? "",
+										TargetEntityName = ( string )child.Attribute( "TargetEntityName" ) ?? string.Empty,
 										TargetEntityStateId = entityStateId,
 									} );
 								}
@@ -1632,7 +1829,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Organization_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -1648,10 +1845,10 @@ namespace workIT.Factories
 			if ( index.Addresses == null || !index.Addresses.Any() )
 				return;
 			//
-			var entity = new CM.OrganizationExternalProperties();
+			var entity = new MC.OrganizationExternalProperties();
 			foreach ( var item in index.Addresses )
 			{
-				CM.Address adr = new CM.Address()
+				MC.Address adr = new MC.Address()
 				{
 					StreetAddress = item.StreetAddress,
 					//Address2 = item.Address2,
@@ -1670,9 +1867,9 @@ namespace workIT.Factories
 			new OrganizationManager().UpdateJson( index.Id, json );
 		}
 
-		public static List<CM.OrganizationSummary> Organization_MapFromElastic( List<OrganizationIndex> organizations, int pageNbr, int pageSize )
+		public static List<MC.OrganizationSummary> Organization_MapFromElastic( List<OrganizationIndex> organizations, int pageNbr, int pageSize )
 		{
-			var list = new List<CM.OrganizationSummary>();
+			var list = new List<MC.OrganizationSummary>();
 
 			var currencies = CodesManager.GetCurrencies();
 			//have to be changed
@@ -1682,7 +1879,7 @@ namespace workIT.Factories
 			foreach ( var item in organizations )
 			{
 				rowNbr++;
-				var index = new CM.OrganizationSummary
+				var index = new MC.OrganizationSummary
 				{
 					Id = item.Id,
 					ResultNumber = rowNbr,
@@ -1726,7 +1923,7 @@ namespace workIT.Factories
 
 				//addressess                
 
-				index.Addresses = item.Addresses.Select( x => new CM.Address
+				index.Addresses = item.Addresses.Select( x => new MC.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -1748,7 +1945,7 @@ namespace workIT.Factories
 				index.TotalPathways = item.PathwaysCount;
 				index.TotalPathwaySets = item.PathwaySetsCount;
 				index.TotalTransferValueProfiles = item.TransferValueProfilesCount;
-				index.DataSetProfileCount = item.DataSetProfileCount;
+				index.TotalDataSetProfiles = item.DataSetProfileCount;
 
 				//
 				if ( item.Industries != null && item.Industries.Count > 0 )
@@ -1774,7 +1971,7 @@ namespace workIT.Factories
 
 				index.QualityAssurance = Fill_AgentRelationship( item.AgentRelationshipsForEntity, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "Organization" );
 
-				index.QualityAssurancePerformed = Fill_TargetQaAssertion( item.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, "" );
+				index.QualityAssurancePerformed = Fill_TargetQaAssertion( item.QualityAssurancePerformed, CodesManager.PROPERTY_CATEGORY_CREDENTIAL_AGENT_ROLE, string.Empty );
 				var results = item.QualityAssurancePerformed.GroupBy( a => new
 				{
 					a.TargetEntityTypeId,
@@ -1808,6 +2005,7 @@ namespace workIT.Factories
 			var index = new AssessmentIndex();
 			var list = new List<AssessmentIndex>();
 			var result = new DataTable();
+			var startTime = DateTime.Now;
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
 			int cntr = 0;
 			using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -1817,7 +2015,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -1844,13 +2042,22 @@ namespace workIT.Factories
 						index.Description = ex.Message;
 						list.Add( index );
 						return list;
+					} finally
+					{
+						//call duration
+						TimeSpan duration = DateTime.Now.Subtract( startTime );
+						if ( duration.TotalSeconds > 10 )
+						{
+							LoggingHelper.DoTrace( LoggingHelper.appTraceLevel, thisClassName + string.Format( "Assessment_SearchForElastic. Search duration: {0:N2} seconds ", duration.TotalSeconds ) );
+						}
 					}
 				}
 				int costProfilesCount = 0;
 				int conditionProfilesCount = 0;
-				string assessesCompetencies = "";
+				string assessesCompetencies = string.Empty;
 				try
 				{
+					startTime = DateTime.Now;
 					foreach ( DataRow dr in result.Rows )
 					{
 						cntr++;
@@ -1866,7 +2073,7 @@ namespace workIT.Factories
 						}
 						index.Name = dr[ "Name" ].ToString();
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
 						index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
@@ -1874,15 +2081,15 @@ namespace workIT.Factories
 						string rowId = dr[ "RowId" ].ToString();
 						index.RowId = new Guid( rowId );
 
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
-						var codedNotation = GetRowColumn( dr, "IdentificationCode", "" );
+						var codedNotation = GetRowColumn( dr, "IdentificationCode", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( codedNotation ) )
 							index.CodedNotation.Add( codedNotation );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
+						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "Organization", string.Empty );
 						index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
 
 						index.NameOrganizationKey = index.Name;
@@ -1897,31 +2104,42 @@ namespace workIT.Factories
 						index.PrimaryOrganizationCTID = dr[ "OwningOrganizationCtid" ].ToString();
                         try
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.AssessmentDetail>( resourceDetail );
                                 index.ResourceDetail = JObject.FromObject( resource );
 
                                 HandleResourceHasSupportService( index, resource.HasSupportService );
-                            }
+								if ( resource.ProvidesTransferValueFor != null )
+								{
+									index.ProvidesTransferValueFor = HandleResource( resource.ProvidesTransferValueFor );
+
+								}
+								if ( resource.ReceivesTransferValueFrom != null )
+								{
+									index.ReceivesTransferValueFrom = HandleResource( resource.ReceivesTransferValueFrom );
+
+								}
+							}
                         }
-                        catch
+                        catch ( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "Assessment_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
-                        var date = GetRowColumn( dr, "DateEffective", "" );
+                        var date = GetRowColumn( dr, "DateEffective", string.Empty );
 						if ( IsValidDate( date ) )
 							index.DateEffective = ( DateTime.Parse( date ).ToString("yyyy-MM-dd") );
 						else
-							index.DateEffective = "";
-						date = GetRowColumn( dr, "Created", "" );
+							index.DateEffective = string.Empty;
+						date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 
@@ -1956,46 +2174,47 @@ namespace workIT.Factories
 						//change to use Connections
 						try
 						{
-							string credentialConnections = GetRowPossibleColumn( dr, "AssessmentConnections" );
-							if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
-							{
-								Connection conn = new Connection();
-								var xDoc = XDocument.Parse( credentialConnections );
-								foreach ( var child in xDoc.Root.Elements() )
-								{
-									conn = new Connection();
-									conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
-									conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
+							//24-02-16 mp - AssessmentConnections is not in the proc, so commented out
+							//string assessmentConnections = GetRowPossibleColumn( dr, "AssessmentConnections" );
+							//if ( !string.IsNullOrWhiteSpace( assessmentConnections ) )
+							//{
+							//	Connection conn = new Connection();
+							//	var xDoc = XDocument.Parse( assessmentConnections );
+							//	foreach ( var child in xDoc.Root.Elements() )
+							//	{
+							//		conn = new Connection();
+							//		conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? string.Empty;
+							//		conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
-									//do something with counts for this type
+							//		//do something with counts for this type
 
-									conn.CredentialId = int.Parse( child.Attribute( "CredentialId" ).Value );
-									if ( conn.CredentialId > 0 )
-									{
-										//add credential
-										conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
-										//??????
-										conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-										conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
-									}
-									conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
-									if ( conn.AssessmentId > 0 )
-									{
-										conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
-										conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-										conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
-									}
-									conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
-									if ( conn.LoppId > 0 )
-									{
-										conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
-										conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-										conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
-									}
+							//		conn.CredentialId = int.Parse( child.Attribute( "CredentialId" ).Value );
+							//		if ( conn.CredentialId > 0 )
+							//		{
+							//			//add credential
+							//			conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? string.Empty;
+							//			//??????
+							//			conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
+							//			conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? string.Empty;
+							//		}
+							//		conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
+							//		if ( conn.AssessmentId > 0 )
+							//		{
+							//			conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? string.Empty;
+							//			conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
+							//			conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? string.Empty;
+							//		}
+							//		conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
+							//		if ( conn.LoppId > 0 )
+							//		{
+							//			conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? string.Empty;
+							//			conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
+							//			conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? string.Empty;
+							//		}
 
-									index.Connections.Add( conn );
-								}
-							}
+							//		index.Connections.Add( conn );
+							//	}
+							//}
 						}
 						catch ( Exception ex )
 						{
@@ -2021,8 +2240,8 @@ namespace workIT.Factories
 								{
 									var competency = new IndexCompetency
 									{
-										Name = ( string )child.Attribute( "Name" ) ?? "",
-										Description = ( string )child.Attribute( "Description" ) ?? ""
+										Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+										Description = ( string )child.Attribute( "Description" ) ?? string.Empty
 									};
 
 									index.AssessesCompetencies.Add( competency );
@@ -2055,8 +2274,8 @@ namespace workIT.Factories
 								{
 									var competency = new IndexCompetency
 									{
-										Name = ( string )child.Attribute( "Name" ) ?? "",
-										Description = ( string )child.Attribute( "Description" ) ?? ""
+										Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+										Description = ( string )child.Attribute( "Description" ) ?? string.Empty
 									};
 
 									index.RequiresCompetencies.Add( competency );
@@ -2083,16 +2302,16 @@ namespace workIT.Factories
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								var categoryId = int.Parse( child.Attribute( "CategoryId" ).Value );
-								//index.TextValues.Add( ( string )child.Attribute( "TextValue" ) ?? "" );
+								//index.TextValues.Add( ( string )child.Attribute( "TextValue" ) ?? string.Empty );
 								var textValue = child.Attribute( "TextValue" );
 								if ( textValue != null && !string.IsNullOrWhiteSpace( textValue.Value ) )
 								{
 
 
 									//if ( textValue.Value.IndexOf( "-" ) > -1 )
-									//	index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+									//	index.TextValues.Add( textValue.Value.Replace( "-", string.Empty ) );
 
-									if ( categoryId == 35 )
+									if ( categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
 										index.Keyword.Add( textValue.Value );
 									//else
 									//	index.TextValues.Add( textValue.Value );
@@ -2103,29 +2322,29 @@ namespace workIT.Factories
 								{
 									index.CodedNotation.Add( codeNotation.Value );
 									//if ( codeNotation.Value.IndexOf( "-" ) > -1 )
-									//	index.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
+									//	index.TextValues.Add( codeNotation.Value.Replace( "-", string.Empty ) );
 								}
 							}
 						}
                         if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
                         //properties to add to textvalues
-                        index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
+                        index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( index.AvailableOnlineAt ) )
 						//	index.TextValues.Add( index.AvailableOnlineAt );
-						index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+						index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( index.AvailabilityListing ) )
 						//	index.TextValues.Add( index.AvailabilityListing );
-						//string url = GetRowPossibleColumn( dr, "AssessmentExampleUrl", "" );
+						//string url = GetRowPossibleColumn( dr, "AssessmentExampleUrl", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( url ) )
 						//	index.TextValues.Add( url );
-						//url = GetRowPossibleColumn( dr, "ProcessStandards", "" );
+						//url = GetRowPossibleColumn( dr, "ProcessStandards", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( url ) )
 						//	index.TextValues.Add( url );
-						//url = GetRowPossibleColumn( dr, "ScoringMethodExample", "" );
+						//url = GetRowPossibleColumn( dr, "ScoringMethodExample", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( url ) )
 						//	index.TextValues.Add( url );
-						//url = GetRowPossibleColumn( dr, "ExternalResearch", "" );
+						//url = GetRowPossibleColumn( dr, "ExternalResearch", string.Empty );
 						//if ( !string.IsNullOrWhiteSpace( url ) )
 						//	index.TextValues.Add( url );
 						//	,base.
@@ -2151,6 +2370,51 @@ namespace workIT.Factories
 						}
 
 						#endregion
+
+						//#region TransferValues
+						//string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+						//if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+						//	{
+						//		providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( providesTransferValueFor );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var competency = new IndexProperty
+						//		{
+						//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+						//			Id = ( int ) child.Attribute( "ResourceId" )
+						//		};
+
+						//		index.ProvidesTransferValueFor.Add( competency );
+						//	}
+						//}
+						//string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+						//if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+						//	{
+						//		receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( receivesTransferValueFor );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var competency = new IndexProperty
+						//		{
+						//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+						//			Id = ( int ) child.Attribute( "ResourceId" )
+						//		};
+
+						//		index.ReceivesTransferValueFrom.Add( competency );
+						//	}
+						//}
+						//#endregion
 						//
 						index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 );
 						index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
@@ -2221,10 +2485,10 @@ namespace workIT.Factories
 							//	{
 							//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
-							//		Name = ( string )child.Attribute( "Name" ) ?? "",
-							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-							//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+							//		Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? string.Empty,
+							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? string.Empty,
+							//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? string.Empty,
 							//	};
 
 							//	if ( framework.CategoryId == 11 )
@@ -2352,8 +2616,14 @@ namespace workIT.Factories
 						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 60, "asmtReport:HasAddresses", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
+						if ( index.ProvidesTransferValueFor.Count > 0 )
+							if ( GetPropertyId( 60, "asmtReport:ProvidesTransferValueFor", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ReceivesTransferValueFrom.Count > 0 )
+							if ( GetPropertyId( 60, "asmtReport:ReceivesTransferValueFrom", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
 
-						list.Add( index );
+							list.Add( index );
 					}
 					#endregion
 
@@ -2364,7 +2634,12 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					TimeSpan duration = DateTime.Now.Subtract( startTime );
+					//if ( duration.TotalSeconds > 10 )
+					//{
+					//	LoggingHelper.DoTrace( LoggingHelper.appTraceLevel, thisClassName + string.Format( "Assessment_SearchForElastic. mapping duration: {0:N2} seconds ", duration.TotalSeconds ) );
+					//}
+					LoggingHelper.DoTrace( 2, string.Format( "Assessment_SearchForElastic - Page: {0} Complete. Loaded {1} records.  mapping duration: {0:N2} seconds ", pageNumber, cntr, duration.TotalSeconds ) );
 				}
 				return list;
 			}
@@ -2423,7 +2698,7 @@ namespace workIT.Factories
 				};
 
 				if ( item.PrimaryOrganizationId > 0 )
-					index.PrimaryOrganization = new CM.Organization() { Id = item.PrimaryOrganizationId, Name = item.PrimaryOrganizationName };
+					index.PrimaryOrganization = new MC.Organization() { Id = item.PrimaryOrganizationId, Name = item.PrimaryOrganizationName };
 				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
 
 				if ( index.EntityStateId == 2 )
@@ -2436,7 +2711,7 @@ namespace workIT.Factories
                 if ( index.CompetenciesCount == 0 && item.AssessesCompetencies != null && item.AssessesCompetencies.Any() )
 					index.CompetenciesCount = item.AssessesCompetencies.Count();
 				//addresses
-				index.AvailableAt = item.Addresses.Select( x => new CM.Address
+				index.AvailableAt = item.Addresses.Select( x => new MC.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -2478,6 +2753,12 @@ namespace workIT.Factories
 						index.AggregateDataProfileCount += index.DataSetProfileCount;
 				}
 				//
+				if ( item.ProvidesTransferValueFor.Count > 0 )
+					index.ProvidesTransferValueForElastic = Fill_CodeItemResults( item.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
+				if ( item.ReceivesTransferValueFrom.Count > 0 )
+					index.ReceivesTransferValueFromElastic = Fill_CodeItemResults( item.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
 				index.CredentialsList = Fill_CredentialConnectionsResult( item.CredentialsList, CodesManager.PROPERTY_CATEGORY_CONNECTION_PROFILE_TYPE );
 				index.ListTitle = item.ListTitle;
 				index.Subjects = item.SubjectAreas;
@@ -2516,7 +2797,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );	//sort by lastest to catch most likely targets
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -2574,33 +2855,50 @@ namespace workIT.Factories
 						index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
-						index.Description = GetRowColumn( dr, "Description", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						index.RowId = new Guid( rowId );
 						index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.EntityId = GetRowPossibleColumn( dr, "EntityId", 0 );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
-                        try
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.LearningOpportunityDetail>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+
+								HandleResourceHasSupportService( index, resource.HasSupportService );
+								if ( resource.ProvidesTransferValueFor != null )
+								{
+									index.ProvidesTransferValueFor = HandleResource( resource.ProvidesTransferValueFor );
+
+								}
+								if ( resource.ReceivesTransferValueFrom != null )
+								{
+									index.ReceivesTransferValueFrom = HandleResource( resource.ReceivesTransferValueFrom );
+
+								}
+								if ( resource.ObjectOfAction != null )
+								{
+									index.ObjectOfAction = HandleResource( resource.ObjectOfAction );
+
+								}
+							}
+						}
+                        catch ( Exception ex )
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
-                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
-                            {
-                                var resource = JsonConvert.DeserializeObject<APIM.LearningOpportunityDetail>( resourceDetail );
-                                index.ResourceDetail = JObject.FromObject( resource );
-
-                                HandleResourceHasSupportService( index, resource.HasSupportService );
-                            }
-                        }
-                        catch
-                        {
+                            LoggingHelper.LogError( ex, string.Format( "LearningOpp_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
 
-                        index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 						//==========================
 						//TBD. just time initially
 						//	actually can't do here, as need the API classes
@@ -2610,7 +2908,7 @@ namespace workIT.Factories
 						//DateTime getDetailCompleted = DateTime.Now;
 						//var getDuration = getDetailCompleted.Subtract( getDetailStarted ).TotalSeconds;
 						//==========================
-						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "Organization", "" );
+						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "Organization", string.Empty );
 						index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "OrgId", 0 );
 						index.NameOrganizationKey = index.Name;
 						index.ListTitle = index.Name;
@@ -2623,20 +2921,28 @@ namespace workIT.Factories
 						//add helpers
 						index.PrimaryOrganizationCTID = dr["OwningOrganizationCtid"].ToString();
 
-						var date = GetRowColumn( dr, "DateEffective", "" );
+						var date = GetRowColumn( dr, "DateEffective", string.Empty );
 						if ( IsValidDate( date ) )
 							index.DateEffective = DateTime.Parse( date ).ToString( "yyyy-MM-dd" );
 						else
-							index.DateEffective = "";
+							index.DateEffective = string.Empty;
 
 						index.Created = GetRowColumn( dr, "Created", System.DateTime.MinValue );
 						index.LastUpdated = GetRowColumn( dr, "LastUpdated", System.DateTime.MinValue );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
 						index.LifeCycleStatusType = dr["LifeCycleStatusType"].ToString();
+
+						index.IsNonCredit = GetRowColumn( dr, "IsNonCredit", false );
+						index.IsNonCredit = GetRowColumn( dr, "IsNonCredit", false );
+						if ( index.IsNonCredit )
+						{
+							index.Keyword.Add( "IsNonCredit" );
+							index.Keyword.Add( "Is Non-Credit" );
+						}
 						//competencies. either arbitrarily get all, or if filters exist, only return matching ones
 						index.CompetenciesCount = GetRowPossibleColumn( dr, "CompetenciesCount", 0 );
 
@@ -2657,15 +2963,15 @@ namespace workIT.Factories
 						index.CommonConditionsCount = GetRowPossibleColumn( dr, "CommonConditionsCount", 0 );
 						index.CommonCostsCount = GetRowPossibleColumn( dr, "CommonCostsCount", 0 );
 						index.FinancialAidCount = GetRowPossibleColumn( dr, "FinancialAidCount", 0 );
-                        //TBD
-                        if ( index.FinancialAidCount > 0 ) 
+						//TBD
+						if ( index.FinancialAidCount > 0 )
 						{
-                            //TODO - could get the details here, only where has outcomes
-                        }
+							//TODO - could get the details here, only where has outcomes
+						}
 
-                        //index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
-                        //
-                        index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 );
+						//index.ProcessProfilesCount = GetRowPossibleColumn( dr, "ProcessProfilesCount", 0 );
+						//
+						index.AggregateDataProfileCount = GetRowColumn( dr, "AggregateDataProfileCount", 0 );
 						index.DataSetProfileCount = GetRowColumn( dr, "DataSetProfileCount", 0 );
 						if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
 						{
@@ -2673,19 +2979,19 @@ namespace workIT.Factories
 							//TODO - could get the details here, only where has outcomes
 						}
 						//-actual connection type (no credential info)
-						index.ConnectionsList = dr[ "ConnectionsList" ].ToString();
+						index.ConnectionsList = dr["ConnectionsList"].ToString();
 						//connection type, plus Id, and name of credential
-						index.CredentialsList = dr[ "CredentialsList" ].ToString();
+						index.CredentialsList = dr["CredentialsList"].ToString();
 						//change to use Connections
-						string credentialConnections = GetRowPossibleColumn( dr, "LoppConnections" );
-						if ( !string.IsNullOrWhiteSpace( credentialConnections ) )
+						string loppConnections = GetRowPossibleColumn( dr, "LoppConnections" );
+						if ( !string.IsNullOrWhiteSpace( loppConnections ) )
 						{
 							Connection conn = new Connection();
-							var xDoc = XDocument.Parse( credentialConnections );
+							var xDoc = XDocument.Parse( loppConnections );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
 								conn = new Connection();
-								conn.ConnectionType = ( string )child.Attribute( "ConnectionType" ) ?? "";
+								conn.ConnectionType = ( string ) child.Attribute( "ConnectionType" ) ?? string.Empty;
 								conn.ConnectionTypeId = int.Parse( child.Attribute( "ConnectionTypeId" ).Value );
 
 								//do something with counts for this type
@@ -2694,24 +3000,24 @@ namespace workIT.Factories
 								if ( conn.CredentialId > 0 )
 								{
 									//add credential
-									conn.Credential = ( string )child.Attribute( "CredentialName" ) ?? "";
+									conn.Credential = ( string ) child.Attribute( "CredentialName" ) ?? string.Empty;
 									//??????
 									conn.CredentialOrgId = int.Parse( child.Attribute( "credOrgid" ).Value );
-									conn.CredentialOrganization = ( string )child.Attribute( "credOrganization" ) ?? "";
+									conn.CredentialOrganization = ( string ) child.Attribute( "credOrganization" ) ?? string.Empty;
 								}
 								conn.AssessmentId = int.Parse( child.Attribute( "AssessmentId" ).Value );
 								if ( conn.AssessmentId > 0 )
 								{
-									conn.Assessment = ( string )child.Attribute( "AssessmentName" ) ?? "";
+									conn.Assessment = ( string ) child.Attribute( "AssessmentName" ) ?? string.Empty;
 									conn.AssessmentOrganizationId = int.Parse( child.Attribute( "asmtOrgid" ).Value );
-									conn.AssessmentOrganization = ( string )child.Attribute( "asmtOrganization" ) ?? "";
+									conn.AssessmentOrganization = ( string ) child.Attribute( "asmtOrganization" ) ?? string.Empty;
 								}
 								conn.LoppId = int.Parse( child.Attribute( "LearningOpportunityId" ).Value );
 								if ( conn.LoppId > 0 )
 								{
-									conn.LearningOpportunity = ( string )child.Attribute( "LearningOpportunityName" ) ?? "";
+									conn.LearningOpportunity = ( string ) child.Attribute( "LearningOpportunityName" ) ?? string.Empty;
 									conn.LoppOrganizationId = int.Parse( child.Attribute( "loppOrgid" ).Value );
-									conn.LearningOpportunityOrganization = ( string )child.Attribute( "loppOrganization" ) ?? "";
+									conn.LearningOpportunityOrganization = ( string ) child.Attribute( "loppOrganization" ) ?? string.Empty;
 								}
 
 								index.Connections.Add( conn );
@@ -2720,7 +3026,7 @@ namespace workIT.Factories
 
 						#region TeachesCompetencies
 
-						string teachesCompetencies = dr[ "TeachesCompetencies" ].ToString();
+						string teachesCompetencies = dr["TeachesCompetencies"].ToString();
 						if ( !string.IsNullOrWhiteSpace( teachesCompetencies ) )
 						{
 							if ( ContainsUnicodeCharacter( teachesCompetencies ) )
@@ -2734,8 +3040,8 @@ namespace workIT.Factories
 							{
 								var competency = new IndexCompetency
 								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
 								};
 
 								index.TeachesCompetencies.Add( competency );
@@ -2747,7 +3053,7 @@ namespace workIT.Factories
 						#endregion
 						#region AssessesCompetencies
 						//21-08-31 - currently the competency search is not specific for assesses or requires. So use the general competencies for now
-						var assessesCompetencies = GetRowColumn( dr, "AssessesCompetencies");
+						var assessesCompetencies = GetRowColumn( dr, "AssessesCompetencies" );
 						if ( !string.IsNullOrWhiteSpace( assessesCompetencies ) )
 						{
 							try
@@ -2764,8 +3070,8 @@ namespace workIT.Factories
 								{
 									var competency = new IndexCompetency
 									{
-										Name = ( string ) child.Attribute( "Name" ) ?? "",
-										Description = ( string ) child.Attribute( "Description" ) ?? ""
+										Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+										Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
 									};
 
 									index.AssessesCompetencies.Add( competency );
@@ -2782,7 +3088,7 @@ namespace workIT.Factories
 
 						#region RequiresCompetencies
 
-						string requiresCompetencies = dr[ "RequiresCompetencies" ].ToString();
+						string requiresCompetencies = dr["RequiresCompetencies"].ToString();
 						if ( !string.IsNullOrWhiteSpace( requiresCompetencies ) )
 						{
 							if ( ContainsUnicodeCharacter( requiresCompetencies ) )
@@ -2796,8 +3102,8 @@ namespace workIT.Factories
 							{
 								var competency = new IndexCompetency
 								{
-									Name = ( string )child.Attribute( "Name" ) ?? "",
-									Description = ( string )child.Attribute( "Description" ) ?? ""
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
 								};
 
 								index.RequiresCompetencies.Add( competency );
@@ -2810,7 +3116,7 @@ namespace workIT.Factories
 
 						#region SubjectAreas
 
-						var subjectAreas = dr[ "SubjectAreas" ].ToString();
+						var subjectAreas = dr["SubjectAreas"].ToString();
 						if ( !string.IsNullOrWhiteSpace( subjectAreas ) )
 						{
 							var xDoc = XDocument.Parse( subjectAreas );
@@ -2825,7 +3131,7 @@ namespace workIT.Factories
 
 						#region TextValues
 
-						var textValues = dr[ "TextValues" ].ToString();
+						var textValues = dr["TextValues"].ToString();
 						if ( !string.IsNullOrWhiteSpace( textValues ) )
 						{
 							textValues = textValues.Replace( "&", " " );
@@ -2839,9 +3145,9 @@ namespace workIT.Factories
 								{
 
 									//if ( textValue.Value.IndexOf( "-" ) > -1 )
-									//	index.TextValues.Add( textValue.Value.Replace( "-", "" ) );
+									//	index.TextValues.Add( textValue.Value.Replace( "-", string.Empty ) );
 
-									if ( categoryId == 35 )
+									if ( categoryId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
 										index.Keyword.Add( textValue.Value );
 									//else
 									//	index.TextValues.Add( textValue.Value );
@@ -2852,19 +3158,19 @@ namespace workIT.Factories
 								{
 									index.CodedNotation.Add( codeNotation.Value );
 									//if ( codeNotation.Value.IndexOf( "-" ) > -1 )
-									//	index.TextValues.Add( codeNotation.Value.Replace( "-", "" ) );
+									//	index.TextValues.Add( codeNotation.Value.Replace( "-", string.Empty ) );
 								}
 							}
 						}
-                        if ( !string.IsNullOrWhiteSpace( index.CTID ) )
-                            index.TextValues.Add( index.CTID );
-                        //properties to add to textvalues
-                        index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+							index.TextValues.Add( index.CTID );
+						//properties to add to textvalues
+						index.AvailableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", string.Empty );
 						//AddTextValue( index, index.AvailableOnlineAt );
 
-						string url = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+						string url = GetRowPossibleColumn( dr, "AvailabilityListing", string.Empty );
 						//AddTextValue( index, url );
-						var codedNotation = GetRowColumn( dr, "IdentificationCode", "" );
+						var codedNotation = GetRowColumn( dr, "IdentificationCode", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( codedNotation ) )
 							index.CodedNotation.Add( codedNotation );
 
@@ -2874,7 +3180,7 @@ namespace workIT.Factories
 						#region LoppProperties
 						try
 						{
-							var loppProperties = dr[ "LoppProperties" ].ToString();
+							var loppProperties = dr["LoppProperties"].ToString();
 							if ( !string.IsNullOrEmpty( loppProperties ) )
 							{
 								loppProperties = loppProperties.Replace( "&", " " );
@@ -2891,15 +3197,15 @@ namespace workIT.Factories
 										Id = propertyValueId,
 										Name = property
 									} );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_Learning_Method_Type )
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Learning_Method_Type )
 										index.LearningMethodTypeIds.Add( propertyValueId );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_DELIVERY_TYPE )
 										index.DeliveryMethodTypeIds.Add( propertyValueId );
-									if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
+									if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE )
 										index.AudienceTypeIds.Add( propertyValueId );
-									else if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
+									else if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL )
 										index.AudienceLevelTypeIds.Add( propertyValueId );
-									else if ( categoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
+									else if ( categoryId == ( int ) CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type )
 										index.AssessmentMethodTypeIds.Add( propertyValueId );
 									//if ( !string.IsNullOrWhiteSpace( ( string )child.Attribute( "PropertySchemaName" ) ) )
 									//	index.TextValues.Add( ( string )child.Attribute( "PropertySchemaName" ) );
@@ -2914,8 +3220,75 @@ namespace workIT.Factories
 						}
 						#endregion
 
+						//#region TransferValues
+						//string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+						//if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+						//	{
+						//		providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( providesTransferValueFor );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var competency = new IndexProperty
+						//		{
+						//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+						//			Id = ( int ) child.Attribute( "ResourceId" )
+						//		};
+
+						//		index.ProvidesTransferValueFor.Add( competency );
+						//	}
+						//}
+						//string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+						//if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+						//	{
+						//		receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( receivesTransferValueFor );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var competency = new IndexProperty
+						//		{
+						//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+						//			Id = ( int ) child.Attribute( "ResourceId" )
+						//		};
+
+						//		index.ReceivesTransferValueFrom.Add( competency );
+						//	}
+						//}
+						//#endregion
+
+						//string objectOfAction = dr["ObjectOfAction"].ToString();
+						//if ( !string.IsNullOrWhiteSpace( objectOfAction ) )
+						//{
+						//	if ( ContainsUnicodeCharacter( objectOfAction ) )
+						//	{
+						//		objectOfAction = Regex.Replace( objectOfAction, @"[^\u0000-\u007F]+", string.Empty );
+						//	}
+						//	objectOfAction = objectOfAction.Replace( "&", " " );
+						//	var xDoc = new XDocument();
+						//	xDoc = XDocument.Parse( objectOfAction );
+						//	foreach ( var child in xDoc.Root.Elements() )
+						//	{
+						//		var competency = new IndexProperty
+						//		{
+						//			Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+						//			Id = ( int ) child.Attribute( "ResourceId" )
+						//		};
+
+						//		index.ObjectOfAction.Add( competency );
+						//	}
+						//}
+
 						#region Reference Frameworks - industries, occupations and classifications
-						string frameworks = dr[ "Frameworks" ].ToString();
+						string frameworks = dr["Frameworks"].ToString();
 						if ( !string.IsNullOrWhiteSpace( frameworks ) )
 						{
 							HandleFrameworks( index, frameworks );
@@ -2927,10 +3300,10 @@ namespace workIT.Factories
 							//	{
 							//		CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 							//		ReferenceFrameworkId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
-							//		Name = ( string )child.Attribute( "Name" ) ?? "",
-							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-							//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+							//		Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+							//		CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? string.Empty,
+							//		SchemaName = ( string )child.Attribute( "SchemaName" ) ?? string.Empty,
+							//		CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? string.Empty,
 							//	};
 
 							//	if ( framework.CategoryId == 11 )
@@ -2950,11 +3323,34 @@ namespace workIT.Factories
 
 
 						#endregion
+						//relationships 
+						//may need a fall back to populate the entity cache if no data
+						//or only do if a small number or maybe single implying simple reindex
+						//24-03-07 mp - no need to take the hit if not present
+						string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
+						if ( string.IsNullOrWhiteSpace( agentRelationshipsForEntity )  )
+						{
+							//&& ( result.Rows.Count == 1 || index.EntityStateId == 2 )
+							//NOTE: may want to disable this once everything rebuilt:
+							string statusMessage = string.Empty;
+							if (new EntityManager().EntityCacheUpdateAgentRelationshipsForLopp( index.RowId.ToString(), ref statusMessage ))
+							{
+								var ec = EntityManager.EntityCacheGetByGuid( index.RowId );
+								if ( ec != null && ec.Id > 1 && !string.IsNullOrWhiteSpace(ec.AgentRelationshipsForEntity ) ) 
+								{
+									HandleAgentRelationshipsForEntity( ec.AgentRelationshipsForEntity, index );
+								}								
+							}
+						}
+						else 
+						if ( agentRelationshipsForEntity.ToLower() != "none" )
+							HandleAgentRelationshipsForEntity( dr, index );
+
 
 						#region QualityAssurance
 						index.Org_QAAgentAndRoles = GetRowPossibleColumn( dr, "Org_QAAgentAndRoles" );
 
-						HandleAgentRelationshipsForEntity( dr, index );
+
 						//handle QA asserted by a third party (versus by the owner)
 						HandleDirectAgentRelationshipsForEntity( dr, index );
 
@@ -3001,6 +3397,12 @@ namespace workIT.Factories
 						}
 						else if ( GetPropertyId( 61, "loppReport:IsNotInRegistry", ref propertyId ) )
 							index.ReportFilters.Add( propertyId );
+						//
+						if ( index.IsNonCredit )
+						{
+							if ( GetPropertyId( 61, "loppReport:IsNonCredit", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						}
 						//
 						AddReportProperty( index, index.ResourceForCollection.Count, 61, "loppReport:IsPartOfCollection" );
 
@@ -3059,6 +3461,15 @@ namespace workIT.Factories
 						if ( index.Addresses.Count > 0 )
 							if ( GetPropertyId( 61, "loppReport:HasAddresses", ref propertyId ) )
 								index.ReportFilters.Add( propertyId );
+						if ( index.ProvidesTransferValueFor.Count > 0 )
+							if ( GetPropertyId( 61, "loppReport:ProvidesTransferValueFor", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ReceivesTransferValueFrom.Count > 0 )
+							if ( GetPropertyId( 61, "loppReport:ReceivesTransferValueFrom", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
+						if ( index.ObjectOfAction.Count > 0 )
+							if ( GetPropertyId( 61, "loppReport:ObjectOfAction", ref propertyId ) )
+								index.ReportFilters.Add( propertyId );
 
 						list.Add( index );
 					}
@@ -3075,7 +3486,7 @@ namespace workIT.Factories
                     DateTime completed = DateTime.Now;
                     var duration = completed.Subtract( started ).TotalSeconds;
 
-                    LoggingHelper.DoTrace( 2, string.Format( thisClassName+ ".LearningOpp_SearchForElastic - Page: {0} Complete loaded {1} records, in {2} seconds", pageNumber, cntr, duration ) );
+                    LoggingHelper.DoTrace( 2, string.Format( thisClassName+ ".LearningOpp_SearchForElastic - Page: {0} Complete. Loaded {1} records, in {2} seconds", pageNumber, cntr, duration ) );
 				}
 				return list;
 			}
@@ -3116,6 +3527,7 @@ namespace workIT.Factories
 					IsRecommendedForCount = item.IsRecommendedForCount,
 					IsAdvancedStandingForCount = item.IsAdvancedStandingForCount,
 					AdvancedStandingFromCount = item.AdvancedStandingFromCount,
+					IsNonCredit=item.IsNonCredit,
 					PreparationForCount = item.IsPreparationForCount,
 					PreparationFromCount = item.PreparationFromCount,
 					CompetenciesCount = item.Competencies.Count, //21-08-31 - use total competencies
@@ -3136,12 +3548,12 @@ namespace workIT.Factories
 				if ( index.EntityTypeId > 0 )
 				{
 					index.LearningEntityType = LearningOpportunityManager.MapLearningEntityType( index.EntityTypeId );
-					index.LearningEntityTypeLabel = LearningOpportunityManager.MapLearningEntityTypeLabel( index.EntityTypeId );
+					index.CTDLTypeLabel = LearningOpportunityManager.MapLearningEntityTypeLabel( index.EntityTypeId );
 					index.LearningTypeSchema = "ceterms:" +  index.LearningEntityType;
 				}
 				//
 				if ( item.PrimaryOrganizationId > 0 )
-					index.PrimaryOrganization = new CM.Organization() { Id = item.PrimaryOrganizationId, Name = item.PrimaryOrganizationName };
+					index.PrimaryOrganization = new MC.Organization() { Id = item.PrimaryOrganizationId, Name = item.PrimaryOrganizationName };
 				index.PrimaryOrganizationFriendlyName = FormatFriendlyTitle( index.PrimaryOrganizationName );
 
 				if ( index.EntityStateId == 2 )
@@ -3154,13 +3566,17 @@ namespace workIT.Factories
                 }
 				if ( item.ResourceDetail != null )
 					index.ResourceDetail = item.ResourceDetail;
-             
-                //
-                if ( index.CompetenciesCount == 0 && item.TeachesCompetencies != null && item.TeachesCompetencies.Any() )
+				else
+				{
+					LoggingHelper.DoTrace( 5, $"Lopp #{index.Id}, '{index.Name}', EntityStateId: {index.EntityStateId} missing resource detail" );
+				}
+
+				//
+				if ( index.CompetenciesCount == 0 && item.TeachesCompetencies != null && item.TeachesCompetencies.Any() )
 					index.CompetenciesCount = item.TeachesCompetencies.Count();
 
 				//addressess                
-				index.AvailableAt = item.Addresses.Select( x => new CM.Address
+				index.AvailableAt = item.Addresses.Select( x => new MC.Address
 				{
 					Latitude = x.Latitude,
 					Longitude = x.Longitude,
@@ -3183,22 +3599,22 @@ namespace workIT.Factories
 				}
 
 				var lwias = item.RegionIdentifier
-						.Where( b => b.IdentifierType == "illinois:LWIA" )
+						.Where( b => b.IdentifierType == illinoisLWIAIdentityType )
 						.ToList();
-				var lwias2 = ( from record in item.RegionIdentifier
-							   where record.IdentifierType == "illinois:LWIA"
-							   select new { record.IdentifierValueCode }
-							)
-						.ToList();
+				//var lwias2 = ( from record in item.RegionIdentifier
+				//			   where record.IdentifierType == illinoisLWIAIdentityType
+				//			   select new { record.IdentifierValueCode }
+				//			)
+				//		.ToList();
 				if ( lwias?.Count > 0 )
 				{
 
 				}
 				var edrs = item.RegionIdentifier
-						.Where( b => b.IdentifierType == "illinois:EDR" )
+						.Where( b => b.IdentifierType == illinoisEDRIdentityType )
 						.ToList();
 				var edrs2 = ( from record in item.RegionIdentifier
-							  where record.IdentifierType == "illinois:EDR"
+							  where record.IdentifierType == illinoisEDRIdentityType
 							  select new { record.IdentifierValueCode }
 							)
 						.ToList();
@@ -3223,6 +3639,15 @@ namespace workIT.Factories
 				index.AudienceTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_TYPE, false, false );
 				index.AudienceLevelTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL ).ToList(), CodesManager.PROPERTY_CATEGORY_AUDIENCE_LEVEL, false, false );
 				index.AssessmentMethodTypes = Fill_CodeItemResults( item.LoppProperties.Where( x => x.CategoryId == ( int )CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type ).ToList(), CodesManager.PROPERTY_CATEGORY_Assessment_Method_Type, false, false );
+				//
+				if ( item.ProvidesTransferValueFor.Count > 0 )
+					index.ProvidesTransferValueForElastic = Fill_CodeItemResults( item.ProvidesTransferValueFor, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
+				if ( item.ReceivesTransferValueFrom.Count > 0 )
+					index.ReceivesTransferValueFromElastic = Fill_CodeItemResults( item.ReceivesTransferValueFrom, CodesManager.ENTITY_TYPE_TRANSFER_VALUE_PROFILE, false, false );
+				//
+				if ( item.ObjectOfAction.Count > 0 )
+					index.ObjectOfActionElastic = Fill_CodeItemResults( item.ObjectOfAction, CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION, false, false );
 				//
 				if ( index.AggregateDataProfileCount > 0 || index.DataSetProfileCount > 0 )
 				{
@@ -3264,7 +3689,7 @@ namespace workIT.Factories
 			var index = new CompetencyFrameworkIndex();
 			var list = new List<CompetencyFrameworkIndex>();
 			if ( pageSize < 10 )
-				pageSize = 2000;
+				pageSize = 200;
 
 			var result = new DataTable();
 			LoggingHelper.DoTrace( 2, "GetAllForElastic - Starting. filter\r\n " + filter );
@@ -3277,7 +3702,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "newest" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -3327,21 +3752,21 @@ namespace workIT.Factories
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
-						index.SourceUrl = GetRowColumn( dr, "SourceUrl", "" );
+						index.SourceUrl = GetRowColumn( dr, "SourceUrl", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						//add helpers
 						//20-06-11 - need to ensure have data for owner, creator, publisher
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
+
 						//used for autocomplete and phrase prefix queries
-						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
 						index.ListTitle = index.Name;
 						if ( index.PrimaryOrganizationName.Length > 0 && index.Name.IndexOf( index.PrimaryOrganizationName ) == -1 )
@@ -3351,27 +3776,33 @@ namespace workIT.Factories
 							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
 						}
 						//
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
-						index.CompetencyFrameworkGraph = GetRowPossibleColumn( dr, "CompetencyFrameworkGraph", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
+						//24-04-17 mp - the graph can be quite large and it is not being used, so stopping adding to elastic
+						index.CompetencyFrameworkGraph = string.Empty;//GetRowPossibleColumn( dr, "CompetencyFrameworkGraph", string.Empty );
+
 						index.TotalCompetencies = GetRowPossibleColumn( dr, "TotalCompetencies", 0 );
-						var competenciesStore = GetRowPossibleColumn( dr, "CompetenciesStore", "" );
+						var competenciesStore = GetRowPossibleColumn( dr, "CompetenciesStore", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( competenciesStore ) )
 						{
 							//20-07-02 - changed to just store competencies in CompetencyFrameworkGraph
 							//populate competencies - max of??
 							index.Competencies = LoadCompetencies( index.Name, competenciesStore );
 						}
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
 
+						#endregion
 						index.ReferencedByAssessments = GetRowPossibleColumn( dr, "ReferencedByAssessments", 0 );
 						index.ReferencedByCredentials = GetRowPossibleColumn( dr, "ReferencedByCredentials", 0 );
 						index.ReferencedByLearningOpportunities = GetRowPossibleColumn( dr, "ReferencedByLearningOpportunities", 0 );
@@ -3414,9 +3845,9 @@ namespace workIT.Factories
 			try
 			{
 
-				var l1 = JsonConvert.DeserializeObject<List<IndexCompetency>>( competencyList );
+				var input = JsonConvert.DeserializeObject<List<IndexCompetency>>( competencyList );
 
-				foreach ( var item in l1 )
+				foreach ( var item in input )
 				{
 					cntr++;
 					list.Add( item );
@@ -3498,16 +3929,22 @@ namespace workIT.Factories
 					OrganizationCTID = oi.OwnerOrganizationCTID,
 					OrganizationId = oi.PrimaryOrganizationId,
 					//FrameworkUri = oi.FrameworkUri,
-					CredentialRegistryId = oi.CredentialRegistryId,
+					//CredentialRegistryId = oi.CredentialRegistryId,
 					EntityStateId = oi.EntityStateId,
 					//DateEffective = ci.DateEffective,
 					Created = oi.Created,
 					LastUpdated = oi.LastUpdated,
 				};
+				index.PrimaryOrganizationCTID = oi.OwnerOrganizationCTID;
 				if ( oi.PrimaryOrganizationId > 0)
 				{
 					index.PrimaryOrganization = OrganizationManager.GetForSummary( oi.PrimaryOrganizationId );
+				} else if ( !string.IsNullOrWhiteSpace( oi.PrimaryOrganizationCTID))
+				{
+					index.PrimaryOrganization = OrganizationManager.GetMinimumSummaryByCtid( oi.PrimaryOrganizationCTID );
 				}
+
+				//NOTE: these are not used in the search results yet
 				index.ReferencedByAssessments = oi.ReferencedByAssessments;
 				index.ReferencedByCredentials = oi.ReferencedByCredentials;
 				index.ReferencedByLearningOpportunities = oi.ReferencedByLearningOpportunities;
@@ -3599,7 +4036,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -3649,20 +4086,20 @@ namespace workIT.Factories
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						//add helpers
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -3674,31 +4111,45 @@ namespace workIT.Factories
 							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
 						}
                         //
-						var properties = GetRowColumn( dr, "Properties", "" );
+						var properties = GetRowColumn( dr, "Properties", string.Empty );
                         if ( !string.IsNullOrWhiteSpace( properties ) )
                         {
-                            var pcp = JsonConvert.DeserializeObject<CM.PathwayJSONProperties>( properties );
+                            var pcp = JsonConvert.DeserializeObject<MC.PathwayJSONProperties>( properties );
                             if ( pcp != null )
                             {
                                 index.AllowUseOfPathwayDisplay = pcp.AllowUseOfPathwayDisplay;
                             }
                         }
-                        //
-                        //index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
-                        //index.PathwayGraph = GetRowPossibleColumn( dr, "PathwayGraph", "" );
-                        //if ( !string.IsNullOrWhiteSpace( index.PathwayGraph ) )
-                        //{
-                        //	//populate competencies
-                        //	index.Competencies = new List<IndexCompetency>();
-                        //}
-                        string date = GetRowColumn( dr, "Created", "" );
+
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.Pathway>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "Pathway_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						//
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
+						//index.PathwayGraph = GetRowPossibleColumn( dr, "PathwayGraph", string.Empty );
+						//if ( !string.IsNullOrWhiteSpace( index.PathwayGraph ) )
+						//{
+						//	//populate competencies
+						//	index.Competencies = new List<IndexCompetency>();
+						//}
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 						
@@ -3731,7 +4182,7 @@ namespace workIT.Factories
 
 						#endregion
 						#region Subjects
-						var subjects = GetRowColumn( dr, "TextValues", "" );
+						var subjects = GetRowColumn( dr, "TextValues", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( subjects ) )
 						{
 							var xDoc = new XDocument();
@@ -3750,7 +4201,7 @@ namespace workIT.Factories
 										{
 											if ( outputId == 34 )
 												index.SubjectAreas.Add( text );
-											else if ( outputId == 35 )
+											else if ( outputId == CodesManager.PROPERTY_CATEGORY_KEYWORD )
 												index.Keyword.Add( text );
 										}
 								}
@@ -3790,16 +4241,16 @@ namespace workIT.Factories
 		}
 
 
-		public static List<CM.CommonSearchSummary> Pathway_MapFromElastic( List<PathwayIndex> Pathways, int pageNbr = 1, int pageSize = 50)
+		public static List<MC.CommonSearchSummary> Pathway_MapFromElastic( List<PathwayIndex> Pathways, int pageNbr = 1, int pageSize = 50)
 		{
-			var list = new List<CM.CommonSearchSummary>();
+			var list = new List<MC.CommonSearchSummary>();
 			int rowNbr = ( pageNbr - 1 ) * pageSize;
 
 			foreach ( var item in Pathways )
 			{
 				rowNbr++;
 
-				var index = new CM.CommonSearchSummary
+				var index = new MC.CommonSearchSummary
 				{
 					Id = item.Id,
 					ResultNumber = rowNbr,
@@ -3865,7 +4316,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-                    command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+                    command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
                     command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
                     command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
                     command.CommandTimeout = 300;
@@ -3911,18 +4362,18 @@ namespace workIT.Factories
 						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						//add helpers
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -3934,39 +4385,54 @@ namespace workIT.Factories
 							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
 						}
 						//
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 
 						//pathways
-						string pathways = GetRowColumn( dr, "HasPathways", "" );
+						string pathways = GetRowColumn( dr, "HasPathways", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( pathways ) )
 						{
-							index.Pathways = new List<EntityReference>();
+							index.Pathways = new List<IndexEntityReference>();
 							var xDoc = new XDocument();
 							xDoc = XDocument.Parse( pathways );
 							foreach ( var child in xDoc.Root.Elements() )
 							{
-								var eref = new EntityReference
+								var eref = new IndexEntityReference
 								{
-									EntityType="Pathway", EntityTypeId=8,
+									EntityType="Pathway", 
+									EntityTypeId=8,
 									EntityBaseId = int.Parse( child.Attribute( "PathwayId" ).Value ),
-									EntityName = ( string )child.Attribute( "Pathway" ) ?? ""
+									EntityName = ( string )child.Attribute( "Pathway" ) ?? string.Empty
 								};
 								index.Pathways.Add( eref );
 							}//
 						}
-						//relationships
-						HandleAgentRelationshipsForEntity( dr, index );
+
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.PathwaySet>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "PathwaySet_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+                        //relationships
+                        HandleAgentRelationshipsForEntity( dr, index );
 						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
 
@@ -4010,13 +4476,13 @@ namespace workIT.Factories
 		}
 
 
-		public static List<CM.PathwaySetSummary> PathwaySet_MapFromElastic( List<GenericIndex> PathwaySets )
+		public static List<MC.PathwaySetSummary> PathwaySet_MapFromElastic( List<GenericIndex> PathwaySets )
 		{
-			var list = new List<CM.PathwaySetSummary>();
+			var list = new List<MC.PathwaySetSummary>();
 
 			foreach ( var oi in PathwaySets )
 			{
-				var index = new CM.PathwaySetSummary
+				var index = new MC.PathwaySetSummary
 				{
 					Id = oi.Id,
 					Name = oi.Name,
@@ -4074,7 +4540,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -4126,7 +4592,7 @@ namespace workIT.Factories
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
 						//needs to be a list. Just store first one
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 						if ( !string.IsNullOrWhiteSpace( index.SubjectWebpage ) )
 						{
 							//do a split
@@ -4142,15 +4608,15 @@ namespace workIT.Factories
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						//
 						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
 						index.LifeCycleStatusType = dr["LifeCycleStatusType"].ToString();
 						//add helpers
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -4162,16 +4628,16 @@ namespace workIT.Factories
 							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
 						}
 						//
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						#region Properties
 						try
 						{
-							var properties = GetRowColumn( dr, "CollectionProperties", "" );
+							var properties = GetRowColumn( dr, "CollectionProperties", string.Empty );
 							if ( !string.IsNullOrEmpty( properties ) )
 							{
 								properties = properties.Replace( "&", " " );
@@ -4198,7 +4664,7 @@ namespace workIT.Factories
 							}
 
 							//get first 'n' collection members
-							var collectionGraph = GetRowColumn( dr, "CollectionGraph", "" );
+							var collectionGraph = GetRowColumn( dr, "CollectionGraph", string.Empty );
 							if (!string.IsNullOrEmpty( collectionGraph ) )
 							{
 
@@ -4215,8 +4681,8 @@ namespace workIT.Factories
 
 
                         //temp - included list of for and from credentials - will like use the counts and ajax gets
-                        //var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
-                        //var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
+                        //var credentialsFor = GetRowColumn( dr, "CredentialsFor", string.Empty );
+                        //var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", string.Empty );
 
                         if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
 						{
@@ -4234,7 +4700,7 @@ namespace workIT.Factories
                         #endregion
                         try
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.Collection>( resourceDetail );
@@ -4243,8 +4709,9 @@ namespace workIT.Factories
                                 HandleResourceHasSupportService( index, resource.HasSupportService );
                             }
                         }
-                        catch
+                        catch ( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "Collection_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
                         #region Custom Reports
                         var reportCategoryId = 71;
@@ -4262,7 +4729,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Collection_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Collection_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -4304,7 +4771,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -4359,18 +4826,18 @@ namespace workIT.Factories
 						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
-						//index.Source = GetRowColumn( dr, "Source", "" );
+						//index.Source = GetRowColumn( dr, "Source", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						/* there is not owning org, etc?		*/
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -4383,26 +4850,41 @@ namespace workIT.Factories
 						}
 				
 
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
-						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
-						//if ( IsValidDate( date ) )
-						//	index.LastUpdated = DateTime.Parse( date );
-						//counts
+                        //define LastUpdated to be EntityLastUpdated
+                        //date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+                        //if ( IsValidDate( date ) )
+                        //	index.LastUpdated = DateTime.Parse( date );
+                        //
 
-						#region AgentRelationshipsForEntity
-						//do we need these
-						//HandleAgentRelationshipsForEntity( dr, index );
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.ConceptScheme>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
 
-						#endregion
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "ConceptScheme_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
 
-						#region Custom Reports
-						var reportCategoryId = 95;//??
+                        #region AgentRelationshipsForEntity
+                        //do we need these
+                        //HandleAgentRelationshipsForEntity( dr, index );
+
+                        #endregion
+
+                        #region Custom Reports
+                        var reportCategoryId = 95;//??
 												  //TODO
 
 
@@ -4417,7 +4899,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "ConceptScheme_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "ConceptScheme_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -4449,7 +4931,7 @@ namespace workIT.Factories
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-                    command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+                    command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
                     command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
                     command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
                     command.CommandTimeout = 300;
@@ -4500,18 +4982,18 @@ namespace workIT.Factories
                         index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
                         //index.NameIndex = cntr * 1000;
                         index.Name = GetRowColumn( dr, "Name", "missing" );
-                        //index.Source = GetRowColumn( dr, "Source", "" );
+                        //index.Source = GetRowColumn( dr, "Source", string.Empty );
 
                         string rowId = GetRowColumn( dr, "RowId" );
                         if (IsValidGuid( rowId ))
                             index.RowId = new Guid( rowId );
 
-                        index.Description = GetRowColumn( dr, "Description", "" );
-                        index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+                        index.Description = GetRowColumn( dr, "Description", string.Empty );
+                        index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
                         /* there is not owning org, etc?		*/
-                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
                         index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-                        index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
                         //used for autocomplete and phrase prefix queries
                         index.PrimaryOrganizationName = index.PrimaryOrganizationName;
                         index.NameOrganizationKey = index.Name;
@@ -4524,26 +5006,39 @@ namespace workIT.Factories
                         }
 
 
-                        string date = GetRowColumn( dr, "Created", "" );
+                        string date = GetRowColumn( dr, "Created", string.Empty );
                         if (IsValidDate( date ))
                             index.Created = DateTime.Parse( date );
-                        date = GetRowColumn( dr, "LastUpdated", "" );
+                        date = GetRowColumn( dr, "LastUpdated", string.Empty );
                         if (IsValidDate( date ))
                             index.LastUpdated = DateTime.Parse( date );
-                        //define LastUpdated to be EntityLastUpdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
-                        //if ( IsValidDate( date ) )
-                        //	index.LastUpdated = DateTime.Parse( date );
-                        //counts
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+						//counts
 
-                        #region AgentRelationshipsForEntity
-                        //do we need these
-                        //HandleAgentRelationshipsForEntity( dr, index );
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.ProgressionModel>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "ProgressionModel_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						#region AgentRelationshipsForEntity
+						//do we need these
+						//HandleAgentRelationshipsForEntity( dr, index );
 
-                        #endregion
+						#endregion
 
-                        #region Custom Reports
-                        var reportCategoryId = 95;//??
+						#region Custom Reports
+						var reportCategoryId = 95;//??
                                                   //TODO
 
 
@@ -4558,14 +5053,189 @@ namespace workIT.Factories
                 }
                 finally
                 {
-                    LoggingHelper.DoTrace( 2, string.Format( "ProgressionModel_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+                    LoggingHelper.DoTrace( 2, string.Format( "ProgressionModel_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
                 }
 
 
                 return list;
             }
         }
+		#region CredentialingAction Elastic Index 
+		public static List<ManyInOneIndex> CredentialingAction_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "CredentialingAction_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+				using ( SqlCommand command = new SqlCommand( "[CredentialingAction.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
 
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[command.Parameters.Count - 1].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+						return list;
+					}
+				}
+				int costProfilesCount = 0;
+				int conditionProfilesCount = 0;
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " loading record: {0}", cntr ) );
+
+						index = new ManyInOneIndex();
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_CREDENTIALING_ACTION;
+						//or actual short URI?
+						index.EntityType = dr["ActionType"].ToString();
+						index.CTDLType = GetRowColumn( dr, "ActionType" );
+						//
+
+						//Need EntityId as the PK for elastic
+						index.EntityId = GetRowColumn( dr, "EntityId", 0 );
+						index.Name = dr["Name"].ToString();
+						//if no name, how to construct one?
+						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
+
+						index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
+						index.FriendlyName = FormatFriendlyTitle( index.Name );
+						index.Description = dr["Description"].ToString();
+						string rowId = dr["RowId"].ToString();
+						index.RowId = new Guid( rowId );
+
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
+
+						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "PrimaryOrganizationName", string.Empty );
+						index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "PrimaryOrganizationId", 0 );
+						index.PrimaryOrganizationCTID = dr["PrimaryOrganizationCtid"].ToString();
+						index.NameOrganizationKey = index.Name;
+						index.ListTitle = index.Name;
+						if ( index.PrimaryOrganizationName.Length > 0 && index.Name.IndexOf( index.PrimaryOrganizationName ) == -1 )
+						{
+							index.NameOrganizationKey = index.Name + " " + index.PrimaryOrganizationName;
+							//ListTitle is not used anymore
+							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
+						}
+
+
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.CredentialingAction>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "CredentialingAction_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						//don't really need these dates?
+						var date = GetRowColumn( dr, "StartDate", string.Empty );
+						if ( IsValidDate( date ) )
+							index.StartDate = ( DateTime.Parse( date ).ToString( "yyyy-MM-dd" ) );
+						else
+							index.StartDate = string.Empty;
+						//
+						date = GetRowColumn( dr, "EndDate", string.Empty );
+						if ( IsValidDate( date ) )
+							index.EndDate = date;
+						else
+							index.EndDate = string.Empty;
+
+						date = GetRowColumn( dr, "Created", string.Empty );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated => no should be registry last updated which is the base lastupdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+
+						//don't thinks this is necessary!
+						//	NO - should be adding filters where concepts exist.
+						//	BUT can it be made general (to reuse for different status types) - maybe replace life cycle with a generic internal status property
+						//index.ActionStatusTypeId = GetRowColumn( dr, "ActionStatusTypeId", 0 );
+						//index.ActionStatusType = dr["ActionStatusType"].ToString();
+						//Huh what is this. May be a general property to use for instrument and other credentials
+						index.AboutCredentialList = GetRowColumn( dr, "Instrument", string.Empty );
+
+						#region AgentRelationshipsForEntity
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+						#region TextValues
+
+						//properties to add to textvalues
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+							index.TextValues.Add( index.CTID );
+
+
+						//
+
+						//if ( index.CommonConditionsCount > 0 )
+						//	if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:ReferencesCommonConditions", ref propertyId ) )
+						//		index.ReportFilters.Add( propertyId );
+
+
+						list.Add( index );
+					}
+					#endregion
+
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "CredentialingAction_SearchForElastic. Last Row: {0}, asmtId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+					var index2 = new ManyInOneIndex();
+					index2.Name = "EXCEPTION ENCOUNTERED";
+					index2.Description = ex.Message;
+					list.Add( index2 );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "CredentialingAction_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
+				}
+				return list;
+			}
+		}
+		#endregion
 		#region OutcomeData Elastic Index 
 		public static List<ManyInOneIndex> OutcomeData_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
 		{
@@ -4582,7 +5252,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -4627,18 +5297,34 @@ namespace workIT.Factories
 						index.EntityId = GetRowColumn( dr, "EntityId", 0 );
 						index.Name = dr[ "Name" ].ToString();
 						Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-						index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+						index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
 						index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
 						index.FriendlyName = FormatFriendlyTitle( index.Name );
 						index.Description = dr[ "Description" ].ToString();
+
+						if ( string.IsNullOrWhiteSpace( index.Name ) )
+						{
+							if ( index.Description?.Length < 250 )
+							{
+								index.Name = index.Description;
+							}
+							if ( !string.IsNullOrWhiteSpace( index.Description ) )
+							{
+								index.Name = index.Description?.Length < PortionOfDescriptionToUseForName ? index.Description : index.Description.Substring( 0, PortionOfDescriptionToUseForName ) + " ...";
+							}
+							else
+							{
+								index.Name = "Outcome Data";
+							}
+						}
 						string rowId = dr[ "RowId" ].ToString();
 						index.RowId = new Guid( rowId );
 
-						index.SubjectWebpage = GetRowColumn( dr, "Source", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "Source", string.Empty );
 
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "DataProviderName", "" );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "DataProviderName", string.Empty );
 						index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "DataProviderId", 0 );
 						index.PrimaryOrganizationCTID = dr[ "DataProviderCTID" ].ToString();
 
@@ -4650,41 +5336,52 @@ namespace workIT.Factories
 							//ListTitle is not used anymore
 							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
 						}
-						index.AboutCredentialList = GetRowColumn( dr, "AboutCredentials", "" );
-						index.AboutLoppList = GetRowColumn( dr, "AboutLearningOpportunities", "" );
-						try
-						{
-							var dataSetTimePeriod = GetRowColumn( dr, "DataSetTimePeriodJson", "" );
-							if ( !string.IsNullOrWhiteSpace( dataSetTimePeriod ) )
-							{
-								var dataSetTimePeriodList = JsonConvert.DeserializeObject<List<DataSetTimeFrame>>( dataSetTimePeriod );
-								//TODO - what to exact for use in elastic queries?
-								//may just add as a blob and unpack in search results. First consider what might be in ResourceDetail and maybe use use the latter? 
-								index.DataSetTimePeriods = JObject.FromObject( dataSetTimePeriodList );
-							}
+						index.AboutCredentialList = GetRowColumn( dr, "AboutCredentials", string.Empty );
+						index.AboutLoppList = GetRowColumn( dr, "AboutLearningOpportunities", string.Empty );
 
-							var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
-							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
-							{
-								var resource = JsonConvert.DeserializeObject<APIM.DataSetProfile>( resourceDetail );
-								index.ResourceDetail = JObject.FromObject( resource );
-							}
-						}
-						catch
-						{
-						}
+						var dataSetTimePeriod = GetRowColumn( dr, "DataSetTimePeriodJson", string.Empty );
+						//try
+						//{
+						//	//24-04-01 mp - commenting out as causes exception and not in use
+
+						//	if ( !string.IsNullOrWhiteSpace( dataSetTimePeriod ) )
+						//	{
+						//		var dataSetTimePeriodList = JsonConvert.DeserializeObject<List<DataSetTimeFrame>>( dataSetTimePeriod );
+						//		//TODO - what to extact for use in elastic queries?
+						//		//may just add as a blob and unpack in search results. First consider what might be in ResourceDetail and maybe use use the latter? 
+						//		index.DataSetTimePeriods = JObject.FromObject( dataSetTimePeriodList );
+						//	}
+						//}
+						//catch (Exception ex) 
+						//{
+						//}
+						//
+
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.DataSetProfile>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "OutcomeData_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+
 						//don't really need these dates?
-						var date = GetRowColumn( dr, "Created", "" );
+						var date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated => no should be registry last updated which is the base lastupdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
-
 
 						#region AgentRelationshipsForEntity
 						HandleAgentRelationshipsForEntity( dr, index );
@@ -4734,11 +5431,11 @@ namespace workIT.Factories
 				}
 				catch ( Exception ex )
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "OutcomeData_SearchForElastic. Last Row: {0}, asmtId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+					LoggingHelper.DoTrace( 2, string.Format( "OutcomeData_SearchForElastic. Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "OutcomeData_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "OutcomeData_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 				return list;
 			}
@@ -4766,7 +5463,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -4818,18 +5515,18 @@ namespace workIT.Factories
                         index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 						/* there is not owning org, etc?	*/
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "PrimaryOrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -4842,25 +5539,111 @@ namespace workIT.Factories
 						}
 					
 						
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
+						index.LifeCycleStatusTypeId = GetRowPossibleColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = GetRowPossibleColumn( dr, "LifeCycleStatusType", string.Empty );
 						//counts
 
-						#region AgentRelationshipsForEntity
-						HandleAgentRelationshipsForEntity( dr, index );
+
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.Occupation>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "Occupation_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+
+                        #region AgentRelationshipsForEntity
+                        HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
 
+						#region TransferValues
+						string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+						if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+						{
+							if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+							{
+								providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( providesTransferValueFor );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexProperty
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Id = ( int ) child.Attribute( "ResourceId" )
+								};
+
+								index.ProvidesTransferValueFor.Add( competency );
+							}
+						}
+						string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+						if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+						{
+							if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+							{
+								receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( receivesTransferValueFor );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexProperty
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Id = ( int ) child.Attribute( "ResourceId" )
+								};
+
+								index.ReceivesTransferValueFrom.Add( competency );
+							}
+						}
+						#endregion
+
+						string competencies = dr["Competencies"].ToString();
+						if ( !string.IsNullOrWhiteSpace( competencies ) )
+						{
+							if ( ContainsUnicodeCharacter( competencies ) )
+							{
+								competencies = Regex.Replace( competencies, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							competencies = competencies.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( competencies );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexCompetency
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
+								};
+
+								index.Competencies.Add( competency );
+
+							}
+						}
+
 						#region Custom Reports
-						var reportCategoryId = 95;//??
+						AddReportProperty( index, index.Competencies.Count(), 58, "occupationReport:HasCompetencies" );
+						//var reportCategoryId = 95;//??
 						//TODO
 
 
@@ -4875,7 +5658,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Occupation_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Occupation_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -4900,7 +5683,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -4952,18 +5735,18 @@ namespace workIT.Factories
                         index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
                         /* there is not owning org, etc?	*/
-                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", "" );
+                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", string.Empty );
                         index.PrimaryOrganizationId = GetRowColumn( dr, "PrimaryOrganizationId", 0 );
-                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", string.Empty );
                         //used for autocomplete and phrase prefix queries
                         index.PrimaryOrganizationName = index.PrimaryOrganizationName;
                         index.NameOrganizationKey = index.Name;
@@ -4974,22 +5757,24 @@ namespace workIT.Factories
                             //ListTitle is not used anymore
                             index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
                         }
-                        string date = GetRowColumn( dr, "Created", "" );
+                        string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
-                        //define LastUpdated to be EntityLastUpdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
-                        //if ( IsValidDate( date ) )
-                        //	index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+						
+						index.LifeCycleStatusTypeId = GetRowPossibleColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType =  GetRowPossibleColumn( dr, "LifeCycleStatusType", string.Empty );
+						//counts
 
-                        //counts
-
-                        try
-                        {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+						try
+						{
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.Job>( resourceDetail );
@@ -4999,8 +5784,9 @@ namespace workIT.Factories
 
                             }
                         }
-                        catch
+                        catch ( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "Job_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
 
                         #region AgentRelationshipsForEntity
@@ -5008,12 +5794,80 @@ namespace workIT.Factories
                         HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
+						#region TransferValues
+						string providesTransferValueFor = dr["ProvidesTransferValueFor"].ToString();
+						if ( !string.IsNullOrWhiteSpace( providesTransferValueFor ) )
+						{
+							if ( ContainsUnicodeCharacter( providesTransferValueFor ) )
+							{
+								providesTransferValueFor = Regex.Replace( providesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							providesTransferValueFor = providesTransferValueFor.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( providesTransferValueFor );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexProperty
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Id = ( int ) child.Attribute( "ResourceId" )
+								};
+
+								index.ProvidesTransferValueFor.Add( competency );
+							}
+						}
+						string receivesTransferValueFor = dr["ReceivesTransferValueFrom"].ToString();
+						if ( !string.IsNullOrWhiteSpace( receivesTransferValueFor ) )
+						{
+							if ( ContainsUnicodeCharacter( receivesTransferValueFor ) )
+							{
+								receivesTransferValueFor = Regex.Replace( receivesTransferValueFor, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							receivesTransferValueFor = receivesTransferValueFor.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( receivesTransferValueFor );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexProperty
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Id = ( int ) child.Attribute( "ResourceId" )
+								};
+
+								index.ReceivesTransferValueFrom.Add( competency );
+							}
+						}
+						#endregion
+
+						string competencies = dr["Competencies"].ToString();
+						if ( !string.IsNullOrWhiteSpace( competencies ) )
+						{
+							if ( ContainsUnicodeCharacter( competencies ) )
+							{
+								competencies = Regex.Replace( competencies, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							competencies = competencies.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( competencies );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexCompetency
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
+								};
+
+								index.Competencies.Add( competency );
+
+							}
+						}
 
 						#region Custom Reports
+						AddReportProperty( index, index.Competencies.Count(), 58, "jobReport:HasCompetencies" );
 						//??var reportCategoryId = ??;
 						//TODO
 
-				
+
 						#endregion
 
 						list.Add( index );
@@ -5025,7 +5879,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Job_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Job_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -5049,7 +5903,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -5106,12 +5960,25 @@ namespace workIT.Factories
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+
+						if ( string.IsNullOrWhiteSpace( index.Name ) )
+						{
+							if ( !string.IsNullOrWhiteSpace( index.Description ) )
+							{
+								index.Name = index.Description?.Length < PortionOfDescriptionToUseForName ? index.Description : index.Description.Substring( 0, PortionOfDescriptionToUseForName ) + " ...";
+							}
+							else
+							{
+								index.Name = "Task";
+							}
+						}
+
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
                         /* there is not owning org, etc?	*/
-                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", "" );
+                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", string.Empty );
                         index.PrimaryOrganizationId = GetRowColumn( dr, "PrimaryOrganizationId", 0 );
-                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", string.Empty );
                         //used for autocomplete and phrase prefix queries
                         index.PrimaryOrganizationName = index.PrimaryOrganizationName;
                         index.NameOrganizationKey = index.Name;
@@ -5123,29 +5990,68 @@ namespace workIT.Factories
                             index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
                         }
 
-                        string date = GetRowColumn( dr, "Created", "" );
+                        string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
-                        //define LastUpdated to be EntityLastUpdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
-                        //if ( IsValidDate( date ) )
-                        //	index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
 
-                        //counts
+						index.LifeCycleStatusTypeId = GetRowPossibleColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = GetRowPossibleColumn( dr, "LifeCycleStatusType", string.Empty );
+						//counts
 
-                        if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
 
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.Task>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "Task_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
                         #region AgentRelationshipsForEntity
                         //do we need these
                         HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
 
+						string competencies = dr["Competencies"].ToString();
+						if ( !string.IsNullOrWhiteSpace( competencies ) )
+						{
+							if ( ContainsUnicodeCharacter( competencies ) )
+							{
+								competencies = Regex.Replace( competencies, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							competencies = competencies.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( competencies );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexCompetency
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
+								};
+
+								index.Competencies.Add( competency );
+
+							}
+						}
+
 						#region Custom Reports
+						AddReportProperty( index, index.Competencies.Count(), 58, "taskReport:HasCompetencies" );
 						//??var reportCategoryId = ??;
 						//TODO
 
@@ -5161,7 +6067,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "Task_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "Task_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -5186,7 +6092,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -5244,12 +6150,12 @@ namespace workIT.Factories
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
                         /* there is not owning org, etc?	*/
-                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", "" );
+                        index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", string.Empty );
                         index.PrimaryOrganizationId = GetRowColumn( dr, "PrimaryOrganizationId", 0 );
-                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", string.Empty );
                         //used for autocomplete and phrase prefix queries
                         index.PrimaryOrganizationName = index.PrimaryOrganizationName;
                         index.NameOrganizationKey = index.Name;
@@ -5260,28 +6166,68 @@ namespace workIT.Factories
                             //ListTitle is not used anymore
                             index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
                         }
-                        string date = GetRowColumn( dr, "Created", "" );
+                        string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
                         //define LastUpdated to be EntityLastUpdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
+                        //date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
                         //if ( IsValidDate( date ) )
                         //	index.LastUpdated = DateTime.Parse( date );
 
                         if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
-                        //counts
 
-                        #region AgentRelationshipsForEntity
-                        //do we need these
-                        HandleAgentRelationshipsForEntity( dr, index );
+                        try
+                        {
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+                            if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+                            {
+                                var resource = JsonConvert.DeserializeObject<APIM.WorkRole>( resourceDetail );
+                                index.ResourceDetail = JObject.FromObject( resource );
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "WorkRole_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						index.LifeCycleStatusTypeId = GetRowPossibleColumn( dr, "LifeCycleStatusTypeId", 0 );
+						index.LifeCycleStatusType = GetRowPossibleColumn( dr, "LifeCycleStatusType", string.Empty );
+						//counts
+
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
 
+						string competencies = dr["Competencies"].ToString();
+						if ( !string.IsNullOrWhiteSpace( competencies ) )
+						{
+							if ( ContainsUnicodeCharacter( competencies ) )
+							{
+								competencies = Regex.Replace( competencies, @"[^\u0000-\u007F]+", string.Empty );
+							}
+							competencies = competencies.Replace( "&", " " );
+							var xDoc = new XDocument();
+							xDoc = XDocument.Parse( competencies );
+							foreach ( var child in xDoc.Root.Elements() )
+							{
+								var competency = new IndexCompetency
+								{
+									Name = ( string ) child.Attribute( "Name" ) ?? string.Empty,
+									Description = ( string ) child.Attribute( "Description" ) ?? string.Empty
+								};
+
+								index.Competencies.Add( competency );
+
+							}
+						}
+
 						#region Custom Reports
+						AddReportProperty( index, index.Competencies.Count(), 58, "workroleReport:HasCompetencies" );
 						//??var reportCategoryId = ??;
 						//TODO
 
@@ -5297,7 +6243,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "WorkRole_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "WorkRole_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -5324,7 +6270,7 @@ namespace workIT.Factories
 				{
 					command.CommandType = CommandType.StoredProcedure;
 					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-					command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
 					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
 					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
 					command.CommandTimeout = 300;
@@ -5376,19 +6322,31 @@ namespace workIT.Factories
                         index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
 						//index.NameIndex = cntr * 1000;
 						index.Name = GetRowColumn( dr, "Name", "missing" );
-						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
 						string rowId = GetRowColumn( dr, "RowId" );
 						if ( IsValidGuid( rowId ) )
 							index.RowId = new Guid( rowId );
 
-						index.Description = GetRowColumn( dr, "Description", "" );
-						index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.TransferValueProfile>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "TransferValue_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
 						//add helpers
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
 						index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -5402,18 +6360,28 @@ namespace workIT.Factories
 						//
 						index.LifeCycleStatusTypeId = GetRowColumn( dr, "LifeCycleStatusTypeId", 0 );
 						index.LifeCycleStatusType = dr["LifeCycleStatusType"].ToString();
-						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+						//index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
 						if ( IsValidDate( date ) )
 							index.Created = DateTime.Parse( date );
-						date = GetRowColumn( dr, "LastUpdated", "" );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
 						if ( IsValidDate( date ) )
 							index.LastUpdated = DateTime.Parse( date );
-						//define LastUpdated to be EntityLastUpdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
-						//if ( IsValidDate( date ) )
-						//	index.LastUpdated = DateTime.Parse( date );
+
+						date = GetRowColumn( dr, "StartDate", string.Empty );
+						if ( IsValidDate( date ) )
+							index.StartDate = date;
+						else
+							index.StartDate = null;
+
+						//expirationDate
+						date = GetRowColumn( dr, "EndDate", string.Empty );
+						if ( IsValidDate( date ) )
+							index.EndDate = date;
+						else
+							index.EndDate = null;
+
 						//TransferIntermediariesFor
 						var transferIntermediariesFor = GetRowColumn( dr, "TransferIntermediariesFor" );
 						if ( !string.IsNullOrWhiteSpace( transferIntermediariesFor ) )
@@ -5426,6 +6394,49 @@ namespace workIT.Factories
 									index.TransferIntermediariesFor.Add( id );
 							}//
 						}
+
+						#region transfer value from/for
+						//
+						var transferValueFromJson = GetRowColumn( dr, "TransferValueFromJson" );
+						if ( !string.IsNullOrWhiteSpace( transferValueFromJson ) )
+						{
+							var transferValueFrom = JsonConvert.DeserializeObject<List<MC.TopLevelObject>>( transferValueFromJson );
+							index.TransferValueFrom = new List<IndexEntityReference>();
+							foreach ( var item in transferValueFrom )
+							{
+								index.TransferValueFrom.Add( new IndexEntityReference()
+								{
+									EntityName = item.Name,
+									EntityBaseId = item.Id,
+									EntityTypeId = item.EntityTypeId,
+									EntityType = item.EntityType,
+									EntityStateId = item.EntityStateId,
+									OrganizationName = item.OrganizationName,
+									OrganizationId = item.PrimaryOrganizationId,
+								} );
+							}
+						}
+
+						var transferValueForJson = GetRowColumn( dr, "TransferValueForJson" );
+						if ( !string.IsNullOrWhiteSpace( transferValueForJson ) )
+						{
+							var transferValueFor = JsonConvert.DeserializeObject<List<MC.TopLevelObject>>( transferValueForJson );
+							index.TransferValueFor = new List<IndexEntityReference>();
+							foreach (var item in transferValueFor )
+							{
+								index.TransferValueFor.Add( new IndexEntityReference()
+								{
+									EntityName = item.Name,
+									EntityBaseId = item.Id,
+									EntityTypeId = item.EntityTypeId,
+									EntityType = item.EntityType,			//might be safer to use resources for the link? No would need a CTID (or GUID?)
+									EntityStateId = item.EntityStateId,
+									OrganizationName = item.OrganizationName,
+									OrganizationId = item.PrimaryOrganizationId,
+								} );
+							}
+						}
+
 						//counts
 						index.TransferValueForCredentialsCount = GetRowColumn( dr, "TransferValueForCredentialsCount", 0 );
 						index.TransferValueFromCredentialsCount = GetRowColumn( dr, "TransferValueFromCredentialsCount", 0 );
@@ -5435,28 +6446,18 @@ namespace workIT.Factories
 
 						index.TransferValueForLoppsCount = GetRowColumn( dr, "TransferValueForLoppsCount", 0 );
 						index.TransferValueFromLoppsCount = GetRowColumn( dr, "TransferValueFromLoppsCount", 0 );
+						#endregion
 						//
 						index.TransferValueHasDevProcessCount = GetRowColumn( dr, "TransferValueHasDevProcessCount", 0 );
+						
 
-						//temp - included list of for and from credentials - will like use the counts and ajax gets
-						//var credentialsFor = GetRowColumn( dr, "CredentialsFor", "" );
-						//var credentialsFrom = GetRowColumn( dr, "CredentialsFrom", "" );
 
-						//not sure we need addresses?
-						if ( UtilityManager.GetAppKeyValue( "ifNoResourceAddressThenAddOrgAddresses", false ) )
-						{
-							var orgAddresses = GetRowPossibleColumn( dr, "OrgAddresses" );
-							if ( !string.IsNullOrWhiteSpace( orgAddresses ) )
-							{
-								FormatAddressesToElastic( index, orgAddresses, true );
-							}
-						}
-
-                        if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
-                        #region AgentRelationshipsForEntity
-                        //do we need these
-                        HandleAgentRelationshipsForEntity( dr, index );
+
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
 
 						#endregion
 
@@ -5473,7 +6474,7 @@ namespace workIT.Factories
 						AddReportProperty( index, index.TransferValueForLoppsCount, reportCategoryId, "Has Transfer Value For Learning Opportunities", "tvpReport:HasTransferValueForLopps" ); 
 						AddReportProperty( index, index.TransferValueFromLoppsCount, reportCategoryId, "Has Transfer Value From Learning Opportunities", "tvpReport:HasTransferValueFromLopps" );
 						//
-						AddReportProperty( index, index.TransferValueHasDevProcessCount, reportCategoryId, "Has Transfer Value For Learning Opportunities", "tvpReport:TransferValueHasDevProcess" ); 
+						AddReportProperty( index, index.TransferValueHasDevProcessCount, reportCategoryId, "Has Transfer Value Development Process Profiles", "tvpReport:TransferValueHasDevProcess" ); 
 						#endregion
 
 						list.Add( index );
@@ -5485,7 +6486,7 @@ namespace workIT.Factories
 				}
 				finally
 				{
-					LoggingHelper.DoTrace( 2, string.Format( "TransferValue_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+					LoggingHelper.DoTrace( 2, string.Format( "TransferValue_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
 				}
 
 
@@ -5500,7 +6501,7 @@ namespace workIT.Factories
             var index = new ManyInOneIndex();
             var list = new List<ManyInOneIndex>();
             var result = new DataTable();
-            LoggingHelper.DoTrace( 2, "TransferValue_SearchForElastic - Starting. filter\r\n " + filter );
+            LoggingHelper.DoTrace( 2, "TransferIntermediary_SearchForElastic - Starting. filter\r\n " + filter );
             int cntr = 0;
             using ( SqlConnection c = new SqlConnection( connectionString ) )
             {
@@ -5510,7 +6511,7 @@ namespace workIT.Factories
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-                    command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+                    command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
                     command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
                     command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
                     command.CommandTimeout = 300;
@@ -5546,7 +6547,7 @@ namespace workIT.Factories
                     {
                         cntr++;
                         if ( cntr % 100 == 0 )
-                            LoggingHelper.DoTrace( 2, string.Format( " TransferValue loading record: {0}", cntr ) );
+                            LoggingHelper.DoTrace( 2, string.Format( " TransferIntermediary loading record: {0}", cntr ) );
                         if ( cntr == 450 )
                         {
 
@@ -5562,19 +6563,19 @@ namespace workIT.Factories
                         index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
                         //index.NameIndex = cntr * 1000;
                         index.Name = GetRowColumn( dr, "Name", "missing" );
-                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
                         string rowId = GetRowColumn( dr, "RowId" );
                         if ( IsValidGuid( rowId ) )
                             index.RowId = new Guid( rowId );
 
-                        index.Description = GetRowColumn( dr, "Description", "" );
-                        index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
+                        index.Description = GetRowColumn( dr, "Description", string.Empty );
+                        index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
 
 						//add helpers
-						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", "" );
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID", string.Empty );
                         index.PrimaryOrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-                        index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
 						//used for autocomplete and phrase prefix queries
 						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
 						index.NameOrganizationKey = index.Name;
@@ -5587,14 +6588,14 @@ namespace workIT.Factories
 						}
 						//
 
-						string date = GetRowColumn( dr, "Created", "" );
+						string date = GetRowColumn( dr, "Created", string.Empty );
                         if ( IsValidDate( date ) )
                             index.Created = DateTime.Parse( date );
-                        date = GetRowColumn( dr, "LastUpdated", "" );
+                        date = GetRowColumn( dr, "LastUpdated", string.Empty );
                         if ( IsValidDate( date ) )
                             index.LastUpdated = DateTime.Parse( date );
                         //define LastUpdated to be EntityLastUpdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
+                        //date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
                         //if ( IsValidDate( date ) )
                         //	index.LastUpdated = DateTime.Parse( date );
                         //IntermediaryForJson
@@ -5614,9 +6615,23 @@ namespace workIT.Factories
 						index.HasTransferValueProfiles = GetRowColumn( dr, "HasTransferValueProfiles", 0 );
                         if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
-                        #region AgentRelationshipsForEntity
-                        //do we need these
-                        HandleAgentRelationshipsForEntity( dr, index );
+
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.TransferIntermediary>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "TransferIntermediary_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
 
                         #endregion
 
@@ -5636,7 +6651,7 @@ namespace workIT.Factories
                 }
                 finally
                 {
-                    LoggingHelper.DoTrace( 2, string.Format( "TransferIntermediary_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+                    LoggingHelper.DoTrace( 2, string.Format( "TransferIntermediary_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
                 }
 
 
@@ -5652,7 +6667,8 @@ namespace workIT.Factories
             var index = new ManyInOneIndex();
             var list = new List<ManyInOneIndex>();
             var result = new DataTable();
-            LoggingHelper.DoTrace( 2, "SupportService_SearchForElastic - Starting. filter\r\n " + filter );
+			var thisEntityTypeId = CodesManager.ENTITY_TYPE_SUPPORT_SERVICE;
+			LoggingHelper.DoTrace( 2, "SupportService_SearchForElastic - Starting. filter\r\n " + filter );
             int cntr = 0;
             using ( SqlConnection c = new SqlConnection( connectionString ) )
             {
@@ -5661,7 +6677,7 @@ namespace workIT.Factories
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-                    command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+                    command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
                     command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
                     command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
                     command.CommandTimeout = 300;
@@ -5708,7 +6724,7 @@ namespace workIT.Factories
                         index.EntityId = GetRowColumn( dr, "EntityId", 0 );
                         index.Name = dr["Name"].ToString();
                         Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-                        index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+                        index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
                         index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
                         index.FriendlyName = FormatFriendlyTitle( index.Name );
@@ -5716,12 +6732,12 @@ namespace workIT.Factories
                         string rowId = dr["RowId"].ToString();
                         index.RowId = new Guid( rowId );
 
-                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
-                        index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                        //index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+                        index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+                        //index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-                        index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "OrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "OrganizationName", string.Empty );
                         index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "OrganizationId", 0 );
 
                         index.NameOrganizationKey = index.Name;
@@ -5739,32 +6755,39 @@ namespace workIT.Factories
 
                         try
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.SupportService>( resourceDetail );
                                 index.ResourceDetail = JObject.FromObject( resource );
                             }
                         }
-                        catch
+                        catch ( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "SupportService_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
                         //don't really need these dates?
-                        var date = GetRowColumn( dr, "DateEffective", "" );
+                        var date = GetRowColumn( dr, "DateEffective", string.Empty );
                         if ( IsValidDate( date ) )
                             index.DateEffective = ( DateTime.Parse( date ).ToString( "yyyy-MM-dd" ) );
                         else
-                            index.DateEffective = "";
-						
+                            index.DateEffective = string.Empty;
+
 						//expirationDate
-                        date = GetRowColumn( dr, "Created", "" );
+						date = GetRowColumn( dr, "ExpirationDate", string.Empty );
+						if ( IsValidDate( date ) )
+							index.ExpirationDate = date;
+						else
+							index.ExpirationDate = string.Empty;
+
+						date = GetRowColumn( dr, "Created", string.Empty );
                         if ( IsValidDate( date ) )
                             index.Created = DateTime.Parse( date );
-                        date = GetRowColumn( dr, "LastUpdated", "" );
+                        date = GetRowColumn( dr, "LastUpdated", string.Empty );
                         if ( IsValidDate( date ) )
                             index.LastUpdated = DateTime.Parse( date );
 						//define LastUpdated to be EntityLastUpdated => no should be registry last updated which is the base lastupdated
-						//date = GetRowColumn( dr, "EntityLastUpdated", "" );
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
 						//if ( IsValidDate( date ) )
 						//	index.LastUpdated = DateTime.Parse( date );
 
@@ -5797,8 +6820,8 @@ namespace workIT.Factories
                         if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
                         //these are not searchable, so skip. actually need AvailableOnlineAt for a report
-                        var availableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
-                        //index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+                        var availableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", string.Empty );
+                        //index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", string.Empty );
                         #endregion
 
                         #region SupportServiceProperties - these are stored to enable use by gray button clicks
@@ -5877,47 +6900,48 @@ namespace workIT.Factories
 						//indicator of in registry 
 						//how to make this more generic.
 						//Start with reusing asmt?
-						var supportServicePropertyCategory = 60; //for now
+						//if being generic, then can't use the namespace!
+						//var supportServicePropertyCategory = CodesManager.PROPERTY_CATEGORY_SUPPORT_SERVICE_REPORT_ITEM;
 
 						//always in registry, no blank nodes at this time!
        //                 if ( !string.IsNullOrWhiteSpace( index.CTID ) )
        //                 {
 							////perhaps schema name can just be generic for elastic!
-       //                     if ( GetPropertyId( supportServicePropertyCategory, "asmtReport:IsInRegistry", ref propertyId ) )
+       //                     if ( GetPropertyIdByEntityType( thisEntityTypeId, "asmtReport:IsInRegistry", ref propertyId ) )
        //                         index.ReportFilters.Add( propertyId );
        //                 }
-       //                 else if ( GetPropertyId( supportServicePropertyCategory, "asmtReport:IsNotInRegistry", ref propertyId ) )
+       //                 else if ( GetPropertyIdByEntityType( thisEntityTypeId, "asmtReport:IsNotInRegistry", ref propertyId ) )
        //                     index.ReportFilters.Add( propertyId );
                         //
 
 
                         if ( !string.IsNullOrWhiteSpace( availableOnlineAt ) )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:AvailableOnline", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:AvailableOnline", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         
                         //
                         if ( costProfilesCount > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:HasCostProfile", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:HasCostProfile", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
-                        if ( conditionProfilesCount > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:HasConditionProfile", ref propertyId ) )
+                        if ( conditionProfilesCount > 0 )		//if being generic, then can't use the namespace!
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:HasConditionProfile", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         //
 
                         if ( index.CommonConditionsCount > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:ReferencesCommonConditions", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:ReferencesCommonConditions", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         if ( index.CommonCostsCount > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:ReferencesCommonCosts", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:ReferencesCommonCosts", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         if ( index.FinancialAidCount > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:FinancialAid", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:FinancialAid", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         if ( index.HasOccupations )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:HasOccupations", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:HasOccupations", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
                         if ( index.Addresses.Count > 0 )
-                            if ( GetPropertyId( supportServicePropertyCategory, "supportSrvReport:HasAddresses", ref propertyId ) )
+                            if ( GetPropertyIdByEntityType( thisEntityTypeId, "supportSrvReport:HasAddresses", ref propertyId ) )
                                 index.ReportFilters.Add( propertyId );
 
                         list.Add( index );
@@ -5931,14 +6955,11 @@ namespace workIT.Factories
                 }
                 finally
                 {
-                    LoggingHelper.DoTrace( 2, string.Format( "SupportService_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+                    LoggingHelper.DoTrace( 2, string.Format( "SupportService_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
                 }
                 return list;
             }
         }
-
-
-
         #endregion
 
         #region ScheduledOffering Elastic Index 
@@ -5948,6 +6969,7 @@ namespace workIT.Factories
             var index = new ManyInOneIndex();
             var list = new List<ManyInOneIndex>();
             var result = new DataTable();
+			var thisEntityTypeId = CodesManager.ENTITY_TYPE_SCHEDULED_OFFERING;
             LoggingHelper.DoTrace( 2, "ScheduledOffering_SearchForElastic - Starting. filter\r\n " + filter );
             int cntr = 0;
             using ( SqlConnection c = new SqlConnection( connectionString ) )
@@ -5957,7 +6979,7 @@ namespace workIT.Factories
                 {
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
-                    command.Parameters.Add( new SqlParameter( "@SortOrder", "alpha" ) );
+                    command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
                     command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
                     command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
                     command.CommandTimeout = 300;
@@ -6004,7 +7026,7 @@ namespace workIT.Factories
                         index.EntityId = GetRowColumn( dr, "EntityId", 0 );
                         index.Name = dr["Name"].ToString();
                         Regex rgx = new Regex( "[^a-zA-Z0-9 -]" );
-                        index.NameAlphanumericOnly = rgx.Replace( index.Name, "" ).Replace( " ", "" ).Replace( "-", "" );
+                        index.NameAlphanumericOnly = rgx.Replace( index.Name, string.Empty ).Replace( " ", string.Empty ).Replace( "-", string.Empty );
 
                         index.EntityStateId = GetRowPossibleColumn( dr, "EntityStateId", 0 );
                         index.FriendlyName = FormatFriendlyTitle( index.Name );
@@ -6012,12 +7034,12 @@ namespace workIT.Factories
                         string rowId = dr["RowId"].ToString();
                         index.RowId = new Guid( rowId );
 
-                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", "" );
+                        index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
 
-                        index.CTID = GetRowPossibleColumn( dr, "CTID", "" );
-                        //index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", "" );
+                        index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+                        //index.CredentialRegistryId = GetRowPossibleColumn( dr, "CredentialRegistryId", string.Empty );
 
-                        index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "OrganizationName", "" );
+                        index.PrimaryOrganizationName = GetRowPossibleColumn( dr, "OrganizationName", string.Empty );
                         index.PrimaryOrganizationId = GetRowPossibleColumn( dr, "OrganizationId", 0 );
 
                         index.NameOrganizationKey = index.Name;
@@ -6034,7 +7056,7 @@ namespace workIT.Factories
                         //index.PrimaryOrganizationName = index.PrimaryOrganizationName;
                         try
                         {
-                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", "" );
+                            var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
                             if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
                             {
                                 var resource = JsonConvert.DeserializeObject<APIM.ScheduledOffering>( resourceDetail );
@@ -6043,25 +7065,26 @@ namespace workIT.Factories
                                 HandleResourceHasSupportService( index, resource.HasSupportService );
                             }
                         }
-                        catch
+                        catch ( Exception ex )
                         {
+                            LoggingHelper.LogError( ex, string.Format( "ScheduledOffering_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
                         }
                         //don't really need these dates?
-                        var date = GetRowColumn( dr, "DateEffective", "" );
+                        var date = GetRowColumn( dr, "DateEffective", string.Empty );
                         if ( IsValidDate( date ) )
                             index.DateEffective = ( DateTime.Parse( date ).ToString( "yyyy-MM-dd" ) );
                         else
-                            index.DateEffective = "";
+                            index.DateEffective = string.Empty;
 
                         //expirationDate
-                        date = GetRowColumn( dr, "Created", "" );
+                        date = GetRowColumn( dr, "Created", string.Empty );
                         if ( IsValidDate( date ) )
                             index.Created = DateTime.Parse( date );
-                        date = GetRowColumn( dr, "LastUpdated", "" );
+                        date = GetRowColumn( dr, "LastUpdated", string.Empty );
                         if ( IsValidDate( date ) )
                             index.LastUpdated = DateTime.Parse( date );
                         //define LastUpdated to be EntityLastUpdated => no should be registry last updated which is the base lastupdated
-                        //date = GetRowColumn( dr, "EntityLastUpdated", "" );
+                        //date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
                         //if ( IsValidDate( date ) )
                         //	index.LastUpdated = DateTime.Parse( date );
 
@@ -6091,8 +7114,8 @@ namespace workIT.Factories
                         if ( !string.IsNullOrWhiteSpace( index.CTID ) )
                             index.TextValues.Add( index.CTID );
                         //these are not searchable, so skip. actually need AvailableOnlineAt for a report
-                        var availableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", "" );
-                        //index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", "" );
+                        var availableOnlineAt = GetRowPossibleColumn( dr, "AvailableOnlineAt", string.Empty );
+                        //index.AvailabilityListing = GetRowPossibleColumn( dr, "AvailabilityListing", string.Empty );
                         #endregion
 
                         #region ScheduledOfferingProperties - these are stored to enable use by gray button clicks
@@ -6226,7 +7249,7 @@ namespace workIT.Factories
                 }
                 finally
                 {
-                    LoggingHelper.DoTrace( 2, string.Format( "ScheduledOffering_SearchForElastic - Page: {0} Complete loaded {1} records", pageNumber, cntr ) );
+                    LoggingHelper.DoTrace( 2, string.Format( "ScheduledOffering_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
                 }
                 return list;
             }
@@ -6234,14 +7257,190 @@ namespace workIT.Factories
 
 
 
-        #endregion
+		#endregion
+
+		public static List<ManyInOneIndex> Rubric_SearchForElastic( string filter, int pageSize, int pageNumber, ref int pTotalRows )
+		{
+			string connectionString = DBConnectionRO();
+
+			var index = new ManyInOneIndex();
+			var list = new List<ManyInOneIndex>();
+			var result = new DataTable();
+			LoggingHelper.DoTrace( 2, "Rubric_SearchForElastic - Starting. filter\r\n " + filter );
+			int cntr = 0;
+			using ( SqlConnection c = new SqlConnection( connectionString ) )
+			{
+				c.Open();
+
+				using ( SqlCommand command = new SqlCommand( "[Rubric.ElasticSearch]", c ) )
+				{
+					command.CommandType = CommandType.StoredProcedure;
+					command.Parameters.Add( new SqlParameter( "@Filter", filter ) );
+					command.Parameters.Add( new SqlParameter( "@SortOrder", DefaultSearchOrder ) );
+					command.Parameters.Add( new SqlParameter( "@StartPageIndex", pageNumber ) );
+					command.Parameters.Add( new SqlParameter( "@PageSize", pageSize ) );
+					command.CommandTimeout = 300;
+
+					SqlParameter totalRows = new SqlParameter( "@TotalRows", 0 );
+					totalRows.Direction = ParameterDirection.Output;
+					command.Parameters.Add( totalRows );
+
+					try
+					{
+						using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+						{
+							adapter.SelectCommand = command;
+							adapter.Fill( result );
+						}
+						string rows = command.Parameters[ command.Parameters.Count - 1 ].Value.ToString();
+						pTotalRows = Int32.Parse( rows );
+
+					}
+					catch ( Exception ex )
+					{
+						index = new ManyInOneIndex();
+						index.Name = "EXCEPTION ENCOUNTERED";
+						index.Description = ex.Message;
+						list.Add( index );
+
+						return list;
+					}
+				}
+				try
+				{
+					foreach ( DataRow dr in result.Rows )
+					{
+						cntr++;
+						if ( cntr % 100 == 0 )
+							LoggingHelper.DoTrace( 2, string.Format( " Rubric loading record: {0}", cntr ) );
+						if ( cntr == 450 )
+						{
+
+						}
+
+						index = new ManyInOneIndex();
+						index.EntityTypeId = CodesManager.ENTITY_TYPE_RUBRIC;
+						index.EntityType = "Rubric";
+						index.Id = GetRowColumn( dr, "Id", 0 );
+						//Need EntityId as the PK for elastic
+						index.EntityId = GetRowColumn( dr, "EntityId", 0 );
+
+						index.EntityStateId = GetRowColumn( dr, "EntityStateId", 1 );
+						//index.NameIndex = cntr * 1000;
+						index.Name = GetRowColumn( dr, "Name", "missing" );
+
+
+						string rowId = GetRowColumn( dr, "RowId" );
+						if ( IsValidGuid( rowId ) )
+							index.RowId = new Guid( rowId );
+
+						index.Description = GetRowColumn( dr, "Description", string.Empty );
+						index.SubjectWebpage = GetRowColumn( dr, "SubjectWebpage", string.Empty );
+						index.CTID = GetRowPossibleColumn( dr, "CTID", string.Empty );
+						/* there is not owning org, etc?	*/
+						index.PrimaryOrganizationCTID = GetRowColumn( dr, "PrimaryOrganizationCTID", string.Empty );
+						index.PrimaryOrganizationId = GetRowColumn( dr, "PrimaryOrganizationId", 0 );
+						index.PrimaryOrganizationName = GetRowColumn( dr, "PrimaryOrganizationName", string.Empty );
+						//used for autocomplete and phrase prefix queries
+						index.PrimaryOrganizationName = index.PrimaryOrganizationName;
+						index.NameOrganizationKey = index.Name;
+						index.ListTitle = index.Name;
+						if ( index.PrimaryOrganizationName.Length > 0 && index.Name.IndexOf( index.PrimaryOrganizationName ) == -1 )
+						{
+							index.NameOrganizationKey = index.Name + " " + index.PrimaryOrganizationName;
+							//ListTitle is not used anymore
+							index.ListTitle = index.Name + " (" + index.PrimaryOrganizationName + ")";
+						}
+						string date = GetRowColumn( dr, "Created", string.Empty );
+						if ( IsValidDate( date ) )
+							index.Created = DateTime.Parse( date );
+						date = GetRowColumn( dr, "LastUpdated", string.Empty );
+						if ( IsValidDate( date ) )
+							index.LastUpdated = DateTime.Parse( date );
+						//define LastUpdated to be EntityLastUpdated
+						//date = GetRowColumn( dr, "EntityLastUpdated", string.Empty );
+						//if ( IsValidDate( date ) )
+						//	index.LastUpdated = DateTime.Parse( date );
+						//
+
+						try
+						{
+							var resourceDetail = GetRowColumn( dr, "ResourceDetail", string.Empty );
+							if ( !string.IsNullOrWhiteSpace( resourceDetail ) )
+							{
+								var resource = JsonConvert.DeserializeObject<APIM.Rubric>( resourceDetail );
+								index.ResourceDetail = JObject.FromObject( resource );
+							}
+						}
+                        catch ( Exception ex )
+                        {
+                            LoggingHelper.LogError( ex, string.Format( "Rubric_SearchForElastic re: ResourceDetail Last Row: {0}, recordId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+                        }
+						if ( !string.IsNullOrWhiteSpace( index.CTID ) )
+							index.TextValues.Add( index.CTID );
+						//counts
+
+						#region AgentRelationshipsForEntity
+						//do we need these
+						HandleAgentRelationshipsForEntity( dr, index );
+
+						#endregion
+
+						#region Custom Reports
+						//??var reportCategoryId = ??;
+						//TODO
+
+
+						#endregion
+
+						list.Add( index );
+					}
+				}
+				catch ( Exception ex )
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Rubric_SearchForElastic. Last Row: {0}, CFId: {1} Exception: \r\n{2}", cntr, index.Id, ex.Message ) );
+				}
+				finally
+				{
+					LoggingHelper.DoTrace( 2, string.Format( "Rubric_SearchForElastic - Page: {0} Complete. Loaded {1} records", pageNumber, cntr ) );
+				}
+
+
+				return list;
+			}
+		}
 
 
 
+		#endregion
+		#region Helper methods
+		public static List<MC.TopLevelObject> GetAsTopLevelObject( IIndex index, string input )
+		{
+			var output = new List<MC.TopLevelObject>();
+			try
+			{
+				var list = JsonConvert.DeserializeObject<List<MC.TopLevelObject>>( input );
+				var cntr = 0;
+				foreach ( var item in list )
+				{
+					cntr++;
+					//probably want clean it up, or use a lighter object in the index
+					output.Add( item );
+					
+				}
+			}
+			catch
+			{
+			}
 
-        #endregion
-        #region Helper methods
-        public static void AddTextValue( IIndex index, string input, bool addingToPremium = false )
+			return output;
+		}
+
+
+
+		#endregion
+		#region Helper methods
+		public static void AddTextValue( IIndex index, string input, bool addingToPremium = false )
         {
             if ( string.IsNullOrWhiteSpace( input ) )
                 return;
@@ -6394,8 +7593,29 @@ namespace workIT.Factories
             return false;
         }
 
-        #endregion
-        public static void HandleFrameworks( IIndex index, string frameworks )
+		/// <summary>
+		/// NEW - no longer using CategoryId for new classes in EntityStatistic
+		/// </summary>
+		/// <param name="entityTypeId"></param>
+		/// <param name="schemaName"></param>
+		/// <param name="propertyId"></param>
+		/// <returns></returns>
+		public static bool GetPropertyIdByEntityType( int entityTypeId, string schemaName, ref int propertyId )
+		{
+			CodeItem index = CodesManager.GetEntityStatisticBySchema( entityTypeId, schemaName );
+			if ( index != null && index.Id > 0 )
+			{
+				propertyId = index.Id;
+				return true;
+			}
+			else
+			{
+				LoggingHelper.DoTrace( 5, string.Format( "WARNING: ElasticManager.GetPropertyId. A property was not found for: categoryId: {0}, schemaName: {1}, ", entityTypeId, schemaName ) );
+			}
+			return false;
+		}
+		#endregion
+		public static void HandleFrameworks( IIndex index, string frameworks )
 		{
 			var xDoc = new XDocument();
 			xDoc = XDocument.Parse( frameworks );
@@ -6405,10 +7625,10 @@ namespace workIT.Factories
 				{
 					CategoryId = int.Parse( child.Attribute( "CategoryId" ).Value ),
 					ReferenceFrameworkItemId = int.Parse( child.Attribute( "ReferenceFrameworkItemId" ).Value ),
-					Name = ( string )child.Attribute( "Name" ) ?? "",
-					CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? "",
-					SchemaName = ( string )child.Attribute( "SchemaName" ) ?? "",
-					CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? "",
+					Name = ( string )child.Attribute( "Name" ) ?? string.Empty,
+					CodeGroup = ( string )child.Attribute( "CodeGroup" ) ?? string.Empty,
+					SchemaName = ( string )child.Attribute( "SchemaName" ) ?? string.Empty,
+					CodedNotation = ( string )child.Attribute( "CodedNotation" ) ?? string.Empty,
 				};
 
 
@@ -6468,7 +7688,9 @@ namespace workIT.Factories
         public static void FormatAddressesToElastic( IIndex index, string addresses, bool skipIfMoreThanOne = false )
 		{
 			var xDoc = new XDocument();
-			//index.RegionIdentifier = new List<CM.IdentifierValue>();
+			//index.RegionIdentifier = new List<MC.IdentifierValue>();
+			if ( string.IsNullOrWhiteSpace( addresses ) )
+				return;
 
 			try
 			{
@@ -6480,42 +7702,49 @@ namespace workIT.Factories
                 }
 				foreach ( var child in xDoc.Root.Elements() )
 				{
-					string region = ( string )child.Attribute( "Region" ) ?? "";
-					string city = ( string )child.Attribute( "City" ) ?? "";
-					string country = ( string )child.Attribute( "Country" ) ?? "";
+					string region = ( string )child.Attribute( "Region" ) ?? string.Empty;
+					string city = ( string )child.Attribute( "City" ) ?? string.Empty;
+					string country = ( string )child.Attribute( "Country" ) ?? string.Empty;
 					//check for identifier
-					string identifierJson = ( string ) child.Attribute( "IdentifierJson" ) ?? "";
-					List<CM.IdentifierValue> identifier = null;
+					string identifierJson = ( string ) child.Attribute( "IdentifierJson" ) ?? string.Empty;
+					List<MC.IdentifierValue> identifier = null;
 					if ( !string.IsNullOrWhiteSpace( identifierJson ) )
 					{
-						identifier = JsonConvert.DeserializeObject<List<CM.IdentifierValue>>( identifierJson );
+						identifier = JsonConvert.DeserializeObject<List<MC.IdentifierValue>>( identifierJson );
 						//actually should eliminate duplicates
 						foreach(var item in identifier)
                         {
-							if ( item.IdentifierTypeName == "LWIA" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
-							{
-								item.IdentifierType = "illinois:LWIA";
-								//??
-								//item.IdentifierValueCode = "LWIA" + item.IdentifierValueCode;
-							} else if ( item.IdentifierTypeName == "EDR" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
-							{
-								item.IdentifierType = "illinois:EDR";
-								item.IdentifierValueCode = item.IdentifierValueCode;
-							}
-							else if ( region == "Illinois" && string.IsNullOrWhiteSpace( item.IdentifierTypeName )
-								&& item.IdentifierValueCode.Length < 3)
-							{
-								item.IdentifierType = "illinois:LWIA";
-								item.IdentifierTypeName = "LWIA";
-							}
-							var exists = index.RegionIdentifier.FirstOrDefault( s => s.IdentifierTypeName == item.IdentifierTypeName && s.IdentifierValueCode == item.IdentifierValueCode );
-							if ( exists == null || exists?.IdentifierTypeName == "" )
+                            //TODO - need to alter with use by other states
+                            if ( (item.IdentifierTypeName??string.Empty).ToLower() == "lwia" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
+                            {
+                                item.IdentifierTypeName = "LWIA";
+                                if ( region.ToLower() == "illinois" || region.ToLower() == "il" )
+                                    item.IdentifierType = illinoisLWIAIdentityType;
+                                else
+                                    item.IdentifierType = LWIAIdentityType;
+                                //??
+                                //item.IdentifierValueCode = "LWIA" + item.IdentifierValueCode;
+                            } else if ( ( item.IdentifierTypeName ?? string.Empty ) == "EDR" && string.IsNullOrWhiteSpace( item.IdentifierType ) )
+                            {
+                                item.IdentifierType = illinoisEDRIdentityType;
+                                item.IdentifierValueCode = item.IdentifierValueCode;
+                            }
+                            else if ( (region.ToLower() == "illinois" || region.ToLower() == "il" ) && string.IsNullOrWhiteSpace( item.IdentifierTypeName )
+                                && item.IdentifierValueCode.Length < 3)
+                            {
+                                //risky
+                                item.IdentifierType = illinoisLWIAIdentityType;
+                                item.IdentifierTypeName = "LWIA";
+                            }
+
+                            var exists = index.RegionIdentifier.FirstOrDefault( s => s.IdentifierTypeName == item.IdentifierTypeName && s.IdentifierValueCode == item.IdentifierValueCode );
+							if ( exists == null || exists?.IdentifierTypeName == string.Empty )
 							{
 								index.RegionIdentifier.Add( item );
 
-								if ( item.IdentifierType == "illinois:LWIA" )
+								if ( item.IdentifierType == illinoisLWIAIdentityType )
 									index.LWIAList.Add( item.IdentifierValueCode );
-								if ( item.IdentifierType == "illinois:EDR" )
+								if ( item.IdentifierType == illinoisEDRIdentityType )
 									index.EDRList.Add( item.IdentifierValueCode );
 							}
 						}
@@ -6526,12 +7755,12 @@ namespace workIT.Factories
 					{
 						Latitude = double.Parse( ( string )child.Attribute( "Latitude" ) ),
 						Longitude = double.Parse( ( string )child.Attribute( "Longitude" ) ),
-						StreetAddress = ( string )child.Attribute( "Address1" ) ?? "",
-						AddressLocality = ( string )child.Attribute( "City" ) ?? "",
-						AddressRegion = ( string )child.Attribute( "Region" ) ?? "",
-						PostalCode = ( string )child.Attribute( "PostalCode" ) ?? "",
-						PostOfficeBoxNumber = ( string ) child.Attribute( "PostOfficeBoxNumber" ) ?? "",
-						AddressCountry = ( string )child.Attribute( "Country" ) ?? "",
+						StreetAddress = ( string )child.Attribute( "Address1" ) ?? string.Empty,
+						AddressLocality = ( string )child.Attribute( "City" ) ?? string.Empty,
+						AddressRegion = ( string )child.Attribute( "Region" ) ?? string.Empty,
+						PostalCode = ( string )child.Attribute( "PostalCode" ) ?? string.Empty,
+						PostOfficeBoxNumber = ( string ) child.Attribute( "PostOfficeBoxNumber" ) ?? string.Empty,
+						AddressCountry = ( string )child.Attribute( "Country" ) ?? string.Empty,
 						Identifier = identifier,
 					} );
 					//Hmm, lat/lng might be useful
@@ -6555,15 +7784,15 @@ namespace workIT.Factories
 			if ( string.IsNullOrWhiteSpace( jsonProperties ) )
 				return;
 
-			var a = JsonConvert.DeserializeObject<CM.CredentialExternalProperties>( jsonProperties );
+			var a = JsonConvert.DeserializeObject<MC.CredentialExternalProperties>( jsonProperties );
 			if ( a != null && a.Addresses != null && a.Addresses.Any() )
 			{
 				foreach ( var item in a.Addresses )
 				{
-					string region = item.AddressRegion ?? "";
-					string city = item.AddressLocality ?? "";
-					string country = item.AddressCountry ?? "";
-					string identifier = item.IdentifierJson ?? "";
+					string region = item.AddressRegion ?? string.Empty;
+					string city = item.AddressLocality ?? string.Empty;
+					string country = item.AddressCountry ?? string.Empty;
+					string identifier = item.IdentifierJson ?? string.Empty;
 					if ( !string.IsNullOrWhiteSpace( identifier )) 
 					{
 						List<Entity_IdentifierValue> evIdentifier = JsonConvert.DeserializeObject<List<Entity_IdentifierValue>>( identifier );
@@ -6575,11 +7804,11 @@ namespace workIT.Factories
 						Latitude = item.Latitude,
 						Longitude = item.Longitude,
 						StreetAddress = item.StreetAddress,
-						//Address2 = item.Address2 ?? "",
+						//Address2 = item.Address2 ?? string.Empty,
 						AddressLocality = city,
 						AddressRegion = region,
 						PostalCode = item.PostalCode,
-						AddressCountry = item.AddressCountry ?? ""
+						AddressCountry = item.AddressCountry ?? string.Empty
 					} );
 					AddLocation( index, city, region, country );
 
@@ -6619,7 +7848,10 @@ namespace workIT.Factories
 				return;
 			//check if exists
 			if ( index.Regions.FindIndex( a => a == input ) < 0 )
+			{
 				index.Regions.Add( input.Trim() );
+				index.Keyword.Add( "region:" + input );
+			}
 		}
 		public static void AddCountry( IIndex index, string input )
 		{
@@ -6642,7 +7874,7 @@ namespace workIT.Factories
 				{
 					var widgetId = int.Parse( child.Attribute( "WidgetId" ).Value );
 					//future 
-					var section = ( string ) child.Attribute( "WidgetSection" ) ?? "";
+					var section = ( string ) child.Attribute( "WidgetSection" ) ?? string.Empty;
 					if ( widgetId > 0 && section == widgetSection )
 						index.ResourceForWidget.Add( widgetId );
 				}//
@@ -6659,26 +7891,27 @@ namespace workIT.Factories
 					var collectionId = int.Parse( child.Attribute( "CollectionId" ).Value );
 					if ( collectionId > 0  )
 						index.ResourceForCollection.Add( collectionId );
-					var name = ( string ) child.Attribute( "Collection" ) ?? "";
+					var name = ( string ) child.Attribute( "Collection" ) ?? string.Empty;
 					if ( !string.IsNullOrWhiteSpace(name) )
 						index.Collection.Add( name );
 				}//
 			}
 		}
-        //
+		//
+		[Obsolete]
         public static void HandleMemberOfTransferValue( IIndex index, DataRow dr )
         {
-            string list = GetRowPossibleColumn( dr, "TransferValueReference" );
-            if ( !string.IsNullOrWhiteSpace( list ) )
-            {
-                var xDoc = XDocument.Parse( list );
-                foreach ( var child in xDoc.Root.Elements() )
-                {
-                    var memberId = int.Parse( child.Attribute( "TransferValueProfileId" ).Value );
-                    if ( memberId > 0 )
-                        index.ResourceInTransferValue.Add( memberId );
-                }//
-            }
+            //string list = GetRowPossibleColumn( dr, "TransferValueReference" );
+            //if ( !string.IsNullOrWhiteSpace( list ) )
+            //{
+            //    var xDoc = XDocument.Parse( list );
+            //    foreach ( var child in xDoc.Root.Elements() )
+            //    {
+            //        var memberId = int.Parse( child.Attribute( "TransferValueProfileId" ).Value );
+            //        if ( memberId > 0 )
+            //            index.ResourceInTransferValue.Add( memberId );
+            //    }//
+            //}
         }
         //
         public static void HandleResourceHasSupportService( IIndex index, AJAXSettings hasSupportService )
@@ -6690,13 +7923,65 @@ namespace workIT.Factories
 
 			foreach (var item in outlines )
 			{
-				var id = ExtractIdFromURL( item.URL );
+				//NOTE: Meta_Id was added, so check for it first
+				var id = item.Meta_Id ?? 0;
+				if ( id == 0 )
+					id = ExtractIdFromURL( item.URL );
                 if ( id > 0 )
                     index.ResourceHasSupportService.Add( id );
             }
         }
-        //
-        public static void HandleAgentRelationshipsForEntity( DataRow dr, BaseIndex index)
+
+		public static List<IndexProperty> HandleResource( AJAXSettings input )
+		{
+			List<IndexProperty> output = new List<IndexProperty>();
+			if ( input == null || ( bool ) !input.Values?.Any() )
+				return output;
+			string transferValues = input.Values.ToString();
+
+			foreach ( var item in input.Values )
+			{
+				APIM.Outline inp = JsonConvert.DeserializeObject<APIM.Outline>( item.ToString() );
+				var competency = new IndexProperty
+				{
+					Name = inp.Label,
+					Id = inp.Meta_Id??0
+				};
+				output.Add( competency );
+			}
+			return output;
+		}
+		//
+	
+		/// <summary>
+		/// Check for data related to has transfer values
+		/// </summary>
+		/// <param name="index"></param>
+		/// <param name="hasTransferValues"></param>
+		/// <param name="transferValueType">1=provides; 2=receives</param>
+		public static void HandleResourceProvidesTransferValues( IIndex index, AJAXSettings hasTransferValues, int transferValueType  )
+		{
+			if ( hasTransferValues == null || ( bool ) !hasTransferValues.Values?.Any() )
+				return;
+			//TODO should add actual Id to AjaxSettings, otherwise need to extract from the URL
+			List<APIM.Outline> outlines = JsonConvert.DeserializeObject<List<APIM.Outline>>( hasTransferValues.Values.ToString() );
+
+			foreach ( var item in outlines )
+			{
+				var id = item.Meta_Id ?? 0;
+				if ( id == 0 )
+					id = ExtractIdFromURL( item.URL );
+				if ( id > 0 )
+				{
+					if ( transferValueType == 1 )
+						index.ResourceProvidesTransferValues.Add( id );
+					else
+						index.ResourceReceivesTransferValues.Add( id );
+				}
+			}
+		}
+		//
+		public static void HandleAgentRelationshipsForEntity( DataRow dr, BaseIndex index)
 		{
 			//we may be able to remove this property
 			//string agentRelations = GetRowPossibleColumn( dr, "AgentRelationships" );
@@ -6711,6 +7996,15 @@ namespace workIT.Factories
 			string agentRelationshipsForEntity = GetRowPossibleColumn( dr, "AgentRelationshipsForEntity" );
 			if ( !string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
 			{
+				HandleAgentRelationshipsForEntity( agentRelationshipsForEntity, index );
+			}
+		}
+
+		public static void HandleAgentRelationshipsForEntity( string agentRelationshipsForEntity, BaseIndex index )
+		{
+
+			if ( !string.IsNullOrWhiteSpace( agentRelationshipsForEntity ) )
+			{
 				if ( ContainsUnicodeCharacter( agentRelationshipsForEntity ) )
 				{
 					agentRelationshipsForEntity = Regex.Replace( agentRelationshipsForEntity, @"[^\u0000-\u007F]+", string.Empty );
@@ -6719,11 +8013,11 @@ namespace workIT.Factories
 				var xDoc = XDocument.Parse( agentRelationshipsForEntity );
 				foreach ( var child in xDoc.Root.Elements() )
 				{
-					string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
-					string relationshipTypeIds = ( string )child.Attribute( "RelationshipTypeIds" ) ?? "";
-					string relationships = ( string )child.Attribute( "Relationships" ) ?? "";
-                    //dropping this property as is not being used. From View: [Entity.AgentRelationshipIdCSV]
-                    string agentContextRoles = ( string )child.Attribute( "AgentContextRoles" ) ?? "";
+					string agentName = ( string ) child.Attribute( "AgentName" ) ?? string.Empty;
+					string relationshipTypeIds = ( string ) child.Attribute( "RelationshipTypeIds" ) ?? string.Empty;
+					string relationships = ( string ) child.Attribute( "Relationships" ) ?? string.Empty;
+					//dropping this property as is not being used. From View: [Entity.AgentRelationshipIdCSV]
+					string agentContextRoles = ( string ) child.Attribute( "AgentContextRoles" ) ?? string.Empty;
 
 					if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationshipTypeIds ) )
 					{
@@ -6735,7 +8029,7 @@ namespace workIT.Factories
 						var relationshipsList = new List<string>();
 						foreach ( var s in child.Attribute( "Relationships" ).Value.Split( new char[] { ',' } ) )
 						{
-							if (!string.IsNullOrWhiteSpace(s))
+							if ( !string.IsNullOrWhiteSpace( s ) )
 								relationshipsList.Add( s.Trim() );
 						}
 						var agentRelationshipsList = new List<string>();
@@ -6750,14 +8044,14 @@ namespace workIT.Factories
 							//todo get/split list of ids
 							//RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
 							RelationshipTypeIds = relationshipIds,
-							AgentUrl = ( string )child.Attribute( "AgentUrl" ) ?? "",
-							AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+							AgentUrl = ( string ) child.Attribute( "AgentUrl" ) ?? string.Empty,
+							AgentName = ( string ) child.Attribute( "AgentName" ) ?? string.Empty,
 							EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),
 							Relationships = relationshipsList,
 							AgentRelationships = agentRelationshipsList
 						} );
 						//add phrase. ex Accredited by microsoft. Should not be doing owned or offered by 
-						if ( !string.IsNullOrWhiteSpace( relationships ) && !string.IsNullOrWhiteSpace( agentName ) && relationships.ToLower().IndexOf("owned") == -1 && relationships.ToLower().IndexOf( "offered" ) == -1 )
+						if ( !string.IsNullOrWhiteSpace( relationships ) && !string.IsNullOrWhiteSpace( agentName ) && relationships.ToLower().IndexOf( "owned" ) == -1 && relationships.ToLower().IndexOf( "offered" ) == -1 )
 							index.QualityAssurancePhrase.Add( string.Format( "{0} {1}", relationships, agentName ) );
 					}
 				}
@@ -6779,7 +8073,7 @@ namespace workIT.Factories
 				var xDoc = XDocument.Parse( providers );
 				foreach ( var child in xDoc.Root.Elements() )
 				{
-					string agentName = ( string )child.Attribute( "DataProviderName" ) ?? "";
+					string agentName = ( string )child.Attribute( "DataProviderName" ) ?? string.Empty;
 
 					if ( !string.IsNullOrWhiteSpace( agentName )  )
 					{
@@ -6793,8 +8087,8 @@ namespace workIT.Factories
 						index.OutcomeProvidersForEntity.Add( new AgentRelationshipForEntity
 						{
 							OrgId = int.Parse( child.Attribute( "OrgId" ).Value ),
-							AgentName = ( string )child.Attribute( "DataProviderName" ) ?? "",
-							AgentUrl = ( string )child.Attribute( "SubjectWebpage" ) ?? "",
+							AgentName = ( string )child.Attribute( "DataProviderName" ) ?? string.Empty,
+							AgentUrl = ( string )child.Attribute( "SubjectWebpage" ) ?? string.Empty,
 							EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value ),							 
 							
 						} );
@@ -6826,11 +8120,11 @@ namespace workIT.Factories
 			var xDoc = XDocument.Parse( agentRelationshipsForEntity );
 			foreach ( var child in xDoc.Root.Elements() )
 			{
-				string agentName = ( string )child.Attribute( "AgentName" ) ?? "";
+				string agentName = ( string )child.Attribute( "AgentName" ) ?? string.Empty;
 				int orgId = int.Parse( child.Attribute( "OrgId" ).Value );
-				string relationshipTypeIds = ( string )child.Attribute( "RelationshipTypeIds" ) ?? "";
-				//string relationships = ( string )child.Attribute( "Relationships" ) ?? "";
-				//string agentContextRoles = ( string )child.Attribute( "AgentContextRoles" ) ?? "";
+				string relationshipTypeIds = ( string )child.Attribute( "RelationshipTypeIds" ) ?? string.Empty;
+				//string relationships = ( string )child.Attribute( "Relationships" ) ?? string.Empty;
+				//string agentContextRoles = ( string )child.Attribute( "AgentContextRoles" ) ?? string.Empty;
 
 				if ( !string.IsNullOrWhiteSpace( agentName ) && !string.IsNullOrWhiteSpace( relationshipTypeIds ) )
 				{
@@ -6853,7 +8147,7 @@ namespace workIT.Factories
 							//todo get/split list of ids
 							//RelationshipTypeId = int.Parse( child.Attribute( "RelationshipTypeId" ).Value ),
 							RelationshipTypeIds = relationshipIds,
-							AgentName = ( string )child.Attribute( "AgentName" ) ?? "",
+							AgentName = ( string )child.Attribute( "AgentName" ) ?? string.Empty,
 							EntityStateId = int.Parse( child.Attribute( "EntityStateId" ).Value )
 						} );
 						//add phrase. ex Accredited by microsoft. Should not be doing owned or offered by 

@@ -35,19 +35,19 @@ namespace workIT.Factories
         private static int SiteActivityAdd( ActivityLog log )
         {
             int count = 0;
-            string truncateMsg = "";
+            string truncateMsg = string.Empty;
             bool isBot = false;
-            string server = UtilityManager.GetAppKeyValue( "serverName", "" );
+            string server = UtilityManager.GetAppKeyValue( "serverName", string.Empty );
 
             string agent = GetUserAgent( ref isBot );
 
             if ( log.RelatedTargetUrl == null )
-                log.RelatedTargetUrl = "";
+                log.RelatedTargetUrl = string.Empty;
 
             if ( log.Referrer == null )
-                log.Referrer = "";
+                log.Referrer = string.Empty;
             if ( log.Comment == null )
-                log.Comment = "";
+                log.Comment = string.Empty;
             if ( log.SessionId == null || log.SessionId.Length < 10 )
                 log.SessionId = GetCurrentSessionId();
 
@@ -161,8 +161,9 @@ namespace workIT.Factories
             to.TargetUserId = from.TargetUserId;
             to.ActionByUserId = from.ActionByUserId;
             to.ActivityObjectId = from.ActivityObjectId;
+            to.ActivityObjectCTID = from.ActivityObjectCTID;
             to.ObjectRelatedId = from.ObjectRelatedId;
-
+            to.DataOwnerCTID = from.DataOwnerCTID;
             to.RelatedTargetUrl = from.RelatedTargetUrl;
             to.TargetObjectId = from.TargetObjectId;
             to.SessionId = from.SessionId;
@@ -183,7 +184,9 @@ namespace workIT.Factories
             to.TargetUserId = from.TargetUserId;
             to.ActionByUserId = from.ActionByUserId;
             to.ActivityObjectId = from.ActivityObjectId;
+            to.ActivityObjectCTID = from.ActivityObjectCTID;
             to.ObjectRelatedId = from.ObjectRelatedId;
+            to.DataOwnerCTID = from.DataOwnerCTID;
 
             to.RelatedTargetUrl = from.RelatedTargetUrl;
             to.TargetObjectId = from.TargetObjectId;
@@ -275,7 +278,7 @@ namespace workIT.Factories
 				if( HttpContext.Current != null)
 				{
 					ip = HttpContext.Current.Request.ServerVariables[ "HTTP_X_FORWARDED_FOR" ];
-					if ( ip == null || ip == "" || ip.ToLower() == "unknown" )
+					if ( ip == null || ip == string.Empty || ip.ToLower() == "unknown" )
 					{
 						ip = HttpContext.Current.Request.ServerVariables[ "REMOTE_ADDR" ];
 					}
@@ -291,7 +294,7 @@ namespace workIT.Factories
         } //
         private static string GetUserReferrer()
         {
-            string lRefererPage = "";
+            string lRefererPage = string.Empty;
 			try
 			{
 				if ( HttpContext.Current != null )
@@ -315,7 +318,7 @@ namespace workIT.Factories
         } //
         public static string GetUserAgent( ref bool isBot )
         {
-            string agent = "";
+            string agent = string.Empty;
             isBot = false;
 			try
 			{
@@ -527,7 +530,7 @@ namespace workIT.Factories
 
                 if ( string.IsNullOrEmpty( pFilter ) )
                 {
-                    pFilter = "";
+                    pFilter = string.Empty;
                 }
 
                 using ( SqlCommand command = new SqlCommand( "Activity_Search", c ) )
@@ -541,8 +544,9 @@ namespace workIT.Factories
                     SqlParameter totalRows = new SqlParameter( "@TotalRows", pTotalRows );
                     totalRows.Direction = ParameterDirection.Output;
                     command.Parameters.Add( totalRows );
+					command.CommandTimeout = 90; //The time in seconds to wait for the command to execute. The default is 30 seconds.
 
-                    using ( SqlDataAdapter adapter = new SqlDataAdapter() )
+					using ( SqlDataAdapter adapter = new SqlDataAdapter() )
                     {
                         adapter.SelectCommand = command;
                         adapter.Fill( result );
@@ -574,23 +578,23 @@ namespace workIT.Factories
                     item.Id = GetRowColumn( dr, "Id", 0 );
                     item.CreatedDate = GetRowColumn( dr, "CreatedDate", DateTime.Now );
                     item.ActivityType = GetRowColumn( dr, "ActivityType", "ActivityType" );
-                    item.Activity = GetRowColumn( dr, "Activity", "" );
-                    item.Event = GetRowColumn( dr, "Event", "" );
-                    item.Comment = GetRowColumn( dr, "Comment", "" );
-                    //item.ActionByUser = GetRowColumn( dr, "ActionByUser", "" );
+                    item.Activity = GetRowColumn( dr, "Activity", string.Empty );
+                    item.Event = GetRowColumn( dr, "Event", string.Empty );
+                    item.Comment = GetRowColumn( dr, "Comment", string.Empty );
+                    //item.ActionByUser = GetRowColumn( dr, "ActionByUser", string.Empty );
                     //item.ActionByUserId = GetRowColumn( dr, "ActionByUserId", 0 );
-                    item.Referrer = GetRowColumn( dr, "Referrer", "" );
+                    item.Referrer = GetRowColumn( dr, "Referrer", string.Empty );
                     item.ActivityObjectId = GetRowColumn( dr, "ActivityObjectId", 0 );
-					item.EntityName = GetRowColumn( dr, "EntityName", "" );
-					item.IPAddress = GetRowColumn( dr, "IPAddress", "" );
-                    item.SessionId = GetRowColumn( dr, "SessionId", "" );
+					item.EntityName = GetRowColumn( dr, "EntityName", string.Empty );
+					item.IPAddress = GetRowColumn( dr, "IPAddress", string.Empty );
+                    item.SessionId = GetRowColumn( dr, "SessionId", string.Empty );
                     item.IsBot = GetRowColumn( dr, "IsBot", false );
 					item.EntityTypeId = GetRowColumn( dr, "EntityTypeId", 0 );
 					item.EntityStateId = GetRowColumn( dr, "EntityStateId", 0 );
 					item.OwningOrgId = GetRowColumn( dr, "OwningOrgId", 0 );
-					item.Organization = GetRowColumn( dr, "Organization", "" );
+					item.Organization = GetRowColumn( dr, "Organization", string.Empty );
 					//N/A
-					//item.ParentObject = GetRowColumn( dr, "ParentObject", "" );
+					//item.ParentObject = GetRowColumn( dr, "ParentObject", string.Empty );
 					//item.ParentEntityTypeId = GetRowColumn( dr, "ParentEntityTypeId", 0 );
 					//item.ParentRecordId = GetRowColumn( dr, "ParentRecordId", 0 );
 
@@ -601,36 +605,5 @@ namespace workIT.Factories
 
             }
         }
-
-        //public static CommonTotals SiteTotals_Get()
-        //{
-        //	CommonTotals entity = new CommonTotals();
-        //	using ( var context = new ViewContext() )
-        //	{
-        //		Views.SiteTotalsSummary item = context.SiteTotalsSummaries
-        //				.SingleOrDefault( s => s.Id == 1 );
-
-        //		if ( item != null && item.Id > 0 )
-        //		{
-        //			entity.TotalOrganizations = GetField(item.TotalOrgs);
-        //			entity.TotalPartnerOrganizations = GetField( item.TotalDirectOrgs );
-        //			entity.TotalOtherOrganizations = entity.TotalOrganizations - entity.TotalPartnerOrganizations;
-        //			entity.TotalQAOrganizations = GetField(item.TotalQAOrgs);
-
-        //			entity.TotalEnteredCredentials = GetField( item.TotalEnteredCredentials );
-        //			entity.TotalPartnerCredentials = GetField( item.TotalPartnerCredentials );
-        //			entity.TotalPendingCredentials = GetField( item.TotalPendingCredentials );
-        //			entity.TotalDirectCredentials = GetField( item.TotalDirectCredentials );
-        //			entity.TotalOtherOrganizations = entity.TotalPartnerCredentials - entity.TotalDirectCredentials;
-
-
-        //			entity.TotalCredentialsAtCurrentCtdl = GetField( item.TotalCredentialsAtCurrentCtdl );
-        //			entity.TotalCredentialsToBeUpdatedToCurrentCtdl = GetField( item.TotalCredentialsToBeUpdatedToCurrentCtdl );
-        //		}
-        //	}
-
-        //	return entity;
-        //}
     }
-
 }

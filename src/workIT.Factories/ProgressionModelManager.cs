@@ -48,8 +48,16 @@ namespace workIT.Factories
                     {
                         return false;
                     }
-
-                    if (entity.Id == 0)
+					if ( entity.Id == 0 )
+					{
+						//double check
+						var checkExists = GetByCtid( entity.CTID, false );
+						if ( checkExists != null )
+						{
+							entity.Id = checkExists.Id;
+						}
+					}
+					if (entity.Id == 0)
                     {
                         //add
                         efEntity = new DBResource();
@@ -100,7 +108,7 @@ namespace workIT.Factories
 
                             UpdateParts( entity, ref status );
                             //
-                            HandleConceptsSimple( entity, ref status );
+                            HandleProgressionLevelSimple( entity, ref status );
                         }
                     }
                     else
@@ -155,7 +163,7 @@ namespace workIT.Factories
                             UpdateEntityCache( entity, ref status );
                             UpdateParts( entity, ref status );
                             //
-                            HandleConceptsSimple( entity, ref status );
+                            HandleProgressionLevelSimple( entity, ref status );
                         }
                     }
                 }
@@ -178,7 +186,7 @@ namespace workIT.Factories
                 EntityUid = document.RowId,
                 BaseId = document.Id,
                 Description = document.Description,
-                SubjectWebpage = document.Source,
+               // SubjectWebpage = document.Source,
                 CTID = document.CTID,
                 Created = document.Created,
                 LastUpdated = document.LastUpdated,
@@ -188,7 +196,7 @@ namespace workIT.Factories
                 OwningOrgId = document.OrganizationId,
                 PublishedByOrganizationId = document.PublishedByThirdPartyOrganizationId
             };
-            var statusMessage = "";
+            var statusMessage = string.Empty;
             if (new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0)
             {
                 status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.Name, document.Id, statusMessage ) );
@@ -206,7 +214,7 @@ namespace workIT.Factories
                 return false;
             }
             mgr.DeleteAll( relatedEntity, ref status );
-            mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.OwnedBy, ref status );
+            mgr.SaveList( relatedEntity.Id, Entity_AgentRelationshipManager.ROLE_TYPE_OWNER, entity.Publisher, ref status );
 
             return isAllValid;
         }
@@ -217,7 +225,7 @@ namespace workIT.Factories
         /// <param name="userId"></param>
         /// <param name="messages"></param>
         /// <returns></returns>
-        public bool HandleConceptsSimple( ThisResource entity, ref SaveStatus status )
+        public bool HandleProgressionLevelSimple( ThisResource entity, ref SaveStatus status )
         {
             bool isValid = true;
             //first phase: delete all or do a replace
@@ -285,7 +293,8 @@ namespace workIT.Factories
                         context.ProgressionModel_ProgressionLevel.Add( efEntity );
                         var count = context.SaveChanges();
 
-                    } //foreach
+						UpdateEntityCacheConcept( entity, efEntity, ref status );
+					} //foreach
 
 
                 }
@@ -299,8 +308,41 @@ namespace workIT.Factories
             }
             return isValid;
         }
+		public void UpdateEntityCacheConcept( ThisResource parent, EM.ProgressionModel_ProgressionLevel document, ref SaveStatus status )
+		{
+			EntityCache ec = new EntityCache()
+			{
+				EntityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_LEVEL,
+				EntityType = "ProgressionLevel",
+				EntityStateId = 3,
+				EntityUid = document.RowId,
+				ParentEntityType = "Progression Model",
+				ParentEntityTypeId = CodesManager.ENTITY_TYPE_PROGRESSION_MODEL,
+				ParentEntityId = parent.RelatedEntityId,
+				ParentEntityUid = parent.RowId,
+                
+				BaseId = document.Id,
+				Description = "",
+				//a list
+				//SubjectWebpage = document.SubjectWebpage,
+				CTID = document.CTID,
+				Created = ( DateTime ) document.Created,
+				LastUpdated = ( DateTime ) document.LastUpdated,
+				Name = document.PrefLabel,
 
-        public bool Delete( string ctid, ref string statusMessage )
+			};
+			if ( IsValidGuid( parent.RowId ) )
+			{
+				ec.OwningAgentUID = parent.PrimaryAgentUID;
+			}
+			var statusMessage = string.Empty;
+			if ( new EntityManager().EntityCacheSave( ec, ref statusMessage ) == 0 )
+			{
+				status.AddError( thisClassName + string.Format( ".UpdateEntityCache for '{0}' ({1}) failed: {2}", document.PrefLabel, document.Id, statusMessage ) );
+			}
+		}
+
+		public bool Delete( string ctid, ref string statusMessage )
         {
             bool isValid = true;
             if (string.IsNullOrWhiteSpace( ctid ))
@@ -415,7 +457,7 @@ namespace workIT.Factories
             using (var context = new EntityContext())
             {
                 DBResource item = context.ProgressionModel
-                        .FirstOrDefault( s => s.CTID.ToLower() == ctid );
+                        .FirstOrDefault( s => s.CTID.ToLower() == ctid && s.EntityStateId > 1 );
                 if (item != null && item.Id > 0)
                 {
                     MapFromDB( item, entity, includingComponents );
@@ -430,7 +472,7 @@ namespace workIT.Factories
         {
             using (var context = new EntityContext())
             {
-                var item = context.ProgressionModel.FirstOrDefault( s => s.Id == id );
+                var item = context.ProgressionModel.FirstOrDefault( s => s.Id == id && s.EntityStateId > 1 );
                 if (item != null && item.Id > 0)
                 {
                     return item.CTID;
@@ -447,7 +489,7 @@ namespace workIT.Factories
             using (var context = new EntityContext())
             {
                 DBResource item = context.ProgressionModel
-                        .FirstOrDefault( s => s.Id == id );
+                        .FirstOrDefault( s => s.Id == id && s.EntityStateId > 1 );
 
                 if (item != null && item.Id > 0)
                 {
@@ -480,9 +522,10 @@ namespace workIT.Factories
             if (!string.IsNullOrWhiteSpace( from.CredentialRegistryId ))
                 to.CredentialRegistryId = from.CredentialRegistryId;
 
-            //watch for overwriting these new properties.
-            to.Source = from.Source;
-            to.PublicationStatusType = from.PublicationStatusType;
+			//
+			to.Source = BaseFactory.FormatListAsDelimitedString( from.Source, "|" );
+
+			to.PublicationStatusType = from.PublicationStatusType;
 
 
             //using last updated date from interface, as we don't have all data here. 
@@ -508,9 +551,9 @@ namespace workIT.Factories
                 to.IsProgressionModel = false;
 
             to.CTID = from.CTID.ToLower();
-            to.Source = from.Source;
+			to.Source = SplitDelimitedStringToList( from.Source, '|' );
 
-            to.PublicationStatusType = from.PublicationStatusType;
+			to.PublicationStatusType = from.PublicationStatusType;
             to.CredentialRegistryId = from.CredentialRegistryId;
             if (to.OrganizationId > 0)
             {
@@ -579,7 +622,7 @@ namespace workIT.Factories
 
                 if (string.IsNullOrEmpty( pFilter ))
                 {
-                    pFilter = "";
+                    pFilter = string.Empty;
                 }
 
                 using (SqlCommand command = new SqlCommand( "[ProgressionModel_Search]", c ))
@@ -624,7 +667,7 @@ namespace workIT.Factories
                     item.Id = GetRowColumn( dr, "Id", 0 );
                     item.ResultNumber = rowNbr;
                     item.OrganizationId = GetRowColumn( dr, "OrganizationId", 0 );
-                    var organizationName = GetRowColumn( dr, "OrganizationName", "" );
+                    var organizationName = GetRowColumn( dr, "OrganizationName", string.Empty );
                     item.PrimaryOrganizationCTID = GetRowColumn( dr, "OrganizationCTID" );
                     if (item.OrganizationId > 0)
                     {
@@ -634,16 +677,16 @@ namespace workIT.Factories
                     item.FriendlyName = FormatFriendlyTitle( item.Name );
                     item.Description = GetRowColumn( dr, "Description" );
 
-                    item.CTID = GetRowColumn( dr, "CTID", "" );
+                    item.CTID = GetRowColumn( dr, "CTID", string.Empty );
                     item.IsProgressionModel = GetRowColumn( dr, "IsProgressionModel", false );
                     item.CredentialRegistryId = GetRowColumn( dr, "CredentialRegistryId" );
-                    item.Source = GetRowColumn( dr, "Source" );
+                    //item.Source = GetRowColumn( dr, "Source" );
                     //=====================================
-                    string date = GetRowPossibleColumn( dr, "Created", "" );
+                    string date = GetRowPossibleColumn( dr, "Created", string.Empty );
                     if (DateTime.TryParse( date, out DateTime testdate ))
                         item.Created = testdate;
 
-                    date = GetRowPossibleColumn( dr, "LastUpdated", "" );
+                    date = GetRowPossibleColumn( dr, "LastUpdated", string.Empty );
                     if (DateTime.TryParse( date, out testdate ))
                         item.LastUpdated = item.EntityLastUpdated = testdate;
 

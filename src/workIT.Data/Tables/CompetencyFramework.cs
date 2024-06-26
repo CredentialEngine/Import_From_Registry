@@ -39,6 +39,9 @@ namespace workIT.Data.Tables
         public string CompetenciesStore { get; set; }
         public int TotalCompetencies { get; set; }
         public string CompetencyFrameworkHierarchy { get; set; }
+        public string LatestVersion { get; set; }
+        public string PreviousVersion { get; set; }
+        public string NextVersion { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<CompetencyFramework_Competency> CompetencyFramework_Competency { get; set; }

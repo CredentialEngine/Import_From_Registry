@@ -28,11 +28,11 @@ namespace workIT.Services.API
 			var record = ResourceHelper.GetDetail( id, skippingCache, true );
 			return MapToAPI( record );
 		}
-        public static OutputResource GetDetailForElastic( int id, bool skippingCache )
-        {
-            var record = ResourceHelper.GetDetail( id, skippingCache, true );
-            return MapToAPI( record );
-        }
+        //public static OutputResource GetDetailForAPI( int id, bool skippingCache )
+        //{
+        //    var record = ResourceHelper.GetDetail( id, skippingCache, true );
+        //    return MapToAPI( record );
+        //}
         public static OutputResource GetDetailForAPI( WMA.DetailRequest request )
 		{
 			var record = ResourceHelper.GetDetail( request.Id, request.SkippingCache, request.IsAPIRequest );
@@ -50,7 +50,8 @@ namespace workIT.Services.API
 			var output = new OutputResource()
 			{
 				Meta_Id = input.Id,
-				CTID=input.CTID,
+				Meta_RowId = input.RowId,
+				CTID =input.CTID,
 				Name = input.Name,
 				Meta_FriendlyName = HttpUtility.UrlPathEncode ( input.Name ),
 				Description = input.Description,
@@ -59,7 +60,7 @@ namespace workIT.Services.API
 				//TBD
 				LearningEntityTypeId =input.LearningEntityTypeId,
 				//BroadType = (input.LearningEntityType??"").Replace(" ",""),	//always LearningOpportunity
-				CTDLTypeLabel = input.LearningEntityTypeLabel,
+				CTDLTypeLabel = input.CTDLTypeLabel,
 				CTDLType = input.LearningTypeSchema,
 			};
 			output.EntityLastUpdated = input.EntityLastUpdated;
@@ -132,7 +133,7 @@ namespace workIT.Services.API
 				output.AvailableOnlineAt = new List<string>() { input.AvailableOnlineAt };
 			//MapAddress( input, ref output );
 			output.AvailableAt = ServiceHelper.MapAddress( input.AvailableAt );
-
+			output.InCatalog = input.InCatalog;
 			//
 			output.AudienceLevelType = ServiceHelper.MapPropertyLabelLinks( input.AudienceLevelType, searchType );
 			output.AudienceType = ServiceHelper.MapPropertyLabelLinks( input.AudienceType, searchType );
@@ -151,6 +152,12 @@ namespace workIT.Services.API
 			output.DeliveryType = ServiceHelper.MapPropertyLabelLinks( input.DeliveryType, searchType );
 			output.DeliveryTypeDescription = input.DeliveryTypeDescription;
 			output.EstimatedDuration = ServiceHelper.MapDurationProfiles( input.EstimatedDuration );
+
+			output.ProvidesTransferValueFor = ServiceHelper.MapResourceSummaryAJAXSettings( input.ProvidesTransferValueFor, "TransferValue" );
+			output.ReceivesTransferValueFrom = ServiceHelper.MapResourceSummaryAJAXSettings( input.ReceivesTransferValueFrom, "TransferValue" );
+			output.ObjectOfAction = ServiceHelper.MapResourceSummaryAJAXSettings( input.ObjectOfAction, "CredentialingAction" );
+			output.HasRubric = ServiceHelper.MapResourceSummaryAJAXSettings( input.HasRubric, "Rubric" );
+
 			//
 			//CostProfiles
 			if ( input.CommonCosts != null && input.CommonCosts.Any() )
@@ -299,7 +306,14 @@ namespace workIT.Services.API
 			{
 				output.Collections = ServiceHelper.MapCollectionMemberToOutline( input.CollectionMembers );
 			}
-			output.IsReferenceVersion = input.IsReferenceVersion;
+			//
+			if ( string.IsNullOrWhiteSpace( input.CTID ) )
+			{
+				output.IsReferenceVersion = true;
+				output.Name += " [reference]";
+			}
+			else
+				output.IsReferenceVersion = false;
 			//
 			MapJurisdictions( input, ref output );
 
@@ -325,6 +339,7 @@ namespace workIT.Services.API
 			output.TargetAssessment = ServiceHelper.MapAssessmentToAJAXSettings( input.TargetAssessment, "Has {0} Target Assessments(s)" );
 			output.TargetLearningOpportunity = ServiceHelper.MapLearningOppToAJAXSettings( input.TargetLearningOpportunity, "Has {0} Target Learning Opportunit(ies)" );
 			output.TargetPathway = ServiceHelper.MapPathwayToAJAXSettings( input.TargetPathway, "Has {0} Target Pathway(s)" );
+			output.RelatedActions = ServiceHelper.MapResourceSummaryAJAXSettings( input.RelatedAction, "CredentialingAction" );
 			//
 			output.TargetLearningResource = input.TargetLearningResource;
 			//

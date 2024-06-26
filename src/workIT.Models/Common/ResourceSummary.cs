@@ -17,6 +17,10 @@ namespace workIT.Models.Common
         public string CTID { get; set; }
         public string URI { get; set; }
         public string Type { get; set; }
-       
-    }
+        public int? RelationshipTypeId { get; set; }
+        public string ImageUrl { get; set; }
+
+		public int ResourcePrimaryOrgId { get; set; }
+		public string ResourcePrimaryOrganizationName { get; set; }
+	}
 }
