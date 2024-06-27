@@ -282,3 +282,8 @@ paket-files/
 /src/Import.Services/RegistryModels/Navy/Json/EnlistedClassification.cs
 /src/Import.Services/RegistryModels/Navy/Json/BaseTask.cs
 /src/workIT.Data/App - Copy (2).Config
+/src/Import/App - Copy.config
+/src/Tools/ElasticIndexBuild/App.Release.config
+/src/Tools/ElasticIndexBuild/App.Sandbox.config
+/src/Tools/ElasticIndexBuild/App.Staging.config
+/src/Tools/ElasticIndexBuild/App.Debug.config
