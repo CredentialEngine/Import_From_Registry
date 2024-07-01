@@ -1,4 +1,11 @@
 # Releases History
+## June 30, 2024
+We apolgize for the long delay between releases. 
+See specific details in the release [**README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2023-09-13/readme.md)
+
+Added a new backup for CE_ExternalData. Recall that this database must always be present with the credential finder database.
+	CE_ExternalData_backup_2023_09_14.zip
+
 ## September 14, 2023
 We apolgize for the long delay between releases. 
 See specific details in the release [**README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2023-09-13/readme.md)
