@@ -12,6 +12,9 @@ Install Visual Studio Community 2019+
 https://visualstudio.microsoft.com/vs/community/ 
 
 ## Updates
+### June 30, 2024 Release
+See  [**Release README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2024-06-30/readme.md)
+
 ### Oct. 4, 2023
 Added folder [**DatabaseScripts**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release/DatabaseScripts)
 - will contain useful scripts to export data etc.
