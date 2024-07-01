@@ -1,6 +1,14 @@
 # Import_From_Registry
 Sample project to import resources from the credential registry.The main focus of this repo is importing data from the [**Credential Registry**](https://credreg.net/). 
 
+## Releases
+NOTE: while the source code will continue to be updated, the current approach is to provide regular releases.
+- A compiled version of the import
+- A partner would customize the config file (CTI.Import.exe.config) for their environment and needs
+
+See the [**Releases folder**](https://github.com/CredentialEngine/Import_From_Registry/tree/master/release)  for the latest release
+
+## Import Documentation
 See the wiki for the current documentation: https://github.com/CredentialEngine/Import_From_Registry/wiki
 
 ## Preparation
