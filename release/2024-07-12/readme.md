@@ -1,5 +1,5 @@
 # Releases
-# June 30, 2024 Release
+# July 12, 2024 Release
 
 ## Application Config
 Updates
