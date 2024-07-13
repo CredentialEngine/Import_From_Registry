@@ -1,7 +1,7 @@
 # Releases History
-## June 30, 2024
+## July 12, 2024
 We apolgize for the long delay between releases. 
-See specific details in the release [**README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2024-06-30/readme.md)
+See specific details in the release [**README**](https://github.com/CredentialEngine/Import_From_Registry/blob/master/release/2024-07-12/readme.md)
 
 ## September 14, 2023
 We apolgize for the long delay between releases. 
