@@ -33,9 +33,10 @@ namespace ElasticIndexBuild
 			//if true, delete the index first and add, or if false just do updates
 			bool deletingIndexBeforeRebuild = UtilityManager.GetAppKeyValue( "deletingIndexBeforeRebuild", true );
 
-			if ( UtilityManager.GetAppKeyValue( "processCustomFiltersRequests", false ) )
+            //If true, only check custom filter SQL like "credentialsCustomFilter", and call related index build
+            if ( UtilityManager.GetAppKeyValue( "processCustomFiltersRequests", false ) )
 			{
-				HandleRequestsCustomFiltersRequests();
+				HandleRequestsCustomFiltersRequests( deletingIndexBeforeRebuild );
 				return;
 			}
 
@@ -55,10 +56,11 @@ namespace ElasticIndexBuild
 				}
 				else
 				{
-					//expect 1-5 for cred, org, asmt, lopp, cf
+					//expect 1-6 for cred, org, asmt, lopp, cf, common
 					if ( Int32.TryParse( args[0], out int requestId ) )
 					{
-						CustomBuildRequest( requestId, deletingIndexBeforeRebuild );
+						//don't confuse with HandleRequestsCustomFiltersRequests
+						CompleteBuildRequest( requestId, deletingIndexBeforeRebuild );
 					}
 					else
 					{
@@ -80,7 +82,7 @@ namespace ElasticIndexBuild
 			}
 		}
 
-		public static void CustomBuildRequest( int requestId, bool deletingIndexBeforeRebuild )
+		public static void CompleteBuildRequest( int requestId, bool deletingIndexBeforeRebuild )
 		{
 			LoggingHelper.DoTrace( 1, "ElasticIndexBuild.CustomBuildRequest Started" );
 			switch ( requestId )
@@ -104,7 +106,7 @@ namespace ElasticIndexBuild
 					LoadCommonIndex( deletingIndexBeforeRebuild );
 					break;
 				//ase 7:
-				//	LoadCompetencyFrameworkIndex( deletingIndexBeforeRebuild );
+				//	??
 				//	break;c
 				default:
 					DisplayMessages( string.Format( "ElasticIndexBuild.CustomBuildRequest Unhandled argument request identifier encountered: {0}, ending", requestId ) );
@@ -115,7 +117,7 @@ namespace ElasticIndexBuild
 		/// <summary>
 		/// Assume that will never delete the index for a custom filter request
 		/// </summary>
-		public static void HandleRequestsCustomFiltersRequests()
+		public static void HandleRequestsCustomFiltersRequests( bool deletingIndexBeforeRebuild )
 		{
 			LoggingHelper.DoTrace( 1, "ElasticIndexBuild.HandleRequestsCustomFiltersRequests Started" );
 			int processed = 0;
@@ -124,28 +126,43 @@ namespace ElasticIndexBuild
 			if ( !string.IsNullOrWhiteSpace( filter ) )
 			{
 				processed = 0;
-				ElasticServices.Credential_UpdateIndex( filter, ref processed );
+                ElasticServices.Credential_ManageIndex( deletingIndexBeforeRebuild );
+                ElasticServices.Credential_UpdateIndex( filter, ref processed );
 			}
 
 			filter = UtilityManager.GetAppKeyValue( "organizationsCustomFilter", "" );
 			if ( !string.IsNullOrWhiteSpace( filter ) )
 			{
-				processed = 0;
-				ElasticServices.Organization_UpdateIndex( filter, ref processed );
+				processed = 0; 
+				ElasticServices.Organization_ManageIndex( deletingIndexBeforeRebuild );
+                ElasticServices.Organization_UpdateIndex( filter, ref processed );
 			}
 
 			filter = UtilityManager.GetAppKeyValue( "loppCustomFilter", "" );
 			if ( !string.IsNullOrWhiteSpace( filter ) )
 			{
 				processed = 0;
-				ElasticServices.LearningOpp_UpdateIndex( filter, ref processed );
+                ElasticServices.LearningOpp_ManageIndex( deletingIndexBeforeRebuild );
+                ElasticServices.LearningOpp_UpdateIndex( filter, ref processed );
 			}
 
 			filter = UtilityManager.GetAppKeyValue( "asmtCustomFilter", "" );
 			if ( !string.IsNullOrWhiteSpace( filter ) )
 			{
 				processed = 0;
-				ElasticServices.Assessment_UpdateIndex( filter, ref processed );
+                ElasticServices.Assessment_ManageIndex( deletingIndexBeforeRebuild );
+                ElasticServices.Assessment_UpdateIndex( filter, ref processed );
+			}
+
+			//hmm how to do custom builds for common? 
+			//would have to include the entity type, plus the filter. Or just assuming only one can be done at a time, and set all of the "include..." appropriately
+			filter = UtilityManager.GetAppKeyValue( "generalCustomFilter", "" );
+			if ( !string.IsNullOrWhiteSpace( filter ) )
+			{
+				processed = 0;
+				//would NEVER do an index delete in this context.
+				//ElasticServices.Assessment_ManageIndex( deletingIndexBeforeRebuild );
+				//ElasticServices.Assessment_UpdateIndex( filter, ref processed );
 			}
 		}
 
@@ -153,6 +170,7 @@ namespace ElasticIndexBuild
 		{
 			if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "commonCollection", "" ) ) )
 				LoadCommonIndex( deletingIndexBeforeRebuild );
+
 			if ( !string.IsNullOrWhiteSpace( UtilityManager.GetAppKeyValue( "pathwayCollection", "" ) ) )
 				LoadPathwayIndex( deletingIndexBeforeRebuild );
 
@@ -174,6 +192,10 @@ namespace ElasticIndexBuild
 				LoadCredentialsIndex( deletingIndexBeforeRebuild );
 		}
 
+		/// <summary>
+		/// TODO - maybe this should only do pending for selected indices or could get errors?
+		/// </summary>
+		/// <param name="entityRequestTypeId"></param>
 		public static void HandlePendingRequests( string entityRequestTypeId )
 		{
 			LoggingHelper.DoTrace( 1, "ElasticIndexBuild.HandlePendingRequests Started" );
@@ -195,21 +217,36 @@ namespace ElasticIndexBuild
 					case 9:		//collection:
 					case 10:    //framework
 					case 11:    //concept scheme			
-					case 12:
-					case 13:
-					case 14:
+					case 12:	//progression model
+					case 13:	//QA org
+					case 14:	//org
 						ElasticServices.HandlePendingReindexRequests( ref messages, entityTypeId );
 						break;
+					case 15:    //scheduled offering
+					case 22:    //CredentialingAction
 					case 23:    //pathwaySet
 					case 26:    //TVP
-
-						//General is not ready. It should do both whenver requested 
+					case 28:    //TI
+					case 31:	//outcome data/dataset profile
+                    case 32:    //job
+                    case 33:    //task
+                    case 34:    //workrole
+                    case 35:    //occupation
+					case 38:    //support service
+					case 39:    //rubric
+					
+								//General
 						ElasticServices.HandlePendingReindexRequests( ref messages, entityTypeId );
 						break;
 					
 					default:
 						DisplayMessages( string.Format( "ElasticIndexBuild.HandlePendingRequests. Unhandled request identifier encountered: {0}, ending", entityRequestTypeId ) );
 						break;
+				}
+				if (messages.Count > 0 )
+				{
+					LoggingHelper.DoTrace( 1, $"ElasticIndexBuild.Program.HandlePendingRequests. Messages were encountered while handling Pending requests" );
+					LoggingHelper.DoTrace( 1, messages );
 				}
 			}
 		}
@@ -323,21 +360,23 @@ namespace ElasticIndexBuild
 				//int processed = 0;
 				DateTime start = DateTime.Now;
 				DateTime end = DateTime.Now;
-				var includeTransferValueInBuild= UtilityManager.GetAppKeyValue( "includeTransferValueInBuild", true );
-				var includeTransferIntermediaryInBuild = UtilityManager.GetAppKeyValue( "includeTransferIntermediaryInBuild", true );
+				var doingAll = false;
 				var includeCollectionInBuild = UtilityManager.GetAppKeyValue( "includeCollectionInBuild", true );
-                var includePathwaySetInBuild = UtilityManager.GetAppKeyValue( "includePathwaySetInBuild", true );
+				var includeTransferValueInBuild = UtilityManager.GetAppKeyValue( "includeTransferValueInBuild", true );
+				var includeTransferIntermediaryInBuild = UtilityManager.GetAppKeyValue( "includeTransferIntermediaryInBuild", true );
 
-                //	TODO - just define a direct method to delete and recreate 
-                if ( deletingIndexBeforeRebuild )
+				//	TODO - just define a direct method to delete and recreate 
+				if ( deletingIndexBeforeRebuild )
                 {
 					ElasticHelper.GeneralIndex_Reset();
+					deletingIndexBeforeRebuild = false;
+					doingAll = true;
 				}
-				deletingIndexBeforeRebuild = false;
+				
 				if ( !includeTransferValueInBuild || !includeTransferIntermediaryInBuild || !includeCollectionInBuild )
                 {
 					//if any are excluded, delete should be turned off
-					
+					//you live you learn
 					
 				}
 
@@ -353,7 +392,7 @@ namespace ElasticIndexBuild
 				*/
 				//next
 
-				if ( includeTransferValueInBuild )
+				if ( doingAll || includeTransferValueInBuild )
 				{
 					DisplayMessages( "=========== Starting Transfer Value Profile ===========" );
 					start = DateTime.Now;
@@ -363,9 +402,8 @@ namespace ElasticIndexBuild
 
 					DisplayMessages( string.Format( "___Completed LoadCommonIndex for transfer value. Elapsed Seconds: {0}", tvpElasped ) );
 				}
-				deletingIndexBeforeRebuild = false;
 				//
-				if ( includeTransferIntermediaryInBuild )
+				if ( doingAll || includeTransferIntermediaryInBuild )
 				{
 					DisplayMessages( "=========== Starting Transfer Intermediary ===========" );
 					start = DateTime.Now;
@@ -374,32 +412,8 @@ namespace ElasticIndexBuild
 					var tiElasped = end.Subtract( start ).TotalSeconds;
 					DisplayMessages( string.Format( "___Completed LoadCommonIndex for transfer intermediary. Elapsed Seconds: {0}", tiElasped ) );
 				}
-                if ( UtilityManager.GetAppKeyValue( "includePathwaySetInBuild", true ) )
-                {
-                    ElasticHelper.General_BuildIndexForPathwaySet();
-                }
-                //
-                if ( UtilityManager.GetAppKeyValue( "includeOccupationInBuild", true ) )
-                {
-					ElasticHelper.General_BuildIndexForOccupation();
-				}
 				//
-				if ( UtilityManager.GetAppKeyValue( "includeJobInBuild", true ) )
-				{
-					ElasticHelper.General_BuildIndexForJob(true);
-				}
-				//
-				if ( UtilityManager.GetAppKeyValue( "includeTaskInBuild", true ) )
-				{
-					ElasticHelper.General_BuildIndexForTask();
-				}
-				//
-				if ( UtilityManager.GetAppKeyValue( "includeWorkRoleInBuild", true ) )
-				{
-					ElasticHelper.General_BuildIndexForWorkRole();
-				}
-				//
-				if ( includeCollectionInBuild )
+				if ( doingAll || includeCollectionInBuild )
 				{
 					DisplayMessages( " =========== Starting Collection ===========" );
 					start = DateTime.Now;
@@ -409,6 +423,72 @@ namespace ElasticIndexBuild
 
 					DisplayMessages( string.Format( "___Completed LoadCommonIndex for Collection. Elapsed Seconds: {0}", colElasped ) );
 				}
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeConceptSchemeInBuild", true ) )
+				{
+					//DisplayMessages( string.Format( "WARNING There is no elastic build process for concept schemes at this time." ) );
+
+					ElasticHelper.General_UpdateIndexForConceptScheme();
+				}
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeJobInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForJob( true );
+				}
+
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeOccupationInBuild", true ) )
+                {
+					ElasticHelper.General_BuildIndexForOccupation();
+				}
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeCredentialingActionInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForCredentialingAction();
+				}
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeOutcomeDataInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForOutcomeData();
+				}
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includePathwaySetInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForPathwaySet();
+				}
+
+
+                //
+                if ( doingAll || UtilityManager.GetAppKeyValue( "includeSupportServiceInBuild", true ) )
+                {
+                    ElasticHelper.General_BuildIndexForSupportService();
+                }
+                //
+                if ( doingAll || UtilityManager.GetAppKeyValue( "includeScheduledOfferingInBuild", true ) )
+                {
+                    ElasticHelper.General_BuildIndexForScheduledOffering();
+                }
+                //
+                if ( doingAll || UtilityManager.GetAppKeyValue( "includeProgressionModelInBuild", true ))
+                {
+                    ElasticHelper.General_UpdateIndexForProgressionModel();
+                }
+
+
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeTaskInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForTask();
+				}
+				//
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeWorkRoleInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForWorkRole();
+				}
+				if ( doingAll || UtilityManager.GetAppKeyValue( "includeRubricInBuild", true ) )
+				{
+					ElasticHelper.General_BuildIndexForRubric();
+				}
+		
 			}
 			catch ( Exception ex )
 			{
